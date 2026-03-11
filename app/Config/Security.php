@@ -13,9 +13,14 @@ class Security extends BaseConfig
      *
      * Protection Method for Cross Site Request Forgery protection.
      *
+     * CHANGED TO 'session' (March 11, 2026):
+     * - Browser Tracking Prevention blocks cookie access
+     * - Session-based protection not affected by cookie blocking
+     * - More reliable for AJAX-heavy applications
+     *
      * @var string 'cookie' or 'session'
      */
-    public string $csrfProtection = 'cookie';
+    public string $csrfProtection = 'session';
 
     /**
      * --------------------------------------------------------------------------
@@ -58,11 +63,15 @@ class Security extends BaseConfig
      * CSRF Expires
      * --------------------------------------------------------------------------
      *
-     * Expiration time for Cross Site Request Forgery protection cookie.
+     * Expiration time for Cross Site Request Forgery protection.
      *
-     * Defaults to two hours (in seconds).
+     * OPTIMA STANDARD: 6 hours (21600 seconds)
+     * - Match session expiration for consistency
+     * - Auto-logout after 6 hours (no token refresh prompt)
+     * - Security: prevents indefinite sessions
+     * - UX: clear 6-hour work session limit
      */
-    public int $expires = 7200;
+    public int $expires = 21600;
 
     /**
      * --------------------------------------------------------------------------

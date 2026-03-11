@@ -1,6 +1,22 @@
 ﻿<?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Customer Management Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status ACTIVE    → <span class="badge badge-soft-green">ACTIVE</span>
+ * - Status INACTIVE  → <span class="badge badge-soft-red">INACTIVE</span>
+ * - Counter/Info     → <span class="badge badge-soft-blue">247</span>
+ * - Warning/Pending  → <span class="badge badge-soft-yellow">Pending</span>
+ * - Danger/Expired   → <span class="badge badge-soft-red">Expired</span>
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 // Load global permission helper
 helper('global_permission');
 
@@ -82,6 +98,42 @@ $can_export = $permissions['export'];
     </div>
 </div>
 
+<!-- Status Filter Tabs -->
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <ul class="nav nav-tabs customer-status-tabs" id="customerStatusTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active tab-all" id="tab-all" data-status="all" type="button" role="tab">
+                    <i class="bi bi-list-ul me-2"></i>All Customers
+                    <span class="badge badge-tab-all ms-2" id="count-all">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link tab-active" id="tab-active" data-status="active" type="button" role="tab">
+                    <i class="bi bi-check-circle me-2"></i>Active
+                    <span class="badge badge-tab-active ms-2" id="count-active">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link tab-inactive" id="tab-inactive" data-status="inactive" type="button" role="tab">
+                    <i class="bi bi-x-circle me-2"></i>Inactive
+                    <span class="badge badge-tab-inactive ms-2" id="count-inactive">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link tab-no-contract" id="tab-no-contract" data-status="no_contract" type="button" role="tab">
+                    <i class="bi bi-exclamation-triangle me-2"></i>No Active Contract
+                    <span class="badge badge-tab-no-contract ms-2" id="count-no-contract">0</span>
+                </button>
+            </li>
+        </ul>
+        <small class="text-muted d-block px-3 py-2 border-top">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>Tip:</strong> Use "No Active Contract" tab to find customers that can be set to INACTIVE
+        </small>
+    </div>
+</div>
+
 <!-- Customer Table Card -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -90,7 +142,13 @@ $can_export = $permissions['export'];
                 <i class="bi bi-people me-2 text-primary"></i>
                 Customer Management
             </h5>
-            <p class="text-muted small mb-0">Manage customer profiles, contracts, and track unit deployments</p>
+            <p class="text-muted small mb-0">
+                Manage customer profiles, contracts, and track unit deployments
+                <span class="ms-2 text-info">
+                    <i class="bi bi-keyboard me-1"></i>
+                    <small>Tip: Click row or press Tab + Enter to view details</small>
+                </span>
+            </p>
         </div>
         <div class="d-flex gap-2">
             <?= ui_button('refresh', lang('App.refresh'), [
@@ -141,7 +199,8 @@ $can_export = $permissions['export'];
                         <th>Customer Code</th>
                         <th>Customer Name</th>
                         <th>Locations</th>
-                        <th>Contracts</th>
+                        <th>Total Contracts</th>
+                        <th>Active Contracts</th>
                         <th>Total Units</th>
                         <th>Status</th>
                         <th>Created</th>
@@ -300,8 +359,70 @@ $can_export = $permissions['export'];
                 </div>
             </div>
             <div class="modal-footer bg-light">
+                <div class="me-auto d-flex gap-2">
+                    <?= ui_button('edit', 'Edit Customer', [
+                        'onclick' => 'openEditCustomerModal(currentCustomerId)',
+                        'color' => 'primary',
+                        'size' => 'sm'
+                    ]) ?>
+                    <?php if ($can_delete): ?>
+                    <?= ui_button('delete', 'Delete Customer', [
+                        'onclick' => 'deleteCustomer(currentCustomerId)',
+                        'color' => 'danger',
+                        'size' => 'sm'
+                    ]) ?>
+                    <?php endif; ?>
+                </div>
                 <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Edit Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCustomerForm">
+                <?= csrf_field() ?>
+                <input type="hidden" id="edit_customer_id" name="customer_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit_customer_code">Customer Code <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_customer_code" name="customer_code" required maxlength="20" readonly>
+                        <small class="form-text text-muted">Customer code cannot be changed</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit_customer_name">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_customer_name" name="customer_name" required maxlength="255">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit_is_active">Status <span class="text-danger">*</span></label>
+                        <select class="form-control" id="edit_is_active" name="is_active" required>
+                            <option value="1">ACTIVE</option>
+                            <option value="0">INACTIVE</option>
+                        </select>
+                        <small class="form-text text-muted">Set to INACTIVE if no longer doing business with this customer</small>
+                    </div>
+                    
+                    <div class="alert alert-info alert-sm">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> Changing status to INACTIVE will not affect existing contracts or units. It only marks this customer as no longer active in the system.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('save', 'Update Customer', ['type' => 'submit']) ?>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -383,133 +504,155 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Add Customer Modal -->
-<div class="modal fade modal-wide" id="addCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" role="document">
+<div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addCustomerForm">
+                <?= csrf_field() ?>
                 <div class="modal-body">
-                    <!-- Company Information -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="customer_code">Customer Code <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="customer_code" name="customer_code" required maxlength="20">
-                                    <button class="btn btn-outline-secondary" type="button" id="generateCustomerCode" title="Generate Customer Code">
-                                        <i class="fas fa-magic"></i>
-                                    </button>
+                    <!-- Customer Basic Information -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-building me-2 text-primary"></i>Customer Information
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer_code">Customer Code <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="customer_code" name="customer_code" required maxlength="20" placeholder="e.g., CUST-0001">
+                                        <button class="btn btn-outline-secondary" type="button" id="generateCustomerCode" title="Auto-generate unique code">
+                                            <i class="fas fa-magic"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">Unique identifier for this customer</small>
                                 </div>
-                                <small class="form-text text-muted">Unique customer identifier - bisa diisi manual atau generate otomatis</small>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="customer_name">Customer Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="customer_name" name="customer_name" required maxlength="255">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Primary Location & Contact -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="location_name">Primary Location Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="location_name" name="location_name" value="Head Office" required maxlength="100">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="primary_location_code">Primary Location Code</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="primary_location_code" name="primary_location_code" maxlength="50">
-                                    <button class="btn btn-outline-secondary" type="button" id="generateLocationCode" title="Generate Location Code">
-                                        <i class="fas fa-magic"></i>
-                                    </button>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer_name">Company Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="customer_name" name="customer_name" required maxlength="255" placeholder="e.g., PT Maju Jaya">
+                                    <small class="form-text text-muted">Legal company name</small>
                                 </div>
-                                <small class="form-text text-muted">Optional - will be auto-generated if empty</small>
                             </div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label for="default_billing_method">Default Billing Method</label>
+                            <select class="form-control" id="default_billing_method" name="default_billing_method">
+                                <option value="CYCLE" selected>30-Day Rolling Cycle</option>
+                                <option value="PRORATE">Prorate to Month-End</option>
+                                <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
+                            </select>
+                            <small class="form-text text-muted">Default billing calculation for contracts with this customer</small>
+                        </div>
                     </div>
+
+                    <!-- Primary Location Information -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-geo-alt me-2 text-success"></i>Primary Location Details
+                            <small class="text-muted ms-2">(Head Office)</small>
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="location_name">Location Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="location_name" name="location_name" value="Head Office" required maxlength="100" placeholder="e.g., Head Office">
+                                    <small class="form-text text-muted">Primary location name</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="primary_location_code">Location Code</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="primary_location_code" name="primary_location_code" maxlength="50" placeholder="Auto-generated">
+                                        <button class="btn btn-outline-secondary" type="button" id="generateLocationCode" title="Auto-generate location code">
+                                            <i class="fas fa-magic"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">Auto-generated if left empty</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="address">Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="address" name="address" rows="2" maxlength="500" required placeholder="Complete address including street name, building number, etc."></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="city">City <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="city" name="city" maxlength="100" required placeholder="e.g., Jakarta">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="province">Province <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="province" name="province" maxlength="100" required placeholder="e.g., DKI Jakarta">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="postal_code">Postal Code</label>
+                                    <input type="text" class="form-control" id="postal_code" name="postal_code" maxlength="10" placeholder="e.g., 12345">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="area_id">Service Area <span class="text-danger">*</span></label>
+                            <select class="form-control" id="area_id" name="area_id" required>
+                                <option value="">-- Select Service Area --</option>
+                            </select>
+                            <small class="form-text text-muted">Sales territory / service area for this location</small>
+                        </div>
+                    </div>
+
+                    <!-- Contact Person Information -->
+                    <div class="mb-3">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-person me-2 text-info"></i>Contact Person
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="contact_person">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="contact_person" name="contact_person" maxlength="255" required placeholder="e.g., Budi Santoso">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone">Phone <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="phone" name="phone" maxlength="20" required placeholder="e.g., 021-1234567 or 08123456789">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" maxlength="100" placeholder="e.g., contact@company.com">
+                                </div>
+                            </div>
+                        </div>
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="area_id">Area <span class="text-danger">*</span></label>
-                                <select class="form-control" id="area_id" name="area_id" required>
-                                    <option value="">Select Area</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="city">City <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="city" name="city" maxlength="100" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Contact Information -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="contact_person">Contact Person</label>
-                                <input type="text" class="form-control" id="contact_person" name="contact_person" maxlength="255">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="phone">Phone <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="phone" name="phone" maxlength="20" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" maxlength="100">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="postal_code">Postal Code</label>
-                                <input type="text" class="form-control" id="postal_code" name="postal_code" maxlength="10">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="province">Province <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="province" name="province" maxlength="100" required>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Additional Notes -->
                     <div class="form-group">
-                        <label for="address">Primary Address <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="address" name="address" rows="3" maxlength="500" required></textarea>
-                        <small class="form-text text-muted">This will be created as the primary location</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="default_billing_method">Default Billing Method <i class="fas fa-info-circle text-info" title="Default billing calculation method for all contracts with this customer"></i></label>
-                        <select class="form-control" id="default_billing_method" name="default_billing_method">
-                            <option value="CYCLE" selected>30-Day Rolling Cycle</option>
-                            <option value="PRORATE">Prorate to Month-End</option>
-                            <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
-                        </select>
-                        <small class="form-text text-muted">This will be used as the default when creating new contracts for this customer</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="notes">Description</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        <label for="notes">
+                            <i class="bi bi-journal-text me-1"></i>Additional Notes
+                        </label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" maxlength="255" placeholder="Optional notes or special instructions about this customer"></textarea>
+                        <small class="form-text text-muted">Any special instructions or remarks</small>
                     </div>
 
                     <!-- Defaults required by backend validation -->
@@ -538,6 +681,7 @@ $can_export = $permissions['export'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addContractForm">
+                <?= csrf_field() ?>
                 <div class="modal-body">
                     <div class="alert alert-info mb-4">
                         <h6 class="alert-heading">
@@ -621,6 +765,7 @@ $can_export = $permissions['export'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addLocationForm">
+                <?= csrf_field() ?>
                 <div class="modal-body">
                     <input type="hidden" name="customer_id" id="locationCustomerId">
                     <div class="row">
@@ -736,6 +881,7 @@ $can_export = $permissions['export'];
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="editContractForm">
+                <?= csrf_field() ?>
                 <div class="modal-body">
                     <input type="hidden" id="editContractId" name="id">
                     
@@ -805,6 +951,7 @@ $can_export = $permissions['export'];
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="spkFromKontrakForm">
+                <?= csrf_field() ?>
                 <div class="modal-body">
                     <input type="hidden" name="kontrak_id" id="spkKontrakId">
                     <input type="hidden" name="qoutation_specifications_id" id="spkSpesifikasiId">
@@ -875,22 +1022,81 @@ $can_export = $permissions['export'];
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script>
-// UI Badge Helper - Generate consistent badge colors based on type
-function uiBadge(type, text, options = {}) {
-    const badgeMap = {
-        'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success',
-        'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
-        'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
-        'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
-        'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
-        'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger'
-    };
-    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
-    const className = options.class || '';
-    return `<span class="badge bg-${color} ${className}">${text}</span>`;
+<style>
+/* Customer Table Keyboard Navigation Enhancement */
+#customerTable tbody tr[tabindex]:focus {
+    outline: 2px solid #0d6efd !important;
+    outline-offset: -2px !important;
+    background-color: rgba(13, 110, 253, 0.05) !important;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
 }
 
+#customerTable tbody tr[tabindex]:hover {
+    background-color: rgba(13, 110, 253, 0.08) !important;
+    transition: background-color 0.2s ease;
+}
+
+#customerTable tbody tr[tabindex]:focus:hover {
+    background-color: rgba(13, 110, 253, 0.12) !important;
+}
+
+/* Customer Status Filter Tabs - Color Coded */
+.customer-status-tabs {
+    margin-bottom: 0;
+}
+
+.customer-status-tabs .nav-link {
+    color: #6c757d;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.customer-status-tabs .nav-link:hover {
+    color: #495057;
+}
+
+/* Tab Link Colors (text and underline) - Badge colors handled by optima-pro.css */
+.customer-status-tabs .tab-all {
+    color: #6c757d;
+}
+
+.customer-status-tabs .tab-all.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    font-weight: 600;
+}
+
+.customer-status-tabs .tab-active {
+    color: #198754;
+}
+
+.customer-status-tabs .tab-active.active {
+    color: #198754;
+    border-bottom-color: #198754;
+    font-weight: 600;
+}
+
+.customer-status-tabs .tab-inactive {
+    color: #dc3545;
+}
+
+.customer-status-tabs .tab-inactive.active {
+    color: #dc3545;
+    border-bottom-color: #dc3545;
+    font-weight: 600;
+}
+
+.customer-status-tabs .tab-no-contract {
+    color: #fd7e14;
+}
+
+.customer-status-tabs .tab-no-contract.active {
+    color: #fd7e14;
+    border-bottom-color: #fd7e14;
+    font-weight: 600;
+}
+</style>
+<script>
 let customerTable;
 let currentCustomerId = null;
 let currentCustomerName = null;
@@ -901,10 +1107,9 @@ $(document).ready(function() {
     
     // Check if DataTables library loaded properly
     if (typeof $.fn.DataTable === 'undefined') {
-        console.error('DataTables library not loaded!');
-        setTimeout(function() {
-            location.reload();
-        }, 2000);
+        console.error('❌ CRITICAL: DataTables library not loaded!');
+        showNotification('DataTables library missing. Please refresh the page.', 'error');
+        // Give user option to manually refresh instead of forcing it
         return;
     }
     
@@ -916,9 +1121,22 @@ $(document).ready(function() {
     // Statistics will be auto-calculated by helper
     // No need to call loadStatistics() manually
     
+    // Setup status filter tabs
+    setupStatusFilterTabs();
+    
     // Setup tab event handlers
     setupTabHandlers();
+    
+    // Reset form when Add Customer modal is closed
+    $('#addCustomerModal').on('hidden.bs.modal', function () {
+        console.log('🔄 Resetting Add Customer form on modal close');
+        $('#addCustomerForm')[0].reset();
+        clearFormErrors('#addCustomerForm');
+    });
 });
+
+// Global status filter variable
+let currentStatusFilter = 'all';
 
 // Initialize DataTable using OptimaDataTable centralized system
 function initializeCustomerTable() {
@@ -931,6 +1149,10 @@ function initializeCustomerTable() {
                 url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
                 type: 'POST',
                 timeout: 30000,  // 30 seconds timeout
+                data: function(d) {
+                    // Add status filter to AJAX request
+                    d.status_filter = currentStatusFilter;
+                },
                 error: function(xhr, error, code) {
                     console.error('❌ Customer DataTable AJAX Error:', {
                         status: xhr.status,
@@ -950,9 +1172,15 @@ function initializeCustomerTable() {
                         errorMsg += 'URL endpoint tidak ditemukan.';
                     } else if (xhr.status === 500) {
                         errorMsg += 'Server error.';
+                    } else if (xhr.status === 403) {
+                        errorMsg += 'Akses ditolak - cek permission.';
                     } else {
-                        errorMsg += 'Silakan refresh halaman.';
+                        errorMsg += 'Silakan coba lagi atau klik tombol Refresh.';
                     }
+                    
+                    console.error('❌ DataTables AJAX Error:', errorMsg);
+                    console.error('   HTTP Status:', xhr.status);
+                    console.error('   Response:', xhr.responseText);
                     
                     showNotification(errorMsg, 'error');
                 }
@@ -979,6 +1207,18 @@ function initializeCustomerTable() {
                     render: (data) => data || 0
                 },
                 { 
+                    data: 'active_contracts_count',
+                    className: 'text-center',
+                    orderable: false,
+                    render: (data) => {
+                        if (data > 0) {
+                            return `<span class="badge badge-soft-green">${data}</span>`;
+                        } else {
+                            return `<span class="badge badge-soft-gray">0</span>`;
+                        }
+                    }
+                },
+                { 
                     data: 'total_units',
                     className: 'text-center',
                     orderable: false,
@@ -987,7 +1227,13 @@ function initializeCustomerTable() {
                 { 
                     data: 'is_active',
                     className: 'text-center',
-                    render: (data) => data == 1 ? 'ACTIVE' : 'INACTIVE'
+                    render: (data) => {
+                        if (data == 1 || data === 'ACTIVE') {
+                            return '<span class="badge badge-soft-green"><i class="bi bi-check-circle me-1"></i>ACTIVE</span>';
+                        } else {
+                            return '<span class="badge badge-soft-red"><i class="bi bi-x-circle me-1"></i>INACTIVE</span>';
+                        }
+                    }
                 },
                 { 
                     data: 'created_at',
@@ -995,8 +1241,22 @@ function initializeCustomerTable() {
                 }
             ],
             rowCallback: function(row, data) {
+                // Make rows clickable AND keyboard accessible
                 row.style.cursor = 'pointer';
+                row.tabIndex = 0; // Make row focusable
+                row.setAttribute('role', 'button');
+                row.setAttribute('aria-label', 'Open details for ' + data.customer_name);
+                
+                // Click handler
                 row.onclick = () => openCustomerDetail(data.id);
+                
+                // Keyboard handler (Enter or Space)
+                row.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openCustomerDetail(data.id);
+                    }
+                };
             },
             initComplete: function(settings, json) {
                 console.log('✅ Customer DataTable initialized');
@@ -1056,6 +1316,7 @@ function loadStatistics(startDate, endDate) {
     if (startDate && endDate) {
         data = { start_date: startDate, end_date: endDate };
         console.log('📊 Loading customer statistics WITH filter:', data);
+        showNotification('Filtering stats: ' + startDate + ' to ' + endDate, 'info');
     } else {
         console.log('📊 Loading customer statistics WITHOUT filter (all data)');
     }
@@ -1088,15 +1349,103 @@ function loadStatistics(startDate, endDate) {
                 $('#stat-active-customers').text(stats.active_customers || 0);
                 $('#stat-total-contracts').text(stats.total_contracts || 0);
                 $('#stat-total-units').text(stats.total_units || 0);
+                
+                // Update tab badges
+                if (stats.tab_counts) {
+                    $('#count-all').text(stats.tab_counts.all || 0);
+                    $('#count-active').text(stats.tab_counts.active || 0);
+                    $('#count-inactive').text(stats.tab_counts.inactive || 0);
+                    $('#count-no-contract').text(stats.tab_counts.no_contract || 0);
+                }
             } else {
                 console.error('❌ Failed to load statistics:', response.message);
+                // Fallback: Try to calculate from current table data
+                calculateStatsFromTable();
             }
         },
         error: function(xhr, status, error) {
             console.error('❌ AJAX error loading statistics:', error);
             console.error('   Response:', xhr.responseText);
+            // Fallback: Try to calculate from current table data
+            calculateStatsFromTable();
         }
     });
+}
+
+/**
+ * Client-Side Statistics Fallback Calculation
+ * 
+ * Calculates statistics from DataTable data when server-side stats fail.
+ * This provides resilient UI that works even if API is down.
+ * 
+ * @since Priority 3 Enhancement - March 7, 2026
+ */
+function calculateStatsFromTable() {
+    console.log('📊 Calculating statistics from table data (fallback mode)...');
+    
+    try {
+        const table = $('#customerTable').DataTable();
+        const allData = table.rows({ search: 'applied' }).data();
+        
+        if (!allData || allData.length === 0) {
+            console.warn('⚠️ No table data available for fallback calculation');
+            // Show zeros with warning indicator
+            $('#stat-total-customers').text('0').addClass('text-warning');
+            $('#stat-active-customers').text('0').addClass('text-warning');
+            $('#stat-total-contracts').text('0').addClass('text-warning');
+            $('#stat-total-units').text('0').addClass('text-warning');
+            return;
+        }
+        
+        // Calculate statistics from visible/filtered data
+        let stats = {
+            total_customers: allData.length,
+            active_customers: 0,
+            total_contracts: 0,
+            total_units: 0
+        };
+        
+        // Iterate through each customer row
+        for (let i = 0; i < allData.length; i++) {
+            const row = allData[i];
+            
+            // Count active customers (status column may vary - check for 'Aktif', 'Active', or status=1)
+            if (row.status === 'Aktif' || row.status === 'Active' || row.status === 1 || row.status === '1') {
+                stats.active_customers++;
+            }
+            
+            // Sum contracts (if contract_count column exists)
+            if (row.contract_count) {
+                stats.total_contracts += parseInt(row.contract_count) || 0;
+            }
+            
+            // Sum units (if unit_count column exists)
+            if (row.unit_count) {
+                stats.total_units += parseInt(row.unit_count) || 0;
+            }
+        }
+        
+        console.log('✅ Fallback statistics calculated:', stats);
+        console.log('ℹ️ Note: Contract/unit counts may be inaccurate if columns not loaded');
+        
+        // Update UI with calculated stats
+        $('#stat-total-customers').text(stats.total_customers).removeClass('text-warning');
+        $('#stat-active-customers').text(stats.active_customers).removeClass('text-warning');
+        $('#stat-total-contracts').text(stats.total_contracts).removeClass('text-warning');
+        $('#stat-total-units').text(stats.total_units).removeClass('text-warning');
+        
+        // Show notification that fallback was used
+        showNotification('Statistics calculated from table data (API unavailable)', 'warning');
+        
+    } catch (error) {
+        console.error('❌ Failed to calculate fallback statistics:', error);
+        // Final fallback - show zeros
+        $('#stat-total-customers').text('0');
+        $('#stat-active-customers').text('0');
+        $('#stat-total-contracts').text('0');
+        $('#stat-total-units').text('0');
+        showNotification('Unable to load statistics', 'error');
+    }
 }
 
 // Open customer detail with lazy loading optimization
@@ -1115,23 +1464,72 @@ function openCustomerDetail(customerId) {
     
     // Lazy load customer data
     setTimeout(function() {
+        // Get fresh CSRF token
+        const csrfData = (typeof getCsrfTokenData === 'function') 
+            ? getCsrfTokenData() 
+            : { tokenName: window.csrfTokenName || 'csrf_test_name', tokenValue: window.csrfToken || '' };
+        
+        console.log('🔍 Loading customer detail for ID:', customerId);
+        console.log('🔐 CSRF Token:', csrfData.tokenValue ? csrfData.tokenValue.substring(0, 20) + '...' : 'MISSING');
+        
         $.ajax({
             url: `<?= base_url('marketing/customer-management/getCustomerDetail') ?>/${customerId}`,
             type: 'GET',
-            timeout: 5000,
+            timeout: 15000, // Increased to 15s for complex queries
+            headers: {
+                'X-CSRF-TOKEN': csrfData.tokenValue,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             success: function(response) {
+                console.log('✅ Customer detail loaded successfully:', response);
                 if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
                     OptimaPro.hideLoading();
                 }
                 if (response.success) {
                     displayCustomerDetail(response.data);
                 } else {
-                    $('#customerDetailContent').html('<div class="alert alert-danger">Failed to load customer details</div>');
+                    console.error('❌ Server returned error:', response.message);
+                    $('#customerDetailContent').html(
+                        '<div class="alert alert-danger">' +
+                        '<i class="bi bi-exclamation-triangle me-2"></i>' +
+                        (response.message || 'Failed to load customer details') +
+                        '</div>'
+                    );
                 }
             },
-            error: function() {
-                OptimaPro.hideLoading();
-                $('#customerDetailContent').html('<div class="alert alert-danger">Error loading customer details</div>');
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX Error loading customer detail:');
+                console.error('   Status:', status);
+                console.error('   HTTP Code:', xhr.status);
+                console.error('   Error:', error);
+                console.error('   Response:', xhr.responseText);
+                
+                if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                    OptimaPro.hideLoading();
+                }
+                
+                let errorMsg = 'Error loading customer details. ';
+                if (xhr.status === 0) {
+                    errorMsg += 'Network connection lost or timeout.';
+                } else if (xhr.status === 403) {
+                    errorMsg += 'Access denied. Please check your permissions.';
+                } else if (xhr.status === 404) {
+                    errorMsg += 'Customer data not found.';
+                } else if (xhr.status === 500) {
+                    errorMsg += 'Server error occurred.';
+                } else if (status === 'timeout') {
+                    errorMsg += 'Request timed out. The customer may have many contracts/units.';
+                } else {
+                    errorMsg += 'Please try again or contact support.';
+                }
+                
+                $('#customerDetailContent').html(
+                    '<div class="alert alert-danger">' +
+                    '<i class="bi bi-exclamation-triangle me-2"></i>' +
+                    errorMsg +
+                    '<br><small class="text-muted">HTTP ' + xhr.status + ': ' + error + '</small>' +
+                    '</div>'
+                );
             }
         });
     }, 100); // Small delay to show loading state
@@ -1176,7 +1574,7 @@ function displayCustomerDetail(data) {
         
         <dt class="col-sm-5 text-muted">Status</dt>
         <dd class="col-sm-7">
-            <span class="badge bg-${customer.is_active == 1 ? 'success' : 'secondary'}">
+            <span class="badge ${customer.is_active == 1 ? 'badge-soft-green' : 'badge-soft-red'}">
                 ${customer.is_active == 1 ? 'ACTIVE' : 'INACTIVE'}
             </span>
         </dd>
@@ -1186,16 +1584,16 @@ function displayCustomerDetail(data) {
     // Customer Stats - USING DESCRIPTION LIST FORMAT
     const statsHtml = `
         <dt class="col-sm-6 text-muted">Total Locations</dt>
-        <dd class="col-sm-6">${uiBadge('info', stats.total_locations || 0)}</dd>
+        <dd class="col-sm-6"><span class="badge badge-soft-blue">${stats.total_locations || 0}</span></dd>
         
         <dt class="col-sm-6 text-muted">Total Contracts</dt>
-        <dd class="col-sm-6">${uiBadge('success', stats.total_contracts || 0)}</dd>
+        <dd class="col-sm-6"><span class="badge badge-soft-green">${stats.total_contracts || 0}</span></dd>
         
         <dt class="col-sm-6 text-muted">Total PO Only</dt>
-        <dd class="col-sm-6">${uiBadge('warning', stats.total_po_only || 0)}</dd>
+        <dd class="col-sm-6"><span class="badge badge-soft-yellow">${stats.total_po_only || 0}</span></dd>
         
         <dt class="col-sm-6 text-muted">Active Units</dt>
-        <dd class="col-sm-6">${uiBadge('primary', stats.total_units || 0)}</dd>
+        <dd class="col-sm-6"><span class="badge badge-soft-blue">${stats.total_units || 0}</span></dd>
     `;
     $('#customerStats').html(statsHtml);
     
@@ -1253,12 +1651,12 @@ function displayContracts(contracts) {
         const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
         const isExpired = daysLeft <= 0;
         
-        // Expiry badge
+        // Expiry badge - following Optima badge standards
         let expiryBadge = '';
         if (isExpired) {
-            expiryBadge = '<span class="badge bg-danger ms-2">Expired</span>';
+            expiryBadge = '<span class="badge badge-soft-red ms-2"><i class="bi bi-exclamation-circle me-1"></i>Expired</span>';
         } else if (isExpiringSoon) {
-            expiryBadge = `<span class="badge bg-warning text-dark ms-2">${daysLeft} days left</span>`;
+            expiryBadge = `<span class="badge badge-soft-orange ms-2"><i class="bi bi-clock me-1"></i>${daysLeft} days left</span>`;
         }
         
         // Show renewal option for ACTIVE, expiring, or expired contracts
@@ -1275,7 +1673,7 @@ function displayContracts(contracts) {
                 <td><small>${contract.lokasi || '-'}</small></td>
                 <td><small>${contract.tanggal_mulai} ~ ${contract.tanggal_selesai}</small></td>
                 <td class="text-center">
-                    <span class="badge bg-primary rounded-pill">${contract.total_units || 0}</span>
+                    <span class="badge badge-soft-blue rounded-pill">${contract.total_units || 0}</span>
                 </td>
                 <td>${statusBadge}</td>
                 <td class="text-center">
@@ -1295,14 +1693,14 @@ function displayContracts(contracts) {
     $('#contractsTable tbody').html(html);
 }
 
-// Get rental type badge
+// Get rental type badge - following Optima badge standards
 function getRentalTypeBadge(type) {
     const badges = {
-        'CONTRACT': '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
-        'PO_ONLY': '<span class="badge bg-info"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
-        'DAILY_SPOT': '<span class="badge bg-warning"><i class="fas fa-calendar-day me-1"></i>Daily/Spot</span>'
+        'CONTRACT': '<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>Contract</span>',
+        'PO_ONLY': '<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
+        'DAILY_SPOT': '<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>Daily/Spot</span>'
     };
-    return badges[type] || '<span class="badge bg-secondary">Unknown</span>';
+    return badges[type] || '<span class="badge badge-soft-gray">Unknown</span>';
 }
 
 // Load customer activity log
@@ -1469,7 +1867,7 @@ function displayContractDetail(contract) {
             <div class="col-md-6">
                 <table class="table table-sm table-borderless">
                     <tr><td><strong>Classification:</strong></td><td>${getRentalTypeBadge(contract.rental_type)}</td></tr>
-                    <tr><td><strong>Jenis Sewa:</strong></td><td>${uiBadge('info', contract.jenis_sewa || 'BULANAN')}</td></tr>
+                    <tr><td><strong>Jenis Sewa:</strong></td><td><span class="badge badge-soft-blue">${contract.jenis_sewa || 'BULANAN'}</span></td></tr>
                     <tr><td><strong>Status:</strong></td><td>${getStatusBadge(contract.status)}</td></tr>
                     <tr><td><strong>Tanggal Mulai:</strong></td><td>${contract.tanggal_mulai || '-'}</td></tr>
                     <tr><td><strong>Tanggal Berakhir:</strong></td><td>${contract.tanggal_berakhir || '-'}</td></tr>
@@ -1563,7 +1961,7 @@ function displayUnitsAccordion(units) {
                         <div>
                             <strong>${locationData.locationName}</strong>
                         </div>
-                        ${uiBadge('primary', `${locationUnits.length} Unit${locationUnits.length > 1 ? 's' : ''}`, {class: 'ms-auto'})}
+                        <span class="badge badge-soft-blue ms-auto">${locationUnits.length} Unit${locationUnits.length > 1 ? 's' : ''}</span>
                     </button>
                 </h2>
                 <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
@@ -1651,17 +2049,283 @@ function getStatusColor(status, statusId) {
 
 // Modal functions for customer, contract, and spesifikasi
 function openAddCustomerModal() {
+    // Reset form to clear all fields
+    $('#addCustomerForm')[0].reset();
+    
+    // Clear previous validation states
+    clearFormErrors('#addCustomerForm');
+    
     // Load areas for primary location dropdown
     loadAreas();
     
     // Generate customer code automatically
     generateCustomerCode();
     
-    // Clear previous validation states
-    clearFormErrors('#addCustomerForm');
+    // Reset default values
+    $('#location_name').val('Head Office');
+    $('#default_billing_method').val('CYCLE');
 
     // Show modal
     $('#addCustomerModal').modal('show');
+}
+
+// Open Edit Customer Modal
+function openEditCustomerModal(customerId) {
+    if (!customerId) {
+        showNotification('Customer ID is required', 'error');
+        return;
+    }
+    
+    console.log('🔧 Opening Edit Customer modal for ID:', customerId);
+    
+    // Show loading state
+    if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
+        OptimaPro.showLoading('Loading customer data...');
+    }
+    
+    // Fetch customer data
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/getCustomerDetail') ?>/${customerId}`,
+        type: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': (typeof getCsrfTokenData === 'function') ? getCsrfTokenData().tokenValue : window.csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function(response) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            if (response.success && response.data.customer) {
+                const customer = response.data.customer;
+                
+                // Populate form fields
+                $('#edit_customer_id').val(customer.id);
+                $('#edit_customer_code').val(customer.customer_code);
+                $('#edit_customer_name').val(customer.customer_name);
+                $('#edit_is_active').val(customer.is_active || 1);
+                
+                // Clear previous errors
+                clearFormErrors('#editCustomerForm');
+                
+                // Hide customer detail modal
+                $('#customerDetailModal').modal('hide');
+                
+                // Show edit modal
+                $('#editCustomerModal').modal('show');
+                
+                console.log('✅ Customer data loaded:', customer);
+            } else {
+                showNotification('Failed to load customer data: ' + (response.message || 'Unknown error'), 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            console.error('❌ Error loading customer:', error);
+            showNotification('Error loading customer data', 'error');
+        }
+    });
+}
+
+/**
+ * Delete Customer with Validation
+ * Checks for active contracts and units before allowing deletion
+ */
+function deleteCustomer(customerId) {
+    if (!customerId) {
+        showNotification('Customer ID is required', 'error');
+        return;
+    }
+    
+    console.log('🗑️ Attempting to delete customer ID:', customerId);
+    
+    if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
+        OptimaPro.showLoading('Checking customer data...');
+    }
+    
+    // First, check if customer can be deleted (no active contracts/units)
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/checkCustomerDeletion') ?>/${customerId}`,
+        type: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': (typeof getCsrfTokenData === 'function') ? getCsrfTokenData().tokenValue : window.csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function(response) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            if (response.can_delete) {
+                // Customer can be deleted - show confirmation dialog
+                showDeleteConfirmation(customerId, response.customer_name);
+            } else {
+                // Cannot delete - show blocking warning with details
+                showDeletionBlockedWarning(response);
+            }
+        },
+        error: function(xhr, status, error) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            console.error('❌ Error checking deletion:', error);
+            showNotification('Error checking customer status', 'error');
+        }
+    });
+}
+
+/**
+ * Show deletion confirmation dialog (when customer CAN be deleted)
+ */
+function showDeleteConfirmation(customerId, customerName) {
+    Swal.fire({
+        title: 'Delete Customer?',
+        html: `
+            <div class="text-start">
+                <p class="mb-3">Are you sure you want to delete this customer?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Customer:</strong> ${customerName || 'ID ' + customerId}
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This action cannot be undone. All customer data including locations and contacts will be permanently deleted.
+                </p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-secondary'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // User confirmed - proceed with deletion
+            performCustomerDeletion(customerId);
+        }
+    });
+}
+
+/**
+ * Show warning when deletion is blocked
+ */
+function showDeletionBlockedWarning(data) {
+    let reasonsHtml = '<ul class="text-start mb-0">';
+    
+    if (data.active_contracts > 0) {
+        reasonsHtml += `<li><strong>${data.active_contracts} active contract(s)</strong> - Must be terminated first</li>`;
+    }
+    
+    if (data.units_at_location > 0) {
+        reasonsHtml += `<li><strong>${data.units_at_location} unit(s) at customer location</strong> - Must be returned first</li>`;
+    }
+    
+    if (data.total_contracts > 0 && data.active_contracts === 0) {
+        reasonsHtml += `<li>${data.total_contracts} completed/terminated contract(s) (historical data)</li>`;
+    }
+    
+    reasonsHtml += '</ul>';
+    
+    Swal.fire({
+        title: 'Cannot Delete Customer',
+        html: `
+            <div class="text-start">
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-x-circle me-2"></i>
+                    <strong>This customer cannot be deleted</strong>
+                </div>
+                <p class="mb-2"><strong>Reasons:</strong></p>
+                ${reasonsHtml}
+                <hr>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    <strong>What to do:</strong><br>
+                    1. Terminate all active contracts<br>
+                    2. Return all units to warehouse<br>
+                    3. Then you can delete this customer
+                </p>
+            </div>
+        `,
+        icon: 'error',
+        confirmButtonText: 'OK, I Understand',
+        confirmButtonColor: '#0d6efd',
+        customClass: {
+            confirmButton: 'btn btn-primary'
+        }
+    });
+}
+
+/**
+ * Perform actual customer deletion
+ */
+function performCustomerDeletion(customerId) {
+    if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
+        OptimaPro.showLoading('Deleting customer...');
+    }
+    
+    const csrfData = (typeof getCsrfTokenData === 'function') 
+        ? getCsrfTokenData() 
+        : { tokenName: window.csrfTokenName || 'csrf_test_name', tokenValue: window.csrfToken || '' };
+    
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/deleteCustomer') ?>/${customerId}`,
+        type: 'POST',
+        data: {
+            [csrfData.tokenName]: csrfData.tokenValue
+        },
+        headers: {
+            'X-CSRF-TOKEN': csrfData.tokenValue,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function(response) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            if (response.success) {
+                // Show success message
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: response.message || 'Customer has been deleted successfully',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                
+                // Close customer detail modal
+                $('#customerDetailModal').modal('hide');
+                
+                // Reload table
+                if (customerTable) {
+                    customerTable.ajax.reload(null, false);
+                }
+                
+                // Reload statistics
+                loadStatistics();
+            } else {
+                showNotification(response.message || 'Failed to delete customer', 'error');
+            }
+        },
+        error: function(xhr) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            let errorMsg = 'An error occurred while deleting customer';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            showNotification(errorMsg, 'error');
+        }
+    });
 }
 
 // Generate customer code function
@@ -1847,7 +2511,7 @@ function displayUnitDetail(unit) {
 
     // Set subtitle modal
     $('#unitSubtitle').html(`
-        ${uiBadge('secondary', unit.merk_unit || 'N/A', {class: 'me-2'})}
+        <span class="badge badge-soft-gray me-2">${unit.merk_unit || 'N/A'}</span>
         <span class="text-muted">${unit.model_unit || ''}</span>
     `);
 
@@ -1943,7 +2607,7 @@ function displayUnitDetail(unit) {
                 <div class="list-group-item bg-light py-2 px-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-medium small">${att.name || 'Attachment'}</span>
-                        ${uiBadge('secondary', att.serial_number || 'No SN', {class: 'text-light fw-normal', style: 'font-size:0.7em'})}
+                        <span class="badge badge-soft-gray text-light fw-normal" style="font-size:0.7em">${att.serial_number || 'No SN'}</span>
                     </div>
                 </div>`;
         });
@@ -2137,43 +2801,36 @@ function formatNumber(num) {
 }
 
 function getStatusBadge(status) {
+    // Following Optima badge standards
     const statusMap = {
-        'ACTIVE': 'success',
-        'Aktif': 'success',   // Legacy fallback
-        'PENDING': 'warning',
-        'Pending': 'warning',  // Legacy fallback
-        'EXPIRED': 'danger',
-        'Berakhir': 'danger',  // Legacy fallback
-        'CANCELLED': 'secondary',
-        'Dibatalkan': 'secondary',  // Legacy fallback
-        'Draft': 'secondary'
+        'ACTIVE': 'badge-soft-green',
+        'Aktif': 'badge-soft-green',
+        'PENDING': 'badge-soft-yellow',
+        'Pending': 'badge-soft-yellow',
+        'EXPIRED': 'badge-soft-red',
+        'Berakhir': 'badge-soft-red',
+        'CANCELLED': 'badge-soft-gray',
+        'Dibatalkan': 'badge-soft-gray',
+        'Draft': 'badge-soft-gray',
+        'INACTIVE': 'badge-soft-red'
     };
     
-    const badgeClass = statusMap[status] || 'secondary';
-    return `<span class="badge bg-${badgeClass}">${status || 'Unknown'}</span>`;
-}
-
-function getRentalTypeBadge(rentalType) {
-    const typeMap = {
-        'CONTRACT': { color: 'primary', label: 'Contract' },
-        'PO_ONLY': { color: 'info', label: 'PO Only' },
-        'DAILY_SPOT': { color: 'warning', label: 'Daily/Spot' }
-    };
-    
-    const type = typeMap[rentalType] || { color: 'secondary', label: rentalType || 'N/A' };
-    return `<span class="badge bg-${type.color}">${type.label}</span>`;
+    const badgeClass = statusMap[status] || 'badge-soft-gray';
+    return `<span class="badge ${badgeClass}">${status || 'Unknown'}</span>`;
 }
 
 function getStatusBadgeClass(status) {
-    if (!status) return 'secondary';
+    // Return class name following Optima badge standards
+    if (!status) return 'badge-soft-gray';
     const statusLower = status.toLowerCase();
     
-    if (statusLower.includes('tersedia') || statusLower.includes('available')) return 'success';
-    if (statusLower.includes('rental') || statusLower.includes('disewa')) return 'primary';
-    if (statusLower.includes('maintenance') || statusLower.includes('rusak')) return 'warning';
-    if (statusLower.includes('hilang') || statusLower.includes('lost')) return 'danger';
+    if (statusLower.includes('tersedia') || statusLower.includes('available')) return 'badge-soft-cyan';
+    if (statusLower.includes('rental') || statusLower.includes('disewa') || statusLower.includes('active')) return 'badge-soft-green';
+    if (statusLower.includes('maintenance')) return 'badge-soft-orange';
+    if (statusLower.includes('rusak') || statusLower.includes('broken')) return 'badge-soft-red';
+    if (statusLower.includes('hilang') || statusLower.includes('lost')) return 'badge-soft-red';
     
-    return 'secondary';
+    return 'badge-soft-gray';
 }
 
 function showNotification(message, type) {
@@ -2211,11 +2868,8 @@ function refreshData() {
         showNotification('Data refreshed successfully', 'success');
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        showNotification('Failed to refresh data', 'error');
-        showNotification('Reloading page to fix display issue...', 'warning');
-        setTimeout(function() {
-            location.reload();
-        }, 1500);
+        showNotification('Failed to refresh data. Please try again.', 'error');
+        // User can manually click refresh button if needed - no forced page reload
     }
 }
 
@@ -2276,7 +2930,7 @@ function displayLocations(locations) {
         html = '<div class="col-12 text-center text-muted">No locations found</div>';
     } else {
         locations.forEach(location => {
-            const isPrimary = location.is_primary ? uiBadge('primary', 'Primary', {class: 'ms-2'}) : '';
+            const isPrimary = location.is_primary ? '<span class="badge badge-soft-blue ms-2">Primary</span>' : '';
             html += `
                 <div class="col-md-6 mb-3">
                             <div class="card h-100">
@@ -2295,7 +2949,7 @@ function displayLocations(locations) {
                             <div class="row g-2">
                                 <div class="col-12">
                                     <strong><i class="fas fa-map-marked-alt me-1"></i> Area:</strong><br>
-                                    ${uiBadge('info', location.area_name || 'N/A')}
+                                    <span class="badge badge-soft-blue">${location.area_name || 'N/A'}</span>
                                 </div>
                                 <div class="col-12">
                                     <strong><i class="fas fa-map-marker me-1"></i> Alamat:</strong><br>
@@ -2344,6 +2998,29 @@ function displayLocations(locations) {
 }
 
 // Setup tab handlers
+/**
+ * Setup status filter tab handlers
+ */
+function setupStatusFilterTabs() {
+    $('.customer-status-tabs .nav-link').on('click', function() {
+        const status = $(this).data('status');
+        
+        // Update active tab
+        $('.customer-status-tabs .nav-link').removeClass('active');
+        $(this).addClass('active');
+        
+        // Update global filter
+        currentStatusFilter = status;
+        
+        console.log('🔄 Status filter changed to:', status);
+        
+        // Reload DataTable with new filter
+        if (customerTable) {
+            customerTable.ajax.reload(null, false); // false = stay on current page
+        }
+    });
+}
+
 function setupTabHandlers() {
     // Handle Locations tab
     $('#locations-tab').on('click', function(e) {
@@ -2613,6 +3290,93 @@ $(document).on('submit', '#addCustomerForm', function(e) {
         },
         error: function() {
             showNotification('Terjadi kesalahan pada sistem', 'error');
+        }
+    });
+});
+
+// Handle edit customer form submission
+$(document).on('submit', '#editCustomerForm', function(e) {
+    e.preventDefault();
+    clearFormErrors('#editCustomerForm');
+    
+    const customerId = $('#edit_customer_id').val();
+    const formData = $(this).serialize();
+    
+    // Debug logging for form submission
+    console.log('📤 Submitting customer update for ID:', customerId);
+    console.log('📋 Form data (serialized):', formData);
+    console.log('📋 Form fields:', {
+        customer_code: $('#edit_customer_code').val(),
+        customer_name: $('#edit_customer_name').val(),
+        is_active: $('#edit_is_active').val()
+    });
+    
+    if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
+        OptimaPro.showLoading('Updating customer...');
+    }
+    
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/updateCustomer') ?>/${customerId}`,
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            if (response.success) {
+                showNotification(response.message || 'Customer updated successfully', 'success');
+                $('#editCustomerModal').modal('hide');
+                
+                // Reload customer table
+                if (customerTable) {
+                    customerTable.ajax.reload(null, false);
+                }
+                
+                // Reload customer detail if still open
+                if (currentCustomerId) {
+                    setTimeout(() => {
+                        openCustomerDetail(currentCustomerId);
+                    }, 500);
+                }
+            } else {
+                if (response.errors) {
+                    showFormErrors('#editCustomerForm', response.errors);
+                }
+                showNotification(response.message || 'Failed to update customer', 'error');
+            }
+        },
+        error: function(xhr) {
+            if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                OptimaPro.hideLoading();
+            }
+            
+            console.error('❌ Error updating customer:');
+            console.error('   HTTP Status:', xhr.status);
+            console.error('   Status Text:', xhr.statusText);
+            console.error('   Response:', xhr.responseText);
+            console.error('   Response JSON:', xhr.responseJSON);
+            
+            let errorMsg = 'An error occurred while updating customer';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            } else if (xhr.status === 0) {
+                errorMsg = 'Network error - cannot reach server';
+            } else if (xhr.status === 403) {
+                errorMsg = 'Permission denied - you are not authorized to update customers';
+            } else if (xhr.status === 404) {
+                errorMsg = 'Customer not found or endpoint missing';
+            } else if (xhr.status === 500) {
+                errorMsg = 'Server error occurred. Please contact administrator.';
+            }
+            
+            // Show validation errors if present
+            if (xhr.responseJSON && xhr.responseJSON.errors) {
+                showFormErrors('#editCustomerForm', xhr.responseJSON.errors);
+                errorMsg += ' - Please check form fields.';
+            }
+            
+            showNotification(errorMsg, 'error');
         }
     });
 });
@@ -3165,36 +3929,6 @@ $(document).on('click', '#printCustomerPDF', function() {
     } else {
         showNotification('PDF report is being generated...', 'success');
     }
-});
-
-// Auto-refresh mechanism when user returns to tab
-$(window).on('focus', function() {
-    console.log('👀 Window focused, checking table status...');
-    
-    // Only auto-refresh if table has been idle for more than 10 seconds
-    if (customerTable && $.fn.DataTable.isDataTable('#customerTable')) {
-        const now = new Date().getTime();
-        if (!window.lastTableRefresh || (now - window.lastTableRefresh) > 10000) {
-            console.log('🔄 Auto-refreshing data on window focus...');
-            
-            // Refresh CSRF token data (both name and value)
-            if (typeof getCsrfTokenData === 'function') {
-                const csrfData = getCsrfTokenData();
-                window.csrfTokenName = csrfData.tokenName;
-                window.csrfTokenValue = csrfData.tokenValue;
-                window.csrfToken = csrfData.tokenValue; // backward compatibility
-                console.log('🔄 CSRF token refreshed:', csrfData.tokenName);
-            }
-            
-            customerTable.ajax.reload(null, false); // Don't reset paging
-            window.lastTableRefresh = now;
-        }
-    }
-});
-
-// Track when table was last refreshed
-$(document).ready(function() {
-    window.lastTableRefresh = new Date().getTime();
 });
 
 // ============================================================================

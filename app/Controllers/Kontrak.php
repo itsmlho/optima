@@ -57,10 +57,42 @@ class Kontrak extends BaseController
             $rentalType = $this->request->getGet('rental_type');
             $status     = $this->request->getGet('status');
             $customerId = $this->request->getGet('customer_id');
+            $expiringDays = $this->request->getGet('expiring_days');
+            $expiredPast = $this->request->getGet('expired_past');
 
             if ($rentalType) { $conditions[] = 'k.rental_type = ?'; $params[] = $rentalType; }
-            if ($status)     { $conditions[] = 'k.status = ?';      $params[] = $status; }
-            if ($customerId) { $conditions[] = 'c.id = ?';           $params[] = $customerId; }
+            
+            // Special handling for status filters
+            if ($status === 'EXPIRED') {
+                // Expired includes EXPIRED status OR ACTIVE past end date
+                $conditions[] = '(k.status = ? OR (k.status = ? AND k.tanggal_berakhir < CURDATE()))';
+                $params[] = 'EXPIRED';
+                $params[] = 'ACTIVE';
+            } elseif ($status === 'ACTIVE') {
+                // Active only includes ACTIVE with future end date
+                $conditions[] = 'k.status = ?';
+                $params[] = 'ACTIVE';
+                if (!$expiringDays && !$expiredPast) {
+                    $conditions[] = 'k.tanggal_berakhir >= CURDATE()';
+                }
+                
+                // Handle expiring days filter
+                if ($expiringDays) {
+                    $conditions[] = 'k.tanggal_berakhir <= DATE_ADD(CURDATE(), INTERVAL ? DAY)';
+                    $params[] = (int)$expiringDays;
+                    $conditions[] = 'k.tanggal_berakhir >= CURDATE()';
+                }
+                
+                // Handle expired past filter
+                if ($expiredPast) {
+                    $conditions[] = 'k.tanggal_berakhir < CURDATE()';
+                }
+            } elseif ($status) {
+                $conditions[] = 'k.status = ?';
+                $params[] = $status;
+            }
+            
+            if ($customerId) { $conditions[] = 'c.id = ?'; $params[] = $customerId; }
 
             $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
@@ -647,6 +679,14 @@ class Kontrak extends BaseController
             $oldData = $oldData->toArray();
         }
         
+        if (!$oldData) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Contract not found',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+        
         if ($this->kontrakModel->update($contractId, $data)) {
             // Update inventory status based on contract status change
             if (isset($oldData['status']) && $oldData['status'] !== $data['status']) {
@@ -701,10 +741,11 @@ class Kontrak extends BaseController
             // Send notification - contract updated
             if (function_exists('notify_contract_updated')) {
                 $changes = [];
-                if ($oldData['status'] !== $data['status']) {
+                if (isset($oldData['status']) && isset($data['status']) && $oldData['status'] !== $data['status']) {
                     $changes[] = "Status: {$oldData['status']} → {$data['status']}";
                 }
-                if ($oldData['nilai_total'] != $data['nilai_total']) {
+                // nilai_total is a calculated field, only compare if both exist
+                if (isset($oldData['nilai_total']) && isset($data['nilai_total']) && $oldData['nilai_total'] != $data['nilai_total']) {
                     $changes[] = "Nilai: {$oldData['nilai_total']} → {$data['nilai_total']}";
                 }
                 
@@ -1458,6 +1499,15 @@ class Kontrak extends BaseController
                 $isContracted = !empty($u['current_kontrak_id']);
                 $isSameContract = $isContracted && $u['current_kontrak_id'] == $kontrakId;
                 
+                // Build label with customer/location info
+                $label = ($u['no_unit'] ?: $u['no_unit_na'] ?: '-') . ' — ' . $u['merk'] . ' ' . $u['model'];
+                if ($isContracted && !$isSameContract) {
+                    $label .= ' [CONTRACTED';
+                    if ($u['current_customer']) $label .= ' @ ' . $u['current_customer'];
+                    if ($u['current_location']) $label .= ' • ' . $u['current_location'];
+                    $label .= ']';
+                }
+                
                 return [
                     'id' => (int)$u['id_inventory_unit'],
                     'no_unit' => $u['no_unit'] ?: $u['no_unit_na'] ?: '-',
@@ -1479,7 +1529,7 @@ class Kontrak extends BaseController
                     'current_customer' => $u['current_customer'],
                     'current_location' => $u['current_location'],
                     // Display label for Select2
-                    'label' => ($u['no_unit'] ?: $u['no_unit_na'] ?: '-') . ' — ' . $u['merk'] . ' ' . $u['model'] . ($isContracted ? ' [CONTRACTED]' : ''),
+                    'label' => $label,
                 ];
             }, $units);
 
@@ -1689,9 +1739,21 @@ class Kontrak extends BaseController
                     COUNT(CASE WHEN rental_type = 'CONTRACT' THEN 1 END) as total_formal_contracts,
                     COUNT(CASE WHEN rental_type = 'PO_ONLY' THEN 1 END) as total_po_only,
                     COUNT(CASE WHEN rental_type = 'DAILY_SPOT' THEN 1 END) as total_daily_spot,
-                    COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as total_active,
-                    COUNT(CASE WHEN status = 'EXPIRED' THEN 1 END) as total_expired,
+                    COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir >= CURDATE() THEN 1 END) as total_active,
+                    COUNT(CASE WHEN status = 'EXPIRED' 
+                              OR (status = 'ACTIVE' AND tanggal_berakhir < CURDATE()) THEN 1 END) as total_expired,
                     COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as total_pending,
+                    COUNT(CASE WHEN status = 'ACTIVE' 
+                              AND tanggal_berakhir <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+                              AND tanggal_berakhir >= CURDATE() THEN 1 END) as total_expiring_30,
+                    COUNT(CASE WHEN status = 'ACTIVE' 
+                              AND tanggal_berakhir <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+                              AND tanggal_berakhir >= CURDATE() THEN 1 END) as total_expiring_90,
+                    COUNT(CASE WHEN status = 'ACTIVE' 
+                              AND tanggal_berakhir <= DATE_ADD(CURDATE(), INTERVAL 180 DAY)
+                              AND tanggal_berakhir >= CURDATE() THEN 1 END) as total_expiring_180,
+                    COUNT(CASE WHEN status = 'ACTIVE' 
+                              AND tanggal_berakhir < CURDATE() THEN 1 END) as total_expired_past,
                     SUM(total_units) as total_units_rented,
                     SUM(nilai_total) as total_contract_value
                 FROM kontrak

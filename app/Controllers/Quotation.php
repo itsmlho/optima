@@ -646,14 +646,21 @@ class Quotation extends BaseController
             }
 
             // Prepare data using NEW field names
+            // Sanitize price fields to handle empty strings properly
+            $unitPrice = trim($this->request->getPost('unit_price') ?? '');
+            $dailyPrice = trim($this->request->getPost('harga_per_unit_harian') ?? '');
+            $operatorMonthly = trim($this->request->getPost('operator_price_monthly') ?? '');
+            $operatorDaily = trim($this->request->getPost('operator_price_daily') ?? '');
+            
             $data = [
                 'id_quotation' => $quotationId,
                 'specification_name' => $this->request->getPost('specification_name'),
                 'specification_type' => $this->request->getPost('specification_type') ?: 'UNIT',
                 'quantity' => (int)$this->request->getPost('quantity'),
+                'spare_quantity' => (int)$this->request->getPost('spare_quantity') ?: 0,
                 'is_spare_unit' => (int)$this->request->getPost('is_spare_unit') ?: 0,
-                'monthly_price' => (float)$this->request->getPost('unit_price'),
-                'daily_price' => (float)$this->request->getPost('harga_per_unit_harian'),
+                'monthly_price' => ($unitPrice !== '' && $unitPrice !== null) ? (float)$unitPrice : 0,
+                'daily_price' => ($dailyPrice !== '' && $dailyPrice !== null) ? (float)$dailyPrice : 0,
                 'departemen_id' => $this->request->getPost('departemen_id') ?: null,
                 'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
                 'kapasitas_id' => $this->request->getPost('kapasitas_id') ?: null,
@@ -665,10 +672,23 @@ class Quotation extends BaseController
                 'mast_id' => $this->request->getPost('mast_id') ?: null,
                 'ban_id' => $this->request->getPost('ban_id') ?: null,
                 'roda_id' => $this->request->getPost('roda_id') ?: null,
+                'include_operator' => (int)$this->request->getPost('include_operator') ?: 0,
+                'operator_quantity' => (int)$this->request->getPost('operator_quantity') ?: 0,
+                'operator_monthly_rate' => ($operatorMonthly !== '' && $operatorMonthly !== null) ? (float)$operatorMonthly : 0,
+                'operator_daily_rate' => ($operatorDaily !== '' && $operatorDaily !== null) ? (float)$operatorDaily : 0,
                 'is_active' => 1
             ];
             
-            // If spare unit, set prices to 0 (no billing)
+            // DEBUG: Log spare and operator data being saved
+            log_message('debug', '=== ADD SPECIFICATION DATA ===');
+            log_message('debug', 'spare_quantity: ' . $data['spare_quantity']);
+            log_message('debug', 'include_operator: ' . $data['include_operator']);
+            log_message('debug', 'operator_quantity: ' . $data['operator_quantity']);
+            log_message('debug', 'operator_monthly_rate: ' . $data['operator_monthly_rate']);
+            log_message('debug', 'operator_daily_rate: ' . $data['operator_daily_rate']);
+            
+            // If spare unit (legacy flag), set prices to 0 (no billing)
+            // This maintains backward compatibility with old spare unit behavior
             if ($data['is_spare_unit'] == 1) {
                 $data['monthly_price'] = 0;
                 $data['daily_price'] = 0;
@@ -683,8 +703,10 @@ class Quotation extends BaseController
             }
             
             // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            // Only billable quantity is charged - spare_quantity does NOT affect billing
             // Spare units will have 0 total price
-            $data['total_price'] = ($data['quantity'] * $data['monthly_price']) + $data['daily_price'];
+            // Explicitly cast to numeric types to avoid "Unsupported operand types" error
+            $data['total_price'] = ((int)$data['quantity'] * (float)$data['monthly_price']) + (float)$data['daily_price'];
 
             $specId = $this->quotationSpecificationModel->insert($data);
             
@@ -740,7 +762,15 @@ class Quotation extends BaseController
                 ]);
             }
 
+            // Get POST data
             $data = $this->request->getPost();
+            
+            // DEBUG: Log all received POST data
+            log_message('debug', '=== UPDATE SPECIFICATION RECEIVED DATA (Spec ID: ' . $specId . ') ===');
+            log_message('debug', 'RAW POST data: ' . json_encode($data));
+            log_message('debug', 'spare_quantity in POST: ' . ($data['spare_quantity'] ?? 'NOT SET'));
+            log_message('debug', 'include_operator in POST: ' . ($data['include_operator'] ?? 'NOT SET'));
+            log_message('debug', 'operator_quantity in POST: ' . ($data['operator_quantity'] ?? 'NOT SET'));
             
             // Verify specification exists
             $specification = $this->quotationSpecificationModel->find($specId);
@@ -768,12 +798,15 @@ class Quotation extends BaseController
             }
 
             // Rename old field names to new ones if sent from frontend
+            // Also sanitize empty strings to prevent "Incorrect decimal value" errors
             if (isset($data['unit_price'])) {
-                $data['monthly_price'] = $data['unit_price'];
+                $value = trim($data['unit_price']);
+                $data['monthly_price'] = ($value !== '' && $value !== null) ? (float)$value : 0;
                 unset($data['unit_price']);
             }
             if (isset($data['harga_per_unit_harian'])) {
-                $data['daily_price'] = $data['harga_per_unit_harian'];
+                $value = trim($data['harga_per_unit_harian']);
+                $data['daily_price'] = ($value !== '' && $value !== null) ? (float)$value : 0;
                 unset($data['harga_per_unit_harian']);
             }
             if (isset($data['merk_unit'])) {
@@ -788,9 +821,32 @@ class Quotation extends BaseController
                 $data['attachment_id'] = $data['attachment_tipe'];
                 unset($data['attachment_tipe']);
             }
+            
+            // Handle operator fields
+            if (isset($data['operator_price_monthly'])) {
+                $value = trim($data['operator_price_monthly']);
+                $data['operator_monthly_rate'] = ($value !== '' && $value !== null) ? (float)$value : 0;
+                unset($data['operator_price_monthly']);
+            }
+            if (isset($data['operator_price_daily'])) {
+                $value = trim($data['operator_price_daily']);
+                $data['operator_daily_rate'] = ($value !== '' && $value !== null) ? (float)$value : 0;
+                unset($data['operator_price_daily']);
+            }
+            if (isset($data['include_operator'])) {
+                $data['include_operator'] = (int)$data['include_operator'];
+            }
+            if (isset($data['operator_quantity'])) {
+                $data['operator_quantity'] = (int)$data['operator_quantity'];
+            }
 
             // Handle spare unit flag - if spare, set prices to 0
             $isSpareUnit = isset($data['is_spare_unit']) ? (int)$data['is_spare_unit'] : $specification['is_spare_unit'];
+            
+            // Handle spare quantity
+            if (isset($data['spare_quantity'])) {
+                $data['spare_quantity'] = (int)$data['spare_quantity'];
+            }
             
             if ($isSpareUnit == 1) {
                 $data['monthly_price'] = 0;
@@ -798,11 +854,13 @@ class Quotation extends BaseController
             }
 
             // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            // Only billable quantity is charged - spare_quantity does NOT affect billing
             // Spare units will have 0 total price
             if (isset($data['quantity']) || isset($data['monthly_price']) || isset($data['daily_price'])) {
-                $qty = $data['quantity'] ?? $specification['quantity'];
-                $monthlyPrice = $data['monthly_price'] ?? $specification['monthly_price'];
-                $dailyPrice = $data['daily_price'] ?? $specification['daily_price'];
+                // Explicitly cast to numeric types to avoid "Unsupported operand types" error
+                $qty = (int)($data['quantity'] ?? $specification['quantity'] ?? 0);
+                $monthlyPrice = (float)($data['monthly_price'] ?? $specification['monthly_price'] ?? 0);
+                $dailyPrice = (float)($data['daily_price'] ?? $specification['daily_price'] ?? 0);
                 $data['total_price'] = ($qty * $monthlyPrice) + $dailyPrice;
             }
 
@@ -814,8 +872,44 @@ class Quotation extends BaseController
                 $data['unit_accessories'] = $data['aksesoris'];
                 unset($data['aksesoris']);
             }
+            
+            // Remove fields that don't exist in database or shouldn't be updated
+            $fieldsToRemove = [
+                'notes',                    // Not a database column
+                'id_quotation',             // Should not be updated
+                'id_specification',         // Should not be updated  
+                'csrf_test_name',           // CSRF token
+                'specification_description' // Not used
+            ];
+            
+            foreach ($fieldsToRemove as $field) {
+                if (isset($data[$field])) {
+                    unset($data[$field]);
+                }
+            }
+            
+            // DEBUG: Log spare and operator data being updated
+            log_message('debug', '=== UPDATE SPECIFICATION DATA (Spec ID: ' . $specId . ') ===');
+            if (isset($data['spare_quantity'])) {
+                log_message('debug', 'spare_quantity: ' . $data['spare_quantity']);
+            }
+            if (isset($data['include_operator'])) {
+                log_message('debug', 'include_operator: ' . $data['include_operator']);
+            }
+            if (isset($data['operator_quantity'])) {
+                log_message('debug', 'operator_quantity: ' . $data['operator_quantity']);
+            }
+            if (isset($data['operator_monthly_rate'])) {
+                log_message('debug', 'operator_monthly_rate: ' . $data['operator_monthly_rate']);
+            }
+            if (isset($data['operator_daily_rate'])) {
+                log_message('debug', 'operator_daily_rate: ' . $data['operator_daily_rate']);
+            }
 
             if ($this->quotationSpecificationModel->update($specId, $data)) {
+                // Update quotation total after specification update
+                $this->quotationSpecificationModel->updateQuotationTotal($specification['id_quotation']);
+                
                 // Log activity
                 $this->logActivity(
                     'quotation_specification_updated',

@@ -1,74 +1,90 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Audit Approval Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status SUBMITTED  → <span class="badge badge-soft-yellow">Menunggu</span>
+ * - Status APPROVED   → <span class="badge badge-soft-green">Approved</span>
+ * - Status REJECTED   → <span class="badge badge-soft-red">Rejected</span>
+ * - Type LOCATION_MISMATCH → <span class="badge badge-soft-cyan">Lokasi Berbeda</span>
+ * - Type UNIT_SWAP    → <span class="badge badge-soft-blue">Tukar Unit</span>
+ * - Type ADD_UNIT     → <span class="badge badge-soft-green">Tambah Unit</span>
+ * - Type MARK_SPARE   → <span class="badge badge-soft-gray">Tandai Spare</span>
+ * - Type UNIT_MISSING → <span class="badge badge-soft-red">Unit Hilang</span>
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+$stats = $stats ?? [];
+?>
+
 <?= $this->section('content') ?>
 
-<?php $stats = $stats ?? []; ?>
-
-<!-- Page Header -->
-<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
-    <div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item"><a href="<?= base_url('dashboard') ?>"><i class="fas fa-home me-1"></i>Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= base_url('marketing') ?>">Marketing</a></li>
-                <li class="breadcrumb-item active">Audit Approval</li>
-            </ol>
-        </nav>
-        <h4 class="fw-bold mb-0">
-            <i class="fas fa-check-double me-2 text-warning"></i>Audit Approval
-        </h4>
-        <p class="text-muted small mb-0">Review dan persetujuan pengajuan perubahan unit dari tim lapangan</p>
-    </div>
-</div>
-
-<!-- Stats Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card bg-warning text-dark">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-dark-50">Menunggu Review</div>
-                        <div class="fs-4 fw-bold"><?= $stats['submitted'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-clock fa-2x opacity-50"></i></div>
+<!-- Statistics Cards -->
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-clock stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['submitted'] ?? 0 ?></div>
+                    <div class="text-muted">Menunggu Review</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Disetujui</div>
-                        <div class="fs-4 fw-bold"><?= $stats['approved'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-check-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['approved'] ?? 0 ?></div>
+                    <div class="text-muted">Disetujui</div>
                 </div>
             </div>
         </div>
     </div>
-     <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Ditolak</div>
-                        <div class="fs-4 fw-bold"><?= $stats['rejected'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-times-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-times-circle stat-icon text-danger"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['rejected'] ?? 0 ?></div>
+                    <div class="text-muted">Ditolak</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Pending Requests Table -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Daftar Pengajuan</h5>
-        <div class="d-flex gap-2">
+<!-- Requests Table Card -->
+<div class="card table-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="fas fa-check-double me-2 text-warning"></i>
+                Audit Approval
+            </h5>
+            <p class="text-muted small mb-0">
+                Review dan persetujuan pengajuan perubahan unit dari tim lapangan
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: Gunakan filter status untuk mempersempit daftar pengajuan</small>
+                </span>
+            </p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <label class="fw-semibold small me-1"><i class="fas fa-filter text-primary me-1"></i>Status:</label>
             <select class="form-select form-select-sm" id="filterStatus" style="width:180px;" onchange="loadRequests()">
                 <option value="SUBMITTED">Menunggu Review</option>
                 <option value="APPROVED">Approved</option>
@@ -80,10 +96,10 @@
             </button>
         </div>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover mb-0" id="requestsTable">
-                <thead class="bg-light">
+            <table class="table table-striped table-hover mb-0" id="requestsTable">
+                <thead class="table-light">
                     <tr>
                         <th>No. Audit</th>
                         <th>Customer / Kontrak</th>
@@ -107,9 +123,9 @@
 <div class="modal fade" id="actionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white" id="modalHeader">
+            <div class="modal-header" id="modalHeader">
                 <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Review Pengajuan Unit</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detailContent">
                 <div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>
@@ -200,21 +216,21 @@ function renderTable(data) {
 
 function getStatusBadge(status) {
     const map = {
-        'SUBMITTED': '<span class="badge bg-warning text-dark">Menunggu</span>',
-        'APPROVED': '<span class="badge bg-success">Approved</span>',
-        'REJECTED': '<span class="badge bg-danger">Rejected</span>'
+        'SUBMITTED': '<span class="badge badge-soft-yellow">Menunggu</span>',
+        'APPROVED': '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED': '<span class="badge badge-soft-red">Rejected</span>'
     };
     return map[status] || status;
 }
 
 function getTypeLabel(type) {
     const map = {
-        'LOCATION_MISMATCH': '<span class="badge bg-info">Lokasi Berbeda</span>',
-        'UNIT_SWAP': '<span class="badge bg-primary">Tukar Unit</span>',
-        'ADD_UNIT': '<span class="badge bg-success">Tambah Unit</span>',
-        'MARK_SPARE': '<span class="badge bg-secondary">Tandai Spare</span>',
-        'UNIT_MISSING': '<span class="badge bg-danger">Unit Hilang</span>',
-        'OTHER': '<span class="badge bg-dark">Lainnya</span>'
+        'LOCATION_MISMATCH': '<span class="badge badge-soft-cyan">Lokasi Berbeda</span>',
+        'UNIT_SWAP': '<span class="badge badge-soft-blue">Tukar Unit</span>',
+        'ADD_UNIT': '<span class="badge badge-soft-green">Tambah Unit</span>',
+        'MARK_SPARE': '<span class="badge badge-soft-gray">Tandai Spare</span>',
+        'UNIT_MISSING': '<span class="badge badge-soft-red">Unit Hilang</span>',
+        'OTHER': '<span class="badge badge-soft-gray">Lainnya</span>'
     };
     return map[type] || type;
 }
@@ -246,7 +262,7 @@ function loadDetailContent(id, isReviewing) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="card h-100 border-secondary">
-                                <div class="card-header bg-secondary text-white py-2">Data Saat Ini</div>
+                                <div class="card-header bg-light py-2 fw-semibold">Data Saat Ini</div>
                                 <div class="card-body py-2">
                                     <p class="mb-1"><strong>No Unit:</strong> ${currentData.no_unit || '-'}</p>
                                     <p class="mb-1"><strong>Serial:</strong> ${currentData.serial || '-'}</p>
@@ -256,7 +272,7 @@ function loadDetailContent(id, isReviewing) {
                         </div>
                         <div class="col-md-6">
                             <div class="card h-100 border-primary">
-                                <div class="card-header bg-primary text-white py-2">Pengajuan Berubah Menjadi</div>
+                                <div class="card-header bg-light py-2 fw-semibold text-primary">Pengajuan Berubah Menjadi</div>
                                 <div class="card-body py-2">
                                     ${renderProposedData(item.request_type, proposedData)}
                                 </div>
@@ -290,10 +306,8 @@ function loadDetailContent(id, isReviewing) {
                     $('#actionFooter').show();
                     $('#requestId').val(item.id);
                     $('#reviewNotes').val('');
-                    $('#modalHeader').removeClass('bg-info').addClass('bg-primary');
                 } else {
                     $('#actionFooter').hide();
-                    $('#modalHeader').removeClass('bg-primary').addClass('bg-info');
                 }
             }
         }
@@ -308,15 +322,15 @@ function renderProposedData(type, data) {
             break;
         case 'UNIT_SWAP':
             html = `<p class="mb-1"><strong>Tukar dgn Unit ID:</strong> ${data.new_unit_id || '-'}</p>
-                     <p class="mb-0"><strong>Harga Sewa Baru:</strong> ${data.harga_sewa ? 'Rp ' + parseInt(data.harga_sewa).toLocaleString('id-ID') : '-'}</p>`;
+                     <p class="mb-0"><strong>Harga Sewa Baru:</strong> ${data.harga_sewa ? '<span class="text-success fw-semibold">Rp ' + parseInt(data.harga_sewa).toLocaleString('id-ID') + '</span>' : '-'}</p>`;
             break;
         case 'ADD_UNIT':
             html = `<p class="mb-1"><strong>Tambah Unit ID:</strong> ${data.unit_id || '-'}</p>
                      <p class="mb-1"><strong>Sebagai Spare:</strong> ${data.is_spare ? 'Ya' : 'Tidak'}</p>
-                     <p class="mb-0"><strong>Harga Sewa:</strong> ${data.harga_sewa ? 'Rp ' + parseInt(data.harga_sewa).toLocaleString('id-ID') : '-'}</p>`;
+                     <p class="mb-0"><strong>Harga Sewa:</strong> ${data.harga_sewa ? '<span class="text-success fw-semibold">Rp ' + parseInt(data.harga_sewa).toLocaleString('id-ID') + '</span>' : '-'}</p>`;
             break;
         case 'MARK_SPARE':
-            html = '<p class="mb-0"><span class="badge bg-secondary">Tandai Unit sbg Spare</span></p>';
+            html = '<p class="mb-0"><span class="badge badge-soft-gray">Tandai Unit sbg Spare</span></p>';
             break;
         case 'UNIT_MISSING':
             html = `<p class="mb-0"><strong>Lokasi Terakhir:</strong> ${data.last_known_location || '-'}</p>`;

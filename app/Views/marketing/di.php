@@ -1,6 +1,23 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
-<?php 
+<?php
+/**
+ * Delivery Instructions (DI) Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status DIRENCANAKAN    → <span class="badge badge-soft-yellow">DIRENCANAKAN</span>
+ * - Status DALAM_PERJALANAN → <span class="badge badge-soft-cyan">DALAM_PERJALANAN</span>
+ * - Status SELESAI         → <span class="badge badge-soft-green">SELESAI</span>
+ * - Status CANCELLED       → <span class="badge badge-soft-red">CANCELLED</span>
+ * - Status AWAITING_CONTRACT → <span class="badge badge-soft-orange">AWAITING CONTRACT</span>
+ * - Count / Total items    → <span class="badge badge-soft-blue">5</span>
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 // Load global permission helper
 helper('global_permission');
 
@@ -14,15 +31,6 @@ $can_export = $permissions['export'];
 ?>
 
 <?= $this->section('content') ?>
-
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-truck me-2 text-primary"></i>
-        Delivery Instructions (DI) Management
-    </h4>
-    <p class="text-muted mb-0">Create and manage delivery instructions for customer equipment deployment</p>
-</div>
 
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
@@ -94,9 +102,21 @@ $can_export = $permissions['export'];
   </div>
 
   <div class="card table-card mb-3">
-    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800"><?= lang('App.delivery_instructions_di') ?> <?= lang('App.show') ?></h5>
-      <div class="d-flex gap-2 align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="card-title mb-0">
+          <i class="bi bi-truck me-2 text-primary"></i>
+          <?= lang('App.delivery_instructions_di') ?>
+        </h5>
+        <p class="text-muted small mb-0">
+          Kelola instruksi pengiriman dan penyebaran unit ke lokasi pelanggan
+          <span class="ms-2 text-info">
+            <i class="bi bi-info-circle me-1"></i>
+            <small>Tip: Click pada stat card untuk filter berdasarkan status</small>
+          </span>
+        </p>
+      </div>
+      <div class="d-flex gap-2">
         <?= ui_button('add', 'Create DI', [
             'data-bs-toggle' => 'modal',
             'data-bs-target' => '#diCreateModal',
@@ -132,7 +152,7 @@ $can_export = $permissions['export'];
     <div class="card-body">
       <!-- DataTables will handle pagination and search -->
       <div class="table-responsive">
-        <table class="table table-striped table-hover table-manual-sort" id="diTable">
+        <table class="table table-striped table-hover mb-0 table-manual-sort" id="diTable">
           <thead class="table-light">
             <tr>
               <th>No. DI</th>
@@ -212,7 +232,7 @@ $can_export = $permissions['export'];
                 <div class="form-text">
                   <?= lang('Marketing.reason_context_command') ?><br>
                   <small>
-                    🔴 <?= lang('Marketing.permanent') ?> | 🔵 <?= lang('Marketing.temporary_returns') ?> | 🟡 <?= lang('Marketing.temp_replacement') ?> | 🟢 <?= lang('Marketing.relocation') ?>
+                    <?= lang('Marketing.permanent') ?> | <?= lang('Marketing.temporary_returns') ?> | <?= lang('Marketing.temp_replacement') ?> | <?= lang('Marketing.relocation') ?>
                   </small>
                 </div>
               </div>
@@ -312,21 +332,21 @@ $can_export = $permissions['export'];
 </div>
 
 <script>
-// UI Badge Helper - Generate consistent badge colors based on type
+// UI Badge Helper - Generate consistent badge colors (Optima badge-soft-* system)
 function uiBadge(type, text, options = {}) {
     const badgeMap = {
-        'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success', 'linked': 'success',
-        'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
-        'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
-        'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
-        'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
-        'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger'
+        'active': 'badge-soft-green', 'approved': 'badge-soft-green', 'completed': 'badge-soft-green', 'delivered': 'badge-soft-green', 'linked': 'badge-soft-green',
+        'pending': 'badge-soft-yellow', 'ready': 'badge-soft-blue', 'in_progress': 'badge-soft-cyan', 'processing': 'badge-soft-cyan',
+        'rejected': 'badge-soft-red', 'cancelled': 'badge-soft-red', 'failed': 'badge-soft-red', 'deleted': 'badge-soft-red',
+        'draft': 'badge-soft-gray', 'new': 'badge-soft-blue', 'info': 'badge-soft-cyan', 'warning': 'badge-soft-yellow',
+        'created': 'badge-soft-green', 'updated': 'badge-soft-cyan', 'submitted': 'badge-soft-gray', 'success': 'badge-soft-green',
+        'primary': 'badge-soft-blue', 'secondary': 'badge-soft-gray', 'danger': 'badge-soft-red'
     };
-    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
-    const className = options.class || '';
+    const cls = options.softClass || badgeMap[type.toLowerCase()] || 'badge-soft-gray';
+    const extraClass = options.class || '';
     const icon = options.icon ? `<i class="${options.icon}"></i> ` : '';
     const title = options.title ? ` title="${options.title}"` : '';
-    return `<span class="badge bg-${color} ${className}"${title}>${icon}${text}</span>`;
+    return `<span class="badge ${cls} ${extraClass}"${title}>${icon}${text}</span>`;
 }
 
 // Global variables
@@ -991,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           render: function(data, type, row) {
             const hasContract = row.contract_id !== null && row.contract_id !== '';
             if (hasContract) {
-              return `${data || '-'} ${uiBadge('success', '', {class: 'bg-success-subtle text-success', icon: 'fas fa-link', title: 'Contract linked'})}`;
+              return `${data || '-'} ${uiBadge('success', '', {icon: 'fas fa-link', title: 'Contract linked'})}`;
             } else {
               return `${data || '-'} ${uiBadge('warning', 'NO CONTRACT', {title: 'No contract linked'})}`;
             }
@@ -1058,27 +1078,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
           render: function(data, type, row) {
             const statusUpper = (data || '').toUpperCase();
             const statusMap = {
-              'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
-              'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
-              'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
-              'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
-              'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
-              'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
-              'SELESAI': { text: 'SELESAI', color: 'success' },
-              'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' },
-              'AWAITING_CONTRACT': { text: 'On-Hire (Pending PO)', color: 'warning' }
+              'DIAJUKAN': { text: 'DIAJUKAN', cls: 'badge-soft-gray' },
+              'DISETUJUI': { text: 'DISETUJUI', cls: 'badge-soft-cyan' },
+              'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', cls: 'badge-soft-yellow' },
+              'SIAP_KIRIM': { text: 'SIAP_KIRIM', cls: 'badge-soft-blue' },
+              'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', cls: 'badge-soft-cyan' },
+              'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', cls: 'badge-soft-green' },
+              'SELESAI': { text: 'SELESAI', cls: 'badge-soft-green' },
+              'DIBATALKAN': { text: 'DIBATALKAN', cls: 'badge-soft-red' },
+              'AWAITING_CONTRACT': { text: 'On-Hire (Pending PO)', cls: 'badge-soft-orange' }
             };
-            const mapped = statusMap[statusUpper] || { text: data || 'DIAJUKAN', color: 'secondary' };
+            const mapped = statusMap[statusUpper] || { text: data || 'DIAJUKAN', cls: 'badge-soft-gray' };
             
             if (statusUpper === 'AWAITING_CONTRACT' && row.dibuat_pada) {
               const created = new Date(row.dibuat_pada);
               const now = new Date();
               const daysPending = Math.floor((now - created) / (1000 * 60 * 60 * 24));
-              const urgencyColor = daysPending > 14 ? 'danger' : (daysPending > 7 ? 'warning' : 'info');
-              return `<span class="badge bg-${mapped.color}"><i class="fas fa-clock me-1"></i>${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting">${daysPending}d</span>`;
+              const urgencyClass = daysPending > 14 ? 'badge-soft-red' : (daysPending > 7 ? 'badge-soft-orange' : 'badge-soft-cyan');
+              return `<span class="badge ${mapped.cls}"><i class="fas fa-clock me-1"></i>${mapped.text}</span> <span class="badge ${urgencyClass}" title="Days waiting">${daysPending}d</span>`;
             }
             
-            return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+            return `<span class="badge ${mapped.cls}">${mapped.text}</span>`;
           }
         },
         { 
@@ -1306,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-6"><strong>DI Number:</strong> ${d.nomor_di}</div>
               <div class="col-6"><strong>Status:</strong> ${uiBadge('primary', d.status)}</div>
               <div class="col-6"><strong>SPK Number:</strong> ${spk.nomor_spk||'-'}</div>
-              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
+              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'badge-soft-orange' : 'badge-soft-cyan'}">${spkType}</span></div>
               <div class="col-6"><strong>PO/Contract:</strong> ${d.po_kontrak_nomor||'-'}</div>
               <div class="col-6"><strong>Shipping Date:</strong> ${d.tanggal_kirim||'-'}</div>
               <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
@@ -1689,13 +1709,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const statusEksekusi = data.status_eksekusi || 'READY';
           const statusDisplay = document.getElementById('editStatusEksekusiDisplay');
           const statusMap = {
-            'READY': { text: 'Ready', color: 'primary' },
-            'DISPATCHED': { text: 'Dispatched', color: 'warning' },
-            'DELIVERED': { text: 'Delivered', color: 'success' },
-            'CANCELLED': { text: 'Cancelled', color: 'danger' }
+            'READY': { text: 'Ready', cls: 'badge-soft-blue' },
+            'DISPATCHED': { text: 'Dispatched', cls: 'badge-soft-yellow' },
+            'DELIVERED': { text: 'Delivered', cls: 'badge-soft-green' },
+            'CANCELLED': { text: 'Cancelled', cls: 'badge-soft-red' }
           };
-          const mapped = statusMap[statusEksekusi] || { text: statusEksekusi, color: 'secondary' };
-          statusDisplay.className = `badge bg-${mapped.color}`;
+          const mapped = statusMap[statusEksekusi] || { text: statusEksekusi, cls: 'badge-soft-gray' };
+          statusDisplay.className = `badge ${mapped.cls}`;
           statusDisplay.textContent = mapped.text;
           
           // Show modal

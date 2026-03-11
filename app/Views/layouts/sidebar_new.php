@@ -104,11 +104,11 @@ helper('permission_helper');
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'workorder')): ?>
-                    <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>">
+                    <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false && strpos(current_url(), 'unit-verification') === false) ? 'active' : '' ?>">
                         <i class="fas fa-search"></i> Unit Audit
                     </a>
-                    <a href="<?= base_url('/service/unit-audit/location') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit/location') !== false) ? 'active' : '' ?>">
-                        <i class="fas fa-map-marker-alt"></i> Audit Unit per Lokasi
+                    <a href="<?= base_url('/service/unit-verification') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-verification') !== false || strpos(current_url(), 'unit-audit/inputResults') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-clipboard-check"></i> Unit Verification
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'area')): ?>
@@ -423,24 +423,22 @@ helper('permission_helper');
             </li>
             <?php endif; ?>
 
-            <!-- Unit Audit -->
+            <!-- Unit Audit & Unit Verification -->
             <?php if (canNavigateTo('service', 'workorder')): ?>
             <li class="nav-item">
-                <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>" 
+                <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'unit-verification') === false && strpos(current_url(), 'inputResults') === false) ? 'active' : '' ?>" 
                    href="<?= base_url('/service/unit-audit') ?>"
                    data-search-terms="unit audit pemeriksaan service">
                     <i class="fas fa-search"></i>
                     <span class="nav-link-text">Unit Audit</span>
                 </a>
             </li>
-            
-            <!-- Audit Unit per Lokasi -->
             <li class="nav-item">
-                <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit/location') !== false) ? 'active' : '' ?>" 
-                   href="<?= base_url('/service/unit-audit/location') ?>"
-                   data-search-terms="audit unit per lokasi location service">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span class="nav-link-text">Audit Unit per Lokasi</span>
+                <a class="nav-link <?= (strpos(current_url(), 'service/unit-verification') !== false || strpos(current_url(), 'unit-audit/inputResults') !== false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/service/unit-verification') ?>"
+                   data-search-terms="unit verification audit lokasi service">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span class="nav-link-text">Unit Verification</span>
                 </a>
             </li>
             <?php endif; ?>

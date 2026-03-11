@@ -238,6 +238,16 @@ function formatUnitResult(item) {
         html += '<span class="badge bg-secondary">Already in Contract</span>';
     } else if (u.is_contracted) {
         html += '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>' + (u.current_kontrak_no || 'Active') + '</span>';
+        // Show customer & location for contracted units
+        if (u.current_customer || u.current_location) {
+            html += '<br><small class="text-muted" style="font-size:0.7rem">';
+            if (u.current_customer) html += '<i class="fas fa-building me-1"></i>' + u.current_customer;
+            if (u.current_location) {
+                if (u.current_customer) html += ' • ';
+                html += '<i class="fas fa-map-marker-alt me-1"></i>' + u.current_location;
+            }
+            html += '</small>';
+        }
     } else {
         html += '<span class="badge bg-success">Available</span>';
     }

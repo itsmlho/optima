@@ -28,6 +28,7 @@ class AuthFilter implements FilterInterface
         // Note: welcome page requires authentication, so it's not in this list
         $publicPaths = [
             '',  // Root path (empty string)
+            'demo',  // Demo pages (sidebar demos, etc.) - no auth required
             'auth',
             'auth/login',
             'auth/attempt-login',

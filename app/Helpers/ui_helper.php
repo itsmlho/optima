@@ -449,6 +449,37 @@ if (!function_exists('ui_empty_state')) {
     }
 }
 
+if (!function_exists('mask_contract_number')) {
+    /**
+     * Mask contract/PO number for Service view (show partial with asterisks)
+     *
+     * @param string|null $noKontrak Contract or PO number
+     * @param int        $visible   Number of chars to keep at start/end (default 2)
+     * @return string               Masked string
+     */
+    function mask_contract_number(?string $noKontrak, int $visible = 2): string
+    {
+        if (empty($noKontrak)) {
+            return '-';
+        }
+        $len = strlen($noKontrak);
+        if ($len <= 6) {
+            return substr($noKontrak, 0, 2) . str_repeat('*', max(0, $len - 2));
+        }
+        $parts = preg_split('/[\/\-]/', $noKontrak);
+        $masked = [];
+        foreach ($parts as $i => $p) {
+            $pLen = strlen($p);
+            if ($pLen <= $visible * 2) {
+                $masked[] = str_repeat('*', $pLen);
+            } else {
+                $masked[] = substr($p, 0, $visible) . str_repeat('*', $pLen - $visible * 2) . substr($p, -$visible);
+            }
+        }
+        return implode('/', $masked);
+    }
+}
+
 if (!function_exists('ui_loading')) {
     /**
      * Generate loading spinner HTML

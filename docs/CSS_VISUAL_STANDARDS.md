@@ -1,0 +1,970 @@
+# Optima CSS & Visual Standards
+**Version:** 2.0 (March 2026)  
+**Purpose:** Panduan standarisasi tampilan untuk konsistensi UI/UX di seluruh module Optima
+
+---
+
+## 📋 Table of Contents
+1. [Badge System](#badge-system)
+2. [Page Layout Structure](#page-layout-structure)
+3. [Table Design](#table-design)
+4. [Filter & Form Components](#filter--form-components)
+5. [Modal Design](#modal-design)
+6. [Color Palette](#color-palette)
+7. [Typography](#typography)
+8. [Icons & Emoji Usage](#icons--emoji-usage)
+9. [Quick Reference Cheatsheet](#quick-reference-cheatsheet)
+
+---
+
+## 🎨 Badge System
+
+### Core Principle
+**ALWAYS use `badge-soft-*` classes from optima-pro.css**  
+❌ NEVER use Bootstrap default `bg-*` classes for badges
+
+### Semantic Color Mapping
+
+#### Status Badges
+```html
+<!-- ACTIVE / Success / Available / Paid -->
+<span class="badge badge-soft-green">ACTIVE</span>
+
+<!-- PENDING / Warning / Waiting / In Progress -->
+<span class="badge badge-soft-yellow">PENDING</span>
+
+<!-- EXPIRED / Danger / Cancelled / Overdue / Rejected -->
+<span class="badge badge-soft-red">EXPIRED</span>
+
+<!-- CANCELLED / Inactive / Disabled / N/A -->
+<span class="badge badge-soft-gray">CANCELLED</span>
+```
+
+#### Type/Category Badges
+```html
+<!-- CONTRACT / Primary Info / Counts / IDs / Codes -->
+<span class="badge badge-soft-blue">CONTRACT</span>
+<span class="badge badge-soft-blue">5 units</span>
+<span class="badge badge-soft-blue font-monospace">CUST-0001</span>
+
+<!-- PO_ONLY / Secondary Info / Supporting Data -->
+<span class="badge badge-soft-cyan">PO Only</span>
+
+<!-- DAILY/SPOT / Tertiary Info -->
+<span class="badge badge-soft-yellow">Daily Rental</span>
+
+<!-- Special / Premium / VIP -->
+<span class="badge badge-soft-purple">Premium Customer</span>
+
+<!-- URGENT / Critical Warnings -->
+<span class="badge badge-soft-orange">Expiring Soon</span>
+```
+
+#### 3-Tier Urgency System (Expiry/Deadline)
+```html
+<!-- Expired / Overdue (< 0 days) -->
+<span class="badge badge-soft-red">Expired 5 days ago</span>
+
+<!-- Critical / Urgent (1-30 days) -->
+<span class="badge badge-soft-orange">15 days left</span>
+
+<!-- Monitor / Watch (31-90 days) -->
+<span class="badge badge-soft-cyan">60 days left</span>
+```
+
+### Badge Size Variants
+```html
+<!-- Default size -->
+<span class="badge badge-soft-blue">Default</span>
+
+<!-- Small (untuk inline text atau table compact) -->
+<span class="badge badge-soft-blue" style="font-size: 0.75rem;">Small</span>
+
+<!-- Large (untuk headers atau emphasis) -->
+<span class="badge badge-soft-blue fs-6">Large</span>
+```
+
+### Badge dengan Icon
+```html
+<!-- Icon di kiri -->
+<span class="badge badge-soft-blue">
+    <i class="fas fa-file-contract me-1"></i>Contract
+</span>
+
+<!-- Icon only (untuk status compact) -->
+<span class="badge badge-soft-green">
+    <i class="fas fa-check"></i>
+</span>
+```
+
+### Common Badge Patterns
+
+#### Module-Specific Examples
+
+**Marketing Quotations:**
+```html
+<!-- Status -->
+<span class="badge badge-soft-green">ACCEPTED</span>
+<span class="badge badge-soft-cyan">SENT</span>
+<span class="badge badge-soft-yellow">DRAFT</span>
+<span class="badge badge-soft-red">REJECTED</span>
+
+<!-- Version/Revision dengan monospace -->
+<span class="badge badge-soft-blue font-monospace">Q-2026-001-v2</span>
+
+<!-- Specification types -->
+<span class="badge badge-soft-orange">Spare Unit</span>
+<span class="badge badge-soft-green">Billable Operator</span>
+<span class="badge badge-soft-gray">Non-billable</span>
+```
+
+**Contract Management:**
+```html
+<!-- Contract Types -->
+<span class="badge badge-soft-blue">
+    <i class="fas fa-file-contract me-1"></i>Contract
+</span>
+<span class="badge badge-soft-cyan">
+    <i class="fas fa-file-invoice me-1"></i>PO Only
+</span>
+<span class="badge badge-soft-yellow">
+    <i class="fas fa-calendar-day me-1"></i>Daily
+</span>
+
+<!-- Contract Numbers -->
+<span class="badge badge-soft-blue font-monospace">WFT/PROC/AGR/I/2025/001</span>
+```
+
+**Customer Management:**
+```html
+<!-- Customer Status -->
+<span class="badge badge-soft-green">ACTIVE</span>
+<span class="badge badge-soft-red">INACTIVE</span>
+
+<!-- Customer Code -->
+<span class="badge badge-soft-blue font-monospace">CUST-0001</span>
+```
+
+---
+
+## 📐 Page Layout Structure
+
+### Standard Module Layout Pattern
+Gunakan struktur ini untuk SEMUA module marketing:
+
+```html
+<?= $this->extend('layouts/base') ?>
+
+<?php
+/**
+ * [Module Name] Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status ACTIVE    → <span class="badge badge-soft-green">ACTIVE</span>
+ * - Status PENDING   → <span class="badge badge-soft-yellow">PENDING</span>
+ * [... module-specific reference ...]
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+helper('simple_rbac');
+$can_view = can_view('marketing');
+$can_create = can_create('marketing');
+$can_export = can_export('marketing');
+?>
+
+<?= $this->section('content') ?>
+
+<!-- Statistics Cards (optional, jika ada dashboard) -->
+<div class="row mt-3 mb-4">
+    <!-- Stat cards... -->
+</div>
+
+<!-- Filter Tabs/Card (optional) -->
+<div class="card mb-3">
+    <!-- Filters... -->
+</div>
+
+<!-- Main Data Table Card -->
+<div class="card table-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-[icon] me-2 text-primary"></i>
+                [Module Title]
+            </h5>
+            <p class="text-muted small mb-0">
+                [Module description]
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: [User tip]</small>
+                </span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- Action buttons -->
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="[module]Table" class="table table-striped table-hover mb-0">
+                <!-- Table content -->
+            </table>
+        </div>
+    </div>
+</div>
+
+<?= $this->endSection() ?>
+```
+
+### Page Header - INSIDE Card Header ✅
+```html
+<!-- ✅ CORRECT - Header di dalam card -->
+<div class="card table-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-people me-2 text-primary"></i>
+                Customer Management
+            </h5>
+            <p class="text-muted small mb-0">
+                Manage customer profiles, contracts, and track unit deployments
+                <span class="ms-2 text-info">
+                    <i class="bi bi-keyboard me-1"></i>
+                    <small>Tip: Click row or press Tab + Enter to view details</small>
+                </span>
+            </p>
+        </div>
+        <!-- Actions di kanan -->
+    </div>
+    ...
+</div>
+```
+
+```html
+<!-- ❌ WRONG - Standalone header di luar card -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">Customer Management</h4>
+    <p class="text-muted mb-0">Manage customer profiles...</p>
+</div>
+<div class="card">
+    <!-- Card tanpa header info -->
+</div>
+```
+
+### Statistics Cards Layout
+```html
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-people stat-icon text-primary"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="text-muted">Total Items</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Repeat untuk stats lain dengan bg-success-soft, bg-warning-soft, bg-info-soft -->
+</div>
+```
+
+**Color Mapping untuk Stat Cards:**
+- `bg-primary-soft` → Total/General count
+- `bg-success-soft` → Active/Positive metrics
+- `bg-warning-soft` → Warning/Attention metrics
+- `bg-info-soft` → Informational metrics
+- `bg-danger-soft` → Critical/Negative metrics (jarang digunakan)
+
+---
+
+## 📊 Table Design
+
+### Standard DataTable Structure
+```html
+<div class="card table-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <!-- Header content -->
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="dataTable" class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Column 1</th>
+                        <th>Column 2</th>
+                        <!-- ... -->
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- DataTables will populate -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+```
+
+### Table Cell Content Patterns
+
+#### ID/Code Columns (monospace dengan badge)
+```javascript
+// DataTables render
+{
+    data: 'contract_no',
+    render: function(data, type, row) {
+        return `<span class="badge badge-soft-blue font-monospace" style="font-size: 0.75rem;">${data}</span>`;
+    }
+}
+```
+
+#### Numeric Columns (counts)
+```javascript
+{
+    data: 'total_units',
+    className: 'text-center',
+    render: function(data, type, row) {
+        return `<span class="badge badge-soft-blue">${data || 0}</span>`;
+    }
+}
+```
+
+#### Currency Columns
+```javascript
+{
+    data: 'value',
+    className: 'text-end',
+    render: function(data, type, row) {
+        if (!data || data === '—') return '—';
+        return `<span class="text-success fw-semibold">${data}</span>`;
+    }
+}
+```
+
+#### Status Columns
+```javascript
+{
+    data: 'status',
+    render: function(data, type, row) {
+        const colorMap = {
+            'ACTIVE': 'badge-soft-green',
+            'PENDING': 'badge-soft-yellow',
+            'EXPIRED': 'badge-soft-red',
+            'CANCELLED': 'badge-soft-gray'
+        };
+        const badgeClass = colorMap[data] || 'badge-soft-gray';
+        return `<span class="badge ${badgeClass}">${data || 'N/A'}</span>`;
+    }
+}
+```
+
+#### Date Columns dengan Expiry Warning
+```javascript
+{
+    data: 'end_date',
+    render: function(data, type, row) {
+        const dateStr = data ? new Date(data).toLocaleDateString('id-ID') : '—';
+        let badge = '';
+        
+        if (row.days_remaining !== null) {
+            if (row.days_remaining < 0) {
+                badge = `<br><span class="badge badge-soft-red">Expired ${Math.abs(row.days_remaining)} days ago</span>`;
+            } else if (row.days_remaining <= 30) {
+                badge = `<br><span class="badge badge-soft-orange">${row.days_remaining} days left</span>`;
+            } else if (row.days_remaining <= 90) {
+                badge = `<br><span class="badge badge-soft-cyan">${row.days_remaining} days left</span>`;
+            }
+        }
+        
+        return `<small class="text-muted">${dateStr}</small>${badge}`;
+    }
+}
+```
+
+### Table Row Actions
+```html
+<!-- Standard action buttons -->
+<div class="btn-group btn-group-sm" role="group">
+    <button class="btn btn-outline-primary btn-sm" onclick="viewDetail(${id})" title="View Details">
+        <i class="fas fa-eye"></i>
+    </button>
+    <?php if ($can_edit): ?>
+    <button class="btn btn-outline-warning btn-sm" onclick="editRecord(${id})" title="Edit">
+        <i class="fas fa-edit"></i>
+    </button>
+    <?php endif; ?>
+    <?php if ($can_delete): ?>
+    <button class="btn btn-outline-danger btn-sm" onclick="deleteRecord(${id})" title="Delete">
+        <i class="fas fa-trash"></i>
+    </button>
+    <?php endif; ?>
+</div>
+```
+
+---
+
+## 🎛️ Filter & Form Components
+
+### Filter Card Structure
+```html
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="fas fa-filter me-2 text-primary"></i>Filters
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label for="filter_status" class="form-label fw-semibold">
+                    <i class="fas fa-check-circle text-success me-1"></i>Status
+                </label>
+                <select class="form-select" id="filter_status">
+                    <option value="">🔍 All Status</option>
+                    <option value="ACTIVE">✅ Active</option>
+                    <option value="PENDING">⏳ Pending</option>
+                    <option value="EXPIRED">❌ Expired</option>
+                </select>
+            </div>
+            <!-- More filters -->
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-primary w-100" onclick="applyFilters()">
+                    <i class="fas fa-search me-1"></i>Apply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+### Dropdown Options Enhancement
+
+**NOTE:** Dropdown filters may be replaced with tab-based navigation in some modules (e.g., Contract Management).
+
+```html
+<!-- Status Dropdown - Clean, text-only -->
+<select class="form-select" id="status">
+    <option value="">All Status</option>
+    <option value="ACTIVE">Active</option>
+    <option value="PENDING">Pending</option>
+    <option value="EXPIRED">Expired</option>
+    <option value="CANCELLED">Cancelled</option>
+</select>
+
+<!-- Type Dropdown -->
+<select class="form-select" id="type">
+    <option value="">All Types</option>
+    <option value="CONTRACT">Contract</option>
+    <option value="PO_ONLY">PO Only</option>
+    <option value="DAILY_SPOT">Daily/Spot</option>
+</select>
+
+<!-- Customer Dropdown (populated via AJAX) -->
+<select class="form-select" id="customer">
+    <option value="">All Customers</option>
+    <!-- Populated with format: CUST-0001 - Customer Name -->
+</select>
+```
+
+### Form Label dengan Icon
+```html
+<label for="field_name" class="form-label fw-semibold">
+    <i class="fas fa-[icon] text-[color] me-1"></i>Field Name
+</label>
+```
+
+**Icon Colors untuk Labels:**
+- `text-primary` → General/main fields
+- `text-success` → Positive/active fields
+- `text-info` → Informational fields
+- `text-warning` → Warning/attention fields
+- `text-danger` → Critical/required fields
+
+---
+
+## 🪟 Modal Design
+
+### Standard Modal Structure
+```html
+<div class="modal fade modal-wide" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title">
+                        <i class="bi bi-[icon] me-2"></i>
+                        <span id="modalTitle">Modal Title</span>
+                    </h5>
+                    <small class="text-muted" id="modalSubtitle"></small>
+                </div>
+                <div class="d-flex gap-2">
+                    <!-- Optional action buttons -->
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="printModal()">
+                        <i class="fas fa-print me-1"></i>Print
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Tabbed content (optional) -->
+                <ul class="nav nav-tabs mb-3" id="modalTabs">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab1">
+                            <i class="fas fa-info-circle me-1"></i>Info
+                        </button>
+                    </li>
+                    <!-- More tabs -->
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="tab1">
+                        <!-- Content -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+### Modal Content Display Pattern
+```html
+<!-- Info Grid Layout -->
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label class="text-muted small">Field Label</label>
+        <p class="fw-semibold">Field Value</p>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <label class="text-muted small">Status</label>
+        <p><span class="badge badge-soft-green">ACTIVE</span></p>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <label class="text-muted small">Contract Number</label>
+        <p><span class="badge badge-soft-blue font-monospace">WFT-001</span></p>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <label class="text-muted small">Total Value</label>
+        <p><span class="text-success fw-semibold fs-5">Rp 50.000.000</span></p>
+    </div>
+</div>
+```
+
+---
+
+## 🎨 Color Palette
+
+### Optima Soft Badge Colors (optima-pro.css)
+```css
+/* Available badge classes */
+.badge-soft-green   /* #d4edda / Success / Active */
+.badge-soft-yellow  /* #fff3cd / Warning / Pending */
+.badge-soft-red     /* #f8d7da / Danger / Expired */
+.badge-soft-gray    /* #e2e3e5 / Neutral / Cancelled */
+.badge-soft-blue    /* #cfe2ff / Primary / Info */
+.badge-soft-cyan    /* #cff4fc / Info / Secondary */
+.badge-soft-purple  /* #e0cffc / Special / Premium */
+.badge-soft-orange  /* #ffe5b4 / Urgent / Warning */
+```
+
+### Text Colors untuk Emphasis
+```html
+<!-- Success (revenue, positive metrics) -->
+<span class="text-success fw-semibold">Rp 10.000.000</span>
+
+<!-- Muted (supporting info) -->
+<small class="text-muted">Additional info</small>
+
+<!-- Danger (overdue, critical) -->
+<span class="text-danger fw-bold">Overdue 30 days</span>
+
+<!-- Info (links, secondary info) -->
+<a href="#" class="text-info">View Details</a>
+
+<!-- Warning (attention needed) -->
+<span class="text-warning">Pending Approval</span>
+```
+
+### Semantic Color Meanings
+| Color | Meaning | Use Cases |
+|-------|---------|-----------|
+| **Green** | Success, Active, Positive | ACTIVE status, paid invoices, available units |
+| **Yellow** | Warning, Pending, Waiting | PENDING status, awaiting approval |
+| **Red** | Danger, Expired, Critical | EXPIRED contracts, overdue payments, cancelled |
+| **Gray** | Neutral, Inactive, Disabled | CANCELLED status, archived records |
+| **Blue** | Primary, Info, Counts | Contract types, IDs, counters |
+| **Cyan** | Secondary, Supporting | PO types, additional info |
+| **Orange** | Urgent, Critical Warning | Expiring soon, needs attention |
+| **Purple** | Special, Premium, VIP | Premium customers, special features |
+
+---
+
+## 📝 Typography
+
+### Font Weights
+```html
+<!-- Regular (default) -->
+<p class="fw-normal">Regular text</p>
+
+<!-- Semibold (untuk emphasis moderat) -->
+<p class="fw-semibold">Emphasized text</p>
+
+<!-- Bold (untuk strong emphasis) -->
+<p class="fw-bold">Strong text</p>
+
+<!-- Light (jarang digunakan) -->
+<p class="fw-light">Light text</p>
+```
+
+### Font Sizes
+```html
+<!-- Heading sizes -->
+<h1 class="display-4">Display Header</h1>
+<h5 class="card-title">Card Title</h5>
+
+<!-- Body text -->
+<p>Regular paragraph</p>
+<small class="text-muted">Small supporting text</small>
+
+<!-- Custom sizes -->
+<span class="fs-6">Font size 6</span>
+<span class="fs-5">Font size 5</span>
+```
+
+### Monospace untuk Codes/IDs
+```html
+<!-- Contract numbers, customer codes, unit IDs -->
+<span class="font-monospace">WFT/PROC/AGR/I/2025/001</span>
+
+<!-- Dalam badge -->
+<span class="badge badge-soft-blue font-monospace">CUST-0001</span>
+```
+
+---
+
+## 🎯 Icons & Emoji Usage
+
+### Bootstrap Icons (bi-*)
+Digunakan untuk UI elements utama:
+```html
+<i class="bi bi-people"></i>          <!-- People/Customers -->
+<i class="bi bi-file-earmark-text"></i> <!-- Contracts/Documents -->
+<i class="bi bi-building"></i>         <!-- Company/Building -->
+<i class="bi bi-truck"></i>            <!-- Units/Vehicles -->
+<i class="bi bi-info-circle"></i>      <!-- Information -->
+<i class="bi bi-check-circle"></i>     <!-- Success/Active -->
+<i class="bi bi-x-circle"></i>         <!-- Cancel/Inactive -->
+```
+
+### Font Awesome Icons (fas fa-*)
+Digunakan untuk actions dan details:
+```html
+<i class="fas fa-eye"></i>         <!-- View -->
+<i class="fas fa-edit"></i>        <!-- Edit -->
+<i class="fas fa-trash"></i>       <!-- Delete -->
+<i class="fas fa-plus"></i>        <!-- Add -->
+<i class="fas fa-search"></i>      <!-- Search -->
+<i class="fas fa-filter"></i>      <!-- Filter -->
+<i class="fas fa-file-contract"></i> <!-- Contract -->
+<i class="fas fa-file-invoice"></i>  <!-- Invoice/PO -->
+```
+
+### Emoji Usage Guidelines
+
+**Limited Use - Optional Enhancement Only**
+
+```html
+<!-- Console logs (debugging) -->
+console.log('✅ Data loaded successfully');
+console.error('❌ Failed to load data');
+
+<!-- Notification messages -->
+<div class="alert alert-success">✅ Contract created successfully!</div>
+<div class="alert alert-warning">⚠️ Contract expires in 30 days</div>
+```
+
+**Emoji Guidelines:**
+- ✅ DO: Use in console logs for debugging clarity
+- ✅ DO: Use in notification/alert messages
+- ✅ DO: Use in tips and helper text
+- ❌ DON'T: Use in dropdown options (keep clean/professional)
+- ❌ DON'T: Use in table headers or modal titles
+- ❌ DON'T: Use in formal business documents
+
+**Note:** Some modules (like Contract Management) may use tab-based navigation instead of dropdown filters.
+
+---
+
+## 🚀 Quick Reference Cheatsheet
+
+### Badge Quick Reference
+```
+STATUS:
+✅ ACTIVE      → badge-soft-green
+⏳ PENDING     → badge-soft-yellow
+❌ EXPIRED     → badge-soft-red
+⛔ CANCELLED   → badge-soft-gray
+
+TYPES:
+📄 CONTRACT    → badge-soft-blue
+📋 PO_ONLY     → badge-soft-cyan
+📅 DAILY_SPOT  → badge-soft-yellow
+
+URGENCY (Expiry):
+🔴 Expired       → badge-soft-red
+🟠 Critical <30d → badge-soft-orange
+🔵 Monitor 31-90d→ badge-soft-cyan
+
+COUNTERS:
+🔢 Unit counts   → badge-soft-blue
+💰 Total value   → text-success fw-semibold
+```
+
+### CSS Class Quick Reference
+```
+LAYOUT:
+.card-header           → Card header container
+.card-body p-0         → Table card body (no padding)
+.table-responsive      → Responsive table wrapper
+
+TABLE:
+.table-striped         → Striped rows
+.table-hover           → Hover effect
+.table-light           → Light header background
+
+TEXT:
+.text-muted            → Gray supporting text
+.text-success          → Green (values, positive)
+.text-danger           → Red (critical)
+.text-info             → Blue (links)
+.fw-semibold           → Semibold weight
+.fw-bold               → Bold weight
+.font-monospace        → Monospace font
+
+ALIGNMENT:
+.text-start            → Left align
+.text-center           → Center align
+.text-end              → Right align
+
+SPACING:
+.mt-3, .mb-4, .p-0     → Margin/Padding (0-5)
+.gap-2, .gap-3         → Gap between flex items
+```
+
+### DataTables Column Rendering Patterns
+```javascript
+// ID/Code Column
+{ data: 'code', render: (d) => `<span class="badge badge-soft-blue font-monospace">${d}</span>` }
+
+// Count Column
+{ data: 'count', className: 'text-center', render: (d) => `<span class="badge badge-soft-blue">${d}</span>` }
+
+// Currency Column
+{ data: 'value', className: 'text-end', render: (d) => d ? `<span class="text-success fw-semibold">${d}</span>` : '—' }
+
+// Status Column
+{ data: 'status', render: (d) => {
+    const colors = { ACTIVE:'green', PENDING:'yellow', EXPIRED:'red', CANCELLED:'gray' };
+    return `<span class="badge badge-soft-${colors[d]}">${d}</span>`;
+}}
+
+// Date with Warning
+{ data: 'date', render: (d, t, row) => {
+    let badge = '';
+    if (row.days < 0) badge = `<br><span class="badge badge-soft-red">Expired</span>`;
+    else if (row.days <= 30) badge = `<br><span class="badge badge-soft-orange">${row.days}d left</span>`;
+    return `<small>${d}</small>${badge}`;
+}}
+```
+
+---
+
+## 📋 Implementation Checklist
+
+Gunakan checklist ini saat mengupdate atau membuat module baru:
+
+### ✅ Page Structure
+- [ ] Module documentation comment di atas file (dengan badge reference)
+- [ ] Permission checks (can_view, can_create, can_edit, can_delete, can_export)
+- [ ] Statistics cards (jika applicable)
+- [ ] Filter card (jika ada filtering)
+- [ ] Page header INSIDE card-header (bukan standalone)
+- [ ] Page title dengan icon Bootstrap (bi-*)
+- [ ] Subtitle dengan user tip
+
+### ✅ Badge Implementation
+- [ ] Semua status badges menggunakan `badge-soft-*`
+- [ ] ID/Code fields menggunakan `badge-soft-blue font-monospace`
+- [ ] Count badges menggunakan `badge-soft-blue`
+- [ ] Expiry warnings menggunakan 3-tier system (red/orange/cyan)
+- [ ] Tidak ada `bg-*` badge classes (kecuali stat-cards)
+- [ ] Tidak ada `text-dark` atau `text-white` overrides di badges
+
+### ✅ Table Design
+- [ ] DataTable menggunakan class `table table-striped table-hover mb-0`
+- [ ] Table header menggunakan `table-light`
+- [ ] Card body untuk table menggunakan `p-0`
+- [ ] Table wrapped dalam `table-responsive`
+- [ ] Currency columns aligned `text-end` dengan color green
+- [ ] Count columns aligned `text-center` dengan badge
+- [ ] Action column aligned `text-center`
+
+### ✅ Typography & Colors
+- [ ] Supporting text menggunakan `text-muted`
+- [ ] Currency/values menggunakan `text-success fw-semibold`
+- [ ] Monospace untuk codes/IDs (`font-monospace`)
+- [ ] Proper font weights (fw-normal, fw-semibold, fw-bold)
+
+### ✅ Dropdowns & Filters
+- [ ] Filter labels dengan icon dan `fw-semibold`
+- [ ] Dropdown options dengan emoji prefix
+- [ ] Customer dropdown format: 🏢 CODE • Name
+- [ ] "All" options dengan 🔍 emoji
+
+### ✅ Icons & Visual Elements
+- [ ] Bootstrap icons (bi-*) untuk main elements
+- [ ] Font Awesome (fas fa-*) untuk actions
+- [ ] Icon colors sesuai semantic (primary, success, info, warning, danger)
+- [ ] Emoji hanya di dropdown, notifications, tips
+
+### ✅ Modals
+- [ ] Modal title dengan icon
+- [ ] Modal subtitle untuk context info
+- [ ] Tabbed content (jika applicable)
+- [ ] Info fields dengan label `text-muted small`
+- [ ] Values dengan proper formatting (badges, colors)
+
+---
+
+## 🔧 Migration Guide: Old → New
+
+### Find & Replace Patterns
+
+**Badge Classes:**
+```
+FIND: bg-success
+REPLACE: badge-soft-green
+
+FIND: bg-danger
+REPLACE: badge-soft-red
+
+FIND: bg-warning text-dark
+REPLACE: badge-soft-yellow
+
+FIND: bg-info text-dark
+REPLACE: badge-soft-cyan
+
+FIND: bg-primary
+REPLACE: badge-soft-blue
+
+FIND: bg-secondary
+REPLACE: badge-soft-gray
+```
+
+**Text Classes yang Perlu Dihapus:**
+```
+REMOVE: text-dark (dari badge)
+REMOVE: text-white (dari badge)
+```
+
+**Header Structure:**
+```html
+<!-- BEFORE -->
+<div class="mb-3">
+    <h4>Module Title</h4>
+    <p>Description</p>
+</div>
+<div class="card">
+    <div class="card-header">Actions</div>
+    ...
+</div>
+
+<!-- AFTER -->
+<div class="card table-card">
+    <div class="card-header d-flex justify-content-between">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-icon me-2 text-primary"></i>
+                Module Title
+            </h5>
+            <p class="text-muted small mb-0">
+                Description
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: User tip</small>
+                </span>
+            </p>
+        </div>
+        <div>Actions</div>
+    </div>
+    ...
+</div>
+```
+
+---
+
+## 📚 Reference Files
+
+**Live Examples untuk di-copy:**
+- ✅ `app/Views/marketing/customer_management.php` - Perfect implementation
+- ✅ `app/Views/marketing/quotations.php` - Complete with all badge types
+- ✅ `app/Views/marketing/kontrak.php` - Recently updated (March 2026)
+
+**CSS Reference:**
+- ✅ `public/assets/css/optima-pro.css` - Badge definitions (~line 2030)
+
+**Memory Reference:**
+- ✅ `/memories/optima-badge-standards.md` - Badge color standards
+
+---
+
+## 🎯 Cursor AI Prompt Template
+
+Gunakan prompt ini di Cursor AI untuk update CSS module:
+
+```
+Update this module to follow Optima CSS Visual Standards (docs/CSS_VISUAL_STANDARDS.md):
+
+CRITICAL REQUIREMENTS:
+1. Move page header INSIDE card-header (not standalone above card)
+2. Replace ALL bg-* badge classes with badge-soft-* semantic classes
+3. Add module documentation comment at top with badge reference
+4. Clean dropdown options (text-only, no emoji)
+5. Use badge-soft-blue for IDs/codes with font-monospace
+6. Use badge-soft-blue for count badges
+7. Use text-success fw-semibold for currency values
+8. Implement 3-tier expiry warning system (red/orange/cyan)
+9. Add icon to filter labels with fw-semibold
+10. Add user tip in page subtitle with info icon
+
+REFERENCE:
+- Good example: app/Views/marketing/customer_management.php
+- Badge system: badge-soft-green (ACTIVE), badge-soft-yellow (PENDING), badge-soft-red (EXPIRED)
+- Currency format: <span class="text-success fw-semibold">Rp X</span>
+- Code format: <span class="badge badge-soft-blue font-monospace">CODE</span>
+- Dropdown format: <option value="ACTIVE">Active</option> (clean text)
+
+DO NOT:
+- Use bg-success, bg-danger, bg-warning in badges
+- Add text-dark or text-white to badges
+- Leave header outside card structure
+- Mix badge standards with old Bootstrap classes
+- Add emoji to dropdown options (keep professional)
+```
+
+---
+
+**Last Updated:** March 11, 2026  
+**Maintained by:** Development Team  
+**Questions?** Refer to `/memories/optima-badge-standards.md` for quick reference

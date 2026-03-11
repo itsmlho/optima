@@ -147,12 +147,40 @@ class KontrakModel extends Model
         $builder->where('k.id >', 0);
         $builder->where('k.id IS NOT NULL', null, false);
 
-        // Apply custom filters
+        // Apply tab-based filtering
+        if (!empty($filters['tab'])) {
+            switch ($filters['tab']) {
+                case 'active':
+                    $builder->where('k.status', 'ACTIVE');
+                    $builder->where('k.tanggal_berakhir >=', date('Y-m-d')); // Not yet expired
+                    break;
+                case 'expired':
+                    // Include both EXPIRED status AND ACTIVE contracts past their end date
+                    $builder->groupStart()
+                        ->where('k.status', 'EXPIRED')
+                        ->orGroupStart()
+                            ->where('k.status', 'ACTIVE')
+                            ->where('k.tanggal_berakhir <', date('Y-m-d'))
+                        ->groupEnd()
+                    ->groupEnd();
+                    break;
+                case 'expiring':
+                    // Contracts that will expire within specified days
+                    $builder->where('k.status', 'ACTIVE');
+                    if (!empty($filters['expiring_days'])) {
+                        // Future expiring dates only
+                        $expiringDate = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
+                        $builder->where('k.tanggal_berakhir <=', $expiringDate);
+                        $builder->where('k.tanggal_berakhir >=', date('Y-m-d'));
+                    }
+                    break;
+                // 'all' tab - no status filter
+            }
+        }
+
+        // Apply additional filters
         if (!empty($filters['rental_type'])) {
             $builder->where('k.rental_type', $filters['rental_type']);
-        }
-        if (!empty($filters['status'])) {
-            $builder->where('k.status', $filters['status']);
         }
         if (!empty($filters['customer_id'])) {
             $builder->where('c.id', $filters['customer_id']);
@@ -163,8 +191,6 @@ class KontrakModel extends Model
             $builder->groupStart()
                     ->like('k.no_kontrak', $search)
                     ->orLike('c.customer_name', $search)
-                    ->orLike('cl.location_name', $search)
-                    ->orLike('cl.address', $search)
                     ->orLike('k.status', $search)
                     ->groupEnd();
         }
@@ -179,12 +205,38 @@ class KontrakModel extends Model
         $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
 
-        // Re-apply custom filters for data query
+        // Re-apply tab-based filtering for data query
+        if (!empty($filters['tab'])) {
+            switch ($filters['tab']) {
+                case 'active':
+                    $builder->where('k.status', 'ACTIVE');
+                    $builder->where('k.tanggal_berakhir >=', date('Y-m-d')); // Not yet expired
+                    break;
+                case 'expired':
+                    // Include both EXPIRED status AND ACTIVE contracts past their end date
+                    $builder->groupStart()
+                        ->where('k.status', 'EXPIRED')
+                        ->orGroupStart()
+                            ->where('k.status', 'ACTIVE')
+                            ->where('k.tanggal_berakhir <', date('Y-m-d'))
+                        ->groupEnd()
+                    ->groupEnd();
+                    break;
+                case 'expiring':
+                    $builder->where('k.status', 'ACTIVE');
+                    if (!empty($filters['expiring_days'])) {
+                        // Future expiring dates only
+                        $expiringDate = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
+                        $builder->where('k.tanggal_berakhir <=', $expiringDate);
+                        $builder->where('k.tanggal_berakhir >=', date('Y-m-d'));
+                    }
+                    break;
+            }
+        }
+
+        // Re-apply additional filters for data query
         if (!empty($filters['rental_type'])) {
             $builder->where('k.rental_type', $filters['rental_type']);
-        }
-        if (!empty($filters['status'])) {
-            $builder->where('k.status', $filters['status']);
         }
         if (!empty($filters['customer_id'])) {
             $builder->where('c.id', $filters['customer_id']);
@@ -259,11 +311,12 @@ class KontrakModel extends Model
         $orderColumn = $request->getPost('order')[0]['column'] ?? 0;
         $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
 
-        // Pass custom filters
+        // Pass custom filters including tab-based filtering
         $filters = [
-            'rental_type' => $request->getPost('rental_type') ?? '',
-            'status'      => $request->getPost('status') ?? '',
-            'customer_id' => $request->getPost('customer_id') ?? '',
+            'tab'           => $request->getPost('tab') ?? 'all',
+            'expiring_days' => $request->getPost('expiring_days') ?? null,
+            'rental_type'   => $request->getPost('rental_type') ?? '',
+            'customer_id'   => $request->getPost('customer_id') ?? '',
         ];
 
         return $this->getContractsForDataTable($start, $length, $searchValue, $orderColumn, $orderDir, $filters);
@@ -319,12 +372,34 @@ class KontrakModel extends Model
             ->where('status', 'ACTIVE')
             ->countAllResults();
 
-        $expiring = $this->db->table($this->table)
+        // Expiring within 30 days
+        $expiring_30 = $this->db->table($this->table)
             ->where('status', 'ACTIVE')
             ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
             ->where('tanggal_berakhir >=', date('Y-m-d'))
             ->countAllResults();
 
+        // Expiring within 90 days
+        $expiring_90 = $this->db->table($this->table)
+            ->where('status', 'ACTIVE')
+            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+90 days')))
+            ->where('tanggal_berakhir >=', date('Y-m-d'))
+            ->countAllResults();
+
+        // Expiring within 180 days (6 months)
+        $expiring_180 = $this->db->table($this->table)
+            ->where('status', 'ACTIVE')
+            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+180 days')))
+            ->where('tanggal_berakhir >=', date('Y-m-d'))
+            ->countAllResults();
+
+        // Already past end date (Sudah Lewat)
+        $expired_past = $this->db->table($this->table)
+            ->where('status', 'ACTIVE')
+            ->where('tanggal_berakhir <', date('Y-m-d'))
+            ->countAllResults();
+
+        // All expired (status EXPIRED or past date)
         $expired = $this->db->table($this->table)
             ->groupStart()
                 ->where('status', 'EXPIRED')
@@ -335,7 +410,10 @@ class KontrakModel extends Model
         return [
             'total' => $total,
             'active' => $active,
-            'expiring' => $expiring,
+            'expiring_30' => $expiring_30,
+            'expiring_90' => $expiring_90,
+            'expiring_180' => $expiring_180,
+            'expired_past' => $expired_past,
             'expired' => $expired,
         ];
     }

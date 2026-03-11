@@ -15,6 +15,8 @@ class QuotationSpecificationModel extends Model
         'specification_name',
         'specification_type',
         'quantity',
+        'spare_quantity',           // NEW: Flexible spare quantity
+        'is_spare_unit',            // LEGACY: Old spare unit flag
         'monthly_price',
         'daily_price',
         'total_price',
@@ -32,6 +34,10 @@ class QuotationSpecificationModel extends Model
         'ban_id',
         'roda_id',
         'valve_id',
+        'include_operator',         // NEW: Operator service included
+        'operator_quantity',        // NEW: Number of operators
+        'operator_monthly_rate',    // NEW: Monthly rate per operator
+        'operator_daily_rate',      // NEW: Daily rate per operator
         'original_kontrak_id'
     ];
 
@@ -47,7 +53,38 @@ class QuotationSpecificationModel extends Model
     {
         $builder = $this->db->table($this->table . ' qs');
         $builder->select('
-            qs.*,
+            qs.id_specification,
+            qs.id_quotation,
+            qs.specification_name,
+            qs.specification_type,
+            qs.quantity,
+            qs.is_spare_unit,
+            qs.spare_quantity,
+            qs.include_operator,
+            qs.operator_quantity,
+            qs.operator_monthly_rate,
+            qs.operator_daily_rate,
+            qs.operator_description,
+            qs.operator_certification_required,
+            qs.monthly_price,
+            qs.daily_price,
+            qs.total_price,
+            qs.brand_id,
+            qs.unit_accessories,
+qs.departemen_id,
+            qs.tipe_unit_id,
+            qs.kapasitas_id,
+            qs.charger_id,
+            qs.mast_id,
+            qs.ban_id,
+            qs.roda_id,
+            qs.valve_id,
+            qs.battery_id,
+            qs.attachment_id,
+            qs.kontrak_id,
+            qs.is_active,
+            qs.created_at,
+            qs.updated_at,
             d.nama_departemen,
             tu.tipe as nama_tipe_unit,
             tu.jenis as jenis_tipe_unit,

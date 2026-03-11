@@ -1,0 +1,645 @@
+/**
+ * OPTIMA Sidebar - CodingNepal Style
+ * Base: CodingNepal (floating, smooth, dropdown)
+ * Pewarnaan: OPTIMA (biru #0061f2, terang)
+ * Sidebar tunggal: hanya nav + toggle (header & footer bagian sendiri)
+ *
+ * @version 1.1.0
+ * @date March 2026
+ *
+ * BACKUP: CSS yang tidak dipakai di layout utama ditandai dengan komentar
+ * "BACKUP:" — layout pakai base.php dengan .global-header, bukan .cn-layout-header.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* ---------------------------------------------------------------------------
+   OPTIMA palette
+   --------------------------------------------------------------------------- */
+:root {
+  --optima-primary: #0061f2;
+  --optima-primary-hover: #0052d4;
+  --optima-primary-light: #e7f1ff;
+  --optima-sidebar-bg: #ffffff;
+  --optima-sidebar-border: #e3e6f0;
+  --optima-text: #2c3e50;
+  --optima-text-muted: #6c757d;
+  --sidebar-gap: 10px;
+  --sidebar-width: 85px;
+  --sidebar-width-expanded: 290px;
+  --flyout-max-width: 420px; /* BACKUP: tidak dipakai di file ini (flyout pakai min/max-width inline) */
+  --content-margin-left: calc(var(--sidebar-width) + var(--sidebar-gap) * 2);
+  --content-margin-left-expanded: calc(var(--sidebar-width-expanded) + var(--sidebar-gap) * 2);
+}
+
+body.cn-sidebar-layout {
+  min-height: 100vh;
+}
+
+/* Sidebar elements: gunakan Poppins */
+.cn-sidebar-layout .sidebar {
+  font-family: "Poppins", sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   BACKUP untuk layout utama: Header ini tidak dipakai di base.php (pakai .global-header).
+   Masih dipakai di: layout_codingnepal_demo.php. Bisa dihapus jika demo tidak dipakai.
+   --------------------------------------------------------------------------- */
+.cn-layout-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 56px;
+  background: var(--optima-sidebar-bg);
+  border-bottom: 1px solid var(--optima-sidebar-border);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  z-index: 1100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cn-header-title {
+  font-weight: 600;
+  color: var(--optima-text);
+  margin-left: 0.5rem;
+}
+
+.cn-layout-header .sidebar-menu-button,
+.global-header .sidebar-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--optima-text);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cn-layout-header .sidebar-menu-button:hover,
+.global-header .sidebar-menu-button:hover {
+  background: var(--optima-primary-light);
+  color: var(--optima-primary);
+}
+
+
+/* Tombol expand/collapse: tampil di desktop dan mobile */
+
+/* ---------------------------------------------------------------------------
+   Sidebar: floating (kartu penuh, ada gap kiri-kanan)
+   --------------------------------------------------------------------------- */
+.cn-sidebar-layout .sidebar {
+  position: fixed;
+  top: calc(60px + var(--sidebar-gap));
+  left: var(--sidebar-gap);
+  z-index: 10;
+  width: var(--sidebar-width);
+  background: var(--optima-sidebar-bg);
+  border: 1px solid var(--optima-sidebar-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  padding-bottom: 12px;
+  /* Tinggi sama untuk collapse & expand */
+  height: calc(100vh - 60px - var(--sidebar-gap) * 2);
+  max-height: calc(100vh - 60px - var(--sidebar-gap) * 2);
+  overflow: visible;
+}
+
+/* Sidebar expanded: tinggi tetap, isi scroll di dalam — tidak overlap keluar bagan */
+.cn-sidebar-layout .sidebar:not(.collapsed) {
+  width: var(--sidebar-width-expanded);
+  height: calc(100vh - 60px - var(--sidebar-gap) * 2);
+  max-height: calc(100vh - 60px - var(--sidebar-gap) * 2);
+  overflow: hidden;
+}
+
+/* Logo + teks OPTIMA di atas sidebar */
+.cn-sidebar-layout .sidebar .sidebar-brand {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 12px;
+  text-decoration: none;
+  color: var(--optima-text);
+  border-bottom: 1px solid var(--optima-sidebar-border);
+  transition: background 0.2s ease;
+}
+.cn-sidebar-layout .sidebar .sidebar-brand:hover {
+  background: var(--optima-primary-light);
+  color: var(--optima-primary);
+}
+.cn-sidebar-layout .sidebar .sidebar-brand-logo {
+  height: 28px;
+  width: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.cn-sidebar-layout .sidebar .sidebar-brand-text {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+/* Collapsed: hanya logo, teks disembunyikan */
+.cn-sidebar-layout .sidebar.collapsed .sidebar-brand {
+  padding: 12px;
+}
+.cn-sidebar-layout .sidebar.collapsed .sidebar-brand-text {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Expanded: logo + teks OPTIMA — center */
+.cn-sidebar-layout .sidebar:not(.collapsed) .sidebar-brand {
+  justify-content: center;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Nav body: collapsed = tengah vertikal; expanded = rata atas */
+.cn-sidebar-layout .sidebar-nav {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) .sidebar-nav {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 1rem;
+  overflow: visible;
+  min-height: 0;
+}
+
+.cn-sidebar-layout .sidebar-nav .nav-list {
+  list-style: none;
+  display: flex;
+  gap: 5px;
+  padding: 1;
+  flex-direction: column;
+  margin: 0;
+  transition: 0.4s ease;
+}
+
+.cn-sidebar-layout .sidebar .sidebar-nav .primary-nav {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  padding: 6px 8px;
+  height: auto;
+  /* Kurangi ~56px untuk tinggi blok logo OPTIMA di atas */
+  max-height: calc(100vh - 60px - var(--sidebar-gap) * 2 - 24px - 56px);
+  scrollbar-color: transparent transparent;
+}
+
+.cn-sidebar-layout .sidebar .sidebar-nav .primary-nav:hover {
+  scrollbar-color: var(--optima-sidebar-border) transparent;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .sidebar-nav .primary-nav {
+  overflow: visible !important;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .sidebar-nav {
+  overflow: visible !important;
+}
+
+/* Material Symbols di sidebar: style + posisi tengah */
+.cn-sidebar-layout .sidebar .material-symbols-rounded {
+  font-family: "Material Symbols Rounded", sans-serif;
+  font-variation-settings: "opsz" 24, "FILL" 0, "GRAD" 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Active state: link yang sedang dipakai (expanded) */
+.cn-sidebar-layout .sidebar .nav-link.active {
+  background: var(--optima-primary);
+  color: #ffffff;
+}
+
+.cn-sidebar-layout .sidebar .nav-link.active .material-symbols-rounded,
+.cn-sidebar-layout .sidebar .nav-link.active .drop-icon,
+.cn-sidebar-layout .sidebar .nav-link.active .drop-label {
+  color: #ffffff;
+}
+
+/* Parent dropdown: tidak kasih warna active kalau dropdown belum terbuka */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active {
+  background: transparent;
+  color: var(--optima-text);
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active .material-symbols-rounded,
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active .dropdown-icon {
+  color: inherit;
+}
+
+/* Matikan dekorasi panah/bullet bawaan layout lama di dalam layout baru */
+.cn-sidebar-layout .sidebar .nav-link::after {
+  content: none !important;
+}
+
+/* Menu sidebar: kotak item (area hijau/biru saat hover) */
+.cn-sidebar-layout .sidebar-nav .nav-item .nav-link {
+  color: var(--optima-text);
+  display: flex;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-height: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: none;
+  transition: 0.25s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+.cn-sidebar-layout .sidebar.collapsed .sidebar-nav .nav-item .nav-link {
+  white-space: nowrap;
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .sidebar-nav .nav-item .nav-link {
+  white-space: normal;
+  word-break: break-word;
+  min-width: 0;
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .sidebar-nav .nav-item .nav-link .nav-label {
+  min-width: 0;
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) .sidebar-nav .nav-item .nav-link {
+  justify-content: flex-start;
+  padding-left: 16px;
+  height: auto;
+  min-height: 48px;
+}
+
+/* Ikon menu: ukuran tetap, posisi tengah di dalam kotak */
+.cn-sidebar-layout .sidebar-nav .nav-item .nav-link .material-symbols-rounded:first-child {
+  font-size: 24px !important;
+  font-weight: 400;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Saat collapsed: label & panah tidak ambil ruang agar ikon tetap di tengah */
+.cn-sidebar-layout .sidebar.collapsed .nav-link .nav-label,
+.cn-sidebar-layout .sidebar.collapsed .nav-link .dropdown-icon {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Hover menu: satu warna biru saja, ukuran persis sama dengan background (no glass/shadow/transform) */
+.cn-sidebar-layout .sidebar .nav-link::before {
+  display: none;
+}
+.cn-sidebar-layout .sidebar-nav .primary-nav .nav-item .nav-link:hover {
+  background: var(--optima-primary-light);
+  color: var(--optima-primary);
+  box-shadow: none;
+  transform: none;
+}
+.cn-sidebar-layout .sidebar-nav .primary-nav .nav-item .nav-link:hover .material-symbols-rounded,
+.cn-sidebar-layout .sidebar-nav .primary-nav .nav-item .nav-link:hover .dropdown-icon {
+  color: var(--optima-primary);
+}
+
+.cn-sidebar-layout .sidebar-nav .nav-item .nav-link.active {
+  color: #fff;
+  background: var(--optima-primary);
+}
+
+.cn-sidebar-layout .sidebar .nav-link .nav-label {
+  transition: opacity 0.3s ease;
+}
+
+.cn-sidebar-layout .sidebar-nav .nav-item {
+  position: relative;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .sidebar-nav .nav-item.dropdown-container > .dropdown-menu {
+  z-index: 1100;
+}
+
+/* Dropdown */
+.cn-sidebar-layout .sidebar-nav .dropdown-container .dropdown-icon {
+  margin: 0 -4px 0 auto;
+  transition: transform 0.4s ease, opacity 0.3s 0.2s ease;
+}
+
+.cn-sidebar-layout .sidebar-nav .dropdown-container.open .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+/* Dropdown: base */
+.cn-sidebar-layout .sidebar-nav .dropdown-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Expanded: dropdown inline — wajib ikut alur dokumen agar tidak overlap item bawah */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu {
+  position: static !important;
+  display: block;
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  margin-top: 0;
+  padding-left: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: height 0.3s ease;
+  inset: auto !important;
+  float: none !important;
+}
+
+/* Saat .open: submenu tampil persis di bawah parent, dorong item bawah (tidak overlap) */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .dropdown-menu {
+  height: auto;
+}
+
+/* Warna hanya saat dropdown terbuka: satu blok (parent + submenu) */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open {
+  background: var(--optima-primary-light);
+  border-radius: 12px;
+  margin: 0 -2px;
+  padding: 0 2px 6px 2px;
+  padding-bottom: 12px;
+  margin-bottom: 6px;
+  transition: background 0.25s ease;
+  z-index: auto;
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle {
+  border-radius: 12px 12px 0 0;
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .dropdown-menu {
+  border-radius: 0 0 12px 12px;
+  padding-left: 0;
+  padding-bottom: 4px;
+}
+
+/* Submenu item: align lurus dengan menu (padding sama seperti parent) */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu .nav-item .nav-link {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 14px 8px 16px;
+  font-size: 0.9rem;
+  justify-content: flex-start;
+  white-space: normal;
+  word-break: break-word;
+  min-width: 0;
+}
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu .nav-item .nav-link .drop-label {
+  min-width: 0;
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu .nav-item .nav-link.dropdown-link .drop-icon {
+  font-size: 1.25rem;
+}
+
+/* Expanded: sembunyikan header flyout (hanya dipakai di collapse) */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu .nav-item-flyout-title {
+  display: none;
+}
+
+/* Flyout collapse: header + grid compact, teks tidak terpotong, scroll bila panjang */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu {
+  position: absolute;
+  top: -10px;
+  left: 100%;
+  opacity: 0;
+  height: auto !important;
+  max-height: calc(100vh - 80px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  pointer-events: none;
+  border-radius: 12px;
+  background: var(--optima-sidebar-bg);
+  border: 1px solid var(--optima-sidebar-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1100;
+  margin-left: 6px;
+  min-width: 400px;
+  max-width: 440px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: row;
+  row-gap: 8px;
+  column-gap: 4px;
+  padding: 10px 10px;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .nav-item.dropdown-container.open > .dropdown-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(8px);
+}
+
+/* Flyout buka ke atas untuk menu di bawah (Reports, Master Data, Administration) agar tidak tertutup */
+.cn-sidebar-layout .sidebar.collapsed .nav-item.dropdown-container.open.flyout-open-up > .dropdown-menu {
+  top: auto;
+  bottom: 0;
+  transform: translateY(0);
+}
+
+/* Header flyout: judul grup (Marketing, Service, dll) — baris penuh di atas */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item-flyout-title {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item-flyout-title .dropdown-title {
+  display: block;
+  width: 100%;
+  padding: 0 0 8px 0;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--optima-text);
+  border-bottom: 1px solid var(--optima-sidebar-border);
+  border-radius: 0;
+  min-height: auto;
+  background: transparent !important;
+  cursor: default;
+}
+
+/* Kotak per submenu di flyout: compact dan rapat */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title) {
+  min-width: 0;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item .nav-link.dropdown-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  min-height: 72px;
+  height: auto;
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--optima-text);
+  text-decoration: none;
+  background: #f0f4ff;
+  border: 1px solid rgba(0, 97, 242, 0.12);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  line-height: 1.3;
+  box-sizing: border-box;
+  overflow: visible;
+  min-width: 0;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item .nav-link.dropdown-link .drop-icon {
+  font-family: "Material Symbols Rounded", sans-serif;
+  font-size: 24px !important;
+  font-variation-settings: "opsz" 24, "FILL" 0, "GRAD" 0;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Label flyout: wrap, tidak terpotong; center */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item .nav-link.dropdown-link .drop-label {
+  width: 100%;
+  min-width: 0;
+  display: block;
+  overflow: visible;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* Active di flyout collapse: biru jelas agar terlihat (contract, dll) */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-link.dropdown-link.active {
+  background: var(--optima-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--optima-primary) !important;
+}
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-link.dropdown-link.active .drop-icon,
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-link.dropdown-link.active .drop-label {
+  color: #ffffff !important;
+}
+
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item .nav-link.dropdown-link:hover {
+  background: var(--optima-primary-light);
+  color: var(--optima-primary);
+  border-color: rgba(0, 97, 242, 0.25);
+}
+
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item .nav-link.dropdown-link:hover .drop-icon {
+  opacity: 1;
+}
+
+/* Warna kotak alternatif di flyout (anak ke-2 dst, anak ke-1 = header) */
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(2) .dropdown-link { background: #e8f4fd; border-color: rgba(13, 110, 253, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(3) .dropdown-link { background: #e7f5ec; border-color: rgba(25, 135, 84, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(4) .dropdown-link { background: #fff3e6; border-color: rgba(253, 126, 20, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(5) .dropdown-link { background: #fce8f0; border-color: rgba(214, 51, 132, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(6) .dropdown-link { background: #e8eaf6; border-color: rgba(111, 66, 193, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(7) .dropdown-link { background: #e0f2f4; border-color: rgba(13, 202, 240, 0.15); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(8) .dropdown-link { background: #fff8e6; border-color: rgba(255, 193, 7, 0.2); }
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-item:not(.nav-item-flyout-title):nth-child(9) .dropdown-link { background: #f0f0f0; border-color: rgba(73, 80, 87, 0.15); }
+
+.cn-sidebar-layout .dropdown-menu .nav-item .nav-link.dropdown-link:hover {
+  color: var(--optima-primary);
+  background: var(--optima-primary-light);
+}
+
+/* Main content & footer: margin ikut lebar sidebar (collapse/expand) */
+.cn-sidebar-layout .cn-main-content {
+  margin-left: var(--content-margin-left);
+  margin-top: 60px;
+  min-height: calc(100vh - 60px);
+  transition: margin-left 0.3s ease;
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) ~ .cn-main-content {
+  margin-left: var(--content-margin-left-expanded);
+}
+
+.cn-layout-footer {
+  margin-left: var(--content-margin-left);
+  padding: 0.5rem 2rem;
+  background: var(--optima-sidebar-bg);
+  border-top: 1px solid var(--optima-sidebar-border);
+  color: var(--optima-text-muted);
+  font-size: 0.875rem;
+  transition: margin-left 0.3s ease;
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) ~ .cn-layout-footer {
+  margin-left: var(--content-margin-left-expanded);
+}
+
+/* Responsive: mobile */
+@media (max-width: 768px) {
+  .cn-layout-header .sidebar-menu-button,
+  .cn-sidebar-layout .sidebar-menu-button {
+    display: flex !important;
+  }
+
+  .cn-sidebar-layout .sidebar {
+    transform: translateX(calc(-100% - var(--sidebar-gap)));
+    transition: transform 0.25s ease;
+  }
+
+  .cn-sidebar-layout.body-sidebar-mobile-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .cn-sidebar-layout .cn-main-content {
+    margin-left: 0;
+    padding-top: 1rem;
+  }
+
+  .cn-sidebar-layout .cn-layout-footer {
+    margin-left: 0;
+  }
+}

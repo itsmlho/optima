@@ -233,9 +233,9 @@ window.OptimaDataTable = (function () {
                 console.warn('⚠️ DataTables processing timeout reached - force hiding');
                 $processing.hide();
 
-                if (typeof showNotification === 'function') {
-                    showNotification('Gagal memuat data - timeout. Silakan refresh halaman.', 'warning');
-                }
+                // Silent timeout - no user notification needed
+                // User can manually refresh with Refresh button if needed
+                console.info('ℹ️ If data is not loading, try clicking the Refresh button');
             }, 35000); // 35 seconds safety timeout
         },
 

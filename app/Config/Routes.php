@@ -49,6 +49,9 @@ if (ENVIRONMENT !== 'production') {
     
     // Demo Routes - Modern Sidebar
     $routes->get('demo/modernSidebar', 'Demo::modernSidebar');
+    // Demo Routes - CodingNepal Sidebar (floating, smooth, no session)
+    $routes->get('demo/sidebar-codingnepal', 'Demo::sidebarCodingnepal');
+    $routes->get('demo/sidebar-improved', 'Demo::sidebarImproved');
 }
 
 // Customer AJAX Endpoints - MUST be before other routes to avoid conflicts
@@ -449,6 +452,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('export_customer', 'Marketing::exportCustomer');
 
     // Customer routes (accessible from marketing module)
+    $routes->get('customers/get/(:num)', 'Customers::get/$1');
     $routes->get('customers/detail/(:num)', 'Customers::detail/$1');
     $routes->get('customers/getContracts/(:num)', 'Customers::getContracts/$1');
     $routes->get('customers/getLocations/(:num)', 'Customers::getLocations/$1');
@@ -527,16 +531,19 @@ $routes->group('service', static function ($routes) {
     $routes->get('unit_audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
     $routes->get('unit_audit/getCustomers', 'UnitAudit::getCustomers');
 
-    // ── Unit Audit Location (Service Side) ──
-    $routes->get('unit-audit/location', 'UnitAudit::locationIndex', ['filter' => 'permission:view_service']);
+    // ── Unit Verification (satu halaman verifikasi unit di lokasi; Audit per Lokasi digabung ke sini) ──
+    $routes->get('unit-audit/location', 'UnitAudit::redirectToVerification', ['filter' => 'permission:view_service']);
+    $routes->get('unit-verification', 'UnitAudit::verificationIndex', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getLocationDetails/(:num)', 'UnitAudit::getLocationDetails/$1', ['filter' => 'permission:view_service']);
     $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:create_service']);
     $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getVerificationGrouped', 'UnitAudit::getVerificationGrouped', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit-verification/print/(:num)', 'UnitAudit::printVerificationLocation/$1', ['filter' => 'permission:view_service']);
     $routes->post('unit-audit/markAuditPrinted/(:num)', 'UnitAudit::markAuditPrinted/$1', ['filter' => 'permission:create_service']);
     $routes->post('unit-audit/markAuditInProgress/(:num)', 'UnitAudit::markAuditInProgress/$1', ['filter' => 'permission:create_service']);
     $routes->post('unit-audit/submitAuditResults', 'UnitAudit::submitAuditResults', ['filter' => 'permission:create_service']);

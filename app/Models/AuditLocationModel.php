@@ -20,6 +20,7 @@ class AuditLocationModel extends Model
         'audit_date',
         'audit_completed_date',
         'audited_by',
+        'mechanic_name',
         'status',
         'kontrak_total_units',
         'kontrak_spare_units',
@@ -70,13 +71,20 @@ class AuditLocationModel extends Model
 
     /**
      * Get locations for a customer that have active contracts
+     * Includes periode (contract dates) and last audit info for Service view
      */
     public function getLocationsForCustomer(int $customerId): array
     {
-        return $this->db->table('customer_locations cl')
+        $rows = $this->db->table('customer_locations cl')
             ->select('cl.id, cl.location_name, cl.address, cl.contact_person, cl.phone,
                 COUNT(ku.id) as total_units,
-                SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units')
+                SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units,
+                MIN(k.tanggal_mulai) as periode_start,
+                MAX(k.tanggal_berakhir) as periode_end,
+                (SELECT k2.no_kontrak FROM kontrak_unit ku2
+                 JOIN kontrak k2 ON k2.id = ku2.kontrak_id
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
+                 LIMIT 1) as no_kontrak')
             ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
             ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status = "ACTIVE"', 'left')
             ->where('cl.customer_id', $customerId)
@@ -85,6 +93,98 @@ class AuditLocationModel extends Model
             ->orderBy('cl.location_name', 'ASC')
             ->get()
             ->getResultArray();
+
+        foreach ($rows as &$row) {
+            $row['no_kontrak_masked'] = $this->maskContractNumber($row['no_kontrak'] ?? null);
+            $row['periode_text'] = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
+            $lastAudit = $this->getLastAuditByLocation((int) $row['id']);
+            $row['last_audit'] = $lastAudit;
+            $row['due_for_reaudit'] = $lastAudit ? $this->isDueForReaudit($lastAudit) : true;
+        }
+        return $rows;
+    }
+
+    /**
+     * Mask contract number for Service view (public for controller use)
+     */
+    public function maskContractNumberForView(?string $noKontrak): string
+    {
+        return $this->maskContractNumber($noKontrak);
+    }
+
+    /**
+     * Mask contract number for Service view
+     */
+    protected function maskContractNumber(?string $noKontrak): string
+    {
+        if (empty($noKontrak)) {
+            return '-';
+        }
+        $parts = preg_split('/[\/\-]/', $noKontrak);
+        $masked = [];
+        foreach ($parts as $p) {
+            $pLen = strlen($p);
+            if ($pLen <= 4) {
+                $masked[] = str_repeat('*', $pLen);
+            } else {
+                $masked[] = substr($p, 0, 2) . str_repeat('*', $pLen - 4) . substr($p, -2);
+            }
+        }
+        return implode('/', $masked);
+    }
+
+    /**
+     * Format periode from start/end dates
+     */
+    protected function formatPeriode(?string $start, ?string $end): string
+    {
+        if (!$start && !$end) {
+            return '-';
+        }
+        $s = $start ? date('d/m/Y', strtotime($start)) : '?';
+        $e = $end ? date('d/m/Y', strtotime($end)) : '?';
+        return $s . ' - ' . $e;
+    }
+
+    /**
+     * Get last completed audit for a location (APPROVED or RESULTS_ENTERED with no discrepancy)
+     */
+    public function getLastAuditByLocation(int $customerLocationId): ?array
+    {
+        $row = $this->db->table('unit_audit_locations ual')
+            ->select('ual.id, ual.audit_number, ual.audit_completed_date, ual.reviewed_at, ual.status,
+                ual.submitted_by, ual.audited_by, ual.mechanic_name,
+                CONCAT(u.first_name, " ", COALESCE(u.last_name, "")) as submitter_name,
+                CONCAT(mech.first_name, " ", COALESCE(mech.last_name, "")) as audited_by_name')
+            ->join('users u', 'u.id = ual.submitted_by', 'left')
+            ->join('users mech', 'mech.id = ual.audited_by', 'left')
+            ->where('ual.customer_location_id', $customerLocationId)
+            ->whereIn('ual.status', ['APPROVED', 'RESULTS_ENTERED'])
+            ->orderBy('ual.audit_completed_date', 'DESC')
+            ->orderBy('ual.reviewed_at', 'DESC')
+            ->get()
+            ->getRowArray();
+
+        if (!$row) {
+            return null;
+        }
+        $row['checked_by_name'] = $row['audited_by_name'] ?: $row['mechanic_name'] ?: '-';
+        $row['completed_at'] = $row['reviewed_at'] ?: $row['audit_completed_date'];
+        return $row;
+    }
+
+    /**
+     * Check if location is due for re-audit (more than 1 year since last audit)
+     */
+    public function isDueForReaudit(array $lastAudit): bool
+    {
+        $completedAt = $lastAudit['reviewed_at'] ?? $lastAudit['audit_completed_date'] ?? null;
+        if (!$completedAt) {
+            return true;
+        }
+        $oneYearAgo = date('Y-m-d', strtotime('-1 year'));
+        $compareDate = is_string($completedAt) ? substr($completedAt, 0, 10) : $completedAt;
+        return $compareDate <= $oneYearAgo;
     }
 
     /**
@@ -163,6 +263,124 @@ class AuditLocationModel extends Model
             ->getResultArray();
     }
 
+    /**
+     * Get data for Unit Verification page: customers with their locations (same structure as Contract > By Customer).
+     * Each location has no_kontrak_masked, periode_text, last_audit, due_for_reaudit, total_units, spare_units.
+     */
+    public function getVerificationGrouped(): array
+    {
+        $customers = $this->getCustomersWithLocations();
+        $out = [];
+        foreach ($customers as $c) {
+            $locations = $this->getLocationsForCustomer((int) $c['id']);
+            $out[] = [
+                'id'             => (int) $c['id'],
+                'customer_name'  => $c['customer_name'],
+                'customer_code'  => $c['customer_code'] ?? null,
+                'total_locations'=> (int) ($c['total_locations'] ?? 0),
+                'total_units'    => (int) ($c['total_units'] ?? 0),
+                'locations'      => $locations,
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Get latest audit status per location for a customer (badge display in Unit Audit).
+     * Returns array keyed by location_id.
+     */
+    public function getLocationAuditStatusForCustomer(int $customerId): array
+    {
+        $rows = $this->db->table('unit_audit_locations ual')
+            ->select('ual.id, ual.customer_location_id, ual.status, ual.audit_number, ual.audit_date, ual.has_discrepancy')
+            ->where('ual.customer_id', $customerId)
+            ->orderBy('ual.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $locId = (int) $row['customer_location_id'];
+            if (!isset($map[$locId])) {
+                $map[$locId] = [
+                    'audit_id'        => (int) $row['id'],
+                    'status'          => $row['status'],
+                    'audit_number'    => $row['audit_number'],
+                    'audit_date'      => $row['audit_date'],
+                    'has_discrepancy' => (bool) $row['has_discrepancy'],
+                ];
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Get grouped data for Unit Verification page: only from existing unit_audit_locations.
+     * Returns: Customer → Location → audits (with status, date, actions).
+     */
+    public function getVerificationGroupedFromAudits(): array
+    {
+        $rows = $this->db->table('unit_audit_locations ual')
+            ->select('ual.id as audit_id, ual.audit_number, ual.status, ual.audit_date,
+                ual.has_discrepancy, ual.kontrak_total_units, ual.actual_total_units,
+                ual.mechanic_notes,
+                ual.customer_id, ual.customer_location_id,
+                c.customer_name, c.customer_code,
+                cl.location_name, cl.address,
+                k.no_kontrak, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end')
+            ->join('customers c', 'c.id = ual.customer_id', 'left')
+            ->join('customer_locations cl', 'cl.id = ual.customer_location_id', 'left')
+            ->join('kontrak k', 'k.id = ual.kontrak_id', 'left')
+            ->orderBy('c.customer_name', 'ASC')
+            ->orderBy('cl.location_name', 'ASC')
+            ->orderBy('ual.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $customers = [];
+        foreach ($rows as $row) {
+            $custId = (int) $row['customer_id'];
+            $locId  = (int) $row['customer_location_id'];
+
+            if (!isset($customers[$custId])) {
+                $customers[$custId] = [
+                    'id'            => $custId,
+                    'customer_name' => $row['customer_name'],
+                    'customer_code' => $row['customer_code'],
+                    'locations'     => [],
+                ];
+            }
+
+            if (!isset($customers[$custId]['locations'][$locId])) {
+                $customers[$custId]['locations'][$locId] = [
+                    'id'               => $locId,
+                    'location_name'    => $row['location_name'],
+                    'address'          => $row['address'],
+                    'no_kontrak_masked'=> $this->maskContractNumber($row['no_kontrak'] ?? null),
+                    'periode_text'     => $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null),
+                    'audits'           => [],
+                ];
+            }
+
+            $customers[$custId]['locations'][$locId]['audits'][] = [
+                'audit_id'           => (int) $row['audit_id'],
+                'audit_number'       => $row['audit_number'],
+                'status'             => $row['status'],
+                'audit_date'         => $row['audit_date'],
+                'has_discrepancy'    => (bool) $row['has_discrepancy'],
+                'kontrak_total_units'=> (int) ($row['kontrak_total_units'] ?? 0),
+                'actual_total_units' => $row['actual_total_units'] !== null ? (int) $row['actual_total_units'] : null,
+            ];
+        }
+
+        $out = [];
+        foreach ($customers as $cust) {
+            $cust['locations'] = array_values($cust['locations']);
+            $out[] = $cust;
+        }
+        return $out;
+    }
+
     // ── CRUD Operations ─────────────────────────────────
 
     /**
@@ -204,10 +422,12 @@ class AuditLocationModel extends Model
                 'customer_location_id' => $data['customer_location_id'],
                 'kontrak_id'           => $kontrakInfo['kontrak_id'] ?? null,
                 'audit_date'           => $data['audit_date'] ?? date('Y-m-d'),
-                'status'               => 'DRAFT',
+                'status'               => $data['status'] ?? 'DRAFT',
+                'has_discrepancy'      => isset($data['has_discrepancy']) ? (int) $data['has_discrepancy'] : 0,
+                'mechanic_notes'       => $data['mechanic_notes'] ?? null,
                 'kontrak_total_units'  => $totalUnits,
                 'kontrak_spare_units'  => $spareCount,
-                'kontrak_has_operator' => 0, // TODO: Check if operator is in contract
+                'kontrak_has_operator' => 0,
                 'submitted_by'         => $data['submitted_by'],
             ];
 
@@ -277,18 +497,26 @@ class AuditLocationModel extends Model
 
     /**
      * Get all audits for listing
+     * For Service: includes masked no_kontrak, periode, last_audit info (no harga)
      */
     public function getAllAudits(array $filters = []): array
     {
         $builder = $this->db->table('unit_audit_locations ual')
             ->select('ual.id, ual.audit_number, ual.customer_id, ual.customer_location_id,
                 ual.audit_date, ual.status, ual.has_discrepancy,
+                ual.kontrak_id, ual.submitted_by, ual.audited_by, ual.mechanic_name,
                 c.customer_name,
                 cl.location_name,
+                k.no_kontrak, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end,
                 ual.kontrak_total_units, ual.actual_total_units,
-                ual.kontrak_spare_units, ual.actual_spare_units')
+                ual.kontrak_spare_units, ual.actual_spare_units,
+                CONCAT(u.first_name, " ", COALESCE(u.last_name, "")) as submitter_name,
+                CONCAT(mech.first_name, " ", COALESCE(mech.last_name, "")) as audited_by_name')
             ->join('customers c', 'c.id = ual.customer_id', 'left')
-            ->join('customer_locations cl', 'cl.id = ual.customer_location_id', 'left');
+            ->join('customer_locations cl', 'cl.id = ual.customer_location_id', 'left')
+            ->join('kontrak k', 'k.id = ual.kontrak_id', 'left')
+            ->join('users u', 'u.id = ual.submitted_by', 'left')
+            ->join('users mech', 'mech.id = ual.audited_by', 'left');
 
         if (!empty($filters['status'])) {
             $builder->where('ual.status', $filters['status']);
@@ -298,8 +526,14 @@ class AuditLocationModel extends Model
         }
 
         $builder->orderBy('ual.created_at', 'DESC');
+        $rows = $builder->get()->getResultArray();
 
-        return $builder->get()->getResultArray();
+        foreach ($rows as &$row) {
+            $row['no_kontrak_masked'] = $this->maskContractNumber($row['no_kontrak'] ?? null);
+            $row['periode_text'] = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
+            $row['checked_by_name'] = $row['audited_by_name'] ?: $row['mechanic_name'] ?: '-';
+        }
+        return $rows;
     }
 
     /**
@@ -333,6 +567,7 @@ class AuditLocationModel extends Model
 
     /**
      * Submit audit results and calculate discrepancies
+     * Supports: update existing items, insert new items (ADD_UNIT)
      */
     public function submitAuditResults(int $id, array $items, array $summary): bool
     {
@@ -345,35 +580,80 @@ class AuditLocationModel extends Model
         $db->transStart();
 
         try {
-            // Update items
             $itemsModel = new AuditLocationItemModel();
-            foreach ($items as $item) {
-                $itemsModel->update($item['id'], [
-                    'actual_no_unit'         => $item['actual_no_unit'] ?? null,
-                    'actual_serial'         => $item['actual_serial'] ?? null,
-                    'actual_merk'           => $item['actual_merk'] ?? null,
-                    'actual_model'          => $item['actual_model'] ?? null,
-                    'actual_is_spare'       => $item['actual_is_spare'] ?? 0,
-                    'actual_operator_present' => $item['actual_operator_present'] ?? 0,
-                    'result'                => $item['result'] ?? 'MATCH',
-                    'notes'                 => $item['notes'] ?? null,
-                ]);
+            $hasItemDiscrepancy = false;
+
+            foreach ($items as $key => $item) {
+                if (is_numeric($key)) {
+                    $item['id'] = (int) $key;
+                }
+                $result = $item['result'] ?? 'MATCH';
+                if ($result !== 'MATCH') {
+                    $hasItemDiscrepancy = true;
+                }
+
+                if (!empty($item['id'])) {
+                    // Update existing item
+                    $updateData = [
+                        'actual_no_unit'         => $item['actual_no_unit'] ?? null,
+                        'actual_serial'         => $item['actual_serial'] ?? null,
+                        'actual_merk'           => $item['actual_merk'] ?? null,
+                        'actual_model'          => $item['actual_model'] ?? null,
+                        'actual_is_spare'       => $item['actual_is_spare'] ?? 0,
+                        'actual_operator_present' => $item['actual_operator_present'] ?? 0,
+                        'result'                => $result,
+                        'notes'                 => $item['notes'] ?? null,
+                    ];
+                    if (isset($item['unit_id'])) {
+                        $updateData['unit_id'] = $item['unit_id'] ?: null;
+                    }
+                    $itemsModel->update($item['id'], $updateData);
+                } else {
+                    // Insert new item (ADD_UNIT - unit kurang)
+                    if ($result === 'ADD_UNIT' && !empty($item['unit_id'])) {
+                        $itemsModel->insert([
+                            'audit_location_id'   => $id,
+                            'kontrak_unit_id'     => null,
+                            'unit_id'             => $item['unit_id'],
+                            'expected_no_unit'    => null,
+                            'expected_serial'     => null,
+                            'expected_merk'       => null,
+                            'expected_model'      => null,
+                            'expected_is_spare'   => 0,
+                            'actual_no_unit'      => $item['actual_no_unit'] ?? null,
+                            'actual_serial'       => $item['actual_serial'] ?? null,
+                            'actual_merk'         => $item['actual_merk'] ?? null,
+                            'actual_model'        => $item['actual_model'] ?? null,
+                            'actual_is_spare'     => $item['actual_is_spare'] ?? 0,
+                            'actual_operator_present' => 0,
+                            'result'              => 'ADD_UNIT',
+                            'notes'               => $item['notes'] ?? null,
+                        ]);
+                    }
+                }
             }
 
-            // Update header with summary
-            $hasDiscrepancy = ($summary['actual_total_units'] != $audit['kontrak_total_units']) ||
-                             ($summary['actual_spare_units'] != $audit['kontrak_spare_units']);
+            $hasDiscrepancy = $hasItemDiscrepancy ||
+                ($summary['actual_total_units'] != $audit['kontrak_total_units']) ||
+                ($summary['actual_spare_units'] != $audit['kontrak_spare_units']);
 
-            $this->update($id, [
+            $headerUpdate = [
                 'status'                  => 'RESULTS_ENTERED',
                 'audit_completed_date'    => date('Y-m-d'),
                 'actual_total_units'      => $summary['actual_total_units'],
                 'actual_spare_units'      => $summary['actual_spare_units'],
                 'actual_has_operator'     => $summary['actual_has_operator'] ?? 0,
-                'has_discrepancy'        => $hasDiscrepancy ? 1 : 0,
+                'has_discrepancy'         => $hasDiscrepancy ? 1 : 0,
                 'mechanic_notes'          => $summary['mechanic_notes'] ?? null,
-                'service_notes'          => $summary['service_notes'] ?? null,
-            ]);
+                'service_notes'           => $summary['service_notes'] ?? null,
+            ];
+            if (isset($summary['audited_by'])) {
+                $headerUpdate['audited_by'] = $summary['audited_by'] ?: null;
+            }
+            if (isset($summary['mechanic_name'])) {
+                $headerUpdate['mechanic_name'] = $summary['mechanic_name'] ?: null;
+            }
+            $this->update($id, $headerUpdate);
 
             $db->transComplete();
 
@@ -426,8 +706,22 @@ class AuditLocationModel extends Model
             foreach ($audit['items'] as $item) {
                 switch ($item['result']) {
                     case 'EXTRA_UNIT':
-                        // Add new unit to kontrak_unit
-                        if ($item['unit_id']) {
+                        // Add new unit to kontrak_unit (unit lebih - add to contract)
+                        if (!empty($item['unit_id'])) {
+                            $db->table('kontrak_unit')->insert([
+                                'kontrak_id'           => $audit['kontrak_id'],
+                                'unit_id'              => $item['unit_id'],
+                                'customer_location_id' => $audit['customer_location_id'],
+                                'status'               => 'ACTIVE',
+                                'is_spare'             => $item['actual_is_spare'] ?? 0,
+                                'harga_sewa'           => $pricePerUnit,
+                            ]);
+                        }
+                        break;
+
+                    case 'ADD_UNIT':
+                        // Unit kurang - add unit to kontrak at this location
+                        if (!empty($item['unit_id'])) {
                             $db->table('kontrak_unit')->insert([
                                 'kontrak_id'           => $audit['kontrak_id'],
                                 'unit_id'              => $item['unit_id'],
@@ -541,10 +835,20 @@ class AuditLocationModel extends Model
     }
 
     /**
-     * Submit to marketing for approval
+     * Submit to marketing for approval (only when has_discrepancy)
+     * If no discrepancy, mark as verified/completed without sending to Marketing
      */
-    public function submitForApproval(int $id): bool
+    public function submitForApproval(int $id): array
     {
-        return (bool) $this->update($id, ['status' => 'PENDING_APPROVAL']);
+        $audit = $this->find($id);
+        if (!$audit) {
+            return ['success' => false, 'message' => 'Audit tidak ditemukan'];
+        }
+        if (($audit['has_discrepancy'] ?? 0) == 0) {
+            $this->update($id, ['status' => 'APPROVED']);
+            return ['success' => true, 'message' => 'Tidak ada selisih. Audit ditandai sebagai verifikasi selesai tanpa perlu approval Marketing.', 'no_approval' => true];
+        }
+        $this->update($id, ['status' => 'PENDING_APPROVAL']);
+        return ['success' => true, 'message' => 'Audit dikirim ke Marketing untuk approval', 'no_approval' => false];
     }
 }
