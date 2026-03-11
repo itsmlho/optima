@@ -44,9 +44,10 @@ if (!function_exists('can_access')) {
                 $customQuery->where('up.division_id', $division_id);
             }
             
-            $customPermission = $customQuery->orderBy('up.id', 'DESC')->get()->getRowArray();
+            $result = $customQuery->orderBy('up.id', 'DESC')->get();
             
-            if ($customPermission) {
+            // Check if query succeeded before calling getRowArray()
+            if ($result && $customPermission = $result->getRowArray()) {
                 return $customPermission['granted'] == 1;
             }
 
