@@ -51,8 +51,20 @@
             <div class="info-row">
                 <div class="info-cell info-label">No. Kontrak</div>
                 <div class="info-cell font-monospace"><?= esc($audit['no_kontrak_masked'] ?? $audit['no_kontrak'] ?? '-') ?></div>
+                <div class="info-cell info-label">No. PO</div>
+                <div class="info-cell font-monospace"><?= esc($audit['no_po_masked'] ?? '-') ?></div>
+            </div>
+            <div class="info-row">
+                <div class="info-cell info-label">Periode Kontrak</div>
+                <div class="info-cell"><?= esc($audit['periode_text'] ?? '-') ?></div>
+                <div class="info-cell info-label">Status Periode</div>
+                <div class="info-cell"><strong><?= esc($audit['periode_status_text'] ?? '-') ?></strong></div>
+            </div>
+            <div class="info-row">
                 <div class="info-cell info-label">Tanggal Audit</div>
                 <div class="info-cell"><?= $audit['audit_date'] ? date('d-m-Y', strtotime($audit['audit_date'])) : '-' ?></div>
+                <div class="info-cell info-label"></div>
+                <div class="info-cell"></div>
             </div>
             <div class="info-row">
                 <div class="info-cell info-label">Total Unit (Kontrak)</div>

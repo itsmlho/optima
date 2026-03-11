@@ -48,6 +48,19 @@ class UnitAudit extends BaseController
     }
 
     /**
+     * Get customers for Unit Audit page with location counts and audit badge (Select2 + badges).
+     */
+    public function getCustomersForUnitAudit()
+    {
+        try {
+            $customers = $this->auditLocationModel->getCustomersWithLocationAuditSummary();
+            return $this->response->setJSON(['success' => true, 'data' => $customers]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Get units linked to a customer via kontrak_unit
      */
     public function getCustomerUnits($customerId)
@@ -396,6 +409,7 @@ class UnitAudit extends BaseController
 
     /**
      * Get data grouped by customer then location (same as Contract > By Customer) for Unit Verification page
+     * Uses all locations from contracts (not filtered by audit existence)
      */
     public function getVerificationGrouped()
     {
@@ -404,6 +418,133 @@ class UnitAudit extends BaseController
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get grouped data for Unit Verification: only from existing unit_audit_locations records
+     */
+    public function getVerificationGroupedFromAudits()
+    {
+        try {
+            $customers = $this->auditLocationModel->getVerificationGroupedFromAudits();
+            return $this->response->setJSON(['success' => true, 'data' => $customers]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get locations with latest audit status for a customer (Unit Audit page badge display)
+     */
+    public function getLocationsWithAuditStatus($customerId)
+    {
+        try {
+            $locations = $this->auditLocationModel->getLocationsForCustomer((int) $customerId);
+            $statusMap = $this->auditLocationModel->getLocationAuditStatusForCustomer((int) $customerId);
+            foreach ($locations as &$loc) {
+                $locId = (int) $loc['id'];
+                $loc['audit_status'] = $statusMap[$locId] ?? null;
+            }
+            return $this->response->setJSON(['success' => true, 'data' => $locations]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Create audit verification from Unit Audit page Verifikasi modal.
+     * Captures field_status (sesuai/tidak_sesuai), reasons, keterangan; sets status PENDING_APPROVAL.
+     */
+    public function createAuditVerification()
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        $customerId   = $this->request->getPost('customer_id');
+        $locationId   = $this->request->getPost('customer_location_id');
+        $auditDate    = $this->request->getPost('audit_date') ?: date('Y-m-d');
+        $mechanicName = $this->request->getPost('mechanic_name') ? trim($this->request->getPost('mechanic_name')) : '';
+        $fieldStatus  = $this->request->getPost('field_status') ?: 'sesuai';
+        $items        = $this->request->getPost('items') ?: [];
+
+        if (!$customerId || !$locationId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Customer dan Lokasi wajib diisi']);
+        }
+        if ($mechanicName === '') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Mekanik yang audit wajib diisi']);
+        }
+
+        $hasDiscrepancy = ($fieldStatus === 'tidak_sesuai') ? 1 : 0;
+        $mechanicNotes  = json_encode([
+            'field_status' => $fieldStatus,
+            'items_count'  => is_array($items) ? count($items) : 0,
+        ], JSON_UNESCAPED_UNICODE);
+
+        try {
+            $auditId = $this->auditLocationModel->createAuditLocation([
+                'customer_id'          => $customerId,
+                'customer_location_id' => $locationId,
+                'audit_date'           => $auditDate,
+                'submitted_by'         => $userId,
+                'mechanic_name'        => $mechanicName,
+                'status'               => 'PENDING_APPROVAL',
+                'has_discrepancy'      => $hasDiscrepancy,
+                'mechanic_notes'       => $mechanicNotes,
+            ]);
+
+            if (!empty($items) && is_array($items)) {
+                $this->auditLocationModel->updateAuditLocationItemResults((int) $auditId, $items);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Verifikasi berhasil dibuat dan dikirim ke Marketing untuk approval',
+                'data'    => ['id' => $auditId],
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Print location form for mechanic (no existing audit record needed).
+     * Shows: customer, location, unit list with fill-in fields (kontrak saja).
+     */
+    public function printLocationForm($customerId, $locationId)
+    {
+        try {
+            $location = $this->auditLocationModel->getLocationDetails((int) $locationId);
+            if (!$location) {
+                return redirect()->to('/service/unit-audit')->with('error', 'Lokasi tidak ditemukan');
+            }
+            $units = $this->auditLocationModel->getUnitsForLocation((int) $locationId);
+
+            $kontrakInfo = \Config\Database::connect()->table('kontrak_unit ku')
+                ->select('k.no_kontrak, k.customer_po_number, k.tanggal_mulai, k.tanggal_berakhir')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->where('ku.customer_location_id', $locationId)
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->get()
+                ->getRowArray();
+
+            $periodeStatus = $this->auditLocationModel->getPeriodeStatusText($kontrakInfo['tanggal_berakhir'] ?? null);
+            $noPoMasked    = $this->auditLocationModel->maskPoNumberForView($kontrakInfo['customer_po_number'] ?? null);
+            $noKontrakMasked = $this->auditLocationModel->maskContractNumberForView($kontrakInfo['no_kontrak'] ?? null);
+
+            return view('service/print_location_form', [
+                'location'         => $location,
+                'units'            => $units,
+                'kontrak_info'     => $kontrakInfo,
+                'no_kontrak_masked'=> $noKontrakMasked,
+                'no_po_masked'     => $noPoMasked,
+                'periode_status'   => $periodeStatus,
+                'print_date'       => date('d-m-Y'),
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->to('/service/unit-audit')->with('error', $e->getMessage());
         }
     }
 

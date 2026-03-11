@@ -81,10 +81,18 @@ class AuditLocationModel extends Model
                 SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units,
                 MIN(k.tanggal_mulai) as periode_start,
                 MAX(k.tanggal_berakhir) as periode_end,
+                (SELECT k2.rental_type FROM kontrak_unit ku2
+                 JOIN kontrak k2 ON k2.id = ku2.kontrak_id
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
+                 LIMIT 1) as rental_type,
                 (SELECT k2.no_kontrak FROM kontrak_unit ku2
                  JOIN kontrak k2 ON k2.id = ku2.kontrak_id
                  WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
-                 LIMIT 1) as no_kontrak')
+                 LIMIT 1) as no_kontrak,
+                (SELECT k2.customer_po_number FROM kontrak_unit ku2
+                 JOIN kontrak k2 ON k2.id = ku2.kontrak_id
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
+                 LIMIT 1) as customer_po_number')
             ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
             ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status = "ACTIVE"', 'left')
             ->where('cl.customer_id', $customerId)
@@ -95,8 +103,15 @@ class AuditLocationModel extends Model
             ->getResultArray();
 
         foreach ($rows as &$row) {
-            $row['no_kontrak_masked'] = $this->maskContractNumber($row['no_kontrak'] ?? null);
-            $row['periode_text'] = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
+            $row['no_kontrak_masked']   = $this->maskContractNumber($row['no_kontrak'] ?? null);
+            $row['no_po_masked']        = $this->maskContractNumber($row['customer_po_number'] ?? null);
+            $row['periode_text']        = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
+            $row['periode_status_text'] = $this->getPeriodeStatusText($row['periode_end'] ?? null);
+            $rentalType = $row['rental_type'] ?? null;
+            $periodeEnd = $row['periode_end'] ?? null;
+            $row['periode_badge_text']  = (strtoupper((string) $rentalType) === 'PO_ONLY')
+                ? 'Bulanan'
+                : ($periodeEnd ? ('Valid s/d ' . date('d/m/Y', strtotime($periodeEnd))) : '—');
             $lastAudit = $this->getLastAuditByLocation((int) $row['id']);
             $row['last_audit'] = $lastAudit;
             $row['due_for_reaudit'] = $lastAudit ? $this->isDueForReaudit($lastAudit) : true;
@@ -113,6 +128,14 @@ class AuditLocationModel extends Model
     }
 
     /**
+     * Mask PO number for Service view (no_po / customer_po_number)
+     */
+    public function maskPoNumberForView(?string $noPo): string
+    {
+        return $this->maskContractNumber($noPo);
+    }
+
+    /**
      * Mask contract number for Service view
      */
     protected function maskContractNumber(?string $noKontrak): string
@@ -120,9 +143,10 @@ class AuditLocationModel extends Model
         if (empty($noKontrak)) {
             return '-';
         }
-        $parts = preg_split('/[\/\-]/', $noKontrak);
+        $parts = preg_split('/[\/\-]/', trim($noKontrak));
         $masked = [];
         foreach ($parts as $p) {
+            $p = trim($p);
             $pLen = strlen($p);
             if ($pLen <= 4) {
                 $masked[] = str_repeat('*', $pLen);
@@ -144,6 +168,30 @@ class AuditLocationModel extends Model
         $s = $start ? date('d/m/Y', strtotime($start)) : '?';
         $e = $end ? date('d/m/Y', strtotime($end)) : '?';
         return $s . ' - ' . $e;
+    }
+
+    /**
+     * Status periode untuk mekanik: Aktif / Tinggal X hari / Sudah lewat X hari (ajuan unit pulang)
+     */
+    public function getPeriodeStatusText(?string $periodeEnd): string
+    {
+        if (empty($periodeEnd)) {
+            return '—';
+        }
+        $today = date('Y-m-d');
+        $end = date('Y-m-d', strtotime($periodeEnd));
+        if ($end < $today) {
+            $days = (int) floor((strtotime($today) - strtotime($end)) / 86400);
+            return 'Sudah lewat ' . $days . ' hari — ajukan unit pulang';
+        }
+        $days = (int) floor((strtotime($end) - strtotime($today)) / 86400);
+        if ($days <= 0) {
+            return 'Berakhir hari ini';
+        }
+        if ($days <= 30) {
+            return 'Tinggal ' . $days . ' hari — perhatikan pengembalian';
+        }
+        return 'Aktif (tinggal ' . $days . ' hari)';
     }
 
     /**
@@ -211,7 +259,7 @@ class AuditLocationModel extends Model
                 mu.merk_unit,
                 mu.model_unit,
                 tu.tipe as tipe_unit,
-                tc.kapasitas as kapasitas')
+                tc.kapasitas_unit as kapasitas')
             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id', 'left')
             ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
@@ -261,6 +309,38 @@ class AuditLocationModel extends Model
             ->orderBy('c.customer_name', 'ASC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Customers with units + location audit summary for Unit Audit page (Select2 + badges).
+     * Returns: total_locations, locations_approved, locations_belum_audit, audit_badge (belum_audit|sebagian|sudah_audit).
+     */
+    public function getCustomersWithLocationAuditSummary(): array
+    {
+        $customers = $this->getCustomersWithLocations();
+        if (empty($customers)) {
+            return [];
+        }
+        $ids = array_column($customers, 'id');
+        $approvedCounts = $this->db->table('unit_audit_locations ual')
+            ->select('ual.customer_id, COUNT(DISTINCT ual.customer_location_id) as approved_locations')
+            ->whereIn('ual.customer_id', $ids)
+            ->where('ual.status', 'APPROVED')
+            ->groupBy('ual.customer_id')
+            ->get()
+            ->getResultArray();
+        $approvedMap = [];
+        foreach ($approvedCounts as $r) {
+            $approvedMap[(int) $r['customer_id']] = (int) $r['approved_locations'];
+        }
+        foreach ($customers as &$c) {
+            $totalLoc = (int) ($c['total_locations'] ?? 0);
+            $approved = $approvedMap[(int) $c['id']] ?? 0;
+            $c['locations_approved']   = $approved;
+            $c['locations_belum_audit'] = $totalLoc - $approved;
+            $c['audit_badge'] = $totalLoc <= 0 ? 'belum_audit' : ($approved >= $totalLoc ? 'sudah_audit' : ($approved > 0 ? 'sebagian' : 'belum_audit'));
+        }
+        return $customers;
     }
 
     /**
@@ -327,7 +407,7 @@ class AuditLocationModel extends Model
                 ual.customer_id, ual.customer_location_id,
                 c.customer_name, c.customer_code,
                 cl.location_name, cl.address,
-                k.no_kontrak, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end')
+                k.no_kontrak, k.customer_po_number, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end')
             ->join('customers c', 'c.id = ual.customer_id', 'left')
             ->join('customer_locations cl', 'cl.id = ual.customer_location_id', 'left')
             ->join('kontrak k', 'k.id = ual.kontrak_id', 'left')
@@ -353,12 +433,14 @@ class AuditLocationModel extends Model
 
             if (!isset($customers[$custId]['locations'][$locId])) {
                 $customers[$custId]['locations'][$locId] = [
-                    'id'               => $locId,
-                    'location_name'    => $row['location_name'],
-                    'address'          => $row['address'],
-                    'no_kontrak_masked'=> $this->maskContractNumber($row['no_kontrak'] ?? null),
-                    'periode_text'     => $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null),
-                    'audits'           => [],
+                    'id'                  => $locId,
+                    'location_name'       => $row['location_name'],
+                    'address'             => $row['address'],
+                    'no_kontrak_masked'   => $this->maskContractNumber($row['no_kontrak'] ?? null),
+                    'no_po_masked'        => $this->maskContractNumber($row['customer_po_number'] ?? null),
+                    'periode_text'        => $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null),
+                    'periode_status_text' => $this->getPeriodeStatusText($row['periode_end'] ?? null),
+                    'audits'              => [],
                 ];
             }
 
@@ -425,6 +507,7 @@ class AuditLocationModel extends Model
                 'status'               => $data['status'] ?? 'DRAFT',
                 'has_discrepancy'      => isset($data['has_discrepancy']) ? (int) $data['has_discrepancy'] : 0,
                 'mechanic_notes'       => $data['mechanic_notes'] ?? null,
+                'mechanic_name'        => $data['mechanic_name'] ?? null,
                 'kontrak_total_units'  => $totalUnits,
                 'kontrak_spare_units'  => $spareCount,
                 'kontrak_has_operator' => 0,
@@ -460,6 +543,42 @@ class AuditLocationModel extends Model
     }
 
     /**
+     * Update audit location item results (per-unit Sesuai/Tidak from Verifikasi modal).
+     * $items = [ ['unit_id' => id, 'result' => 'sesuai'|'tidak_sesuai', 'reasons' => [], 'keterangan' => ''], ... ]
+     */
+    public function updateAuditLocationItemResults(int $auditLocationId, array $items): void
+    {
+        $itemsModel = new AuditLocationItemModel();
+        foreach ($items as $it) {
+            $unitId = isset($it['unit_id']) ? (int) $it['unit_id'] : 0;
+            $result = isset($it['result']) ? $it['result'] : 'sesuai';
+            $dbResult = (strtolower((string) $result) === 'tidak_sesuai') ? 'MISMATCH' : 'MATCH';
+            $reasons = isset($it['reasons']) && is_array($it['reasons']) ? $it['reasons'] : [];
+            $keterangan = isset($it['keterangan']) ? trim((string) $it['keterangan']) : '';
+            $extra = isset($it['extra']) && is_array($it['extra']) ? $it['extra'] : [];
+            $notes = null;
+            if ($dbResult === 'MISMATCH' && (count($reasons) > 0 || $keterangan !== '' || !empty($extra))) {
+                $notes = json_encode(['reasons' => $reasons, 'keterangan' => $keterangan, 'extra' => $extra], JSON_UNESCAPED_UNICODE);
+            }
+            if ($unitId <= 0) {
+                continue;
+            }
+            $rows = $this->db->table('unit_audit_location_items')
+                ->where('audit_location_id', $auditLocationId)
+                ->where('unit_id', $unitId)
+                ->get()
+                ->getResultArray();
+            foreach ($rows as $row) {
+                $update = ['result' => $dbResult];
+                if ($notes !== null) {
+                    $update['notes'] = $notes;
+                }
+                $itemsModel->update((int) $row['id'], $update);
+            }
+        }
+    }
+
+    /**
      * Get audit location with details
      */
     public function getWithDetails(int $id): ?array
@@ -472,7 +591,8 @@ class AuditLocationModel extends Model
                 cl.address as location_address,
                 cl.contact_person,
                 cl.phone as location_phone,
-                k.no_kontrak,
+                k.no_kontrak, k.customer_po_number,
+                k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end,
                 CONCAT(u.first_name, " ", COALESCE(u.last_name, "")) as submitter_name,
                 CONCAT(reviewer.first_name, " ", COALESCE(reviewer.last_name, "")) as reviewer_name')
             ->join('customers c', 'c.id = ual.customer_id', 'left')
@@ -488,7 +608,11 @@ class AuditLocationModel extends Model
             return null;
         }
 
-        // Get items
+        $header['no_kontrak_masked']   = $this->maskContractNumber($header['no_kontrak'] ?? null);
+        $header['no_po_masked']        = $this->maskContractNumber($header['customer_po_number'] ?? null);
+        $header['periode_text']        = $this->formatPeriode($header['periode_start'] ?? null, $header['periode_end'] ?? null);
+        $header['periode_status_text'] = $this->getPeriodeStatusText($header['periode_end'] ?? null);
+
         $itemsModel = new AuditLocationItemModel();
         $header['items'] = $itemsModel->getByAuditLocation($id);
 
@@ -507,7 +631,7 @@ class AuditLocationModel extends Model
                 ual.kontrak_id, ual.submitted_by, ual.audited_by, ual.mechanic_name,
                 c.customer_name,
                 cl.location_name,
-                k.no_kontrak, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end,
+                k.no_kontrak, k.customer_po_number, k.tanggal_mulai as periode_start, k.tanggal_berakhir as periode_end,
                 ual.kontrak_total_units, ual.actual_total_units,
                 ual.kontrak_spare_units, ual.actual_spare_units,
                 CONCAT(u.first_name, " ", COALESCE(u.last_name, "")) as submitter_name,
@@ -529,9 +653,11 @@ class AuditLocationModel extends Model
         $rows = $builder->get()->getResultArray();
 
         foreach ($rows as &$row) {
-            $row['no_kontrak_masked'] = $this->maskContractNumber($row['no_kontrak'] ?? null);
-            $row['periode_text'] = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
-            $row['checked_by_name'] = $row['audited_by_name'] ?: $row['mechanic_name'] ?: '-';
+            $row['no_kontrak_masked']   = $this->maskContractNumber($row['no_kontrak'] ?? null);
+            $row['no_po_masked']        = $this->maskContractNumber($row['customer_po_number'] ?? null);
+            $row['periode_text']        = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
+            $row['periode_status_text'] = $this->getPeriodeStatusText($row['periode_end'] ?? null);
+            $row['checked_by_name']     = $row['audited_by_name'] ?: $row['mechanic_name'] ?: '-';
         }
         return $rows;
     }

@@ -521,6 +521,7 @@ $routes->group('service', static function ($routes) {
     // Unit Audit & Movement (Audit is in Service, Movement is in Warehouse)
     $routes->get('unit-audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
     $routes->get('unit_audit/getCustomersWithUnits', 'UnitAudit::getCustomersWithUnits', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getCustomersForUnitAudit', 'UnitAudit::getCustomersForUnitAudit', ['filter' => 'permission:view_service']);
     $routes->get('unit_audit/getCustomerUnits/(:num)', 'UnitAudit::getCustomerUnits/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit_audit/getAvailableUnits', 'UnitAudit::getAvailableUnits', ['filter' => 'permission:view_service']);
     $routes->post('unit_audit/createAuditRequest', 'UnitAudit::createAuditRequest', ['filter' => 'permission:create_service']);
@@ -541,6 +542,10 @@ $routes->group('service', static function ($routes) {
     $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:create_service']);
     $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getVerificationGrouped', 'UnitAudit::getVerificationGrouped', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getVerificationGroupedFromAudits', 'UnitAudit::getVerificationGroupedFromAudits', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getLocationsWithAuditStatus/(:num)', 'UnitAudit::getLocationsWithAuditStatus/$1', ['filter' => 'permission:view_service']);
+    $routes->post('unit-audit/createAuditVerification', 'UnitAudit::createAuditVerification', ['filter' => 'permission:create_service']);
+    $routes->get('unit-audit/printLocationForm/(:num)/(:num)', 'UnitAudit::printLocationForm/$1/$2', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-verification/print/(:num)', 'UnitAudit::printVerificationLocation/$1', ['filter' => 'permission:view_service']);

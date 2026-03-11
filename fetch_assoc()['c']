@@ -1,1 +1,0 @@
-'Current rows: ' . \$r2- . PHP_EOL;
