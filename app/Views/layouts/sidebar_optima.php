@@ -32,7 +32,7 @@ helper('permission_helper');
             </li>
 
             <!-- ── Marketing ─────────────────────────────────────────── -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (hasModuleAccess('marketing')): ?>
             <?php
                 $cur = current_url();
                 $isMarketingSection = (strpos($cur, 'marketing/') !== false);
@@ -80,7 +80,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Service ────────────────────────────────────────────── -->
-            <?php if (can_view('service')): ?>
+            <?php if (hasModuleAccess('service')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">build</span>
@@ -108,7 +108,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Operational ────────────────────────────────────────── -->
-            <?php if (can_view('operational')): ?>
+            <?php if (hasModuleAccess('operational')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">local_shipping</span>
@@ -127,7 +127,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Finance ────────────────────────────────────────────── -->
-            <?php if (can_view('accounting')): ?>
+            <?php if (hasModuleAccess('accounting')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">account_balance</span>
@@ -149,7 +149,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Purchasing ─────────────────────────────────────────── -->
-            <?php if (can_view('purchasing')): ?>
+            <?php if (hasModuleAccess('purchasing')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">shopping_cart</span>
@@ -170,7 +170,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Warehouse ──────────────────────────────────────────── -->
-            <?php if (can_view('warehouse')): ?>
+            <?php if (hasModuleAccess('warehouse')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">warehouse</span>
@@ -202,7 +202,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Perizinan ──────────────────────────────────────────── -->
-            <?php if (can_view('perizinan')): ?>
+            <?php if (hasModuleAccess('perizinan')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">shield</span>
@@ -254,7 +254,7 @@ helper('permission_helper');
                     <?php if (canNavigateTo('service', 'area')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area & Karyawan</span></a></li>
                     <?php endif; ?>
-                    <?php if (can_view('admin')): ?>
+                    <?php if (hasModuleAccess('admin')): ?>
                     <li class="nav-item"><a href="<?= base_url('/admin/divisions') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">corporate_fare</span><span class="drop-label">Divisions</span></a></li>
                     <li class="nav-item"><a href="<?= base_url('/admin/positions') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">badge</span><span class="drop-label">Positions</span></a></li>
                     <?php endif; ?>
@@ -262,7 +262,7 @@ helper('permission_helper');
             </li>
 
             <!-- ── Administration ─────────────────────────────────────── -->
-            <?php if (can_view('admin')): ?>
+            <?php if (hasModuleAccess('admin')): ?>
             <li class="nav-item dropdown-container">
                 <a href="#" class="nav-link dropdown-toggle">
                     <span class="material-symbols-rounded">settings</span>
