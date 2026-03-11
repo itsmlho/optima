@@ -35,7 +35,7 @@ if (!function_exists('hasPermission')) {
         // ═══════════════════════════════════════════════════════════════
         // PRIORITY 1: Check User-Specific Permissions (HIGHEST PRIORITY)
         // ═══════════════════════════════════════════════════════════════
-        $userPermission = $db->query("
+        $userPermissionQuery = $db->query("
             SELECT up.granted
             FROM user_permissions up
             INNER JOIN permissions p ON up.permission_id = p.id
@@ -44,19 +44,21 @@ if (!function_exists('hasPermission')) {
             AND (up.expires_at IS NULL OR up.expires_at > NOW())
             ORDER BY up.created_at DESC
             LIMIT 1
-        ", [$userId, $permissionKey])->getRow();
+        ", [$userId, $permissionKey]);
+        
+        $userPermission = safe_get_row($userPermissionQuery);
         
         if ($userPermission !== null) {
             // User-specific permission found
             // granted = 1 → ALLOW (override role)
             // granted = 0 → DENY (revoke, even if role has it)
-            return (bool) $userPermission->granted;
+            return isset($userPermission['granted']) ? (bool) $userPermission['granted'] : false;
         }
         
         // ═══════════════════════════════════════════════════════════════
         // PRIORITY 2: Check Role Permissions (DEFAULT BEHAVIOR)
         // ═══════════════════════════════════════════════════════════════
-        $result = $db->query("
+        $rolePermissionQuery = $db->query("
             SELECT COUNT(*) as count 
             FROM role_permissions rp
             INNER JOIN permissions p ON rp.permission_id = p.id
@@ -65,9 +67,11 @@ if (!function_exists('hasPermission')) {
             AND p.key_name = ?
             AND rp.granted = 1
             AND ur.is_active = 1
-        ", [$userId, $permissionKey])->getRowArray();
+        ", [$userId, $permissionKey]);
+        
+        $result = safe_get_row($rolePermissionQuery);
 
-        return $result && $result['count'] > 0;
+        return $result && isset($result['count']) && $result['count'] > 0;
     }
 }
 
@@ -97,7 +101,7 @@ if (!function_exists('hasModuleAccess')) {
 
         $db = \Config\Database::connect();
         
-        $result = $db->query("
+        $moduleAccessQuery = $db->query("
             SELECT COUNT(*) as count 
             FROM role_permissions rp
             INNER JOIN permissions p ON rp.permission_id = p.id
@@ -105,9 +109,11 @@ if (!function_exists('hasModuleAccess')) {
             WHERE ur.user_id = ? 
             AND p.module = ?
             AND rp.granted = 1
-        ", [$userId, $module])->getRowArray();
+        ", [$userId, $module]);
+        
+        $result = safe_get_row($moduleAccessQuery);
 
-        return $result && $result['count'] > 0;
+        return $result && isset($result['count']) && $result['count'] > 0;
     }
 }
 
@@ -132,7 +138,7 @@ if (!function_exists('hasPageAccess')) {
 
         $db = \Config\Database::connect();
         
-        $result = $db->query("
+        $pageAccessQuery = $db->query("
             SELECT COUNT(*) as count 
             FROM role_permissions rp
             INNER JOIN permissions p ON rp.permission_id = p.id
@@ -141,9 +147,11 @@ if (!function_exists('hasPageAccess')) {
             AND p.module = ?
             AND p.page = ?
             AND rp.granted = 1
-        ", [$userId, $module, $page])->getRowArray();
+        ", [$userId, $module, $page]);
+        
+        $result = safe_get_row($pageAccessQuery);
 
-        return $result && $result['count'] > 0;
+        return $result && isset($result['count']) && $result['count'] > 0;
     }
 }
 
@@ -199,7 +207,7 @@ if (!function_exists('getUserPermissions')) {
 
         $db = \Config\Database::connect();
         
-        $result = $db->query("
+        $userPermsQuery = $db->query("
             SELECT p.key_name, p.display_name, p.module, p.page, p.action, p.category
             FROM role_permissions rp
             INNER JOIN permissions p ON rp.permission_id = p.id
@@ -207,9 +215,11 @@ if (!function_exists('getUserPermissions')) {
             WHERE ur.user_id = ? 
             AND rp.granted = 1
             ORDER BY p.module, p.page, p.action
-        ", [$userId])->getResultArray();
+        ", [$userId]);
+        
+        $result = safe_get_result($userPermsQuery);
 
-        return $result ?: [];
+        return $result;
     }
 }
 
@@ -233,7 +243,7 @@ if (!function_exists('getUserModulePermissions')) {
 
         $db = \Config\Database::connect();
         
-        $result = $db->query("
+        $modulePermsQuery = $db->query("
             SELECT p.key_name, p.display_name, p.page, p.action, p.category
             FROM role_permissions rp
             INNER JOIN permissions p ON rp.permission_id = p.id
@@ -242,9 +252,11 @@ if (!function_exists('getUserModulePermissions')) {
             AND p.module = ?
             AND rp.granted = 1
             ORDER BY p.page, p.action
-        ", [$userId, $module])->getResultArray();
+        ", [$userId, $module]);
+        
+        $result = safe_get_result($modulePermsQuery);
 
-        return $result ?: [];
+        return $result;
     }
 }
 
@@ -267,15 +279,17 @@ if (!function_exists('isSystemAdmin')) {
 
         $db = \Config\Database::connect();
         
-        $result = $db->query("
+        $adminCheckQuery = $db->query("
             SELECT COUNT(*) as count 
             FROM user_roles ur
             INNER JOIN roles r ON ur.role_id = r.id
             WHERE ur.user_id = ? 
             AND r.name IN ('Super Administrator', 'Administrator')
-        ", [$userId])->getRowArray();
+        ", [$userId]);
+        
+        $result = safe_get_row($adminCheckQuery);
 
-        return $result && $result['count'] > 0;
+        return $result && isset($result['count']) && $result['count'] > 0;
     }
 }
 
