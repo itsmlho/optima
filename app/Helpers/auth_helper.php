@@ -565,9 +565,9 @@ if (!function_exists('getUserAccessFromTable')) {
                 $areaType = $userAccess['area_type'] ?? $accessType;
                 
                 if ($areaType === 'ALL') {
-                    $areas = $db->table('areas')->select('id')->where('is_active', 1)->get()->getResultArray();
+                    $areas = safe_get_result($db->table('areas')->select('id')->where('is_active', 1));
                 } else {
-                    $areas = $db->table('areas')->select('id')->where('area_type', $areaType)->where('is_active', 1)->get()->getResultArray();
+                    $areas = safe_get_result($db->table('areas')->select('id')->where('area_type', $areaType)->where('is_active', 1));
                 }
                 $areaIds = array_column($areas, 'id');
             }
@@ -701,7 +701,7 @@ if (!function_exists('getUserServiceAccess')) {
                         $centralQuery = $db->table('areas')
                             ->select('id as area_id')
                             ->where('area_type', 'CENTRAL');
-                        $centralAreas = $centralQuery->get()->getResultArray();
+                        $centralAreas = safe_get_result($centralQuery);
                         $centralAreaIds = array_column($centralAreas, 'area_id');
                         
                         $branchAreaIds = json_decode($branchAccess['branch_ids'], true) ?: [];
@@ -727,7 +727,7 @@ if (!function_exists('getUserServiceAccess')) {
                         $areaQuery->whereIn('id', $specificAreaIds);
                     }
                     
-                    $areas = $areaQuery->get()->getResultArray();
+                    $areas = safe_get_result($areaQuery);
                     $scope['areas'] = array_column($areas, 'area_id');
                 }
                 
@@ -838,7 +838,7 @@ if (!function_exists('getDefaultAccessByType')) {
                     
                 case 'BRANCH':
                     // Admin Service Area - Branch areas only
-                    $areas = $db->table('areas')->select('id')->where('area_type', 'BRANCH')->where('is_active', 1)->get()->getResultArray();
+                    $areas = safe_get_result($db->table('areas')->select('id')->where('area_type', 'BRANCH')->where('is_active', 1));
                     $areaIds = array_column($areas, 'id');
                     return [
                         'areas' => $areaIds,

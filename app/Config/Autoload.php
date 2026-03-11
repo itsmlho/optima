@@ -99,6 +99,7 @@ class Autoload extends AutoloadConfig
         'date', // Load date helper globally
         'notification', // Load notification helper for sending notifications
         'cache', // Load cache helper for queue system
+        'database', // Safe database query helpers (Added: 2026-03-11)
         
         // Design System Helpers (Added: 2026-02-09)
         'ui_helper',              // UI component helper (buttons, badges, alerts)

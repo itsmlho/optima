@@ -44,25 +44,22 @@ if (!function_exists('can_access')) {
                 $customQuery->where('up.division_id', $division_id);
             }
             
-            $result = $customQuery->orderBy('up.id', 'DESC')->get();
+            $customPermission = safe_get_row($customQuery->orderBy('up.id', 'DESC'));
             
-            // Check if query succeeded before calling getRowArray()
-            if ($result && $customPermission = $result->getRowArray()) {
+            if ($customPermission) {
                 return $customPermission['granted'] == 1;
             }
 
             // 2. Check role permission
-            $rolePermission = $db->table('user_roles ur')
-                ->join('role_permissions rp', 'rp.role_id = ur.role_id')
-                ->join('permissions p', 'p.id = rp.permission_id')
-                ->where('ur.user_id', $user_id)
-                ->where('p.key', $permission_key)
-                ->countAllResults();
-
-            // DEBUG: Log role permission result
-            log_message('info', "RBAC Debug - Role permission count for {$permission_key}: {$rolePermission}");
+            $rolePermissionCount = safe_count_results(
+                $db->table('user_roles ur')
+                    ->join('role_permissions rp', 'rp.role_id = ur.role_id')
+                    ->join('permissions p', 'p.id = rp.permission_id')
+                    ->where('ur.user_id', $user_id)
+                    ->where('p.key', $permission_key)
+            );
             
-            return $rolePermission > 0;
+            return $rolePermissionCount > 0;
 
         } catch (\Exception $e) {
             log_message('error', 'RBAC Helper Error: ' . $e->getMessage());
