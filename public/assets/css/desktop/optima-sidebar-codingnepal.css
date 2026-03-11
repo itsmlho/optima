@@ -240,13 +240,13 @@ body.cn-sidebar-layout {
   color: #ffffff;
 }
 
-/* Parent dropdown: tidak kasih warna active kalau dropdown belum terbuka */
-.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active {
+/* Parent dropdown: TIDAK kasih warna biru solid di parent toggle (mau open atau closed) */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container > .nav-link.dropdown-toggle.active {
   background: transparent;
   color: var(--optima-text);
 }
-.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active .material-symbols-rounded,
-.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container:not(.open) > .nav-link.dropdown-toggle.active .dropdown-icon {
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container > .nav-link.dropdown-toggle.active .material-symbols-rounded,
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container > .nav-link.dropdown-toggle.active .dropdown-icon {
   color: inherit;
 }
 
