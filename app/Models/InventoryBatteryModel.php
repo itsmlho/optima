@@ -234,19 +234,27 @@ class InventoryBatteryModel extends Model
     }
 
     /**
-     * Get available batteries (AVAILABLE and SPARE)
+     * Get all batteries (AVAILABLE, SPARE, and USED) for SPK selection
+     * USED batteries can be detached from workshop units and re-assigned
      */
     public function getAvailableBatteries(): array
     {
         return $this->select('inventory_batteries.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai, 
                              iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
-                             mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model')
+                             mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model,
+                             iu.status_unit_id as installed_unit_status_id')
             ->join('baterai b', 'b.id = inventory_batteries.battery_type_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_batteries.inventory_unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-            ->whereIn('inventory_batteries.status', ['AVAILABLE', 'SPARE'])
+            ->groupStart()
+                ->where('inventory_batteries.status', 'AVAILABLE')
+                ->orGroupStart()
+                    ->where('inventory_batteries.status', 'IN_USE')
+                    ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // Unit must be AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
+                ->groupEnd()
+            ->groupEnd()
             ->where('inventory_batteries.battery_type_id IS NOT NULL')
-            ->orderBy('inventory_batteries.status', 'ASC') // AVAILABLE first, then SPARE
+            ->orderBy('inventory_batteries.status', 'ASC') // AVAILABLE first, then IN_USE
             ->orderBy('inventory_batteries.received_at','ASC')
             ->findAll(100);
     }

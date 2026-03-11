@@ -195,9 +195,9 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         this.selectedItems.forEach((item, employeeId) => {
             const primaryLabel = item.isPrimary ? '<i class="fas fa-star text-warning" title="Primary"></i>' : '';
             html += `
-                <span class="selected-item badge bg-${item.roleColor} me-1 mb-1" data-id="${employeeId}">
-                    ${primaryLabel} ${item.name} (${item.roleLabel})
-                    <i class="fas fa-times ms-1 remove-item" data-id="${employeeId}"></i>
+                <span class="selected-item badge badge-soft-${item.roleColor} me-1 mb-1" data-id="${employeeId}" style="font-size:0.85rem;padding:0.5rem 0.75rem;">
+                    ${primaryLabel} ${item.name} <span class="text-muted small">(${item.roleLabel})</span>
+                    <i class="fas fa-times ms-1 remove-item" data-id="${employeeId}" style="cursor:pointer;"></i>
                 </span>
             `;
         });
@@ -230,7 +230,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
                                  data-role="${emp.role}">
                                 <div class="employee-info">
                                     <span class="employee-name">${emp.name}</span>
-                                    <span class="badge bg-${emp.roleColor} badge-sm">${emp.roleLabel}</span>
+                                    <span class="badge badge-soft-${emp.roleColor}" style="font-size:0.7rem;">${emp.roleLabel}</span>
                                 </div>
                                 ${this.selectedItems.has(parseInt(emp.id)) ? '<i class="fas fa-check text-success"></i>' : ''}
                             </div>

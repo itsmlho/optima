@@ -4,6 +4,8 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
 use App\Traits\ActivityLoggingTrait;
 
 class InventoryApi extends BaseController
@@ -45,14 +47,14 @@ class InventoryApi extends BaseController
 
     public function availableChargers()
     {
-        $m = new InventoryAttachmentModel();
+        $m = new InventoryChargerModel();
         $rows = $m->getAvailableChargers();
         return $this->response->setJSON($rows);
     }
 
     public function availableBatteries()
     {
-        $m = new InventoryAttachmentModel();
+        $m = new InventoryBatteryModel();
         $rows = $m->getAvailableBatteries();
         return $this->response->setJSON($rows);
     }

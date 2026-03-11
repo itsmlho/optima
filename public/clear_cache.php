@@ -16,6 +16,8 @@ if (function_exists('opcache_reset')) {
 if (function_exists('apcu_clear_cache')) {
     apcu_clear_cache();
     echo "✅ APCu cache cleared!\n";
+} else {
+    echo "⚠️ APCu not enabled\n";
 }
 
 // Clear realpath cache

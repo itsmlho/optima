@@ -343,18 +343,19 @@
 <div class="modal fade" id="addEmployeeModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add New Employee</h5>
+      <div class="modal-header bg-light">
+        <h5 class="modal-title"><i class="fas fa-user-plus text-primary"></i> Add New Employee</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <form id="addEmployeeForm">
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
           <div class="form-errors alert alert-danger" style="display: none;"></div>
           <div class="form-group">
             <label>Staff Code <span class="text-danger">*</span></label>
-            <input type="text" name="staff_code" class="form-control" required maxlength="20">
+            <input type="text" name="staff_code" id="staff_code" class="form-control" required maxlength="20" readonly>
+            <small class="form-text text-muted">Auto-generated based on role</small>
           </div>
           <div class="form-group">
             <label>Staff Name <span class="text-danger">*</span></label>
@@ -362,11 +363,12 @@
           </div>
           <div class="form-group">
             <label>Role <span class="text-danger">*</span></label>
-            <select name="staff_role" class="form-control" required onchange="updateJobDescriptionOptions()">
+            <select name="staff_role" id="staff_role" class="form-control" required onchange="updateJobDescriptionOptions(); generateStaffCode();">
               <option value="">-- Select Role --</option>
               <option value="ADMIN">Admin</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="FOREMAN">Foreman</option>
+              <option value="MECHANIC">Mechanic</option>
               <option value="MECHANIC_SERVICE_AREA">Mechanic - Service Area</option>
               <option value="MECHANIC_UNIT_PREP">Mechanic - Unit Preparation</option>
               <option value="MECHANIC_FABRICATION">Mechanic - Fabrication</option>
@@ -412,9 +414,9 @@
             <textarea name="address" class="form-control" rows="2"></textarea>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-success">Save Employee</button>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Employee</button>
         </div>
       </form>
     </div>
@@ -929,20 +931,35 @@
     margin-top: 4px;
 }
 
-/* Processing indicator */
+/* Processing indicator - OPTIMA Theme */
 .dataTables_wrapper .dataTables_processing {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 200px;
-    margin-left: -100px;
-    margin-top: -26px;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 240px;
+    margin-left: -120px;
+    margin-top: -40px;
     text-align: center;
-    padding: 1em 0;
-    background: rgba(78, 115, 223, 0.9);
-    color: white;
-    border-radius: 0.35rem;
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    padding: 1.5em 1em;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+    z-index: 9999 !important;
+    font-weight: 500;
+    font-size: 14px;
+    animation: processingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes processingPulse {
+    0%, 100% { opacity: 0.9; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+}
+
+.dataTables_wrapper .dataTables_processing:before {
+    content: "⏳ ";
+    font-size: 18px;
+    margin-right: 8px;
 }
 
 /* Responsive adjustments */
@@ -974,13 +991,12 @@ let employeesByRoleChart, assignmentsByAreaChart;
 // Filter functionality removed for simplicity
 
 $(document).ready(function() {
-  // Initialize tables only once
+  // Initialize ONLY Areas table on page load
   if (!areasTable) {
     initializeAreaTable();
   }
-  if (!employeesTable) {
-    initializeEmployeeTable();
-  }
+  
+  // DON'T initialize employees table yet - wait for tab click
   
   initializeCharts();
   bindForms();
@@ -997,10 +1013,16 @@ $(document).ready(function() {
     $('#areas-tab').tab('show');
   }, 100);
   
-  // Tab change tracking
+  // Tab change tracking - LAZY LOAD employees table
   $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
     const targetTab = $(e.target).attr('href').substring(1);
     window.currentActiveTab = targetTab;
+    
+    // Initialize employees table ONLY when user clicks the tab
+    if (targetTab === 'employeesTab' && !employeesTable) {
+      console.log('Lazy loading employees table...');
+      initializeEmployeeTable();
+    }
     
     // Adjust columns when switching tabs
     if (targetTab === 'areasTab' && areasTable) {
@@ -1054,6 +1076,16 @@ $(document).ready(function() {
   $('.modal').on('hidden.bs.modal', function() {
     $(this).find('form')[0]?.reset();
     $(this).find('.form-errors').html('').hide();
+    // Re-enable submit buttons
+    $(this).find('button[type="submit"]').prop('disabled', false);
+  });
+  
+  // Specific handler for employee modal
+  $('#addEmployeeModal').on('hidden.bs.modal', function() {
+    $('#addEmployeeForm')[0].reset();
+    $('#addEmployeeForm .form-errors').html('').hide();
+    const $submitBtn = $('#addEmployeeForm button[type="submit"]');
+    $submitBtn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Employee');
   });
 });
 
@@ -1065,7 +1097,7 @@ function initializeAreaTable() {
   
   try {
     areasTable = $('#areasTable').DataTable({
-      processing: true,
+      processing: false, // DISABLED - Loading indicator annoying untuk user
       serverSide: true,
       searching: true,
       searchDelay: 500,
@@ -1073,15 +1105,30 @@ function initializeAreaTable() {
       ajax: {
         url: '<?= base_url('service/area-management/getAreas') ?>',
         type: 'POST',
+        timeout: 30000, // 30 second timeout
         data: function(d) {
           // DataTables akan mengirim parameter search, order, pagination secara otomatis
           return d;
         },
         dataSrc: function(json) {
+          if (!json) {
+            console.error('No response from server');
+            return [];
+          }
+          if (json.error) {
+            console.error('Server error:', json.message);
+            alert('Error loading areas: ' + json.message);
+            return [];
+          }
           return (json && json.data) ? json.data : [];
         },
         error: function(xhr, error, code) {
           console.error('Areas AJAX error:', error, xhr.responseText);
+          if (error === 'timeout') {
+            alert('Request timeout. Halaman terlalu lama loading, coba refresh.');
+          } else {
+            alert('Error loading data: ' + error);
+          }
           return [];
         }
       },
@@ -1134,6 +1181,7 @@ function initializeAreaTable() {
       lengthMenu: "Show _MENU_ entries"
     },
     drawCallback: function(settings) {
+      console.log('📊 Areas table draw completed');
       // Add click event to table rows
       $('#areasTable tbody').off('click', 'tr').on('click', 'tr', function() {
         const data = areasTable.row(this).data();
@@ -1171,7 +1219,7 @@ function initializeEmployeeTable() {
   }
   
   employeesTable = $('#employeesTable').DataTable({
-    processing: true,
+    processing: false, // DISABLED - Data kecil, tidak perlu loading indicator
     serverSide: true,
     destroy: true,
     searching: true,
@@ -1180,16 +1228,32 @@ function initializeEmployeeTable() {
     ajax: {
       url: '<?= base_url('service/area-management/getEmployees') ?>',
       type: 'POST',
+      timeout: 30000, // 30 second timeout
       data: function(d) {
         // DataTables akan mengirim parameter search, order, pagination secara otomatis
         return d;
       },
       dataSrc: function(json) {
         console.log('Employees response:', json);
+        if (!json) {
+          console.error('No response from server');
+          return [];
+        }
+        if (json.error) {
+          console.error('Server error:', json.message);
+          alert('Error loading employees: ' + json.message);
+          return [];
+        }
         return (json && json.data) ? json.data : [];
       },
       error: function(xhr, error, thrown) {
         console.error('Employees AJAX error:', error, xhr.responseText);
+        if (error === 'timeout') {
+          alert('Request timeout loading employees. Coba refresh halaman.');
+        } else {
+          alert('Error loading employees: ' + error);
+        }
+        return [];
       }
     },
     columns: [
@@ -1242,6 +1306,7 @@ function initializeEmployeeTable() {
       lengthMenu: "Show _MENU_ entries"
     },
     drawCallback: function(settings) {
+      console.log('📊 Employees table draw completed');
       // Add click event to table rows
       $('#employeesTable tbody').off('click', 'tr').on('click', 'tr', function() {
         const data = employeesTable.row(this).data();
@@ -1452,15 +1517,28 @@ function bindForms() {
   $('#addEmployeeForm').on('submit', function(e){
     e.preventDefault();
     const $form = $(this);
-    $form.find('.form-errors').html('');
+    const $submitBtn = $form.find('button[type="submit"]');
+    const originalBtnText = $submitBtn.html();
+    
+    // Disable submit button and show loading
+    $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+    
+    $form.find('.form-errors').html('').hide();
+    
     $.post('<?= base_url('service/area-management/saveEmployee') ?>', $form.serialize(), function(resp){
       if (resp.success) {
+        // Success: close modal, show notification, refresh table
         $('#addEmployeeModal').modal('hide');
-        notify('Employee created','success');
-        refreshEmployees();
+        notify('Employee created successfully!','success');
+        
+        // Refresh employees table if it exists
+        if (employeesTable) {
+          employeesTable.ajax.reload(null, false);
+        }
         
         $form[0].reset();
       } else {
+        // Error: show validation errors
         if (resp.errors) {
           showFormErrors($form, resp.errors);
           let errorDetails = Object.keys(resp.errors).map(field => `${field}: ${resp.errors[field]}`).join('\\n');
@@ -1470,7 +1548,11 @@ function bindForms() {
         }
       }
     }, 'json').fail(function(xhr, status, error) {
+      console.error('Save employee error:', error, xhr.responseText);
       notify('Network error: ' + error, 'error');
+    }).always(function() {
+      // Re-enable submit button
+      $submitBtn.prop('disabled', false).html(originalBtnText);
     });
   });
 
@@ -1547,7 +1629,14 @@ function showAddAreaModal(){
   $('#addAreaForm .form-errors').html('').hide();
   $('#addAreaModal').modal('show'); 
 }
-function showAddEmployeeModal(){ $('#addEmployeeModal').modal('show'); }
+
+function showAddEmployeeModal(){ 
+  $('#addEmployeeForm')[0].reset();
+  $('#addEmployeeForm .form-errors').html('').hide();
+  // Generate initial staff code
+  generateStaffCode();
+  $('#addEmployeeModal').modal('show'); 
+}
 function showAddAssignmentModal(){
   const selectedArea = $('#assignAreaSelect').val();
   if (selectedArea) {
@@ -2328,9 +2417,10 @@ function populateJobDescription(role, textarea) {
     'ADMIN': 'Administrator - Mengelola operasional administrasi, dokumentasi, dan koordinasi dengan berbagai departemen. Dapat bekerja di central office maupun branch office.',
     'SUPERVISOR': 'Supervisor - Mengawasi dan mengkoordinir aktivitas operasional serta memastikan target kinerja tercapai. Bertanggung jawab terhadap manajemen tim di branch yang ditugaskan.',
     'FOREMAN': 'Foreman - Memimpin tim teknis, mengawasi pekerjaan lapangan, dan bertanggung jawab terhadap kualitas hasil kerja. Mengkoordinir aktivitas harian tim mekanik.',
-    'MECHANIC_SERVICE_AREA': 'Mechanic Service Branch - Bertanggung jawab untuk service, maintenance, dan perbaikan unit forklift di branch yang ditugaskan. Melakukan perjalanan ke lokasi customer untuk service on-site.',
-    'MECHANIC_UNIT_PREP': 'Mechanic Unit Preparation - Bertanggung jawab untuk persiapan, setup, dan konfigurasi unit forklift baru sesuai spesifikasi SPK. Bekerja di central workshop untuk memastikan unit siap kirim.',
-    'MECHANIC_FABRICATION': 'Mechanic Fabrication - Bertanggung jawab untuk fabrikasi, modifikasi, dan persiapan attachment/aksesori forklift sesuai spesifikasi SPK. Menguasai teknik pengelasan dan machining di central workshop.',
+    'MECHANIC': 'Mechanic - Melakukan perbaikan, maintenance, dan service unit forklift secara umum.',
+    'MECHANIC_SERVICE_AREA': 'Mechanic Service Area - Bertanggung jawab untuk service dan maintenance rutin unit forklift di area service branch. Melakukan diagnostic, repair, dan quality check sebelum unit diserahkan ke customer.',
+    'MECHANIC_UNIT_PREP': 'Mechanic Unit Preparation - Mempersiapkan unit baru atau unit return untuk di-deploy ke customer. Melakukan instalasi attachment, modifikasi, kalibrasi, dan final inspection.',
+    'MECHANIC_FABRICATION': 'Mechanic Fabrication - Bertanggung jawab di workshop fabrikasi untuk pembuatan dan modifikasi attachment/parts custom. Melakukan welding, cutting, fitting, painting, dan assembly komponen.',
     'HELPER': 'Helper - Membantu aktivitas teknis dan operasional, mendukung mechanic dalam pekerjaan service dan maintenance. Dapat ditempatkan di central office atau branch office sesuai kebutuhan.'
   };
   
@@ -2338,6 +2428,32 @@ function populateJobDescription(role, textarea) {
     textarea.value = jobDescriptions[role];
   } else {
     textarea.value = '';
+  }
+}
+
+// Auto-generate staff code based on role
+function generateStaffCode() {
+  const role = document.getElementById('staff_role')?.value;
+  if (!role) return;
+  
+  const prefixes = {
+    'ADMIN': 'ADM',
+    'SUPERVISOR': 'SPV',
+    'FOREMAN': 'FRM',
+    'MECHANIC': 'MEC',
+    'MECHANIC_SERVICE_AREA': 'MSA',
+    'MECHANIC_UNIT_PREP': 'MUP',
+    'MECHANIC_FABRICATION': 'MFB',
+    'HELPER': 'HLP'
+  };
+  
+  const prefix = prefixes[role] || 'STF';
+  const timestamp = Date.now().toString().slice(-6);
+  const code = `${prefix}${timestamp}`;
+  
+  const staffCodeInput = document.getElementById('staff_code');
+  if (staffCodeInput) {
+    staffCodeInput.value = code;
   }
 }
 

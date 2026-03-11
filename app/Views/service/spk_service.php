@@ -1112,9 +1112,10 @@ document.addEventListener('DOMContentLoaded', () => {
 				<div class="card-body">
 					<div class="mb-3">
 						<label class="form-label">Select Unit <span class="text-danger">*</span></label>
-						<input type="text" class="form-control" id="approvalUnitSearch${suffix}" placeholder="Search unit number / serial / brand / model" autocomplete="off">
-						<select class="form-select mt-2" id="approvalUnitPick${suffix}" name="unit_id" required></select>
-						<div class="form-text">Type to search, then select from the list.</div>
+						<select class="form-select" id="approvalUnitPick${suffix}" name="unit_id" required>
+							<option value="">- Select Unit -</option>
+						</select>
+						<div class="form-text">Search by unit number, serial, brand, or model.</div>
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Select Area <span class="text-danger">*</span></label>
@@ -1131,15 +1132,15 @@ document.addEventListener('DOMContentLoaded', () => {
 								<i class="fas fa-battery-full me-2"></i>Unit Electric requires selection of Battery and Charger
 							</div>
 							<div class="row">
-								<div class="col-md-6">
+								<div class="col-12 mb-3">
 									<label class="form-label">Select Battery <span class="text-danger">*</span></label>
-									<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id">
+									<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" style="width:100%">
 										<option value="">- Select Battery -</option>
 									</select>
 								</div>
-								<div class="col-md-6">
+								<div class="col-12">
 									<label class="form-label">Select Charger <span class="text-danger">*</span></label>
-									<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id">
+									<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" style="width:100%">
 										<option value="">- Select Charger -</option>
 									</select>
 								</div>
@@ -1437,260 +1438,263 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	}
 	
-	function setupIndividualUnitSearch(suffix, unitIndex) {
-		console.log('Setting up unit search with suffix:', suffix, 'unitIndex:', unitIndex);
-		const searchBoxId = `approvalUnitSearch${suffix}`;
-		const unitPickId = `approvalUnitPick${suffix}`;
-		const searchBox = document.getElementById(searchBoxId);
-		const unitPick = document.getElementById(unitPickId);
+	// Custom template for unit dropdown (2-line format: [no] Merk Model [SN] / [status] [location])
+	function formatUnitOption(unit) {
+		if (!unit.id) return unit.text;
 		
-		console.log('Looking for elements:', searchBoxId, unitPickId);
-		console.log('searchBox found:', !!searchBox, 'unitPick found:', !!unitPick);
+		const $option = $(unit.element);
+		const noUnit = $option.data('no-unit') || '';
+		const statusName = $option.data('status-name') || '';
+		const locationName = $option.data('location-name') || '';
+		const isAssigned = $option.data('is-assigned') || false;
+		const merkUnit = $option.data('merk-unit') || '';
+		const modelUnit = $option.data('model-unit') || '';
+		const serialNumber = unit.text.includes('SN:') ? unit.text.split('SN:')[1]?.split('|')[0]?.trim() : '';
 		
-		// Debug: List all elements with similar IDs
-		const allElements = document.querySelectorAll('[id*="approvalUnit"]');
-		console.log('All approvalUnit elements found:', Array.from(allElements).map(el => el.id));
+		// Build 2-line display
+		let html = '<div style="line-height:1.3; padding:4px 0; border-bottom:1px solid #e9ecef">';
 		
-		if (searchBox && unitPick) {
-			// Remove existing event listeners first to prevent duplicates
-			console.log('Cloning unitPick to remove old event listeners...');
-			const newUnitPick = unitPick.cloneNode(true);
-			unitPick.parentNode.replaceChild(newUnitPick, unitPick);
-			console.log('Event listener cleaned and replaced for unitPick');
+		// Line 1: [No Unit] Merk Model [SN]
+		html += '<div style="margin-bottom:3px">';
+		if (noUnit) {
+			html += `<span class="badge badge-soft-blue me-1" style="font-size:0.75rem">${noUnit}</span>`;
+		}
+		html += `<strong style="font-size:0.9rem">${merkUnit} ${modelUnit}</strong>`;
+		if (serialNumber) {
+			html += `<small class="text-muted ms-1" style="font-size:0.75rem">[SN: ${serialNumber}]</small>`;
+		}
+		html += '</div>';
+		
+		// Line 2: [Status] [Location] (smaller badges)
+		html += '<div>';
+		if (statusName) {
+			let statusColor = 'secondary'; // default
+			const statusUpper = statusName.toUpperCase();
 			
-			console.log('Loading initial units...');
-			// First, get SPK department to filter units accordingly
-			if (!currentApprovalSpkId) {
-				console.warn('⚠️ No SPK ID available for department filtering');
-				// Load units without department filtering
-				loadUnitsWithoutDepartmentFilter();
-				return;
+			// Map status to badge colors
+			if (statusUpper.includes('AVAILABLE')) {
+				statusColor = 'success'; // hijau
+			} else if (statusUpper.includes('RETURNED')) {
+				statusColor = 'cyan'; // biru muda
+			} else if (statusUpper.includes('BOOKED')) {
+				statusColor = 'warning'; // kuning
+			} else if (statusUpper.includes('SPARE')) {
+				statusColor = 'purple'; // ungu
+			} else if (statusUpper.includes('NON_ASSET') || statusUpper.includes('NON ASSET')) {
+				statusColor = 'info'; // biru
+			} else if (statusUpper.includes('RENTAL') || statusUpper.includes('RENTED')) {
+				statusColor = 'orange'; // orange
+			} else if (statusUpper.includes('PREPARATION') || statusUpper.includes('READY')) {
+				statusColor = 'indigo'; // indigo
+			} else if (statusUpper.includes('MAINTENANCE') || statusUpper.includes('REPAIR')) {
+				statusColor = 'danger'; // merah
 			}
 			
-			const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
-			console.log('🔍 Fetching SPK department from:', spkDepartmentUrl);
-			
-			fetch(spkDepartmentUrl)
-				.then(response => {
-					if (!response.ok) {
-						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-					}
-					return response.json();
-				})
-				.then(deptData => {
-					console.log('🎯 SPK Department Info:', deptData);
-					
-					// Load initial units with department filtering
-					const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-					if (currentApprovalSpkId) {
-						url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
-					}
-					
-					// Add SPK department filter for precise unit matching
-					if (deptData.success && deptData.department) {
-						url.searchParams.set('spk_department', deptData.department);
-						console.log(`🔍 Filtering units to match SPK department: ${deptData.department}`);
-					} else {
-						console.warn('⚠️ SPK department not found, loading all units');
-					}
-					
-					return fetch(url);
-				})
-				.catch(error => {
-					console.error('❌ Error fetching SPK department:', error);
-					console.log('🔄 Falling back to load units without department filtering');
-					// Load units without department filtering as fallback
-					loadUnitsWithoutDepartmentFilter();
-					return null; // Return null to skip the next then block
-				})
-				.then(r=>{
-					// Skip this block if we got null from catch block
-					if (r === null) return null;
-					
-					return r.json();
-				})
-				.then(j=>{
-					// Skip this block if we got null or undefined from previous then
-					if (j === null || j === undefined) return;
-					
-					console.log('🚗 Units loaded from API:', j.data?.length || 0, 'units');
-					
-					// Log department filtering info for debugging
-					if (j.data && j.data.length > 0) {
-						const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
-						console.log('🎯 Departments represented in filtered units:', departments);
-					}
-					
-					// Process and display the units
-					processUnitsDisplay(j, suffix);
-				})
-				.catch(error => {
-					console.error('❌ Error loading units:', error);
-					processUnitsDisplay({data: []}, suffix);
-				});
+			html += `<span class="badge badge-soft-${statusColor} me-1" style="font-size:0.65rem; padding:2px 6px">${statusName}</span>`;
+		}
+		if (locationName && locationName !== '-') {
+			html += `<span class="badge badge-soft-cyan me-1" style="font-size:0.65rem; padding:2px 6px"><i class="fas fa-map-marker-alt me-1"></i>${locationName}</span>`;
+		}
+		if (isAssigned) {
+			html += `<span class="badge badge-soft-danger me-1" style="font-size:0.65rem; padding:2px 6px">USED IN SPK</span>`;
+		}
+		html += '</div>';
+		
+		html += '</div>';
+		return $(html);
+	}
+	
+	function formatUnitSelection(unit) {
+		if (!unit.id) return unit.text;
+		
+		const $option = $(unit.element);
+		const noUnit = $option.data('no-unit') || '';
+		const merkUnit = $option.data('merk-unit') || '';
+		const modelUnit = $option.data('model-unit') || '';
+		
+		if (noUnit) {
+			return `${noUnit} - ${merkUnit} ${modelUnit}`.trim();
+		}
+		
+		return unit.text;
+	}
+	
+	function setupIndividualUnitSearch(suffix, unitIndex) {
+		console.log('Setting up unit Select2 with suffix:', suffix, 'unitIndex:', unitIndex);
+		const unitPickId = `approvalUnitPick${suffix}`;
+		const unitPick = document.getElementById(unitPickId);
+		
+		if (!unitPick) {
+			console.error('Unit select element not found:', unitPickId);
+			return;
+		}
+		
+		console.log('Loading initial units...');
+		
+		// First, get SPK department to filter units accordingly
+		if (!currentApprovalSpkId) {
+			console.warn('⚠️ No SPK ID available for department filtering');
+			loadUnitsWithoutDepartmentFilter();
+			return;
+		}
+		
+		const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
+		console.log('🔍 Fetching SPK department from:', spkDepartmentUrl);
+		
+		fetch(spkDepartmentUrl)
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				}
+				return response.json();
+			})
+			.then(deptData => {
+				console.log('🎯 SPK Department Info:', deptData);
 				
-			// Function to load units without department filtering (fallback)
-			function loadUnitsWithoutDepartmentFilter() {
-				console.log('🔄 Loading units without department filtering...');
+				// Load initial units with department filtering
 				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
 				if (currentApprovalSpkId) {
 					url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
 				}
 				
-				fetch(url)
-					.then(r => r.json())
-					.then(j => {
-						console.log('🚗 Units loaded from API (no dept filter):', j.data?.length || 0, 'units');
-						
-						// Show departments for debugging
-						if (j.data && j.data.length > 0) {
-							const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
-							console.log('🎯 All departments in units:', departments);
-						}
-						
-						processUnitsDisplay(j, suffix);
-					})
-					.catch(error => {
-						console.error('❌ Error loading units (fallback):', error);
-						processUnitsDisplay({data: []}, suffix);
-					});
+				// Add SPK department filter for precise unit matching
+				if (deptData.success && deptData.department) {
+					url.searchParams.set('spk_department', deptData.department);
+					console.log(`🔍 Filtering units to match SPK department: ${deptData.department}`);
+				} else {
+					console.warn('⚠️ SPK department not found, loading all units');
+				}
+				
+				return fetch(url);
+			})
+			.catch(error => {
+				console.error('❌ Error fetching SPK department:', error);
+				console.log('🔄 Falling back to load units without department filtering');
+				loadUnitsWithoutDepartmentFilter();
+				return null;
+			})
+			.then(r => {
+				if (r === null) return null;
+				return r.json();
+			})
+			.then(j => {
+				if (j === null || j === undefined) return;
+				
+				console.log('🚗 Units loaded from API:', j.data?.length || 0, 'units');
+				
+				if (j.data && j.data.length > 0) {
+					const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
+					console.log('🎯 Departments represented in filtered units:', departments);
+				}
+				
+				processUnitsDisplay(j, suffix);
+			})
+			.catch(error => {
+				console.error('❌ Error loading units:', error);
+				processUnitsDisplay({data: []}, suffix);
+			});
+		
+		// Function to load units without department filtering (fallback)
+		function loadUnitsWithoutDepartmentFilter() {
+			console.log('🔄 Loading units without department filtering...');
+			const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+			if (currentApprovalSpkId) {
+				url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
 			}
 			
-			// Function to process and display units
-			function processUnitsDisplay(j, suffix) {
-				
-				// Use fresh reference after cloning
-				const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
-				if (currentUnitPick) {
-					// Generate options with disabled attribute for already assigned units
-					const options = (j.data||[]).map(x => {
-						const isAssigned = x.is_assigned_in_spk;
-						const disabled = isAssigned ? 'disabled' : '';
-						const assignedText = isAssigned ? ' (Already used in this SPK)' : '';
-						const serialInfo = x.serial_info || 'SN: -';
-						return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}" style="white-space: normal; line-height: 1.4; padding: 8px;">
-							${x.label}${assignedText}
-							${serialInfo}
-						</option>`;
-					}).join('');
-					currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>' + options;
-				}
-			};
-			
-			// Areas are loaded centrally via loadAreaOptions() call
-			
-			searchBox.addEventListener('input', function(){
-				const q = this.value.trim();
-				
-				// Get SPK department again for search filtering
-				if (!currentApprovalSpkId) {
-					console.warn('⚠️ No SPK ID for search filtering');
-					// Search without department filtering
-					searchUnitsWithoutDepartmentFilter(q);
-					return;
-				}
-				
-				const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
-				
-				fetch(spkDepartmentUrl)
-					.then(response => {
-						if (!response.ok) {
-							throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-						}
-						return response.json();
-					})
-					.then(deptData => {
-						const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-						if (q) url.searchParams.set('q', q);
-						if (currentApprovalSpkId) {
-							url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
-						}
-						
-						// Apply SPK department filter for search as well
-						if (deptData.success && deptData.department) {
-							url.searchParams.set('spk_department', deptData.department);
-							console.log(`🔍 Search filtering for department: ${deptData.department}`);
-						} else {
-							console.warn('⚠️ SPK department not found for search');
-						}
-						
-						return fetch(url);
-					})
-					.catch(error => {
-						console.error('❌ Error fetching SPK department for search:', error);
-						console.log('🔄 Falling back to search without department filtering');
-						// Search without department filtering as fallback
-						searchUnitsWithoutDepartmentFilter(q);
-						return null; // Return null to skip the next then block
-					})
-					.then(r => {
-						// Skip this block if we got null from catch block
-						if (r === null) return null;
-						
-						return r.json();
-					})
-					.then(j => {
-						// Skip this block if we got null or undefined from previous then
-						if (j === null || j === undefined) return;
-						
-						processUnitsDisplay(j, suffix);
-					})
-					.catch(error => {
-						console.error('❌ Error searching units:', error);
-						processUnitsDisplay({data: []}, suffix);
-					});
-				
-				// Function to search units without department filtering (fallback)
-				function searchUnitsWithoutDepartmentFilter(query) {
-					const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-					if (query) url.searchParams.set('q', query);
-					if (currentApprovalSpkId) {
-						url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+			fetch(url)
+				.then(r => r.json())
+				.then(j => {
+					console.log('🚗 Units loaded from API (no dept filter):', j.data?.length || 0, 'units');
+					
+					if (j.data && j.data.length > 0) {
+						const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
+						console.log('🎯 All departments in units:', departments);
 					}
 					
-					fetch(url)
-						.then(r => r.json())
-						.then(j => {
-							console.log(`🔍 Search results (no dept filter): ${j.data?.length || 0} units`);
-							processUnitsDisplay(j, suffix);
-						})
-						.catch(error => {
-							console.error('❌ Error searching units (fallback):', error);
-							processUnitsDisplay({data: []}, suffix);
-						});
-				}
+					processUnitsDisplay(j, suffix);
+				})
+				.catch(error => {
+					console.error('❌ Error loading units (fallback):', error);
+					processUnitsDisplay({data: []}, suffix);
+				});
+		}
+		
+		// Function to process and display units with Select2
+		function processUnitsDisplay(j, suffix) {
+			const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
+			if (!currentUnitPick) return;
+			
+			// Clear existing options
+			currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>';
+			
+			// Populate options with data attributes for badges
+			if (j.data && Array.isArray(j.data)) {
+				j.data.forEach(x => {
+					const isAssigned = x.is_assigned_in_spk;
+					const option = document.createElement('option');
+					option.value = x.id;
+					option.textContent = x.label || `${x.no_unit} - ${x.merk} ${x.model}`;
+					option.disabled = isAssigned;
+					
+					// Add data attributes for badges
+					option.setAttribute('data-no-unit', x.no_unit || '');
+					option.setAttribute('data-status-name', x.status_name || '');
+					option.setAttribute('data-location-name', x.location_name || '');
+					option.setAttribute('data-merk-unit', x.merk_unit || '');
+					option.setAttribute('data-model-unit', x.model_unit || '');
+					option.setAttribute('data-needs-no-unit', x.needs_no_unit || false);
+					option.setAttribute('data-status-unit', x.status_unit_id || '');
+					option.setAttribute('data-departemen-id', x.departemen_id || '');
+					option.setAttribute('data-departemen', x.departemen_name || '');
+					option.setAttribute('data-is-assigned', isAssigned || false);
+					
+					currentUnitPick.appendChild(option);
+				});
+			}
+			
+			// Initialize or reinitialize Select2
+			const $unitPick = $(currentUnitPick);
+			if ($unitPick.hasClass('select2-hidden-accessible')) {
+				$unitPick.select2('destroy');
+			}
+			
+			$unitPick.select2({
+				placeholder: '🔍 Search by unit number, serial, brand, or model...',
+				allowClear: true,
+				dropdownParent: $('#approvalStageModal .modal-content'),
+				width: '100%',
+				minimumInputLength: 0,
+				language: {
+					noResults: function() { return 'No units found'; },
+					searching: function() { return 'Searching...'; }
+				},
+				templateResult: formatUnitOption,
+				templateSelection: formatUnitSelection,
+				escapeMarkup: function(markup) { return markup; }
 			});
 			
-			// Add change event listener to fresh element
-			const freshUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
-			if (freshUnitPick) {
-				freshUnitPick.addEventListener('change', function(){
-				const selectedOption = this.options[this.selectedIndex];
+			// Add change event listener
+			$unitPick.off('select2:select').on('select2:select', function(e){
+				const selectedOption = e.params.data.element;
 				if (selectedOption && selectedOption.value) {
-					// Since we process one unit at a time, no need to check for duplicates
-					
 					const noUnit = selectedOption.getAttribute('data-no-unit');
 					const needsNoUnit = selectedOption.getAttribute('data-needs-no-unit');
 					const statusUnit = selectedOption.getAttribute('data-status-unit');
 					const departemenId = selectedOption.getAttribute('data-departemen-id');
 					const departemenName = selectedOption.getAttribute('data-departemen');
-					
-					// Get unit component data untuk check existing attachments/battery/charger
 					const unitId = selectedOption.value;
 					
 					// Reset noUnitProcessed flag when changing to a different unit
-					// This allows the modal to show again if user selects a different unit
 					if (window.lastSelectedUnitId && window.lastSelectedUnitId !== unitId) {
 						console.log('Unit changed, resetting noUnitProcessed flags');
 						window.noUnitProcessed = {};
 					}
 					window.lastSelectedUnitId = unitId;
 					
-					// Universal component detection - check for any unit that might have components
 					console.log(`Checking unit ${unitId} for existing components...`);
 					console.log(`Department: ${departemenId} (${departemenName})`);
 					
-					// Check if Electric department (id=2) - needs battery/charger
 					const isElectric = departemenId === '2';
 					const isGasoline = departemenName === 'GASOLINE';
 					const isDiesel = departemenName === 'DIESEL';
@@ -1700,19 +1704,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					console.log(`DEBUG: isElectric: ${isElectric}, isGasoline: ${isGasoline}, isDiesel: ${isDiesel}, isNonElectric: ${isNonElectric}`);
 					
 					const electricFields = document.getElementById(`electricFields${suffix}`);
-					
-					// Fabrikasi (attachment) berlaku untuk SEMUA unit, bukan hanya departemen tertentu
 					const fabrikasiFields = document.getElementById(`fabrikasiFields${suffix}`);
-					
-					// Smart detection: Try to fetch unit data regardless of department
-					// Some units might have components even if not in typical departments
-					
-					// Add guard to prevent duplicate processing
-					if (this.dataset.processing === 'true') {
-						console.log('Unit selection already being processed, skipping...');
-						return;
-					}
-					this.dataset.processing = 'true';
 					
 					fetchUnitComponentData(unitId).then(apiData => {
 						console.log('API Response for unit', unitId, ':', apiData);
@@ -1724,38 +1716,31 @@ document.addEventListener('DOMContentLoaded', () => {
 							
 							console.log(`Unit ${unitId} component status: battery=${hasBattery}, charger=${hasCharger}, attachment=${hasAttachment}`);
 							
-							// Handle Electric components (battery/charger) - smart detection
-							// DEPARTMENTAL RULES: GASOLINE dan DIESEL tidak boleh punya battery/charger
 							if (!isNonElectric && (isElectric || hasBattery || hasCharger)) {
 								if (electricFields) {
-									// Check if component UI already exists for this unit
 									const existingRenderKey = `component-ui-${unitId}-${suffix}`;
 									if (electricFields.querySelector(`[data-render-key="${existingRenderKey}"]`)) {
 										console.log('Component UI already rendered for unit', unitId, ', skipping duplicate render');
 										return;
 									}
 									
-									// PERBAIKAN: Untuk persiapan unit, hanya tampilkan battery dan charger
-									// Untuk unit electric, selalu tampilkan battery dan charger (baik yang sudah ada maupun yang perlu ditambah)
 									const componentOptions = {
-										battery: isElectric || hasBattery,  // Tampilkan jika electric department ATAU unit sudah punya battery
-										charger: isElectric || hasCharger,  // Tampilkan jika electric department ATAU unit sudah punya charger
-										attachment: false  // PERBAIKAN: Attachment tidak ditampilkan di Persiapan Unit, hanya di Fabrikasi
+										battery: isElectric || hasBattery,
+										charger: isElectric || hasCharger,
+										attachment: false
 									};
 									
 									console.log('Component options for unit', unitId, ':', componentOptions);
-		 							electricFields.innerHTML = '';
-		 							
-		 							// Check if already rendered to prevent duplicates
-		 							const renderKey = `component-ui-${unitId}-${suffix}`;
-		 							if (!electricFields.querySelector(`[data-render-key="${renderKey}"]`)) {
-		 								const componentUI = generateComponentSelectionUI(apiData, componentOptions, unitId, suffix, 'component');
-		 								electricFields.innerHTML = componentUI;
-		 							}
-		 							electricFields.classList.remove('d-none');
+									electricFields.innerHTML = '';
+									
+									const renderKey = `component-ui-${unitId}-${suffix}`;
+									if (!electricFields.querySelector(`[data-render-key="${renderKey}"]`)) {
+										const componentUI = generateComponentSelectionUI(apiData, componentOptions, unitId, suffix, 'component');
+										electricFields.innerHTML = componentUI;
+									}
+									electricFields.classList.remove('d-none');
 								}
 							} else if (isNonElectric && (hasBattery || hasCharger)) {
-								// GASOLINE/DIESEL unit yang memiliki battery/charger - auto-detach
 								if (electricFields) {
 									electricFields.innerHTML = `
 										<div class="alert alert-warning">
@@ -1763,26 +1748,20 @@ document.addEventListener('DOMContentLoaded', () => {
 											<br>The battery and charger installed will be automatically detached from this unit.
 										</div>
 									`;
-electricFields.classList.remove('d-none');
-						}
-					} else if (electricFields) {
-						electricFields.classList.add('d-none');
+									electricFields.classList.remove('d-none');
+								}
+							} else if (electricFields) {
+								electricFields.classList.add('d-none');
 							}
 							
-							// PERBAIKAN: Handle Attachment hanya untuk stage FABRIKASI, bukan Persiapan Unit
-							// Di Persiapan Unit, attachment tidak perlu ditampilkan
 							if (currentApprovalStage === 'fabrication' || currentApprovalStage === 'fabrikasi') {
-								// Handle Attachment untuk SEMUA unit (bukan hanya fabrikasi departments)
 								if (fabrikasiFields) {
 									if (hasAttachment) {
-										// Unit sudah memiliki attachment - berikan pilihan keep existing atau replace
-										// Only render attachment UI if component UI hasn't already been rendered
 										const existingComponentUI = electricFields?.querySelector('[data-render-key*="component-ui"]');
 										if (!existingComponentUI) {
 											const attachmentUI = generateComponentSelectionUI(apiData, { battery: false, charger: false, attachment: true }, unitId, suffix, 'attachment');
 											fabrikasiFields.innerHTML = attachmentUI;
 										} else {
-											// Component UI already rendered, just show attachment-only message
 											fabrikasiFields.innerHTML = `
 												<div class="alert alert-info">
 													<i class="fas fa-tools me-2"></i>Components and attachments for this unit have already been displayed above.
@@ -1790,7 +1769,6 @@ electricFields.classList.remove('d-none');
 											`;
 										}
 									} else {
-										// Unit belum memiliki attachment - tampilkan pilihan attachment baru
 										fabrikasiFields.innerHTML = `
 											<div class="alert alert-info">
 												<i class="fas fa-tools me-2"></i>This unit does not have an Attachment. Please select an attachment to install.
@@ -1809,7 +1787,6 @@ electricFields.classList.remove('d-none');
 									fabrikasiFields.classList.remove('d-none');
 								}
 							} else {
-								// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
 								if (fabrikasiFields) {
 									fabrikasiFields.classList.add('d-none');
 								}
@@ -1817,18 +1794,15 @@ electricFields.classList.remove('d-none');
 						} else {
 							console.log('No existing components found for unit', unitId);
 							
-							// Standard department-based logic when no existing components
-							if (isElectric && electricFields) {
+							if (isElectric &&  electricFields) {
 								electricFields.classList.remove('d-none');
 								console.log(`🔌 Loading electric options with suffix: ${suffix}`);
-								// Load basic dropdown options
 								loadBatteryOptionsIndividual(suffix);
 								loadChargerOptionsIndividual(suffix);
 							} else if (electricFields) {
 								electricFields.classList.add('d-none');
 							}
 							
-							// PERBAIKAN: Fabrikasi hanya berlaku untuk stage FABRIKASI
 							if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
 								fabrikasiFields.innerHTML = `
 									<div class="alert alert-info">
@@ -1846,24 +1820,20 @@ electricFields.classList.remove('d-none');
 								fabrikasiFields.classList.remove('d-none');
 								loadAttachmentOptionsIndividual(suffix);
 							} else if (fabrikasiFields) {
-								// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
 								fabrikasiFields.classList.add('d-none');
 							}
 						}
 					}).catch(error => {
 						console.error('Component detection failed:', error);
 						
-						// Standard fallback when API fails
 						if (isElectric && electricFields) {
 							electricFields.classList.remove('d-none');
-							// Load basic dropdown options
 							loadBatteryOptionsIndividual(suffix);
 							loadChargerOptionsIndividual(suffix);
 						} else if (electricFields) {
 							electricFields.classList.add('d-none');
 						}
 						
-						// PERBAIKAN: Fabrikasi fallback hanya untuk stage FABRIKASI
 						if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
 							fabrikasiFields.innerHTML = `
 								<div class="alert alert-info">
@@ -1881,14 +1851,9 @@ electricFields.classList.remove('d-none');
 							fabrikasiFields.classList.remove('d-none');
 							loadAttachmentOptionsIndividual(suffix);
 						} else if (fabrikasiFields) {
-							// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
 							fabrikasiFields.classList.add('d-none');
 						}
 					}).finally(() => {
-						// Reset processing flag
-						this.dataset.processing = 'false';
-						
-						// Apply departmental rules after UI is generated
 						const unitData = {
 							unit_id: unitId,
 							departement_name: departemenName
@@ -1896,25 +1861,18 @@ electricFields.classList.remove('d-none');
 						applyDepartmentalRulesAfterUIGeneration(unitData, suffix);
 					});
 					
-					// Note: Fabrikasi component management is now handled in universal detection above
-					
-				// Show no_unit confirmation for ANY unit that doesn't have valid no_unit
-				// Check both status 1 (ASET) and status 2 (NON_ASET)
-				if ((statusUnit === '1' || statusUnit === '2') && (needsNoUnit === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
-					// Check if this unit has already been processed
-					window.noUnitProcessed = window.noUnitProcessed || {};
-					if (!window.noUnitProcessed[selectedOption.value]) {
-						// Unit belum memiliki valid no_unit, show confirmation
-						showNoUnitConfirmation(selectedOption.value, selectedOption.text, statusUnit);
+					if ((statusUnit === '1' || statusUnit === '2') && (needsNoUnit === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
+						window.noUnitProcessed = window.noUnitProcessed || {};
+						if (!window.noUnitProcessed[selectedOption.value]) {
+							showNoUnitConfirmation(selectedOption.value, selectedOption.text, statusUnit);
+						} else {
+							console.log('Unit No Unit already processed for unit:', selectedOption.value);
+						}
 					} else {
-						console.log('Unit No Unit already processed for unit:', selectedOption.value);
+						console.log('Unit already has no_unit or status not eligible:', selectedOption.text, 'Status:', statusUnit, 'No Unit:', noUnit);
 					}
-				} else {
-					console.log('Unit already has no_unit or status not eligible:', selectedOption.text, 'Status:', statusUnit, 'No Unit:', noUnit);
 				}
-				}
-				});
-			}
+			});
 		}
 	}
 	
@@ -2006,32 +1964,50 @@ electricFields.classList.remove('d-none');
 		}
 	}
 	
-	// Format component options in dropdown with colored status badges
+	// Format component options in dropdown: [Item#] Name [SN: xxx] [Status] / Installed info
 	function formatComponentOption(option) {
 		if (!option.id) return option.text;
 		
 		const $option = $(option.element);
 		const status = $option.data('status') || '';
 		const name = $option.data('name') || option.text.split(' • ')[0] || '';
+		const itemNumber = $option.data('item-number') || '';
 		const serial = $option.data('serial') || '';
 		const installedUnit = $option.data('installed-unit') || '';
 		
-		let statusBadge = '';
-		let installedInfo = '';
+		// Build 2-line display
+		let html = '<div style="line-height:1.3; padding:4px 0; border-bottom:1px solid #e9ecef">';
 		
-		if (status === 'AVAILABLE') {
-			statusBadge = '<span class="component-status-badge status-available">✓ Available</span>';
-		} else if (status === 'USED') {
-			statusBadge = '<span class="component-status-badge status-used">⚠ Used</span>';
-			if (installedUnit) {
-				installedInfo = `<span class="installed-unit-info">(Unit ${installedUnit})</span>`;
-			}
+		// Line 1: [Item Number Badge] Name [SN: xxx Label] [Status Badge]
+		html += '<div class="d-flex align-items-center justify-content-between" style="margin-bottom:3px">';
+		html += '<div>';
+		if (itemNumber && itemNumber !== '-') {
+			html += `<span class="badge badge-soft-blue me-1 font-monospace" style="font-size:0.7rem">${itemNumber}</span>`;
+		}
+		html += `<strong style="font-size:0.85rem">${name}</strong>`;
+		if (serial && serial !== '-') {
+			html += `<small class="text-muted ms-1" style="font-size:0.7rem">[SN: ${serial}]</small>`;
+		}
+		html += '</div>';
+		// Status badge on the right
+		html += '<div>';
+		if (status === 'AVAILABLE' || status === 'SPARE') {
+			html += '<span class="badge badge-soft-success" style="font-size:0.7rem">✓ AVAILABLE</span>';
+		} else if (status === 'IN_USE') {
+			html += '<span class="badge badge-soft-warning" style="font-size:0.7rem">⚠ IN USE</span>';
 		} else if (status === 'BROKEN') {
-			statusBadge = '<span class="component-status-badge status-broken">✗ Broken</span>';
+			html += '<span class="badge badge-soft-danger" style="font-size:0.7rem">✗ BROKEN</span>';
+		}
+		html += '</div>';
+		html += '</div>';
+		
+		// Line 2: Installed unit info (if IN_USE)
+		if (status === 'IN_USE' && installedUnit) {
+			html += `<div><small class="text-muted" style="font-size:0.7rem; margin-left:0"><i class="fas fa-link me-1"></i>Installed on Unit ${installedUnit}</small></div>`;
 		}
 		
-		return $('<span><span class="component-item-text">' + name + ' • ' + serial + '</span> ' +
-			statusBadge + installedInfo + '</span>');
+		html += '</div>';
+		return $(html);
 	}
 	
 	// Format selected component in the closed dropdown
@@ -2039,10 +2015,14 @@ electricFields.classList.remove('d-none');
 		if (!option.id) return option.text;
 		
 		const $option = $(option.element);
+		const itemNumber = $option.data('item-number') || '';
 		const name = $option.data('name') || option.text.split(' • ')[0] || '';
-		const serial = $option.data('serial') || '';
 		
-		return $('<span>' + name + ' • ' + serial + '</span>');
+		if (itemNumber && itemNumber !== '-') {
+			return `${itemNumber} - ${name}`.trim();
+		}
+		
+		return name;
 	}
 	
 	function loadBatteryOptionsIndividual(suffix = '') {
@@ -2055,20 +2035,22 @@ electricFields.classList.remove('d-none');
 					batterySelect.innerHTML = '<option value="">- Select Battery -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
-							const serialInfo = item.sn_baterai || 'SN: -';
-							const isUsed = item.attachment_status === 'USED';
-							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-						
-							return `<option value="${item.id_inventory_attachment}" 
-									data-status="${item.attachment_status}" 
+							const itemNumber = item.item_number || '-';
+							const serialNumber = item.serial_number || '-';
+						const isUsed = item.status === 'IN_USE';
+						const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
+					
+						return `<option value="${item.id}" 
+								data-status="${item.status}" 
 									data-name="${name}"
-									data-serial="${serialInfo}"
-									data-installed-unit="${item.installed_unit_no||''}"
-									data-installed-sn="${item.installed_unit_sn||''}"
+								data-item-number="${itemNumber}"
+								data-serial="${serialNumber}"
+								data-installed-unit="${item.installed_unit_no||''}"
+								data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
 									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${serialInfo}
+								${name} • ${itemNumber}
 							</option>`;
 						}).join('');
 					
@@ -2098,7 +2080,7 @@ electricFields.classList.remove('d-none');
 						updateDropdownAvailability(batterySelect, 'battery');
 					}, 100);
 					
-					// Add event listener for USED battery detection
+					// Add event listener for IN_USE battery detection
 					$batterySelect.on('select2:select', function(e) {
 						const selectedOption = e.params.data.element;
 						const status = selectedOption.getAttribute('data-status');
@@ -2106,8 +2088,8 @@ electricFields.classList.remove('d-none');
 						
 						console.log(`🔋 Battery selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 						
-						if (status === 'USED' && installedUnit) {
-							// Show confirmation modal for USED battery
+						if (status === 'IN_USE' && installedUnit) {
+							// Show confirmation modal for IN_USE battery
 							showUsedComponentAlert(selectedOption, 'battery', suffix);
 						}
 					});
@@ -2134,20 +2116,22 @@ electricFields.classList.remove('d-none');
 					chargerSelect.innerHTML = '<option value="">- Select Charger -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
-							const serialInfo = item.sn_charger || 'SN: -';
-							const isUsed = item.attachment_status === 'USED';
-							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-							
-							return `<option value="${item.id_inventory_attachment}" 
-									data-status="${item.attachment_status}" 
+							const itemNumber = item.item_number || '-';
+							const serialNumber = item.serial_number || '-';
+						const isUsed = item.status === 'IN_USE';
+						const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
+						
+						return `<option value="${item.id}" 
+								data-status="${item.status}" 
 									data-name="${name}"
-									data-serial="${serialInfo}"
-									data-installed-unit="${item.installed_unit_no||''}"
-									data-installed-sn="${item.installed_unit_sn||''}"
+								data-item-number="${itemNumber}"
+								data-serial="${serialNumber}"
+								data-installed-unit="${item.installed_unit_no||''}"
+								data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
 									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${serialInfo}
+								${name} • ${itemNumber}
 							</option>`;
 						}).join('');
 					
@@ -2177,7 +2161,7 @@ electricFields.classList.remove('d-none');
 						updateDropdownAvailability(chargerSelect, 'charger');
 					}, 100);
 					
-					// Add event listener for USED charger detection
+					// Add event listener for IN_USE charger detection
 					$chargerSelect.on('select2:select', function(e) {
 						const selectedOption = e.params.data.element;
 						const status = selectedOption.getAttribute('data-status');
@@ -2185,8 +2169,8 @@ electricFields.classList.remove('d-none');
 						
 						console.log(`🔌 Charger selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 						
-						if (status === 'USED' && installedUnit) {
-							// Show confirmation modal for USED charger
+						if (status === 'IN_USE' && installedUnit) {
+							// Show confirmation modal for IN_USE charger
 							showUsedComponentAlert(selectedOption, 'charger', suffix);
 						}
 					});
@@ -2732,8 +2716,8 @@ electricFields.classList.remove('d-none');
 						
 						console.log(`🔧 Attachment selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 						
-						if (status === 'USED' && installedUnit) {
-							// Show confirmation modal for USED attachment
+						if (status === 'IN_USE' && installedUnit) {
+							// Show confirmation modal for IN_USE attachment
 							showUsedAttachmentAlert(selectedOption);
 						}
 					});
@@ -2757,7 +2741,7 @@ electricFields.classList.remove('d-none');
 		
 		if (status === 'AVAILABLE') {
 			statusBadge = '<span class="component-status-badge status-available">✓ Available</span>';
-		} else if (status === 'USED') {
+		} else if (status === 'IN_USE') {
 			statusBadge = '<span class="component-status-badge status-used">⚠ Used</span>';
 			if (installedUnit) {
 				installedInfo = `<span class="installed-unit-info">(Unit ${installedUnit})</span>`;
@@ -4532,7 +4516,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				</div>
 				<div id="replaceBatteryOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Select Replacement Battery <span class="text-danger">*</span></label>
-					<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" data-old-battery-id="${battery.id_inventory_attachment}">
+					<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" data-old-battery-id="${battery.id_inventory_attachment}" style="width:100%">
 						<option value="">- Select New Battery -</option>
 					</select>
 				</div>`;
@@ -4543,7 +4527,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 					<small><i class="fas fa-exclamation-triangle me-1"></i>This unit requires a Battery</small>
 				</div>
 				<label class="form-label">Select Battery <span class="text-danger">*</span></label>
-				<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id">
+				<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" style="width:100%">
 					<option value="">- Select Battery -</option>
 				</select>`;
 		}
@@ -4598,7 +4582,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				</div>
 				<div id="replaceChargerOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Select Replacement Charger <span class="text-danger">*</span></label>
-					<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" data-old-charger-id="${charger.id_inventory_attachment}">
+					<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" data-old-charger-id="${charger.id_inventory_attachment}" style="width:100%">
 						<option value="">- Select New Charger -</option>
 					</select>
 				</div>`;
@@ -4609,7 +4593,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 					<small><i class="fas fa-exclamation-triangle me-1"></i>This unit requires a Charger</small>
 				</div>
 				<label class="form-label">Select Charger <span class="text-danger">*</span></label>
-				<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id">
+				<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" style="width:100%">
 					<option value="">- Select Charger -</option>
 				</select>`;
 		}
@@ -5465,3 +5449,4 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 </div>
 
 <?= $this->endSection() ?>
+

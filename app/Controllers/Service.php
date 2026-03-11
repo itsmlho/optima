@@ -2891,7 +2891,8 @@ EOF;
         $qb = $this->serviceBaseQuery($allowed)
             ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
             ->select('d.nama_departemen, iu.departemen_id, tu.tipe')
-            ->whereIn('iu.status_unit_id', [1, 2]) // AVAILABLE_STOCK (1) and STOCK_NON_ASET (2)
+            ->select('su.status_unit as status_unit_name, iu.lokasi_unit as location_name')
+            ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
 
@@ -2958,6 +2959,8 @@ EOF;
                 'model_unit' => $r['model_unit'],
                 'tipe_unit' => $r['tipe'],
                 'status_unit_id' => $r['status_unit_id'],
+                'status_name' => $r['status_unit_name'] ?? null,
+                'location_name' => $r['location_name'] ?? null,
                 'departemen_id' => $r['departemen_id'],
                 'departemen_name' => $r['nama_departemen'],
                 'needs_no_unit' => $needsNoUnit,
