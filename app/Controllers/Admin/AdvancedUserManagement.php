@@ -1375,24 +1375,26 @@ class AdvancedUserManagement extends BaseController
     {
         try {
             // Get role permissions
-            $rolePermissions = $this->db->table('user_roles ur')
+            $result = $this->db->table('user_roles ur')
                 ->join('roles r', 'r.id = ur.role_id')
                 ->join('role_permissions rp', 'rp.role_id = r.id')
                 ->join('permissions p', 'p.id = rp.permission_id')
                 ->where('ur.user_id', $userId)
                 ->select('p.key as permission_key, p.name, p.description, "role" as source, r.name as source_name')
-                ->get()->getResultArray();
+                ->get();
+            $rolePermissions = ($result) ? $result->getResultArray() : [];
         } catch (\Exception $e) {
             $rolePermissions = [];
         }
 
         try {
             // Get custom permissions
-            $customPermissions = $this->db->table('user_permissions up')
+            $result = $this->db->table('user_permissions up')
                 ->join('permissions p', 'p.id = up.permission_id')
                 ->where('up.user_id', $userId)
                 ->select('p.key as permission_key, p.name, p.description, up.granted, "custom" as source')
-                ->get()->getResultArray();
+                ->get();
+            $customPermissions = ($result) ? $result->getResultArray() : [];
         } catch (\Exception $e) {
             $customPermissions = [];
         }
