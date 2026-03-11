@@ -1,0 +1,2 @@
+# This file ensures the cache directory is tracked by git
+# The folder itself is needed for CodeIgniter 4 to write cache files
