@@ -394,7 +394,6 @@ body.cn-sidebar-layout {
 /* Warna hanya saat dropdown terbuka: satu blok (parent + submenu) */
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open {
   background: var(--optima-primary-light);
-  border-radius: 12px;
   margin: 0 -2px;
   padding: 0 2px 6px 2px;
   padding-bottom: 12px;
@@ -403,10 +402,9 @@ body.cn-sidebar-layout {
   z-index: auto;
 }
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle {
-  border-radius: 12px 12px 0 0;
+  /* No border-radius - flat corners */
 }
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .dropdown-menu {
-  border-radius: 0 0 12px 12px;
   padding-left: 0;
   padding-bottom: 4px;
 }
