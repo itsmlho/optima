@@ -1976,6 +1976,235 @@ h6, .h6 { font-size: 1rem; }
     color: #fff;
 }
 
+/* Color-Coded Badge Utilities - For Tabs & Status Indicators */
+/* Blue Badge - General/Neutral (All items) */
+.badge-blue-soft {
+    background-color: #e7f1ff !important;
+    color: #084298 !important;
+}
+
+.badge-blue {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+/* Green Badge - Active/Success */
+.badge-green-soft {
+    background-color: #d1e7dd !important;
+    color: #0a3622 !important;
+}
+
+.badge-green {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+}
+
+/* Red Badge - Inactive/Danger */
+.badge-red-soft {
+    background-color: #f8d7da !important;
+    color: #58151c !important;
+}
+
+.badge-red {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+/* Orange Badge - Warning/No Contract */
+.badge-orange-soft {
+    background-color: #ffe5d0 !important;
+    color: #653208 !important;
+}
+
+.badge-orange {
+    background-color: #fd7e14 !important;
+    color: #ffffff !important;
+}
+
+/* ========================================================================
+   BADGE SYSTEM - TAB SPECIFIC (Auto State Change)
+   ======================================================================== */
+/* Tab badges: Soft saat inactive → Solid saat active (untuk kontras yang jelas) */
+
+.badge-tab-all {
+    background-color: #e7f1ff !important;
+    color: #084298 !important;
+    transition: all 0.2s ease;
+}
+
+.nav-link.active .badge-tab-all,
+.tab-all.active .badge-tab-all {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+.badge-tab-active {
+    background-color: #d1e7dd !important;
+    color: #0a3622 !important;
+    transition: all 0.2s ease;
+}
+
+.nav-link.active .badge-tab-active,
+.tab-active.active .badge-tab-active {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+}
+
+.badge-tab-inactive {
+    background-color: #f8d7da !important;
+    color: #58151c !important;
+    transition: all 0.2s ease;
+}
+
+.nav-link.active .badge-tab-inactive,
+.tab-inactive.active .badge-tab-inactive {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+.badge-tab-no-contract {
+    background-color: #ffe5d0 !important;
+    color: #653208 !important;
+    transition: all 0.2s ease;
+}
+
+.nav-link.active .badge-tab-no-contract,
+.tab-no-contract.active .badge-tab-no-contract {
+    background-color: #fd7e14 !important;
+    color: #ffffff !important;
+}
+
+/* ========================================================================
+   BADGE SYSTEM - GENERIC SOFT COLORS (For Tables, Status, etc.)
+   ======================================================================== */
+/* Generic badges untuk table, status indicators - SELALU SOFT (tidak berubah) */
+/* Bisa dipakai di seluruh aplikasi: Unit Management, Contracts, etc. */
+
+/* Soft Blue - Neutral/Info */
+.badge-soft-blue {
+    background-color: #e7f1ff !important;
+    color: #084298 !important;
+    font-weight: 500;
+}
+
+/* Soft Green - Active/Success */
+.badge-soft-green {
+    background-color: #d1e7dd !important;
+    color: #0a3622 !important;
+    font-weight: 500;
+}
+
+/* Soft Red - Inactive/Danger */
+.badge-soft-red {
+    background-color: #f8d7da !important;
+    color: #58151c !important;
+    font-weight: 500;
+}
+
+/* Soft Orange - Warning/Caution */
+.badge-soft-orange {
+    background-color: #ffe5d0 !important;
+    color: #653208 !important;
+    font-weight: 500;
+}
+
+/* Soft Yellow - Pending/Hold */
+.badge-soft-yellow {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+    font-weight: 500;
+}
+
+/* Soft Purple - Special Status */
+.badge-soft-purple {
+    background-color: #e0cffc !important;
+    color: #59359a !important;
+    font-weight: 500;
+}
+
+/* Soft Cyan - Information */
+.badge-soft-cyan {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+    font-weight: 500;
+}
+
+/* Soft Gray - Disabled/Neutral */
+.badge-soft-gray {
+    background-color: #e9ecef !important;
+    color: #495057 !important;
+    font-weight: 500;
+}
+
+/* ========================================================================
+   BADGE USAGE STANDARDS - OPTIMA APPLICATION WIDE
+   ======================================================================== */
+/*
+ * STANDAR PENGGUNAAN BADGE DI SELURUH APLIKASI OPTIMA
+ * Gunakan standar ini untuk konsistensi visual di semua modul
+ * 
+ * QUICK REFERENCE - Copy paste classes ini:
+ * ==========================================
+ * 
+ * AVAILABLE CLASSES:
+ * ------------------
+ * .badge-soft-blue    → Light Blue   (#e7f1ff / #084298)
+ * .badge-soft-green   → Light Green  (#d1e7dd / #0a3622)
+ * .badge-soft-red     → Light Red    (#f8d7da / #58151c)
+ * .badge-soft-orange  → Light Orange (#ffe5d0 / #653208)
+ * .badge-soft-yellow  → Light Yellow (#fff3cd / #664d03)
+ * .badge-soft-purple  → Light Purple (#e0cffc / #59359a)
+ * .badge-soft-cyan    → Light Cyan   (#cff4fc / #055160)
+ * .badge-soft-gray    → Light Gray   (#e9ecef / #495057)
+ * 
+ * HTML USAGE EXAMPLES:
+ * --------------------
+ * <span class="badge badge-soft-green">ACTIVE</span>
+ * <span class="badge badge-soft-red">INACTIVE</span>
+ * <span class="badge badge-soft-blue">247</span>
+ * <span class="badge badge-soft-orange rounded-pill">5 days left</span>
+ * 
+ * JAVASCRIPT USAGE EXAMPLES:
+ * --------------------------
+ * `<span class="badge badge-soft-green">${count}</span>`
+ * data == 1 ? '<span class="badge badge-soft-green">ACTIVE</span>' 
+ *           : '<span class="badge badge-soft-red">INACTIVE</span>'
+ * 
+ * ==========================================
+ * 
+ * 1. STATUS ENTITY (Customer, Unit, Contract, etc.)
+ *    - ACTIVE status       → badge-soft-green
+ *    - INACTIVE status     → badge-soft-red
+ *    - PENDING status      → badge-soft-yellow
+ *    - DRAFT status        → badge-soft-gray
+ * 
+ * 2. RENTAL TYPE / DOCUMENT TYPE
+ *    - CONTRACT           → badge-soft-blue
+ *    - PO_ONLY            → badge-soft-cyan
+ *    - DAILY/SPOT         → badge-soft-yellow
+ *    - QUOTATION          → badge-soft-purple
+ * 
+ * 3. TIME-BASED STATUS
+ *    - Expired            → badge-soft-red
+ *    - Expiring Soon      → badge-soft-orange
+ *    - Active/Valid       → badge-soft-green
+ * 
+ * 4. COUNTERS & METRICS
+ *    - Has items (>0)     → badge-soft-blue
+ *    - Empty (0)          → badge-soft-gray
+ *    - Warning count      → badge-soft-orange
+ * 
+ * 5. OPERATIONAL STATUS (Unit Location/Condition)
+ *    - In Operation       → badge-soft-green
+ *    - Maintenance        → badge-soft-orange
+ *    - Repair/Broken      → badge-soft-red
+ *    - Available/Stock    → badge-soft-cyan
+ *    - Sold/Delivered     → badge-soft-purple
+ * 
+ * 6. DEFAULT/UNKNOWN
+ *    - Unknown/N/A        → badge-soft-gray
+ */
+
 /* ========================================================================
    ALERTS - CLEAN & SIMPLE
    ======================================================================== */
@@ -7559,6 +7788,7 @@ small {
 }
 
 /* Enhanced Sidebar Styling */
+/* Sidebar overlay & collapsed states: nonaktif untuk layout baru (cn-sidebar-layout / CodingNepal) */
 .sidebar-overlay {
     position: fixed;
     top: 0;
@@ -7571,17 +7801,17 @@ small {
 }
 
 @media (max-width: 991.98px) {
-    .sidebar.show + .sidebar-overlay {
+    body:not(.cn-sidebar-layout) .sidebar.show + .sidebar-overlay {
         display: block;
     }
 }
 
 /* Sidebar Enhanced States */
-.sidebar.collapsed {
+body:not(.cn-sidebar-layout) .sidebar.collapsed {
     transform: translateX(-280px);
 }
 
-.main-content.expanded {
+body:not(.cn-sidebar-layout) .main-content.expanded {
     margin-left: 0;
 }
 

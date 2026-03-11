@@ -1,0 +1,266 @@
+/**
+ * OPTIMA Sidebar - Improved Demo Styling
+ * Referensi feel: CodingNepal. Rounded active pane, tanpa user session, transisi smooth, dropdown rapi.
+ * Load AFTER optima-sidebar-codepen-enhance.css
+ * @version 1.1.0
+ */
+
+/* ========== Demo: sidebar full height, no gap (no user block) ========== */
+.demo-sidebar-improved .sidebar.sidebar-enhanced {
+    top: 0 !important;
+    height: 100vh !important;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.demo-sidebar-improved .sidebar .sidebar-nav {
+    padding: 0.5rem 0.75rem 1rem 0.75rem;
+    height: calc(100vh - 60px);
+    transition: height 0.3s ease;
+}
+
+/* Collapsed: isi penuh tanpa gap bawah (no user block) */
+.demo-sidebar-improved .collapsed-nav-container {
+    margin-bottom: 0;
+    height: calc(100vh - 60px);
+}
+
+/* Sembunyikan user status di demo */
+.demo-sidebar-improved .sidebar .sidebar-user-status {
+    display: none !important;
+}
+
+/* ========== Brand area - halus ========== */
+.sidebar .sidebar-brand {
+    transition: padding 0.3s ease;
+}
+
+.sidebar .sidebar-brand-text {
+    transition: opacity 0.35s ease, margin 0.3s ease;
+}
+
+/* ========== Menu items - sejajar kiri-kanan, corner rounded kelihatan (floating) ========== */
+.sidebar .sidebar-nav .nav {
+    padding-left: 0;
+    padding-right: 0;
+    gap: 4px;
+}
+
+.sidebar .nav-link,
+.sidebar .nav-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    transition: background 0.28s ease, color 0.28s ease, transform 0.25s ease;
+    border: 1px solid transparent;
+    margin: 0;
+}
+
+.sidebar .nav-link i,
+.sidebar .nav-dropdown-item i {
+    min-width: 1.5rem;
+    width: 1.5rem;
+    text-align: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    transition: color 0.28s ease, transform 0.25s ease;
+}
+
+.sidebar .nav-link .nav-link-text,
+.sidebar .nav-dropdown-item .nav-link-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.3s ease;
+}
+
+/* Hover - solid biru, teks putih (override transparan + border kiri dari base) */
+.sidebar .nav-link:hover,
+.sidebar .nav-dropdown-item:hover {
+    background: #0061f2 !important;
+    color: #fff !important;
+    border-left: none !important;
+    padding-left: 0.85rem !important;
+}
+
+.sidebar .nav-link:hover i,
+.sidebar .nav-dropdown-item:hover i {
+    color: #fff !important;
+    transform: scale(1.05);
+}
+
+/* Active - biru rounded (ala CodingNepal), bukan kotak Bootstrap */
+.sidebar .nav-link.active,
+.sidebar .nav-dropdown-item.active {
+    background: #0061f2 !important;
+    color: #fff !important;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(0, 97, 242, 0.3);
+}
+
+.sidebar .nav-link.active i,
+.sidebar .nav-dropdown-item.active i {
+    color: #fff !important;
+}
+
+/* ========== Section headings - bersih, kecil ========== */
+.sidebar .sidebar-heading {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 1rem 0.35rem;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar .nav-divider {
+    margin: 0.25rem 0.5rem 0;
+}
+
+/* ========== Dropdown flyout (collapsed) - rapih: rounded, spacing jelas ========== */
+.sidebar .nav-dropdown {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar .nav-dropdown-header {
+    padding: 0.6rem 1rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #495057;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    transition: opacity 0.2s ease;
+}
+
+.sidebar .nav-dropdown-item {
+    padding: 0.55rem 1rem;
+    margin: 0 6px;
+    border-radius: 8px;
+    transition: background 0.22s ease, color 0.22s ease;
+    border-left: none;
+}
+
+.sidebar .nav-dropdown-item:hover {
+    background: rgba(0, 97, 242, 0.08);
+    border-left: none;
+}
+
+.sidebar .nav-dropdown-item.active {
+    background: rgba(0, 97, 242, 0.15) !important;
+    color: #004bb5 !important;
+}
+
+.sidebar .nav-dropdown-item.active i {
+    color: #0061f2 !important;
+}
+
+/* ========== Collapse: smooth + auto-fit (transisi selaras, tanpa bagan kosong) ========== */
+.demo-sidebar-improved .main-content {
+    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .main-content {
+    margin-left: calc(85px + 2vw) !important;
+}
+
+body.sidebar-collapsed .sidebar.sidebar-enhanced {
+    overflow: visible !important;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .sidebar-collapsed-menu,
+body.sidebar-collapsed .demo-sidebar-improved .collapsed-nav-container {
+    overflow: visible !important;
+}
+
+/* ========== Collapsed state ala CodingNepal: 85px, ikon rapi, flyout gelap ========== */
+body.sidebar-collapsed .demo-sidebar-improved .sidebar.sidebar-enhanced {
+    width: 85px !important;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .collapsed-nav-container {
+    margin-bottom: 0;
+    height: calc(100vh - 60px);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-group-link {
+    border-radius: 8px;
+    transition: all 0.35s ease;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-group-link:hover {
+    background: #EEF2FF;
+    color: #151A2D;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-group-link:hover i {
+    color: #0061f2;
+}
+
+/* Flyout saat collapsed: posisi ikut item (absolute), tema gelap ala CodingNepal */
+body.sidebar-collapsed .demo-sidebar-improved .nav-group-item,
+body.sidebar-collapsed .sidebar .nav-group-item {
+    position: relative;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown,
+body.sidebar-collapsed .sidebar .nav-dropdown {
+    position: absolute !important;
+    left: 100% !important;
+    margin-left: 4px;
+    top: 0 !important;
+    min-width: 260px;
+    max-width: 300px;
+    z-index: 2050;
+    background: #151A2D !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 10px 10px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transform: translateX(-8px);
+    transform-origin: left center;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-group-item:hover .nav-dropdown,
+body.sidebar-collapsed .sidebar .nav-group-item:hover .nav-dropdown {
+    transform: translateX(0) scale(1);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown-header,
+body.sidebar-collapsed .sidebar .nav-dropdown-header {
+    background: rgba(255, 255, 255, 0.06);
+    color: #adb5bd;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown-item,
+body.sidebar-collapsed .sidebar .nav-dropdown-item {
+    color: #F1F4FF;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown-item:hover,
+body.sidebar-collapsed .sidebar .nav-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown-item:hover i,
+body.sidebar-collapsed .sidebar .nav-dropdown-item:hover i {
+    color: #fff !important;
+}
+
+body.sidebar-collapsed .demo-sidebar-improved .nav-dropdown-item.active,
+body.sidebar-collapsed .sidebar .nav-dropdown-item.active {
+    background: rgba(0, 97, 242, 0.35) !important;
+    color: #fff !important;
+}

@@ -2,6 +2,8 @@
 
 <?= $this->section('content') ?>
 
+<?php $isEn = service('request')->getLocale() === 'en'; ?>
+
 <!-- Force browser to reload (Cache Buster) -->
 <script>
 // Force modal sizes on page load
@@ -356,7 +358,10 @@ window.addEventListener('DOMContentLoaded', function() {
                     <!-- Info Box -->
                     <div class="alert alert-info mb-3">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Panduan Pengisian:</strong> Isi field utama yang customer tanyakan. Jika ada kebutuhan teknis khusus (Battery Type, Charger, Valve khusus), tulis di <strong>Notes</strong> di bagian bawah.
+                        <strong><?= $isEn ? 'Input Guide:' : 'Panduan Pengisian:' ?></strong>
+                        <?= $isEn
+                            ? 'Fill the main fields requested by customer. If there are special technical needs (Battery Type, Charger, special Valve), write them in <strong>Notes</strong> below.'
+                            : 'Isi field utama yang customer tanyakan. Jika ada kebutuhan teknis khusus (Battery Type, Charger, Valve khusus), tulis di <strong>Notes</strong> di bagian bawah.' ?>
                     </div>
                     
                     <div class="row g-3">
@@ -370,16 +375,51 @@ window.addEventListener('DOMContentLoaded', function() {
                             <small class="text-muted"><?= lang('Marketing.enter_description_spec1') ?></small>
                         </div>
                         
-                        <!-- Spare Unit Checkbox -->
+                        <!-- Spare Unit Checkbox & Quantity -->
                         <div class="col-12">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="is_spare_unit" id="isSpareUnit" value="1">
-                                <label class="form-check-label fw-bold text-warning" for="isSpareUnit">
-                                    <i class="fas fa-box-open me-1"></i> Unit Cadangan (Spare Unit - Tidak Ditagih)
+                                <input class="form-check-input" type="checkbox" id="includeSpareUnits" value="1">
+                                <label class="form-check-label fw-bold text-warning" for="includeSpareUnits">
+                                    <i class="fas fa-box-open me-1"></i><?= $isEn ? 'Include Spare Units' : 'Sertakan Unit Cadangan (Spare)' ?>
                                 </label>
                                 <small class="text-muted d-block ms-4">
-                                    Unit backup/cadangan untuk customer, tidak dihitung dalam tagihan bulanan
+                                    <?= $isEn ? 'Add backup units for operational continuity (not charged, for zero downtime)' : 'Tambahkan unit backup untuk kontinuitas operasional (tidak ditagih, untuk jaga-jaga downtime)' ?>
                                 </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Spare Unit Details (shown when checkbox is checked) -->
+                        <div class="col-12" id="spareUnitsContainer" style="display: none;">
+                            <div class="alert alert-warning border-warning bg-light">
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-0 fw-bold">
+                                            <i class="fas fa-box me-1"></i><?= $isEn ? 'Spare Quantity' : 'Jumlah Spare' ?>
+                                        </label>
+                                        <input type="number" class="form-control" name="spare_quantity" id="spareQuantity" min="0" value="0" placeholder="0">
+                                        <small class="text-muted"><?= $isEn ? 'Backup units' : 'Unit cadangan' ?></small>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div>
+                                                <strong><?= $isEn ? 'Billable Units:' : 'Unit yang Ditagih:' ?></strong>
+                                                <span id="billableUnitsDisplay" class="badge badge-soft-green ms-2">0</span>
+                                            </div>
+                                            <div>
+                                                <strong><?= $isEn ? 'Spare Units:' : 'Unit Spare:' ?></strong>
+                                                <span id="spareUnitsDisplay" class="badge badge-soft-yellow ms-2">0</span>
+                                            </div>
+                                            <div>
+                                                <strong><?= $isEn ? 'Total Delivered:' : 'Total Dikirim:' ?></strong>
+                                                <span id="totalUnitsDisplay" class="badge badge-soft-blue ms-2">0</span>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <?= $isEn ? 'Billing calculation: Billable Units × Monthly Price' : 'Perhitungan tagihan: Unit yang Ditagih × Harga Bulanan' ?>
+                                        </small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -388,10 +428,10 @@ window.addEventListener('DOMContentLoaded', function() {
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="include_operator" id="includeOperator" value="1">
                                 <label class="form-check-label fw-bold text-info" for="includeOperator">
-                                    <i class="fas fa-user-tie me-1"></i> Termasuk Operator
+                                    <i class="fas fa-user-tie me-1"></i><?= $isEn ? 'Include Operator' : 'Termasuk Operator' ?>
                                 </label>
                                 <small class="text-muted d-block ms-4">
-                                    Kontrak termasuk penyediaan operator untuk unit
+                                    <?= $isEn ? 'Contract includes operator provisioning for this unit.' : 'Kontrak termasuk penyediaan operator untuk unit' ?>
                                 </small>
                             </div>
                         </div>
@@ -399,36 +439,36 @@ window.addEventListener('DOMContentLoaded', function() {
                         <!-- Operator Details (shown when checkbox is checked) - HORIZONTAL LAYOUT -->
                         <div class="col-12" id="operatorDetailsContainer" style="display: none;">
                             <hr class="my-2">
-                            <h6 class="text-info mb-3"><i class="fas fa-user-tie me-2"></i>Detail Operator</h6>
+                            <h6 class="text-info mb-3"><i class="fas fa-user-tie me-2"></i><?= $isEn ? 'Operator Details' : 'Detail Operator' ?></h6>
                             <div class="row g-3" id="operatorDetails">
                                 <div class="col-md-4">
-                                    <label class="form-label">Jumlah Operator <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" name="operator_quantity" id="operatorQuantity" min="1" value="1" placeholder="Jumlah operator">
-                                    <small class="text-muted">Per unit berapa operator</small>
+                                    <label class="form-label"><?= $isEn ? 'Operator Quantity' : 'Jumlah Operator' ?> <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="operator_quantity" id="operatorQuantity" min="1" value="1" placeholder="<?= $isEn ? 'Operator quantity' : 'Jumlah operator' ?>">
+                                    <small class="text-muted"><?= $isEn ? 'How many operators per unit' : 'Per unit berapa operator' ?></small>
                                 </div>
                                 
                                 <div class="col-md-4">
-                                    <label class="form-label">Harga per Operator (Monthly) <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" name="operator_price_monthly" id="operatorPriceMonthly" step="0.01" placeholder="Rp per operator per bulan">
-                                    <small class="text-muted">Harga bulanan per operator</small>
+                                    <label class="form-label"><?= $isEn ? 'Price per Operator (Monthly)' : 'Harga per Operator (Monthly)' ?> <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="operator_price_monthly" id="operatorPriceMonthly" inputmode="numeric" autocomplete="off" placeholder="<?= $isEn ? 'IDR per operator per month' : 'Rp per operator per bulan' ?>">
+                                    <small class="text-muted"><?= $isEn ? 'Monthly price per operator' : 'Harga bulanan per operator' ?></small>
                                 </div>
                                 
                                 <div class="col-md-4">
-                                    <label class="form-label">Harga per Operator (Daily)</label>
-                                    <input type="number" class="form-control" name="operator_price_daily" id="operatorPriceDaily" step="0.01" placeholder="Rp per operator per hari">
-                                    <small class="text-muted">Opsional - harga harian</small>
+                                    <label class="form-label"><?= $isEn ? 'Price per Operator (Daily)' : 'Harga per Operator (Daily)' ?></label>
+                                    <input type="text" class="form-control" name="operator_price_daily" id="operatorPriceDaily" inputmode="numeric" autocomplete="off" placeholder="<?= $isEn ? 'IDR per operator per day' : 'Rp per operator per hari' ?>">
+                                    <small class="text-muted"><?= $isEn ? 'Optional - daily rate' : 'Opsional - harga harian' ?></small>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.monthly_rental_price') ?> <span class="text-danger" id="monthlyPriceRequired">*</span></label>
-                            <input type="number" class="form-control" name="unit_price" id="monthlyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
+                            <input type="text" class="form-control" name="unit_price" id="monthlyPrice" inputmode="numeric" autocomplete="off" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
                             <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.daily_rental_price') ?> <span class="text-danger" id="dailyPriceRequired">*</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" id="dailyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
+                            <input type="text" class="form-control" name="harga_per_unit_harian" id="dailyPrice" inputmode="numeric" autocomplete="off" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
                             <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         
@@ -682,12 +722,12 @@ window.addEventListener('DOMContentLoaded', function() {
                         
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.monthly_rental_price') ?> <span class="text-muted">(<?= lang('App.optional') ?>)</span></label>
-                            <input type="number" class="form-control" name="unit_price" id="attachmentMonthlyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
+                            <input type="text" class="form-control" name="unit_price" id="attachmentMonthlyPrice" inputmode="numeric" autocomplete="off" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
                             <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.daily_rental_price') ?> <span class="text-muted">(<?= lang('App.optional') ?>)</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" id="attachmentDailyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
+                            <input type="text" class="form-control" name="harga_per_unit_harian" id="attachmentDailyPrice" inputmode="numeric" autocomplete="off" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
                             <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         
@@ -721,8 +761,8 @@ window.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Unified Customer Location Modal (Select or Add) -->
-<div class="modal fade modal-wide" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+<div class="modal fade" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -1115,43 +1155,17 @@ window.addEventListener('DOMContentLoaded', function() {
 <?= $this->section('javascript') ?>
 <script>
 /**
- * UI Helper Functions - Mirror server-side ui_helper.php behavior
+ * Quotations Module - Using Optima Badge Standards (optima-pro.css)
+ * 
+ * Quick Reference:
+ * - ACCEPTED/Success  → <span class="badge badge-soft-green">ACCEPTED</span>
+ * - SENT/Warning      → <span class="badge badge-soft-yellow">SENT</span>
+ * - REJECTED/Danger   → <span class="badge badge-soft-red">REJECTED</span>
+ * - DRAFT/Disabled    → <span class="badge badge-soft-gray">DRAFT</span>
+ * - Info/Counters     → <span class="badge badge-soft-blue">247</span>
+ * 
+ * See docs/BADGE_STANDARDS.md for complete guide
  */
-function uiBadge(type, text, options = {}) {
-    const badgeMap = {
-        // Status badges
-        'active': 'success',
-        'inactive': 'secondary',
-        'pending': 'warning',
-        'approved': 'success',
-        'rejected': 'danger',
-        'completed': 'success',
-        'cancelled': 'danger',
-        'draft': 'secondary',
-        'sent': 'info',
-        'accepted': 'success',
-        'deal': 'success',
-        'expired': 'danger',
-        // Action badges
-        'created': 'success',
-        'updated': 'info',
-        'revised': 'warning',
-        'deleted': 'danger',
-        'primary': 'primary',
-        // Priority badges
-        'high': 'danger',
-        'medium': 'warning',
-        'low': 'info',
-        'normal': 'secondary'
-    };
-    
-    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
-    const classes = options.class || '';
-    const icon = options.icon || '';
-    
-    const iconHtml = icon ? `<i class="${icon} me-1"></i>` : '';
-    return `<span class="badge bg-${color} ${classes}">${iconHtml}${text}</span>`;
-}
 
 // Global variable for DataTable
 var quotationsTable;
@@ -1320,7 +1334,29 @@ $(document).ready(function() {
         }
     });
     
-    // Spare Unit toggle functionality
+    // Include Spare Units toggle functionality
+    $(document).on('change', '#includeSpareUnits', function() {
+        const isChecked = $(this).is(':checked');
+        const spareUnitsContainer = $('#spareUnitsContainer');
+        
+        if (isChecked) {
+            spareUnitsContainer.slideDown(300);
+            // Update calculation on show
+            updateTotalUnitsDisplay();
+        } else {
+            spareUnitsContainer.slideUp(300);
+            // Reset spare quantity when unchecked
+            $('#spareQuantity').val('0');
+            updateTotalUnitsDisplay();
+        }
+    });
+    
+    // Auto-calculate total units when quantity or spare_quantity changes
+    $(document).on('input', 'input[name="quantity"], #spareQuantity', function() {
+        updateTotalUnitsDisplay(); // Calls global function defined above
+    });
+    
+    // Spare Unit toggle functionality (old logic - deprecated but keep for backward compatibility)
     $(document).on('change', '#isSpareUnit', function() {
         const isChecked = $(this).is(':checked');
         const monthlyPriceField = $('#monthlyPrice');
@@ -1782,6 +1818,20 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Update total units display (billable + spare = total)
+ * Global function accessible from anywhere
+ */
+function updateTotalUnitsDisplay() {
+    const billableUnits = parseInt($('input[name="quantity"]').val()) || 0;
+    const spareUnits = parseInt($('#spareQuantity').val()) || 0;
+    const totalUnits = billableUnits + spareUnits;
+    
+    $('#billableUnitsDisplay').text(billableUnits);
+    $('#spareUnitsDisplay').text(spareUnits);
+    $('#totalUnitsDisplay').text(totalUnits);
+}
+
 let currentDateRange = { start: null, end: null };
 
 function loadStatistics(startDate = null, endDate = null) {
@@ -1805,6 +1855,83 @@ function loadStatistics(startDate = null, endDate = null) {
             console.error('❌ Failed to load quotation statistics:', error);
             console.error('   Response:', xhr.responseText);
         }
+    });
+}
+
+/**
+ * Refresh action buttons in quotation detail modal
+ * Called after adding/editing/deleting specifications to update buttons dynamically
+ */
+function refreshQuotationActions(quotationId) {
+    if (!quotationId) return;
+    
+    $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + quotationId, function(response) {
+        const data = response.data || response;
+        
+        if (!data.id_quotation) {
+            console.error('Invalid quotation data in refreshQuotationActions:', data);
+            return;
+        }
+        
+        // Update spec counter in tab
+        const specCount = parseInt(data.spec_count || 0);
+        $('#specCountQuotation').text(specCount);
+        
+        // Rebuild action buttons with updated spec_count
+        let actionButtons = '';
+        const workflowStage = data.workflow_stage || 'PROSPECT';
+        const quotationStage = data.stage || '';
+        const hasSpecs = specCount > 0;
+        
+        // Show "Convert to Customer" button for DEAL quotations without customer conversion
+        if (workflowStage === 'DEAL' && quotationStage === 'ACCEPTED' && !data.created_customer_id) {
+            actionButtons += `<button class="btn btn-success me-2" onclick="convertProspectToCustomer(${data.id_quotation})" title="Convert prospect to permanent customer">
+                <i class="fas fa-user-check me-1"></i>Convert to Customer
+            </button>`;
+        }
+        
+        // Show info if already converted
+        if (data.created_customer_id) {
+            actionButtons += `<span class="badge bg-success me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
+                <i class="fas fa-check-circle me-1"></i>Customer Created
+            </span>`;
+        }
+        
+        // Always show edit button for quotations that haven't been converted to contract
+        if (!data.contract_id) {
+            actionButtons += `<button class="btn btn-info me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
+                <i class="fas fa-pencil-alt me-1"></i>Edit Keterangan
+            </button>`;
+        }
+        
+        // Show delete button for non-contracted quotations
+        if (!data.contract_id) {
+            actionButtons += `<button class="btn btn-danger me-2" onclick="deleteQuotation(${data.id_quotation})" title="Delete this quotation">
+                <i class="fas fa-trash me-1"></i>Delete
+            </button>`;
+        } else {
+            // Show info that quotation is linked to contract
+            actionButtons += `<small class="text-muted"><i class="fas fa-link me-1"></i>Linked to Contract #${data.contract_number || data.contract_id}</small>`;
+        }
+        
+        // Show print button ONLY if specifications have been created
+        if (hasSpecs) {
+            actionButtons += `<button class="btn btn-info me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
+                <i class="fas fa-print me-1"></i>Print
+            </button>`;
+        }
+        
+        // Show history button
+        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Lihat riwayat perubahan quotation (revisi, approval, dll)">
+            <i class="fas fa-history me-1"></i>History
+        </button>`;
+        
+        // Update action buttons container
+        $('#quotationActions').html(actionButtons);
+        
+        console.log(`✅ Action buttons refreshed for quotation #${quotationId} (spec_count: ${specCount})`);
+    }).fail(function(xhr) {
+        console.error('Failed to refresh quotation actions:', xhr.responseText);
     });
 }
 
@@ -1841,9 +1968,9 @@ function viewQuotation(id) {
             <div class="row">
                 <div class="col-md-6">
                     <strong>Quotation Number:</strong><br>
-                    ${data.quotation_number || 'undefined'}
-                    ${uiBadge('info', 'v' + (data.version || 1), {class: 'ms-2'})}
-                    ${data.revision_status === 'REVISED' ? uiBadge('revised', 'REVISED', {class: 'ms-1', icon: 'fas fa-exclamation-triangle'}) : ''}
+                    <code class="fs-6">${data.quotation_number || 'undefined'}</code>
+                    <span class="badge badge-soft-blue ms-2">v${data.version || 1}</span>
+                    ${data.revision_status === 'REVISED' ? '<span class="badge badge-soft-orange ms-1"><i class="fas fa-exclamation-triangle me-1"></i>REVISED</span>' : ''}
                     <br><br>
                     <strong>Customer:</strong><br>
                     ${data.customer_name || data.prospect_name || 'undefined'}<br><br>
@@ -1862,7 +1989,12 @@ function viewQuotation(id) {
                 </div>
                 <div class="col-md-6">
                     <strong>Status:</strong><br>
-                    <span class="badge bg-${data.stage === 'ACCEPTED' ? 'success' : data.stage === 'SENT' ? 'warning' : 'danger'}">${(data.stage || 'ERROR').toUpperCase()}</span><br><br>
+                    <span class="badge ${
+                        data.stage === 'ACCEPTED' ? 'badge-soft-green' : 
+                        data.stage === 'SENT' ? 'badge-soft-yellow' : 
+                        data.stage === 'REJECTED' ? 'badge-soft-red' : 
+                        'badge-soft-gray'
+                    }">${(data.stage || 'DRAFT').toUpperCase()}</span><br><br>
                     <strong>Valid Until:</strong><br>
                     ${data.valid_until || 'undefined'}<br><br>
                     <strong>Created:</strong><br>
@@ -1891,7 +2023,7 @@ function viewQuotation(id) {
         
         // Show info if already converted
         if (data.created_customer_id) {
-            actionButtons += `<span class="badge bg-success me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
+            actionButtons += `<span class="badge badge-soft-green me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
                 <i class="fas fa-check-circle me-1"></i>Customer Created
             </span>`;
         }
@@ -1899,8 +2031,8 @@ function viewQuotation(id) {
         // Always show edit button for quotations that haven't been converted to contract
         // Allow editing even for DEAL stage to accommodate price/spec changes
         if (!data.contract_id) {
-            actionButtons += `<button class="btn btn-warning me-2" onclick="editQuotation(${data.id_quotation})" title="Edit quotation details">
-                <i class="fas fa-edit me-1"></i>Edit
+            actionButtons += `<button class="btn btn-info me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
+                <i class="fas fa-pencil-alt me-1"></i>Edit Keterangan
             </button>`;
         }
         
@@ -1923,7 +2055,7 @@ function viewQuotation(id) {
         }
         
         // Show history button
-        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="View change history">
+        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Lihat riwayat perubahan quotation (revisi, approval, dll)">
             <i class="fas fa-history me-1"></i>History
         </button>`;
         
@@ -1991,46 +2123,54 @@ function editQuotation(id) {
     $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + id, function(response) {
         const data = response.data || response;
         
-        // Transform readonly view to editable form
+        // Simple form - only description editable, other fields readonly for reference
         var editForm = `
             <form id="editQuotationForm">
                 <input type="hidden" name="id_quotation" value="${data.id_quotation}">
+                <input type="hidden" name="total_amount" value="${data.total_amount || 0}">
+                <input type="hidden" name="valid_until" value="${data.valid_until || ''}">
+                
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Info:</strong> Hanya field <strong>Description</strong> yang dapat diedit. Amount dan data lain hanya untuk referensi.
+                </div>
+                
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label"><strong>Quotation Number:</strong></label>
-                            <input type="text" class="form-control" value="${data.quotation_number || ''}" disabled>
+                            <input type="text" class="form-control bg-light" value="${data.quotation_number || ''}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label"><strong>Customer:</strong></label>
-                            <input type="text" class="form-control" value="${data.customer_name || data.prospect_name || ''}" disabled>
+                            <input type="text" class="form-control bg-light" value="${data.customer_name || data.prospect_name || ''}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label"><strong>Amount:</strong></label>
-                            <input type="number" class="form-control" name="total_amount" value="${data.total_amount || 0}" required>
-                            <small class="text-muted">Current: Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : '0'}</small>
+                            <input type="text" class="form-control bg-light" value="Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : '0'}" disabled>
+                            <small class="text-muted"><i class="fas fa-lock me-1"></i>Amount dihitung otomatis dari specifications</small>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="form-label"><strong>Status:</strong></label>
-                            <input type="text" class="form-control" value="${(data.stage || 'ERROR').toUpperCase()}" disabled>
+                            <input type="text" class="form-control bg-light" value="${(data.stage || 'ERROR').toUpperCase()}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label"><strong>Valid Until:</strong></label>
-                            <input type="date" class="form-control" name="valid_until" value="${data.valid_until || ''}" required>
+                            <input type="date" class="form-control bg-light" value="${data.valid_until || ''}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label"><strong>Created:</strong></label>
-                            <input type="text" class="form-control" value="${data.created_at || ''}" disabled>
+                            <input type="text" class="form-control bg-light" value="${data.created_at || ''}" disabled>
                         </div>
                     </div>
                 </div>
                 <hr>
                 <div class="mb-3">
-                    <label class="form-label"><strong>Description:</strong></label>
-                    <textarea class="form-control" name="quotation_description" rows="5" required>${data.quotation_description || ''}</textarea>
-                    <small class="text-muted">Describe the quotation details, terms, and conditions</small>
+                    <label class="form-label"><strong>Description / Keterangan:</strong> <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="quotation_description" rows="7" required autofocus>${data.quotation_description || ''}</textarea>
+                    <small class="text-muted"><i class="fas fa-edit me-1"></i>Isi keterangan quotation, terms, conditions, atau catatan khusus untuk customer</small>
                 </div>
             </form>
         `;
@@ -2040,10 +2180,10 @@ function editQuotation(id) {
         // Change action buttons to Save and Cancel
         var editActions = `
             <button class="btn btn-success me-2" onclick="saveQuotation(${data.id_quotation})" type="button">
-                <i class="fas fa-save me-1"></i>Save Changes
+                <i class="fas fa-save me-1"></i>Simpan Keterangan
             </button>
             <button class="btn btn-secondary" onclick="viewQuotation(${data.id_quotation})" type="button">
-                <i class="fas fa-times me-1"></i>Cancel
+                <i class="fas fa-times me-1"></i>Batal
             </button>
         `;
         $('#quotationActions').html(editActions);
@@ -2065,7 +2205,15 @@ function saveQuotation(id) {
     var formData = new FormData(form);
     
     // Show loading
-    OptimaPro.showLoading('Saving quotation...');
+    Swal.fire({
+        title: 'Menyimpan...',
+        text: 'Sedang menyimpan keterangan quotation',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     // Send AJAX request
     $.ajax({
@@ -2077,17 +2225,16 @@ function saveQuotation(id) {
         dataType: 'json',
         success: function(response) {
             console.log('Update response:', response); // Debug
-            OptimaPro.hideLoading();
             if (response.status === 'success') {
-                // Show appropriate message based on revision status
-                let message = response.message || 'Quotation updated successfully';
+                // Show appropriate message
+                let message = 'Keterangan quotation berhasil disimpan';
                 let icon = 'success';
-                let title = 'Saved!';
+                let title = 'Tersimpan!';
                 
                 if (response.is_revision) {
                     icon = 'info';
-                    title = 'Quotation Revised!';
-                    message = `Quotation updated and marked as REVISED (version ${response.version})`;
+                    title = 'Quotation Direvisi!';
+                    message = `Keterangan quotation diupdate dan ditandai sebagai REVISED (versi ${response.version})`;
                 }
                 
                 Swal.fire({
@@ -2108,12 +2255,11 @@ function saveQuotation(id) {
                     }, 500);
                 });
             } else {
-                Swal.fire('Error', response.message || 'Failed to update quotation', 'error');
+                Swal.fire('Error', response.message || 'Gagal menyimpan keterangan', 'error');
             }
         },
         error: function(xhr) {
-            OptimaPro.hideLoading();
-            var errorMsg = 'Failed to update quotation';
+            var errorMsg = 'Gagal menyimpan keterangan quotation';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
             }
@@ -2281,6 +2427,20 @@ function convertProspectToCustomer(quotationId) {
     });
 }
 
+// Helper function for action type badges
+function getActionBadge(actionType) {
+    const badges = {
+        'CREATED': '<span class="badge badge-soft-blue"><i class="fas fa-plus me-1"></i>CREATED</span>',
+        'UPDATED': '<span class="badge badge-soft-yellow"><i class="fas fa-edit me-1"></i>UPDATED</span>',
+        'REVISED': '<span class="badge badge-soft-orange"><i class="fas fa-exclamation-triangle me-1"></i>REVISED</span>',
+        'SENT': '<span class="badge badge-soft-cyan"><i class="fas fa-paper-plane me-1"></i>SENT</span>',
+        'ACCEPTED': '<span class="badge badge-soft-green"><i class="fas fa-check-circle me-1"></i>ACCEPTED</span>',
+        'REJECTED': '<span class="badge badge-soft-red"><i class="fas fa-times-circle me-1"></i>REJECTED</span>',
+        'DEAL': '<span class="badge badge-soft-purple"><i class="fas fa-handshake me-1"></i>DEAL</span>'
+    };
+    return badges[actionType.toUpperCase()] || `<span class="badge badge-soft-gray">${actionType}</span>`;
+}
+
 // Function to view quotation history
 function viewQuotationHistory(id) {
     Swal.fire({
@@ -2289,7 +2449,6 @@ function viewQuotationHistory(id) {
         allowOutsideClick: false,
         showConfirmButton: false
     });
-    OptimaPro.showLoading('Loading history...');
 
     fetch(`<?= base_url('marketing/quotations/history/') ?>${id}`, {
             headers: {
@@ -2303,7 +2462,6 @@ function viewQuotationHistory(id) {
             return response.json();
         })
         .then(result => {
-            OptimaPro.hideLoading();
             if (result.success) {
                 let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
                 
@@ -2314,10 +2472,10 @@ function viewQuotationHistory(id) {
                     historyHtml += '</thead><tbody>';
                     
                     result.data.forEach(h => {
-                        const actionBadge = uiBadge(h.action_type.toLowerCase(), h.action_type);
+                        const actionBadge = getActionBadge(h.action_type);
                         
                         historyHtml += `<tr>
-                            <td>${uiBadge('primary', 'v' + (h.version || 1))}</td>
+                            <td><span class="badge badge-soft-blue">v${h.version || 1}</span></td>
                             <td>${actionBadge}</td>
                             <td><small>${h.changed_by_name || h.changed_by_username || '-'}</small></td>
                             <td><small>${formatDateTime(h.changed_at)}</small></td>
@@ -2481,7 +2639,15 @@ function loadQuotationSpecifications(quotationId) {
     
     container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading specifications...</div>';
     
-    fetch(`<?= base_url('marketing/quotations/get-specifications/') ?>${quotationId}`)
+    // Add cache-busting timestamp to ensure fresh data from database
+    const timestamp = new Date().getTime();
+    fetch(`<?= base_url('marketing/quotations/get-specifications/') ?>${quotationId}?_=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    })
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -2495,6 +2661,21 @@ function loadQuotationSpecifications(quotationId) {
             
             const specifications = response.data || [];
             const summary = response.summary || {};
+            
+            // Debug: Log API response to check if spare_quantity and operator fields are present
+            console.log('🔍 API Response:', {
+                success: response.success,
+                totalSpecs: specifications.length,
+                firstSpec: specifications[0] ? {
+                    id: specifications[0].id_specification,
+                    name: specifications[0].specification_name,
+                    quantity: specifications[0].quantity,
+spare_quantity: specifications[0].spare_quantity,
+                    include_operator: specifications[0].include_operator,
+                    operator_quantity: specifications[0].operator_quantity,
+                    allKeys: Object.keys(specifications[0])
+                } : null
+            });
             
             // Update tab counter
             $('#specCountQuotation').text(specifications.length);
@@ -2530,8 +2711,20 @@ function loadQuotationSpecifications(quotationId) {
 function displayQuotationSpecifications(specifications) {
     const container = document.getElementById('spesifikasiListContract');
     
+    console.log('📋 displayQuotationSpecifications called with:', specifications.length, 'specs');
+    
     let html = '';
     specifications.forEach((spec, index) => {
+        // Debug: Log each spec to check spare_quantity and include_operator data
+        console.log(`Spec #${index + 1}:`, {
+            id: spec.id_specification,
+            name: spec.specification_name,
+            quantity: spec.quantity,
+            spare_quantity: spec.spare_quantity,
+            include_operator: spec.include_operator,
+            operator_quantity: spec.operator_quantity
+        });
+        
         // Determine specification type
         const specType = spec.specification_type || 'UNIT';
         const isAttachment = specType === 'ATTACHMENT';
@@ -2558,11 +2751,90 @@ function displayQuotationSpecifications(specifications) {
         }
         
         // Quantity and Spare Unit Badge
-        const quantityBadge = spec.is_spare_unit == 1 
-            ? `<div class="col-md-4"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s) <span class="badge bg-warning text-dark ms-2"><i class="fas fa-box-open"></i> SPARE UNIT</span></div></div>`
-            : `<div class="col-md-3"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s)</div></div>`;
+        let quantityDisplay = '';
+        // CRITICAL: Convert to numbers to avoid string concatenation (10 + 1 = "101" bug)
+        const quantity = parseInt(spec.quantity) || 0;
+        const spareQuantity = parseInt(spec.spare_quantity) || 0;
+        const totalUnits = quantity + spareQuantity;  // Now: 10 + 1 = 11 ✓
         
-        details.push(quantityBadge);
+        // Debug: log spare quantity data
+        if (spareQuantity > 0 || spec.include_operator == 1) {
+            console.log('📦 Spec has spare/operator:', {
+                spec_id: spec.id_specification,
+                quantity: quantity,
+                spare_quantity: spareQuantity,
+                include_operator: spec.include_operator,
+                operator_quantity: spec.operator_quantity
+            });
+        }
+        
+        if (spec.is_spare_unit == 1) {
+            // Legacy spare unit (all units are spare)
+            quantityDisplay = `
+                <div class="col-md-4">
+                    <small class="text-muted">Quantity</small>
+                    <div class="fw-bold text-primary">
+                        ${quantity} unit(s)
+                        <span class="badge badge-soft-yellow ms-2">
+                            <i class="fas fa-box-open"></i> SPARE UNIT
+                        </span>
+                    </div>
+                </div>`;
+        } else if (spareQuantity > 0) {
+            // New spare quantity model (billable + spare)
+            quantityDisplay = `
+                <div class="col-md-6">
+                    <small class="text-muted">Quantity</small>
+                    <div class="fw-bold text-primary mb-1">
+                        ${quantity} billable + ${spareQuantity} spare = ${totalUnits} total delivered
+                    </div>
+                    <div>
+                        <span class="badge badge-soft-green me-1">
+                            <i class="fas fa-file-invoice-dollar"></i> ${quantity} Billed
+                        </span>
+                        <span class="badge badge-soft-yellow">
+                            <i class="fas fa-gift"></i> ${spareQuantity} Spare - Not Billed
+                        </span>
+                    </div>
+                </div>`;
+        } else {
+            // Regular units (no spare)
+            quantityDisplay = `
+                <div class="col-md-3">
+                    <small class="text-muted">Quantity</small>
+                    <div class="fw-bold text-primary">${quantity} unit(s)</div>
+                </div>`;
+        }
+        
+        details.push(quantityDisplay);
+        
+        // Operator Information Badge
+        if (spec.include_operator && spec.include_operator == 1) {
+            const operatorQty = spec.operator_quantity || 1;
+            const operatorMonthly = spec.operator_monthly_rate || 0;
+            const operatorDaily = spec.operator_daily_rate || 0;
+            
+            let operatorPriceInfo = '';
+            if (operatorMonthly > 0) {
+                operatorPriceInfo = `Rp ${formatNumber(operatorMonthly)}/month`;
+            }
+            if (operatorDaily > 0) {
+                operatorPriceInfo += (operatorPriceInfo ? ' + ' : '') + `Rp ${formatNumber(operatorDaily)}/day`;
+            }
+            
+            const operatorInfo = `
+                <div class="col-md-6">
+                    <small class="text-muted">Operator Service</small>
+                    <div>
+                        <span class="badge badge-soft-cyan">
+                            <i class="fas fa-user-tie"></i> WITH OPERATOR (${operatorQty} person${operatorQty > 1 ? 's' : ''})
+                        </span>
+                        ${operatorPriceInfo ? `<span class="text-muted ms-2">${operatorPriceInfo}</span>` : ''}
+                    </div>
+                </div>`;
+            
+            details.push(operatorInfo);
+        }
         
         // Pricing (skip for spare units)
         const monthlyPrice = spec.monthly_price || spec.unit_price || spec.harga_per_unit || 0;
@@ -2639,7 +2911,7 @@ function displayQuotationSpecifications(specifications) {
         if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
             const accessories = spec.unit_accessories.split(',').map(a => a.trim());
             accessoriesBadges = accessories.map(acc => 
-                `${uiBadge('info', `<i class="fas fa-plus-circle me-1"></i>${acc}`, {class: 'me-1'})}`
+                `<span class="badge badge-soft-blue me-1"><i class="fas fa-plus-circle me-1"></i>${acc}</span>`
             ).join('');
         }
         
@@ -2956,8 +3228,16 @@ function updateTipeUnitOptions() {
 function loadKapasitasForSpecification() {
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
         if (response.success) {
+            // Sort capacity data by numeric value (from smallest to largest)
+            const sortedData = response.data.sort((a, b) => {
+                // Extract numeric value from capacity name (e.g., "1.5 TON" -> 1.5)
+                const numA = parseFloat(a.name.replace(/[^\d.]/g, '')) || 0;
+                const numB = parseFloat(b.name.replace(/[^\d.]/g, '')) || 0;
+                return numA - numB;
+            });
+            
             let options = '<option value="">-- Select Capacity --</option>';
-            response.data.forEach(cap => {
+            sortedData.forEach(cap => {
                 options += `<option value="${cap.id}">${cap.name}</option>`;
             });
             $('#specKapasitas').html(options);
@@ -3090,8 +3370,20 @@ function loadValvesForSpecification() {
 function loadMastsForSpecification() {
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
         if (response.success) {
+            // Sort mast data by height in MM (from smallest to largest)
+            const sortedData = response.data.sort((a, b) => {
+                // Extract numeric value from mast name (e.g., "5400 MM" -> 5400)
+                const matchA = a.name.match(/(\d+)\s*MM/i);
+                const matchB = b.name.match(/(\d+)\s*MM/i);
+                
+                const numA = matchA ? parseInt(matchA[1]) : 0;
+                const numB = matchB ? parseInt(matchB[1]) : 0;
+                
+                return numA - numB;
+            });
+            
             let options = '<option value="">-- Select Mast --</option>';
-            response.data.forEach(mast => {
+            sortedData.forEach(mast => {
                 options += `<option value="${mast.id}">${mast.name}</option>`;
             });
             $('#specMast').html(options);
@@ -3132,11 +3424,71 @@ function loadWheelsForSpecification() {
     });
 }
 
+// Rupiah formatter helpers for specification price fields
+// Bilingual helper for inline translations
+const isEnLocale = (document.documentElement.lang || '').toLowerCase().startsWith('en');
+const tr = (idText, enText) => isEnLocale ? enText : idText;
+
+// Utility: Remove all non-digit characters from value
+function sanitizeRupiahToNumber(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return String(value).replace(/[^\d]/g, '');
+}
+
+// Utility: Parse Rupiah formatted string to integer
+function parseRupiahNumber(value) {
+    const clean = sanitizeRupiahToNumber(value);
+    return clean ? parseInt(clean, 10) : 0;
+}
+
+// Utility: Get currency locale based on current language
+function getCurrencyLocale() {
+    const htmlLang = (document.documentElement.lang || '').toLowerCase();
+    return htmlLang.startsWith('en') ? 'en-US' : 'id-ID';
+}
+
+// Currency formatter for IDR
+const currencyFormatterIDR = new Intl.NumberFormat(getCurrencyLocale(), {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+});
+
+// Format input value as Rupiah currency
+function formatRupiahInputValue(value) {
+    const clean = sanitizeRupiahToNumber(value);
+    if (!clean) {
+        return '';
+    }
+    return currencyFormatterIDR.format(Number(clean)).replace(/\u00A0/g, ' ');
+}
+
+// Bind Rupiah formatter to input fields (on blur)
+function bindRupiahFormatter(selector) {
+    $(document).on('blur', selector, function() {
+        const formatted = formatRupiahInputValue($(this).val());
+        $(this).val(formatted);
+    });
+}
+
+// Sanitize FormData field from Rupiah format to plain number
+function normalizeRupiahFormData(formData, fieldName) {
+    if (!formData.has(fieldName)) {
+        return;
+    }
+    const clean = sanitizeRupiahToNumber(formData.get(fieldName));
+    formData.set(fieldName, clean);
+}
+
+// Bind formatters to all currency input fields
+bindRupiahFormatter('#operatorPriceMonthly, #operatorPriceDaily, #monthlyPrice, #dailyPrice, #attachmentMonthlyPrice, #attachmentDailyPrice');
+
 // Handle specification form submission (unified for Add and Edit)
 $('#addSpecificationForm').on('submit', function(e) {
     e.preventDefault();
-    
-    console.log('Specification form submitted');
     
     // Check if this is Add or Edit mode
     const specId = $('#specId').val();
@@ -3144,49 +3496,113 @@ $('#addSpecificationForm').on('submit', function(e) {
     
     console.log('Form mode:', isEditMode ? 'EDIT' : 'ADD', 'Spec ID:', specId);
     
-    // Check if spare unit is selected
+    // Check if spare unit is selected (oldlegacy field)
     const isSpareUnit = $('#isSpareUnit').is(':checked');
+    
+    // Check if spare units are included (new field)
+    const includeSpare = $('#includeSpareUnits').is(':checked');
+    const spareQuantity = includeSpare ? parseInt($('#spareQuantity').val()) || 0 : 0;
     
     // Enhanced validation
     const quantity = parseInt($('#addSpecificationForm [name="quantity"]').val());
-    const monthlyPrice = parseFloat($('#monthlyPrice').val()) || 0;
-    const dailyPrice = parseFloat($('#dailyPrice').val()) || 0;
+    const monthlyPrice = parseRupiahNumber($('#monthlyPrice').val());
+    const dailyPrice = parseRupiahNumber($('#dailyPrice').val());
     const departemen = $('#specDepartemen').val();
     const tipeUnit = $('#specTipeUnit').val();
     
     // Client-side validation
     if (!quantity || quantity < 1) {
-        Swal.fire('Validation Error', 'Please enter a valid quantity (minimum 1)', 'warning');
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Mohon isi quantity yang valid (minimal 1)', 'Please enter a valid quantity (minimum 1)'),
+            'warning'
+        );
         return;
     }
     
-    // Validate: at least one price (monthly or daily) must be filled (SKIP for spare units)
-    if (!isSpareUnit && monthlyPrice === 0 && dailyPrice === 0) {
-        Swal.fire('Validation Error', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)', 'warning');
-        $('#monthlyPrice').focus();
+    // Validate: at least one price (monthly or daily) must be filled
+    // Skip validation if this is old spare unit (backward compatibility) OR if only spare units (no billable units)
+    if (!isSpareUnit && quantity > 0 && monthlyPrice === 0 && dailyPrice === 0) {
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Isi minimal satu field harga (Harga Sewa Bulanan atau Harian)', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)'),
+            'warning'
+        );
         return;
     }
     
     if (!departemen) {
-        Swal.fire('Validation Error', 'Please select a department', 'warning');
-        $('#specDepartemen').focus();
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan pilih departemen', 'Please select a department'),
+            'warning'
+        );
         return;
     }
     
     if (!tipeUnit) {
-        Swal.fire('Validation Error', 'Please select a unit type', 'warning');
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan pilih tipe unit', 'Please select a unit type'),
+            'warning'
+        );
         $('#specTipeUnit').focus();
         return;
     }
     
     const formData = new FormData(this);
     
+    // Sanitize currency fields to plain numbers
+    normalizeRupiahFormData(formData, 'operator_price_monthly');
+    normalizeRupiahFormData(formData, 'operator_price_daily');
+    normalizeRupiahFormData(formData, 'unit_price');
+    normalizeRupiahFormData(formData, 'harga_per_unit_harian');
+    
+    // SPARE UNITS HANDLING
+    // Always ensure spare_quantity is sent (checkbox may not submit if unchecked)
+    if (includeSpare) {
+        // Get value from input field
+        const spareQty = parseInt($('#spareQuantity').val()) || 0;
+        formData.set('spare_quantity', spareQty.toString());
+        console.log('✅ Spare units enabled - spare_quantity:', spareQty);
+    } else {
+        // Not included - set to 0
+        formData.set('spare_quantity', '0');
+        console.log('❌ Spare units NOT enabled - spare_quantity: 0');
+    }
+    
+    // OPERATOR HANDLING
+    // Always ensure include_operator is sent (checkbox may not be in FormData if unchecked)
+    const includeOperator = $('#includeOperator').is(':checked');
+    if (includeOperator) {
+        // Operator included - get values from fields
+        formData.set('include_operator', '1');
+        const opQty = parseInt($('#operatorQuantity').val()) || 1;
+        formData.set('operator_quantity', opQty.toString());
+        console.log('✅ Operator enabled - quantity:', opQty);
+    } else {
+        // Operator not included - set all to 0/false
+        formData.set('include_operator', '0');
+        formData.set('operator_quantity', '0');
+        formData.set('operator_price_monthly', '0');
+        formData.set('operator_price_daily', '0');
+        console.log('❌ Operator NOT enabled');
+    }
+    
     // Add CSRF token
     formData.append(window.csrfTokenName, window.csrfToken || '<?= csrf_hash() ?>');
     
     // Ensure spare unit value is sent (checkbox may not be in FormData if unchecked)
     if (!isSpareUnit) {
-        formData.append('is_spare_unit', '0');
+        formData.set('is_spare_unit', '0');
+    }
+    
+    // DEBUG: Log all FormData being sent
+    console.log('📤 FormData being sent to server:');
+    for (let [key, value] of formData.entries()) {
+        if (key.includes('spare') || key.includes('operator')) {
+            console.log(`  ${key}:`, value);
+        }
     }
     
     const submitBtn = $('#submitSpecificationBtn');
@@ -3196,10 +3612,10 @@ $('#addSpecificationForm').on('submit', function(e) {
         ? '<?= base_url('marketing/quotations/update-specification') ?>/' + specId
         : '<?= base_url('marketing/quotations/add-specification') ?>';
     
-    const actionText = isEditMode ? 'Updating...' : 'Saving...';
-    const successMsg = isEditMode ? 'Specification updated successfully' : 'Specification added successfully';
+    const actionText = isEditMode ? tr('Memperbarui...', 'Updating...') : tr('Menyimpan...', 'Saving...');
+    const successMsg = isEditMode ? tr('Spesifikasi berhasil diperbarui', 'Specification updated successfully') : tr('Spesifikasi berhasil ditambahkan', 'Specification added successfully');
     
-    submitBtn.prop('disabled', true).html(`<i class="fas fa-spinner fa-spin me-1"></i>${actionText}`);
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>' + actionText);
     
     $.ajax({
         url: endpoint,
@@ -3208,20 +3624,50 @@ $('#addSpecificationForm').on('submit', function(e) {
         processData: false,
         contentType: false,
         success: function(response) {
+            // DEBUG: Log full response from server
+            console.log('🔍 Server Response:', response);
+            if (response.debug) {
+                console.log('📊 DEBUG INFO from controller:', response.debug);
+            }
+            
             if (response.success) {
                 $('#addSpecificationModal').modal('hide');
-                Swal.fire('Success', response.message || successMsg, 'success');
+                Swal.fire(
+                    tr('Berhasil', 'Success'),
+                    response.message || successMsg,
+                    'success'
+                );
                 
                 // Reload specifications and refresh tab
                 if (currentQuotationId) {
                     $('#specifications-tab').removeClass('loaded');
                     loadQuotationSpecifications(currentQuotationId);
+                    
+                    // Refresh action buttons in detail modal by re-fetching quotation data
+                    refreshQuotationActions(currentQuotationId);
+                    
+                    // Reload DataTable to update spec_count and action buttons
+                    if (typeof quotationsTable !== 'undefined' && quotationsTable.ajax) {
+                        quotationsTable.ajax.reload(null, false); // false = stay on current page
+                    }
                 }
                 
                 // Reset form for next entry
                 $('#addSpecificationForm')[0].reset();
             } else {
-                Swal.fire('Error', response.message || 'Failed to save specification', 'error');
+                // Show debug info if available
+                let errorMsg = response.message || tr('Gagal menyimpan spesifikasi', 'Failed to save specification');
+                if (response.debug) {
+                    console.error('❌ Controller Debug Info:', response.debug);
+                    // Add debug info to error message
+                    errorMsg += '\n\nDEBUG INFO:\n' + JSON.stringify(response.debug, null, 2);
+                }
+                
+                Swal.fire(
+                    tr('Error', 'Error'),
+                    errorMsg,
+                    'error'
+                );
             }
         },
         error: function(xhr, status, error) {
@@ -3232,7 +3678,7 @@ $('#addSpecificationForm').on('submit', function(e) {
                 error: error
             });
             
-            let errorMessage = 'Failed to save specification';
+            let errorMessage = tr('Gagal menyimpan spesifikasi', 'Failed to save specification');
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
             } else if (xhr.responseText) {
@@ -3244,11 +3690,11 @@ $('#addSpecificationForm').on('submit', function(e) {
                 }
             }
             
-            Swal.fire('Error', errorMessage, 'error');
+            Swal.fire(tr('Error', 'Error'), errorMessage, 'error');
         },
         complete: function() {
-            const btnText = $('#specId').val() ? 'Update Specification' : 'Save Specification';
-            submitBtn.prop('disabled', false).html(`<i class="fas fa-save me-1"></i><span id="submitBtnText">${btnText}</span>`);
+            const btnText = $('#specId').val() ? tr('Update Spesifikasi', 'Update Specification') : tr('Simpan Spesifikasi', 'Save Specification');
+            submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>' + btnText);
         }
     });
 });
@@ -3261,37 +3707,53 @@ $('#addAttachmentForm').on('submit', function(e) {
     
     // Enhanced validation
     const quantity = parseInt($('#addAttachmentForm [name="quantity"]').val());
-    const monthlyPrice = parseFloat($('#attachmentMonthlyPrice').val()) || 0;
-    const dailyPrice = parseFloat($('#attachmentDailyPrice').val()) || 0;
+    const monthlyPrice = parseRupiahNumber($('#attachmentMonthlyPrice').val());
+    const dailyPrice = parseRupiahNumber($('#attachmentDailyPrice').val());
     const attachmentType = $('#attachmentTipe').val();
     
     // Client-side validation
     if (!quantity || quantity < 1) {
-        Swal.fire('Validation Error', 'Please enter a valid quantity (minimum 1)', 'warning');
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Mohon isi quantity yang valid (minimal 1)', 'Please enter a valid quantity (minimum 1)'),
+            'warning'
+        );
         return;
     }
     
     // Validate: at least one price (monthly or daily) must be filled
     if (monthlyPrice === 0 && dailyPrice === 0) {
-        Swal.fire('Validation Error', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)', 'warning');
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Isi minimal satu field harga (Harga Sewa Bulanan atau Harian)', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)'),
+            'warning'
+        );
         $('#attachmentMonthlyPrice').focus();
         return;
     }
     
     if (!attachmentType) {
-        Swal.fire('Validation Error', 'Please select an attachment type', 'warning');
+        Swal.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan pilih tipe attachment', 'Please select an attachment type'),
+            'warning'
+        );
         $('#attachmentTipe').focus();
         return;
     }
     
     const formData = new FormData(this);
     
+    // Sanitize currency fields to plain numbers
+    normalizeRupiahFormData(formData, 'unit_price');
+    normalizeRupiahFormData(formData, 'harga_per_unit_harian');
+    
     // Add CSRF token
     formData.append(window.csrfTokenName, window.csrfToken || '<?= csrf_hash() ?>');
     
     const submitBtn = $('#submitAttachmentBtn');
     
-    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>' + tr('Menyimpan...', 'Saving...'));
     
     $.ajax({
         url: '<?= base_url('marketing/quotations/add-specification') ?>',
@@ -3302,18 +3764,34 @@ $('#addAttachmentForm').on('submit', function(e) {
         success: function(response) {
             if (response.success) {
                 $('#addAttachmentModal').modal('hide');
-                Swal.fire('Success', response.message || 'Attachment added successfully', 'success');
+                Swal.fire(
+                    tr('Berhasil', 'Success'),
+                    response.message || tr('Attachment berhasil ditambahkan', 'Attachment added successfully'),
+                    'success'
+                );
                 
                 // Reload specifications and refresh tab
                 if (currentQuotationId) {
                     $('#specifications-tab').removeClass('loaded');
                     loadQuotationSpecifications(currentQuotationId);
+                    
+                    // Refresh action buttons in detail modal by re-fetching quotation data
+                    refreshQuotationActions(currentQuotationId);
+                    
+                    // Reload DataTable to update spec_count and action buttons
+                    if (typeof quotationsTable !== 'undefined' && quotationsTable.ajax) {
+                        quotationsTable.ajax.reload(null, false); // false = stay on current page
+                    }
                 }
                 
                 // Reset form for next entry
                 $('#addAttachmentForm')[0].reset();
             } else {
-                Swal.fire('Error', response.message || 'Failed to add attachment', 'error');
+                Swal.fire(
+                    tr('Error', 'Error'),
+                    response.message || tr('Gagal menambahkan attachment', 'Failed to add attachment'),
+                    'error'
+                );
             }
         },
         error: function(xhr, status, error) {
@@ -3324,7 +3802,7 @@ $('#addAttachmentForm').on('submit', function(e) {
                 error: error
             });
             
-            let errorMessage = 'Failed to add attachment';
+            let errorMessage = tr('Gagal menambahkan attachment', 'Failed to add attachment');
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
             } else if (xhr.responseText) {
@@ -3336,16 +3814,18 @@ $('#addAttachmentForm').on('submit', function(e) {
                 }
             }
             
-            Swal.fire('Error', errorMessage, 'error');
+            Swal.fire(tr('Error', 'Error'), errorMessage, 'error');
         },
         complete: function() {
-            submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save Attachment');
+            submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>' + tr('Simpan Attachment', 'Save Attachment'));
         }
     });
 });
 
 // Edit specification - reuse Add Specification modal
 function editSpecification(specId) {
+    console.log('🚀 EDIT - editSpecification called for spec ID:', specId);
+    
     if (!currentQuotationId) {
         console.error('No currentQuotationId set!');
         Swal.fire('Error', 'Quotation ID is missing', 'error');
@@ -3380,6 +3860,21 @@ function editSpecification(specId) {
                 return;
             }
 
+            // DEBUG: Log critical values from database
+            console.log('📊 EDIT - Spec data from database:', {
+                id: spec.id_specification,
+                quantity: spec.quantity,
+                spare_quantity: spec.spare_quantity,
+                is_spare_unit: spec.is_spare_unit,
+                include_operator: spec.include_operator,
+                operator_quantity: spec.operator_quantity,
+                operator_monthly_rate: spec.operator_monthly_rate,
+                operator_daily_rate: spec.operator_daily_rate,
+                harga_per_unit: spec.harga_per_unit,
+                monthly_price: spec.monthly_price,
+                unit_price: spec.unit_price
+            });
+
             // Change modal title and button for edit mode
             $('#specModalHeader').removeClass('bg-success').addClass('bg-primary');
             $('#specModalTitle').html('<i class="fas fa-edit me-2"></i>Edit Unit Specification');
@@ -3393,8 +3888,48 @@ function editSpecification(specId) {
             // Populate basic fields using name attribute
             $('[name="quantity"]').val(spec.quantity || 1);
             $('[name="specification_name"]').val(spec.specification_name || '');
-            $('[name="unit_price"]').val(spec.harga_per_unit || spec.unit_price || 0);
-            $('[name="harga_per_unit_harian"]').val(spec.harga_per_unit_harian || 0);
+            
+            // Format and set price fields
+            // CRITICAL: Parse as number first to avoid decimal point concatenation issue
+            // Database DECIMAL(15,2) returns "6500000.00" which sanitizeRupiahToNumber would turn into "650000000"
+            const monthlyPrice = parseFloat(spec.harga_per_unit || spec.unit_price || spec.monthly_price || 0);
+            const dailyPrice = parseFloat(spec.harga_per_unit_harian || spec.daily_price || 0);
+            $('#monthlyPrice').val(monthlyPrice > 0 ? formatRupiahInputValue(Math.round(monthlyPrice)) : '');
+            $('#dailyPrice').val(dailyPrice > 0 ? formatRupiahInputValue(Math.round(dailyPrice)) : '');
+            
+            // Handle spare units
+            const spareQuantity = spec.spare_quantity || 0;
+            const isLegacySpare = spec.is_spare_unit == 1;
+            
+            console.log('🔍 EDIT - Loading spare unit data:', {
+                spare_quantity: spec.spare_quantity,
+                is_spare_unit: spec.is_spare_unit,
+                spareQuantity: spareQuantity,
+                isLegacySpare: isLegacySpare
+            });
+            
+            if (isLegacySpare) {
+                // Legacy spare unit - check the old checkbox
+                $('#isSpareUnit').prop('checked', true);
+                $('#includeSpareUnits').prop('checked', false);
+                $('#spareUnitsContainer').hide();
+                console.log('✅ EDIT - Set as LEGACY spare unit');
+            } else if (spareQuantity > 0) {
+                // New spare quantity model
+                console.log('✅ EDIT - Setting spare quantity:', spareQuantity);
+                $('#includeSpareUnits').prop('checked', true);
+                $('#spareUnitsContainer').show(); // Use show() instead of slideDown() for immediate display
+                $('#spareQuantity').val(spareQuantity);
+                // Update display badges (billable + spare = total)
+                updateTotalUnitsDisplay();
+                console.log('✅ EDIT - Spare checkbox checked, container shown');
+            } else {
+                // No spare units
+                $('#isSpareUnit').prop('checked', false);
+                $('#includeSpareUnits').prop('checked', false);
+                $('#spareUnitsContainer').hide();
+                console.log('ℹ️ EDIT - No spare units');
+            }
             
             console.log('📋 Starting to load all dropdown data...');
             
@@ -3476,6 +4011,36 @@ function editSpecification(specId) {
                 } else {
                     $('#specJenisBaterai').prop('disabled', true).val('').closest('.col-md-4').find('small').hide();
                     $('#specCharger').prop('disabled', true).val('').closest('.col-md-4').find('small').hide();
+                }
+                
+                // Handle operator service
+                const includeOperator = spec.include_operator == 1;
+                
+                console.log('🔍 EDIT - Loading operator data:', {
+                    include_operator: spec.include_operator,
+                    includeOperator: includeOperator,
+                    operator_quantity: spec.operator_quantity,
+                    operator_monthly_rate: spec.operator_monthly_rate,
+                    operator_daily_rate: spec.operator_daily_rate
+                });
+                
+                if (includeOperator) {
+                    console.log('✅ EDIT - Setting operator service included');
+                    $('#includeOperator').prop('checked', true);
+                    $('#operatorDetailsContainer').show(); // Use show() instead of slideDown()
+                    $('#operatorQuantity').val(spec.operator_quantity || 1);
+                    
+                    // Format and set operator prices
+                    // CRITICAL: Parse as number first to avoid decimal concatenation (6500000.00 → 650000000)
+                    const operatorMonthly = parseFloat(spec.operator_monthly_rate || 0);
+                    const operatorDaily = parseFloat(spec.operator_daily_rate || 0);
+                    $('#operatorPriceMonthly').val(operatorMonthly > 0 ? formatRupiahInputValue(Math.round(operatorMonthly)) : '');
+                    $('#operatorPriceDaily').val(operatorDaily > 0 ? formatRupiahInputValue(Math.round(operatorDaily)) : '');
+                    console.log('✅ EDIT - Operator checkbox checked, container shown');
+                } else {
+                    $('#includeOperator').prop('checked', false);
+                    $('#operatorDetailsContainer').hide();
+                    console.log('ℹ️ EDIT - No operator service');
                 }
                 
                 // Handle accessories
@@ -3612,8 +4177,15 @@ function updateEditTipeUnitOptions(departemenId) {
 function loadKapasitasForEdit() {
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
         if (response.success) {
+            // Sort capacity data by numeric value (from smallest to largest)
+            const sortedData = response.data.sort((a, b) => {
+                const numA = parseFloat(a.name.replace(/[^\d.]/g, '')) || 0;
+                const numB = parseFloat(b.name.replace(/[^\d.]/g, '')) || 0;
+                return numA - numB;
+            });
+            
             let options = '<option value="">-- Select Capacity --</option>';
-            response.data.forEach(item => {
+            sortedData.forEach(item => {
                 options += `<option value="${item.id}">${item.name}</option>`;
             });
             $('#edit_kapasitas_id').html(options);
@@ -3687,8 +4259,19 @@ function loadValvesForEdit() {
 function loadMastsForEdit() {
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
         if (response.success) {
+            // Sort mast data by height in MM (from smallest to largest)
+            const sortedData = response.data.sort((a, b) => {
+                const matchA = a.name.match(/(\d+)\s*MM/i);
+                const matchB = b.name.match(/(\d+)\s*MM/i);
+                
+                const numA = matchA ? parseInt(matchA[1]) : 0;
+                const numB = matchB ? parseInt(matchB[1]) : 0;
+                
+                return numA - numB;
+            });
+            
             let options = '<option value="">-- Select Mast --</option>';
-            response.data.forEach(item => {
+            sortedData.forEach(item => {
                 options += `<option value="${item.id}">${item.name}</option>`;
             });
             $('#edit_mast_id').html(options);
@@ -3820,6 +4403,14 @@ function deleteSpecification(specId) {
                         // Reload specifications
                         if (currentQuotationId) {
                             loadQuotationSpecifications(currentQuotationId);
+                            
+                            // Refresh action buttons in detail modal by re-fetching quotation data
+                            refreshQuotationActions(currentQuotationId);
+                            
+                            // Reload DataTable to update spec_count and action buttons
+                            if (typeof quotationsTable !== 'undefined' && quotationsTable.ajax) {
+                                quotationsTable.ajax.reload(null, false); // false = stay on current page
+                            }
                         }
                     } else {
                         Swal.fire('Error', response.message, 'error');
@@ -4499,7 +5090,7 @@ function completeCustomerContract(quotationId) {
                 console.log('📍 Extracted customer location ID from quotation:', customerLocationId);
                 
                 // Verify customer exists
-                $.get('<?= base_url('customers/get/') ?>' + response.data.created_customer_id)
+                $.get('<?= base_url('marketing/customers/get/') ?>' + response.data.created_customer_id)
                     .done(function(customerResponse) {
                         if (!customerResponse.success) {
                             Swal.fire({
@@ -4575,10 +5166,10 @@ function showCustomerLocationModal(customerId, quotationId, dealMessage) {
     console.log('=== showCustomerLocationModal ===');
     console.log('Customer ID:', customerId);
     console.log('Quotation ID:', quotationId);
-    console.log('Fetching locations from:', '<?= base_url('customers/getLocations') ?>/' + customerId);
+    console.log('Fetching locations from:', '<?= base_url('marketing/customers/getLocations') ?>/' + customerId);
     
     // Get customer's existing locations
-    $.get('<?= base_url('customers/getLocations') ?>/' + customerId)
+    $.get('<?= base_url('marketing/customers/getLocations') ?>/' + customerId)
         .done(function(locationResponse) {
             console.log('Location response received:', locationResponse);
             
@@ -5019,7 +5610,7 @@ function showCreateContractModal(customerId, quotationId, customerLocationId, me
     
     // Update modal title
     $.ajax({
-        url: `<?= base_url('customers/get/') ?>${customerId}`,
+        url: `<?= base_url('marketing/customers/get/') ?>${customerId}`,
         method: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -5087,7 +5678,7 @@ function loadCustomersForContract(customerId) {
                 } else if (locationId) {
                     // If no location in quotation but we have locationId, fetch location details
                     $.ajax({
-                        url: `<?= base_url('customers/getLocations/') ?>${customerId}`,
+                        url: `<?= base_url('marketing/customers/getLocations/') ?>${customerId}`,
                         method: 'GET',
                         success: function(locResponse) {
                             console.log('📥 Locations loaded:', locResponse);
@@ -5123,7 +5714,7 @@ function loadCustomersForContract(customerId) {
             
             // Fallback: try to get customer data directly
             $.ajax({
-                url: `<?= base_url('customers/get/') ?>${customerId}`,
+                url: `<?= base_url('marketing/customers/get/') ?>${customerId}`,
                 method: 'GET',
                 success: function(custResponse) {
                     if (custResponse.success && custResponse.data) {
@@ -5145,10 +5736,10 @@ function loadCustomersForContract(customerId) {
 function loadExistingContracts(customerId) {
     console.log('=== loadExistingContracts START ===');
     console.log('Customer ID:', customerId);
-    console.log('API URL:', `<?= base_url('customers/getContracts/') ?>${customerId}`);
+    console.log('API URL:', `<?= base_url('marketing/customers/getContracts/') ?>${customerId}`);
     
     $.ajax({
-        url: `<?= base_url('customers/getContracts/') ?>${customerId}`,
+        url: `<?= base_url('marketing/customers/getContracts/') ?>${customerId}`,
         method: 'GET',
         dataType: 'json',
         beforeSend: function(xhr) {
@@ -6183,19 +6774,22 @@ function showSPKCreationModal(quotation, specifications) {
         </div>
         <div class="col-md-6">
             <small class="text-muted">Contract Number</small>
-            <div class="fw-bold ${quotation.contract_number ? 'text-primary' : 'text-warning'}">
-                ${quotation.contract_number || uiBadge('pending', 'Contract Pending')}
+            <div class="fw-bold ${quotation.contract_number && quotation.customer_contract_complete == 1 ? 'text-primary' : 'text-warning'}">
+                ${quotation.customer_contract_complete == 1 && quotation.contract_number ? `<code class="text-primary">${quotation.contract_number}</code>` : '<span class="badge badge-soft-yellow">Contract Pending</span>'}
             </div>
         </div>
     `);
     
     // Determine the correct contract ID from available fields
-    const contractId = quotation.created_contract_id || quotation.contract_id || quotation.id_kontrak;
+    // Only use contract if workflow is complete (customer_contract_complete = 1)
+    const contractId = quotation.customer_contract_complete == 1 
+        ? (quotation.created_contract_id || quotation.contract_id || quotation.id_kontrak)
+        : null;
     
     // Set hidden fields
     $('#spk_quotation_id').val(quotation.id_quotation);
     $('#spk_customer_id').val(quotation.created_customer_id);
-    $('#spk_contract_id').val(contractId);
+    $('#spk_contract_id').val(contractId || '');
     
     // Debug log
     console.log('📋 Setting SPK form fields:');
@@ -6325,7 +6919,7 @@ function showSPKCreationModal(quotation, specifications) {
                     ${spec.unit_accessories && spec.unit_accessories.trim() !== '' ? `
                     <div class="mt-2 small">
                         <strong>Accessories:</strong> 
-                        ${spec.unit_accessories.split(',').map(acc => uiBadge('info', acc.trim(), {class: 'me-1'})).join('')}
+                        ${spec.unit_accessories.split(',').map(acc => `<span class="badge badge-soft-blue me-1">${acc.trim()}</span>`).join('')}
                     </div>
                     ` : ''}
                     

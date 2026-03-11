@@ -80,8 +80,11 @@ $currentLang = service('request')->getLocale();
     <!-- OPTIMA DataTable CSS - Centralized Table Styling System -->
     <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-datatable.css') ?>" rel="stylesheet">
 
-    <!-- OPTIMA Sidebar CodePen Enhancement CSS - Modern Floating Sidebar -->
-    <link href="<?= base_url('assets/css/desktop/optima-sidebar-codepen-enhance.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-sidebar-codepen-enhance.css') ?>" rel="stylesheet">
+    <!-- OPTIMA Sidebar CodingNepal Style - Floating, expand/collapse -->
+    <link href="<?= base_url('assets/css/desktop/optima-sidebar-codingnepal.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-sidebar-codingnepal.css') ?>" rel="stylesheet">
+
+    <!-- Material Symbols Rounded (sidebar icons) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" />
 
     <!-- Sidebar Scroll Management -->
     <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
@@ -163,7 +166,7 @@ $currentLang = service('request')->getLocale();
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
 </head>
-<body class="bg-light">
+<body class="bg-light cn-sidebar-layout">
     <!-- Toast Container Bootstrap 5 (pojok kanan atas) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" id="optima-toast-container" style="z-index: 1090;"></div>
     <script>
@@ -572,24 +575,15 @@ $currentLang = service('request')->getLocale();
         <div class="header-container">
             <!-- Left Section: Logo + Sidebar Toggle -->
             <div class="header-left">
-                <button class="btn btn-link sidebar-toggle" type="button" id="sidebarToggle">
+                <button class="btn btn-link sidebar-toggle sidebar-menu-button" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                     <i class="fas fa-bars"></i>
                 </button>
                 <a href="<?= base_url('/welcome') ?>" class="header-brand d-flex align-items-center text-decoration-none gap-2">
-                    <!-- Logo & Nama Sistem -->
-                    <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="header-logo" style="height: 32px;">
-                    <span class="header-brand-text me-2">OPTIMA</span>
-                    
-                    <!-- Divider Vertical -->
-                    <div class="vr text-secondary d-none d-md-block" style="height: 20px; opacity: 0.5;"></div>
-                    
-                    <!-- Logo & Nama Perusahaan -->
-                    <div class="d-flex align-items-center gap-2 d-none d-md-flex">
-                        <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" style="height: 24px; width: auto;">
-                        <span class="fw-bold text-dark" style="font-size: 0.8rem; letter-spacing: 0.5px; white-space: nowrap;">
-                            PT SARANA MITRA LUAS Tbk
-                        </span>
-                    </div>
+                    <!-- Cukup logo & nama perusahaan (logo OPTIMA dipindah ke sidebar) -->
+                    <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" style="height: 24px; width: auto;">
+                    <span class="fw-bold text-dark" style="font-size: 0.8rem; letter-spacing: 0.5px; white-space: nowrap;">
+                        PT SARANA MITRA LUAS Tbk
+                    </span>
                 </a>
             </div>
             
@@ -709,10 +703,10 @@ $currentLang = service('request')->getLocale();
     </header>
 
     <!-- Enhanced Sidebar -->
-    <?= $this->include('layouts/sidebar_new') ?>
+    <?= $this->include('layouts/sidebar_optima') ?>
     
     <!-- Main Content -->
-    <main class="main-content" id="mainContent">
+    <main class="main-content cn-main-content" id="mainContent">
         <!-- Content Body -->
         <div class="content-body">
             <?php
@@ -763,7 +757,7 @@ $currentLang = service('request')->getLocale();
         </main>
 
     <!-- Admin Footer -->
-    <footer class="admin-footer">
+    <footer class="admin-footer cn-layout-footer">
         
         <div class="row">
             <div class="col-md-6">
@@ -932,8 +926,8 @@ $currentLang = service('request')->getLocale();
     <!-- UI Helpers (Select2, Toasts, Button States, Validation) -->
     <script src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
     
-    <!-- OPTIMA Sidebar CodePen Enhancement - Modern Floating Sidebar -->
-    <script src="<?= base_url('assets/js/sidebar-codepen-enhance.js') ?>?v=<?= time() ?>"></script>
+    <!-- OPTIMA Sidebar CodingNepal - Floating, expand/collapse -->
+    <script src="<?= base_url('assets/js/sidebar-codingnepal.js') ?>?v=<?= time() ?>"></script>
     
     <!-- Global JavaScript Variables -->
     <script>
@@ -1081,7 +1075,7 @@ $currentLang = service('request')->getLocale();
                 $.ajaxSetup({
                     beforeSend: function(xhr, settings) {
                         // Always read the latest CSRF token before sending
-                        // getCsrfToken() reads from cookie dynamically (never stale)
+                        // getCsrfToken() reads from session (never stale)
                         const token = (typeof window.getCsrfToken === 'function')
                             ? (window.getCsrfToken() || window.csrfToken || '')
                             : (window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
@@ -1089,6 +1083,61 @@ $currentLang = service('request')->getLocale();
                             xhr.setRequestHeader('X-CSRF-TOKEN', token);
                         }
                         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    },
+                    error: function(xhr, status, error) {
+                        // Global AJAX error handler
+                        // Only auto-handle 401/403 auth errors (don't interfere with module-specific handlers)
+                        
+                        // 401 Unauthorized - Session Expired
+                        if (xhr.status === 401) {
+                            const response = xhr.responseJSON || {};
+                            console.warn('🔐 Session Expired - Auto logout in 3 seconds');
+                            
+                            // Show alert
+                            alert(
+                                '⏱️ Sesi Anda telah berakhir (6 jam)\n\n' +
+                                'Anda akan diarahkan ke halaman login.\n\n' +
+                                'Silakan login kembali untuk melanjutkan.'
+                            );
+                            
+                            // Redirect to login after 2 seconds
+                            setTimeout(() => {
+                                window.location.href = '<?= base_url('auth/login') ?>';
+                            }, 2000);
+                            
+                            return false;
+                        }
+                        
+                        // 403 Forbidden - CSRF Token Expired
+                        if (xhr.status === 403) {
+                            const response = xhr.responseJSON || {};
+                            const message = response.message || '';
+                            
+                            // Detect CSRF token mismatch/expiry
+                            if (message.includes('not allowed') || 
+                                message.includes('CSRF') || 
+                                response.type === 'CodeIgniter\\Security\\Exceptions\\SecurityException') {
+                                
+                                console.warn('🔐 CSRF Token Expired - Session timeout detected');
+                                
+                                // Show user-friendly alert with auto-refresh option
+                                const shouldRefresh = confirm(
+                                    '⏱️ Sesi Anda telah berakhir\n\n' +
+                                    'Untuk melanjutkan bekerja, halaman perlu di-refresh.\n\n' +
+                                    'Tekan OK untuk refresh sekarang.'
+                                );
+                                
+                                if (shouldRefresh) {
+                                    window.location.reload();
+                                }
+                                
+                                // Prevent error from bubbling to module handlers
+                                return false;
+                            }
+                        }
+                        
+                        // For other errors, continue to module-specific handlers
+                        // (Don't prevent default behavior)
                     }
                 });
             }
@@ -1318,9 +1367,15 @@ $currentLang = service('request')->getLocale();
     <!-- ==================================================================== -->
     <script src="<?= base_url('assets/js/notification-lightweight.js') ?>"></script>
 
-    <!-- Metis Dashboard Style Sidebar Toggle -->
+    <!-- Metis Dashboard Style Sidebar Toggle (disabled for cn-sidebar-layout / CodingNepal sidebar) -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Untuk layout baru (cn-sidebar-layout) kita pakai sidebar-codingnepal.js, 
+            // jadi script Metis ini tidak dijalankan agar tidak bentrok.
+            if (document.body.classList.contains('cn-sidebar-layout')) {
+                return;
+            }
+
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');

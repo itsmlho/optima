@@ -39,8 +39,14 @@ class Session extends BaseConfig
      *
      * The number of SECONDS you want the session to last.
      * Setting to 0 (zero) means expire when the browser is closed.
+     *
+     * OPTIMA STANDARD: 6 hours (21600 seconds)
+     * - Comfortable work session duration
+     * - Auto-logout after 6 hours for security
+     * - Prevents indefinite idle sessions
+     * - User will be redirected to login after expiry
      */
-    public int $expiration = 7200;
+    public int $expiration = 21600;
 
     /**
      * --------------------------------------------------------------------------

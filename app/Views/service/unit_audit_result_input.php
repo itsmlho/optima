@@ -13,7 +13,7 @@ $items = $audit['items'] ?? [];
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1 small">
                 <li class="breadcrumb-item"><a href="<?= base_url('dashboard') ?>"><i class="fas fa-home me-1"></i>Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= base_url('service/unit-audit/location') ?>">Audit Unit per Lokasi</a></li>
+                <li class="breadcrumb-item"><a href="<?= base_url('service/unit-verification') ?>">Unit Verification</a></li>
                 <li class="breadcrumb-item active">Input Hasil Audit</li>
             </ol>
         </nav>
@@ -37,7 +37,7 @@ $items = $audit['items'] ?? [];
 
 <!-- Audit Info -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card">
             <div class="card-body">
                 <div class="text-muted small">Status</div>
@@ -45,7 +45,15 @@ $items = $audit['items'] ?? [];
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">No. Kontrak</div>
+                <div class="fw-bold font-monospace small"><?= esc($audit['no_kontrak_masked'] ?? '-') ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
         <div class="card">
             <div class="card-body">
                 <div class="text-muted small">Total Unit (Kontrak)</div>
@@ -53,7 +61,7 @@ $items = $audit['items'] ?? [];
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card">
             <div class="card-body">
                 <div class="text-muted small">Spare Unit (Kontrak)</div>
@@ -61,7 +69,7 @@ $items = $audit['items'] ?? [];
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card">
             <div class="card-body">
                 <div class="text-muted small">Tanggal Audit</div>
@@ -73,6 +81,7 @@ $items = $audit['items'] ?? [];
 
 <!-- Input Form -->
 <form id="auditResultForm">
+    <input type="hidden" name="<?= csrf_token() ?>" value="<?= csrf_hash() ?>">
     <input type="hidden" name="audit_id" value="<?= $audit['id'] ?? '' ?>">
 
     <!-- Unit Items Table -->
@@ -95,6 +104,7 @@ $items = $audit['items'] ?? [];
                             <th>Merk/Model<br><small class="text-muted">(Actual)</small></th>
                             <th>Spare?</th>
                             <th>Operator?</th>
+                            <th>Pilih Unit<br><small class="text-muted">(Extra/Kurang)</small></th>
                             <th>Hasil</th>
                         </tr>
                     </thead>
@@ -138,6 +148,11 @@ $items = $audit['items'] ?? [];
                                     <option value="1" <?= ($item['actual_operator_present'] ?? 0) == 1 ? 'selected' : '' ?>>YES</option>
                                 </select>
                             </td>
+                            <td class="unit-select-cell">
+                                <select class="form-select form-select-sm unit-select-existing" name="items[<?= $item['id'] ?>][unit_id]" data-item-id="<?= $item['id'] ?>" data-selected="<?= (int)($item['unit_id'] ?? 0) ?>">
+                                    <option value="">-- Pilih Unit --</option>
+                                </select>
+                            </td>
                             <td>
                                 <select class="form-select form-select-sm result-select"
                                     name="items[<?= $item['id'] ?>][result]"
@@ -149,6 +164,7 @@ $items = $audit['items'] ?? [];
                                     <option value="MISMATCH_SERIAL" <?= ($item['result'] ?? '') == 'MISMATCH_SERIAL' ? 'selected' : '' ?>>Serial Berbeda</option>
                                     <option value="MISMATCH_SPEC" <?= ($item['result'] ?? '') == 'MISMATCH_SPEC' ? 'selected' : '' ?>>Spesifikasi Berbeda</option>
                                     <option value="MISMATCH_SPARE" <?= ($item['result'] ?? '') == 'MISMATCH_SPARE' ? 'selected' : '' ?>>Status Spare Berbeda</option>
+                                    <option value="ADD_UNIT" <?= ($item['result'] ?? '') == 'ADD_UNIT' ? 'selected' : '' ?>>Tambah Unit (Kurang)</option>
                                 </select>
                                 <input type="text" class="form-control form-control-sm mt-1"
                                     name="items[<?= $item['id'] ?>][notes]"
@@ -157,8 +173,27 @@ $items = $audit['items'] ?? [];
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                        <tr id="addUnitRowTemplate" class="d-none">
+                            <td class="text-center add-unit-no"></td>
+                            <td colspan="4" class="text-muted small">Unit baru (tambah ke kontrak)</td>
+                            <td><input type="text" class="form-control form-control-sm add-unit-actual-no" placeholder="No Unit"></td>
+                            <td><input type="text" class="form-control form-control-sm add-unit-actual-serial" placeholder="Serial"></td>
+                            <td><input type="text" class="form-control form-control-sm add-unit-actual-merk" placeholder="Merk/Model"></td>
+                            <td><select class="form-select form-select-sm add-unit-actual-spare"><option value="0">NO</option><option value="1">YES</option></select></td>
+                            <td></td>
+                            <td>
+                                <select class="form-select form-select-sm unit-select-add" required>
+                                    <option value="">-- Pilih Unit --</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm mt-1 add-unit-notes" placeholder="Keterangan">
+                            </td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAddUnitRow(this)"><i class="fas fa-times"></i></button></td>
+                        </tr>
                     </tbody>
                 </table>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="addUnitRow()">
+                    <i class="fas fa-plus me-1"></i>Tambah Unit (Kurang)
+                </button>
             </div>
         </div>
     </div>
@@ -201,15 +236,21 @@ $items = $audit['items'] ?? [];
                 </div>
             </div>
             <div class="row g-3 mt-2">
-                <div class="col-md-6">
-                    <label class="form-label">Catatan Mekanik</label>
-                    <textarea class="form-control" name="summary[mechanic_notes]" rows="3"
-                        placeholder="Catatan dari hasil audit di lapangan"><?= $audit['mechanic_notes'] ?? '' ?></textarea>
+                <div class="col-md-4">
+                    <label class="form-label">Nama Mekanik (Yang Mengecek)</label>
+                    <input type="text" class="form-control" name="summary[mechanic_name]"
+                        value="<?= esc($audit['mechanic_name'] ?? '') ?>"
+                        placeholder="Nama mekanik yang melakukan pengecekan di lapangan">
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label">Catatan Mekanik</label>
+                    <textarea class="form-control" name="summary[mechanic_notes]" rows="2"
+                        placeholder="Catatan dari hasil audit di lapangan"><?= esc($audit['mechanic_notes'] ?? '') ?></textarea>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Catatan Admin Service</label>
-                    <textarea class="form-control" name="summary[service_notes]" rows="3"
-                        placeholder="Catatan tambahan dari admin service"><?= $audit['service_notes'] ?? '' ?></textarea>
+                    <textarea class="form-control" name="summary[service_notes]" rows="2"
+                        placeholder="Catatan tambahan dari admin service"><?= esc($audit['service_notes'] ?? '') ?></textarea>
                 </div>
             </div>
         </div>
@@ -217,7 +258,7 @@ $items = $audit['items'] ?? [];
 
     <!-- Action Buttons -->
     <div class="d-flex justify-content-between">
-        <a href="<?= base_url('service/unit-audit/location') ?>" class="btn btn-secondary">
+        <a href="<?= base_url('service/unit-verification') ?>" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i>Kembali
         </a>
         <div class="d-flex gap-2">
@@ -244,9 +285,72 @@ $items = $audit['items'] ?? [];
 <script>
 const auditId = <?= $audit['id'] ?? 0 ?>;
 const auditStatus = '<?= $audit['status'] ?? 'DRAFT' ?>';
+let addUnitRowCounter = 0;
+let availableUnits = [];
+
+// Load available units for dropdowns
+fetch('<?= base_url('unit_audit/getAvailableUnits') ?>')
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.data) {
+            availableUnits = data.data;
+            renderUnitOptions(document.querySelectorAll('.unit-select-existing'));
+            const templateSelect = document.querySelector('#addUnitRowTemplate .unit-select-add');
+            if (templateSelect) renderUnitSelectOptions(templateSelect);
+        }
+    });
+
+function renderUnitSelectOptions(selectEl) {
+    if (!selectEl || !availableUnits.length) return;
+    const firstOpt = selectEl.querySelector('option');
+    selectEl.innerHTML = firstOpt ? firstOpt.outerHTML : '<option value="">-- Pilih Unit --</option>';
+    availableUnits.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id_inventory_unit || u.id;
+        opt.textContent = (u.no_unit || u.nomor_unit || '-') + ' | ' + (u.serial_number || '-') + ' | ' + (u.merk_unit || '') + ' ' + (u.model_unit || '');
+        selectEl.appendChild(opt);
+    });
+}
+
+function renderUnitOptions(selects) {
+    selects.forEach(s => {
+        renderUnitSelectOptions(s);
+        const selected = s.dataset.selected;
+        if (selected && selected !== '0') s.value = selected;
+    });
+}
+
+function addUnitRow() {
+    const template = document.getElementById('addUnitRowTemplate');
+    const clone = template.cloneNode(true);
+    clone.id = '';
+    clone.classList.remove('d-none');
+    const idx = addUnitRowCounter++;
+    const prefix = 'items[new_' + idx + ']';
+    const existingRows = document.querySelectorAll('#itemsTable tbody tr:not(#addUnitRowTemplate):not(.add-unit-row)');
+    clone.classList.add('add-unit-row');
+    clone.querySelector('.add-unit-no').textContent = existingRows.length + 1;
+    clone.querySelector('.add-unit-actual-no').name = prefix + '[actual_no_unit]';
+    clone.querySelector('.add-unit-actual-serial').name = prefix + '[actual_serial]';
+    clone.querySelector('.add-unit-actual-merk').name = prefix + '[actual_merk]';
+    clone.querySelector('.add-unit-actual-spare').name = prefix + '[actual_is_spare]';
+    clone.querySelector('.unit-select-add').name = prefix + '[unit_id]';
+    clone.querySelector('.add-unit-notes').name = prefix + '[notes]';
+    const hiddenResult = document.createElement('input');
+    hiddenResult.type = 'hidden';
+    hiddenResult.name = prefix + '[result]';
+    hiddenResult.value = 'ADD_UNIT';
+    clone.querySelector('td:nth-child(11)').insertBefore(hiddenResult, clone.querySelector('.unit-select-add'));
+    renderUnitSelectOptions(clone.querySelector('.unit-select-add'));
+    template.parentNode.insertBefore(clone, template);
+}
+
+function removeAddUnitRow(btn) {
+    btn.closest('tr').remove();
+}
 
 function printAuditForm() {
-    window.open(`<?= base_url('service/unit-audit/printLocationAudit/') ?>${auditId}`, '_blank');
+    window.open(`<?= base_url('service/unit-verification/print/') ?>${auditId}`, '_blank');
 }
 
 function markInProgress() {
@@ -284,14 +388,18 @@ function saveResults() {
 function submitToMarketing() {
     if (!confirm('Kirim hasil audit ke Marketing untuk approval?')) return;
 
+    const formData = new FormData();
+    formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+
     fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${auditId}`, {
-        method: 'POST'
+        method: 'POST',
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
         alert(data.message);
         if (data.success) {
-            window.location.href = '<?= base_url('service/unit-audit/location') ?>';
+            window.location.href = '<?= base_url('service/unit-verification') ?>';
         }
     });
 }
@@ -299,18 +407,30 @@ function submitToMarketing() {
 function checkResult(select) {
     const row = select.closest('tr');
     const result = select.value;
+    const unitCell = row.querySelector('.unit-select-cell');
 
-    // Add visual indicator for non-matching results
     if (result !== 'MATCH') {
         row.classList.add('table-danger');
     } else {
         row.classList.remove('table-danger');
     }
+    if (unitCell) {
+        unitCell.style.visibility = (result === 'EXTRA_UNIT' || result === 'ADD_UNIT') ? 'visible' : 'hidden';
+        const unitSelect = unitCell.querySelector('.unit-select-existing');
+        if (unitSelect) unitSelect.required = (result === 'EXTRA_UNIT' || result === 'ADD_UNIT');
+    }
 }
 
-// Initialize - mark non-matching rows
+// Initialize - mark non-matching rows and toggle unit select
 document.querySelectorAll('.result-select').forEach(select => {
     checkResult(select);
+});
+document.querySelectorAll('.unit-select-cell').forEach(cell => {
+    const row = cell.closest('tr');
+    const resultSelect = row.querySelector('.result-select');
+    if (resultSelect && resultSelect.value !== 'EXTRA_UNIT' && resultSelect.value !== 'ADD_UNIT') {
+        cell.style.visibility = 'hidden';
+    }
 });
 
 // Auto-calculate summary on total units change

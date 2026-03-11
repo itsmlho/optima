@@ -10,6 +10,27 @@ use App\Models\CustomerContractModel;
 use App\Traits\ActivityLoggingTrait;
 use App\Traits\DateFilterTrait;
 
+/**
+ * Customer Management Module Controller
+ * 
+ * Handles customer management dashboard, CRUD operations, location management,
+ * and UI interactions for the customer management module.
+ * 
+ * Route: /customer-management
+ * View: app/Views/marketing/customer_management.php
+ * 
+ * For API endpoints used by other modules (quotations, marketing), see Customers controller.
+ * 
+ * Features:
+ * - Customer listing with DataTables (server-side processing)
+ * - Customer CRUD operations (create, read, update, delete)
+ * - Location management per customer
+ * - Contract overview and statistics
+ * - Export functionality (Excel/PDF)
+ * - Permission-based access control
+ * 
+ * @package App\Controllers
+ */
 class CustomerManagementController extends BaseController
 {
     use ActivityLoggingTrait;
@@ -79,6 +100,9 @@ class CustomerManagementController extends BaseController
             $draw = $request->getPost('draw') ?: 1;
             $start = $request->getPost('start') ?: 0;
             $length = $request->getPost('length') ?: 10;
+            
+            // Get status filter
+            $statusFilter = $request->getPost('status_filter') ?: 'all';
         
             // Safe array access
             $search = $request->getPost('search') ?: [];
@@ -136,17 +160,49 @@ class CustomerManagementController extends BaseController
                             ->groupEnd();
                 // Apply date filter to count builder too
                 $this->applyDateFilter($countBuilder, 'customers.created_at');
+                
+                // Apply status filter to count builder
+                if ($statusFilter === 'active') {
+                    $countBuilder->where('customers.is_active', 1);
+                } elseif ($statusFilter === 'inactive') {
+                    $countBuilder->where('customers.is_active', 0);
+                }
+                
                 $filteredRecords = count($countBuilder->get()->getResultArray());
             } else {
-                $filteredRecords = $totalRecords;
+                // No search filter - count based on status filter only using fresh builder
+                $countBuilder = $this->db->table('customers');
+                $this->applyDateFilter($countBuilder, 'customers.created_at');
+                
+                if ($statusFilter === 'active') {
+                    $countBuilder->where('customers.is_active', 1);
+                } elseif ($statusFilter === 'inactive') {
+                    $countBuilder->where('customers.is_active', 0);
+                }
+                // For 'all' and 'no_contract', no additional filter needed at count stage
+                
+                $filteredRecords = $countBuilder->countAllResults();
             }
             
             // Apply date filter if provided
             $this->applyDateFilter($builder, 'customers.created_at');
             
-            // Apply ordering and pagination
-            $builder->orderBy($orderColumn, $orderDir)
-                    ->limit($length, $start);
+            // Apply status filter
+            if ($statusFilter === 'active') {
+                $builder->where('customers.is_active', 1);
+            } elseif ($statusFilter === 'inactive') {
+                $builder->where('customers.is_active', 0);
+            }
+            // Note: 'no_contract' filter will be applied after data enrichment
+            
+            // Apply ordering
+            $builder->orderBy($orderColumn, $orderDir);
+            
+            // For no_contract filter, we need ALL customers first, then filter by active_contracts_count
+            // So pagination will be applied AFTER filtering
+            if ($statusFilter !== 'no_contract') {
+                $builder->limit($length, $start);
+            }
             
             $customers = $builder->get()->getResultArray();
             
@@ -154,10 +210,16 @@ class CustomerManagementController extends BaseController
             foreach ($customers as &$customer) {
             $customer['locations_count'] = $this->locationModel->where('customer_id', $customer['id'])->countAllResults();
             
-            // Get contracts count directly from kontrak (customer_contracts table does not exist)
+            // Get total contracts count (not cancelled)
             $contractsCount = $this->db->table('kontrak')
                 ->where('customer_id', $customer['id'])
                 ->where('status !=', 'CANCELLED')
+                ->countAllResults();
+            
+            // Get active contracts count (ACTIVE status only)
+            $activeContractsCount = $this->db->table('kontrak')
+                ->where('customer_id', $customer['id'])
+                ->where('status', 'ACTIVE')
                 ->countAllResults();
             
             // Get units count - via kontrak_unit junction table (source of truth)
@@ -177,6 +239,7 @@ class CustomerManagementController extends BaseController
                 ->countAllResults();
             
             $customer['contracts_count'] = $contractsCount;
+            $customer['active_contracts_count'] = $activeContractsCount;
             $customer['total_units'] = $unitsCount;
             $customer['po_count'] = $poCount;
             
@@ -188,6 +251,20 @@ class CustomerManagementController extends BaseController
             } else {
                 $customer['locations_summary'] = 'No locations';
             }
+            }
+            
+            // Apply no_contract filter after data enrichment
+            if ($statusFilter === 'no_contract') {
+                $customers = array_filter($customers, function($customer) {
+                    return $customer['active_contracts_count'] == 0;
+                });
+                $customers = array_values($customers); // Re-index array
+                
+                // Update filtered count to total matching customers
+                $filteredRecords = count($customers);
+                
+                // Apply pagination manually in PHP (since we skipped SQL LIMIT)
+                $customers = array_slice($customers, $start, $length);
             }
             
             $response = [
@@ -263,10 +340,17 @@ class CustomerManagementController extends BaseController
      */
     public function getCustomerDetailedInfo($id)
     {
+        // Log request for debugging
+        log_message('info', '[CustomerManagement] getCustomerDetailedInfo called for ID: ' . $id);
+        
         if (!$this->hasPermission('marketing.customer.view')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            log_message('warning', '[CustomerManagement] Permission denied for user accessing customer ID: ' . $id);
+            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized - Permission denied'])->setStatusCode(403);
         }
+        
         try {
+            log_message('debug', '[CustomerManagement] Starting data fetch for customer ID: ' . $id);
+            
             // Get customer basic info with area from primary location
             $customerBuilder = $this->customerModel->builder();
             $customer = $customerBuilder->select('customers.*, areas.area_name, areas.area_code')
@@ -276,8 +360,11 @@ class CustomerManagementController extends BaseController
                                       ->get()->getRowArray();
             
             if (!$customer) {
+                log_message('warning', '[CustomerManagement] Customer not found: ID ' . $id);
                 return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
             }
+            
+            log_message('debug', '[CustomerManagement] Customer found: ' . ($customer['customer_name'] ?? 'N/A'));
             
             // Get customer locations
             $locations = $this->locationModel->where('customer_id', $id)
@@ -372,12 +459,15 @@ class CustomerManagementController extends BaseController
             // Calculate statistics
             $stats = [
                 'total_locations' => count($locations),
-                'primary_locations' => count(array_filter($locations, function($loc) { return $loc['is_primary'] == 1; })),
+                'primary_locations' => count(array_filter($locations, function($loc) { return ($loc['is_primary'] ?? 0) == 1; })),
                 'total_contracts' => count($contracts),
-                'active_contracts' => count(array_filter($contracts, function($c) { return $c['status'] == 'ACTIVE'; })),
+                'active_contracts' => count(array_filter($contracts, function($c) { return ($c['status'] ?? '') == 'ACTIVE'; })),
                 'total_po_only' => count(array_filter($contracts, function($c) { return isset($c['rental_type']) && $c['rental_type'] == 'PO_ONLY'; })),
                 'total_units' => count($units),
-                'active_units' => count(array_filter($units, function($u) { return in_array($u['status_unit'], ['DISEWA', 'BEROPERASI']); })),
+                'active_units' => count(array_filter($units, function($u) { 
+                    $status = $u['workflow_status'] ?? $u['status_unit'] ?? null;
+                    return in_array($status, ['DISEWA', 'BEROPERASI', 'DALAM_PENGIRIMAN', 'STOCK_ASET']);
+                })),
                 'total_contract_value' => array_sum(array_column($contracts, 'nilai_total')),
                 'total_activities' => count($allActivities)
             ];
@@ -395,9 +485,17 @@ class CustomerManagementController extends BaseController
             ]);
             
         } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement] Error in getCustomerDetailedInfo: ' . $e->getMessage());
+            log_message('error', '[CustomerManagement] Stack trace: ' . $e->getTraceAsString());
+            
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading customer details: ' . $e->getMessage()
+                'message' => 'Error loading customer details: ' . $e->getMessage(),
+                'debug' => ENVIRONMENT === 'development' ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ] : null
             ]);
         }
     }
@@ -614,14 +712,11 @@ class CustomerManagementController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
         }
         
+        // Validate input
+        // Note: customer_code is readonly and cannot be changed, so we don't validate or update it
         $rules = [
-            'customer_code' => "required|max_length[20]|is_unique[customers.customer_code,id,$id]",
             'customer_name' => 'required|max_length[255]',
-            'area_id' => 'required|integer',
-            'address' => 'permit_empty|max_length[500]',
-            'phone' => 'permit_empty|max_length[20]',
-            'email' => 'max_length[100]',
-            'contact_person' => 'permit_empty|max_length[255]'
+            'is_active' => 'permit_empty|in_list[0,1]'
         ];
         
         if (!$this->validate($rules)) {
@@ -632,29 +727,20 @@ class CustomerManagementController extends BaseController
             ]);
         }
         
-        // Additional email validation (only if email is provided)
-        $email = $this->request->getPost('email');
-        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'The email field must contain a valid email address.',
-                'errors' => ['email' => 'The email field must contain a valid email address.']
-            ]);
-        }
-        
+        // Prepare data for update
+        // Note: customer_code is intentionally excluded as it's readonly and should never change
         $data = [
-            'customer_code' => $this->request->getPost('customer_code'),
             'customer_name' => $this->request->getPost('customer_name'),
-            'area_id' => $this->request->getPost('area_id'),
-            'address' => $this->request->getPost('address'),
-            'phone' => $this->request->getPost('phone'),
-            'email' => $this->request->getPost('email'),
-            'contact_person' => $this->request->getPost('contact_person'),
-            'description' => $this->request->getPost('description')
+            'is_active' => $this->request->getPost('is_active') !== null ? (int)$this->request->getPost('is_active') : 1
         ];
+        
+        log_message('info', '[CustomerManagement] Updating customer ID: ' . $id);
+        log_message('debug', '[CustomerManagement] Update data: ' . json_encode($data));
         
         try {
             $updated = $this->customerModel->update($id, $data);
+            
+            log_message('debug', '[CustomerManagement] Update result: ' . ($updated ? 'SUCCESS' : 'FAILED'));
             
             if ($updated) {
                 // Activity Log: UPDATE customer (diff only)
@@ -680,7 +766,7 @@ class CustomerManagementController extends BaseController
                     notify_customer_updated([
                         'id' => $id,
                         'customer_name' => $data['customer_name'],
-                        'customer_code' => $data['customer_code'],
+                        'customer_code' => $customer['customer_code'], // Use existing code (readonly field)
                         'changes' => implode(', ', $changes),
                         'updated_by' => session()->get('user_name') ?? 'System',
                         'url' => base_url('/customers/view/' . $id)
@@ -692,7 +778,7 @@ class CustomerManagementController extends BaseController
                     if (function_exists('notify_customer_status_changed')) {
                         notify_customer_status_changed([
                             'id' => $id,
-                            'customer_code' => $data['customer_code'],
+                            'customer_code' => $customer['customer_code'], // Use existing code (readonly field)
                             'customer_name' => $data['customer_name'],
                             'old_status' => $customer['is_active'] == 1 ? 'Active' : 'Inactive',
                             'new_status' => $data['is_active'] == 1 ? 'Active' : 'Inactive',
@@ -710,15 +796,27 @@ class CustomerManagementController extends BaseController
             }
             
         } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement] Update exception: ' . $e->getMessage());
+            log_message('error', '[CustomerManagement] Stack trace: ' . $e->getTraceAsString());
+            
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating customer: ' . $e->getMessage()
+                'message' => 'Error updating customer: ' . $e->getMessage(),
+                'debug' => ENVIRONMENT === 'development' ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ]);
         }
         
+        // Log model errors if update returned false
+        $modelErrors = $this->customerModel->errors();
+        log_message('warning', '[CustomerManagement] Customer update failed - Model errors: ' . json_encode($modelErrors));
+        
         return $this->response->setJSON([
             'success' => false,
-            'message' => 'Failed to update customer'
+            'message' => 'Failed to update customer',
+            'errors' => $modelErrors
         ]);
     }
 
@@ -731,6 +829,73 @@ class CustomerManagementController extends BaseController
     }
     
     /**
+     * Check if customer can be deleted
+     * Returns validation data about contracts and units
+     */
+    public function checkCustomerDeletion($id)
+    {
+        if (!$this->hasPermission('marketing.customer.delete')) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+        }
+        
+        try {
+            $customer = $this->customerModel->find($id);
+            
+            if (!$customer) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer not found'
+                ]);
+            }
+            
+            // Check for active contracts
+            $activeContracts = $this->db->table('kontrak')
+                ->where('customer_id', $id)
+                ->where('status', 'ACTIVE')
+                ->countAllResults();
+            
+            // Check for units at customer location (via kontrak_unit)
+            $unitsAtLocation = $this->db->table('kontrak_unit ku')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->where('k.customer_id', $id)
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
+                ->countAllResults();
+            
+            // Check total contracts (including completed/terminated)
+            $totalContracts = $this->db->table('kontrak')
+                ->where('customer_id', $id)
+                ->where('status !=', 'CANCELLED')
+                ->countAllResults();
+            
+            // Determine if deletion is allowed
+            $canDelete = ($activeContracts == 0 && $unitsAtLocation == 0);
+            
+            $response = [
+                'can_delete' => $canDelete,
+                'customer_name' => $customer['customer_name'],
+                'customer_code' => $customer['customer_code'],
+                'active_contracts' => $activeContracts,
+                'units_at_location' => $unitsAtLocation,
+                'total_contracts' => $totalContracts
+            ];
+            
+            if (!$canDelete) {
+                $response['message'] = 'Customer cannot be deleted due to active contracts or units at location';
+            }
+            
+            return $this->response->setJSON($response);
+            
+        } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement] Check deletion error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error checking customer deletion status: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
      * Delete customer (main method)
      */
     public function deleteCustomer($id)
@@ -738,31 +903,60 @@ class CustomerManagementController extends BaseController
         if (!$this->hasPermission('marketing.customer.delete')) {
             return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
         }
+        
         try {
-            // Check if customer has contracts (updated for optimized structure)
-            $contractsCount = $this->db->table('kontrak k')
-                ->where('k.customer_id', $id)
-                ->countAllResults();
+            $customer = $this->customerModel->find($id);
             
-            if ($contractsCount > 0) {
+            if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Cannot delete customer with active contracts. Please remove contracts first.'
+                    'message' => 'Customer not found'
                 ]);
             }
             
-            // Delete customer locations first
+            // Double-check validation before deletion
+            $activeContracts = $this->db->table('kontrak')
+                ->where('customer_id', $id)
+                ->where('status', 'ACTIVE')
+                ->countAllResults();
+            
+            $unitsAtLocation = $this->db->table('kontrak_unit ku')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->where('k.customer_id', $id)
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
+                ->countAllResults();
+            
+            // Block deletion if there are active contracts or units
+            if ($activeContracts > 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => "Cannot delete customer with {$activeContracts} active contract(s). Please terminate contracts first."
+                ]);
+            }
+            
+            if ($unitsAtLocation > 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => "Cannot delete customer with {$unitsAtLocation} unit(s) at location. Please return units to warehouse first."
+                ]);
+            }
+            
+            // Save customer data for logging/notification before deletion
+            $customerData = [
+                'customer_code' => $customer['customer_code'],
+                'customer_name' => $customer['customer_name']
+            ];
+            
+            // Delete customer locations first (cascade)
             $this->locationModel->where('customer_id', $id)->delete();
             
-            // Delete customer
+            // Delete the customer
             $deleted = $this->customerModel->delete($id);
             
             if ($deleted) {
-                // Get customer data before delete for notification
-                $customer = $this->customerModel->find($id);
-                
                 // Activity Log: DELETE customer (with snapshot)
-                $this->logDelete('customers', (int)$id, $this->request->getVar() ? $this->request->getVar() : ['id' => (int)$id], [
+                $this->logDelete('customers', (int)$id, $customer, [
                     'description' => 'Customer deleted from Customer Management',
                     'relations' => $this->buildRelations('customers', (int)$id),
                     'module_name' => 'MARKETING',
@@ -773,11 +967,12 @@ class CustomerManagementController extends BaseController
 
                 // Send notification: Customer Deleted
                 helper('notification');
-                if ($customer) {
+                if (function_exists('notify_customer_deleted')) {
                     notify_customer_deleted([
                         'id' => $id,
-                        'customer_name' => $customer['customer_name'] ?? '',
-                        'customer_code' => $customer['customer_code'] ?? ''
+                        'customer_name' => $customerData['customer_name'],
+                        'customer_code' => $customerData['customer_code'],
+                        'deleted_by' => session()->get('user_name') ?? 'System'
                     ]);
                 }
 
@@ -788,6 +983,9 @@ class CustomerManagementController extends BaseController
             }
             
         } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement] Delete customer error: ' . $e->getMessage());
+            log_message('error', '[CustomerManagement] Stack trace: ' . $e->getTraceAsString());
+            
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error deleting customer: ' . $e->getMessage()
@@ -1414,11 +1612,35 @@ class CustomerManagementController extends BaseController
             $unitResult    = $unitResultSet ? $unitResultSet->getRow() : null;
             $totalUnits = $unitResult->total ?? 0;
             
+            // Get tab counts (for status filter tabs)
+            $allCount = $this->customerModel->countAllResults();
+            $activeCount = $this->customerModel->where('is_active', 1)->countAllResults();
+            $inactiveCount = $this->customerModel->where('is_active', 0)->countAllResults();
+            
+            // Get customers with no active contracts
+            $allCustomers = $this->customerModel->findAll();
+            $noContractCount = 0;
+            foreach ($allCustomers as $customer) {
+                $activeContractsCount = $this->db->table('kontrak')
+                    ->where('customer_id', $customer['id'])
+                    ->where('status', 'ACTIVE')
+                    ->countAllResults();
+                if ($activeContractsCount == 0) {
+                    $noContractCount++;
+                }
+            }
+            
             $stats = [
                 'total_customers' => $totalCustomers,
                 'active_customers' => $activeCustomers,
                 'total_contracts' => $totalContracts,
-                'total_units' => $totalUnits
+                'total_units' => $totalUnits,
+                'tab_counts' => [
+                    'all' => $allCount,
+                    'active' => $activeCount,
+                    'inactive' => $inactiveCount,
+                    'no_contract' => $noContractCount
+                ]
             ];
             
             log_message('info', 'CustomerStats - Results: ' . json_encode($stats));

@@ -1,94 +1,113 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Approve Audit Unit (Location Audit) Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status DRAFT           → <span class="badge badge-soft-gray">Draft</span>
+ * - Status PRINTED         → <span class="badge badge-soft-cyan">Printed</span>
+ * - Status IN_PROGRESS     → <span class="badge badge-soft-yellow">In Progress</span>
+ * - Status RESULTS_ENTERED → <span class="badge badge-soft-blue">Results Entered</span>
+ * - Status PENDING_APPROVAL → <span class="badge badge-soft-orange">Pending</span>
+ * - Status APPROVED        → <span class="badge badge-soft-green">Approved</span>
+ * - Status REJECTED        → <span class="badge badge-soft-red">Rejected</span>
+ * - Result MATCH           → <span class="badge badge-soft-green">MATCH</span>
+ * - Result EXTRA_UNIT      → <span class="badge badge-soft-yellow">Extra</span>
+ * - Result MISMATCH_*      → <span class="badge badge-soft-orange">Beda</span>
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+$stats = $stats ?? [];
+?>
+
 <?= $this->section('content') ?>
 
-<?php $stats = $stats ?? []; ?>
-
-<!-- Page Header -->
-<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
-    <div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item"><a href="<?= base_url('dashboard') ?>"><i class="fas fa-home me-1"></i>Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= base_url('marketing') ?>">Marketing</a></li>
-                <li class="breadcrumb-item active">Approve Audit Unit</li>
-            </ol>
-        </nav>
-        <h4 class="fw-bold mb-0">
-            <i class="fas fa-check-circle me-2 text-success"></i>Approve Audit Unit
-        </h4>
-        <p class="text-muted small mb-0">Review dan approve hasil audit unit dari Service</p>
-    </div>
-</div>
-
-<!-- Stats Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Total</div>
-                        <div class="fs-4 fw-bold"><?= $stats['total'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-clipboard-list fa-2x opacity-50"></i></div>
+<!-- Statistics Cards -->
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-clipboard-list stat-icon text-primary"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['total'] ?? 0 ?></div>
+                    <div class="text-muted">Total</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-orange text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Pending Approval</div>
-                        <div class="fs-4 fw-bold"><?= $stats['pending_approval'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-hourglass-half fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-hourglass-half stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['pending_approval'] ?? 0 ?></div>
+                    <div class="text-muted">Pending Approval</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Approved</div>
-                        <div class="fs-4 fw-bold"><?= $stats['approved'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-check-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['approved'] ?? 0 ?></div>
+                    <div class="text-muted">Approved</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Rejected</div>
-                        <div class="fs-4 fw-bold"><?= $stats['rejected'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-times-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-times-circle stat-icon text-danger"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['rejected'] ?? 0 ?></div>
+                    <div class="text-muted">Rejected</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Pending Approvals List -->
-<div class="card shadow-sm">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Daftar Audit Menunggu Approval</h5>
-        <button class="btn btn-sm btn-outline-secondary" onclick="loadPendingApprovals()">
-            <i class="fas fa-sync"></i> Refresh
-        </button>
+<!-- Pending Approvals Table Card -->
+<div class="card table-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="fas fa-check-circle me-2 text-success"></i>
+                Approve Audit Unit
+            </h5>
+            <p class="text-muted small mb-0">
+                Review dan approve hasil audit unit dari Service
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: Audit dengan perbedaan unit akan memerlukan penyesuaian harga</small>
+                </span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadPendingApprovals()">
+                <i class="fas fa-sync me-1"></i>Refresh
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover" id="pendingTable">
-                <thead>
+            <table class="table table-striped table-hover mb-0" id="pendingTable">
+                <thead class="table-light">
                     <tr>
                         <th>No. Audit</th>
                         <th>Customer</th>
@@ -113,15 +132,20 @@
     </div>
 </div>
 
-<!-- All Audits -->
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Riwayat Approval</h5>
+<!-- Riwayat Approval Table Card -->
+<div class="card table-card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="fas fa-history me-2 text-primary"></i>
+                Riwayat Approval
+            </h5>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-sm table-hover" id="allTable">
-                <thead>
+            <table class="table table-striped table-hover mb-0 table-sm" id="allTable">
+                <thead class="table-light">
                     <tr>
                         <th>No. Audit</th>
                         <th>Customer</th>
@@ -149,7 +173,7 @@
 
 <!-- Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1">
-    < class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Detail Audit Unit</h5>
@@ -237,8 +261,8 @@ function renderPendingTable(audits) {
                 <td>${audit.customer_name || '-'}</td>
                 <td>${audit.location_name || '-'}</td>
                 <td>${formatDate(audit.audit_date)}</td>
-                <td>${audit.kontrak_total_units || 0}</td>
-                <td>${audit.actual_total_units || 0}</td>
+                <td><span class="badge badge-soft-blue">${audit.kontrak_total_units || 0}</span></td>
+                <td><span class="badge badge-soft-blue">${audit.actual_total_units || 0}</span></td>
                 <td class="${diffClass}"><strong>${difference > 0 ? '+' : ''}${difference}</strong></td>
                 <td>${getStatusBadge(audit.status)}</td>
                 <td>
@@ -269,10 +293,10 @@ function renderAllTable(audits) {
                 <td>${audit.customer_name || '-'}</td>
                 <td>${audit.location_name || '-'}</td>
                 <td>${formatDate(audit.audit_date)}</td>
-                <td>${audit.kontrak_total_units || 0}</td>
-                <td>${audit.actual_total_units || '-'}</td>
+                <td><span class="badge badge-soft-blue">${audit.kontrak_total_units || 0}</span></td>
+                <td><span class="badge badge-soft-blue">${audit.actual_total_units || '-'}</span></td>
                 <td class="${diffClass}">${audit.actual_total_units ? (difference > 0 ? '+' : '') + difference : '-'}</td>
-                <td>${audit.total_price_adjustment ? formatCurrency(audit.total_price_adjustment) : '-'}</td>
+                <td>${audit.total_price_adjustment ? '<span class="text-success fw-semibold">' + formatCurrency(audit.total_price_adjustment) + '</span>' : '-'}</td>
                 <td>${getStatusBadge(audit.status)}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-secondary" onclick="viewDetail(${audit.id})">
@@ -425,7 +449,7 @@ function renderDetailModal(audit) {
         <h6>Detail Unit</h6>
         <div class="table-responsive">
             <table class="table table-bordered table-sm">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th>No</th>
                         <th>No Unit<br><small>(Kontrak)</small></th>
@@ -519,26 +543,26 @@ function approveAudit() {
 
 function getStatusBadge(status) {
     const badges = {
-        'DRAFT': '<span class="badge bg-secondary">Draft</span>',
-        'PRINTED': '<span class="badge bg-info">Printed</span>',
-        'IN_PROGRESS': '<span class="badge bg-warning">In Progress</span>',
-        'RESULTS_ENTERED': '<span class="badge bg-primary">Results Entered</span>',
-        'PENDING_APPROVAL': '<span class="badge bg-orange">Pending</span>',
-        'APPROVED': '<span class="badge bg-success">Approved</span>',
-        'REJECTED': '<span class="badge bg-danger">Rejected</span>'
+        'DRAFT': '<span class="badge badge-soft-gray">Draft</span>',
+        'PRINTED': '<span class="badge badge-soft-cyan">Printed</span>',
+        'IN_PROGRESS': '<span class="badge badge-soft-yellow">In Progress</span>',
+        'RESULTS_ENTERED': '<span class="badge badge-soft-blue">Results Entered</span>',
+        'PENDING_APPROVAL': '<span class="badge badge-soft-orange">Pending</span>',
+        'APPROVED': '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED': '<span class="badge badge-soft-red">Rejected</span>'
     };
     return badges[status] || status;
 }
 
 function getResultBadge(result) {
     const badges = {
-        'MATCH': '<span class="badge bg-success">MATCH</span>',
-        'NO_UNIT_IN_KONTRAK': '<span class="badge bg-danger">Tidak Ada</span>',
-        'EXTRA_UNIT': '<span class="badge bg-warning">Extra</span>',
-        'MISMATCH_NO_UNIT': '<span class="badge bg-danger">No Beda</span>',
-        'MISMATCH_SERIAL': '<span class="badge bg-warning">Serial Beda</span>',
-        'MISMATCH_SPEC': '<span class="badge bg-warning">Spesifikasi Beda</span>',
-        'MISMATCH_SPARE': '<span class="badge bg-info">Spare Beda</span>'
+        'MATCH': '<span class="badge badge-soft-green">MATCH</span>',
+        'NO_UNIT_IN_KONTRAK': '<span class="badge badge-soft-red">Tidak Ada</span>',
+        'EXTRA_UNIT': '<span class="badge badge-soft-yellow">Extra</span>',
+        'MISMATCH_NO_UNIT': '<span class="badge badge-soft-orange">No Beda</span>',
+        'MISMATCH_SERIAL': '<span class="badge badge-soft-orange">Serial Beda</span>',
+        'MISMATCH_SPEC': '<span class="badge badge-soft-orange">Spesifikasi Beda</span>',
+        'MISMATCH_SPARE': '<span class="badge badge-soft-cyan">Spare Beda</span>'
     };
     return badges[result] || result;
 }
@@ -553,8 +577,4 @@ function formatCurrency(amount) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount);
 }
 </script>
-<style>
-.bg-orange { background-color: #fd7e14 !important; }
-.badge.bg-orange { background-color: #fd7e14 !important; }
-</style>
 <?= $this->endSection() ?>

@@ -269,24 +269,33 @@ body.sidebar-collapsed .sidebar .sidebar-heading {
 }
 
 /* ============================================================================
-   DROPDOWN MENUS - Nested Navigation
+   DROPDOWN MENUS - Collapsed Mode Flyout Panel
    ============================================================================ */
 .sidebar .nav-dropdown {
-    background: rgba(0, 97, 242, 0.03);
-    padding: 0.25rem 0;
+    background: #ffffff !important;
+    padding: 0.5rem 0 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    overflow: hidden;
 }
 
 .sidebar .nav-dropdown-header {
-    color: var(--codepen-text-secondary);
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.35rem 1rem;
+    color: #495057;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.65rem 1.1rem 0.55rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 12px 12px 0 0;
+    margin-bottom: 0.2rem;
+    line-height: 1.4;
 }
 
 body.sidebar-collapsed .sidebar .nav-dropdown-header {
-    display: none;
+    display: block;
 }
 
 /* ============================================================================
@@ -476,9 +485,10 @@ body.sidebar-collapsed .main-content {
 /* ============================================================================
    COLLAPSED MENU GROUPS - Special handling
    ============================================================================ */
-body.sidebar-collapsed .sidebar .sidebar-collapsed-menu {
-    display: none;
-}
+
+/* Note: sidebar-collapsed-menu visibility is managed by optima-pro.css:
+   - Hidden by default, shown via body.sidebar-collapsed with !important
+   - Do NOT override display here to avoid conflicts */
 
 body.sidebar-collapsed .sidebar .nav-group-link span {
     display: none;
@@ -542,4 +552,34 @@ body.sidebar-collapsed .admin-footer {
         margin-right: 0 !important;
         padding: 1rem !important;
     }
+}
+
+/* ============================================================================
+   DARK MODE OVERRIDES - Dropdown Panel
+   ============================================================================ */
+[data-bs-theme="dark"] .sidebar .nav-dropdown {
+    background: #1e2535 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-bs-theme="dark"] .sidebar .nav-dropdown-header {
+    background: linear-gradient(135deg, #252d3d 0%, #1a2130 100%);
+    color: #adb5bd;
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+
+[data-bs-theme="dark"] .sidebar .nav-dropdown-item {
+    color: #ced4da;
+}
+
+[data-bs-theme="dark"] .sidebar .nav-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    border-left-color: #4d8fff;
+}
+
+[data-bs-theme="dark"] .sidebar .nav-dropdown-item.active {
+    background: rgba(0, 97, 242, 0.25) !important;
+    color: #7bb3ff !important;
 }

@@ -265,13 +265,21 @@ class UnitAudit extends BaseController
     // ═══════════════════════════════════════════════════════
 
     /**
-     * Location audit index page (Service)
+     * Unit Verification index page (Service) - satu halaman untuk verifikasi unit di lokasi customer
      */
-    public function locationIndex()
+    public function verificationIndex()
     {
-        $data['title'] = 'Audit Unit per Lokasi';
+        $data['title'] = 'Unit Verification';
         $data['stats'] = $this->auditLocationModel->getStats();
-        return view('service/unit_audit_location', $data);
+        return view('service/unit_verification', $data);
+    }
+
+    /**
+     * Redirect: Audit per Lokasi digabung ke Unit Verification (bookmark/link lama tetap jalan)
+     */
+    public function redirectToVerification()
+    {
+        return redirect()->to('/service/unit-verification');
     }
 
     /**
@@ -387,6 +395,19 @@ class UnitAudit extends BaseController
     }
 
     /**
+     * Get data grouped by customer then location (same as Contract > By Customer) for Unit Verification page
+     */
+    public function getVerificationGrouped()
+    {
+        try {
+            $customers = $this->auditLocationModel->getVerificationGrouped();
+            return $this->response->setJSON(['success' => true, 'data' => $customers]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Get location audit detail
      */
     public function getLocationAuditDetail($id)
@@ -403,18 +424,35 @@ class UnitAudit extends BaseController
     }
 
     /**
-     * Print audit form
+     * Print audit form (legacy format)
      */
     public function printLocationAudit($id)
     {
         try {
             $audit = $this->auditLocationModel->getWithDetails((int) $id);
             if (!$audit) {
-                return redirect()->to('/service/unit-audit/location')->with('error', 'Audit tidak ditemukan');
+                return redirect()->to('/service/unit-verification')->with('error', 'Audit tidak ditemukan');
             }
             return view('service/print_audit_form', ['audit' => $audit]);
         } catch (\Exception $e) {
-            return redirect()->to('/service/unit-audit/location')->with('error', $e->getMessage());
+            return redirect()->to('/service/unit-verification')->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Print verification form (Item / Database / Real Lapangan / Sesuai format)
+     */
+    public function printVerificationLocation($id)
+    {
+        try {
+            $audit = $this->auditLocationModel->getWithDetails((int) $id);
+            if (!$audit) {
+                return redirect()->to('/service/unit-verification')->with('error', 'Audit tidak ditemukan');
+            }
+            $audit['no_kontrak_masked'] = $this->auditLocationModel->maskContractNumberForView($audit['no_kontrak'] ?? null);
+            return view('service/print_verification_location', ['audit' => $audit]);
+        } catch (\Exception $e) {
+            return redirect()->to('/service/unit-verification')->with('error', $e->getMessage());
         }
     }
 
@@ -466,13 +504,13 @@ class UnitAudit extends BaseController
     }
 
     /**
-     * Submit to marketing for approval
+     * Submit to marketing for approval (only when has_discrepancy)
      */
     public function submitToMarketing($id)
     {
         try {
-            $this->auditLocationModel->submitForApproval((int) $id);
-            return $this->response->setJSON(['success' => true, 'message' => 'Audit dikirim ke Marketing untuk approval']);
+            $result = $this->auditLocationModel->submitForApproval((int) $id);
+            return $this->response->setJSON($result);
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
@@ -486,13 +524,14 @@ class UnitAudit extends BaseController
         try {
             $audit = $this->auditLocationModel->getWithDetails((int) $id);
             if (!$audit) {
-                return redirect()->to('/service/unit-audit/location')->with('error', 'Audit tidak ditemukan');
+                return redirect()->to('/service/unit-verification')->with('error', 'Audit tidak ditemukan');
             }
+            $audit['no_kontrak_masked'] = $this->auditLocationModel->maskContractNumberForView($audit['no_kontrak'] ?? null);
             $data['title'] = 'Input Hasil Audit';
             $data['audit'] = $audit;
             return view('service/unit_audit_result_input', $data);
         } catch (\Exception $e) {
-            return redirect()->to('/service/unit-audit/location')->with('error', $e->getMessage());
+            return redirect()->to('/service/unit-verification')->with('error', $e->getMessage());
         }
     }
 

@@ -683,7 +683,22 @@ function formatCurrency($amount, $currency = 'IDR') {
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="col-center"><?= number_format($spec['quantity'] ?? 1) ?></td>
+                        <td class="col-center">
+                            <?php 
+                            $billableQty = intval($spec['quantity'] ?? 1);
+                            $spareQty = intval($spec['spare_quantity'] ?? 0);
+                            $totalDelivered = $billableQty + $spareQty;
+                            
+                            // Display billable quantity
+                            echo number_format($billableQty);
+                            
+                            // Show spare info if exists
+                            if ($spareQty > 0) {
+                                echo '<br><small style="color: #ff9800; font-weight: bold;">+' . $spareQty . ' Spare</small>';
+                                echo '<br><small style="color: #666;">(' . $totalDelivered . ' unit delivered)</small>';
+                            }
+                            ?>
+                        </td>
                         <td class="col-right font-bold">
                             <?php 
                             $priceToShow = 0;
@@ -698,20 +713,88 @@ function formatCurrency($amount, $currency = 'IDR') {
                             ?>
                         </td>
                     </tr>
+                    
+                    <?php 
+                    // Show operator row if included
+                    if (!empty($spec['include_operator']) && intval($spec['include_operator']) === 1): 
+                        $operatorQty = intval($spec['operator_quantity'] ?? 1);
+                        $operatorMonthly = floatval($spec['operator_monthly_rate'] ?? 0);
+                        $operatorDaily = floatval($spec['operator_daily_rate'] ?? 0);
+                    ?>
+                    <tr style="background-color: #e3f2fd;">
+                        <td class="col-center"></td>
+                        <td style="padding-left: 20px;">
+                            <div class="unit-title" style="color: #1976d2;">
+                                <i>└─ TERMASUK OPERATOR</i>
+                            </div>
+                            <div class="unit-specs" style="color: #555;">
+                                <?php if ($operatorMonthly > 0): ?>
+                                    &bull; Harga Operator: <?= formatCurrency($operatorMonthly, $quotation['currency'] ?? 'IDR') ?>/bulan/orang
+                                <?php endif; ?>
+                                <?php if ($operatorDaily > 0): ?>
+                                    <?= $operatorMonthly > 0 ? '<br>' : '' ?>
+                                    &bull; Harga Harian: <?= formatCurrency($operatorDaily, $quotation['currency'] ?? 'IDR') ?>/hari/orang
+                                <?php endif; ?>
+                                <?php if (!empty($spec['operator_description'])): ?>
+                                    <br>&bull; Keterangan: <?= esc($spec['operator_description']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <td class="col-center">
+                            <?= number_format($operatorQty) ?> org
+                        </td>
+                        <td class="col-right font-bold">
+                            <?php 
+                            $operatorPrice = $operatorMonthly > 0 ? $operatorMonthly : ($operatorDaily > 0 ? $operatorDaily : 0);
+                            echo formatCurrency($operatorPrice, $quotation['currency'] ?? 'IDR');
+                            ?>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr><td colspan="4" class="col-center" style="padding: 20px;">Belum ada unit dipilih.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
-        <br>           
+        <br>
+        
+        <?php 
+        // Check if any specification has spare units or operator
+        $hasSpareUnits = false;
+        $hasOperator = false;
+        foreach ($specs as $spec) {
+            if (!empty($spec['spare_quantity']) && intval($spec['spare_quantity']) > 0) {
+                $hasSpareUnits = true;
+            }
+            if (!empty($spec['include_operator']) && intval($spec['include_operator']) === 1) {
+                $hasOperator = true;
+            }
+        }
+        ?>
+        
+        <?php if ($hasSpareUnits || $hasOperator): ?>
+        <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 8px 12px; margin-bottom: 10px; border-radius: 4px;">
+            <strong style="color: #856404;">Catatan Penting:</strong>
+            <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #856404;">
+                <?php if ($hasSpareUnits): ?>
+                <li><strong>Unit Spare (Cadangan)</strong> disediakan sebagai backup untuk kontinuitas operasional 24/7 dan <strong>TIDAK DITAGIH</strong>. Jumlah unit yang ditagih sesuai quantity yang tercantum.</li>
+                <?php endif; ?>
+                <?php if ($hasOperator): ?>
+                <li><strong>Harga Operator</strong> sudah termasuk dalam quotation sesuai spesifikasi yang tercantum di atas.</li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
+                   
         <div class="terms-container">
             <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">Syarat & Ketentuan (Terms & Conditions):</div>
             <ol class="terms-list" id="dynamicTerms">
                 <li>Periode Sewa: <?= !empty($quotation['payment_terms']) ? esc($quotation['payment_terms']) : 'Min. 2 Bulan' ?></li>
                 <li>Mobilisasi: <?= !empty($quotation['delivery_terms']) ? esc($quotation['delivery_terms']) : 'Ditanggung Penyewa' ?></li>
                 <li>Harga sudah termasuk maintenance & service rutin.</li>
-                <li>Harga belum termasuk PPN 12%, Operator, dan BBM.</li>
+                <li>Harga belum termasuk PPN 12%<?= !$hasOperator ? ', Operator,' : '' ?> dan BBM.</li>
             </ol>
         </div>
 

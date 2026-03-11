@@ -1,6 +1,14 @@
 <?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * SPK Service Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Quick Reference: QUOTATION → badge-soft-purple, CONTRACT → badge-soft-green,
+ * Ready/Complete → badge-soft-green, In Progress → badge-soft-cyan, Cancelled → badge-soft-red.
+ * See optima-pro.css line ~2030 for complete badge standards.
+ */
 // Simple permission check
 $can_view = true;
 $can_create = true;
@@ -10,15 +18,6 @@ $can_export = true;
 ?>
 
 <?= $this->section('content') ?>
-
-    <!-- Page Header -->
-    <div class="mb-3">
-        <h4 class="fw-bold mb-1">
-            <i class="bi bi-file-earmark-text me-2 text-primary"></i>
-            SPK (Surat Perintah Kerja) Management
-        </h4>
-        <p class="text-muted mb-0">Create, track, and manage work order letters for service operations</p>
-    </div>
 
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
@@ -84,10 +83,20 @@ $can_export = true;
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><?= lang('App.work_orders_spk') ?> <?= lang('App.show') ?></h6>
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                    <?= lang('App.work_orders_spk') ?>
+                </h5>
+                <p class="text-muted small mb-0">
+                    Create, track, and manage work order letters for service operations
+                    <span class="ms-2 text-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>Tip: Click row or stat card to filter by status</small>
+                    </span>
+                </p>
             </div>
         </div>
         
@@ -366,8 +375,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					render: function(data, type, row) {
 						const sourceType = !data && row.quotation_number ? 'QUOTATION' : 'CONTRACT';
 						return sourceType === 'QUOTATION' 
-							? '<span class="badge bg-info"><i class="fas fa-file-lines me-1"></i>QUOTATION</span>'
-							: '<span class="badge bg-success"><i class="fas fa-file-contract me-1"></i>CONTRACT</span>';
+							? '<span class="badge badge-soft-purple"><i class="fas fa-file-lines me-1"></i>QUOTATION</span>'
+							: '<span class="badge badge-soft-green"><i class="fas fa-file-contract me-1"></i>CONTRACT</span>';
 					}
 				},
 				{ data: 'pelanggan', defaultContent: '-' },
@@ -466,12 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
 								const unitIndex = nextUnit || 1;
 								actions += `<button class="btn btn-sm btn-warning" onclick="openApprovalModal('pdi', 'PDI Dept.', ${row.id}, ${unitIndex})">PDI${unitText}</button>`;
 							} else {
-								actions = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>All Stages Complete</span>';
+								actions = '<span class="badge badge-soft-green"><i class="fas fa-check-circle me-1"></i>All Stages Complete</span>';
 							}
 						} else if (row.status === 'READY') {
-							actions = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Ready for DI</span>';
+							actions = '<span class="badge badge-soft-green"><i class="fas fa-check-circle me-1"></i>Ready for DI</span>';
 						} else if (row.status === 'COMPLETED' || row.status === 'DELIVERED') {
-							actions = '<span class="badge bg-primary"><i class="fas fa-flag-checkered me-1"></i>Completed</span>';
+							actions = '<span class="badge badge-soft-blue"><i class="fas fa-flag-checkered me-1"></i>Completed</span>';
 						}
 						
 						return actions || '<span class="text-muted">-</span>';
@@ -609,11 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 				
 				// Show completed stages with checkmarks (skip Unit Preparation for ATTACHMENT SPK)
-				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge bg-success me-1">✓ Unit Preparation</span>');
-				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge bg-info me-1">Skip Unit Preparation</span>'); // Indicator that this step was skipped
-				if (fabrikasiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Fabrication</span>');
-				if (paintingDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Painting</span>');
-				if (pdiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ PDI</span>');
+				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge badge-soft-green me-1">Unit Preparation</span>');
+				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge badge-soft-cyan me-1">Skip Unit Preparation</span>');
+				if (fabrikasiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">Fabrication</span>');
+				if (paintingDone) approvalButtons.push('<span class="badge badge-soft-green me-1">Painting</span>');
+				if (pdiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">PDI</span>');
 				
 				// For multi-unit SPK, do not show assignment button; items are accumulated per-cycle
 				const showAssign = (d.jumlah_unit||1) === 1 && pdiDone;
@@ -808,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								totalUnits,
 								mechanic: displayMechanics,
 								date: lastDate,
-								badge: isCompleted ? 'bg-success' : 'bg-secondary',
+								badge: isCompleted ? 'badge-soft-green' : 'badge-soft-gray',
 								icon: isCompleted ? '✓ Completed' : 'Waiting'
 							};
 						};

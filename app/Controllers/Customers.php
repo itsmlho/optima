@@ -4,6 +4,25 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 
+/**
+ * Customers API Controller
+ * 
+ * Provides API endpoints for customer data access used by other modules
+ * (Marketing, Quotations, Contracts). These endpoints are called via AJAX
+ * for customer/location/contract lookups and management.
+ * 
+ * For customer management UI and CRUD operations, see CustomerManagementController.
+ * 
+ * Routes:
+ * - GET  customers/get/:id - Get customer by ID
+ * - GET  customers/getLocations/:id - Get customer locations
+ * - GET  customers/getContracts/:id - Get customer contracts
+ * - POST customers/saveLocation - Save new location
+ * - POST customers/setPrimaryLocation - Set primary location
+ * - POST customers/searchContract - Search contract by number/PO
+ * 
+ * @package App\Controllers
+ */
 class Customers extends BaseController
 {
     protected $customerModel;
@@ -303,10 +322,7 @@ class Customers extends BaseController
             $contracts = $db->table('kontrak k')
                 ->select('k.*, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name, (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as address, (SELECT cl.city FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as city, (SELECT cl.province FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as province, c.id as customer_id, c.customer_name, (SELECT ku.customer_location_id FROM kontrak_unit ku WHERE ku.kontrak_id = k.id LIMIT 1) as location_id')
                 ->join('customers c', 'k.customer_id = c.id', 'left')
-                ->groupStart()
-                    ->where('k.customer_id', $customerId)
-                    ->orWhere('cl.customer_id', $customerId)
-                ->groupEnd()
+                ->where('k.customer_id', $customerId)
                 ->orderBy('k.dibuat_pada', 'DESC')
                 ->get()
                 ->getResultArray();
@@ -336,7 +352,7 @@ class Customers extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $contracts
+                'contracts' => $contracts
             ]);
 
         } catch (\Exception $e) {

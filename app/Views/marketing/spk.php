@@ -1,6 +1,26 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * SPK Marketing Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * - Status SUBMITTED   → <span class="badge badge-soft-yellow">SUBMITTED</span>
+ * - Status IN_PROGRESS → <span class="badge badge-soft-cyan">IN_PROGRESS</span>
+ * - Status READY       → <span class="badge badge-soft-blue">READY</span>
+ * - Status COMPLETED   → <span class="badge badge-soft-green">COMPLETED</span>
+ * - Status CANCELLED   → <span class="badge badge-soft-red">CANCELLED</span>
+ * - Type UNIT          → <span class="badge badge-soft-blue">UNIT</span>
+ * - Type ATTACHMENT    → <span class="badge badge-soft-orange">ATTACHMENT</span>
+ * - Source QUOTATION   → <span class="badge badge-soft-purple">QUOTATION</span>
+ * - Source CONTRACT    → <span class="badge badge-soft-green">CONTRACT</span>
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 // Load global permission helper
 helper('global_permission');
 
@@ -81,10 +101,22 @@ $can_export = $permissions['export'];
     </div>
 
     <!-- Main Content Card -->
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><?= lang('Marketing.spk_list') ?></h6>
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                    <?= lang('Marketing.spk_list') ?>
+                </h5>
+                <p class="text-muted small mb-0">
+                    Kelola dan pantau Surat Perintah Kerja (SPK) untuk fabrication dan delivery unit
+                    <span class="ms-2 text-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>Tip: Click baris untuk melihat detail SPK</small>
+                    </span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
                 <?php if ($can_create): ?>
                 <?= ui_button('add', lang('Marketing.create_spk'), [
                     'data-bs-toggle' => 'modal',
@@ -191,8 +223,8 @@ $can_export = $permissions['export'];
                                 <div class="mb-3">
                                     <label class="form-label"><i class="fas fa-tag me-1"></i><?= lang('Marketing.type') ?> <span class="text-danger">*</span></label>
                                     <select class="form-select" name="jenis_spk" id="jenisSpkSelect" required>
-                                        <option value="UNIT" selected>📦 <?= lang('Marketing.spk_unit') ?> (New Unit Fabrication)</option>
-                                        <option value="ATTACHMENT">🔧 <?= lang('Marketing.spk_attachment') ?> (Attachment Replacement Only)</option>
+                                        <option value="UNIT" selected><?= lang('Marketing.spk_unit') ?> (New Unit Fabrication)</option>
+                                        <option value="ATTACHMENT"><?= lang('Marketing.spk_attachment') ?> (Attachment Replacement Only)</option>
                                     </select>
                                     <div class="form-text" id="spkTypeHelp">
                                         <strong>UNIT:</strong> Full unit fabrication process (Unit Prep → Fabrication → Painting → PDI)<br>
@@ -259,7 +291,7 @@ $can_export = $permissions['export'];
                         <div id="attachmentTargetSection" class="d-none">
                             <div class="card border-warning mb-3">
                                 <div class="card-header bg-warning text-dark">
-                                    <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Step 2: Select Target Unit <span class="badge bg-danger">REQUIRED for ATTACHMENT</span></h6>
+                                    <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Step 2: Select Target Unit <span class="badge badge-soft-red">REQUIRED for ATTACHMENT</span></h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="alert alert-warning mb-3">
@@ -500,30 +532,30 @@ $can_export = $permissions['export'];
     </div>
 
     <script>
-    // UI Badge Helper - Generate consistent badge colors based on type
+    // UI Badge Helper - Generate consistent badge colors based on type (Optima badge-soft-* system)
     function uiBadge(type, text, options = {}) {
         const badgeMap = {
-            'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success',
-            'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
-            'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
-            'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
-            'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
-            'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger', 
-            'quotation': 'warning', 'contract': 'success'
+            'active': 'badge-soft-green', 'approved': 'badge-soft-green', 'completed': 'badge-soft-green', 'delivered': 'badge-soft-green',
+            'pending': 'badge-soft-yellow', 'ready': 'badge-soft-blue', 'in_progress': 'badge-soft-cyan', 'processing': 'badge-soft-cyan',
+            'rejected': 'badge-soft-red', 'cancelled': 'badge-soft-red', 'failed': 'badge-soft-red', 'deleted': 'badge-soft-red',
+            'draft': 'badge-soft-gray', 'new': 'badge-soft-blue', 'info': 'badge-soft-cyan', 'warning': 'badge-soft-yellow',
+            'created': 'badge-soft-green', 'updated': 'badge-soft-cyan', 'submitted': 'badge-soft-gray', 'success': 'badge-soft-green',
+            'primary': 'badge-soft-blue', 'secondary': 'badge-soft-gray', 'danger': 'badge-soft-red',
+            'quotation': 'badge-soft-purple', 'contract': 'badge-soft-green'
         };
-        const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
-        const className = options.class || '';
+        const cls = options.softClass || badgeMap[type.toLowerCase()] || 'badge-soft-gray';
+        const extraClass = options.class || '';
         const icon = options.icon ? `<i class="${options.icon} me-1"></i>` : '';
-        return `<span class="badge bg-${color} ${className}">${icon}${text}</span>`;
+        return `<span class="badge ${cls} ${extraClass}">${icon}${text}</span>`;
     }
 
-    // Map status to Bootstrap badge classes per entity
+    // Map status to Optima badge-soft-* classes per entity
     function statusBadge(entity, status){
         const s = (status||'').toUpperCase();
-        const mapSPK = { SUBMITTED:'secondary', IN_PROGRESS:'info', READY:'success', DELIVERED:'primary', COMPLETED:'primary', CANCELLED:'danger' };
-        const mapDI  = { SUBMITTED:'secondary', DISPATCHED:'info', ARRIVED:'success', CANCELLED:'danger' };
-        const cls = (entity==='DI'?mapDI[s]:mapSPK[s]) || 'secondary';
-        return `<span class="badge bg-${cls}">${status}</span>`;
+        const mapSPK = { SUBMITTED:'badge-soft-gray', IN_PROGRESS:'badge-soft-cyan', READY:'badge-soft-blue', DELIVERED:'badge-soft-green', COMPLETED:'badge-soft-green', CANCELLED:'badge-soft-red' };
+        const mapDI  = { SUBMITTED:'badge-soft-gray', DISPATCHED:'badge-soft-cyan', ARRIVED:'badge-soft-green', CANCELLED:'badge-soft-red' };
+        const cls = (entity==='DI'?mapDI[s]:mapSPK[s]) || 'badge-soft-gray';
+        return `<span class="badge ${cls}">${status}</span>`;
     }
     
     // Step indicator controller for Create SPK modal
@@ -631,7 +663,7 @@ $can_export = $permissions['export'];
             const aksiBtn = linkBtn + (diBtn || '<span class="text-muted">-</span>');
             
             tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
-              `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
+              `<td><span class=\"badge ${(r.jenis_spk||'UNIT')==='ATTACHMENT'?'badge-soft-orange':'badge-soft-blue'}\">${r.jenis_spk||'UNIT'}</span></td>`+
               `<td>${r.po_kontrak_nomor||'-'}</td>`+
               `<td>${sourceBadge}</td>`+
               `<td>${r.pelanggan||'-'}</td>`+
@@ -882,7 +914,9 @@ $can_export = $permissions['export'];
                 { 
                     data: 'jenis_spk',
                     render: function(data) {
-                        return `<span class="badge bg-dark">${data || 'UNIT'}</span>`;
+                        const val = data || 'UNIT';
+                        const cls = val === 'ATTACHMENT' ? 'badge-soft-orange' : 'badge-soft-blue';
+                        return `<span class="badge ${cls}">${val}</span>`;
                     }
                 },
                 { data: 'po_kontrak_nomor', defaultContent: '-' },
@@ -893,8 +927,8 @@ $can_export = $permissions['export'];
                     render: function(data) {
                         const sourceType = !data ? 'QUOTATION' : 'CONTRACT';
                         return sourceType === 'QUOTATION' 
-                            ? typeof uiBadge === 'function' ? uiBadge('quotation', 'QUOTATION', {icon: 'fas fa-file-lines'}) : '<span class="badge bg-info">QUOTATION</span>'
-                            : typeof uiBadge === 'function' ? uiBadge('contract', 'CONTRACT', {icon: 'fas fa-file-contract'}) : '<span class="badge bg-success">CONTRACT</span>';
+                            ? typeof uiBadge === 'function' ? uiBadge('quotation', 'QUOTATION', {icon: 'fas fa-file-lines'}) : '<span class="badge badge-soft-purple">QUOTATION</span>'
+                            : typeof uiBadge === 'function' ? uiBadge('contract', 'CONTRACT', {icon: 'fas fa-file-contract'}) : '<span class="badge badge-soft-green">CONTRACT</span>';
                     }
                 },
                 { data: 'pelanggan', defaultContent: '-' },
@@ -2870,7 +2904,7 @@ $can_export = $permissions['export'];
                                     totalUnits,
                                     mechanic: displayMechanics,
                                     date: lastDate,
-                                    badge: isCompleted ? 'bg-success' : 'bg-secondary',
+                                    badge: isCompleted ? 'badge-soft-green' : 'badge-soft-gray',
                                     icon: isCompleted ? '✓ Completed' : 'Waiting'
                                 };
                             };

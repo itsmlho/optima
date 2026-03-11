@@ -1,6 +1,39 @@
 ﻿<?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Contract & PO Management Module
+ * 
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ * 
+ * Quick Reference:
+ * Contract Types:
+ * - CONTRACT      → <span class="badge badge-soft-blue">Contract</span>
+ * - PO_ONLY       → <span class="badge badge-soft-cyan">PO Only</span>  
+ * - DAILY_SPOT    → <span class="badge badge-soft-yellow">Daily</span>
+ * 
+ * Contract Status:
+ * - ACTIVE        → <span class="badge badge-soft-green">ACTIVE</span>
+ * - PENDING       → <span class="badge badge-soft-yellow">PENDING</span>
+ * - EXPIRED       → <span class="badge badge-soft-red">EXPIRED</span>
+ * - CANCELLED     → <span class="badge badge-soft-gray">CANCELLED</span>
+ * 
+ * Expiry Warnings (3-tier urgency):
+ * - Expired       → <span class="badge badge-soft-red">Expired X days ago</span>
+ * - Critical <30d → <span class="badge badge-soft-orange">X days left</span>
+ * - Monitor 31-90d→ <span class="badge badge-soft-cyan">X days left</span>
+ * 
+ * Info Badges:
+ * - Unit counts   → <span class="badge badge-soft-blue">5 units</span>
+ * - Total value   → <span class="badge badge-soft-green">Rp 50.000.000</span>
+ * 
+ * PLANNED ENHANCEMENT:
+ * - Filter system will be replaced with tab-based navigation (similar to Customer Management)
+ * - Tabs: All Contracts | Active | Expiring Soon | Expired
+ * 
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
 helper('simple_rbac');
 $can_view = can_view('marketing');
 $can_create = can_create('marketing');
@@ -9,52 +42,17 @@ $can_export = can_export('marketing');
 
 <?= $this->section('content') ?>
 
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-file-earmark-text me-2 text-primary"></i>
-        Contracts & Purchase Orders Management
-    </h4>
-    <p class="text-muted mb-0">Manage formal rental contracts, PO-only agreements, and track contract renewals</p>
-</div>
-
 <!-- Statistics Cards -->
 <div class="row mt-3 mb-4">
     <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
         <div class="stat-card bg-primary-soft">
             <div class="d-flex align-items-center">
                 <div class="me-3">
-                    <i class="bi bi-file-text stat-icon text-primary"></i>
+                    <i class="fas fa-file-contract fa-3x text-primary opacity-75"></i>
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-contracts">0</div>
-                    <div class="text-muted">Total Contracts & PO</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-        <div class="stat-card bg-info-soft">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <i class="bi bi-file-contract stat-icon text-info"></i>
-                </div>
-                <div>
-                    <div class="stat-value" id="stat-formal-contracts">0</div>
-                    <div class="text-muted">Formal Contracts</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-        <div class="stat-card bg-warning-soft">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <i class="bi bi-file-invoice stat-icon text-warning"></i>
-                </div>
-                <div>
-                    <div class="stat-value" id="stat-po-only">0</div>
-                    <div class="text-muted">PO Only</div>
+                    <div class="text-muted small">Total Contracts & PO</div>
                 </div>
             </div>
         </div>
@@ -63,66 +61,137 @@ $can_export = can_export('marketing');
         <div class="stat-card bg-success-soft">
             <div class="d-flex align-items-center">
                 <div class="me-3">
-                    <i class="bi bi-check-circle stat-icon text-success"></i>
+                    <i class="fas fa-check-circle fa-3x text-success opacity-75"></i>
                 </div>
                 <div>
                     <div class="stat-value" id="stat-active">0</div>
-                    <div class="text-muted">Active</div>
+                    <div class="text-muted small">Active Contracts</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning opacity-75"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-expiring">0</div>
+                    <div class="text-muted small">Expiring Soon (90d)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-truck fa-3x text-info opacity-75"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total-units">0</div>
+                    <div class="text-muted small">Total Units Rented</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Filters Card -->
+<!-- Status Filter Tabs -->
 <div class="card mb-3">
-    <div class="card-header bg-light">
-        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label for="filter_rental_type" class="form-label">Rental Type</label>
-                <select class="form-select" id="filter_rental_type">
-                    <option value="">All Types</option>
-                    <option value="CONTRACT">Contract</option>
-                    <option value="PO_ONLY">PO Only</option>
-                    <option value="DAILY_SPOT">Daily/Spot</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="filter_status" class="form-label">Status</label>
-                <select class="form-select" id="filter_status">
-                    <option value="">All Status</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="EXPIRED">Expired</option>
-                    <option value="CANCELLED">Cancelled</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label for="filter_customer" class="form-label">Customer</label>
-                <select class="form-select" id="filter_customer">
-                    <option value="">All Customers</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-primary w-100" onclick="applyFilters()">
-                    <i class="fas fa-search me-1"></i>Apply
+    <div class="card-body p-0">
+        <ul class="nav nav-tabs" id="contractStatusTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-all" data-tab="all" type="button" role="tab">
+                    <i class="fas fa-list me-2"></i>Semua Kontrak
+                    <span class="badge bg-primary ms-2" id="count-all">0</span>
                 </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-active" data-tab="active" type="button" role="tab">
+                    <i class="fas fa-check-circle me-2"></i>Active
+                    <span class="badge bg-success ms-2" id="count-active">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-expiring" data-tab="expiring" type="button" role="tab">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Akan Expired
+                    <span class="badge bg-warning ms-2" id="count-expiring">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-expired" data-tab="expired" type="button" role="tab">
+                    <i class="fas fa-times-circle me-2"></i>Expired
+                    <span class="badge bg-danger ms-2" id="count-expired">0</span>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Secondary Filters (Sub-tabs) -->
+        <div class="border-top px-3 py-2 bg-light">
+            <div class="row align-items-center">
+                <!-- Rental Type Sub-tabs (always visible) -->
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted fw-semibold me-2">
+                            <i class="fas fa-file-contract me-1"></i>Tipe:
+                        </small>
+                        <div class="btn-group btn-group-sm" role="group" id="rentalTypeFilter">
+                            <button type="button" class="btn btn-outline-secondary active" data-type="">
+                                All Types
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-type="CONTRACT">
+                                Contract
+                            </button>
+                            <button type="button" class="btn btn-outline-info" data-type="PO_ONLY">
+                                PO Only
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" data-type="DAILY_SPOT">
+                                Daily/Spot
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Expiring Sub-tabs (only show when Expiring tab active) -->
+                <div class="col-md-6" id="expiringSubTabs" style="display:none;">
+                    <div class="d-flex align-items-center gap-2 justify-content-end">
+                        <small class="text-muted fw-semibold me-2">
+                            <i class="fas fa-clock me-1"></i>Periode:
+                        </small>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-danger active" data-days="30">
+                                1 Bulan <span class="badge bg-danger ms-1" id="count-expiring-30">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" data-days="90">
+                                3 Bulan <span class="badge bg-warning ms-1" id="count-expiring-90">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-info" data-days="180">
+                                6 Bulan <span class="badge bg-info ms-1" id="count-expiring-180">0</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Active Filter Banner (shown when filtered from URL) -->
-<div id="activeFilterBanner" style="display:none"></div>
 
 <!-- Contracts Table Card -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-3">
-            <h5 class="mb-0">Contract & PO Management</h5>
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                Contracts & Purchase Orders Management
+            </h5>
+            <p class="text-muted small mb-0">
+                Manage formal rental contracts, PO-only agreements, and track contract renewals
+                
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
             <!-- View Mode Toggle -->
             <div class="btn-group btn-group-sm" role="group" id="viewModeToggle">
                 <button type="button" class="btn btn-secondary active" id="btnFlatView" onclick="switchViewMode('flat')">
@@ -132,7 +201,6 @@ $can_export = can_export('marketing');
                     <i class="fas fa-layer-group me-1"></i>By Customer
                 </button>
             </div>
-        </div>
         <div class="d-flex gap-2">
             <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary btn-sm" onclick="openAddContractModal()">
@@ -172,7 +240,7 @@ $can_export = can_export('marketing');
         </div>
     </div>
     <!-- GROUPED VIEW body (inside same card, hidden by default) -->
-    <div id="groupedViewBody" style="display:none">
+    <div id="groupedViewBody" class="card-body" style="display:none">
         <div class="text-center py-5">
             <div class="spinner-border text-primary mb-3" role="status"></div>
             <p class="text-muted">Memuat data...</p>
@@ -302,64 +370,109 @@ $can_export = can_export('marketing');
 
 <?= $this->section('javascript') ?>
 <script>
+/**
+ * Contract & PO Management Module - Using Optima Badge Standards (optima-pro.css)
+ * 
+ * Quick Reference:
+ * - ACTIVE status      → <span class="badge badge-soft-green">ACTIVE</span>
+ * - PENDING status     → <span class="badge badge-soft-yellow">PENDING</span>
+ * - EXPIRED status     → <span class="badge badge-soft-red">EXPIRED</span>
+ * - CANCELLED status   → <span class="badge badge-soft-gray">CANCELLED</span>
+ * - CONTRACT type      → <span class="badge badge-soft-blue">Contract</span>
+ * - PO ONLY type       → <span class="badge badge-soft-cyan">PO Only</span>
+ * - DAILY/SPOT type    → <span class="badge badge-soft-yellow">Daily</span>
+ * - Expiry < 30 days   → <span class="badge badge-soft-orange">X days left</span>
+ * - Expiry 31-90 days  → <span class="badge badge-soft-cyan">X days left</span>
+ * - Expired            → <span class="badge badge-soft-red">Expired X days ago</span>
+ * 
+ * See docs/BADGE_STANDARDS.md for complete guide
+ */
 let contractsTable;
+let currentTab = 'all';
+let currentRentalType = '';
+let currentExpiringDays = 30; // Default to 1 month
+let currentViewMode = 'flat'; // 'flat' or 'grouped'
+let groupedData = null; // Cache for grouped view data
 
 $(document).ready(function() {
-    // Load statistics
+    // Load statistics and update tab badges
     loadStatistics();
-    
-    // Load customers dropdown, then auto-apply URL filters
-    loadCustomersDropdown(function() {
-        applyUrlFilters();
-    });
     
     // Initialize DataTable
     initializeContractsTable();
+    
+    // Setup tab event handlers
+    setupTabHandlers();
+    
+    // Cleanup Select2 when modal is closed
+    $('#addContractModal').on('hidden.bs.modal', function() {
+        if ($('#contractCustomerSelect').data('select2')) {
+            $('#contractCustomerSelect').select2('destroy');
+        }
+        if ($('#contractLocationSelect').data('select2')) {
+            $('#contractLocationSelect').select2('destroy');
+        }
+    });
 });
 
-// Auto-apply filters from URL query params (e.g. ?customer_id=5&status=ACTIVE)
-function applyUrlFilters() {
-    const params = new URLSearchParams(window.location.search);
-    let hasFilter = false;
+// Setup tab click handlers
+function setupTabHandlers() {
+    // Main status tabs
+    $('#contractStatusTabs button[data-tab]').on('click', function() {
+        const tab = $(this).data('tab');
+        switchTab(tab);
+    });
     
-    if (params.get('customer_id')) {
-        $('#filter_customer').val(params.get('customer_id'));
-        hasFilter = true;
-    }
-    if (params.get('rental_type')) {
-        $('#filter_rental_type').val(params.get('rental_type'));
-        hasFilter = true;
-    }
-    if (params.get('status')) {
-        $('#filter_status').val(params.get('status'));
-        hasFilter = true;
-    }
-    
-    if (hasFilter) {
-        // Show active filter banner
-        const customerName = $('#filter_customer option:selected').text();
-        if (params.get('customer_id') && customerName && customerName !== 'All Customers') {
-            $('#activeFilterBanner').html(`<div class="alert alert-info alert-sm mb-3 d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-filter me-2"></i>Menampilkan kontrak untuk: <strong>${customerName}</strong></span>
-                <button class="btn btn-sm btn-outline-info" onclick="clearAllFilters()"><i class="fas fa-times me-1"></i>Hapus Filter</button>
-            </div>`).show();
-        }
+    // Rental type filter buttons
+    $('#rentalTypeFilter button').on('click', function() {
+        $('#rentalTypeFilter button').removeClass('active');
+        $(this).addClass('active');
+        currentRentalType = $(this).data('type') || '';
         applyFilters();
-    }
+    });
+    
+    // Expiring period sub-tabs
+    $('#expiringSubTabs button').on('click', function() {
+        $('#expiringSubTabs button').removeClass('active');
+        $(this).addClass('active');
+        currentExpiringDays = $(this).data('days');
+        applyFilters();
+    });
 }
 
-// Clear all filters and reload
-function clearAllFilters() {
-    $('#filter_rental_type').val('');
-    $('#filter_status').val('');
-    $('#filter_customer').val('');
-    $('#activeFilterBanner').hide().empty();
-    // Clean URL
-    window.history.replaceState({}, '', window.location.pathname);
+// Tab switching function
+function switchTab(tab) {
+    currentTab = tab;
+    
+    // Update active tab UI
+    $('#contractStatusTabs button').removeClass('active');
+    $('#tab-' + tab).addClass('active');
+    
+    // Show/hide expiring sub-tabs
+    if (tab === 'expiring') {
+        $('#expiringSubTabs').show();
+    } else {
+        $('#expiringSubTabs').hide();
+    }
+    
+    // Reload table with new filter
     applyFilters();
 }
 
-// Load statistics
+// Apply filters and reload DataTable
+function applyFilters() {
+    if (contractsTable) {
+        if (currentViewMode === 'flat') {
+            contractsTable.ajax.reload();
+        } else {
+            // Reload grouped view with current filters
+            groupedData = null;
+            loadGroupedView(true);
+        }
+    }
+}
+
+// Load statistics and update tab badges
 function loadStatistics() {
     $.ajax({
         url: '<?= base_url('marketing/kontrak/stats') ?>',
@@ -367,34 +480,26 @@ function loadStatistics() {
         success: function(response) {
             if (response.success) {
                 const stats = response.data;
+                // Update stat cards with relevant info
                 $('#stat-total-contracts').text(stats.total_contracts || 0);
-                $('#stat-formal-contracts').text(stats.total_formal_contracts || 0);
-                $('#stat-po-only').text(stats.total_po_only || 0);
                 $('#stat-active').text(stats.total_active || 0);
+                $('#stat-expiring').text(stats.total_expiring_90 || 0);
+                $('#stat-total-units').text(stats.total_units_rented || 0);
+                
+                // Update tab badges
+                $('#count-all').text(stats.total_contracts || 0);
+                $('#count-active').text(stats.total_active || 0);
+                $('#count-expiring').text(stats.total_expiring_90 || 0);
+                $('#count-expired').text(stats.total_expired || 0);
+                
+                // Update expiring period sub-tab badges
+                $('#count-expiring-30').text(stats.total_expiring_30 || 0);
+                $('#count-expiring-90').text(stats.total_expiring_90 || 0);
+                $('#count-expiring-180').text(stats.total_expiring_180 || 0);
             }
         },
         error: function() {
             console.error('Failed to load statistics');
-        }
-    });
-}
-
-// Load customers for filter dropdown
-function loadCustomersDropdown(callback) {
-    $.ajax({
-        url: '<?= base_url('marketing/kontrak/customers-dropdown') ?>',
-        type: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const $select = $('#filter_customer');
-                response.data.forEach(customer => {
-                    $select.append(new Option(customer.customer_name, customer.id));
-                });
-            }
-            if (typeof callback === 'function') callback();
-        },
-        error: function() {
-            if (typeof callback === 'function') callback();
         }
     });
 }
@@ -419,10 +524,13 @@ function initializeContractsTable() {
                 if (window.csrfToken) {
                     d[window.csrfTokenName] = window.csrfToken;
                 }
-                // Add custom filters
-                d.rental_type = $('#filter_rental_type').val();
-                d.status = $('#filter_status').val();
-                d.customer_id = $('#filter_customer').val();
+                
+                // Add tab-based filtering
+                d.tab = currentTab;
+                d.rental_type = currentRentalType;
+                if (currentTab === 'expiring') {
+                    d.expiring_days = currentExpiringDays;
+                }
             }
         },
         columns: [
@@ -468,18 +576,31 @@ function initializeContractsTable() {
                         const diffMs = end - today;
                         const days = Math.ceil(diffMs / (1000*60*60*24));
                         if (days < 0) {
-                            daysHtml = `<br><span class="badge bg-danger">Expired ${Math.abs(days)}h lalu</span>`;
+                            daysHtml = `<br><span class="badge badge-soft-red">Expired ${Math.abs(days)}h lalu</span>`;
                         } else if (days <= 30) {
-                            daysHtml = `<br><span class="badge bg-warning text-dark">${days}h lagi</span>`;
+                            daysHtml = `<br><span class="badge badge-soft-orange">${days}h lagi</span>`;
                         } else if (days <= 90) {
-                            daysHtml = `<br><span class="badge bg-info">${days}h lagi</span>`;
+                            daysHtml = `<br><span class="badge badge-soft-cyan">${days}h lagi</span>`;
                         }
                     }
                     return `<small>${startLabel} – ${endLabel}</small>${daysHtml}`;
                 }
             },
-            { data: 'total_units', className: 'text-center' },
-            { data: 'value', className: 'text-end' },
+            { 
+                data: 'total_units', 
+                className: 'text-center',
+                render: function(data, type, row) {
+                    return `<span class="badge badge-soft-blue">${data || 0}</span>`;
+                }
+            },
+            { 
+                data: 'value', 
+                className: 'text-end',
+                render: function(data, type, row) {
+                    if (!data || data === '—') return '—';
+                    return `<span class="text-success fw-semibold">${data}</span>`;
+                }
+            },
             { data: 'status' },
             { 
                 data: null, 
@@ -514,17 +635,6 @@ function initializeContractsTable() {
     });
 }
 
-// Apply filters
-function applyFilters() {
-    if (currentViewMode === 'flat') {
-        contractsTable.ajax.reload();
-    } else {
-        // Reload grouped view with current filters
-        groupedData = null;
-        loadGroupedView(true);
-    }
-}
-
 // Refresh table
 function refreshTable() {
     contractsTable.ajax.reload();
@@ -533,14 +643,25 @@ function refreshTable() {
 
 // Export contracts
 function exportContracts() {
-    const rentalType = $('#filter_rental_type').val();
-    const status = $('#filter_status').val();
-    const customerId = $('#filter_customer').val();
-    
     let url = '<?= base_url('marketing/kontrak/export') ?>?';
-    if (rentalType) url += 'rental_type=' + rentalType + '&';
-    if (status) url += 'status=' + status + '&';
-    if (customerId) url += 'customer_id=' + customerId;
+    
+    // Add current filters
+    if (currentTab !== 'all') {
+        if (currentTab === 'active') url += 'status=ACTIVE&';
+        else if (currentTab === 'expired') url += 'status=EXPIRED&';
+        else if (currentTab === 'expiring') {
+            url += 'status=ACTIVE&';
+            if (currentExpiringDays == -1) {
+                url += 'expired_past=1&';
+            } else {
+                url += 'expiring_days=' + currentExpiringDays + '&';
+            }
+        }
+    }
+    
+    if (currentRentalType) {
+        url += 'rental_type=' + currentRentalType + '&';
+    }
     
     window.location.href = url;
 }
@@ -944,7 +1065,7 @@ function loadContractOverview(contractId) {
                 let contractHtml = '<div class="row">';
                 contractHtml += '<div class="col-md-4 mb-3">';
                 contractHtml += '<label class="text-muted small">Contract Number</label>';
-                contractHtml += '<p class="fw-bold">' + (contract.no_kontrak || 'N/A') + '</p>';
+                contractHtml += '<p><span class="badge badge-soft-blue font-monospace">' + (contract.no_kontrak || 'N/A') + '</span></p>';
                 contractHtml += '</div>';
                 
                 contractHtml += '<div class="col-md-4 mb-3">';
@@ -954,13 +1075,13 @@ function loadContractOverview(contractId) {
                 
                 contractHtml += '<div class="col-md-4 mb-3">';
                 contractHtml += '<label class="text-muted small">Status</label>';
-                let statusClass = contract.status === 'ACTIVE' ? 'success' : (contract.status === 'EXPIRED' ? 'danger' : 'warning');
-                contractHtml += '<p><span class="badge bg-' + statusClass + '">' + (contract.status || 'N/A') + '</span></p>';
+                let statusClass = contract.status === 'ACTIVE' ? 'badge-soft-green' : (contract.status === 'EXPIRED' ? 'badge-soft-red' : contract.status === 'PENDING' ? 'badge-soft-yellow' : 'badge-soft-gray');
+                contractHtml += '<p><span class="badge ' + statusClass + '">' + (contract.status || 'N/A') + '</span></p>';
                 contractHtml += '</div>';
                 
                 contractHtml += '<div class="col-md-4 mb-3">';
                 contractHtml += '<label class="text-muted small">PO Number</label>';
-                contractHtml += '<p>' + (contract.po_number || 'N/A') + '</p>';
+                contractHtml += '<p>' + (contract.po_number ? '<span class="badge badge-soft-cyan font-monospace">' + contract.po_number + '</span>' : '<span class="text-muted">N/A</span>') + '</p>';
                 contractHtml += '</div>';
                 
                 contractHtml += '<div class="col-md-4 mb-3">';
@@ -1085,7 +1206,7 @@ function loadContractUnits(contractId) {
                     html += '<button class="accordion-button' + (isFirst ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + accordionId + '">';
                     html += '<i class="fas fa-map-marker-alt me-2 text-primary"></i>';
                     html += '<strong>' + locationName + '</strong>';
-                    html += '<span class="badge bg-primary ms-2">' + units.length + ' unit(s)</span>';
+                    html += '<span class="badge badge-soft-blue ms-2">' + units.length + ' unit(s)</span>';
                     html += '</button></h2>';
                     
                     html += '<div id="' + accordionId + '" class="accordion-collapse collapse' + (isFirst ? ' show' : '') + '">';
@@ -1103,7 +1224,7 @@ function loadContractUnits(contractId) {
                         html += '<td>' + (unit.brand_model || 'N/A') + '</td>';
                         html += '<td>' + (unit.capacity || 'N/A') + '</td>';
                         html += '<td class="text-end">Rp ' + (unit.rate_monthly ? parseFloat(unit.rate_monthly).toLocaleString('id-ID') : '0') + '</td>';
-                        html += '<td><span class="badge bg-success">Active</span></td>';
+                        html += '<td><span class="badge badge-soft-green">Active</span></td>';
                         html += '</tr>';
                     });
                     
@@ -1320,6 +1441,22 @@ function openAddContractModal() {
     // Reset form
     $('#addContractForm')[0].reset();
     
+    // Reset form
+    $('#addContractForm')[0].reset();
+    
+    // Destroy existing Select2 instances
+    if ($('#contractCustomerSelect').data('select2')) {
+        $('#contractCustomerSelect').select2('destroy');
+    }
+    if ($('#contractLocationSelect').data('select2')) {
+        $('#contractLocationSelect').select2('destroy');
+    }
+    
+    // Reset location dropdown
+    $('#contractLocationSelect').empty()
+        .append('<option value="">-- Select Customer First --</option>')
+        .prop('disabled', true);
+    
     // Load customers for dropdown
     loadCustomersForContract();
     
@@ -1332,14 +1469,27 @@ function openAddContractModal() {
  */
 function loadCustomersForContract() {
     $.ajax({
-        url: '<?= base_url('marketing/customer-management/getCustomersForSelect') ?>',
+        url: '<?= base_url('marketing/kontrak/customers-dropdown') ?>',
         method: 'GET',
         success: function(response) {
             if (response.success) {
                 const customerSelect = $('#contractCustomerSelect');
                 customerSelect.empty().append('<option value="">-- Select Customer --</option>');
                 response.data.forEach(customer => {
-                    customerSelect.append(`<option value="${customer.id}">${customer.company_name} (${customer.customer_code})</option>`);
+                    const code = customer.customer_code || '';
+                    // Only store customer name in option text, templates will add badge
+                    customerSelect.append(`<option value="${customer.id}" data-code="${code}">${customer.customer_name}</option>`);
+                });
+                
+                // Initialize Select2 with custom template
+                customerSelect.select2({
+                    placeholder: '-- Select Customer --',
+                    allowClear: true,
+                    dropdownParent: $('#addContractModal'),
+                    width: '100%',
+                    templateResult: formatCustomerOption,
+                    templateSelection: formatCustomerSelection,
+                    escapeMarkup: function(markup) { return markup; } // Allow HTML in templates
                 });
             }
         },
@@ -1350,6 +1500,33 @@ function loadCustomersForContract() {
 }
 
 /**
+ * Format customer option in Select2 dropdown
+ */
+function formatCustomerOption(customer) {
+    if (!customer.id) return customer.text;
+    const code = $(customer.element).data('code');
+    if (!code) return customer.text;
+    
+    // Return HTML with badge
+    return `<div class="d-flex align-items-center">
+        <span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7rem">${code}</span>
+        <span>${customer.text}</span>
+    </div>`;
+}
+
+/**
+ * Format selected customer in Select2
+ */
+function formatCustomerSelection(customer) {
+    if (!customer.id) return customer.text;
+    const code = $(customer.element).data('code');
+    if (!code) return customer.text;
+    
+    // Return HTML with badge (escapeMarkup allows this)
+    return `<span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7rem">${code}</span>${customer.text}`;
+}
+
+/**
  * Customer change event - load locations
  */
 $(document).on('change', '#contractCustomerSelect', function() {
@@ -1357,23 +1534,55 @@ $(document).on('change', '#contractCustomerSelect', function() {
     const locationSelect = $('#contractLocationSelect');
     
     if (customerId) {
+        // Destroy Select2 if exists
+        if (locationSelect.data('select2')) {
+            locationSelect.select2('destroy');
+        }
+        
         $.ajax({
-            url: `<?= base_url('marketing/customer-management/getCustomerLocations/') ?>${customerId}`,
+            url: `<?= base_url('marketing/kontrak/locations/') ?>${customerId}`,
             method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            beforeSend: function(xhr) {
+                // Add CSRF token
+                if (window.csrfTokenName && window.csrfTokenValue) {
+                    xhr.setRequestHeader('X-CSRF-TOKEN', window.csrfTokenValue);
+                }
+            },
             success: function(response) {
                 if (response.success) {
                     locationSelect.empty().append('<option value="">-- Select Location --</option>');
                     response.data.forEach(location => {
-                        locationSelect.append(`<option value="${location.id}">${location.location_name}</option>`);
+                        const isPrimary = location.is_primary == 1;
+                        const badge = isPrimary ? ' <span class="badge badge-soft-success">Primary</span>' : '';
+                        locationSelect.append(`<option value="${location.id}">${location.location_name}${badge}</option>`);
                     });
                     locationSelect.prop('disabled', false);
+                    
+                    // Initialize Select2 for location
+                    locationSelect.select2({
+                        placeholder: '-- Select Location --',
+                        allowClear: true,
+                        dropdownParent: $('#addContractModal'),
+                        width: '100%'
+                    });
+                } else {
+                    showNotification(response.message || 'Error loading locations', 'error');
                 }
             },
-            error: function() {
-                showNotification('Error loading locations', 'error');
+            error: function(xhr) {
+                console.error('Location loading error:', xhr);
+                const errorMsg = xhr.responseJSON?.message || 'Error loading locations';
+                showNotification(errorMsg, 'error');
             }
         });
     } else {
+        // Destroy Select2 if exists
+        if (locationSelect.data('select2')) {
+            locationSelect.select2('destroy');
+        }
         locationSelect.empty().append('<option value="">-- Select Customer First --</option>').prop('disabled', true);
     }
 });
@@ -1485,8 +1694,7 @@ $(document).on('submit', '#addContractForm', function(e) {
 
 <script>
 // ──── View Mode State ────────────────────────────────────────────────
-let currentViewMode = 'flat';
-let groupedData     = null; // cache
+// currentViewMode and groupedData already declared at top of script section
 
 function switchViewMode(mode) {
     currentViewMode = mode;
@@ -1535,15 +1743,20 @@ function loadGroupedView(forceReload) {
             <p class="text-muted">Memuat data grouped...</p>
         </div>`;
 
-    // Pass current filters — use underscore IDs matching filter form HTML
-    const rentalType = $('#filter_rental_type').val() || '';
-    const status     = $('#filter_status').val()     || '';
-    const customerId = $('#filter_customer').val()   || '';
-
+    // Use current tab-based filters
     const params = new URLSearchParams();
-    if (rentalType) params.append('rental_type', rentalType);
-    if (status)     params.append('status', status);
-    if (customerId) params.append('customer_id', customerId);
+    
+    // Map tab to status
+    if (currentTab === 'active') {
+        params.append('status', 'ACTIVE');
+    } else if (currentTab === 'expired') {
+        params.append('status', 'EXPIRED');
+    } else if (currentTab === 'expiring') {
+        params.append('status', 'ACTIVE');
+        params.append('expiring_days', currentExpiringDays);
+    }
+    
+    if (currentRentalType) params.append('rental_type', currentRentalType);
 
     fetch(`<?= base_url('marketing/kontrak/getGrouped') ?>?${params.toString()}`)
         .then(r => r.json())
@@ -1591,9 +1804,9 @@ function renderGroupedView(customers) {
                     <strong class="text-dark">${escHtml(cust.customer_name)}</strong>
                 </div>
                 <div class="gv-summary-badges d-flex gap-2 flex-wrap">
-                    <span class="badge bg-primary">${cust.total_contracts} kontrak</span>
-                    <span class="badge bg-info text-dark">${cust.total_units} unit</span>
-                    ${cust.monthly_value > 0 ? `<span class="badge bg-success">${monthlyFmt}/bln</span>` : ''}
+                    <span class="badge badge-soft-blue">${cust.total_contracts} kontrak</span>
+                    <span class="badge badge-soft-cyan">${cust.total_units} unit</span>
+                    ${cust.monthly_value > 0 ? `<span class="badge badge-soft-green">${monthlyFmt}/bln</span>` : ''}
                 </div>
             </div>
             <!-- Contract Sub-table -->
@@ -1636,10 +1849,10 @@ function renderGroupedView(customers) {
 function buildContractRow(k) {
     // Type badge
     const typeBadge = {
-        'CONTRACT':   '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
-        'PO_ONLY':    '<span class="badge bg-info text-dark"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
-        'DAILY_SPOT': '<span class="badge bg-warning text-dark"><i class="fas fa-calendar-day me-1"></i>Daily</span>',
-    }[k.rental_type] || `<span class="badge bg-secondary">${escHtml(k.rental_type||'—')}</span>`;
+        'CONTRACT':   '<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>Contract</span>',
+        'PO_ONLY':    '<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
+        'DAILY_SPOT': '<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>Daily</span>',
+    }[k.rental_type] || `<span class="badge badge-soft-gray">${escHtml(k.rental_type||'—')}</span>`;
 
     // Billing
     const billingMap = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
@@ -1651,28 +1864,31 @@ function buildContractRow(k) {
 
     let daysBadge = '';
     if (k.days_remaining !== null && k.status === 'ACTIVE') {
-        if (k.days_remaining < 0)      daysBadge = `<br><span class="badge bg-danger">Expired ${Math.abs(k.days_remaining)}h lalu</span>`;
-        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge bg-warning text-dark">${k.days_remaining}h lagi</span>`;
-        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge bg-info">${k.days_remaining}h lagi</span>`;
+        if (k.days_remaining < 0)      daysBadge = `<br><span class="badge badge-soft-red">Expired ${Math.abs(k.days_remaining)}h lalu</span>`;
+        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge badge-soft-orange">${k.days_remaining}h lagi</span>`;
+        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge badge-soft-cyan">${k.days_remaining}h lagi</span>`;
     }
 
     // Status badge
-    const statusColor = { ACTIVE:'success', PENDING:'warning', EXPIRED:'danger', CANCELLED:'secondary' }[k.status] || 'secondary';
-    const statusBadge = `<span class="badge bg-${statusColor}">${escHtml(k.status||'—')}</span>`;
+    const statusColor = { ACTIVE:'badge-soft-green', PENDING:'badge-soft-yellow', EXPIRED:'badge-soft-red', CANCELLED:'badge-soft-gray' }[k.status] || 'badge-soft-gray';
+    const statusBadge = `<span class="badge ${statusColor}">${escHtml(k.status||'—')}</span>`;
 
-    // Contract / PO display
+    // Contract / PO display with visual enhancement
     const kontrakNo = escHtml(k.no_kontrak || '—');
-    const poLine = k.po_number ? `<br><small class="text-muted"><i class="fas fa-file-invoice me-1"></i>PO: ${escHtml(k.po_number)}</small>` : '';
+    const contractDisplay = `<div class="d-flex align-items-center gap-2">
+        <span class="badge badge-soft-blue font-monospace" style="font-size: 0.75rem;">${kontrakNo}</span>
+    </div>`;
+    const poLine = k.po_number ? `<small class="text-muted d-block mt-1"><i class="fas fa-file-invoice me-1 text-info"></i>PO: <span class="font-monospace">${escHtml(k.po_number)}</span></small>` : '';
 
-    const nilai = k.nilai_total > 0 ? 'Rp ' + Number(k.nilai_total).toLocaleString('id-ID') : '—';
+    const nilai = k.nilai_total > 0 ? '<span class="text-success fw-semibold">Rp ' + Number(k.nilai_total).toLocaleString('id-ID') + '</span>' : '—';
 
     return `<tr>
-        <td><span class="font-monospace small">${kontrakNo}</span>${poLine}</td>
+        <td>${contractDisplay}${poLine}</td>
         <td>${typeBadge}</td>
-        <td><small>${escHtml(billing)}</small></td>
-        <td><small>${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
-        <td class="text-center">${k.total_units}</td>
-        <td class="text-end"><small>${nilai}</small></td>
+        <td><small class="text-muted">${escHtml(billing)}</small></td>
+        <td><small class="text-muted">${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
+        <td class="text-center"><span class="badge badge-soft-blue">${k.total_units}</span></td>
+        <td class="text-end">${nilai}</td>
         <td>${statusBadge}</td>
         <td class="text-center">${buildActionButtons(k.id, k.status, k.days_remaining)}</td>
     </tr>`;

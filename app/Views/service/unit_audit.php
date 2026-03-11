@@ -1,76 +1,58 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Unit Audit (Service) Module
+ * BADGE SYSTEM: Optima badge-soft-* (optima-pro.css). SUBMITTED→badge-soft-yellow, APPROVED→badge-soft-green, REJECTED→badge-soft-red.
+ * See optima-pro.css ~2030 for full standards.
+ */
+$stats = $stats ?? [];
+?>
+
 <?= $this->section('content') ?>
 
-<?php $stats = $stats ?? []; ?>
-
-<!-- Page Header -->
-<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
-    <div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item"><a href="<?= base_url('dashboard') ?>"><i class="fas fa-home me-1"></i>Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= base_url('service') ?>">Service</a></li>
-                <li class="breadcrumb-item active">Unit Audit</li>
-            </ol>
-        </nav>
-        <h4 class="fw-bold mb-0">
-            <i class="fas fa-search me-2 text-primary"></i>Unit Audit
-        </h4>
-        <p class="text-muted small mb-0">Audit unit di lokasi customer — ajukan perubahan jika tidak sesuai</p>
-    </div>
-</div>
-
-<!-- Stats Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Total Request</div>
-                        <div class="fs-4 fw-bold"><?= $stats['total'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-clipboard-list fa-2x opacity-50"></i></div>
+<!-- Statistics Cards -->
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="fas fa-clipboard-list stat-icon text-primary"></i></div>
+                <div>
+                    <div class="stat-value"><?= $stats['total'] ?? 0 ?></div>
+                    <div class="text-muted">Total Request</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-dark">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-dark-50">Menunggu Approval</div>
-                        <div class="fs-4 fw-bold"><?= $stats['submitted'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-clock fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="fas fa-clock stat-icon text-warning"></i></div>
+                <div>
+                    <div class="stat-value"><?= $stats['submitted'] ?? 0 ?></div>
+                    <div class="text-muted">Menunggu Approval</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Approved</div>
-                        <div class="fs-4 fw-bold"><?= $stats['approved'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-check-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="fas fa-check-circle stat-icon text-success"></i></div>
+                <div>
+                    <div class="stat-value"><?= $stats['approved'] ?? 0 ?></div>
+                    <div class="text-muted">Approved</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Rejected</div>
-                        <div class="fs-4 fw-bold"><?= $stats['rejected'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-times-circle fa-2x opacity-50"></i></div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="fas fa-times-circle stat-icon text-danger"></i></div>
+                <div>
+                    <div class="stat-value"><?= $stats['rejected'] ?? 0 ?></div>
+                    <div class="text-muted">Rejected</div>
                 </div>
             </div>
         </div>
@@ -78,14 +60,17 @@
 </div>
 
 <!-- Step 1: Select Customer -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="fas fa-building me-2"></i>Pilih Customer</h5>
+<div class="card table-card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0"><i class="bi bi-search me-2 text-primary"></i>Unit Audit</h5>
+            <p class="text-muted small mb-0">Audit unit di lokasi customer — ajukan perubahan jika tidak sesuai <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Pilih customer lalu pilih unit untuk ajukan perubahan</small></span></p>
+        </div>
     </div>
     <div class="card-body">
-        <div class="row g-3 align-items-end">
+        <label class="form-label fw-semibold"><i class="fas fa-building text-primary me-1"></i>Pilih Customer</label>
+        <div class="row g-3 align-items-end mt-1">
             <div class="col-md-8">
-                <label class="form-label">Customer</label>
                 <select class="form-select" id="customerSelect" onchange="loadCustomerUnits()">
                     <option value="">-- Pilih Customer --</option>
                 </select>
@@ -103,12 +88,12 @@
 <div class="card shadow-sm mb-4" id="unitListSection" style="display:none;">
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-forklift me-2"></i>Daftar Unit — <span id="selectedCustomerName" class="text-primary"></span></h5>
-        <span class="badge bg-primary" id="unitCount">0 unit</span>
+        <span class="badge badge-soft-blue" id="unitCount">0 unit</span>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover mb-0" id="unitTable">
-                <thead class="bg-light">
+            <table class="table table-striped table-hover mb-0" id="unitTable">
+                <thead class="table-light">
                     <tr>
                         <th>No Unit</th>
                         <th>S/N</th>
@@ -141,10 +126,10 @@
             </select>
         </div>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover mb-0" id="historyTable">
-                <thead class="bg-light">
+            <table class="table table-striped table-hover mb-0" id="historyTable">
+                <thead class="table-light">
                     <tr>
                         <th>No. Audit</th>
                         <th>Customer</th>
@@ -501,22 +486,22 @@ function renderHistoryTable(data) {
 
 function getStatusBadge(status) {
     const map = {
-        'DRAFT': '<span class="badge bg-secondary">Draft</span>',
-        'SUBMITTED': '<span class="badge bg-warning text-dark">Menunggu Approval</span>',
-        'APPROVED': '<span class="badge bg-success">Approved</span>',
-        'REJECTED': '<span class="badge bg-danger">Rejected</span>'
+        'DRAFT': '<span class="badge badge-soft-gray">Draft</span>',
+        'SUBMITTED': '<span class="badge badge-soft-yellow">Menunggu Approval</span>',
+        'APPROVED': '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED': '<span class="badge badge-soft-red">Rejected</span>'
     };
     return map[status] || status;
 }
 
 function getTypeLabel(type) {
     const map = {
-        'LOCATION_MISMATCH': '<span class="badge bg-info">Lokasi Berbeda</span>',
-        'UNIT_SWAP': '<span class="badge bg-primary">Tukar Unit</span>',
-        'ADD_UNIT': '<span class="badge bg-success">Tambah Unit</span>',
-        'MARK_SPARE': '<span class="badge bg-secondary">Tandai Spare</span>',
-        'UNIT_MISSING': '<span class="badge bg-danger">Unit Hilang</span>',
-        'OTHER': '<span class="badge bg-dark">Lainnya</span>'
+        'LOCATION_MISMATCH': '<span class="badge badge-soft-cyan">Lokasi Berbeda</span>',
+        'UNIT_SWAP': '<span class="badge badge-soft-blue">Tukar Unit</span>',
+        'ADD_UNIT': '<span class="badge badge-soft-green">Tambah Unit</span>',
+        'MARK_SPARE': '<span class="badge badge-soft-gray">Tandai Spare</span>',
+        'UNIT_MISSING': '<span class="badge badge-soft-red">Unit Hilang</span>',
+        'OTHER': '<span class="badge badge-soft-gray">Lainnya</span>'
     };
     return map[type] || type;
 }

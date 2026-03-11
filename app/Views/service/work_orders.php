@@ -1,6 +1,24 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Work Orders (Service) Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ *
+ * Quick Reference:
+ * - Status Open / In Progress → <span class="badge badge-soft-cyan">Open</span>
+ * - Status Completed / Closed  → <span class="badge badge-soft-green">Completed</span>
+ * - Priority / Category        → <span class="badge badge-soft-blue">High</span>
+ * - Department / Area          → <span class="badge badge-soft-cyan">Area</span>
+ * - Tool                       → <span class="badge badge-soft-gray">Tool</span>
+ * - Sparepart                  → <span class="badge badge-soft-blue">Sparepart</span>
+ * - Used / Returned            → <span class="badge badge-soft-green">Used</span>, <span class="badge badge-soft-yellow">Returned</span>
+ *
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 // Load global permission helper
 helper('global_permission');
 
@@ -18,15 +36,6 @@ $assetService = new \App\Services\AssetMinificationService();
 ?>
 
 <?= $this->section('content') ?>
-
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="fas fa-wrench me-2 text-primary"></i>
-        Work Orders Management
-    </h4>
-    <p class="text-muted mb-0">Monitor and manage service work orders from open to completion</p>
-</div>
 
 <!-- Alert Container -->
 <div id="alertContainer" class="mb-3"></div>
@@ -93,25 +102,35 @@ $assetService = new \App\Services\AssetMinificationService();
 
 <!-- Tab System for Work Orders -->
 <div class="card table-card mb-4">
-    <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> <?= lang('Service.service_list') ?></h5>
-            <div class="d-flex gap-2">
-                <?php if ($can_export): ?>
-                <a href="<?= base_url('service/export_workorder') ?>" class="btn btn-outline-success btn-sm">
-                    <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
-                </a>
-                <?php else: ?>
-                <a href="#" class="btn btn-outline-success btn-sm disabled" onclick="return false;" title="<?= lang('App.access_denied') ?>">
-                    <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
-                </a>
-                <?php endif; ?>
-                <?php if ($can_create): ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
-                <?php else: ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="<?= lang('App.access_restricted') ?>"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
-                <?php endif; ?>
-            </div>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-wrench me-2 text-primary"></i>
+                <?= lang('Service.service_list') ?>
+            </h5>
+            <p class="text-muted small mb-0">
+                Monitor and manage service work orders from open to completion
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: Use Progress / Closed tabs and filters to find work orders</small>
+                </span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <?php if ($can_export): ?>
+            <a href="<?= base_url('service/export_workorder') ?>" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
+            </a>
+            <?php else: ?>
+            <a href="#" class="btn btn-outline-success btn-sm disabled" onclick="return false;" title="<?= lang('App.access_denied') ?>">
+                <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
+            </a>
+            <?php endif; ?>
+            <?php if ($can_create): ?>
+            <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
+            <?php else: ?>
+            <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="<?= lang('App.access_restricted') ?>"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="card-body">
@@ -134,7 +153,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     </li>
                 </ul>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body">
                 <div class="tab-content" id="workOrderTabContent">
             <!-- Progress Tab -->
             <div class="tab-pane fade show active" id="progress-pane" role="tabpanel" aria-labelledby="progress-tab">
@@ -142,7 +161,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-status-progress"><?= lang('Common.status') ?></label>
+                            <label for="filter-status-progress" class="fw-semibold"><i class="fas fa-filter text-primary me-1"></i><?= lang('Common.status') ?></label>
                             <select id="filter-status-progress" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_status') ?></option>
                                 <?php foreach ($statuses as $status): ?>
@@ -155,7 +174,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-progress"><?= lang('App.priority') ?></label>
+                            <label for="filter-priority-progress" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
                             <select id="filter-priority-progress" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_priority') ?></option>
                                 <?php foreach ($priorities as $priority): ?>
@@ -214,7 +233,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-closed"><?= lang('App.priority') ?></label>
+                            <label for="filter-priority-closed" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
                             <select id="filter-priority-closed" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_priority') ?></option>
                                 <?php foreach ($priorities as $priority): ?>
@@ -524,7 +543,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                     <dd class="col-sm-8 font-monospace" id="viewUnitSerial">-</dd>
                                     
                                     <dt class="col-sm-4 text-muted">Unit Status</dt>
-                                    <dd class="col-sm-8"><span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" id="viewUnitStatus">-</span></dd>
+                                    <dd class="col-sm-8"><span class="badge badge-soft-green" id="viewUnitStatus">-</span></dd>
                                     
                                     <dt class="col-sm-4 text-muted">Capacity</dt>
                                     <dd class="col-sm-8" id="viewUnitCapacity">-</dd>
@@ -2031,17 +2050,16 @@ $(document).ready(function() {
         $('#viewWoReportDate').text(data.report_date || '-');
         $('#viewWoType').text(data.order_type || '-');
         
-        // Fix Priority Badge - ensure it displays properly with correct class
-        let priorityBadge = data.priority_badge || '<span class="badge bg-secondary">-</span>';
-        // Make sure badge has proper size
+        // Fix Priority Badge - Optima badge-soft-* system
+        let priorityBadge = data.priority_badge || '<span class="badge badge-soft-gray">-</span>';
         if (!priorityBadge.includes('badge')) {
-            priorityBadge = `<span class="badge bg-secondary">${priorityBadge}</span>`;
+            priorityBadge = `<span class="badge badge-soft-blue">${priorityBadge}</span>`;
         }
         $('#viewWoPriority').html(priorityBadge);
         
         $('#viewWoCategory').text(data.category_name || '-');
-        $('#viewWoDepartemen').html(data.unit_departemen ? `<span class="badge bg-info">${data.unit_departemen}</span>` : '<span class="badge bg-secondary">-</span>');
-        $('#viewWoStatus').html(data.status_badge || '<span class="badge bg-secondary">-</span>');
+        $('#viewWoDepartemen').html(data.unit_departemen ? `<span class="badge badge-soft-cyan">${data.unit_departemen}</span>` : '<span class="badge badge-soft-gray">-</span>');
+        $('#viewWoStatus').html(data.status_badge || '<span class="badge badge-soft-gray">-</span>');
         $('#viewWoArea').text(data.area || '-');
         $('#viewWoTTR').text(data.time_to_repair ? data.time_to_repair + ' jam' : '-');
         $('#viewWoCompletionDate').text(data.completion_date || 'Belum selesai');
@@ -2050,11 +2068,11 @@ $(document).ready(function() {
         $('#viewUnitNumber').text(data.unit_number || '-');
         $('#viewUnitModel').text((data.unit_brand && data.model_unit) ? data.unit_brand + ' ' + data.model_unit : '-');
         $('#viewUnitType').text(data.unit_type || '-');
-        $('#viewUnitDepartemen').html(data.unit_departemen ? `<span class="badge bg-info">${data.unit_departemen}</span>` : '<span class="badge bg-secondary">-</span>');
+        $('#viewUnitDepartemen').html(data.unit_departemen ? `<span class="badge badge-soft-cyan">${data.unit_departemen}</span>` : '<span class="badge badge-soft-gray">-</span>');
         $('#viewUnitSerial').text(data.unit_serial || '-');
         $('#viewUnitLocation').text(data.unit_location || '-');
         $('#viewUnitCustomer').text(data.unit_customer || '-');
-        $('#viewUnitStatus').html(data.unit_status ? `<span class="badge bg-success">${data.unit_status}</span>` : '<span class="badge bg-secondary">-</span>');
+        $('#viewUnitStatus').html(data.unit_status ? `<span class="badge badge-soft-green">${data.unit_status}</span>` : '<span class="badge badge-soft-gray">-</span>');
         
         // Additional Unit Details
         $('#viewUnitCapacity').text(data.unit_capacity || '-');
@@ -2301,29 +2319,29 @@ $(document).ready(function() {
                 const qtyBrought = (sparepart.qty || sparepart.quantity_brought || 0) + ' ' + (sparepart.satuan || 'pcs');
                 const qtyUsed = sparepart.used_quantity || '-';
                 
-                // Item Type Badge
+                // Item Type Badge (Optima badge-soft-*)
                 const itemType = sparepart.item_type || 'sparepart';
                 let typeBadge = '';
                 if (itemType === 'tool') {
-                    typeBadge = '<span class="badge bg-secondary">🔧 Tool</span>';
+                    typeBadge = '<span class="badge badge-soft-gray">Tool</span>';
                 } else {
-                    typeBadge = '<span class="badge bg-primary">⚙ Sparepart</span>';
+                    typeBadge = '<span class="badge badge-soft-blue">Sparepart</span>';
                 }
                 
                 // Item name with source indicator
                 let itemName = sparepart.name || sparepart.desc_sparepart || sparepart.sparepart_name || '-';
                 const isFromWarehouse = sparepart.is_from_warehouse !== undefined ? parseInt(sparepart.is_from_warehouse) : 1;
                 if (isFromWarehouse === 0) {
-                    itemName += ' <span class="badge bg-warning text-dark">♻ Non-WH</span>';
+                    itemName += ' <span class="badge badge-soft-yellow">Non-WH</span>';
                 }
                 
                 // Determine usage status badge
-                let statusBadge = '<span class="badge bg-secondary">Pending</span>';
+                let statusBadge = '<span class="badge badge-soft-gray">Pending</span>';
                 if (sparepart.is_used !== undefined && sparepart.is_used !== null) {
                     if (sparepart.is_used == 1 || sparepart.is_used === true) {
-                        statusBadge = '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Used</span>';
+                        statusBadge = '<span class="badge badge-soft-green"><i class="fas fa-check me-1"></i>Used</span>';
                     } else if (sparepart.is_used == 0 || sparepart.is_used === false) {
-                        statusBadge = '<span class="badge bg-warning"><i class="fas fa-undo me-1"></i>Returned</span>';
+                        statusBadge = '<span class="badge badge-soft-yellow"><i class="fas fa-undo me-1"></i>Returned</span>';
                     }
                 }
                 
@@ -3544,10 +3562,10 @@ $(document).ready(function() {
                                checked 
                                onchange="toggleSourceLabel(this)">
                         <label class="form-check-label small" for="warehouse_${sparepartRowCount}">
-                            <span class="badge bg-success warehouse-badge">
+                            <span class="badge badge-soft-green warehouse-badge">
                                 <i class="fas fa-warehouse"></i> WH
                             </span>
-                            <span class="badge bg-warning text-dark non-warehouse-badge d-none">
+                            <span class="badge badge-soft-yellow non-warehouse-badge d-none">
                                 <i class="fas fa-recycle"></i> Bekas
                             </span>
                         </label>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optima Badge System - Visual Reference</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../public/assets/css/desktop/optima-pro.css">
+    <style>
+        body { padding: 2rem; background: #f2f6fc; }
+        .badge-demo { padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
+        .badge-demo h5 { margin-bottom: 1rem; color: #495057; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; }
+        .badge-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .code-block { background: #f8f9fa; padding: 0.5rem; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.85rem; margin-top: 0.5rem; }
+        .section-title { background: linear-gradient(135deg, #0061f2 0%, #0050d1 100%); color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="section-title">
+            <h1 class="mb-2"><i class="bi bi-palette me-2"></i>Optima Badge System</h1>
+            <p class="mb-0">Visual Reference & Live Examples - March 11, 2026</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <!-- Soft Color Badges -->
+                <div class="badge-demo">
+                    <h5>🎨 Soft Color Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-blue">Blue - Info</span>
+                        <code class="code-block">badge-soft-blue</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-green">Green - Active/Success</span>
+                        <code class="code-block">badge-soft-green</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-red">Red - Inactive/Danger</span>
+                        <code class="code-block">badge-soft-red</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-orange">Orange - Warning</span>
+                        <code class="code-block">badge-soft-orange</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-yellow">Yellow - Pending</span>
+                        <code class="code-block">badge-soft-yellow</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-purple">Purple - Special</span>
+                        <code class="code-block">badge-soft-purple</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-cyan">Cyan - Available</span>
+                        <code class="code-block">badge-soft-cyan</code>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-gray">Gray - Disabled</span>
+                        <code class="code-block">badge-soft-gray</code>
+                    </div>
+                </div>
+
+                <!-- Status Badges -->
+                <div class="badge-demo">
+                    <h5>✅ Status Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-green"><i class="bi bi-check-circle me-1"></i>ACTIVE</span>
+                        <span class="badge badge-soft-red"><i class="bi bi-x-circle me-1"></i>INACTIVE</span>
+                        <span class="badge badge-soft-yellow"><i class="bi bi-clock me-1"></i>PENDING</span>
+                        <span class="badge badge-soft-gray"><i class="bi bi-file-earmark me-1"></i>DRAFT</span>
+                    </div>
+                    
+                    <code class="code-block">&lt;span class="badge badge-soft-green"&gt;&lt;i class="bi bi-check-circle me-1"&gt;&lt;/i&gt;ACTIVE&lt;/span&gt;</code>
+                </div>
+
+                <!-- Counter Badges -->
+                <div class="badge-demo">
+                    <h5>🔢 Counter Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-blue">247</span>
+                        <span class="badge badge-soft-green">243</span>
+                        <span class="badge badge-soft-red">4</span>
+                        <span class="badge badge-soft-gray">0</span>
+                    </div>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-blue rounded-pill">12 Units</span>
+                        <span class="badge badge-soft-green rounded-pill">5 Active</span>
+                    </div>
+                    
+                    <code class="code-block">&lt;span class="badge badge-soft-blue"&gt;247&lt;/span&gt;</code>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <!-- Time-Based Badges -->
+                <div class="badge-demo">
+                    <h5>⏰ Time-Based Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-red"><i class="bi bi-exclamation-circle me-1"></i>Expired</span>
+                        <span class="badge badge-soft-orange"><i class="bi bi-clock me-1"></i>5 days left</span>
+                        <span class="badge badge-soft-green"><i class="bi bi-check-circle me-1"></i>Valid until Dec 2026</span>
+                    </div>
+                    
+                    <code class="code-block">&lt;span class="badge badge-soft-red"&gt;&lt;i class="bi bi-exclamation-circle me-1"&gt;&lt;/i&gt;Expired&lt;/span&gt;</code>
+                </div>
+
+                <!-- Document Type Badges -->
+                <div class="badge-demo">
+                    <h5>📄 Document Type Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-blue"><i class="bi bi-file-text me-1"></i>Contract</span>
+                        <span class="badge badge-soft-cyan"><i class="bi bi-file-earmark-invoice me-1"></i>PO Only</span>
+                        <span class="badge badge-soft-yellow"><i class="bi bi-calendar-day me-1"></i>Daily/Spot</span>
+                        <span class="badge badge-soft-purple"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Quotation</span>
+                    </div>
+                    
+                    <code class="code-block">&lt;span class="badge badge-soft-blue"&gt;&lt;i class="bi bi-file-text me-1"&gt;&lt;/i&gt;Contract&lt;/span&gt;</code>
+                </div>
+
+                <!-- Operational Status Badges -->
+                <div class="badge-demo">
+                    <h5>⚙️ Operational Status Badges</h5>
+                    
+                    <div class="badge-row">
+                        <span class="badge badge-soft-green"><i class="bi bi-gear me-1"></i>In Operation</span>
+                        <span class="badge badge-soft-orange"><i class="bi bi-wrench me-1"></i>Maintenance</span>
+                        <span class="badge badge-soft-red"><i class="bi bi-exclamation-triangle me-1"></i>Broken</span>
+                        <span class="badge badge-soft-cyan"><i class="bi bi-box me-1"></i>Available</span>
+                        <span class="badge badge-soft-purple"><i class="bi bi-truck me-1"></i>Delivered</span>
+                    </div>
+                    
+                    <code class="code-block">&lt;span class="badge badge-soft-green"&gt;&lt;i class="bi bi-gear me-1"&gt;&lt;/i&gt;In Operation&lt;/span&gt;</code>
+                </div>
+
+                <!-- Tab Badges Demo -->
+                <div class="badge-demo">
+                    <h5>📑 Tab Filter Badges (Interactive)</h5>
+                    
+                    <ul class="nav nav-tabs mb-3">
+                        <li class="nav-item">
+                            <button class="nav-link active tab-all">
+                                All <span class="badge badge-tab-all ms-2">247</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link tab-active">
+                                Active <span class="badge badge-tab-active ms-2">243</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link tab-inactive">
+                                Inactive <span class="badge badge-tab-inactive ms-2">4</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link tab-no-contract">
+                                No Contract <span class="badge badge-tab-no-contract ms-2">97</span>
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <p class="text-muted small"><i class="bi bi-info-circle me-1"></i>Click tabs above to see auto state change from soft to solid colors</p>
+                    
+                    <code class="code-block">&lt;span class="badge badge-tab-all"&gt;247&lt;/span&gt;</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-World Examples -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="badge-demo">
+                    <h5>🌍 Real-World Usage Examples</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <h6>Customer Management</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Status</td>
+                                    <td><span class="badge badge-soft-green"><i class="bi bi-check-circle me-1"></i>ACTIVE</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Contracts</td>
+                                    <td><span class="badge badge-soft-blue">12</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Active Units</td>
+                                    <td><span class="badge badge-soft-green">45</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6>Contract Status</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Type</td>
+                                    <td><span class="badge badge-soft-blue"><i class="bi bi-file-text me-1"></i>Contract</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Status</td>
+                                    <td><span class="badge badge-soft-green">ACTIVE</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Expiry</td>
+                                    <td><span class="badge badge-soft-orange"><i class="bi bi-clock me-1"></i>15 days left</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6>Unit Operational</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Location</td>
+                                    <td><span class="badge badge-soft-green"><i class="bi bi-gear me-1"></i>In Operation</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Condition</td>
+                                    <td><span class="badge badge-soft-orange"><i class="bi bi-wrench me-1"></i>Maintenance</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Stock</td>
+                                    <td><span class="badge badge-soft-cyan"><i class="bi bi-box me-1"></i>23 Available</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-4 text-muted">
+            <p><i class="bi bi-info-circle me-1"></i>Badge system defined in <code>public/assets/css/desktop/optima-pro.css</code></p>
+            <p>See <code>docs/BADGE_STANDARDS.md</code> for complete documentation</p>
+            <p class="small">© 2026 PT Sarana Mitra Luas Tbk - Optima Development Team</p>
+        </div>
+    </div>
+
+    <script>
+        // Tab interaction demo
+        document.querySelectorAll('.nav-link').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.nav-link').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

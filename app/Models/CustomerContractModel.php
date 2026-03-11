@@ -4,6 +4,21 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * Customer Contract Model
+ * 
+ * WARNING: This model references 'customer_contracts' junction table which may not exist.
+ * Current implementation uses direct customer_id foreign key in 'kontrak' table.
+ * 
+ * This model is called in:
+ * - CustomerManagementController::show() - line 254
+ * - CustomerModel::getCustomerWithDetails() - line 201
+ * 
+ * Consider refactoring to use direct kontrak table queries or ensure
+ * customer_contracts junction table exists and is populated.
+ * 
+ * @package App\Models
+ */
 class CustomerContractModel extends Model
 {
     protected $table = 'customer_contracts';

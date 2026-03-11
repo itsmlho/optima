@@ -1818,6 +1818,14 @@ class Marketing extends BaseDataTableController
                           qs.specification_name,
                           qs.specification_type,
                           qs.quantity,
+                          qs.is_spare_unit,
+                          qs.spare_quantity,
+                          qs.include_operator,
+                          qs.operator_quantity,
+                          qs.operator_monthly_rate,
+                          qs.operator_daily_rate,
+                          qs.operator_description,
+                          qs.operator_certification_required,
                           qs.monthly_price,
                           qs.monthly_price as unit_price,
                           qs.monthly_price as harga_per_unit,
@@ -4393,10 +4401,34 @@ class Marketing extends BaseDataTableController
                     throw new \Exception("Jumlah unit melebihi yang tersedia. Maksimal: {$available} unit");
                 }
 
-                // Get contract info using kontrak_id from quotation_specifications
-                $kontrak = $this->kontrakModel->find($spesifikasi['kontrak_id']);
-                if (!$kontrak) {
-                    throw new \Exception('Kontrak tidak ditemukan.');
+                // Contract link is optional in quotation -> SPK workflow
+                $linkedKontrakId = !empty($spesifikasi['kontrak_id']) ? (int)$spesifikasi['kontrak_id'] : null;
+                $kontrak = null;
+                if ($linkedKontrakId) {
+                    $kontrak = $this->db->table('kontrak k')
+                        ->select('k.id, k.no_kontrak, c.customer_name as pelanggan,
+                            (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic,
+                            (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as kontak,
+                            (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi')
+                        ->join('customers c', 'c.id = k.customer_id', 'left')
+                        ->where('k.id', $linkedKontrakId)
+                        ->get()
+                        ->getRowArray();
+
+                    if (!$kontrak) {
+                        log_message('warning', 'Marketing::spkCreate - Linked contract not found for specification ID ' . $kontrakSpesifikasiId . ': kontrak_id=' . $linkedKontrakId);
+                        $linkedKontrakId = null;
+                    }
+                }
+
+                // Fallback data when contract is not linked yet
+                $quotation = null;
+                if (!empty($spesifikasi['id_quotation'])) {
+                    $quotation = $this->db->table('quotations')
+                        ->select('prospect_name, prospect_contact_person, prospect_phone, prospect_address')
+                        ->where('id_quotation', $spesifikasi['id_quotation'])
+                        ->get()
+                        ->getRowArray();
                 }
 
                 // Get jenis_spk from form input, default to 'UNIT' if not provided
@@ -4494,14 +4526,14 @@ class Marketing extends BaseDataTableController
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
-                    'kontrak_id' => $kontrak['id'],
+                    'kontrak_id' => $linkedKontrakId,
                     'quotation_specification_id' => $kontrakSpesifikasiId,
                     'jumlah_unit' => $jumlahUnit,
-                    'po_kontrak_nomor' => $kontrak['no_kontrak'],
-                    'pelanggan' => $this->request->getPost('pelanggan') ?: $kontrak['pelanggan'],
-                    'pic' => $this->request->getPost('pic') ?: $kontrak['pic'],
-                    'kontak' => $this->request->getPost('kontak') ?: $kontrak['kontak'],
-                    'lokasi' => $this->request->getPost('lokasi') ?: $kontrak['lokasi'],
+                    'po_kontrak_nomor' => $kontrak['no_kontrak'] ?? null,
+                    'pelanggan' => $this->request->getPost('pelanggan') ?: ($kontrak['pelanggan'] ?? ($quotation['prospect_name'] ?? '')),
+                    'pic' => $this->request->getPost('pic') ?: ($kontrak['pic'] ?? ($quotation['prospect_contact_person'] ?? null)),
+                    'kontak' => $this->request->getPost('kontak') ?: ($kontrak['kontak'] ?? ($quotation['prospect_phone'] ?? null)),
+                    'lokasi' => $this->request->getPost('lokasi') ?: ($kontrak['lokasi'] ?? ($quotation['prospect_address'] ?? null)),
                     'delivery_plan' => $this->request->getPost('delivery_plan') ?: null,
                     'spesifikasi' => json_encode($spec),
                     'catatan' => $this->request->getPost('catatan') ?: null,
