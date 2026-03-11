@@ -97,14 +97,16 @@ class AdvancedUserManagement extends BaseController
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
-        // Get roles formatted for JavaScript dropdown
+        // Get roles from database (optima_ci structure has division_id column)
         $rolesFromDb = $this->roleModel->findAll();
         $formattedRoles = [];
         foreach ($rolesFromDb as $role) {
             $formattedRoles[] = [
                 'id' => (string)$role['id'],
                 'name' => $role['name'],
-                'division' => (string)$role['division_id']
+                'slug' => $role['slug'] ?? '',
+                'division_id' => (string)($role['division_id'] ?? ''),  // Use division_id from database
+                'division' => (string)($role['division_id'] ?? '')  // Alias for backward compatibility
             ];
         }
 
@@ -115,8 +117,8 @@ class AdvancedUserManagement extends BaseController
             'userDivisions' => [], // Empty array for create mode  
             'userPermissions' => [], // Empty array for create mode
             'userServiceAccess' => [], // Empty array for create mode - IMPORTANT!
-            'roles' => $formattedRoles, // Changed to 'roles' to match view
-            'divisions' => $this->divisionModel->findAll(), // Changed to 'divisions' to match view
+            'roles' => $formattedRoles, // Roles with division_id
+            'divisions' => $this->divisionModel->findAll(),
             'allPermissions' => $this->permissionModel->where('is_active', 1)->findAll(),
         ];
 

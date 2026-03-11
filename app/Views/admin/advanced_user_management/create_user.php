@@ -290,9 +290,8 @@
      📊 JAVASCRIPT DATA VARIABLES
      ======================================== -->
 <script>
-// Base configuration
-const BASE_URL = '<?= base_url() ?>';
-const USERS_LIST_URL = '<?= base_url('admin/advanced-users') ?>';
+// NOTE: BASE_URL already defined in base layout - no need to redeclare
+const USERS_LIST_URL = BASE_URL + 'admin/advanced-users';
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 const CSRF_HASH = '<?= csrf_hash() ?>';
 
@@ -300,6 +299,7 @@ const CSRF_HASH = '<?= csrf_hash() ?>';
 const IS_EDIT_MODE = false;
 
 // Roles data for dynamic filtering
+console.log('🔍 [DEBUG] Roles data from PHP:', <?= json_encode($roles ?? []) ?>);
 const ROLES_DATA = <?= json_encode($roles ?? []) ?>;
 
 // No user data for create mode
@@ -310,6 +310,7 @@ console.log('📊 Create User Form initialized:', {
     mode: 'CREATE',
     user_id: USER_ID,
     roles_count: ROLES_DATA?.length || 0,
+    roles_data: ROLES_DATA,
     divisions_available: <?= json_encode(isset($divisions) ? count($divisions) : 0) ?>
 });
 </script>
