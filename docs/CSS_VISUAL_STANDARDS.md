@@ -1019,6 +1019,31 @@ Gunakan checklist ini saat mengupdate atau membuat module baru:
 - [ ] Monospace untuk codes/IDs (`font-monospace`)
 - [ ] Proper font weights (fw-normal, fw-semibold, fw-bold)
 
+### ✅ Buttons
+- [ ] Aksi utama pakai `btn-primary` (submit, save, create, add)
+- [ ] Aksi positif pakai `btn-success` (approve, confirm, export)
+- [ ] Aksi peringatan pakai `btn-warning` (edit, rollback)
+- [ ] Aksi destruktif pakai `btn-danger` (delete, reject, cancel)
+- [ ] Aksi sekunder pakai `btn-outline-secondary` (filter, back, refresh, print)
+- [ ] View/detail pakai `btn-outline-primary`
+- [ ] Tidak ada `btn-info` di workflow utama
+- [ ] Icon selalu di kiri dengan `me-1`
+- [ ] Action column pakai `btn-group btn-group-sm` + `btn-icon-only`
+- [ ] Toolbar aksi di card-header pakai `.toolbar`
+
+### ✅ Pagination
+- [ ] DataTables pagination menggunakan CSS global (tanpa custom inline)
+- [ ] Pagination `.page-link` mengikuti gaya optima-pro.css
+- [ ] Info text font-size konsisten
+
+### ✅ Notifications & Confirmations
+- [ ] Success/error notification pakai `OptimaNotify.success/error/warning/info`
+- [ ] Konfirmasi penting/destruktif pakai `OptimaConfirm.*` (wrapper `Swal.fire`)
+- [ ] Tidak ada `alert()` kecuali session-expired fallback
+- [ ] Tidak ada `confirm()` — selalu `OptimaConfirm` / `Swal.fire`
+- [ ] Warna confirm button sesuai fungsi (danger=red, success=green, primary=blue)
+- [ ] Notifikasi (toast, dropdown, Notification Center) bersifat **read-only** (tanpa tombol aksi & tanpa redirect ke halaman lain)
+
 ### ✅ Dropdowns & Filters
 - [ ] Filter labels dengan icon dan `fw-semibold`
 - [ ] Dropdown options dengan emoji prefix
@@ -1161,6 +1186,171 @@ DO NOT:
 **Last Updated:** March 12, 2026  
 **Maintained by:** Development Team  
 **Questions?** Refer to `docs/BADGE_STANDARDS.md` for badge quick reference
+
+---
+
+## 🔘 Button System (v2.2)
+
+> Mapping warna tombol ke **fungsi**, bukan estetika.
+> Semua class tersedia di Bootstrap 5 + utilitas tambahan di `optima-pro.css`.
+
+### Semantic Button Mapping
+
+| Fungsi | Class | Contoh |
+|--------|-------|--------|
+| **Aksi Utama** (Submit, Save, Create, Add) | `.btn-primary` | `<button class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Tambah</button>` |
+| **Aksi Positif** (Approve, Confirm, Verify) | `.btn-success` | `<button class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i>Approve</button>` |
+| **Aksi Peringatan** (Rollback, Reset, Edit) | `.btn-warning btn-sm` | `<button class="btn btn-warning btn-sm"><i class="fas fa-edit me-1"></i>Edit</button>` |
+| **Aksi Destruktif** (Delete, Cancel, Reject) | `.btn-danger` | `<button class="btn btn-danger btn-sm"><i class="fas fa-trash me-1"></i>Hapus</button>` |
+| **Aksi Sekunder** (Filter, Back, Detail, Refresh) | `.btn-outline-secondary` | `<button class="btn btn-outline-secondary btn-sm"><i class="fas fa-sync me-1"></i>Refresh</button>` |
+| **Export** (Excel, CSV, PDF) | `.btn-success btn-sm` | `<button class="btn btn-success btn-sm"><i class="fas fa-file-excel me-1"></i>Export</button>` |
+| **View/Detail** | `.btn-outline-primary btn-sm` | `<button class="btn btn-outline-primary btn-sm"><i class="fas fa-eye"></i></button>` |
+| **Print** | `.btn-outline-secondary btn-sm` | `<button class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>` |
+| **Close/Back** | `.btn-secondary` atau `.btn-outline-secondary` | `<button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>` |
+
+### Button Rules
+
+1. **Ukuran**: Gunakan `.btn-sm` di tabel, toolbar, dan card-header. Gunakan default size di form/modal footer.
+2. **Icon di kiri**: Selalu taruh icon sebelum teks dengan `me-1`.
+3. **Icon-only buttons** (di action column tabel): Gunakan `.btn-icon-only` untuk padding konsisten.
+4. **Toolbar pattern**: Kumpulan tombol di card-header kanan, bungkus dengan `.toolbar`.
+5. **Jangan pakai `btn-info`** untuk aksi utama — gunakan `btn-primary` atau `btn-outline-primary`.
+
+### Action Column di Tabel
+
+```html
+<td class="text-center">
+    <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-outline-primary btn-icon-only" title="View"><i class="fas fa-eye"></i></button>
+        <button class="btn btn-outline-warning btn-icon-only" title="Edit"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-outline-danger btn-icon-only" title="Delete"><i class="fas fa-trash"></i></button>
+    </div>
+</td>
+```
+
+---
+
+## 📊 Table & Pagination (v2.2)
+
+### Standard Table Pattern
+
+Semua tabel data utama **wajib** mengikuti pola ini:
+
+```html
+<div class="card card-table">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0"><i class="fas fa-list me-2 text-primary"></i>Title</h5>
+        </div>
+        <div class="toolbar"><!-- action buttons --></div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Column</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+```
+
+### DataTables Pagination
+
+DataTables pagination otomatis mengikuti gaya Optima melalui CSS global di `optima-pro.css`.
+Aturan:
+- Gunakan `.dataTables_wrapper .dataTables_paginate` styling dari CSS global.
+- Pagination `.page-link` mendapat border-radius dan hover yang seragam.
+- Info text (Showing X to Y) menggunakan font-size yang konsisten.
+
+### Table Variants
+
+| Variant | Class | Use Case |
+|---------|-------|----------|
+| Default | `table table-striped table-hover mb-0` | Tabel data utama |
+| Compact | `table table-sm table-compact mb-0` | Tabel di modal/detail panel |
+| Borderless | `table table-borderless table-sm` | Tabel info key-value |
+| Bordered | `table table-bordered table-sm mb-0` | Tabel form/input (PO items, sparepart validation) |
+
+---
+
+## 🔔 Notifications & Confirmations (v2.2)
+
+### Notification Hierarchy
+
+Optima menggunakan **unified toast system** yang sudah terdaftar di `layouts/base.php`:
+
+```
+OptimaNotify.success/error/warning/info  →  createOptimaToast  →  toast popup
+OptimaPro.showNotification(msg, type)    →  createOptimaToast  →  toast popup
+Swal.fire (simple, non-confirm)          →  auto-rerouted to toast via monkeypatch
+Swal.fire (with showCancelButton)        →  stays as SweetAlert2 modal
+```
+
+### Standard Notification Calls
+
+```javascript
+// Preferred — use OptimaNotify
+OptimaNotify.success('Data berhasil disimpan');
+OptimaNotify.error('Gagal menyimpan data');
+OptimaNotify.warning('Perhatian: data akan dihapus');
+OptimaNotify.info('Memuat data...');
+
+// Alternative — OptimaPro (legacy, still supported)
+OptimaPro.showNotification('Berhasil', 'success');
+
+// SweetAlert2 — ONLY for confirmations / complex dialogs
+Swal.fire({
+    title: 'Konfirmasi',
+    text: 'Yakin ingin menghapus?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    confirmButtonText: 'Ya, Hapus!',
+    cancelButtonText: 'Batal'
+}).then((result) => {
+    if (result.isConfirmed) { /* delete action */ }
+});
+```
+
+### Confirmation Patterns
+
+| Tipe | Icon | Confirm Button | Cancel Button |
+|------|------|----------------|---------------|
+| **Delete** | `warning` | `btn-danger` "Ya, Hapus!" | "Batal" |
+| **Approve** | `question` | `btn-success` "Ya, Approve!" | "Batal" |
+| **Submit/Send** | `question` | `btn-primary` "Ya, Kirim!" | "Batal" |
+| **Rollback** | `warning` | `btn-warning` "Ya, Rollback!" | "Batal" |
+| **Logout** | `question` | `btn-secondary` "Ya, Logout" | "Batal" |
+
+### Rules
+
+1. **Jangan pakai `alert()`** kecuali session-expired fallback.
+2. **Jangan pakai `confirm()`** — selalu gunakan `Swal.fire` dengan `showCancelButton: true`.
+3. **Simple success/error → OptimaNotify**, bukan Swal.fire.
+4. **Swal.fire tanpa showCancelButton** otomatis di-redirect ke toast oleh monkeypatch di base.php.
+
+---
+
+## 🧹 Inline Style Rules (v2.2)
+
+### Pola yang Harus Diganti dengan Class
+
+| Inline Style | Ganti dengan |
+|-------------|--------------|
+| `style="cursor:pointer"` | `.cursor-pointer` |
+| `style="font-size: 0.75rem"` / `0.8rem` | `.small` atau `.fs-*` Bootstrap |
+| `style="min-width: 100px"` (badge label) | `.chip` atau `.chip-label` |
+| `style="display:none"` (toggle) | `d-none` Bootstrap |
+| `style="font-size: 10px"` (micro badge) | `.badge` + `style` hanya jika unik |
+
+### Prinsip
+
+- Jika pola muncul di **2+ modul**, pindahkan ke utilitas di `optima-pro.css`.
+- Jika hanya **1 file, 1 tempat**, boleh inline (tapi prefer class).
+- **Print styles** boleh tetap inline karena sifatnya lokal.
 
 ---
 

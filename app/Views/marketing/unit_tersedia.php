@@ -158,7 +158,8 @@ function initMarketingTable(){
                         },
                         error:function(xhr){
                                 console.error('Load error', xhr.status, xhr.responseText);
-                                alert('Gagal memuat data: '+xhr.status);
+                                if (window.OptimaNotify) OptimaNotify.error('Gagal memuat data: '+xhr.status);
+                                else alert('Gagal memuat data: '+xhr.status);
                         }
                 },
                 order:[[0,'asc']],
@@ -241,7 +242,7 @@ function viewDetail(id){
             .catch(()=> $('#detailBody').html('<div class="text-danger">Error server</div>'));
 }
 
-function reserveUnit(id){ alert('Implement booking untuk ID '+id); }
+function reserveUnit(id){ if (window.OptimaNotify) OptimaNotify.info('Implement booking untuk ID '+id); else alert('Implement booking untuk ID '+id); }
 // Tombol SPK dihilangkan sesuai permintaan
 
 function exportCSV(){
@@ -255,7 +256,7 @@ function exportCSV(){
             });
             const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='marketing_units.csv'; a.click(); URL.revokeObjectURL(a.href);
             if(resp?.csrf_hash){ $('meta[name="csrf-token"]').attr('content', resp.csrf_hash); }
-    },'json').fail(x=>alert('Export gagal: '+x.status));
+    },'json').fail(x=>{ if(window.OptimaNotify) OptimaNotify.error('Export gagal: '+x.status); else alert('Export gagal: '+x.status); });
 }
 
 function updateMktBadges(){

@@ -19,7 +19,7 @@
 window.OptimaDataTable = (function () {
     'use strict';
 
-    console.log('🔧 [OPTIMA] optima-datatable-config.js loaded at', new Date().toLocaleTimeString());
+    // Debug log removed for production performance
 
     // ============================================
     // CSRF HELPER FUNCTION
@@ -49,7 +49,7 @@ window.OptimaDataTable = (function () {
                 }
             }
         } catch (e) {
-            console.warn('⚠️ [getCsrfTokenData] Cookie blocked, using meta tag');
+            // Debug: Cookie blocked
         }
         
         // Meta tag fallback (not blocked by tracking prevention)
@@ -107,7 +107,7 @@ window.OptimaDataTable = (function () {
             beforeSend: function (xhr) {
                 // Add CSRF token to request header (use fresh token)
                 const csrfData = getCsrfTokenData();
-                console.log('🔐 [DataTable beforeSend] CSRF:', csrfData.tokenName, '=', csrfData.tokenValue ? csrfData.tokenValue.substring(0, 20) + '...' : 'EMPTY');
+                // Debug: CSRF beforeSend
                 if (csrfData.tokenValue) {
                     xhr.setRequestHeader('X-CSRF-TOKEN', csrfData.tokenValue);
                 }
@@ -118,19 +118,23 @@ window.OptimaDataTable = (function () {
                 const csrfData = getCsrfTokenData();
                 if (csrfData.tokenName && csrfData.tokenValue) {
                     d[csrfData.tokenName] = csrfData.tokenValue;
-                    console.log('📤 [DataTable data] Adding CSRF:', csrfData.tokenName, '=', csrfData.tokenValue.substring(0, 20) + '...');
-                } else {
-                    console.error('❌ [DataTable data] No CSRF token to add!');
                 }
+                // Token error will be handled by server response
                 return d;
             },
             error: function (xhr, error, thrown) {
-                console.error('❌ DataTables AJAX Error:', {
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    error: error,
-                    thrown: thrown
-                });
+                // Handle session expiration (401)
+                if (xhr.status === 401) {
+                    alert('Session Anda telah habis. Silakan login kembali.');
+                    window.location.href = baseUrl + '/auth/login';
+                    return;
+                }
+
+                // Handle CSRF error (403)
+                if (xhr.status === 403) {
+                    alert('Token keamanan expired. Silakan refresh halaman.');
+                    return;
+                }
 
                 // Force hide processing indicator
                 $('.dataTables_processing').hide();
@@ -230,12 +234,7 @@ window.OptimaDataTable = (function () {
             }
 
             settings._processingTimeout = setTimeout(function () {
-                console.warn('⚠️ DataTables processing timeout reached - force hiding');
                 $processing.hide();
-
-                // Silent timeout - no user notification needed
-                // User can manually refresh with Refresh button if needed
-                console.info('ℹ️ If data is not loading, try clicking the Refresh button');
             }, 35000); // 35 seconds safety timeout
         },
 
@@ -413,7 +412,6 @@ window.OptimaDataTable = (function () {
             if ($.fn.DataTable.ext.buttons && $.fn.DataTable.ext.buttons.excelHtml5) {
                 $table.button('.buttons-excel').trigger();
             } else {
-                console.warn('DataTables Buttons extension (Excel) not loaded');
                 alert('Fitur export Excel belum tersedia. Silakan hubungi administrator.');
             }
         },
@@ -431,7 +429,6 @@ window.OptimaDataTable = (function () {
             if ($.fn.DataTable.ext.buttons && $.fn.DataTable.ext.buttons.pdfHtml5) {
                 $table.button('.buttons-pdf').trigger();
             } else {
-                console.warn('DataTables Buttons extension (PDF) not loaded');
                 alert('Fitur export PDF belum tersedia. Silakan hubungi administrator.');
             }
         },
@@ -461,7 +458,6 @@ window.OptimaDataTable = (function () {
             if ($.fn.DataTable.ext.buttons && $.fn.DataTable.ext.buttons.copyHtml5) {
                 $table.button('.buttons-copy').trigger();
             } else {
-                console.warn('DataTables Buttons extension (Copy) not loaded');
                 alert('Fitur copy belum tersedia.');
             }
         }
@@ -565,12 +561,12 @@ window.OptimaDataTable = (function () {
         init: function (selector, customConfig = {}) {
             // Check if jQuery and DataTables are loaded
             if (typeof $ === 'undefined') {
-                console.error('jQuery is required for OptimaDataTable');
+                alert('Error: jQuery not loaded. Please refresh the page.');
                 return null;
             }
 
             if (typeof $.fn.DataTable === 'undefined') {
-                console.error('DataTables plugin is required for OptimaDataTable');
+                alert('Error: DataTables plugin not loaded. Please refresh the page.');
                 return null;
             }
 
@@ -624,14 +620,9 @@ window.OptimaDataTable = (function () {
                 this.tables = this.tables || {};
                 this.tables[selector] = table;
 
-                // Log initialization
-                if (config.debug) {
-                    console.log('OptimaDataTable initialized:', selector, config);
-                }
-
                 return table;
             } catch (error) {
-                console.error('Error initializing OptimaDataTable:', selector, error);
+                alert('Error initializing DataTable. Please refresh the page.');
                 return null;
             }
         },
@@ -668,8 +659,6 @@ window.OptimaDataTable = (function () {
             const table = this.get(selector);
             if (table && table.ajax) {
                 table.ajax.reload(null, resetPaging);
-            } else {
-                console.warn('Table not found or not using AJAX:', selector);
             }
         },
 
@@ -973,21 +962,8 @@ $('#btnPrint').on('click', function() {
 // ===========================================================
 // EXAMPLE 10: Utility Functions
 // ===========================================================
-
-// Get selected rows (with checkboxes)
-const selectedRows = OptimaDataTable.utils.getSelectedRows('#customersTable');
-console.log('Selected:', selectedRows);
-
-// Add new row dynamically
-OptimaDataTable.utils.addRow('#customersTable', {
-    id: 999,
-    name: 'New Customer',
-    email: 'new@example.com'
-});
-
-// Get data counts
-const counts = OptimaDataTable.utils.getDataCount('#customersTable');
-console.log('Total:', counts.total, 'Filtered:', counts.filtered);
+// Use OptimaDataTable.utils.getSelectedRows('#tableId') to get selected rows
+// Use OptimaDataTable.utils.getDataCount('#tableId') to get row counts
 
 // ===========================================================
 // EXAMPLE 11: Auto-Initialize with HTML Attribute

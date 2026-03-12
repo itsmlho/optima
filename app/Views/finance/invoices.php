@@ -301,7 +301,7 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     let actions = `
                         <div class="action-buttons btn-group btn-group-sm">
-                            <a href="<?= base_url('finance/invoices/view/') ?>${row.id}" class="btn btn-sm btn-info" title="View">
+                            <a href="<?= base_url('finance/invoices/view/') ?>${row.id}" class="btn btn-sm btn-outline-primary btn-icon-only" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
                     `;
@@ -533,11 +533,11 @@ function generateSingleBackBilling(contractId, showAlert = true) {
     .then(data => {
         if (showAlert) {
             if (data.success) {
-                alert(`Generated ${data.count} invoice(s) for total Rp ${new Intl.NumberFormat('id-ID').format(data.total_amount)}`);
+                OptimaNotify.success(`Generated ${data.count} invoice(s) for total Rp ${new Intl.NumberFormat('id-ID').format(data.total_amount)}`);
                 loadBackBillingStats();
                 invoicesTable.ajax.reload();
             } else {
-                alert('Error: ' + (data.message || 'Failed to generate back-billing'));
+                OptimaNotify.error('Error: ' + (data.message || 'Failed to generate back-billing'));
 }
         }
         return data;
@@ -640,27 +640,48 @@ function markAsPaid(id) {
     })
     .then(r => r.json())
     .then(data => {
-        alert(data.success ? 'Invoice marked as paid' : 'Error: ' + data.message);
-        if (data.success) invoicesTable.ajax.reload();
+        if (data.success) {
+            OptimaNotify.success('Invoice marked as paid');
+            invoicesTable.ajax.reload();
+        } else {
+            OptimaNotify.error('Error: ' + data.message);
+        }
     });
 }
 
 function cancelInvoice(id) {
-    const reason = prompt('Enter cancellation reason:');
-    if (!reason) return;
-    
-    const formData = new FormData();
-    formData.append('reason', reason);
-    
-    fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        alert(data.success ? 'Invoice cancelled' : 'Error: ' + data.message);
-        if (data.success) invoicesTable.ajax.reload();
+    Swal.fire({
+        title: 'Batalkan Invoice?',
+        input: 'text',
+        inputLabel: 'Alasan pembatalan',
+        inputPlaceholder: 'Masukkan alasan...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Batalkan!',
+        cancelButtonText: 'Kembali',
+        inputValidator: (value) => {
+            if (!value) return 'Alasan harus diisi!';
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const formData = new FormData();
+        formData.append('reason', result.value);
+        
+        fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                OptimaNotify.success('Invoice berhasil dibatalkan');
+                invoicesTable.ajax.reload();
+            } else {
+                OptimaNotify.error('Error: ' + data.message);
+            }
+        });
     });
 }
 </script>

@@ -713,8 +713,7 @@ function viewContractUnits(id) {
         type: 'GET',
         success: function(response) {
             if (response.success) {
-                // Display in modal (implement modal UI)
-                alert('Contract Units: ' + response.count + ' units');
+                OptimaNotify.info('Contract Units: ' + response.count + ' units');
             }
         }
     });
@@ -748,8 +747,11 @@ async function deleteContract(id) {
 
 // Show notification
 function showNotification(message, type = 'info') {
-    // Use your notification system here
-    alert(message);
+    if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+        OptimaNotify[type](message);
+    } else if (window.OptimaPro) {
+        OptimaPro.showNotification(message, type);
+    }
 }
 
 // ============================================================================
@@ -1356,8 +1358,8 @@ function editContractFromModal() {
             window.location.href = '<?= base_url('marketing/kontrak/edit') ?>/' + currentContractId;
         }, 300);
     } else {
-        console.error('❌ No contract ID selected');
-        alert('Error: No contract selected');
+        console.error('No contract ID selected');
+        OptimaNotify.error('Tidak ada kontrak yang dipilih');
     }
 }
 
@@ -1406,14 +1408,23 @@ function deleteContractFromModal() {
  */
 function uploadContractDocument() {
     // Implement file upload UI (you can use a separate modal or inline form)
-    alert('Upload document functionality - to be implemented with file upload form');
+    OptimaNotify.info('Upload document functionality - to be implemented');
 }
 
 /**
  * Delete Document
  */
 function deleteDocument(docId) {
-    if (confirm('Delete this document?')) {
+    Swal.fire({
+        title: 'Hapus Dokumen?',
+        text: 'Dokumen yang dihapus tidak dapat dikembalikan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         $.ajax({
             url: '<?= base_url('marketing/kontrak/deleteDocument') ?>/' + docId,
             type: 'POST',
@@ -1423,11 +1434,11 @@ function deleteDocument(docId) {
             success: function(response) {
                 if (response.success) {
                     loadContractDocuments(currentContractId);
-                    showNotification('Document deleted', 'success');
+                    OptimaNotify.success('Dokumen berhasil dihapus');
                 }
             }
         });
-    }
+    });
 }
 
 // =========================================
@@ -1509,7 +1520,7 @@ function formatCustomerOption(customer) {
     
     // Return HTML with badge
     return `<div class="d-flex align-items-center">
-        <span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7rem">${code}</span>
+        <span class="badge badge-soft-blue me-2 font-monospace text-xxs">${code}</span>
         <span>${customer.text}</span>
     </div>`;
 }
@@ -1523,7 +1534,7 @@ function formatCustomerSelection(customer) {
     if (!code) return customer.text;
     
     // Return HTML with badge (escapeMarkup allows this)
-    return `<span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7rem">${code}</span>${customer.text}`;
+    return `<span class="badge badge-soft-blue me-2 font-monospace text-xxs">${code}</span>${customer.text}`;
 }
 
 /**
@@ -1876,7 +1887,7 @@ function buildContractRow(k) {
     // Contract / PO display with visual enhancement
     const kontrakNo = escHtml(k.no_kontrak || '—');
     const contractDisplay = `<div class="d-flex align-items-center gap-2">
-        <span class="badge badge-soft-blue font-monospace" style="font-size: 0.75rem;">${kontrakNo}</span>
+        <span class="badge badge-soft-blue font-monospace text-xxs">${kontrakNo}</span>
     </div>`;
     const poLine = k.po_number ? `<small class="text-muted d-block mt-1"><i class="fas fa-file-invoice me-1 text-info"></i>PO: <span class="font-monospace">${escHtml(k.po_number)}</span></small>` : '';
 

@@ -3356,34 +3356,33 @@ class Marketing extends BaseDataTableController
     public function spkStats()
     {
         $statusFilter = $this->request->getPost('status_filter') ?? 'all';
-        
-        $builder = $this->spkModel->builder();
-        
-        // Apply same status filter as table for consistency
-        $statsBuilder = clone $builder;
-        
-        // Total count (with current filter)
+
+        // Single optimized query to get all counts at once
+        $result = $this->db->query("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) as in_progress,
+                SUM(CASE WHEN status = 'READY' THEN 1 ELSE 0 END) as ready,
+                SUM(CASE WHEN status IN ('COMPLETED', 'DELIVERED') THEN 1 ELSE 0 END) as completed
+            FROM spk
+        ")->getRowArray();
+
+        $total = (int) $result['total'];
+
+        // Apply filter to get filtered total
         if ($statusFilter !== 'all') {
             if ($statusFilter === 'COMPLETED') {
-                $statsBuilder->whereIn('status', ['COMPLETED', 'DELIVERED']);
+                $total = $this->spkModel->whereIn('status', ['COMPLETED', 'DELIVERED'])->countAllResults();
             } else {
-                $statsBuilder->where('status', $statusFilter);
+                $total = $this->spkModel->where('status', $statusFilter)->countAllResults();
             }
-            $total = $statsBuilder->countAllResults();
-        } else {
-            $total = $this->spkModel->countAll();
         }
-        
-        // Individual status counts (always from full dataset)
-        $inProgress = $this->spkModel->where('status', 'IN_PROGRESS')->countAllResults(false);
-        $ready = $this->spkModel->where('status', 'READY')->countAllResults(false);
-        $completed = $this->spkModel->whereIn('status', ['COMPLETED', 'DELIVERED'])->countAllResults();
-        
+
         return $this->response->setJSON([
             'total' => $total,
-            'in_progress' => $inProgress,
-            'ready' => $ready,
-            'completed' => $completed
+            'in_progress' => (int) ($result['in_progress'] ?? 0),
+            'ready' => (int) ($result['ready'] ?? 0),
+            'completed' => (int) ($result['completed'] ?? 0)
         ]);
     }
 
@@ -3746,37 +3745,52 @@ class Marketing extends BaseDataTableController
         $q = trim($this->request->getGet('q') ?? '');
         $status = trim($this->request->getGet('status') ?? 'PENDING');
         
-        // Use database query builder with proper JOINs - updated to use quotation_specifications
-        $builder = $this->db->table('kontrak k');
-        $builder->join('customers c', 'c.id = k.customer_id', 'left');
-        $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
-        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi');
-        $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
-        $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name, cl.location_name');
-        
-        if ($q !== '') {
-            $builder->groupStart()
-                ->like('k.no_kontrak', $q)
-                ->orLike('k.customer_po_number', $q)
-                ->orLike('c.customer_name', $q)
-            ->groupEnd();
+        try {
+            // Use database query builder with proper JOINs
+            $builder = $this->db->table('kontrak k');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
+            // Use LEFT JOIN because not all kontrak have quotation_specifications with kontrak_id
+            $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'left');
+
+            // Fixed: Remove cl.location_name from GROUP BY (it's from subquery, not a JOIN)
+            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi');
+            $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
+            $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name');
+            
+            if ($q !== '') {
+                $builder->groupStart()
+                    ->like('k.no_kontrak', $q)
+                    ->orLike('k.customer_po_number', $q)
+                    ->orLike('c.customer_name', $q)
+                ->groupEnd();
+            }
+            
+            $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->limit(20)->get()->getResultArray();
+            
+            // map to simple text for display if needed
+            $options = array_map(function($r){
+                $label = trim(($r['no_kontrak'] ?: '') . ' ' . ($r['customer_po_number'] ? '(' . $r['customer_po_number'] . ')' : '') . ' - ' . ($r['pelanggan'] ?: '-'));
+                return [
+                    'id' => (int)$r['id'],
+                    'no_kontrak' => $r['no_kontrak'],
+                    'customer_po_number' => $r['customer_po_number'],
+                    'rental_type' => $r['rental_type'],
+                    'pelanggan' => $r['pelanggan'],
+                    'lokasi' => $r['lokasi'] ?? '-',
+                    'label' => $label
+                ];
+            }, $rows);
+            
+            return $this->response->setJSON(['success' => true, 'data'=>$options,'csrf_hash'=>csrf_hash()]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'kontrakOptions Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading contract options: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
         }
-        $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->limit(20)->get()->getResultArray();
-        
-        // map to simple text for display if needed
-        $options = array_map(function($r){
-            $label = trim(($r['no_kontrak'] ?: '') . ' ' . ($r['customer_po_number'] ? '(' . $r['customer_po_number'] . ')' : '') . ' - ' . ($r['pelanggan'] ?: '-'));
-            return [
-                'id' => (int)$r['id'],
-                'no_kontrak' => $r['no_kontrak'],
-                'customer_po_number' => $r['customer_po_number'],
-                'rental_type' => $r['rental_type'],
-                'pelanggan' => $r['pelanggan'],
-                'lokasi' => $r['lokasi'],
-                'label' => $label
-            ];
-        }, $rows);
-        return $this->response->setJSON(['data'=>$options,'csrf_hash'=>csrf_hash()]);
     }
 
     /**
@@ -5944,24 +5958,13 @@ class Marketing extends BaseDataTableController
         }
 
         // Determine initial status based on SPK contract linkage
-        // AWAITING_CONTRACT if SPK has no contract, SUBMITTED if SPK has contract
+        // DIAJUKAN if SPK has no contract, DISETUJUI if SPK has contract
         $initialStatus = 'DIAJUKAN'; // Default for backward compatibility
-        $contractId = null;
-        $contractLinkedAt = null;
-        $contractLinkedBy = null;
         
         if ($spkId > 0) {
             $diModelInstance = new \App\Models\DeliveryInstructionModel();
             $initialStatus = $diModelInstance->determineInitialStatus($spkId);
             error_log('DI Create - Determined initial status: ' . $initialStatus);
-            
-            // Inherit contract information from SPK
-            if (isset($spk['kontrak_id']) && $spk['kontrak_id']) {
-                $contractId = $spk['kontrak_id'];
-                $contractLinkedAt = $spk['contract_linked_at'] ?? date('Y-m-d H:i:s');
-                $contractLinkedBy = $spk['contract_linked_by'] ?? session('user_id');
-                error_log('DI Create - Inherited contract from SPK: kontrak_id=' . $contractId);
-            }
         }
 
         $payload = [
@@ -5972,9 +5975,6 @@ class Marketing extends BaseDataTableController
             'pelanggan' => $pelanggan,
             'lokasi' => $lokasi,
             'status_di' => $initialStatus,  // Auto-determined based on SPK contract status
-            'contract_id' => $contractId,   // Inherit from SPK kontrak_id (NULL if SPK has no contract)
-            'contract_linked_at' => $contractLinkedAt,
-            'contract_linked_by' => $contractLinkedBy,
             'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
             'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
             'status_eksekusi_workflow_id' => 1, // Default status eksekusi (PENDING atau sesuai workflow)

@@ -514,7 +514,7 @@ const CURRENT_USER_PERMISSIONS = {
 };
 
 // Debug service access data
-console.log('🔍 SERVICE_ACCESS_DATA Debug:', {
+// console.log('🔍 SERVICE_ACCESS_DATA Debug:', {
     raw_data: SERVICE_ACCESS_DATA,
     type: typeof SERVICE_ACCESS_DATA,
     is_object: typeof SERVICE_ACCESS_DATA === 'object',
@@ -523,7 +523,7 @@ console.log('🔍 SERVICE_ACCESS_DATA Debug:', {
     has_service_area_ids: SERVICE_ACCESS_DATA?.service_area_ids
 });
 
-console.log('📊 Edit User Form initialized:', {
+// console.log('📊 Edit User Form initialized:', {
     mode: 'EDIT',
     user_id: USER_ID,
     user_data: USER_DATA,
@@ -565,7 +565,7 @@ function initializeDivisionHandlers() {
         const currentDivisionText = $('#division_select option:selected').text().toLowerCase();
         if (currentDivisionText.includes('service') || currentDivisionText === 'service') {
             serviceSection.removeClass('d-none');
-            console.log('🔧 Service section shown for existing Service user');
+            // console.log('🔧 Service section shown for existing Service user');
             // Load service areas for existing user
             loadServiceAreas();
         }
@@ -576,7 +576,7 @@ function initializeDivisionHandlers() {
         const selectedDivision = $(this).val();
         const selectedDivisionName = $(this).find('option:selected').text().toLowerCase();
         
-        console.log('🏢 Division changed:', selectedDivision, selectedDivisionName);
+        // console.log('🏢 Division changed:', selectedDivision, selectedDivisionName);
         
         // Update hidden field
         $('#division').val(selectedDivision);
@@ -587,7 +587,7 @@ function initializeDivisionHandlers() {
         // Show/hide service section - check for 'service' in division name
         if (selectedDivisionName.includes('service') || selectedDivisionName === 'service') {
             serviceSection.removeClass('d-none');
-            console.log('🔧 Service section shown for Service division');
+            // console.log('🔧 Service section shown for Service division');
             // Load service areas when service section is shown
             loadServiceAreas();
         } else {
@@ -605,7 +605,7 @@ function initializeDivisionHandlers() {
 }
 
 function loadDivisionOptions() {
-    console.log('🏢 Loading division options...');
+    // console.log('🏢 Loading division options...');
     const divisionSelect = $('#division_select');
     
     // Add divisions from PHP data
@@ -619,7 +619,7 @@ function loadDivisionOptions() {
     });
     <?php endif; ?>
     
-    console.log('✅ Division options loaded, selected:', USER_DATA.division);
+    // console.log('✅ Division options loaded, selected:', USER_DATA.division);
 }
 
 function loadRolesForDivision(divisionId, selectedRoleId = null) {
@@ -636,7 +636,7 @@ function loadRolesForDivision(divisionId, selectedRoleId = null) {
             return role.division_id == divisionId || role.division == divisionId;
         });
         
-        console.log('🔍 Filtered roles for division', divisionId, ':', filteredRoles);
+        // console.log('🔍 Filtered roles for division', divisionId, ':', filteredRoles);
         
         filteredRoles.forEach(role => {
             const selected = selectedRoleId && role.id == selectedRoleId ? 'selected' : '';
@@ -651,7 +651,7 @@ function loadRolesForDivision(divisionId, selectedRoleId = null) {
         }
     } else {
         roleSelect.prop('disabled', true);
-        console.log('🔍 No division selected or no roles data available');
+        // console.log('🔍 No division selected or no roles data available');
     }
 }
 
@@ -663,7 +663,7 @@ function handleRoleBasedUI() {
     // Show service section for service-related roles
     if (selectedDivision.includes('service') || selectedRole.includes('service')) {
         serviceSection.removeClass('d-none');
-        console.log('🔧 Service section shown for service role');
+        // console.log('🔧 Service section shown for service role');
         
         // Apply permission-based UI restrictions
         applyPermissionRestrictions();
@@ -674,7 +674,7 @@ function handleRoleBasedUI() {
 // 🔒 PERMISSION-BASED UI CONTROL
 // ========================================
 function applyPermissionRestrictions() {
-    console.log('🔒 Applying permission restrictions:', CURRENT_USER_PERMISSIONS);
+    // console.log('🔒 Applying permission restrictions:', CURRENT_USER_PERMISSIONS);
     
     // Disable service area management if no permission
     if (!CURRENT_USER_PERMISSIONS.canAssignArea) {
@@ -685,13 +685,13 @@ function applyPermissionRestrictions() {
         // Add visual indicators
         $('.service-area-readonly').removeClass('d-none');
         
-        console.log('🚫 Service area controls disabled - no assign_area permission');
+        // console.log('🚫 Service area controls disabled - no assign_area permission');
     }
     
     // Disable custom permissions management if no permission
     if (!CURRENT_USER_PERMISSIONS.canAssignPermissions) {
         $('#btnManagePermissions').prop('disabled', true).addClass('d-none');
-        console.log('🚫 Permissions management disabled - no assign_permissions permission');
+        // console.log('🚫 Permissions management disabled - no assign_permissions permission');
     }
     
     // Apply read-only mode if no edit permission
@@ -703,7 +703,7 @@ function applyPermissionRestrictions() {
         // Add read-only notification
         showReadOnlyNotification();
         
-        console.log('🚫 Form in read-only mode - no edit permission');
+        // console.log('🚫 Form in read-only mode - no edit permission');
     }
 }
 
@@ -741,7 +741,7 @@ function initializeServiceAreaHandlers() {
                 .map(id => parseInt(id.trim()))
                 .filter(id => !isNaN(id));
             
-            console.log('🗺️ Existing service areas loaded:', selectedServiceAreasIds);
+            // console.log('🗺️ Existing service areas loaded:', selectedServiceAreasIds);
             updateSelectedServiceAreasDisplay();
         } catch (error) {
             console.error('❌ Error parsing service areas:', error);
@@ -796,11 +796,11 @@ function loadServiceAreas() {
         },
         dataType: 'json',
         beforeSend: function(xhr) {
-            console.log('🔗 Request URL:', '<?= base_url("admin/advanced-users/get-service-areas") ?>');
-            console.log('🔑 CSRF Token:', CSRF_HASH);
+            // console.log('🔗 Request URL:', '<?= base_url("admin/advanced-users/get-service-areas") ?>');
+            // console.log('🔑 CSRF Token:', CSRF_HASH);
         },
         success: function(response) {
-            console.log('🗺️ Service areas response:', response);
+            // console.log('🗺️ Service areas response:', response);
             if (response && response.success && response.data) {
                 serviceAreasData = response.data;
                 renderServiceAreas(serviceAreasData);
@@ -834,7 +834,7 @@ function loadServiceAreas() {
 function renderServiceAreas(areas) {
     let html = '';
     
-    console.log('🔍 Rendering service areas:', {
+    // console.log('🔍 Rendering service areas:', {
         areas_count: areas.length,
         selectedServiceAreasIds: selectedServiceAreasIds,
         selectedServiceAreasIds_types: selectedServiceAreasIds.map(id => typeof id)
@@ -847,7 +847,7 @@ function renderServiceAreas(areas) {
         const isChecked = isSelected ? 'checked' : '';
         const selectedClass = isSelected ? 'border-primary bg-light' : '';
         
-        console.log('🔍 Area check:', {
+        // console.log('🔍 Area check:', {
             area_id: area.id,
             area_id_int: areaId,
             is_selected: isSelected,
@@ -878,7 +878,7 @@ function renderServiceAreas(areas) {
     
     $('#serviceAreasList').html(html);
     
-    console.log('✅ Service areas rendered with', selectedServiceAreasIds.length, 'selected areas');
+    // console.log('✅ Service areas rendered with', selectedServiceAreasIds.length, 'selected areas');
     
     // Add click handlers for cards
     $('.service-area-item').on('click', function() {
@@ -936,14 +936,14 @@ function confirmAreaSelection() {
     $('#selectedServiceAreas').val(selectedIds.join(','));
     $('#serviceAreasModal').modal('hide');
     
-    console.log('🗺️ Updated service areas:', selectedIds);
+    // console.log('🗺️ Updated service areas:', selectedIds);
 }
 
 function updateSelectedServiceAreasDisplay() {
     const count = selectedServiceAreasIds?.length || 0;
     const display = $('#selectedServiceAreasDisplay');
     
-    console.log('🔄 Updating service areas display:', {
+    // console.log('🔄 Updating service areas display:', {
         count: count,
         ids: selectedServiceAreasIds,
         display_element_exists: display.length > 0
@@ -962,27 +962,27 @@ function updateSelectedServiceAreasDisplay() {
 // 🗺️ SERVICE ACCESS DATA MANAGEMENT
 // ========================================
 function loadExistingServiceAccess() {
-    console.log('🗺️ Loading existing service access data:', SERVICE_ACCESS_DATA);
+    // console.log('🗺️ Loading existing service access data:', SERVICE_ACCESS_DATA);
     
     try {
         if (!SERVICE_ACCESS_DATA || typeof SERVICE_ACCESS_DATA !== 'object') {
-            console.log('⚠️ No service access data found for user');
+            // console.log('⚠️ No service access data found for user');
             return;
         }
         
         // SERVICE_ACCESS_DATA is an object, not array
         // Populate area type
         if (SERVICE_ACCESS_DATA.area_type) {
-            console.log('🔧 Setting area type:', SERVICE_ACCESS_DATA.area_type);
+            // console.log('🔧 Setting area type:', SERVICE_ACCESS_DATA.area_type);
             $('#area_type').val(SERVICE_ACCESS_DATA.area_type);
-            console.log('📍 Set area type:', SERVICE_ACCESS_DATA.area_type);
+            // console.log('📍 Set area type:', SERVICE_ACCESS_DATA.area_type);
             
             // Trigger change event to show/hide dependent fields
             $('#area_type').trigger('change');
             
             // Debug: Check visibility after trigger
             setTimeout(() => {
-                console.log('🔍 Section visibility check:', {
+                // console.log('🔍 Section visibility check:', {
                     centralSection: $('#centralAccessSection').is(':visible'),
                     branchSection: $('#branchAccessSection').is(':visible'),
                     selectedDisplay: $('#selectedServiceAreasDisplay').length > 0,
@@ -993,20 +993,20 @@ function loadExistingServiceAccess() {
                 if (SERVICE_ACCESS_DATA.area_type === 'BRANCH') {
                     $('#branchAccessSection').show();
                     $('#centralAccessSection').hide();
-                    console.log('🔧 Forced branch section to show');
+                    // console.log('🔧 Forced branch section to show');
                 } else if (SERVICE_ACCESS_DATA.area_type === 'CENTRAL') {
                     $('#centralAccessSection').show();
                     $('#branchAccessSection').hide();
-                    console.log('🔧 Forced central section to show');
+                    // console.log('🔧 Forced central section to show');
                 }
             }, 100);
         }
         
         // Populate department scope for CENTRAL
         if (SERVICE_ACCESS_DATA.department_scope) {
-            console.log('🔧 Setting department scope:', SERVICE_ACCESS_DATA.department_scope);
+            // console.log('🔧 Setting department scope:', SERVICE_ACCESS_DATA.department_scope);
             $('#department_scope').val(SERVICE_ACCESS_DATA.department_scope);
-            console.log('🏢 Set department scope:', SERVICE_ACCESS_DATA.department_scope);
+            // console.log('🏢 Set department scope:', SERVICE_ACCESS_DATA.department_scope);
         }
         
         // Populate selected service areas from service_area_ids
@@ -1015,7 +1015,7 @@ function loadExistingServiceAccess() {
             selectedServiceAreasIds = SERVICE_ACCESS_DATA.service_area_ids.map(id => parseInt(id));
             updateSelectedServiceAreasDisplay();
             
-            console.log('🌿 Loaded service area IDs:', {
+            // console.log('🌿 Loaded service area IDs:', {
                 original: SERVICE_ACCESS_DATA.service_area_ids,
                 converted: selectedServiceAreasIds,
                 types: selectedServiceAreasIds.map(id => typeof id)
@@ -1027,7 +1027,7 @@ function loadExistingServiceAccess() {
             }
         }
         
-        console.log('✅ Service access data loaded successfully');
+        // console.log('✅ Service access data loaded successfully');
         
     } catch (error) {
         console.error('❌ Error loading service access data:', error);
@@ -1036,7 +1036,7 @@ function loadExistingServiceAccess() {
 
 
 function loadSpecificServiceAreas() {
-    console.log('🔍 Loading specific service areas for branch access...');
+    // console.log('🔍 Loading specific service areas for branch access...');
     
     // Trigger service area loading if not already loaded
     if (!serviceAreasData || serviceAreasData.length === 0) {
@@ -1048,36 +1048,36 @@ function loadSpecificServiceAreas() {
 // 🔐 CUSTOM PERMISSIONS MANAGEMENT
 // ========================================
 function initializeCustomPermissionsHandlers() {
-    console.log('🔐 Initializing custom permissions handlers...');
+    // console.log('🔐 Initializing custom permissions handlers...');
     
     // Load existing permissions data
     loadExistingPermissions();
     
     // Permissions button handler with debug
-    console.log('🔍 Checking if btnManagePermissions exists:', $('#btnManagePermissions').length);
+    // console.log('🔍 Checking if btnManagePermissions exists:', $('#btnManagePermissions').length);
     
     $('#btnManagePermissions').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('🔐 =================================');
-        console.log('🔐 Manage Permissions button clicked!');
-        console.log('🔐 Button element:', this);
-        console.log('🔐 Button jQuery object:', $(this));
-        console.log('🔐 Modal element exists:', $('#customPermissionsModal').length > 0);
-        console.log('🔐 Permissions data available:', typeof allPermissionsData, allPermissionsData?.length || 0);
-        console.log('🔐 =================================');
+        // console.log('🔐 =================================');
+        // console.log('🔐 Manage Permissions button clicked!');
+        // console.log('🔐 Button element:', this);
+        // console.log('🔐 Button jQuery object:', $(this));
+        // console.log('🔐 Modal element exists:', $('#customPermissionsModal').length > 0);
+        // console.log('🔐 Permissions data available:', typeof allPermissionsData, allPermissionsData?.length || 0);
+        // console.log('🔐 =================================');
         
         try {
             // Load permissions and existing data
             loadPermissions();
             loadExistingPermissions();
             
-            console.log('🔐 About to show modal...');
+            // console.log('🔐 About to show modal...');
             $('#customPermissionsModal').modal('show');
             
             setTimeout(() => {
-                console.log('🔐 Modal visible check:', $('#customPermissionsModal').is(':visible'));
+                // console.log('🔐 Modal visible check:', $('#customPermissionsModal').is(':visible'));
             }, 500);
             
         } catch (error) {
@@ -1106,9 +1106,9 @@ function initializeCustomPermissionsHandlers() {
 }
 
 function loadExistingPermissions() {
-    console.log('🔐 Loading existing permissions data...');
-    console.log('👤 User permissions:', USER_PERMISSIONS_DATA);
-    console.log('👔 User roles:', USER_ROLES_DATA);
+    // console.log('🔐 Loading existing permissions data...');
+    // console.log('👤 User permissions:', USER_PERMISSIONS_DATA);
+    // console.log('👔 User roles:', USER_ROLES_DATA);
     
     // Start with empty arrays
     selectedCustomPermissions = [];
@@ -1117,18 +1117,18 @@ function loadExistingPermissions() {
     // Load custom user permissions first
     if (USER_PERMISSIONS_DATA && USER_PERMISSIONS_DATA.length > 0) {
         selectedCustomPermissions = USER_PERMISSIONS_DATA.map(perm => parseInt(perm.id));
-        console.log('🎯 Loaded custom permissions:', selectedCustomPermissions);
+        // console.log('🎯 Loaded custom permissions:', selectedCustomPermissions);
     } else {
-        console.log('🎯 No custom permissions found');
+        // console.log('🎯 No custom permissions found');
         selectedCustomPermissions = [];
     }
     
     // Load permissions from roles
     if (USER_ROLES_DATA && USER_ROLES_DATA.length > 0) {
-        console.log('🔄 Loading role-based permissions...');
+        // console.log('🔄 Loading role-based permissions...');
         loadRoleBasedPermissions();
     } else {
-        console.log('⚠️ No roles found for user');
+        // console.log('⚠️ No roles found for user');
         // If no roles, just render with custom permissions
         if (allPermissionsData && allPermissionsData.length > 0) {
             renderPermissionsByModuleAndPage(allPermissionsData);
@@ -1139,10 +1139,10 @@ function loadExistingPermissions() {
 }
 
 function loadRoleBasedPermissions() {
-    console.log('🔄 Loading role-based permissions...');
+    // console.log('🔄 Loading role-based permissions...');
     
     if (!USER_ROLES_DATA || USER_ROLES_DATA.length === 0) {
-        console.log('⚠️ No roles found for user');
+        // console.log('⚠️ No roles found for user');
         return;
     }
     
@@ -1157,10 +1157,10 @@ function loadRoleBasedPermissions() {
         },
         dataType: 'json',
         success: function(response) {
-            console.log('🎯 Role permissions response:', response);
+            // console.log('🎯 Role permissions response:', response);
             if (response && response.success && response.data) {
                 roleBasedPermissions = response.data.map(perm => parseInt(perm.id));
-                console.log('✅ Loaded role-based permissions:', roleBasedPermissions);
+                // console.log('✅ Loaded role-based permissions:', roleBasedPermissions);
                 updateCustomPermissionsDisplay();
                 // Re-render permissions to update the display with role badges
                 if (allPermissionsData && allPermissionsData.length > 0) {
@@ -1177,7 +1177,7 @@ function loadRoleBasedPermissions() {
 
 
 function loadPermissions() {
-    console.log('🔐 ===== loadPermissions() called =====');
+    // console.log('🔐 ===== loadPermissions() called =====');
     
     const loadingHtml = `
         <div class="text-center p-3">
@@ -1187,31 +1187,31 @@ function loadPermissions() {
     `;
     
     const permissionsList = $('#permissionsList');
-    console.log('🔐 permissionsList element exists:', permissionsList.length > 0);
+    // console.log('🔐 permissionsList element exists:', permissionsList.length > 0);
     
     if (permissionsList.length > 0) {
         permissionsList.html(loadingHtml);
-        console.log('🔐 Loading HTML set successfully');
+        // console.log('🔐 Loading HTML set successfully');
     }
     
     // Use the permissions data from controller (same as create_user.php)
     const permissionsData = <?= json_encode($allPermissions ?? []) ?>;
     
-    console.log('🔐 Permissions data from controller:');
-    console.log('- Type:', typeof permissionsData);
-    console.log('- Is Array:', Array.isArray(permissionsData));
-    console.log('- Length:', permissionsData?.length || 0);
-    console.log('- Sample:', permissionsData?.slice(0, 3) || 'No data');
+    // console.log('🔐 Permissions data from controller:');
+    // console.log('- Type:', typeof permissionsData);
+    // console.log('- Is Array:', Array.isArray(permissionsData));
+    // console.log('- Length:', permissionsData?.length || 0);
+    // console.log('- Sample:', permissionsData?.slice(0, 3) || 'No data');
     
     if (permissionsData && Array.isArray(permissionsData) && permissionsData.length > 0) {
         allPermissionsData = permissionsData;
-        console.log('🔐 Setting allPermissionsData:', allPermissionsData.length, 'items');
+        // console.log('🔐 Setting allPermissionsData:', allPermissionsData.length, 'items');
         
         populateModuleFilter();
         populatePageFilter();
         renderPermissionsByModuleAndPage(allPermissionsData);
         
-        console.log('🔐 Permissions rendered successfully');
+        // console.log('🔐 Permissions rendered successfully');
     } else {
         console.warn('🔐 No permissions data available or invalid data structure');
         if (permissionsList.length > 0) {
@@ -1251,7 +1251,7 @@ function populatePageFilter(selectedModule = '') {
 }
 
 function renderPermissionsByModuleAndPage(permissions) {
-    console.log('🔐 Rendering permissions by module and page...');
+    // console.log('🔐 Rendering permissions by module and page...');
     
     let html = '';
     
@@ -1603,9 +1603,9 @@ function confirmPermissionSelection() {
     $('#customPermissions').val(JSON.stringify(customOnlyIds));
     $('#customPermissionsModal').modal('hide');
     
-    console.log('🔐 All selected permissions:', selectedIds);
-    console.log('🔐 Custom-only permissions:', customOnlyIds);
-    console.log('🔐 Role-based permissions:', roleBasedPermissions);
+    // console.log('🔐 All selected permissions:', selectedIds);
+    // console.log('🔐 Custom-only permissions:', customOnlyIds);
+    // console.log('🔐 Role-based permissions:', roleBasedPermissions);
 }
 
 function updateCustomPermissionsDisplay() {
@@ -1802,7 +1802,7 @@ function initializeFormSubmission() {
             });
         }
         
-        console.log('📤 Submitting form with service access:', {
+        // console.log('📤 Submitting form with service access:', {
             area_type: areaType,
             department_scope: departmentScope,
             selected_areas: selectedAreas,
@@ -1920,12 +1920,12 @@ function showErrorMessage(message) {
 // 🚀 INITIALIZATION
 // ========================================
 $(document).ready(function() {
-    console.log('🎯 ===============================');
-    console.log('🎯 Initializing Edit User Form...');
-    console.log('🎯 ===============================');
+    // console.log('🎯 ===============================');
+    // console.log('🎯 Initializing Edit User Form...');
+    // console.log('🎯 ===============================');
     
     // Debug: Check if form elements exist
-    console.log('🔍 Form Elements Check:', {
+    // console.log('🔍 Form Elements Check:', {
         area_type_exists: $('#area_type').length > 0,
         department_scope_exists: $('#department_scope').length > 0,
         selectedServiceAreas_exists: $('#selectedServiceAreas').length > 0,
@@ -1939,7 +1939,7 @@ $(document).ready(function() {
     });
     
     // Debug: Check data availability
-    console.log('🔍 Data Availability Check:', {
+    // console.log('🔍 Data Availability Check:', {
         USER_DATA_defined: typeof USER_DATA !== 'undefined',
         ROLES_DATA_defined: typeof ROLES_DATA !== 'undefined',
         ROLES_DATA_length: ROLES_DATA ? ROLES_DATA.length : 0,
@@ -1949,25 +1949,25 @@ $(document).ready(function() {
     
     // Initialize all handlers
     try {
-        console.log('🔧 Initializing division handlers...');
+        // console.log('🔧 Initializing division handlers...');
         initializeDivisionHandlers();
         
-        console.log('🔧 Initializing service area handlers...');
+        // console.log('🔧 Initializing service area handlers...');
         initializeServiceAreaHandlers();
         
-        console.log('🔧 Initializing custom permissions handlers...');
+        // console.log('🔧 Initializing custom permissions handlers...');
         initializeCustomPermissionsHandlers();
         
-        console.log('🔧 Initializing password handlers...');
+        // console.log('🔧 Initializing password handlers...');
         initializePasswordHandlers();
         
-        console.log('🔧 Initializing form submission...');
+        // console.log('🔧 Initializing form submission...');
         initializeFormSubmission();
         
-        console.log('🔧 Loading existing service access...');
+        // console.log('🔧 Loading existing service access...');
         loadExistingServiceAccess();
         
-        console.log('🔒 Applying permission-based restrictions...');
+        // console.log('🔒 Applying permission-based restrictions...');
         applyPermissionRestrictions();
         
     } catch (error) {
@@ -1981,7 +1981,7 @@ $(document).ready(function() {
         $(this).removeClass('shadow-sm');
     });
     
-    console.log('✅ Edit User Form initialized successfully!');
+    // console.log('✅ Edit User Form initialized successfully!');
 });
 </script>
 <?= $this->endSection() ?>

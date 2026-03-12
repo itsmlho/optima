@@ -215,7 +215,8 @@ class OptimaNotificationLightweight {
     }
     
     /**
-     * Show notification popup with Bootstrap 5 Toast (with action button)
+     * Show notification popup with Bootstrap 5 Toast (READ-ONLY)
+     * No action buttons, no redirect — just informational toast.
      */
     showNotificationPopup(notification) {
         return new Promise((resolve) => {
@@ -248,15 +249,13 @@ class OptimaNotificationLightweight {
                 .replace(/\s+/g, ' ')
                 .trim();
             
-            // Use Bootstrap 5 Toast with action button if URL exists
+            // Use Bootstrap 5 Toast in read-only mode (no action buttons, no redirect)
             if (window.createOptimaToast) {
                 window.createOptimaToast({
                     type: type,
                     title: titleText,
                     message: messageText,
-                    duration: 8000, // 8 seconds for notifications with action
-                    url: notification.url || null,
-                    actionText: 'Lihat Detail',
+                    duration: 6000,
                     timestamp: notification.created_at || notification.timestamp || null
                 });
                 
@@ -491,7 +490,7 @@ class OptimaNotificationLightweight {
                 
                 html += `
                     <li class="notification-item ${readClass}" data-id="${notification.id}" data-read="${notification.is_read}">
-                        <a class="dropdown-item" href="javascript:void(0)" onclick="handleNotificationClick(${notification.id}, '${this.getNotificationUrl(notification)}')">
+                        <button type="button" class="dropdown-item text-start" onclick="handleNotificationClick(${notification.id})">
                             <div class="d-flex align-items-start position-relative">
                                 <i class="fas fa-${this.getNotificationIcon(notification.type)} text-${this.getNotificationColor(notification.type)} me-2 mt-1"></i>
                                 <div class="flex-grow-1">
@@ -501,7 +500,7 @@ class OptimaNotificationLightweight {
                                 </div>
                                 ${unreadDot}
                             </div>
-                        </a>
+                        </button>
                     </li>
                 `;
             });
@@ -515,9 +514,8 @@ class OptimaNotificationLightweight {
         
         // FORCE TEXT WRAPPING - Apply styles after DOM insertion
         setTimeout(() => {
-            const notificationItems = this.dropdownMenu.querySelectorAll('.notification-item a.dropdown-item');
+            const notificationItems = this.dropdownMenu.querySelectorAll('.notification-item button.dropdown-item');
             notificationItems.forEach(item => {
-                // Force block display on all child elements
                 const allDivs = item.querySelectorAll('div');
                 allDivs.forEach(div => {
                     div.style.cssText = 'display: block !important; white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important;';
@@ -526,18 +524,9 @@ class OptimaNotificationLightweight {
         }, 10);
     }
     
+    // Deprecated: URL-based navigation removed for read-only notifications
     getNotificationUrl(notification) {
-        if (notification.related_id && notification.related_id > 0) {
-            if (notification.related_module === 'spk') {
-                return `${this.baseUrl}/marketing/spk/detail/${notification.related_id}`;
-            } else if (notification.related_module === 'work_order') {
-                return `${this.baseUrl}/service/work-orders/detail/${notification.related_id}`;
-            } else if (notification.related_module === 'purchase_order') {
-                return `${this.baseUrl}/purchasing/po/detail/${notification.related_id}`;
-            }
-        }
-        
-        return notification.url || `${this.baseUrl}/notifications`;
+        return `${this.baseUrl}/notifications`;
     }
     
     getNotificationIcon(type) {

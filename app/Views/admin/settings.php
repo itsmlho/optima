@@ -590,12 +590,15 @@ async function optimizeDatabase() {
 }
 
 function clearSessions() {
-    if (confirm('Are you sure you want to clear all user sessions? This will log out all users.')) {
+    OptimaConfirm.danger({
+        title: 'Clear All Sessions?',
+        text: 'Semua user akan di-logout. Tindakan ini tidak dapat dibatalkan.',
+        confirmText: 'Ya, Clear!'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         fetch('<?= base_url('admin/sessions/clear') ?>', {
             method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
         .then(data => {
@@ -606,7 +609,7 @@ function clearSessions() {
                 }, 2000);
             }
         });
-    }
+    });
 }
 </script>
 

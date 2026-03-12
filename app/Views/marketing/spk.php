@@ -2260,8 +2260,10 @@ $can_export = $permissions['export'];
                         OptimaPro.showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
                     } else if (typeof showNotification==='function') {
                         showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
+                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                        OptimaNotify.error('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
                     } else {
-                        alert('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
+                        window.alert('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
                     }
                     return;
                 }
@@ -2301,23 +2303,35 @@ $can_export = $permissions['export'];
             const tujuanPerintah = fd.get('tujuan_perintah_kerja_id');
             
             if (!jenisPerintah || jenisPerintah.trim() === '') {
-                alert('Jenis Perintah Kerja harus dipilih.');
+                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+                    OptimaNotify.warning('Jenis Perintah Kerja harus dipilih.');
+                } else {
+                    window.alert('Jenis Perintah Kerja harus dipilih.');
+                }
                 return;
             }
             
             if (!tujuanPerintah || tujuanPerintah.trim() === '') {
-                alert('Tujuan Perintah harus dipilih.');
+                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+                    OptimaNotify.warning('Tujuan Perintah harus dipilih.');
+                } else {
+                    window.alert('Tujuan Perintah harus dipilih.');
+                }
                 return;
             }
             
             // If unit checkboxes exist, append unit_ids[]
             const checks = document.querySelectorAll('.di-unit-check');
-            if (checks && checks.length) {
-                const picked = Array.from(checks).filter(ch=>ch.checked).map(ch=>ch.value);
-                if (picked.length === 0) {
-                    alert('Select at least one unit for this DI.');
-                    return;
-                }
+                if (checks && checks.length) {
+                    const picked = Array.from(checks).filter(ch=>ch.checked).map(ch=>ch.value);
+                    if (picked.length === 0) {
+                        if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+                            OptimaNotify.warning('Select at least one unit for this DI.');
+                        } else {
+                            window.alert('Select at least one unit for this DI.');
+                        }
+                        return;
+                    }
                 picked.forEach(v=> fd.append('unit_ids[]', v));
             }
             // spk_id already set; backend enforces COMPLETED status
@@ -2338,12 +2352,14 @@ $can_export = $permissions['export'];
                         loadMonitoring();
                         if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: '+ (j.nomor||''), 'success');
                         else if (typeof showNotification==='function') showNotification('DI dibuat: '+ (j.nomor||''), 'success');
-                        else alert('DI dibuat: '+ (j.nomor||''));
+                        else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') OptimaNotify.success('DI dibuat: ' + (j.nomor||''));
+                        else window.alert('DI dibuat: '+ (j.nomor||''));
                     } else {
                         const msg = (j && j.message) ? j.message : 'Gagal membuat DI';
                         if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(msg, 'error');
                         else if (typeof showNotification==='function') showNotification(msg, 'error');
-                        else alert(msg);
+                        else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') OptimaNotify.error(msg);
+                        else window.alert(msg);
                     }
                 });
         });
@@ -2750,7 +2766,9 @@ $can_export = $permissions['export'];
             .then(r => {
                 // Check for 401 Unauthorized (session expired)
                 if (r.status === 401) {
-                    alert('Session expired. Please login again.');
+                    if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                        OptimaNotify.error('Session expired. Please login again.');
+                    }
                     window.location.href = '<?= base_url('auth/login') ?>';
                     return Promise.reject('Unauthorized');
                 }
@@ -3138,8 +3156,10 @@ $can_export = $permissions['export'];
                 OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
             } else if (typeof showNotification === 'function') {
                 showNotification('SPK ID tidak ditemukan', 'error');
+            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                OptimaNotify.error('SPK ID tidak ditemukan');
             } else {
-                alert('SPK ID tidak ditemukan');
+                window.alert('SPK ID tidak ditemukan');
             }
             return;
         }
@@ -3162,8 +3182,10 @@ $can_export = $permissions['export'];
                         OptimaPro.showNotification('Gagal memuat data SPK untuk edit', 'error');
                     } else if (typeof showNotification === 'function') {
                         showNotification('Gagal memuat data SPK untuk edit', 'error');
+                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                        OptimaNotify.error('Gagal memuat data SPK untuk edit');
                     } else {
-                        alert('Gagal memuat data SPK untuk edit');
+                        window.alert('Gagal memuat data SPK untuk edit');
                     }
                 }
             })
@@ -3173,8 +3195,10 @@ $can_export = $permissions['export'];
                     OptimaPro.showNotification('Error loading SPK data', 'error');
                 } else if (typeof showNotification === 'function') {
                     showNotification('Error loading SPK data', 'error');
+                } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                    OptimaNotify.error('Error loading SPK data');
                 } else {
-                    alert('Error loading SPK data');
+                    window.alert('Error loading SPK data');
                 }
             });
     }
@@ -3186,21 +3210,39 @@ $can_export = $permissions['export'];
                 OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
             } else if (typeof showNotification === 'function') {
                 showNotification('SPK ID tidak ditemukan', 'error');
+            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                OptimaNotify.error('SPK ID tidak ditemukan');
             } else {
-                alert('SPK ID tidak ditemukan');
+                window.alert('SPK ID tidak ditemukan');
             }
             return;
         }
         
-        // First confirmation
-        if (!confirm('Apakah Anda yakin ingin menghapus SPK ini?')) {
-            return;
+        // Double confirmation using OptimaConfirm
+        if (window.OptimaConfirm && typeof OptimaConfirm.danger === 'function') {
+            OptimaConfirm.danger({
+                title: 'Hapus SPK?',
+                text: 'Apakah Anda yakin ingin menghapus SPK ini? Tindakan ini tidak dapat dibatalkan.',
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal'
+            }).then((confirmed) => {
+                if (confirmed) {
+                    proceedDeleteSpk();
+                }
+            });
+        } else {
+            // Fallback to double native confirm
+            if (!window.confirm('Apakah Anda yakin ingin menghapus SPK ini?')) {
+                return;
+            }
+            if (!window.confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus SPK ini?')) {
+                return;
+            }
+            proceedDeleteSpk();
         }
-        
-        // Second confirmation
-        if (!confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus SPK ini?')) {
-            return;
-        }
+    }
+
+    function proceedDeleteSpk() {
         
         // Proceed with deletion
         fetch(`<?= base_url('marketing/spk/delete/') ?>${currentSpkId}`, {
@@ -3225,18 +3267,22 @@ $can_export = $permissions['export'];
                     OptimaPro.showNotification('SPK berhasil dihapus', 'success');
                 } else if (typeof showNotification === 'function') {
                     showNotification('SPK berhasil dihapus', 'success');
+                } else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
+                    OptimaNotify.success('SPK berhasil dihapus');
                 } else {
-                    alert('SPK berhasil dihapus');
+                    window.alert('SPK berhasil dihapus');
                 }
             } else {
-                const errorMsg = j.message || 'Gagal menghapus SPK';
-                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification(errorMsg, 'error');
-                } else if (typeof showNotification === 'function') {
-                    showNotification(errorMsg, 'error');
-                } else {
-                    alert(errorMsg);
-                }
+                    const errorMsg = j.message || 'Gagal menghapus SPK';
+                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                        OptimaPro.showNotification(errorMsg, 'error');
+                    } else if (typeof showNotification === 'function') {
+                        showNotification(errorMsg, 'error');
+                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                        OptimaNotify.error(errorMsg);
+                    } else {
+                        window.alert(errorMsg);
+                    }
             }
         })
         .catch(error => {
@@ -3246,8 +3292,10 @@ $can_export = $permissions['export'];
                 OptimaPro.showNotification(errorMsg, 'error');
             } else if (typeof showNotification === 'function') {
                 showNotification(errorMsg, 'error');
+            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                OptimaNotify.error(errorMsg);
             } else {
-                alert(errorMsg);
+                window.alert(errorMsg);
             }
         });
     }
@@ -3314,8 +3362,10 @@ $can_export = $permissions['export'];
                             OptimaPro.showNotification(successMsg, 'success');
                         } else if (typeof showNotification === 'function') {
                             showNotification(successMsg, 'success');
+                        } else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
+                            OptimaNotify.success(successMsg);
                         } else {
-                            alert(successMsg);
+                            window.alert(successMsg);
                         }
                     } else {
                         // Show error notification
@@ -3324,8 +3374,10 @@ $can_export = $permissions['export'];
                             OptimaPro.showNotification(errorMsg, 'error');
                         } else if (typeof showNotification === 'function') {
                             showNotification(errorMsg, 'error');
+                        } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                            OptimaNotify.error(errorMsg);
                         } else {
-                            alert(errorMsg);
+                            window.alert(errorMsg);
                         }
                     }
                 })
@@ -3336,25 +3388,15 @@ $can_export = $permissions['export'];
                         OptimaPro.showNotification(errorMsg, 'error');
                     } else if (typeof showNotification === 'function') {
                         showNotification(errorMsg, 'error');
+                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                        OptimaNotify.error(errorMsg);
                     } else {
-                        alert(errorMsg);
+                        window.alert(errorMsg);
                     }
                 });
             });
         }
     });
-    
-    // Auto-trigger modal if autoOpenSpkId is set (from notification deep linking)
-    <?php if (isset($autoOpenSpkId) && $autoOpenSpkId): ?>
-    console.log('🔔 Auto-opening SPK modal from notification: <?= $autoOpenSpkId ?>');
-    setTimeout(() => {
-        if (typeof openDetail === 'function') {
-            openDetail(<?= $autoOpenSpkId ?>);
-        } else {
-            console.error('❌ openDetail function not found');
-        }
-    }, 800); // Wait for page to fully load
-    <?php endif; ?>
     
     // ==========================================
     // Link SPK to Contract Functions
@@ -3398,7 +3440,11 @@ $can_export = $permissions['export'];
             })
             .catch(error => {
                 console.error('❌ Error loading contracts:', error);
-                alert('Failed to load contracts. Please check console for details.');
+                if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                    OptimaNotify.error('Failed to load contracts. Please check console for details.');
+                } else {
+                    window.alert('Failed to load contracts. Please check console for details.');
+                }
             });
         
         const modal = new bootstrap.Modal(document.getElementById('linkContractModal'));
@@ -3432,20 +3478,35 @@ $can_export = $permissions['export'];
         .then(data => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
-            
+
             if (data.success) {
-                alert(`✅ Success! SPK linked to contract.\\n\\n${data.di_count || 0} Delivery Instruction(s) have been updated and unlocked for invoicing.`);
+                const successMsg = `✅ Success! SPK linked to contract.\n\n${data.di_count || 0} Delivery Instruction(s) have been updated and unlocked for invoicing.`;
+                if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
+                    OptimaNotify.success(successMsg);
+                } else {
+                    window.alert(successMsg);
+                }
                 bootstrap.Modal.getInstance(document.getElementById('linkContractModal')).hide();
                 if (spkTable && spkTable.ajax) spkTable.ajax.reload(); // Reload DataTable
             } else {
-                alert('❌ Error: ' + (data.message || 'Failed to link contract'));
+                const errorMsg = '❌ Error: ' + (data.message || 'Failed to link contract');
+                if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                    OptimaNotify.error(errorMsg);
+                } else {
+                    window.alert(errorMsg);
+                }
             }
         })
         .catch(error => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
             console.error('Error:', error);
-            alert('❌ Failed to link contract. Please try again.');
+            const errorMsg = '❌ Failed to link contract. Please try again.';
+            if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                OptimaNotify.error(errorMsg);
+            } else {
+                window.alert(errorMsg);
+            }
         });
     }
     </script>

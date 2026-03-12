@@ -402,7 +402,8 @@ function loadAddUnitLocations() {
 // Submit all units
 function submitAddUnit() {
     if (addUnitData.units.length === 0) {
-        alert('Add at least 1 unit');
+        if (window.OptimaNotify) OptimaNotify.warning('Add at least 1 unit');
+        else alert('Add at least 1 unit');
         return;
     }
 
@@ -442,16 +443,20 @@ function submitAddUnit() {
                 if (typeof loadUnits === 'function') loadUnits();
                 if (typeof alertSwal === 'function') {
                     alertSwal('success', res.message || 'Units successfully added');
+                } else if (window.OptimaNotify) {
+                    OptimaNotify.success(res.message || 'Units successfully added');
                 } else {
                     alert(res.message || 'Units successfully added');
                 }
                 setTimeout(function() { window.location.reload(); }, 1000);
             } else {
-                alert(res.message || 'Failed to add units');
+                if (window.OptimaNotify) OptimaNotify.error(res.message || 'Failed to add units');
+                else alert(res.message || 'Failed to add units');
             }
         },
         error: function() {
-            alert('Error adding units');
+            if (window.OptimaNotify) OptimaNotify.error('Error adding units');
+            else alert('Error adding units');
         },
         complete: function() {
             btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save All');

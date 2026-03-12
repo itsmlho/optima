@@ -301,7 +301,7 @@ $(document).ready(function() {
         // Always initialize Pemakaian tab first as default
         <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
         if (!usageTableInitialized) {
-            console.log('Initializing default tab: Pemakaian');
+            // console.log('Initializing default tab: Pemakaian');
             initializeUsageTable();
         }
         <?php endif; ?>
@@ -365,7 +365,7 @@ $(document).ready(function() {
     
     function initializeUsageTable() {
         if (usageTableInitialized) {
-            console.log('Usage table already initialized');
+            // console.log('Usage table already initialized');
             return;
         }
         
@@ -380,7 +380,7 @@ $(document).ready(function() {
             $('#usage-tab').tab('show');
         }
         
-        console.log('Initializing usage table...');
+        // console.log('Initializing usage table...');
         usageTable = $('#usageTable').DataTable({
         processing: true,
         serverSide: true,
@@ -398,7 +398,7 @@ $(document).ready(function() {
                 className: 'details-control',
                 orderable: false,
                 data: null,
-                defaultContent: '<i class="fas fa-plus-circle text-muted" style="cursor:pointer;"></i>'
+                defaultContent: '<i class="fas fa-plus-circle text-muted cursor-pointer"></i>'
             },
             { 
                 data: 'work_order_number',
@@ -439,7 +439,7 @@ $(document).ready(function() {
                 orderable: false,
                 className: 'text-center',
                 render: function(data) {
-                    return `<button class="btn btn-sm btn-info" onclick="viewWorkOrderDetail(${data})" title="View Detail">
+                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewWorkOrderDetail(${data})" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
                 }
@@ -483,14 +483,15 @@ $(document).ready(function() {
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Spareparts response:', response);
+                        // console.log('Spareparts response:', response);
                         row.child(formatSparepartsTable(response)).show();
                         tr.addClass('shown');
                         icon.removeClass('fa-spinner fa-spin').addClass('fa-minus-circle text-primary');
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX Error:', xhr.responseText);
-                        alert('Failed to load spareparts: ' + error);
+                        if (window.OptimaNotify) OptimaNotify.error('Failed to load spareparts: ' + error);
+                        else alert('Failed to load spareparts: ' + error);
                         icon.removeClass('fa-spinner fa-spin').addClass('fa-plus-circle text-muted');
                     }
                 });
@@ -498,14 +499,14 @@ $(document).ready(function() {
         });
         
         usageTableInitialized = true;
-        console.log('Usage table initialized successfully');
+        // console.log('Usage table initialized successfully');
     }
     <?php endif; ?>
 
     <?php if (isset($return_table_exists) && $return_table_exists): ?>
     function initializeReturnsTable() {
         if (returnsTableInitialized) {
-            console.log('Returns table already initialized');
+            // console.log('Returns table already initialized');
             return;
         }
         
@@ -522,7 +523,7 @@ $(document).ready(function() {
             return;
         }
         
-        console.log('Initializing returns table...');
+        // console.log('Initializing returns table...');
         returnsTable = $('#returnsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -606,7 +607,7 @@ $(document).ready(function() {
                 orderable: false,
                 className: 'text-center',
                 render: function(data, type, row) {
-                    return `<button class="btn btn-sm btn-info" onclick="viewReturnDetail(${data})" title="View Detail">
+                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewReturnDetail(${data})" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
                 }
@@ -630,7 +631,7 @@ $(document).ready(function() {
     });
         
         returnsTableInitialized = true;
-        console.log('Returns table initialized successfully');
+        // console.log('Returns table initialized successfully');
     }
     <?php endif; ?>
 
@@ -764,11 +765,13 @@ $(document).ready(function() {
                     $('#usageDetailBody').html(html);
                     $('#usageDetailModal').modal('show');
                 } else {
-                    alert('Error: ' + (response.message || 'Failed to load data'));
+                    if (window.OptimaNotify) OptimaNotify.error('Error: ' + (response.message || 'Failed to load data'));
+                    else alert('Error: ' + (response.message || 'Failed to load data'));
                 }
             },
             error: function() {
-                alert('An error occurred while loading data');
+                if (window.OptimaNotify) OptimaNotify.error('An error occurred while loading data');
+                else alert('An error occurred while loading data');
             }
         });
     };
@@ -888,11 +891,13 @@ $(document).ready(function() {
                     $('#returnDetailBody').html(html);
                     $('#returnDetailModal').modal('show');
                 } else {
-                    alert('Error: ' + (response.message || 'Failed to load data'));
+                    if (window.OptimaNotify) OptimaNotify.error('Error: ' + (response.message || 'Failed to load data'));
+                    else alert('Error: ' + (response.message || 'Failed to load data'));
                 }
             },
             error: function() {
-                alert('An error occurred while loading data');
+                if (window.OptimaNotify) OptimaNotify.error('An error occurred while loading data');
+                else alert('An error occurred while loading data');
             }
         });
     };
@@ -906,33 +911,40 @@ $(document).ready(function() {
 
     // Confirm return
     window.confirmReturn = function(id) {
-        if (!confirm('Are you sure you want to confirm this sparepart return?')) {
-            return;
-        }
+        Swal.fire({
+            title: 'Konfirmasi Return?',
+            text: 'Sparepart return ini akan dikonfirmasi.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            confirmButtonText: 'Ya, Konfirmasi!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
 
-        const notes = $('#confirm-notes').val() || null;
+            const notes = $('#confirm-notes').val() || null;
 
-        $.ajax({
-            url: '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id,
-            type: 'POST',
-            data: { 
-                notes: notes,
-                <?= csrf_token() ?>: '<?= csrf_hash() ?>'
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert('Sparepart return has been successfully confirmed');
-                    $('#returnDetailModal').modal('hide');
-                    if (returnsTable && returnsTableInitialized) {
-                        returnsTable.ajax.reload();
+            $.ajax({
+                url: '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id,
+                type: 'POST',
+                data: { 
+                    notes: notes,
+                    <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        OptimaNotify.success('Sparepart return berhasil dikonfirmasi');
+                        $('#returnDetailModal').modal('hide');
+                        if (returnsTable && returnsTableInitialized) {
+                            returnsTable.ajax.reload();
+                        }
+                    } else {
+                        OptimaNotify.error('Error: ' + (response.message || 'Gagal mengonfirmasi'));
                     }
-                } else {
-                    alert('Error: ' + (response.message || 'Failed to confirm'));
+                },
+                error: function() {
+                    OptimaNotify.error('Terjadi kesalahan saat konfirmasi');
                 }
-            },
-            error: function() {
-                alert('An error occurred while confirming');
-            }
         });
     };
     
@@ -943,11 +955,12 @@ $(document).ready(function() {
             type: 'GET',
             dataType: 'json',
             success: function(spareparts) {
-                console.log('Modal spareparts:', spareparts);
+                // console.log('Modal spareparts:', spareparts);
                 
                 // Check for error response
                 if (spareparts && spareparts.error) {
-                    alert('Error: ' + (spareparts.message || 'Unknown error'));
+                    if (window.OptimaNotify) OptimaNotify.error('Error: ' + (spareparts.message || 'Unknown error'));
+                    else alert('Error: ' + (spareparts.message || 'Unknown error'));
                     return;
                 }
                 
@@ -1017,11 +1030,13 @@ $(document).ready(function() {
                     `);
                     $('#usageDetailModal').modal('show');
                 } else {
-                    alert('No spareparts found for this work order');
+                    if (window.OptimaNotify) OptimaNotify.warning('No spareparts found for this work order');
+                    else alert('No spareparts found for this work order');
                 }
             },
             error: function() {
-                alert('Failed to load work order details');
+                if (window.OptimaNotify) OptimaNotify.error('Failed to load work order details');
+                else alert('Failed to load work order details');
             }
         });
     };

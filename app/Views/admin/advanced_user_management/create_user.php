@@ -299,14 +299,14 @@ const CSRF_HASH = '<?= csrf_hash() ?>';
 const IS_EDIT_MODE = false;
 
 // Roles data for dynamic filtering
-console.log('🔍 [DEBUG] Roles data from PHP:', <?= json_encode($roles ?? []) ?>);
+// console.log('🔍 [DEBUG] Roles data from PHP:', <?= json_encode($roles ?? []) ?>);
 const ROLES_DATA = <?= json_encode($roles ?? []) ?>;
 
 // No user data for create mode
 const USER_ID = null;
 const USER_DATA = null;
 
-console.log('📊 Create User Form initialized:', {
+// console.log('📊 Create User Form initialized:', {
     mode: 'CREATE',
     user_id: USER_ID,
     roles_count: ROLES_DATA?.length || 0,
@@ -338,7 +338,7 @@ function initializeDivisionHandlers() {
         const selectedDivision = $(this).val();
         const selectedDivisionName = $(this).find('option:selected').text().toLowerCase();
         
-        console.log('🏢 Division changed:', selectedDivision, selectedDivisionName);
+        // console.log('🏢 Division changed:', selectedDivision, selectedDivisionName);
         
         // Update hidden field
         $('#division').val(selectedDivision);
@@ -354,7 +354,7 @@ function initializeDivisionHandlers() {
             // Show/hide service section based on division
             if (selectedDivisionName.includes('service')) {
                 serviceSection.removeClass('d-none');
-                console.log('🔧 Service section shown for Service division');
+                // console.log('🔧 Service section shown for Service division');
             } else {
                 serviceSection.addClass('d-none');
                 resetServiceFields();
@@ -388,7 +388,7 @@ function loadRolesForDivision(divisionId, selectedRoleId = null) {
             return role.division_id == divisionId || role.division == divisionId;
         });
         
-        console.log('🔍 Filtered roles for division', divisionId, ':', filteredRoles);
+        // console.log('🔍 Filtered roles for division', divisionId, ':', filteredRoles);
         
         filteredRoles.forEach(role => {
             const selected = selectedRoleId && role.id == selectedRoleId ? 'selected' : '';
@@ -415,7 +415,7 @@ function handleRoleBasedUI() {
     // Show service section for service-related roles
     if (selectedDivision.includes('service') || selectedRole.includes('service')) {
         serviceSection.removeClass('d-none');
-        console.log('🔧 Service section shown for service role');
+        // console.log('🔧 Service section shown for service role');
     }
 }
 
@@ -479,11 +479,11 @@ function loadServiceAreas() {
         },
         dataType: 'json',
         beforeSend: function(xhr) {
-            console.log('🔗 Request URL:', '<?= base_url("admin/advanced-users/get-service-areas") ?>');
-            console.log('🔑 CSRF Token:', CSRF_HASH);
+            // console.log('🔗 Request URL:', '<?= base_url("admin/advanced-users/get-service-areas") ?>');
+            // console.log('🔑 CSRF Token:', CSRF_HASH);
         },
         success: function(response) {
-            console.log('🗺️ Service areas response:', response);
+            // console.log('🗺️ Service areas response:', response);
             if (response && response.success && response.data) {
                 serviceAreasData = response.data;
                 renderServiceAreas(serviceAreasData);
@@ -593,7 +593,7 @@ function confirmAreaSelection() {
     $('#selectedServiceAreas').val(selectedIds.join(','));
     $('#serviceAreasModal').modal('hide');
     
-    console.log('🗺️ Selected service areas:', selectedIds);
+    // console.log('🗺️ Selected service areas:', selectedIds);
 }
 
 function updateSelectedServiceAreasDisplay() {
@@ -843,7 +843,7 @@ function showErrorMessage(message) {
 // 🚀 INITIALIZATION
 // ========================================
 $(document).ready(function() {
-    console.log('🎯 Initializing Create User Form...');
+    // console.log('🎯 Initializing Create User Form...');
     
     // Initialize all handlers
     initializeDivisionHandlers();
@@ -858,7 +858,7 @@ $(document).ready(function() {
         $(this).removeClass('shadow-sm');
     });
     
-    console.log('✅ Create User Form initialized successfully!');
+    // console.log('✅ Create User Form initialized successfully!');
 });
 </script>
 <?= $this->endSection() ?>

@@ -322,9 +322,20 @@ function forwardMessage() {
 }
 
 function deleteMessage() {
-    if (confirm('Are you sure you want to delete this message?')) {
-        OptimaPro.showNotification('Message deleted successfully!', 'success');
-        // Remove message from list or reload
+    if (window.OptimaConfirm && typeof OptimaConfirm.danger === 'function') {
+        OptimaConfirm.danger({
+            title: 'Hapus Pesan?',
+            text: 'Are you sure you want to delete this message?',
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal'
+        }).then((confirmed) => {
+            if (confirmed) {
+                if (window.OptimaNotify) OptimaNotify.success('Message deleted successfully!');
+                else if (window.OptimaPro) OptimaPro.showNotification('Message deleted successfully!', 'success');
+            }
+        });
+    } else if (window.confirm('Are you sure you want to delete this message?')) {
+        if (window.OptimaPro) OptimaPro.showNotification('Message deleted successfully!', 'success');
     }
 }
 </script>

@@ -151,19 +151,14 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <?php if (!$notification['is_read']): ?>
-                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="markAsRead(<?= $notification['id'] ?>)">
+                                            <li><button type="button" class="dropdown-item" onclick="markAsRead(<?= $notification['id'] ?>)">
                                                 <i class="fas fa-check me-2"></i>Mark as Read
-                                            </a></li>
-                                            <?php endif; ?>
-                                            <?php if ($notification['url']): ?>
-                                            <li><a class="dropdown-item" href="<?= $notification['url'] ?>">
-                                                <i class="fas fa-external-link-alt me-2"></i>View Details
-                                            </a></li>
+                                            </button></li>
                                             <?php endif; ?>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteNotification(<?= $notification['id'] ?>)">
+                                            <li><button type="button" class="dropdown-item text-danger" onclick="deleteNotification(<?= $notification['id'] ?>)">
                                                 <i class="fas fa-trash me-2"></i>Delete
-                                            </a></li>
+                                            </button></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -227,7 +222,7 @@ async function markAsRead(notificationId) {
                 item.setAttribute('data-read', '1');
             }
             updateNotificationCount();
-            showNotification('Notification marked as read', 'success');
+            OptimaNotify.success('Notification marked as read');
         }
     } catch (error) {
         console.error('Error marking notification as read:', error);
@@ -253,7 +248,7 @@ async function markAllAsRead() {
                 item.setAttribute('data-read', '1');
             });
             updateNotificationCount();
-            showNotification('All notifications marked as read', 'success');
+            OptimaNotify.success('All notifications marked as read');
             setTimeout(() => location.reload(), 1000);
         }
     } catch (error) {
@@ -291,7 +286,7 @@ async function deleteNotification(notificationId) {
                     item.remove();
                 }
                 updateNotificationCount();
-                showNotification('Notification deleted', 'success');
+                OptimaNotify.success('Notification deleted');
             }
         } catch (error) {
             console.error('Error deleting notification:', error);

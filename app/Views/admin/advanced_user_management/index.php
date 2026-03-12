@@ -449,7 +449,7 @@ $(document).ready(function() {
                         if (resp.error) msg += ' ' + resp.error;
                     } catch (e) {}
                 }
-                alert(msg);
+                OptimaNotify.error(msg);
             }
         },
         columns: [
@@ -482,12 +482,12 @@ $(document).ready(function() {
         var selectedPermissions = formData.getAll('selected_permissions[]');
         
         if (selectedUsers.length === 0) {
-            alert('Please select at least one user.');
+            OptimaNotify.warning('Please select at least one user.');
             return;
         }
         
         if (selectedPermissions.length === 0) {
-            alert('Please select at least one permission.');
+            OptimaNotify.warning('Please select at least one permission.');
             return;
         }
         
@@ -715,12 +715,12 @@ function approveUser(userId, userName) {
                 const modal = new bootstrap.Modal(document.getElementById('approveUserModal'));
                 modal.show();
             } else {
-                alert('Error: ' + (response.message || 'Gagal memuat data user'));
+                OptimaNotify.error('Error: ' + (response.message || 'Gagal memuat data user'));
             }
         },
         error: function(xhr) {
             const response = xhr.responseJSON || {};
-            alert('Error: ' + (response.message || 'Terjadi kesalahan saat memuat data user'));
+            OptimaNotify.error('Error: ' + (response.message || 'Terjadi kesalahan saat memuat data user'));
         }
     });
 }

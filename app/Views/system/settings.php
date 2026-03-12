@@ -334,15 +334,19 @@ function saveSettings() {
 }
 
 function resetSettings() {
-    if (confirm('Are you sure you want to reset all settings to default values?')) {
+    OptimaConfirm.danger({
+        title: 'Reset Settings?',
+        text: 'Semua pengaturan akan dikembalikan ke nilai default.',
+        confirmText: 'Ya, Reset!'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         OptimaPro.showLoading('Resetting settings...');
-        
         setTimeout(() => {
             OptimaPro.hideLoading();
-            OptimaPro.showNotification('Settings reset to default values', 'info');
+            OptimaNotify.info('Settings reset to default values');
             location.reload();
         }, 1000);
-    }
+    });
 }
 
 function clearCache() {
@@ -368,7 +372,8 @@ function viewLogs() {
 }
 
 function systemInfo() {
-    alert('System Information:\n\nPHP Version: 8.1.0\nCodeIgniter: 4.x\nDatabase: MySQL 8.0\nServer: Apache 2.4');
+    if (window.OptimaNotify) OptimaNotify.info('System Information:\n\nPHP Version: 8.1.0\nCodeIgniter: 4.x\nDatabase: MySQL 8.0\nServer: Apache 2.4');
+    else alert('System Information:\n\nPHP Version: 8.1.0\nCodeIgniter: 4.x\nDatabase: MySQL 8.0\nServer: Apache 2.4');
 }
 </script>
 <?= $this->endSection() ?>

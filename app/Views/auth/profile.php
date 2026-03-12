@@ -300,7 +300,19 @@ $(document).ready(function() {
         const currentStatus = btn.data('otp-enabled') == '1';
         const actionText = currentStatus ? 'menonaktifkan' : 'mengaktifkan';
         
-        if (!confirm(`Apakah Anda yakin ingin ${actionText} OTP?`)) {
+        if (window.OptimaConfirm && typeof OptimaConfirm.generic === 'function') {
+            OptimaConfirm.generic({
+                title: 'Konfirmasi',
+                text: `Apakah Anda yakin ingin ${actionText} OTP?`,
+                confirmButtonText: 'Ya',
+                cancelButtonText: 'Batal'
+            }).then((confirmed) => {
+                if (!confirmed) return;
+                $(this).trigger('click.proceed');
+            });
+            return;
+        }
+        if (!window.confirm(`Apakah Anda yakin ingin ${actionText} OTP?`)) {
             return;
         }
         
@@ -391,7 +403,7 @@ $(document).ready(function() {
         const btn = $(this);
         const row = btn.closest('tr');
         
-        if (!confirm('Are you sure you want to logout this session?')) {
+        if (!window.confirm('Are you sure you want to logout this session?')) {
             return;
         }
         
@@ -435,7 +447,7 @@ $(document).ready(function() {
     $('#logoutAllBtn').on('click', function(e) {
         e.preventDefault();
         
-        if (!confirm('Are you sure you want to logout all other sessions? You will remain logged in on this device.')) {
+        if (!window.confirm('Are you sure you want to logout all other sessions? You will remain logged in on this device.')) {
             return;
         }
         

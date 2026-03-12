@@ -431,61 +431,71 @@ function submitLinkContract() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`Success! ${data.di_count} DI(s) updated and unlocked for invoicing.`);
+            OptimaNotify.success(`${data.di_count} DI berhasil diupdate dan di-unlock untuk invoicing.`);
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            OptimaNotify.error('Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to link contract.');
+        OptimaNotify.error('Gagal menghubungkan kontrak.');
     });
 }
 
-// Generate recurring invoice
 function generateRecurringInvoice(scheduleId) {
-    if (!confirm('Generate invoice for this schedule?')) return;
-    
-    const formData = new FormData();
-    formData.append('schedule_id', scheduleId);
-    
-    fetch('<?= base_url('finance/invoices/generate-recurring') ?>', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`Invoice generated: ${data.invoice_number}`);
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
+    Swal.fire({
+        title: 'Generate Invoice?',
+        text: 'Invoice akan digenerate untuk jadwal ini.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Generate!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const formData = new FormData();
+        formData.append('schedule_id', scheduleId);
+        
+        fetch('<?= base_url('finance/invoices/generate-recurring') ?>', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                OptimaNotify.success(`Invoice generated: ${data.invoice_number}`);
+                location.reload();
+            } else {
+                OptimaNotify.error('Error: ' + data.message);
+            }
+        });
     });
 }
 
-// Batch generate invoices
 function batchGenerateInvoices() {
-    if (!confirm('Generate all due invoices? This will process all schedules that are due.')) return;
-    
-    fetch('<?= base_url('finance/invoices/batch-generate') ?>', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`Success! Generated ${data.message}`);
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
+    Swal.fire({
+        title: 'Generate Semua Invoice?',
+        text: 'Semua jadwal yang jatuh tempo akan diproses.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Generate Semua!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        fetch('<?= base_url('finance/invoices/batch-generate') ?>', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                OptimaNotify.success(`Berhasil! ${data.message}`);
+                location.reload();
+            } else {
+                OptimaNotify.error('Error: ' + data.message);
+            }
+        });
     });
 }
 </script>

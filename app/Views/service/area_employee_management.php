@@ -107,7 +107,7 @@
                           <div class="card-header bg-light d-flex justify-content-between align-items-center mb-3">
                               <h6 class="mb-0"><i class="fas fa-map-marked-alt text-primary"></i> <?= lang('App.service_areas') ?></h6>
                               <div>
-                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshAreas()" title="<?= lang('App.refresh_areas_data') ?>">
+                                  <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="refreshAreas()" title="<?= lang('App.refresh_areas_data') ?>">
                                       <i class="fas fa-sync-alt"></i> <?= lang('Common.refresh') ?>
                                   </button>
                                   <a href="<?= base_url('service/export_area') ?>" class="btn btn-outline-success btn-sm">
@@ -141,7 +141,7 @@
                           <div class="card-header bg-light d-flex justify-content-between align-items-center mb-3">
                               <h6 class="mb-0"><i class="fas fa-users text-success"></i> <?= lang('App.employees') ?></h6>
                               <div>
-                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshEmployees()" title="<?= lang('App.refresh_employees_data') ?>">
+                                  <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="refreshEmployees()" title="<?= lang('App.refresh_employees_data') ?>">
                                       <i class="fas fa-sync-alt"></i> <?= lang('Common.refresh') ?>
                                   </button>
                                   <a href="<?= base_url('service/export_employee') ?>" class="btn btn-outline-success btn-sm">
@@ -1117,7 +1117,7 @@ function initializeAreaTable() {
           }
           if (json.error) {
             console.error('Server error:', json.message);
-            alert('Error loading areas: ' + json.message);
+            OptimaNotify.error('Error loading areas: ' + json.message);
             return [];
           }
           return (json && json.data) ? json.data : [];
@@ -1125,9 +1125,9 @@ function initializeAreaTable() {
         error: function(xhr, error, code) {
           console.error('Areas AJAX error:', error, xhr.responseText);
           if (error === 'timeout') {
-            alert('Request timeout. Halaman terlalu lama loading, coba refresh.');
+            OptimaNotify.error('Request timeout. Coba refresh halaman.');
           } else {
-            alert('Error loading data: ' + error);
+            OptimaNotify.error('Error loading data: ' + error);
           }
           return [];
         }
@@ -1241,7 +1241,7 @@ function initializeEmployeeTable() {
         }
         if (json.error) {
           console.error('Server error:', json.message);
-          alert('Error loading employees: ' + json.message);
+          OptimaNotify.error('Error loading employees: ' + json.message);
           return [];
         }
         return (json && json.data) ? json.data : [];
@@ -1249,9 +1249,9 @@ function initializeEmployeeTable() {
       error: function(xhr, error, thrown) {
         console.error('Employees AJAX error:', error, xhr.responseText);
         if (error === 'timeout') {
-          alert('Request timeout loading employees. Coba refresh halaman.');
+          OptimaNotify.error('Request timeout loading employees. Coba refresh halaman.');
         } else {
-          alert('Error loading employees: ' + error);
+          OptimaNotify.error('Error loading employees: ' + error);
         }
         return [];
       }
@@ -1604,10 +1604,17 @@ function bindForms() {
             );
             
             if (existingPrimary) {
-              const confirmMsg = `⚠️ WARNING: There is already a PRIMARY ${role} (${existingPrimary.staff_name}) assigned to this area.\n\nDo you want to continue creating another PRIMARY assignment for the same role?`;
-              if (!confirm(confirmMsg)) {
-                return;
-              }
+              Swal.fire({
+                title: 'Duplikat PRIMARY?',
+                text: `Sudah ada PRIMARY ${role} (${existingPrimary.staff_name}) di area ini. Lanjutkan membuat assignment PRIMARY baru?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Lanjutkan',
+                cancelButtonText: 'Batal'
+              }).then((result) => {
+                if (result.isConfirmed) submitAssignmentForm($form);
+              });
+              return;
             }
           }
           
@@ -2295,15 +2302,19 @@ function deleteAreaFromDetail() {
     return;
   }
   
-  if (!confirm(`Are you sure you want to delete area "${currentAreaData?.area_name || 'this area'}"?\n\nThis action cannot be undone.`)) {
-    return;
-  }
-  
-  // Close detail modal
-  $('#areaDetailModal').modal('hide');
-  
-  // Call delete function
-  deleteArea(currentAreaId);
+  Swal.fire({
+    title: 'Hapus Area?',
+    text: `Area "${currentAreaData?.area_name || 'this area'}" akan dihapus. Tindakan ini tidak dapat dibatalkan.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    confirmButtonText: 'Ya, Hapus!',
+    cancelButtonText: 'Batal'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+    $('#areaDetailModal').modal('hide');
+    deleteArea(currentAreaId);
+  });
 }
 
 // Employee Detail Modal Actions
@@ -2346,15 +2357,19 @@ function deleteEmployeeFromDetail() {
     return;
   }
   
-  if (!confirm(`Are you sure you want to delete this employee?\n\nThis will deactivate the employee instead of permanently deleting.`)) {
-    return;
-  }
-  
-  // Close detail modal
-  $('#employeeDetailModal').modal('hide');
-  
-  // Call delete function
-  deleteEmployee(currentEmployeeId);
+  Swal.fire({
+    title: 'Hapus Karyawan?',
+    text: 'Karyawan akan dinonaktifkan (bukan dihapus permanen).',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    confirmButtonText: 'Ya, Hapus!',
+    cancelButtonText: 'Batal'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+    $('#employeeDetailModal').modal('hide');
+    deleteEmployee(currentEmployeeId);
+  });
 }
 
 /* ===================== REFRESH FUNCTIONS ===================== */
@@ -2489,24 +2504,11 @@ function restoreActiveTab() {
   }
 }
 
-// Unified notifier (same as SPK service for consistency)
 function notify(msg, type='success'){
-	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
-	if (typeof showNotification==='function') return showNotification(msg, type);
-	if (typeof Swal !== 'undefined') {
-		const iconMap = { 'success': 'success', 'error': 'error', 'info': 'info', 'warning': 'warning' };
-		Swal.fire({
-			icon: iconMap[type] || 'info',
-			text: msg,
-			toast: true,
-			position: 'top-end',
-			showConfirmButton: false,
-			timer: 4000,
-			timerProgressBar: true
-		});
-	} else {
-		alert(msg);
+	if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+		return OptimaNotify[type](msg);
 	}
+	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
 }
 
 </script>

@@ -178,7 +178,7 @@
                     <button type="button" class="btn btn-success btn-sm" id="btnAttachToUnit" onclick="openAttachModal()" style="display:none;">
                         <i class="fas fa-link me-1"></i>Install to Unit
                     </button>
-                    <button type="button" class="btn btn-info btn-sm" id="btnSwapUnit" onclick="openSwapModal()" style="display:none;">
+                    <button type="button" class="btn btn-warning btn-sm" id="btnSwapUnit" onclick="openSwapModal()" style="display:none;">
                         <i class="fas fa-exchange-alt me-1"></i>Move to Another Unit
                     </button>
                     <button type="button" class="btn btn-warning btn-sm" id="btnDetachFromUnit" onclick="openDetachModal()" style="display:none;">
@@ -366,7 +366,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-info">
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-exchange-alt me-1"></i>Move Unit
                     </button>
                 </div>
@@ -1948,14 +1948,14 @@
             const user     = item.user || null;
             const ref      = item.ref_number || null;
             const src      = item.source || 'log';
-            const srcBadge = src === 'seed' ? `<span class="chip chip-gray ms-1" style="font-size:0.6rem;">legacy</span>` : '';
-            const userHtml = user ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
-            const refHtml  = ref ? `<span class="chip chip-gray ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
+            const srcBadge = src === 'seed' ? `<span class="chip chip-gray ms-1 text-xs">legacy</span>` : '';
+            const userHtml = user ? `<div class="text-muted text-xxs" style="margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
+            const refHtml  = ref ? `<span class="chip chip-gray ms-1 text-xs"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
 
             html += `<div class="timeline-item mb-3" style="position:relative;">
                 <div style="position:absolute;left:-2.15rem;top:0.25rem;width:1.25rem;height:1.25rem;border-radius:50%;
                     background:${hex};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 3px #fff;">
-                    <i class="${h(icon)} text-white" style="font-size:0.55rem;"></i>
+                    <i class="${h(icon)} text-white text-2xs"></i>
                 </div>
                 <div class="card border-0 shadow-sm" style="border-left:3px solid ${hex} !important;">
                     <div class="card-body py-2 px-3">

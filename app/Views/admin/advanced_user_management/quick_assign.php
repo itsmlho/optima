@@ -264,7 +264,7 @@ function renderQuickAssignInterface(userData) {
 
 function togglePermission(permissionKey, granted) {
     if (!selectedUserId) {
-        alert('Please select a user first.');
+        OptimaNotify.warning('Please select a user first.');
         return;
     }
     
@@ -275,11 +275,9 @@ function togglePermission(permissionKey, granted) {
         '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
     }, function(response) {
         if (response.success) {
-            // Show success feedback
-            showNotification('Permission updated successfully', 'success');
+            OptimaNotify.success('Permission updated successfully');
         } else {
-            alert('Error: ' + response.message);
-            // Revert checkbox state
+            OptimaNotify.error('Error: ' + response.message);
             $('#quick_' + permissionKey).prop('checked', !granted);
         }
     });
@@ -287,7 +285,7 @@ function togglePermission(permissionKey, granted) {
 
 function applyTemplate(template) {
     if (!selectedUserId) {
-        alert('Please select a user first.');
+        OptimaNotify.warning('Please select a user first.');
         return;
     }
     
@@ -319,7 +317,16 @@ function saveChanges() {
 }
 
 function resetPermissions() {
-    if (confirm('Are you sure you want to reset all permissions for this user?')) {
+    Swal.fire({
+        title: 'Reset Permissions?',
+        text: 'Semua permission user ini akan direset.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Reset!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         $('.permission-toggle input[type="checkbox"]').each(function() {
             if ($(this).is(':checked')) {
                 $(this).prop('checked', false);
@@ -327,23 +334,15 @@ function resetPermissions() {
                 togglePermission(permKey, false);
             }
         });
-    }
+    });
 }
 
 function showNotification(message, type) {
-    // Simple notification system
-    var alertClass = type === 'success' ? 'alert-success' : (type === 'error' ? 'alert-danger' : 'alert-info');
-    var notification = `<div class="alert ${alertClass} alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999;">
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>`;
-    
-    $('body').append(notification);
-    
-    // Auto dismiss after 3 seconds
-    setTimeout(function() {
-        $('.alert').alert('close');
-    }, 3000);
+    if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+        OptimaNotify[type](message);
+    } else if (window.OptimaPro) {
+        OptimaPro.showNotification(message, type);
+    }
 }
 </script>
 <?= $this->endSection() ?>

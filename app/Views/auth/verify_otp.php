@@ -380,7 +380,8 @@
             
             if (otpValue.length !== 6) {
                 e.preventDefault();
-                alert('Silakan masukkan 6 digit kode OTP');
+                if (window.OptimaNotify) OptimaNotify.warning('Silakan masukkan 6 digit kode OTP');
+                else alert('Silakan masukkan 6 digit kode OTP');
                 return;
             }
             
@@ -418,15 +419,17 @@
                     resendCooldown = data.remaining_seconds || 60;
                     startCountdown();
                     
-                    // Show alert
-                    alert('OTP baru telah dikirim ke email Anda.');
+                    // Show success toast
+                    if (window.OptimaNotify) OptimaNotify.success('OTP baru telah dikirim ke email Anda.');
+                    else alert('OTP baru telah dikirim ke email Anda.');
                     
                     // Reset after 2 seconds
                     setTimeout(() => {
                         resendText.textContent = 'Kirim Ulang OTP';
                     }, 2000);
                 } else {
-                    alert(data.message || 'Gagal mengirim OTP. Silakan coba lagi.');
+                    if (window.OptimaNotify) OptimaNotify.error(data.message || 'Gagal mengirim OTP. Silakan coba lagi.');
+                    else alert(data.message || 'Gagal mengirim OTP. Silakan coba lagi.');
                     
                     if (data.remaining_seconds) {
                         resendCooldown = data.remaining_seconds;
@@ -438,7 +441,8 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan. Silakan coba lagi.');
+                if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan. Silakan coba lagi.');
+                else alert('Terjadi kesalahan. Silakan coba lagi.');
                 this.disabled = false;
             });
         });

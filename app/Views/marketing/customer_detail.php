@@ -280,7 +280,7 @@ function rupiah(value) {
 }
 
 function editCustomer() {
-    alert('Edit customer feature coming soon');
+    if (window.OptimaNotify) OptimaNotify.info('Edit customer feature coming soon');
 }
 
 function createContract() {
@@ -289,7 +289,7 @@ function createContract() {
 }
 
 function addLocation() {
-    alert('Add location feature coming soon');
+    if (window.OptimaNotify) OptimaNotify.info('Add location feature coming soon');
 }
 
 function viewAllContracts() {

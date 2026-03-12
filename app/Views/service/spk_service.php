@@ -307,10 +307,14 @@ let spkTable; // DataTable instance
 let currentFilter = 'all';
 
 // Unified notifier (fallbacks)
-function notify(msg, type='success'){
-	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
-	if (typeof showNotification==='function') return showNotification(msg, type);
-	alert(msg);
+function notify(msg, type = 'success') {
+	if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+		return OptimaNotify[type](msg);
+	}
+	if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') return OptimaPro.showNotification(msg, type);
+	if (typeof showNotification === 'function') return showNotification(msg, type);
+	// Final fallback: browser alert (should be rarely hit)
+	window.alert(msg);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -548,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		fetch('<?= base_url('service/spk/detail/') ?>' + id).then(r=>{
 			// Check for 401 Unauthorized (session expired)
 			if (r.status === 401) {
-				alert('Session expired. Please login again.');
+				notify('Session expired. Please login again.', 'error');
 				window.location.href = '<?= base_url('auth/login') ?>';
 				return Promise.reject('Unauthorized');
 			}
@@ -1187,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			fetch('<?= base_url('service/spk/detail/') ?>' + spkId).then(r=>{
 				// Check for 401 Unauthorized (session expired)
 				if (r.status === 401) {
-					alert('Session expired. Please login again.');
+					notify('Session expired. Please login again.', 'error');
 					window.location.href = '<?= base_url('auth/login') ?>';
 					return Promise.reject('Unauthorized');
 				}
@@ -2408,7 +2412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			} else {
 				const manualNoUnit = document.getElementById('manualNoUnitInput').value;
 				if (!manualNoUnit || manualNoUnit < 1) {
-					alert('No Unit manual harus diisi dengan angka positif');
+					notify('No Unit manual harus diisi dengan angka positif', 'warning');
 					return;
 				}
 				window.noUnitConfirmed = true; // Set flag that user confirmed
@@ -2507,7 +2511,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		fetch(`<?= base_url('service/spk/detail') ?>/${currentApprovalSpkId}`)
 			.then(response => {
 				if (response.status === 401) {
-					alert('Session expired. Please login again.');
+					notify('Session expired. Please login again.', 'error');
 					window.location.href = '<?= base_url('auth/login') ?>';
 					return Promise.reject('Unauthorized');
 				}
@@ -3416,7 +3420,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Show validation errors if any
 				if (validationErrors.length > 0) {
-					alert('Component validation failed:\n\n' + validationErrors.join('\n'));
+					notify('Component validation failed:\n\n' + validationErrors.join('\n'), 'error');
 					return;
 				}
 			} else {
@@ -3442,7 +3446,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					// Only require battery for Electric units, charger is optional if unit doesn't support it
 					if (!batteryValid) {
-						alert('For Electric units, Battery is required!\n\nChoose one:\n- Use existing battery (check the checkbox)\n- Select a new battery from the dropdown');
+						notify('For Electric units, Battery is required!\n\nChoose one:\n- Use existing battery (check the checkbox)\n- Select a new battery from the dropdown', 'warning');
 						return;
 					}
 					
@@ -3635,7 +3639,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 			.catch(error => {
 				console.error('Error loading SPK data:', error);
-				alert('Failed to load SPK data: ' + error.message);
+				notify('Failed to load SPK data: ' + error.message, 'error');
 			});
 	}
 	
@@ -3891,7 +3895,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 		.then(response => {
 			if (response.status === 401) {
-				alert('Session expired. Please login again.');
+				notify('Session expired. Please login again.', 'error');
 				window.location.href = '<?= base_url('auth/login') ?>';
 				return Promise.reject('Unauthorized');
 			}
@@ -4021,7 +4025,7 @@ document.addEventListener('DOMContentLoaded', () => {
 									<i class="fas fa-tools me-2"></i>Edit Unit Assignment
 								</h6>
 								<p class="card-text small">Change unit assignment for this stage</p>
-								<button class="btn btn-primary btn-sm" onclick="alert('Edit Unit Assignment clicked!')">
+								<button class="btn btn-primary btn-sm" onclick="notify('Edit Unit Assignment clicked!', 'info')">
 									<i class="fas fa-edit me-1"></i>Edit Unit
 								</button>
 							</div>
@@ -4034,7 +4038,7 @@ document.addEventListener('DOMContentLoaded', () => {
 									<i class="fas fa-cog me-2"></i>Edit Stage Settings
 								</h6>
 								<p class="card-text small">Modify stage configuration</p>
-								<button class="btn btn-primary btn-sm" onclick="alert('Edit Stage Settings clicked!')">
+								<button class="btn btn-primary btn-sm" onclick="notify('Edit Stage Settings clicked!', 'info')">
 									<i class="fas fa-cog me-1"></i>Edit Settings
 								</button>
 							</div>
@@ -4049,7 +4053,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-				<button type="button" class="btn btn-primary" onclick="alert('Save Changes clicked!')">
+				<button type="button" class="btn btn-primary" onclick="notify('Save Changes clicked!', 'info')">
 					<i class="fas fa-save me-1"></i>Save Changes
 				</button>
 			</div>
@@ -4110,7 +4114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		fetch(`<?= base_url('service/spk/detail') ?>/${spkId}`)
 			.then(response => {
 				if (response.status === 401) {
-					alert('Session expired. Please login again.');
+					notify('Session expired. Please login again.', 'error');
 					window.location.href = '<?= base_url('auth/login') ?>';
 					return Promise.reject('Unauthorized');
 				}
@@ -4214,23 +4218,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Confirm rollback
 	document.getElementById('confirmRollbackBtn').addEventListener('click', function() {
 		const reason = document.getElementById('rollbackReason').value.trim();
-		
+
 		if (!reason) {
-			alert('Alasan rollback wajib diisi!');
+			notify('Alasan rollback wajib diisi!', 'warning');
 			return;
 		}
 		
 		if (currentRollbackStage === 'persiapan_unit') {
 			const newUnitId = document.getElementById('rollbackUnitSelect').value;
 			const unitIndex = document.getElementById('rollbackUnitIndexSelect').value;
-			
+
 			if (!newUnitId) {
-				alert('New unit must be selected!');
+				notify('New unit must be selected!', 'warning');
 				return;
 			}
-			
+
 			if (!unitIndex) {
-				alert('Unit to be changed must be selected!');
+				notify('Unit to be changed must be selected!', 'warning');
 				return;
 			}
 			
@@ -5172,7 +5176,7 @@ async function openFabrikasiModal(detail) {
     const fd = new FormData(document.getElementById('fabForm'));
     const res = await fetch('<?= base_url('service/spk/approve-fabrikasi') ?>', {method:'POST', body: fd, headers: {'X-Requested-With':'XMLHttpRequest'}});
     const j = await res.json();
-    if (!res.ok || !j.success) { alert(j.message || 'Gagal'); return; }
+    if (!res.ok || !j.success) { notify(j.message || 'Gagal', 'error'); return; }
     location.reload();
   };
 }
@@ -5443,18 +5447,6 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			console.log('DEBUG: No department name found, skipping departmental rules');
 		}
 	}
-	
-	// Auto-trigger modal if autoOpenSpkId is set (from notification deep linking)
-	<?php if (isset($autoOpenSpkId) && $autoOpenSpkId): ?>
-	console.log('🔔 Auto-opening SPK modal from notification: <?= $autoOpenSpkId ?>');
-	setTimeout(() => {
-		if (typeof openDetail === 'function') {
-			openDetail(<?= $autoOpenSpkId ?>);
-		} else {
-			console.error('❌ openDetail function not found');
-		}
-	}, 800); // Wait for page to fully load
-	<?php endif; ?>
 </script>
 
         </div>

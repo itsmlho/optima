@@ -196,7 +196,7 @@
                             <a href="<?= base_url('dashboard') ?>" class="btn btn-primary btn-lg">
                                 <i class="fas fa-tachometer-alt me-2"></i>Test on Real Dashboard
                             </a>
-                            <a href="<?= base_url('language/test') ?>" class="btn btn-info btn-lg">
+                            <a href="<?= base_url('language/test') ?>" class="btn btn-primary btn-lg">
                                 <i class="fas fa-flask me-2"></i>Original Test Page
                             </a>
                         </div>

@@ -50,7 +50,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" id="btn-add-row" class="btn btn-sm btn-info mt-2">➕ Tambah Baris</button>
+                    <button type="button" id="btn-add-row" class="btn btn-sm btn-primary mt-2">➕ Tambah Baris</button>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ Tutup</button>

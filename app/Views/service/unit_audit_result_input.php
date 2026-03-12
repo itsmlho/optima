@@ -354,15 +354,23 @@ function printAuditForm() {
 }
 
 function markInProgress() {
-    if (!confirm('Mulai proses audit? Status akan berubah menjadi In Progress.')) return;
-
-    fetch(`<?= base_url('service/unit-audit/markAuditInProgress/') ?>${auditId}`, {
-        method: 'POST'
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-        location.reload();
+    Swal.fire({
+        title: 'Mulai Audit?',
+        text: 'Status akan berubah menjadi In Progress.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Mulai!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        fetch(`<?= base_url('service/unit-audit/markAuditInProgress/') ?>${auditId}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            OptimaNotify.success(data.message);
+            location.reload();
+        });
     });
 }
 
@@ -377,30 +385,40 @@ function saveResults() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            OptimaNotify.success(data.message);
             location.reload();
         } else {
-            alert(data.message);
+            OptimaNotify.error(data.message);
         }
     });
 }
 
 function submitToMarketing() {
-    if (!confirm('Kirim hasil audit ke Marketing untuk approval?')) return;
+    Swal.fire({
+        title: 'Kirim ke Marketing?',
+        text: 'Hasil audit akan dikirim ke Marketing untuk approval.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Kirim!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const formData = new FormData();
+        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
 
-    const formData = new FormData();
-    formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
-
-    fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${auditId}`, {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-        if (data.success) {
-            window.location.href = '<?= base_url('service/unit-verification') ?>';
-        }
+        fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${auditId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                OptimaNotify.success(data.message);
+                window.location.href = '<?= base_url('service/unit-verification') ?>';
+            } else {
+                OptimaNotify.error(data.message);
+            }
+        });
     });
 }
 

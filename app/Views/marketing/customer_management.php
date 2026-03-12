@@ -1,4 +1,4 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?php
 /**
@@ -3010,6 +3010,10 @@ function showNotification(message, type) {
         setTimeout(() => {
             $('.optima-notification, .notification-container, .toast-container').css('z-index', '9999');
         }, 100);
+    } else if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+        OptimaNotify[type](message);
+    } else if (window.OptimaNotify) {
+        OptimaNotify.info(message);
     } else {
         alert(message);
     }

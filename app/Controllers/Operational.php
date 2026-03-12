@@ -1050,6 +1050,78 @@ class Operational extends BaseController
             // After sampai approval, update status_di to SAMPAI_LOKASI
             $updateData['status_di'] = 'SAMPAI_LOKASI';
             
+            // Initialize variables for email notification
+            $deliveryItems = [];
+            $customerLocation = null;
+            
+            // Update all units in this DI to RENTAL_ACTIVE status at customer location
+            try {
+                // Get all units from this DI
+                $deliveryItems = $this->db->table('delivery_items')
+                    ->where('di_id', $id)
+                    ->where('item_type', 'UNIT')
+                    ->where('unit_id IS NOT NULL')
+                    ->get()->getResultArray();
+                
+                if (!empty($deliveryItems)) {
+                    // Get proper customer location from customer_locations table
+                    // Trace: DI -> SPK -> Quotation Spec -> Quotation -> Customer -> Primary Location
+                    $customerLocation = null;
+                    
+                    if (!empty($di['spk_id'])) {
+                        $locationData = $this->db->query("
+                            SELECT 
+                                cl.location_name,
+                                cl.address,
+                                cl.city
+                            FROM spk s
+                            LEFT JOIN quotation_specifications qs ON qs.id_specification = s.quotation_specification_id
+                            LEFT JOIN quotations q ON q.id_quotation = qs.id_quotation
+                            LEFT JOIN customer_locations cl ON cl.customer_id = q.created_customer_id AND cl.is_primary = 1 AND cl.is_active = 1
+                            WHERE s.id = ?
+                            LIMIT 1
+                        ", [$di['spk_id']])->getRowArray();
+                        
+                        if ($locationData && !empty($locationData['location_name'])) {
+                            // Build proper location string from customer_locations
+                            $customerLocation = $locationData['location_name'];
+                            if (!empty($locationData['address'])) {
+                                $customerLocation .= ' - ' . $locationData['address'];
+                            }
+                            if (!empty($locationData['city'])) {
+                                $customerLocation .= ', ' . $locationData['city'];
+                            }
+                        }
+                    }
+                    
+                    // Fallback to DI lokasi field if customer location not found
+                    if (!$customerLocation) {
+                        $customerLocation = $di['lokasi'] ?? 'Customer Location';
+                        log_message('warning', "Using fallback location for DI {$id}: {$customerLocation}");
+                    }
+                    
+                    $rentalStartDate = $tanggalApprove ?? date('Y-m-d');
+                    
+                    foreach ($deliveryItems as $item) {
+                        $unitUpdateData = [
+                            'status_unit_id' => 7,  // RENTAL_ACTIVE
+                            'lokasi_unit' => $customerLocation
+                        ];
+                        
+                        $this->db->table('inventory_unit')
+                            ->where('id_inventory_unit', $item['unit_id'])
+                            ->update($unitUpdateData);
+                        
+                        log_message('info', "Updated unit {$item['unit_id']} to RENTAL_ACTIVE (id:7) at {$customerLocation}");
+                    }
+                    
+                    log_message('info', "Updated " . count($deliveryItems) . " units to RENTAL_ACTIVE for DI {$id}");
+                }
+            } catch (\Exception $e) {
+                log_message('error', 'Failed to update unit statuses for DI ' . $id . ': ' . $e->getMessage());
+                // Don't fail the entire approval if unit update fails
+            }
+            
             log_message('info', 'Stage sampai - updating status to SAMPAI_LOKASI');
         }
 
@@ -1072,6 +1144,92 @@ class Operational extends BaseController
             ]);
             
             log_message('info', 'Activity log recorded for DI ' . $id);
+            
+            // Send email notification when DI arrives at customer location
+            if ($stage === 'sampai') {
+                try {
+                    // Get email addresses from environment
+                    $accEmail1 = getenv('ACC_EMAIL_1') ?: 'finance@sml.co.id';
+                    $accEmail2 = getenv('ACC_EMAIL_2') ?: 'anselin_smlforklift@yahoo.com';
+                    $marketingEmail = getenv('MARKETING_EMAIL') ?: 'marketing@sml.co.id';
+                    
+                    // Get units data for email
+                    $unitsData = [];
+                    if (!empty($deliveryItems)) {
+                        foreach ($deliveryItems as $item) {
+                            $unit = $this->db->table('inventory_unit')
+                                ->select('no_unit, serial_number')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->get()->getRowArray();
+                            if ($unit) {
+                                $unitsData[] = $unit;
+                            }
+                        }
+                    }
+                    
+                    // Get SPK number
+                    $spkNumber = 'N/A';
+                    if (!empty($di['spk_id'])) {
+                        $spk = $this->db->table('spk')
+                            ->select('nomor_spk')
+                            ->where('id', $di['spk_id'])
+                            ->get()->getRowArray();
+                        if ($spk) {
+                            $spkNumber = $spk['nomor_spk'];
+                        }
+                    }
+                    
+                    // Prepare email data
+                    $emailData = [
+                        'di_id' => $id,
+                        'di_number' => $di['nomor_di'],
+                        'spk_number' => $spkNumber,
+                        'customer_name' => $di['pelanggan'] ?? 'N/A',
+                        'customer_location' => $customerLocation ?? $di['lokasi'] ?? 'N/A',
+                        'arrival_date' => $tanggalApprove ?? date('Y-m-d H:i:s'),
+                        'driver_name' => $di['nama_supir'] ?? '',
+                        'driver_phone' => $di['no_hp_supir'] ?? '',
+                        'units' => $unitsData
+                    ];
+                    
+                    // Load email service
+                    $email = \Config\Services::email();
+                    
+                    // Render email template
+                    $emailBody = view('emails/delivery_arrived', $emailData);
+                    
+                    // Send to Finance (ACC_EMAIL_1) with CC to ACC_EMAIL_2
+                    $email->clear();
+                    $email->setTo($accEmail1);
+                    $email->setCC($accEmail2);
+                    $email->setSubject('Unit Telah Tiba di Customer: ' . $di['nomor_di'] . ' - ' . ($di['pelanggan'] ?? 'Customer'));
+                    $email->setMessage($emailBody);
+                    $email->setMailType('html');
+                    
+                    if ($email->send()) {
+                        log_message('info', "Delivery arrival email sent to Finance: {$accEmail1}, CC: {$accEmail2}");
+                    } else {
+                        log_message('error', 'Failed to send delivery arrival email to Finance: ' . $email->printDebugger(['headers']));
+                    }
+                    
+                    // Send to Marketing (separate email)
+                    $email->clear();
+                    $email->setTo($marketingEmail);
+                    $email->setSubject('Unit Telah Tiba di Customer: ' . $di['nomor_di'] . ' - ' . ($di['pelanggan'] ?? 'Customer'));
+                    $email->setMessage($emailBody);
+                    $email->setMailType('html');
+                    
+                    if ($email->send()) {
+                        log_message('info', "Delivery arrival email sent to Marketing: {$marketingEmail}");
+                    } else {
+                        log_message('error', 'Failed to send delivery arrival email to Marketing: ' . $email->printDebugger(['headers']));
+                    }
+                    
+                } catch (\Exception $e) {
+                    log_message('error', 'Failed to send delivery arrival email for DI ' . $id . ': ' . $e->getMessage());
+                    // Don't fail the entire approval if email sending fails
+                }
+            }
             
         } catch (\Exception $e) {
             log_message('error', 'Failed to update DI ' . $id . ': ' . $e->getMessage());

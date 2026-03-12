@@ -389,24 +389,25 @@ function createBackup() {
 }
 
 function clearCache() {
-    if (!confirm('Are you sure you want to clear the cache?')) {
-        return;
-    }
+    OptimaConfirm.danger({
+        title: 'Clear Cache?',
+        text: 'Cache akan dihapus.',
+        confirmText: 'Ya, Clear!'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        OptimaNotify.info('Clearing cache...');
 
-    showNotification('Clearing cache...', 'info');
-
-    fetch('/settings/clear-cache', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        showNotification(data.message, data.success ? 'success' : 'error');
-    })
-    .catch(error => {
-        showNotification('Failed to clear cache', 'error');
+        fetch('/settings/clear-cache', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            data.success ? OptimaNotify.success(data.message) : OptimaNotify.error(data.message);
+        })
+        .catch(error => {
+            OptimaNotify.error('Failed to clear cache');
+        });
     });
 }
 

@@ -357,40 +357,45 @@ function processRequest(action) {
     const notes = $('#reviewNotes').val();
     
     if (action === 'REJECT' && !notes.trim()) {
-        alert('Harap isi catatan review jika menolak pengajuan.');
+        OptimaNotify.warning('Harap isi catatan review jika menolak pengajuan.');
         $('#reviewNotes').focus();
         return;
     }
 
-    if (!confirm(`Apakah Anda yakin ingin mengeksekusi aksi ini?\n\n${action === 'APPROVE' ? 'Perubahan akan otomatis tersimpan ke database.' : ''}`)) {
-        return;
-    }
+    const isApprove = action === 'APPROVE';
+    Swal.fire({
+        title: isApprove ? 'Approve Pengajuan?' : 'Reject Pengajuan?',
+        text: isApprove ? 'Perubahan akan otomatis tersimpan ke database.' : 'Pengajuan akan ditolak.',
+        icon: isApprove ? 'question' : 'warning',
+        showCancelButton: true,
+        confirmButtonColor: isApprove ? '#198754' : '#dc3545',
+        confirmButtonText: isApprove ? 'Ya, Approve!' : 'Ya, Reject!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
 
-    const endpoint = action === 'APPROVE' ? 'approveRequest' : 'rejectRequest';
-    
-    // Disable buttons
-    $('#actionFooter button').prop('disabled', true);
+        const endpoint = isApprove ? 'approveRequest' : 'rejectRequest';
+        $('#actionFooter button').prop('disabled', true);
 
-    $.ajax({
-        url: BASE_URL_AUDIT + 'service/unit_audit/' + endpoint + '/' + id,
-        type: 'POST',
-        data: { notes: notes },
-        success: function(res) {
-            $('#actionFooter button').prop('disabled', false);
-            if (res.success) {
-                $('#actionModal').modal('hide');
-                loadRequests();
-                
-                // Refresh top stats
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                alert('Gagal: ' + res.message);
+        $.ajax({
+            url: BASE_URL_AUDIT + 'service/unit_audit/' + endpoint + '/' + id,
+            type: 'POST',
+            data: { notes: notes },
+            success: function(res) {
+                $('#actionFooter button').prop('disabled', false);
+                if (res.success) {
+                    $('#actionModal').modal('hide');
+                    loadRequests();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    OptimaNotify.error('Gagal: ' + res.message);
+                }
+            },
+            error: function() {
+                $('#actionFooter button').prop('disabled', false);
+                OptimaNotify.error('Terjadi kesalahan jaringan');
             }
-        },
-        error: function() {
-            $('#actionFooter button').prop('disabled', false);
-            alert('Terjadi kesalahan jaringan');
-        }
+        });
     });
 }
 </script>

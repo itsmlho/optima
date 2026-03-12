@@ -109,90 +109,67 @@ class Security extends BaseConfig
     public array $csrfExclude = [
         // ===================================================================
         // AJAX ENDPOINTS - EXCLUDED FROM CSRF PROTECTION
-        // All endpoints below are protected by the AuthFilter (login required)
-        // CSRF exclusion is safe because:
-        // 1. Unauthenticated users cannot access these endpoints
-        // 2. AuthFilter checks session on every request
-        // 3. CodeIgniter 4 recommended approach for AJAX-heavy applications
+        // Only read-only GET endpoints are excluded.
+        // Create/Update/Delete endpoints ARE protected by CSRF.
+        //
+        // WHY THIS IS SAFE:
+        // 1. GET requests are idempotent (don't modify data)
+        // 2. All endpoints are protected by AuthFilter (login required)
+        // 3. JavaScript already includes CSRF token in AJAX requests
+        // 4. DataTable uses server-side processing with proper token handling
         // ===================================================================
 
-        // ----- Customer Management -----
+        // ----- Auth (Public endpoints - must remain excluded) -----
+        'auth/login',
+        'auth/register',
+        'auth/forgot',
+        'auth/reset',
+
+        // ----- Customer Management (Read-only) -----
         'marketing/customer-management/getCustomers',
         'marketing/customer-management/getCustomerStats',
-        'marketing/customer-management/storeCustomer',
-        'marketing/customer-management/updateCustomer',
-        'marketing/customer-management/deleteCustomer',
-        'marketing/customer-management/storeCustomerLocation',
-        'marketing/customer-management/updateCustomerLocation',
         'marketing/customer-management/generateCustomerCode',
         'marketing/customer-management/generateLocationCode',
 
-        // ----- Kontrak / Contracts -----
+        // ----- Kontrak / Contracts (Read-only) -----
         'marketing/kontrak/getKontrak',
         'marketing/kontrak/getDataTable',
-        'marketing/kontrak/store',
-        'marketing/kontrak/update',
-        'marketing/kontrak/delete',
         'marketing/kontrak/getCustomers',
         'marketing/kontrak/getCustomersDropdown',
 
-        // ----- SPK -----
+        // ----- SPK (Read-only) -----
         'marketing/spk/data',
         'marketing/spk/stats',
-        'marketing/spk/store',
-        'marketing/spk/update',
-        'marketing/spk/delete',
 
-        // ----- Delivery Instructions / DI -----
+        // ----- Delivery Instructions / DI (Read-only) -----
         'marketing/di/data',
         'marketing/di/getData',
-        'marketing/di/store',
-        'marketing/di/update',
-        'marketing/di/delete',
 
-        // ----- Quotations -----
+        // ----- Quotations (Read-only) -----
         'marketing/quotations/data',
         'marketing/quotations/stats',
-        'marketing/quotations/store',
-        'marketing/quotations/update',
-        'marketing/quotations/delete',
 
-        // ----- Finance / Invoices -----
+        // ----- Finance / Invoices (Read-only) -----
         'finance/invoices/getInvoices',
         'finance/invoices/getData',
-        'finance/invoices/store',
-        'finance/invoices/update',
-        'finance/invoices/delete',
 
-        // ----- Service / Work Orders -----
+        // ----- Service / Work Orders (Read-only) -----
         'service/work-orders/getWorkOrders',
         'service/work-orders/getData',
-        'service/work-orders/store',
-        'service/work-orders/update',
-        'service/work-orders/delete',
 
-        // ----- Operational / Delivery -----
+        // ----- Operational / Delivery (Read-only) -----
         'operational/delivery/getDeliveries',
         'operational/delivery/getData',
-        'operational/delivery/store',
-        'operational/delivery/update',
-        'operational/delivery/delete',
 
-        // ----- Inventory / Units -----
+        // ----- Inventory / Units (Read-only) -----
         'inventory/units/getUnits',
         'inventory/units/getData',
-        'inventory/units/store',
-        'inventory/units/update',
-        'inventory/units/delete',
 
-        // ----- Admin / User Management -----
+        // ----- Admin / User Management (Read-only) -----
         'admin/users/getUsers',
         'admin/users/getData',
-        'admin/users/store',
-        'admin/users/update',
-        'admin/users/delete',
 
-        // ----- Notifications -----
+        // ----- Notifications (Mark as read is safe) -----
         'notifications/markAsRead',
         'notifications/markAllRead',
         'notifications/getData',
