@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\UnitAuditRequestModel;
 use App\Models\InventoryUnitModel;
 use App\Models\AuditLocationModel;
+use App\Models\InventoryComponentHelper;
 
 class UnitAudit extends BaseController
 {
@@ -676,6 +677,99 @@ class UnitAudit extends BaseController
         }
     }
 
+    /**
+     * Per-unit verification view for admins (detail verifikasi 1 unit).
+     * URL: /service/unit-verification/unit/{auditId}/{index}
+     */
+    public function verifyUnit(int $auditId, int $index)
+    {
+        try {
+            $audit = $this->auditLocationModel->getWithDetails($auditId);
+            if (!$audit) {
+                return redirect()->to('/service/unit-verification')->with('error', 'Audit tidak ditemukan');
+            }
+
+            $items = $audit['items'] ?? [];
+            if (empty($items)) {
+                return redirect()->to('/service/unit-audit/inputResults/' . $auditId)
+                    ->with('error', 'Belum ada detail unit untuk audit ini');
+            }
+
+            $totalUnits = count($items);
+            if ($index < 1) $index = 1;
+            if ($index > $totalUnits) $index = $totalUnits;
+
+            $currentItem = $items[$index - 1];
+
+            // Load unit components (attachment, battery, charger) for this unit if available
+            $components = [
+                'battery'    => null,
+                'charger'    => null,
+                'attachment' => null,
+            ];
+            $unitDetail = null;
+            if (!empty($currentItem['unit_id'])) {
+                $helper = new InventoryComponentHelper();
+                $components = $helper->getUnitComponents((int) $currentItem['unit_id']);
+
+                // Fetch full unit details (tahun, departemen, tipe, kapasitas, mesin, mast, aksesoris, etc.)
+                $db = \Config\Database::connect();
+                $unitDetail = $db->query("
+                    SELECT
+                        iu.id_inventory_unit, iu.no_unit, iu.serial_number,
+                        iu.tahun_unit, iu.keterangan, iu.tinggi_mast, iu.sn_mast,
+                        iu.sn_mesin, iu.hour_meter, iu.aksesoris,
+                        tu.tipe AS tipe_unit_name,
+                        mu.merk_unit, mu.model_unit,
+                        k.kapasitas_unit AS kapasitas_name,
+                        tm.tipe_mast AS model_mast_name,
+                        me.model_mesin AS model_mesin_name, me.merk_mesin,
+                        d.nama_departemen AS departemen_name
+                    FROM inventory_unit iu
+                    LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
+                    LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+                    LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
+                    LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
+                    LEFT JOIN mesin me ON me.id = iu.model_mesin_id
+                    LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
+                    WHERE iu.id_inventory_unit = ?
+                ", [(int) $currentItem['unit_id']])->getRowArray();
+
+                // Parse accessories JSON
+                if ($unitDetail && !empty($unitDetail['aksesoris'])) {
+                    $raw = $unitDetail['aksesoris'];
+                    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+                    if (is_array($decoded)) {
+                        $unitDetail['aksesoris_list'] = array_map(function ($a) {
+                            if (is_string($a)) return strtoupper($a);
+                            return strtoupper($a['name'] ?? $a['value'] ?? (string)$a);
+                        }, $decoded);
+                    } else {
+                        $unitDetail['aksesoris_list'] = [];
+                    }
+                } elseif ($unitDetail) {
+                    $unitDetail['aksesoris_list'] = [];
+                }
+            }
+
+            $data = [
+                'title'       => 'Verifikasi Unit Audit',
+                'audit'       => $audit,
+                'item'        => $currentItem,
+                'index'       => $index,
+                'totalUnits'  => $totalUnits,
+                'hasPrev'     => $index > 1,
+                'hasNext'     => $index < $totalUnits,
+                'components'  => $components,
+                'unitDetail'  => $unitDetail,
+            ];
+
+            return view('service/unit_verification_unit', $data);
+        } catch (\Exception $e) {
+            return redirect()->to('/service/unit-verification')->with('error', $e->getMessage());
+        }
+    }
+
     // ═══════════════════════════════════════════════════════
     // MARKETING APPROVAL FOR LOCATION AUDIT
     // ═══════════════════════════════════════════════════════
@@ -744,5 +838,261 @@ class UnitAudit extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // UNIT VERIFICATION MASTER DATA (per-unit admin view)
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * GET  service/unit-audit/unit-master-data/{unitId}
+     * Returns current unit data + master options for all dropdowns,
+     * mirroring WorkOrderController::getUnitVerificationData().
+     */
+    public function getUnitVerificationMasterData(int $unitId)
+    {
+        try {
+            $db = \Config\Database::connect();
+
+            // Full unit data (inventory_unit has no attachment/battery/charger FK columns; components link via inventory_unit_id)
+            $unit = $db->query("
+                SELECT
+                    iu.id_inventory_unit, iu.no_unit, iu.serial_number,
+                    iu.tahun_unit, iu.keterangan, iu.tinggi_mast, iu.sn_mast,
+                    iu.sn_mesin, iu.hour_meter, iu.aksesoris,
+                    iu.tipe_unit_id, iu.model_unit_id, iu.kapasitas_unit_id,
+                    iu.model_mast_id, iu.model_mesin_id, iu.departemen_id,
+                    tu.tipe AS tipe_unit_name,
+                    mu.merk_unit, mu.model_unit,
+                    CONCAT(mu.merk_unit, ' - ', mu.model_unit) AS model_unit_name,
+                    k.kapasitas_unit AS kapasitas_name,
+                    tm.tipe_mast AS model_mast_name,
+                    me.model_mesin AS model_mesin_name, me.merk_mesin,
+                    CONCAT(me.merk_mesin, ' - ', me.model_mesin) AS model_mesin_full,
+                    d.nama_departemen AS departemen_name
+                FROM inventory_unit iu
+                LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
+                LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+                LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
+                LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
+                LEFT JOIN mesin me ON me.id = iu.model_mesin_id
+                LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
+                WHERE iu.id_inventory_unit = ?
+            ", [$unitId])->getRowArray();
+
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan']);
+            }
+
+            // Component data: link is component.inventory_unit_id = unitId (not columns on inventory_unit)
+            $helper = new InventoryComponentHelper();
+            $components = $helper->getUnitComponents($unitId);
+            $unit['attachment_inventory_attachment_id'] = $components['attachment']['id_inventory_attachment'] ?? null;
+            $unit['baterai_inventory_attachment_id']   = $components['battery']['id_inventory_attachment'] ?? null;
+            $unit['charger_inventory_attachment_id']   = $components['charger']['id_inventory_attachment'] ?? null;
+
+            // Parse aksesoris
+            $aksesorisRaw = $unit['aksesoris'] ?? null;
+            $aksesoris = [];
+            if ($aksesorisRaw) {
+                $decoded = is_string($aksesorisRaw) ? json_decode($aksesorisRaw, true) : $aksesorisRaw;
+                if (is_array($decoded)) {
+                    foreach ($decoded as $a) {
+                        $aksesoris[] = strtoupper(is_string($a) ? $a : ($a['name'] ?? $a['value'] ?? (string)$a));
+                    }
+                }
+            }
+            $unit['aksesoris_list'] = $aksesoris;
+
+            // Master options (mirrors WorkOrderController::getUnitVerificationData)
+            $departemenOptions = $db->table('departemen')
+                ->select('id_departemen as id, nama_departemen as name')
+                ->orderBy('nama_departemen')->get()->getResultArray();
+
+            $tipeUnitOptions = $db->table('tipe_unit')
+                ->select('id_tipe_unit as id, tipe as name, id_departemen')
+                ->orderBy('tipe')->get()->getResultArray();
+
+            $modelUnitOptions = $db->table('model_unit')
+                ->select('id_model_unit as id, CONCAT(merk_unit, " - ", model_unit) as name')
+                ->orderBy('merk_unit')->get()->getResultArray();
+
+            $kapasitasOptions = $db->table('kapasitas')
+                ->select('id_kapasitas as id, kapasitas_unit as name')
+                ->orderBy('kapasitas_unit')->get()->getResultArray();
+
+            $modelMastOptions = $db->table('tipe_mast')
+                ->select('id_mast as id, tipe_mast as name')
+                ->orderBy('tipe_mast')->get()->getResultArray();
+
+            $modelMesinOptions = $db->table('mesin')
+                ->select('id as id, CONCAT(merk_mesin, " - ", model_mesin) as name, departemen_id')
+                ->orderBy('merk_mesin')->get()->getResultArray();
+
+            // Available attachments (include current; $components already loaded above)
+            $attachmentOptions = $db->query("
+                SELECT ia.id, CONCAT(a.tipe, ' ', a.merk, ' ', a.model, ' [SN: ', COALESCE(ia.serial_number, '-'), ']') AS name,
+                    a.tipe, a.merk, a.model, ia.serial_number AS sn_attachment
+                FROM inventory_attachments ia
+                JOIN attachment a ON ia.attachment_type_id = a.id_attachment
+                WHERE ia.status IN ('AVAILABLE') OR ia.inventory_unit_id = ?
+                ORDER BY a.tipe, a.merk
+            ", [$unitId])->getResultArray();
+
+            $bateraiOptions = $db->query("
+                SELECT ib.id, CONCAT(b.merk_baterai, ' ', b.tipe_baterai, ' [SN: ', COALESCE(ib.serial_number, '-'), ']') AS name,
+                    b.merk_baterai, b.tipe_baterai, ib.serial_number AS sn_baterai
+                FROM inventory_batteries ib
+                JOIN baterai b ON ib.battery_type_id = b.id
+                WHERE ib.status IN ('AVAILABLE') OR ib.inventory_unit_id = ?
+                ORDER BY b.merk_baterai
+            ", [$unitId])->getResultArray();
+
+            $chargerOptions = $db->query("
+                SELECT ic.id, CONCAT(c.merk_charger, ' ', c.tipe_charger, ' [SN: ', COALESCE(ic.serial_number, '-'), ']') AS name,
+                    c.merk_charger, c.tipe_charger, ic.serial_number AS sn_charger
+                FROM inventory_chargers ic
+                JOIN charger c ON ic.charger_type_id = c.id_charger
+                WHERE ic.status IN ('AVAILABLE') OR ic.inventory_unit_id = ?
+                ORDER BY c.merk_charger
+            ", [$unitId])->getResultArray();
+
+            return $this->response->setJSON([
+                'success'    => true,
+                'unit'       => $unit,
+                'components' => $components,
+                'options'    => [
+                    'departemen'  => $departemenOptions,
+                    'tipe_unit'   => $tipeUnitOptions,
+                    'model_unit'  => $modelUnitOptions,
+                    'kapasitas'   => $kapasitasOptions,
+                    'model_mast'  => $modelMastOptions,
+                    'model_mesin' => $modelMesinOptions,
+                    'attachment'  => $attachmentOptions,
+                    'baterai'     => $bateraiOptions,
+                    'charger'     => $chargerOptions,
+                ],
+                'csrf_hash'  => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * POST  service/unit-audit/save-unit-verification
+     * Saves both audit result (submitAuditResults flow) AND updates
+     * the master inventory_unit data + components.
+     */
+    public function saveUnitVerificationFromAudit()
+    {
+        $auditId = (int) $this->request->getPost('audit_id');
+        $unitId  = (int) $this->request->getPost('unit_id');
+        $items   = $this->request->getPost('items') ?: [];
+        $summary = $this->request->getPost('summary') ?: [];
+        $master  = $this->request->getPost('master') ?: [];
+
+        if (!$auditId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Audit ID diperlukan']);
+        }
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        try {
+            // 1. Save audit results (existing flow)
+            if (!empty($items)) {
+                $this->auditLocationModel->submitAuditResults($auditId, $items, $summary);
+            }
+
+            // 2. Update inventory_unit master data (if unit_id provided)
+            // Component link is on component tables (inventory_unit_id), not on inventory_unit
+            if ($unitId && !empty($master)) {
+                $helper = new InventoryComponentHelper();
+                $oldComponents = $helper->getUnitComponents($unitId);
+                $oldAtt = $oldComponents['attachment']['id_inventory_attachment'] ?? null;
+                $oldBat = $oldComponents['battery']['id_inventory_attachment'] ?? null;
+                $oldChr = $oldComponents['charger']['id_inventory_attachment'] ?? null;
+
+                $unitData = array_filter([
+                    'serial_number'     => $master['serial_number'] ?? null,
+                    'tahun_unit'        => $master['tahun_unit'] ?? null,
+                    'departemen_id'     => $master['departemen_id'] ?: null,
+                    'tipe_unit_id'      => $master['tipe_unit_id'] ?: null,
+                    'model_unit_id'     => $master['model_unit_id'] ?: null,
+                    'kapasitas_unit_id' => $master['kapasitas_unit_id'] ?: null,
+                    'model_mesin_id'    => $master['model_mesin_id'] ?: null,
+                    'sn_mesin'          => $master['sn_mesin'] ?? null,
+                    'model_mast_id'     => $master['model_mast_id'] ?: null,
+                    'sn_mast'           => $master['sn_mast'] ?? null,
+                    'tinggi_mast'       => $master['tinggi_mast'] ?? null,
+                    'keterangan'        => $master['keterangan'] ?? null,
+                    'hour_meter'        => $master['hour_meter'] ?? null,
+                ], fn($v) => $v !== null && $v !== '');
+
+                $newAttachmentId = $master['attachment_id'] ?? null;
+                if ($newAttachmentId) {
+                    if ($oldAtt && $oldAtt != $newAttachmentId) {
+                        $this->releaseComponent($db, 'inventory_attachments', $oldAtt);
+                    }
+                    $this->assignComponent($db, 'inventory_attachments', $newAttachmentId, $unitId);
+                }
+
+                $newBateraiId = $master['baterai_id'] ?? null;
+                if ($newBateraiId) {
+                    if ($oldBat && $oldBat != $newBateraiId) {
+                        $this->releaseComponent($db, 'inventory_batteries', $oldBat);
+                    }
+                    $this->assignComponent($db, 'inventory_batteries', $newBateraiId, $unitId);
+                }
+
+                $newChargerId = $master['charger_id'] ?? null;
+                if ($newChargerId) {
+                    if ($oldChr && $oldChr != $newChargerId) {
+                        $this->releaseComponent($db, 'inventory_chargers', $oldChr);
+                    }
+                    $this->assignComponent($db, 'inventory_chargers', $newChargerId, $unitId);
+                }
+
+                if (!empty($unitData)) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update($unitData);
+                }
+            }
+
+            $db->transComplete();
+
+            if (!$db->transStatus()) {
+                throw new \Exception('Transaksi gagal');
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Verifikasi berhasil disimpan',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            $db->transRollback();
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    private function releaseComponent(\CodeIgniter\Database\BaseConnection $db, string $table, int $id): void
+    {
+        $db->table($table)->where('id', $id)->update([
+            'inventory_unit_id' => null,
+            'status'            => 'AVAILABLE',
+            'updated_at'        => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function assignComponent(\CodeIgniter\Database\BaseConnection $db, string $table, int $id, int $unitId): void
+    {
+        $db->table($table)->where('id', $id)->update([
+            'inventory_unit_id' => $unitId,
+            'status'            => 'IN_USE',
+            'updated_at'        => date('Y-m-d H:i:s'),
+        ]);
     }
 }

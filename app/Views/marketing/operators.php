@@ -1,6 +1,10 @@
 <?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Operators (Operator Management) - Marketing
+ * BADGE/CARD: Optima badge-soft-* if used; card-header bg-light, table mb-0.
+ */
 // Load global permission helper
 helper('global_permission');
 
@@ -95,9 +99,9 @@ $can_delete = $permissions['delete'];
             <?php endif; ?>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table id="operatorsTable" class="table table-striped table-hover">
+            <table id="operatorsTable" class="table table-striped table-hover mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Code</th>

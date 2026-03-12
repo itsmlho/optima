@@ -1,12 +1,15 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
-
 <?php
+/**
+ * Surat Jalan / Unit Movement - Warehouse
+ * BADGE/CARD: Optima stat-card bg-*-soft for stats; badge-soft-* in JS (movement/type).
+ */
 $stats = $stats ?? [];
 $location_types = $location_types ?? [];
 $component_types = $component_types ?? [];
 ?>
+<?= $this->section('content') ?>
 
 <!-- Page Header -->
 <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
@@ -33,67 +36,57 @@ $component_types = $component_types ?? [];
 <!-- Stats Cards -->
 <div class="row g-3 mb-4">
     <div class="col-md-2">
-        <div class="card bg-primary text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Total</div>
-                        <div class="fs-4 fw-bold"><?= $stats['total'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-clipboard-list fa-2x opacity-50"></i></div>
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">Total</div>
+                    <div class="stat-value"><?= $stats['total'] ?? 0 ?></div>
                 </div>
+                <div><i class="fas fa-clipboard-list fa-2x text-primary opacity-50"></i></div>
             </div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card bg-secondary text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Draft</div>
-                        <div class="fs-4 fw-bold"><?= $stats['draft'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-edit fa-2x opacity-50"></i></div>
+        <div class="stat-card bg-secondary-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">Draft</div>
+                    <div class="stat-value"><?= $stats['draft'] ?? 0 ?></div>
                 </div>
+                <div><i class="fas fa-edit fa-2x text-secondary opacity-50"></i></div>
             </div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card bg-warning text-dark">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-dark-50">Dalam Perjalanan</div>
-                        <div class="fs-4 fw-bold"><?= $stats['in_transit'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-truck fa-2x opacity-50"></i></div>
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">Dalam Perjalanan</div>
+                    <div class="stat-value"><?= $stats['in_transit'] ?? 0 ?></div>
                 </div>
+                <div><i class="fas fa-truck fa-2x text-warning opacity-50"></i></div>
             </div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card bg-success text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Selesai</div>
-                        <div class="fs-4 fw-bold"><?= $stats['arrived'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-check-circle fa-2x opacity-50"></i></div>
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">Selesai</div>
+                    <div class="stat-value"><?= $stats['arrived'] ?? 0 ?></div>
                 </div>
+                <div><i class="fas fa-check-circle fa-2x text-success opacity-50"></i></div>
             </div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card bg-danger text-white">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs text-white-50">Batal</div>
-                        <div class="fs-4 fw-bold"><?= $stats['cancelled'] ?? 0 ?></div>
-                    </div>
-                    <div><i class="fas fa-times-circle fa-2x opacity-50"></i></div>
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">Batal</div>
+                    <div class="stat-value"><?= $stats['cancelled'] ?? 0 ?></div>
                 </div>
+                <div><i class="fas fa-times-circle fa-2x text-danger opacity-50"></i></div>
             </div>
         </div>
     </div>
@@ -399,20 +392,20 @@ function renderMovementTable(data) {
 
 function getMovementStatusBadge(status) {
     const badges = {
-        'DRAFT': '<span class="badge bg-secondary">Draft</span>',
-        'IN_TRANSIT': '<span class="badge bg-warning">Dalam Perjalanan</span>',
-        'ARRIVED': '<span class="badge bg-success">Selesai</span>',
-        'CANCELLED': '<span class="badge bg-danger">Batal</span>'
+        'DRAFT': '<span class="badge badge-soft-gray">Draft</span>',
+        'IN_TRANSIT': '<span class="badge badge-soft-yellow">Dalam Perjalanan</span>',
+        'ARRIVED': '<span class="badge badge-soft-green">Selesai</span>',
+        'CANCELLED': '<span class="badge badge-soft-red">Batal</span>'
     };
     return badges[status] || status;
 }
 
 function getComponentBadge(type) {
     const badges = {
-        'FORKLIFT': '<span class="badge bg-primary">Forklift</span>',
-        'ATTACHMENT': '<span class="badge bg-info">Attachment</span>',
-        'CHARGER': '<span class="badge bg-warning">Charger</span>',
-        'BATTERY': '<span class="badge bg-success">Baterai</span>'
+        'FORKLIFT': '<span class="badge badge-soft-blue">Forklift</span>',
+        'ATTACHMENT': '<span class="badge badge-soft-cyan">Attachment</span>',
+        'CHARGER': '<span class="badge badge-soft-yellow">Charger</span>',
+        'BATTERY': '<span class="badge badge-soft-green">Baterai</span>'
     };
     return badges[type] || type;
 }

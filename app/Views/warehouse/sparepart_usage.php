@@ -1,7 +1,14 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Sparepart Usage & Returns - Warehouse
+ * BADGE/CARD: Optima badge-soft-* in JS; card-header bg-light; styles in optima-pro.css (SPAREPART USAGE PAGE).
+ */
+?>
 <?= $this->section('content') ?>
 
+<div class="sparepart-usage-page">
 <!-- Page Header -->
 <div class="mb-3">
     <h4 class="fw-bold mb-1">
@@ -10,55 +17,6 @@
     </h4>
     <p class="text-muted mb-0">Track sparepart usage from warehouse to service and manage returns</p>
 </div>
-
-<style>
-    /* Custom styling for sparepart usage table */
-    #usageTable {
-        width: 100% !important;
-    }
-    
-    #usageTable th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        font-size: 0.85rem;
-        border-bottom: 2px solid #dee2e6;
-        white-space: nowrap;
-        vertical-align: middle;
-    }
-    
-    #usageTable td {
-        vertical-align: middle;
-        font-size: 0.875rem;
-    }
-    
-    #usageTable tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    
-    /* Badge styling */
-    .badge {
-        font-weight: 500;
-        padding: 0.35em 0.65em;
-    }
-    
-    /* Modal simple styling */
-    .modal-header {
-        border-bottom: 1px solid #dee2e6;
-    }
-    
-    .bg-info-soft { background-color: #d1ecf1; }
-    .bg-primary-soft { background-color: #cfe2ff; }
-    .bg-warning-soft { background-color: #fff3cd; }
-    .bg-success-soft { background-color: #d1e7dd; }
-    
-    /* Better table responsiveness */
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-</style>
-
-
 
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">
@@ -97,10 +55,10 @@
 
         <!-- NEW: Non-Warehouse Usage -->
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card" style="background-color: #fff3cd;">
+            <div class="stat-card bg-warning-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
-                        <i class="fas fa-recycle stat-icon" style="color: #856404;"></i>
+                        <i class="fas fa-recycle stat-icon text-warning"></i>
                     </div>
                     <div>
                         <div class="stat-value" id="stat-usage-non-warehouse">
@@ -131,7 +89,7 @@
 
     <!-- Main Content Card with Tabs -->
     <div class="card table-card shadow mb-4">
-        <div class="card-header">
+        <div class="card-header bg-light">
             <div class="row align-items-center mb-3">
                 <div class="col">
                     <h5 class="card-title fw-bold m-0">
@@ -170,7 +128,7 @@
                     </div>
                     <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm" id="usageTable" style="font-size: 0.875rem;">
+                        <table class="table table-hover table-sm mb-0" id="usageTable">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 30px;"></th>
@@ -218,7 +176,7 @@
 
                     <!-- Returns Table -->
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover table-sm" id="returnsTable" style="font-size: 0.875rem;">
+                        <table class="table table-striped table-hover table-sm mb-0" id="returnsTable">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 140px;">Work Order</th>
@@ -266,11 +224,11 @@
 <div class="modal fade modal-wide" id="returnDetailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title">
                     <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.returns') ?> <?= lang('Warehouse.sparepart') ?>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="returnDetailBody">
                 <div class="text-center py-5">
@@ -282,6 +240,7 @@
         </div>
     </div>
 </div>
+</div><!-- .sparepart-usage-page -->
 
 <?= $this->endSection() ?>
 
@@ -379,21 +338,21 @@ $(document).ready(function() {
         spareparts.forEach(function(item) {
             // Type badge
             var typeBadge = item.item_type === 'tool' 
-                ? '<span class="badge bg-secondary">🔧 Tool</span>'
-                : '<span class="badge bg-primary">⚙ Part</span>';
+                ? '<span class="badge badge-soft-gray">🔧 Tool</span>'
+                : '<span class="badge badge-soft-blue">⚙ Part</span>';
             
             // Source badge  
             var sourceBadge = parseInt(item.is_from_warehouse) === 0
-                ? '<span class="badge bg-warning text-dark">♻ Bekas</span>'
-                : '<span class="badge bg-success">🏪 WH</span>';
+                ? '<span class="badge badge-soft-yellow">♻ Bekas</span>'
+                : '<span class="badge badge-soft-green">🏪 WH</span>';
             
             html += '<tr>';
             html += '<td>' + typeBadge + '</td>';
             html += '<td>' + sourceBadge + '</td>';
             html += '<td><strong>' + item.sparepart_name + '</strong><br><small class="text-muted">' + item.sparepart_code + '</small></td>';
-            html += '<td class="text-center"><span class="badge bg-info">' + item.quantity_brought + '</span></td>';
-            html += '<td class="text-center"><span class="badge bg-success">' + item.quantity_used + '</span></td>';
-            html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge bg-warning text-dark">' + item.quantity_return + '</span>' : '-') + '</td>';
+            html += '<td class="text-center"><span class="badge badge-soft-cyan">' + item.quantity_brought + '</span></td>';
+            html += '<td class="text-center"><span class="badge badge-soft-green">' + item.quantity_used + '</span></td>';
+            html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge badge-soft-yellow">' + item.quantity_return + '</span>' : '-') + '</td>';
             html += '<td><small>' + (item.usage_notes || '-') + '</small></td>';
             html += '</tr>';
         });
@@ -592,17 +551,17 @@ $(document).ready(function() {
                     // Type badge
                     let typeBadge = '';
                     if (row.item_type === 'tool') {
-                        typeBadge = '<span class="badge bg-secondary me-1">🔧 Tool</span>';
+                        typeBadge = '<span class="badge badge-soft-gray me-1">🔧 Tool</span>';
                     } else {
-                        typeBadge = '<span class="badge bg-primary me-1">⚙ Part</span>';
+                        typeBadge = '<span class="badge badge-soft-blue me-1">⚙ Part</span>';
                     }
                     
                     // Source badge
                     let sourceBadge = '';
                     if (row.is_from_warehouse !== undefined && parseInt(row.is_from_warehouse) === 0) {
-                        sourceBadge = '<span class="badge bg-warning text-dark">♻ Bekas</span>';
+                        sourceBadge = '<span class="badge badge-soft-yellow">♻ Bekas</span>';
                     } else {
-                        sourceBadge = '<span class="badge bg-success">🏪 WH</span>';
+                        sourceBadge = '<span class="badge badge-soft-green">🏪 WH</span>';
                     }
                     
                     return `${typeBadge} ${sourceBadge}<br><strong>${data}</strong><br><small class="text-muted">${row.sparepart_code}</small>`;
@@ -627,16 +586,16 @@ $(document).ready(function() {
                 name: 'quantity_brought',
                 className: 'text-center',
                 render: function(data, type, row) {
-                    let html = `<small class="text-muted d-block">Brought: <span class="badge bg-info">${data}</span></small>`;
-                    html += `<small class="text-muted d-block">Used: <span class="badge bg-success">${row.quantity_used}</span></small>`;
+                    let html = `<small class="text-muted d-block">Brought: <span class="badge badge-soft-cyan">${data}</span></small>`;
+                    html += `<small class="text-muted d-block">Used: <span class="badge badge-soft-green">${row.quantity_used}</span></small>`;
                     if (row.quantity_return > 0) {
-                        html += `<small class="text-muted d-block">Return: <span class="badge bg-warning text-dark">${row.quantity_return}</span></small>`;
+                        html += `<small class="text-muted d-block">Return: <span class="badge badge-soft-yellow">${row.quantity_return}</span></small>`;
                     }
                     // Add status badge
                     if (row.status === 'PENDING') {
-                        html += `<small class="d-block mt-1"><span class="badge bg-warning text-dark">Pending</span></small>`;
+                        html += `<small class="d-block mt-1"><span class="badge badge-soft-yellow">Pending</span></small>`;
                     } else if (row.status === 'CONFIRMED') {
-                        html += `<small class="d-block mt-1"><span class="badge bg-success">Confirmed</span></small>`;
+                        html += `<small class="d-block mt-1"><span class="badge badge-soft-green">Confirmed</span></small>`;
                     }
                     return html;
                 }
@@ -690,16 +649,16 @@ $(document).ready(function() {
                     // Type and Source badges
                     let typeBadge = '';
                     if (data.item_type === 'tool') {
-                        typeBadge = '<span class="badge bg-secondary">🔧 Tool</span>';
+                        typeBadge = '<span class="badge badge-soft-gray">🔧 Tool</span>';
                     } else {
-                        typeBadge = '<span class="badge bg-primary">⚙ Sparepart</span>';
+                        typeBadge = '<span class="badge badge-soft-blue">⚙ Sparepart</span>';
                     }
                     
                     let sourceBadge = '';
                     if (data.is_from_warehouse !== undefined && parseInt(data.is_from_warehouse) === 0) {
-                        sourceBadge = '<span class="badge bg-warning text-dark ms-2">♻ Non-Warehouse</span>';
+                        sourceBadge = '<span class="badge badge-soft-yellow ms-2">♻ Non-Warehouse</span>';
                     } else {
-                        sourceBadge = '<span class="badge bg-success ms-2">🏪 Warehouse</span>';
+                        sourceBadge = '<span class="badge badge-soft-green ms-2">🏪 Warehouse</span>';
                     }
                     
                     let html = `
@@ -829,23 +788,23 @@ $(document).ready(function() {
                     // Type and Source badges
                     let typeBadge = '';
                     if (data.item_type === 'tool') {
-                        typeBadge = '<span class="badge bg-secondary">🔧 Tool</span>';
+                        typeBadge = '<span class="badge badge-soft-gray">🔧 Tool</span>';
                     } else {
-                        typeBadge = '<span class="badge bg-primary">⚙ Sparepart</span>';
+                        typeBadge = '<span class="badge badge-soft-blue">⚙ Sparepart</span>';
                     }
                     
                     let sourceBadge = '';
                     if (data.is_from_warehouse !== undefined && parseInt(data.is_from_warehouse) === 0) {
-                        sourceBadge = '<span class="badge bg-warning text-dark ms-2">♻ Non-Warehouse</span>';
+                        sourceBadge = '<span class="badge badge-soft-yellow ms-2">♻ Non-Warehouse</span>';
                     } else {
-                        sourceBadge = '<span class="badge bg-success ms-2">🏪 Warehouse</span>';
+                        sourceBadge = '<span class="badge badge-soft-green ms-2">🏪 Warehouse</span>';
                     }
                     
                     let html = `
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <strong>Work Order:</strong><br>
-                                <span class="badge bg-primary">${data.work_order_number || '-'}</span>
+                                <span class="badge badge-soft-blue">${data.work_order_number || '-'}</span>
                             </div>
                             <div class="col-md-6">
                                 <strong>WO Date:</strong><br>
@@ -873,15 +832,15 @@ $(document).ready(function() {
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <strong>Quantity Brought:</strong><br>
-                                <span class="badge bg-info">${data.quantity_brought} ${data.satuan}</span>
+                                <span class="badge badge-soft-cyan">${data.quantity_brought} ${data.satuan}</span>
                             </div>
                             <div class="col-md-4">
                                 <strong>Quantity Used:</strong><br>
-                                <span class="badge bg-success">${data.quantity_used} ${data.satuan}</span>
+                                <span class="badge badge-soft-green">${data.quantity_used} ${data.satuan}</span>
                             </div>
                             <div class="col-md-4">
                                 <strong>Quantity Return:</strong><br>
-                                <span class="badge bg-warning">${data.quantity_return} ${data.satuan}</span>
+                                <span class="badge badge-soft-yellow">${data.quantity_return} ${data.satuan}</span>
                             </div>
                         </div>
                         <hr>
@@ -1010,20 +969,20 @@ $(document).ready(function() {
                     
                     spareparts.forEach(function(item) {
                         var typeBadge = item.item_type === 'tool' 
-                            ? '<span class="badge bg-secondary">🔧 Tool</span>'
-                            : '<span class="badge bg-primary">⚙ Part</span>';
+                            ? '<span class="badge badge-soft-gray">🔧 Tool</span>'
+                            : '<span class="badge badge-soft-blue">⚙ Part</span>';
                         
                         var sourceBadge = parseInt(item.is_from_warehouse) === 0
-                            ? '<span class="badge bg-warning text-dark">♻ Bekas</span>'
-                            : '<span class="badge bg-success">🏪 WH</span>';
+                            ? '<span class="badge badge-soft-yellow">♻ Bekas</span>'
+                            : '<span class="badge badge-soft-green">🏪 WH</span>';
                         
                         html += '<tr>';
                         html += '<td>' + typeBadge + '</td>';
                         html += '<td>' + sourceBadge + '</td>';
                         html += '<td><strong>' + item.sparepart_name + '</strong><br><small class="text-muted">' + item.sparepart_code + '</small></td>';
-                        html += '<td class="text-center"><span class="badge bg-info">' + item.quantity_brought + '</span></td>';
-                        html += '<td class="text-center"><span class="badge bg-success">' + item.quantity_used + '</span></td>';
-                        html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge bg-warning text-dark">' + item.quantity_return + '</span>' : '-') + '</td>';
+                        html += '<td class="text-center"><span class="badge badge-soft-cyan">' + item.quantity_brought + '</span></td>';
+                        html += '<td class="text-center"><span class="badge badge-soft-green">' + item.quantity_used + '</span></td>';
+                        html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge badge-soft-yellow">' + item.quantity_return + '</span>' : '-') + '</td>';
                         html += '<td><small>' + (item.usage_notes || '-') + '</small></td>';
                         html += '</tr>';
                     });

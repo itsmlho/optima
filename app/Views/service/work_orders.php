@@ -206,7 +206,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="progressWorkOrdersTable" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="progressWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
                                 <th width="5%"><?= lang('Common.no') ?></th>
@@ -285,7 +285,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="closedWorkOrdersTable" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="closedWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
                                 <th width="5%"><?= lang('Common.no') ?></th>

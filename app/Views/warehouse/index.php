@@ -1,5 +1,11 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Warehouse Dashboard (Index) - Warehouse
+ * CARD: card-header bg-light, table mb-0, stat-card already used.
+ */
+?>
 <?= $this->section('content') ?>
 
 <div class="container-fluid">
@@ -78,7 +84,7 @@
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header bg-light">
                             <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Quick Access</h5>
                         </div>
                         <div class="card-body">
@@ -112,12 +118,12 @@
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header bg-light">
                             <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Transactions</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-striped table-hover mb-0">
                                     <thead>
                                         <tr>
                                             <th>Date</th>

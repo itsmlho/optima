@@ -10,42 +10,7 @@ helper('ui');
 ?>
 
 <?= $this->section('content') ?>
-<style>
-/* Soft active state untuk lokasi terpilih — teks tetap terbaca, tombol konsisten */
-.unit-audit .location-item-header { cursor: pointer; transition: background-color .15s ease; }
-.unit-audit .location-item-header:hover { background-color: rgba(13, 110, 253, 0.06); }
-.unit-audit .location-item-selected .location-item-header {
-    background-color: rgba(13, 110, 253, 0.12) !important;
-    border-left: 3px solid #0d6efd;
-    color: inherit;
-}
-.unit-audit .location-item-selected .location-item-header .text-muted { color: #5c636a !important; }
-.unit-audit .location-item-selected .location-item-header .badge.bg-secondary { background-color: #6c757d !important; color: #fff; }
-/* Tombol action tetap outline agar terbaca di background soft */
-.unit-audit .location-item-header .btn { flex-shrink: 0; }
-
-/* Select2 z-index: seluruh widget di belakang modal (backdrop 1050, modal 1055) */
-.select2-container { z-index: 1 !important; }
-.select2-container--open { z-index: 1040 !important; }
-.select2-dropdown { z-index: 1040 !important; }
-
-/* Modal Verifikasi: teks dan tabel terbaca */
-#verifikasiModal .modal-body label,
-#verifikasiModal .modal-body h6 { color: #212529 !important; }
-#verifikasiModal #vfUnitTable th { color: #212529; }
-#verifikasiModal .cursor-pointer { cursor: pointer; }
-
-/* Hasil per unit: badge tidak wrap dan highlighting sebaris */
-#verifikasiModal .vf-hasil-cell .badge { white-space: nowrap; }
-#verifikasiModal tr.vf-row-sesuai { background-color: #e9f7ef !important; }
-#verifikasiModal tr.vf-row-tidak { background-color: #fde2e1 !important; }
-
-/* Modal Alasan: font sedikit lebih besar agar nyaman dibaca */
-#vfAlasanModal .modal-body { font-size: 0.95rem; }
-#vfAlasanModal .form-label.small,
-#vfAlasanModal .form-check-label.small,
-#vfAlasanModal p.small { font-size: 0.95rem !important; }
-</style>
+<!-- Unit Audit styles: see optima-pro.css UNIT AUDIT PAGE section -->
 
 <!-- Page Header -->
 <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
@@ -67,34 +32,34 @@ helper('ui');
 <!-- Stats -->
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body py-3 d-flex justify-content-between align-items-center">
-                <div><div class="text-xs text-white-50">Total Request</div><div class="fs-4 fw-bold"><?= $stats['total'] ?? 0 ?></div></div>
-                <i class="fas fa-clipboard-list fa-2x opacity-50"></i>
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small">Total Request</div><div class="fs-4 fw-bold"><?= $stats['total'] ?? 0 ?></div></div>
+                <i class="fas fa-clipboard-list fa-2x text-primary opacity-50"></i>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-warning text-dark">
-            <div class="card-body py-3 d-flex justify-content-between align-items-center">
-                <div><div class="text-xs">Menunggu Approval</div><div class="fs-4 fw-bold"><?= $stats['submitted'] ?? 0 ?></div></div>
-                <i class="fas fa-clock fa-2x opacity-50"></i>
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small">Menunggu Approval</div><div class="fs-4 fw-bold"><?= $stats['submitted'] ?? 0 ?></div></div>
+                <i class="fas fa-clock fa-2x text-warning opacity-50"></i>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body py-3 d-flex justify-content-between align-items-center">
-                <div><div class="text-xs text-white-50">Approved</div><div class="fs-4 fw-bold"><?= $stats['approved'] ?? 0 ?></div></div>
-                <i class="fas fa-check-circle fa-2x opacity-50"></i>
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small">Approved</div><div class="fs-4 fw-bold"><?= $stats['approved'] ?? 0 ?></div></div>
+                <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body py-3 d-flex justify-content-between align-items-center">
-                <div><div class="text-xs text-white-50">Rejected</div><div class="fs-4 fw-bold"><?= $stats['rejected'] ?? 0 ?></div></div>
-                <i class="fas fa-times-circle fa-2x opacity-50"></i>
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small">Rejected</div><div class="fs-4 fw-bold"><?= $stats['rejected'] ?? 0 ?></div></div>
+                <i class="fas fa-times-circle fa-2x text-danger opacity-50"></i>
             </div>
         </div>
     </div>
@@ -194,10 +159,10 @@ helper('ui');
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Mekanik yang Audit <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="vfMechanicName" placeholder="Nama mekanik yang melakukan audit di lapangan">
+                        </div>
                     </div>
-                </div>
 
-                <div class="mb-3">
+                    <div class="mb-3">
                     <h6 class="text-dark fw-semibold mb-2"><i class="fas fa-list-check me-2 text-primary"></i>Hasil per Unit — pilih Sesuai atau Tidak Sesuai untuk tiap unit</h6>
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered mb-0" id="vfUnitTable">
@@ -216,7 +181,7 @@ helper('ui');
                             </tbody>
                         </table>
                     </div>
-                </div>
+                    </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-dark">Ringkasan Hasil Audit (laporan)</label>
@@ -234,13 +199,13 @@ helper('ui');
             </div>
         </div>
     </div>
-</div>
+                    </div>
 
 <!-- ═══ MODAL: Alasan Ketidaksesuaian (per unit saat klik Tidak) ═══════════════════════════════ -->
 <div class="modal fade" id="vfAlasanModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-light">
                 <h6 class="modal-title fw-semibold"><i class="fas fa-exclamation-triangle me-2"></i>Alasan Ketidaksesuaian <span class="text-danger">*</span></h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
@@ -276,14 +241,14 @@ helper('ui');
                 <div id="vfAlasanUnitWrapper" class="mb-2 d-none">
                     <label class="form-label fw-semibold small mb-1">Unit yang seharusnya</label>
                     <select class="form-select form-select-sm" id="vfAlasanUnitSelect">
-                        <option value="">-- Pilih Unit --</option>
-                    </select>
+                            <option value="">-- Pilih Unit --</option>
+                        </select>
                     <div class="form-text small">Misalnya unit lama breakdown lalu diganti unit lain.</div>
-                </div>
+                    </div>
 
                 <div id="vfAlasanInfoWrapper" class="mb-2 d-none">
                     <p class="small text-muted mb-0" id="vfAlasanInfoText"></p>
-                </div>
+                    </div>
 
                 <label class="form-label fw-semibold small">Keterangan (opsional)</label>
                 <textarea class="form-control form-control-sm" id="vfAlasanKeterangan" rows="2" placeholder="Temuan untuk unit ini..."></textarea>
@@ -293,16 +258,16 @@ helper('ui');
                 <button type="button" class="btn btn-warning btn-sm" id="vfAlasanSimpan"><i class="fas fa-check me-1"></i>Simpan</button>
             </div>
         </div>
-    </div>
-</div>
+                        </div>
+                    </div>
 
 <!-- ═══ MODAL: Tambah Unit (Ajuan ke Marketing) ═══════════════ -->
 <div class="modal fade" id="tambahUnitModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Tambah Unit ke Lokasi</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title fw-semibold"><i class="fas fa-plus-circle me-2 text-success"></i>Tambah Unit ke Lokasi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="tuCustomerId">
@@ -312,27 +277,22 @@ helper('ui');
                 <div class="alert alert-light border mb-3">
                     <strong>Lokasi:</strong> <span id="tuLocationName">—</span>
                     <br><span class="small text-muted" id="tuLocationKontrak"></span>
-                </div>
+                    </div>
 
-                <div class="mb-3">
+                    <div class="mb-3">
                     <label class="form-label fw-semibold">Pilih Unit yang Akan Ditambahkan <span class="text-danger">*</span></label>
                     <select class="form-select" id="tuUnitSelect">
                         <option value="">-- Pilih Unit --</option>
                     </select>
                     <div class="form-text">Unit yang tersedia (belum dalam kontrak aktif)</div>
-                </div>
+                    </div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Harga Sewa (Rp/bulan)</label>
-                        <input type="number" class="form-control" id="tuHarga" placeholder="Opsional">
+                <div class="mt-2 d-flex align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="tuIsSpare">
+                        <label class="form-check-label" for="tuIsSpare">Unit ini adalah <strong>Spare</strong></label>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end pb-1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="tuIsSpare">
-                            <label class="form-check-label" for="tuIsSpare">Unit ini adalah <strong>Spare</strong></label>
-                        </div>
-                    </div>
+                    <span class="ms-2 small text-muted">Harga sewa akan diisi oleh tim Marketing.</span>
                 </div>
 
                 <div class="mt-3">
@@ -354,7 +314,7 @@ helper('ui');
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-info text-dark">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Audit Request</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -385,13 +345,13 @@ $(document).ready(function() {
 function loadCustomerList() {
     $.get(BASE + 'service/unit_audit/getCustomersForUnitAudit', function(res) {
         if (!res.success) return;
-        let html = '<option value="">-- Pilih Customer --</option>';
-        res.data.forEach(c => {
+                let html = '<option value="">-- Pilih Customer --</option>';
+                res.data.forEach(c => {
             const totalLoc = parseInt(c.total_locations, 10) || 0;
             const belum = parseInt(c.locations_belum_audit, 10) || 0;
             const badge = c.audit_badge || 'belum_audit';
             const badgeLabel = badge === 'sudah_audit' ? 'Sudah audit' : (badge === 'sebagian' ? 'Sebagian' : 'Belum audit');
-            const badgeClass = badge === 'sudah_audit' ? 'bg-success' : (badge === 'sebagian' ? 'bg-warning text-dark' : 'bg-secondary');
+            const badgeClass = badge === 'sudah_audit' ? 'badge-soft-green' : (badge === 'sebagian' ? 'badge-soft-yellow' : 'badge-soft-gray');
             html += `<option value="${c.id}" data-name="${escAttr(c.customer_name)}" data-code="${escAttr(c.customer_code||'')}" data-total-loc="${totalLoc}" data-belum="${belum}" data-badge="${badge}" data-badge-label="${escAttr(badgeLabel)}" data-badge-class="${badgeClass}">${esc(c.customer_name)} (${esc(c.customer_code||'')}) — ${totalLoc} lokasi${belum > 0 ? ', ' + belum + ' belum audit' : ''} — ${badgeLabel}</option>`;
         });
         const $sel = $('#customerSelect');
@@ -516,18 +476,18 @@ function renderLocationList(locations) {
                         <strong>${esc(loc.location_name)}</strong>
                         <span class="ms-2 text-muted small">${loc.total_units || 0} unit</span>
                         <br><span class="small text-muted">Kontrak: ${esc(loc.no_kontrak_masked || '')} | PO: ${esc(loc.no_po_masked || '')}</span>
-                        <br><span class="small">Periode: ${esc(loc.periode_text || '')} — <span class="badge bg-secondary">${esc(loc.periode_badge_text || loc.periode_status_text || '—')}</span></span>
+                        <br><span class="small">Periode: ${esc(loc.periode_text || '')} — <span class="badge badge-soft-gray">${esc(loc.periode_badge_text || loc.periode_status_text || '—')}</span></span>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     ${statusBadge}
                     <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); printLocationForm(${loc.id})" title="Print Form Mekanik">
                         <i class="fas fa-print me-1"></i>Print
-                    </button>
+                </button>
                     ${canVerify ? `
                     <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openVerifikasi(${loc.id})" title="Input Hasil Verifikasi">
                         <i class="fas fa-clipboard-check me-1"></i>Verifikasi
-                    </button>
+                </button>
                     ` : `
                     <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openVerifikasi(${loc.id})" title="Buat verifikasi baru">
                         <i class="fas fa-redo me-1"></i>Audit Ulang
@@ -620,10 +580,10 @@ function loadUnitsIntoLocation(locationId) {
                     <td><strong>${esc(u.no_unit || '—')}</strong></td>
                     <td class="small text-muted">${esc(u.serial_number || '—')}</td>
                     <td>${esc((u.merk_unit || '') + ' ' + (u.model_unit || ''))}</td>
-                    <td><span class="badge bg-${u.ku_status === 'ACTIVE' ? 'success' : 'warning'}">${u.ku_status || '—'}</span></td>
+                    <td><span class="badge ${u.ku_status === 'ACTIVE' ? 'badge-soft-green' : 'badge-soft-yellow'}">${u.ku_status || '—'}</span></td>
                     <td>${spare}</td>
-                </tr>`;
-            });
+        </tr>`;
+    });
             $tbody.html(html);
         }
         $tableWrap.show();
@@ -1033,19 +993,109 @@ function openTambahUnit(locationId) {
     $('#tuLocationId').val(locationId);
     $('#tuLocationName').text(locName || 'Lokasi #' + locationId);
     $('#tuLocationKontrak').text(locKontrak);
-    $('#tuUnitSelect').html('<option value="">-- Memuat unit... --</option>');
-    $('#tuHarga').val('');
+    const $tuUnit = $('#tuUnitSelect');
+    if ($tuUnit.hasClass('select2-hidden-accessible')) {
+        $tuUnit.select2('destroy');
+    }
+    $tuUnit.html('<option value="">-- Memuat unit... --</option>');
     $('#tuIsSpare').prop('checked', false);
     $('#tuNotes').val('');
 
-    // Load available units
-    $.get(BASE + 'service/unit_audit/getAvailableUnits', function(res) {
+    // Load available units (reuse units-dropdown like Alasan Ketidaksesuaian)
+    $.get(BASE + 'service/work-orders/units-dropdown', function(res) {
         if (res.success) {
-            let html = '<option value="">-- Pilih Unit --</option>';
-            res.data.forEach(u => {
-                html += `<option value="${u.id_inventory_unit}">${esc(u.no_unit || u.no_unit_na || 'UNIT-'+u.id_inventory_unit)} — ${esc(u.merk_unit||'')} ${esc(u.model_unit||'')} (${esc(u.pelanggan||'-')})</option>`;
+            const $sel = $tuUnit;
+            $sel.empty().append('<option value="">-- Pilih Unit --</option>');
+            (res.data || []).forEach(function(unit) {
+                // Skip units with status JUAL
+                const rawStatus = unit.status || unit.status_unit || unit.status_text || '';
+                if (String(rawStatus).toUpperCase() === 'JUAL') {
+                    return;
+                }
+                const id = unit.id;
+                const noUnit = unit.no_unit || unit.nomor_unit || ('UNIT-' + id);
+                const jenis = unit.jenis || unit.tipe || '';
+                const kapasitas = unit.kapasitas || '';
+                const status = rawStatus || '';
+                const pelanggan = unit.pelanggan || unit.customer_name || 'Belum Ada Kontrak';
+                const lokasi = unit.lokasi || unit.location_name || 'N/A';
+                const sn = unit.serial_number || unit.sn || '';
+                const opt = $('<option>')
+                    .val(id)
+                    .text(noUnit)
+                    .attr('data-no', noUnit)
+                    .attr('data-merk', jenis)
+                    .attr('data-model', '')
+                    .attr('data-sn', sn)
+                    .attr('data-kapasitas', kapasitas)
+                    .attr('data-status', status)
+                    .attr('data-pelanggan', pelanggan)
+                    .attr('data-lokasi', lokasi);
+                $sel.append(opt);
             });
-            $('#tuUnitSelect').html(html);
+
+            $sel.select2({
+                dropdownParent: $('#tambahUnitModal'),
+                width: '100%',
+                placeholder: '-- Pilih Unit --',
+                templateResult: function (opt) {
+                    if (!opt.id) return opt.text;
+                    const $o = $(opt.element);
+                    const no = $o.data('no') || opt.text;
+                    const merk = $o.data('merk') || '';
+                    const model = $o.data('model') || '';
+                    const sn = $o.data('sn') || '';
+                    const kapasitas = $o.data('kapasitas') || '';
+                    const status = $o.data('status') || '';
+                    const pelanggan = $o.data('pelanggan') || '';
+                    const lokasi = $o.data('lokasi') || '';
+                    const $container = $('<div class="d-flex flex-column"></div>');
+
+                    // Baris utama: hanya no_unit
+                    const line1 = $('<div class="fw-semibold"></div>').text(no);
+
+                    // Baris kedua: merk / model / SN
+                    const line2 = $('<div class="small"></div>');
+                    let merkModel = (merk || model) ? (merk + (model ? ' ' + model : '')) : '';
+                    if (kapasitas) {
+                        merkModel = (merkModel ? merkModel + ' • ' : '') + kapasitas;
+                    }
+                    const snText = sn ? 'SN: ' + sn : '';
+                    const mmSn = [merkModel, snText].filter(Boolean).join(' • ');
+                    if (mmSn) {
+                        line2.text(mmSn);
+                    }
+
+                    // Baris ketiga: status (jika ada) + lokasi/pelanggan
+                    const line3 = $('<div class="small text-muted"></div>');
+                    if (status) {
+                        const statusBadge = $('<span class="badge badge-soft-green me-1"></span>').text(status);
+                        line3.append(statusBadge);
+                    }
+                    const locText = lokasi || '';
+                    const pelText = pelanggan || '';
+                    if (locText || pelText) {
+                        const locSpan = $('<span></span>').text(
+                            (locText ? '📍 ' + locText : '') +
+                            (locText && pelText ? ' • ' : '') +
+                            (!locText && pelText ? pelText : (locText && pelText ? pelText : ''))
+                        );
+                        line3.append(locSpan);
+                    }
+
+                    $container.append(line1);
+                    if (line2.text().trim() !== '') $container.append(line2);
+                    if (line3.text().trim() !== '') $container.append(line3);
+                    return $container;
+                },
+                templateSelection: function (opt) {
+                    if (!opt.id) return opt.text;
+                    const $o = $(opt.element);
+                    const no = $o.data('no') || opt.text;
+                    // Saat sudah dipilih, cukup tampilkan no_unit saja
+                    return no;
+                }
+            });
         }
     });
 
@@ -1071,7 +1121,7 @@ function submitTambahUnit() {
     formData.append('request_type', 'ADD_UNIT');
     formData.append('customer_location_id', $('#tuLocationId').val());
     formData.append('proposed_unit_id', unitId);
-    formData.append('proposed_harga_sewa', $('#tuHarga').val() || '');
+    // Harga sewa tidak diisi di sini; akan diatur oleh Marketing
     formData.append('proposed_is_spare', $('#tuIsSpare').is(':checked') ? '1' : '0');
     formData.append('notes', notes);
 

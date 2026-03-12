@@ -1,8 +1,15 @@
 <?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Contract Edit (Kontrak Edit) - Marketing
+ * BADGE/CARD: Optima badge-soft-* for status; card-header bg-light.
+ */
 helper('simple_rbac');
 $can_create = can_create('marketing');
+$status = $contract['status'] ?? '';
+$statusMap = ['ACTIVE' => 'badge-soft-green', 'EXPIRED' => 'badge-soft-red', 'PENDING' => 'badge-soft-yellow', 'CANCELLED' => 'badge-soft-gray'];
+$statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 ?>
 
 <?= $this->section('content') ?>
@@ -22,10 +29,10 @@ $can_create = can_create('marketing');
 <div class="row">
     <div class="col-lg-8">
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white d-flex align-items-center">
+            <div class="card-header bg-light d-flex align-items-center">
                 <i class="fas fa-file-contract me-2"></i>
                 <strong>Contract Information</strong>
-                <span class="ms-auto badge bg-dark text-white"><?= esc($contract['status'] ?? '') ?></span>
+                <span class="ms-auto badge <?= $statusClass ?>"><?= esc($contract['status'] ?? '') ?></span>
             </div>
             <div class="card-body">
                 <div id="editAlert"></div>

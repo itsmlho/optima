@@ -35,7 +35,7 @@ $can_export = $permissions['export'];
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
-          <div class="stat-card bg-primary-soft filter-card" data-filter="all" style="cursor:pointer;">
+          <div class="stat-card bg-primary-soft filter-card cursor-pointer" data-filter="all">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-file-text stat-icon text-primary"></i>
@@ -48,7 +48,7 @@ $can_export = $permissions['export'];
           </div>
       </div>
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
-          <div class="stat-card bg-warning-soft filter-card" data-filter="DIRENCANAKAN" style="cursor:pointer;">
+          <div class="stat-card bg-warning-soft filter-card cursor-pointer" data-filter="DIRENCANAKAN">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-calendar-check stat-icon text-warning"></i>
@@ -61,7 +61,7 @@ $can_export = $permissions['export'];
           </div>
       </div>
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
-          <div class="stat-card bg-info-soft filter-card" data-filter="DALAM_PERJALANAN" style="cursor:pointer;">
+          <div class="stat-card bg-info-soft filter-card cursor-pointer" data-filter="DALAM_PERJALANAN">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-arrow-repeat stat-icon text-info"></i>
@@ -74,7 +74,7 @@ $can_export = $permissions['export'];
           </div>
       </div>
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
-          <div class="stat-card bg-success-soft filter-card" data-filter="SELESAI" style="cursor:pointer;">
+          <div class="stat-card bg-success-soft filter-card cursor-pointer" data-filter="SELESAI">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-check-circle stat-icon text-success"></i>
@@ -87,7 +87,7 @@ $can_export = $permissions['export'];
           </div>
       </div>
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
-          <div class="stat-card bg-danger-soft filter-card" data-filter="AWAITING_CONTRACT" style="cursor:pointer;">
+          <div class="stat-card bg-danger-soft filter-card cursor-pointer" data-filter="AWAITING_CONTRACT">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-file-earmark-lock stat-icon text-danger"></i>
@@ -149,8 +149,7 @@ $can_export = $permissions['export'];
       </li>
     </ul>
     
-    <div class="card-body">
-      <!-- DataTables will handle pagination and search -->
+    <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-striped table-hover mb-0 table-manual-sort" id="diTable">
           <thead class="table-light">
@@ -282,8 +281,8 @@ $can_export = $permissions['export'];
               
               <!-- Unit PULL Section for EXCHANGE -->
               <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
-                  <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Pull Units (from selected contract)</h6>
+                <div class="card-header bg-light">
+                  <h6 class="mb-0 fw-semibold"><i class="fas fa-minus-circle me-1"></i> Pull Units (from selected contract)</h6>
                 </div>
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-center mb-2">

@@ -42,12 +42,12 @@ class UnitComponentFormatter
         ];
         
         // Ambil data baterai
-        $battery = $this->db->table("inventory_attachment ia")
-            ->select("ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai")
-            ->join("baterai b", "ia.baterai_id = b.id", "left")
-            ->where("ia.id_inventory_unit", $unitId)
-            ->where("ia.tipe_item", "battery")
-            ->whereIn("ia.attachment_status", ['AVAILABLE', 'IN_USE']) // Available or In use
+        $battery = $this->db->table("inventory_batteries ib")
+            ->select("ib.id, ib.battery_type_id, ib.serial_number as sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai")
+            ->join("baterai b", "ib.battery_type_id = b.id", "left")
+            ->where("ib.inventory_unit_id", $unitId)
+            ->where("ib.battery_type_id IS NOT NULL")
+            ->whereIn("ib.status", ['AVAILABLE', 'IN_USE', 'SPARE'])
             ->get()->getRowArray();
         
         if ($battery) {
@@ -74,12 +74,12 @@ class UnitComponentFormatter
         }
         
         // Ambil data charger
-        $charger = $this->db->table("inventory_attachment ia")
-            ->select("ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger")
-            ->join("charger c", "ia.charger_id = c.id_charger", "left")
-            ->where("ia.id_inventory_unit", $unitId)
-            ->where("ia.tipe_item", "charger")
-            ->whereIn("ia.attachment_status", ['AVAILABLE', 'IN_USE']) // Available or In use
+        $charger = $this->db->table("inventory_chargers ic")
+            ->select("ic.id, ic.charger_type_id, ic.serial_number as sn_charger, c.merk_charger, c.tipe_charger")
+            ->join("charger c", "ic.charger_type_id = c.id_charger", "left")
+            ->where("ic.inventory_unit_id", $unitId)
+            ->where("ic.charger_type_id IS NOT NULL")
+            ->whereIn("ic.status", ['AVAILABLE', 'IN_USE', 'SPARE'])
             ->get()->getRowArray();
         
         if ($charger) {
@@ -106,12 +106,12 @@ class UnitComponentFormatter
         }
         
         // Ambil data attachment
-        $attachment = $this->db->table("inventory_attachment ia")
-            ->select("ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model")
-            ->join("attachment a", "ia.attachment_id = a.id_attachment", "left")
-            ->where("ia.id_inventory_unit", $unitId)
-            ->where("ia.tipe_item", "attachment")
-            ->where("ia.attachment_status", 'IN_USE') // In use
+        $attachment = $this->db->table("inventory_attachments ia")
+            ->select("ia.id, ia.attachment_type_id, ia.serial_number as sn_attachment, a.tipe, a.merk, a.model")
+            ->join("attachment a", "ia.attachment_type_id = a.id_attachment", "left")
+            ->where("ia.inventory_unit_id", $unitId)
+            ->where("ia.attachment_type_id IS NOT NULL")
+            ->whereIn("ia.status", ['IN_USE', 'SPARE'])
             ->get()->getRowArray();
         
         if ($attachment) {

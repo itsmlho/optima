@@ -393,9 +393,8 @@ body.cn-sidebar-layout {
 /* Warna hanya saat dropdown terbuka: satu blok (parent + submenu) */
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open {
   background: var(--optima-primary-light);
-  margin: 0 -2px;
-  padding: 0 2px 6px 2px;
-  padding-bottom: 12px;
+  margin: 0;
+  padding: 0; /* HAPUS padding dari container - biar hover berfungsi */
   margin-bottom: 6px;
   transition: background 0.25s ease;
   z-index: auto;
@@ -403,9 +402,21 @@ body.cn-sidebar-layout {
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle {
   /* No border-radius - flat corners */
 }
+
+/* Hover tetap berfungsi pada dropdown toggle saat container open */
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle:hover {
+  background: #d0e5ff; /* Biru sedikit lebih gelap dari primary-light */
+  color: var(--optima-primary);
+}
+
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle:hover .material-symbols-rounded,
+.cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .nav-link.dropdown-toggle:hover .dropdown-icon {
+  color: var(--optima-primary);
+}
+
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-container.open > .dropdown-menu {
   padding-left: 0;
-  padding-bottom: 4px;
+  padding-bottom: 12px; /* PINDAHKAN padding ke sini */
 }
 
 /* Submenu item: align lurus dengan menu (padding sama seperti parent) */

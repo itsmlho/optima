@@ -2652,34 +2652,80 @@ class WorkOrderController extends Controller
             $unit['pelanggan'] = $customerData['pelanggan'] ?? 'N/A';
             $unit['lokasi'] = $customerData['lokasi'] ?? 'N/A';
 
-            // Get attachment data from inventory_attachment table (handle multiple rows)
+            // Get attachment data from NEW separate tables (UNION ALL approach)
             $attachmentRows = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment,
-                    ia.tipe_item,
-                    ia.attachment_id,
-                    ia.sn_attachment,
-                    ia.baterai_id,
-                    ia.sn_baterai,
-                    ia.charger_id,
-                    ia.sn_charger,
-                    ia.kondisi_fisik,
-                    ia.kelengkapan,
-                    ia.catatan_fisik,
+                    ia.id as id_inventory_attachment,
+                    'attachment' as tipe_item,
+                    ia.attachment_type_id as attachment_id,
+                    ia.serial_number as sn_attachment,
+                    NULL as baterai_id,
+                    NULL as sn_baterai,
+                    NULL as charger_id,
+                    NULL as sn_charger,
+                    ia.physical_condition as kondisi_fisik,
+                    ia.completeness as kelengkapan,
+                    ia.notes as catatan_fisik,
                     a.tipe as attachment_tipe,
                     a.merk as attachment_merk,
                     a.model as attachment_model,
+                    NULL as tipe_baterai,
+                    NULL as merk_baterai,
+                    NULL as jenis_baterai,
+                    NULL as tipe_charger,
+                    NULL as merk_charger
+                FROM inventory_attachments ia
+                LEFT JOIN attachment a ON ia.attachment_type_id = a.id_attachment
+ WHERE ia.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    ib.id as id_inventory_attachment,
+                    'battery' as tipe_item,
+                    NULL as attachment_id,
+                    NULL as sn_attachment,
+                    ib.battery_type_id as baterai_id,
+                    ib.serial_number as sn_baterai,
+                    NULL as charger_id,
+                    NULL as sn_charger,
+                    ib.physical_condition as kondisi_fisik,
+                    NULL as kelengkapan,
+                    ib.notes as catatan_fisik,
+                    NULL as attachment_tipe,
+                    NULL as attachment_merk,
+                    NULL as attachment_model,
                     b.tipe_baterai,
                     b.merk_baterai,
                     b.jenis_baterai,
+                    NULL as tipe_charger,
+                    NULL as merk_charger
+                FROM inventory_batteries ib
+                LEFT JOIN baterai b ON ib.battery_type_id = b.id
+                WHERE ib.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    ic.id as id_inventory_attachment,
+                    'charger' as tipe_item,
+                    NULL as attachment_id,
+                    NULL as sn_attachment,
+                    NULL as baterai_id,
+                    NULL as sn_baterai,
+                    ic.charger_type_id as charger_id,
+                    ic.serial_number as sn_charger,
+                    ic.physical_condition as kondisi_fisik,
+                    NULL as kelengkapan,
+                    ic.notes as catatan_fisik,
+                    NULL as attachment_tipe,
+                    NULL as attachment_merk,
+                    NULL as attachment_model,
+                    NULL as tipe_baterai,
+                    NULL as merk_baterai,
+                    NULL as jenis_baterai,
                     c.tipe_charger,
                     c.merk_charger
-                FROM inventory_attachment ia
-                LEFT JOIN attachment a ON ia.attachment_id = a.id_attachment
-                LEFT JOIN baterai b ON ia.baterai_id = b.id
-                LEFT JOIN charger c ON ia.charger_id = c.id_charger
-                WHERE ia.id_inventory_unit = ?
-            ", [$workOrder['unit_id']])->getResultArray();
+                FROM inventory_chargers ic
+                LEFT JOIN charger c ON ic.charger_type_id = c.id_charger
+                WHERE ic.inventory_unit_id = ?
+            ", [$workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id']])->getResultArray();
             
             // Parse attachment data by type
             $attachment = [
@@ -2767,100 +2813,100 @@ class WorkOrderController extends Controller
 
             $attachmentOptions = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(a.tipe, ' - ', a.merk, ' - ', a.model, ' [SN: ', COALESCE(ia.sn_attachment, 'No SN'), ']') as name,
+                    ia.id as id,
+                    CONCAT(a.tipe, ' - ', a.merk, ' - ', a.model, ' [SN: ', COALESCE(ia.serial_number, 'No SN'), ']') as name,
                     a.tipe,
                     a.merk,
                     a.model,
-                    ia.sn_attachment,
-                    ia.attachment_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN attachment a ON ia.attachment_id = a.id_attachment
-                WHERE ia.attachment_status = 'AVAILABLE' 
-                AND ia.attachment_id IS NOT NULL
+                    ia.serial_number as sn_attachment,
+                    ia.attachment_type_id as attachment_id,
+                    ia.status as attachment_status
+                FROM inventory_attachments ia
+                JOIN attachment a ON ia.attachment_type_id = a.id_attachment
+                WHERE ia.status = 'AVAILABLE' 
+                AND ia.attachment_type_id IS NOT NULL
                 ORDER BY a.tipe, a.merk, a.model
             ")->getResultArray();
 
             $bateraiOptions = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(b.tipe_baterai, ' - ', b.merk_baterai, ' [SN: ', COALESCE(ia.sn_baterai, 'No SN'), ']') as name,
+                    ib.id as id,
+                    CONCAT(b.tipe_baterai, ' - ', b.merk_baterai, ' [SN: ', COALESCE(ib.serial_number, 'No SN'), ']') as name,
                     b.tipe_baterai,
                     b.merk_baterai,
-                    ia.sn_baterai,
-                    ia.baterai_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN baterai b ON ia.baterai_id = b.id
-                WHERE ia.attachment_status = 'AVAILABLE' 
-                AND ia.baterai_id IS NOT NULL
+                    ib.serial_number as sn_baterai,
+                    ib.battery_type_id as baterai_id,
+                    ib.status as attachment_status
+                FROM inventory_batteries ib
+                JOIN baterai b ON ib.battery_type_id = b.id
+                WHERE ib.status = 'AVAILABLE' 
+                AND ib.battery_type_id IS NOT NULL
                 ORDER BY b.tipe_baterai, b.merk_baterai
             ")->getResultArray();
 
             $chargerOptions = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(c.tipe_charger, ' - ', c.merk_charger, ' [SN: ', COALESCE(ia.sn_charger, 'No SN'), ']') as name,
+                    ic.id as id,
+                    CONCAT(c.tipe_charger, ' - ', c.merk_charger, ' [SN: ', COALESCE(ic.serial_number, 'No SN'), ']') as name,
                     c.tipe_charger,
                     c.merk_charger,
-                    ia.sn_charger,
-                    ia.charger_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN charger c ON ia.charger_id = c.id_charger
-                WHERE ia.attachment_status = 'AVAILABLE' 
-                AND ia.charger_id IS NOT NULL
+                    ic.serial_number as sn_charger,
+                    ic.charger_type_id as charger_id,
+                    ic.status as attachment_status
+                FROM inventory_chargers ic
+                JOIN charger c ON ic.charger_type_id = c.id_charger
+                WHERE ic.status = 'AVAILABLE' 
+                AND ic.charger_type_id IS NOT NULL
                 ORDER BY c.tipe_charger, c.merk_charger
             ")->getResultArray();
 
             // Add currently assigned attachments to the options (if any)
             $currentAttachments = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(a.tipe, ' - ', a.merk, ' - ', a.model, ' [SN: ', COALESCE(ia.sn_attachment, 'No SN'), '] (Current)') as name,
+                    ia.id as id,
+                    CONCAT(a.tipe, ' - ', a.merk, ' - ', a.model, ' [SN: ', COALESCE(ia.serial_number, 'No SN'), '] (Current)') as name,
                     a.tipe,
                     a.merk,
                     a.model,
-                    ia.sn_attachment,
-                    ia.attachment_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN attachment a ON ia.attachment_id = a.id_attachment
-                WHERE ia.id_inventory_unit = ? 
-                AND ia.attachment_id IS NOT NULL
+                    ia.serial_number as sn_attachment,
+                    ia.attachment_type_id as attachment_id,
+                    ia.status as attachment_status
+                FROM inventory_attachments ia
+                JOIN attachment a ON ia.attachment_type_id = a.id_attachment
+                WHERE ia.inventory_unit_id = ? 
+                AND ia.attachment_type_id IS NOT NULL
                 ORDER BY a.tipe, a.merk, a.model
             ", [$workOrder['unit_id']])->getResultArray();
 
             $currentBaterais = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(b.tipe_baterai, ' - ', b.merk_baterai, ' [SN: ', COALESCE(ia.sn_baterai, 'No SN'), '] (Current)') as name,
+                    ib.id as id,
+                    CONCAT(b.tipe_baterai, ' - ', b.merk_baterai, ' [SN: ', COALESCE(ib.serial_number, 'No SN'), '] (Current)') as name,
                     b.tipe_baterai,
                     b.merk_baterai,
-                    ia.sn_baterai,
-                    ia.baterai_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN baterai b ON ia.baterai_id = b.id
-                WHERE ia.id_inventory_unit = ? 
-                AND ia.baterai_id IS NOT NULL
+                    ib.serial_number as sn_baterai,
+                    ib.battery_type_id as baterai_id,
+                    ib.status as attachment_status
+                FROM inventory_batteries ib
+                JOIN baterai b ON ib.battery_type_id = b.id
+                WHERE ib.inventory_unit_id = ? 
+                AND ib.battery_type_id IS NOT NULL
                 ORDER BY b.tipe_baterai, b.merk_baterai
             ", [$workOrder['unit_id']])->getResultArray();
 
             $currentChargers = $db->query("
                 SELECT 
-                    ia.id_inventory_attachment as id,
-                    CONCAT(c.tipe_charger, ' - ', c.merk_charger, ' [SN: ', COALESCE(ia.sn_charger, 'No SN'), '] (Current)') as name,
+                    ic.id as id,
+                    CONCAT(c.tipe_charger, ' - ', c.merk_charger, ' [SN: ', COALESCE(ic.serial_number, 'No SN'), '] (Current)') as name,
                     c.tipe_charger,
                     c.merk_charger,
-                    ia.sn_charger,
-                    ia.charger_id,
-                    ia.attachment_status
-                FROM inventory_attachment ia
-                JOIN charger c ON ia.charger_id = c.id_charger
-                WHERE ia.id_inventory_unit = ? 
-                AND ia.charger_id IS NOT NULL
+                    ic.serial_number as sn_charger,
+                    ic.charger_type_id as charger_id,
+                    ic.status as attachment_status
+                FROM inventory_chargers ic
+                JOIN charger c ON ic.charger_type_id = c.id_charger
+                WHERE ic.inventory_unit_id = ? 
+                AND ic.charger_type_id IS NOT NULL
                 ORDER BY c.tipe_charger, c.merk_charger
             ", [$workOrder['unit_id']])->getResultArray();
 

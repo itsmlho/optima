@@ -1,15 +1,24 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
+<?php
+/**
+ * Delivery Instructions Processing (Unit Deployment) Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ *
+ * Quick Reference:
+ * - SUBMITTED  → badge-soft-yellow
+ * - INPROGRESS → badge-soft-cyan
+ * - DELIVERED  → badge-soft-green
+ * - CANCELLED  → badge-soft-red
+ * - Completed  → badge-soft-green, Pending → badge-soft-yellow
+ *
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+?>
 
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-truck me-2 text-primary"></i>
-        Delivery Instructions Processing
-    </h4>
-    <p class="text-muted mb-0">Process and manage delivery instructions from marketing for unit distribution</p>
-</div>
+<?= $this->section('content') ?>
 
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
@@ -69,7 +78,15 @@
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800"><?= lang('App.list_delivery_instruction') ?></h5>
+      <div>
+        <h5 class="card-title mb-0">
+          <i class="bi bi-truck me-2 text-primary"></i><?= lang('App.list_delivery_instruction') ?>
+        </h5>
+        <p class="text-muted small mb-0">
+          Process and manage delivery instructions from marketing for unit distribution
+          <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Click stat cards or tabs to filter by status</small></span>
+        </p>
+      </div>
       <div class="d-flex gap-2 align-items-center">
         <!-- No create button for operational - they process existing DIs -->
       </div>
@@ -94,11 +111,9 @@
       </li>
     </ul>
     
-    <div class="card-body">
-      <!-- DataTables will handle pagination and search controls -->
-
+    <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-striped table-hover table-manual-sort" id="diTable">
+        <table class="table table-striped table-hover mb-0 table-manual-sort" id="diTable">
           <thead class="table-light">
             <tr>
               <th>DI Number</th>
@@ -138,16 +153,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (jenisSpk === 'ATTACHMENT') {
       if (totalAttachments > 0) {
         const text = totalAttachments === 1 ? 'attachment' : 'attachments';
-        return `<span class="badge bg-warning">${totalAttachments} ${text}</span>`;
+        return `<span class="badge badge-soft-yellow">${totalAttachments} ${text}</span>`;
       }
       return '<span class="text-muted">No attachments</span>';
     } else {
       if (totalUnits > 0) {
         const text = totalUnits === 1 ? 'unit' : 'units';
-        return `<span class="badge bg-info">${totalUnits} ${text}</span>`;
+        return `<span class="badge badge-soft-cyan">${totalUnits} ${text}</span>`;
       } else if (totalAttachments > 0) {
         const text = totalAttachments === 1 ? 'attachment' : 'attachments';
-        return `<span class="badge bg-warning">${totalAttachments} ${text}</span>`;
+        return `<span class="badge badge-soft-yellow">${totalAttachments} ${text}</span>`;
       }
       return '<span class="text-muted">-</span>';
     }
@@ -163,17 +178,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const getStatusDisplay = (data, type, row) => {
     const statusUpper = (row.status_di || '').toUpperCase();
     const statusMap = {
-      'DIAJUKAN': { text: 'SUBMITTED', color: 'secondary' },
-      'DISETUJUI': { text: 'APPROVED', color: 'info' },
-      'PERSIAPAN_UNIT': { text: 'UNIT_PREPARATION', color: 'warning' },
-      'SIAP_KIRIM': { text: 'READY_TO_SHIP', color: 'primary' },
-      'DALAM_PERJALANAN': { text: 'IN_TRANSIT', color: 'warning' },
-      'SAMPAI_LOKASI': { text: 'ARRIVED_AT_LOCATION', color: 'success' },
-      'SELESAI': { text: 'COMPLETED', color: 'success' },
-      'DIBATALKAN': { text: 'CANCELLED', color: 'danger' }
+      'DIAJUKAN': { text: 'SUBMITTED', cls: 'badge-soft-gray' },
+      'DISETUJUI': { text: 'APPROVED', cls: 'badge-soft-cyan' },
+      'PERSIAPAN_UNIT': { text: 'UNIT_PREPARATION', cls: 'badge-soft-yellow' },
+      'SIAP_KIRIM': { text: 'READY_TO_SHIP', cls: 'badge-soft-blue' },
+      'DALAM_PERJALANAN': { text: 'IN_TRANSIT', cls: 'badge-soft-yellow' },
+      'SAMPAI_LOKASI': { text: 'ARRIVED_AT_LOCATION', cls: 'badge-soft-green' },
+      'SELESAI': { text: 'COMPLETED', cls: 'badge-soft-green' },
+      'DIBATALKAN': { text: 'CANCELLED', cls: 'badge-soft-red' }
     };
-    const mapped = statusMap[statusUpper] || { text: row.status_di || 'SUBMITTED', color: 'secondary' };
-    return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+    const mapped = statusMap[statusUpper] || { text: row.status_di || 'SUBMITTED', cls: 'badge-soft-gray' };
+    return `<span class="badge ${mapped.cls}">${mapped.text}</span>`;
   };
   
   const formatActions = (data, type, row) => {
@@ -200,9 +215,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
       
       const badges = [];
-      if (perencanaanDone) badges.push('<span class="badge bg-success">✓</span>');
-      if (berangkatDone) badges.push('<span class="badge bg-success">✓</span>');
-      if (sampaiDone) badges.push('<span class="badge bg-success">✓</span>');
+      if (perencanaanDone) badges.push('<span class="badge badge-soft-green">✓</span>');
+      if (berangkatDone) badges.push('<span class="badge badge-soft-green">✓</span>');
+      if (sampaiDone) badges.push('<span class="badge badge-soft-green">✓</span>');
       
       let html = `<div class="stage-buttons">${buttons.join(' ')}</div>`;
       if (badges.length > 0) {
@@ -972,15 +987,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
         
         // Show completed stages with checkmarks
-        if (perencanaanDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Plan</span>');
-        if (berangkatDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Depart</span>');
-        if (sampaiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Arrive</span>');
+        if (perencanaanDone) approvalButtons.push('<span class="badge badge-soft-green me-1">✓ Plan</span>');
+        if (berangkatDone) approvalButtons.push('<span class="badge badge-soft-green me-1">✓ Depart</span>');
+        if (sampaiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">✓ Arrive</span>');
         
         actionButtons = approvalButtons.join(' ');
         console.log('✅ Showing workflow buttons for status:', status);
       } else if (status === 'DELIVERED' || status === 'SELESAI' || status === 'COMPLETED') {
         // Show completed status
-        actionButtons = `<span class="badge bg-success">Completed</span>`;
+        actionButtons = `<span class="badge badge-soft-green">Completed</span>`;
         console.log('✅ Showing completed status for:', status);
       } else {
         // For any other status, show no action buttons
@@ -1015,9 +1030,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
             </h6>
             <div class="row g-2">
               <div class="col-6"><strong>DI Number:</strong> ${d.nomor_di}</div>
-              <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
+              <div class="col-6"><strong>Status:</strong> <span class="badge badge-soft-gray">${status}</span></div>
               <div class="col-6"><strong>SPK Number:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
-              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
+              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'badge-soft-yellow' : 'badge-soft-cyan'}">${spkType}</span></div>
               <div class="col-6"><strong>Source:</strong> <span style="color: ${d.contract_id ? '#28a745' : '#ffc107'}; font-weight: 500;">${d.contract_id ? 'Contract' : (d.quotation_number || 'Quotation')}</span></div>
               <div class="col-6"><strong>Delivery Date:</strong> ${d.tanggal_kirim||'-'}</div>
               <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
@@ -1059,23 +1074,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-4">
                 <strong>1. Plan:</strong> 
                 ${d.perencanaan_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Completed</span><br>
+                  `<span class="badge badge-soft-green">✓ Completed</span><br>
                   Date: ${d.perencanaan_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Pending</span>'}
+                  : '<span class="badge badge-soft-yellow">Pending</span>'}
               </div>
               <div class="col-4">
                 <strong>2. Departure:</strong> 
                 ${d.berangkat_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Completed</span><br>
+                  `<span class="badge badge-soft-green">✓ Completed</span><br>
                   Date: ${d.berangkat_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Pending</span>'}
+                  : '<span class="badge badge-soft-yellow">Pending</span>'}
               </div>
               <div class="col-4">
                 <strong>3. Arrival:</strong> 
                 ${d.sampai_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Completed</span><br>
+                  `<span class="badge badge-soft-green">✓ Completed</span><br>
                   Date: ${d.sampai_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Pending</span>'}
+                  : '<span class="badge badge-soft-yellow">Pending</span>'}
               </div>
             </div>
           </div>

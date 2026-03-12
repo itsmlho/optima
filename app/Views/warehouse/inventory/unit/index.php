@@ -1,6 +1,22 @@
 <?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Unit Inventory (Unit Management) Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ *
+ * Quick Reference:
+ * - Stock / Available  → badge-soft-green
+ * - Rented / In Progress → badge-soft-yellow, badge-soft-cyan
+ * - Booked / In Delivery → badge-soft-blue
+ * - Maintenance        → badge-soft-red
+ * - Returned / Inactive → badge-soft-gray
+ *
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 helper('global_permission');
 $permissions = get_global_permission('warehouse');
 $can_view = $permissions['view'];
@@ -13,13 +29,16 @@ $can_export = $permissions['export'];
 <?= $this->section('content') ?>
 
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white pt-4 pb-3 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap">
+        <div class="card-header bg-white pt-4 pb-3 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h4 class="card-title fw-bold mb-1">
+                <h5 class="card-title mb-0">
                     <i class="bi bi-box-seam me-2 text-primary"></i>
                     Unit Inventory System
-                </h4>
-                <p class="text-muted small mb-0">Track, manage, and monitor all equipment units in a single unified registry.</p>
+                </h5>
+                <p class="text-muted small mb-0">
+                    Track, manage, and monitor all equipment units in a single unified registry.
+                    <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Use tabs and filters to narrow by status</small></span>
+                </p>
             </div>
             
             <!-- Quick Actions -->
@@ -46,22 +65,22 @@ $can_export = $permissions['export'];
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active rounded-pill px-3 py-1" id="all-tab" data-category="" type="button" role="tab">
-                        All Records <span class="badge bg-white text-dark ms-1 shadow-sm" id="count-all"><?= $stats['total'] ?? 0 ?></span>
+                        All Records <span class="badge badge-soft-gray ms-1 shadow-sm" id="count-all"><?= $stats['total'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link rounded-pill px-3 py-1 text-success" id="stock-tab" data-category="stock" type="button" role="tab">
-                        Warehouse Stock <span class="badge bg-success ms-1 shadow-sm" id="count-stock">0</span>
+                        Warehouse Stock <span class="badge badge-soft-green ms-1 shadow-sm" id="count-stock">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link rounded-pill px-3 py-1 text-warning" id="rental-tab" data-category="rental" type="button" role="tab">
-                        Rented <span class="badge bg-warning text-dark ms-1 shadow-sm" id="count-rental">0</span>
+                        Rented <span class="badge badge-soft-yellow ms-1 shadow-sm" id="count-rental">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link rounded-pill px-3 py-1 text-info" id="progress-tab" data-category="progress" type="button" role="tab">
-                        In Progress <span class="badge bg-info text-dark ms-1 shadow-sm" id="count-progress">0</span>
+                        In Progress <span class="badge badge-soft-cyan ms-1 shadow-sm" id="count-progress">0</span>
                     </button>
                 </li>
             </ul>
@@ -158,7 +177,7 @@ $can_export = $permissions['export'];
 
             <!-- The Main DataTable -->
             <div class="table-responsive">
-                <table id="unitTable" class="table table-hover align-middle border-bottom <?= !$can_view ? 'table-disabled' : '' ?>" style="width:100%">
+                <table id="unitTable" class="table table-striped table-hover mb-0 align-middle border-bottom <?= !$can_view ? 'table-disabled' : '' ?>">
                     <thead class="table-light text-muted small text-uppercase letter-spacing-1">
                         <tr>
                             <th class="ps-3 border-0 rounded-start">Unit No</th>
@@ -211,7 +230,7 @@ $(document).ready(function() {
                 data: 'no_unit',
                 className: 'ps-3 fw-bold',
                 render: function(data, type, row) {
-                    if (!data) return '<span class="badge bg-secondary">TEMP-' + row.id_inventory_unit + '</span>';
+                    if (!data) return '<span class="badge badge-soft-gray">TEMP-' + row.id_inventory_unit + '</span>';
                     return `<a href="<?= base_url('warehouse/inventory/unit/') ?>${row.id_inventory_unit}" class="text-decoration-none text-success">${data}</a>`;
                 }
             },
@@ -237,19 +256,19 @@ $(document).ready(function() {
                     const id    = parseInt(row.status_unit_id, 10) || 0;
                     // Map by status_unit_id: 1=stock avail, 2=stock non-aset, 3=booked, 4-6=progress, 7/11=rental, 8=maintenance, 9=returned, 10=sold
                     const badgeMap = {
-                        1:  'bg-success',         // AVAILABLE_STOCK
-                        2:  'bg-warning text-dark',// STOCK_NON_ASET
-                        3:  'bg-primary',          // BOOKED
-                        4:  'bg-info text-dark',   // IN_PREPARATION
-                        5:  'bg-info text-dark',   // READY_TO_DELIVER
-                        6:  'bg-info text-dark',   // IN_DELIVERY
-                        7:  'bg-warning text-dark',// RENTAL_ACTIVE
-                        8:  'bg-danger',           // MAINTENANCE
-                        9:  'bg-secondary',        // RETURNED
-                        10: 'bg-dark',             // SOLD
-                        11: 'bg-secondary',        // RENTAL_INACTIVE
+                        1:  'badge-soft-green',   // AVAILABLE_STOCK
+                        2:  'badge-soft-yellow',  // STOCK_NON_ASET
+                        3:  'badge-soft-blue',    // BOOKED
+                        4:  'badge-soft-cyan',    // IN_PREPARATION
+                        5:  'badge-soft-cyan',    // READY_TO_DELIVER
+                        6:  'badge-soft-cyan',    // IN_DELIVERY
+                        7:  'badge-soft-yellow',  // RENTAL_ACTIVE
+                        8:  'badge-soft-red',     // MAINTENANCE
+                        9:  'badge-soft-gray',    // RETURNED
+                        10: 'badge-soft-gray',    // SOLD
+                        11: 'badge-soft-gray',    // RENTAL_INACTIVE
                     };
-                    const cls = badgeMap[id] || 'bg-secondary';
+                    const cls = badgeMap[id] || 'badge-soft-gray';
                     return `<span class="badge ${cls} rounded-pill px-3 py-1 fw-medium shadow-sm">${label}</span>`;
                 }
             },

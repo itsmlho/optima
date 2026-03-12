@@ -1,5 +1,11 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Sparepart Inventory - Warehouse
+ * BADGE/CARD: Optima badge-soft-* for stock; card-header bg-light; table mb-0.
+ */
+?>
 <?= $this->section('content') ?>
 
 <div class="container-fluid">
@@ -82,6 +88,9 @@
 
     <!-- Filter Section -->
     <div class="card shadow mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filter</h6>
+        </div>
         <div class="card-body">
             <div class="row">
                 <div class="col-md-3">
@@ -148,7 +157,7 @@
 
     <!-- Spareparts Table -->
     <div class="card shadow mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="card-title mb-0">
                     <i class="bi bi-tools me-2 text-primary"></i>
@@ -157,10 +166,10 @@
                 <p class="text-muted small mb-0">Manage and track all spare parts stock, pricing, and supplier information</p>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover" id="sparepartsTable">
-                    <thead>
+                <table class="table table-striped table-hover mb-0" id="sparepartsTable">
+                    <thead class="table-light">
                         <tr>
                             <th>Part Number</th>
                             <th>Name</th>
@@ -183,7 +192,7 @@
                                     <td><?= $part['category'] ?></td>
                                     <td><?= $part['brand'] ?></td>
                                     <td>
-                                        <span class="badge badge-<?= $part['stock'] <= 0 ? 'danger' : ($part['stock'] <= $part['min_stock'] ? 'warning' : 'success') ?>">
+                                        <span class="badge <?= $part['stock'] <= 0 ? 'badge-soft-red' : ($part['stock'] <= $part['min_stock'] ? 'badge-soft-yellow' : 'badge-soft-green') ?>">
                                             <?= $part['stock'] ?>
                                         </span>
                                     </td>

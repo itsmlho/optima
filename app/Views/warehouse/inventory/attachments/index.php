@@ -1,5 +1,11 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Attachment, Battery & Charger Inventory - Warehouse
+ * BADGE/CARD: Optima badge-soft-* (tabs, status, condition); card-header bg-light; table mb-0.
+ */
+?>
 <?= $this->section('content') ?>
 
 <!-- Page Header -->
@@ -13,7 +19,7 @@
 
     <!-- Inventory Table -->
     <div class="card table-card">
-        <div class="card-header">
+        <div class="card-header bg-light">
             <div class="row align-items-center mb-3">
                 <div class="col">
                     <h5 class="card-title fw-bold m-0">List Attachment</h5>
@@ -43,21 +49,21 @@
                     <button class="nav-link active" id="attachment-tab" data-bs-toggle="tab" data-bs-target="#attachment" type="button" role="tab" onclick="applyTypeFilter('attachment')">
                         <i class="fas fa-puzzle-piece me-1"></i>
                         <strong>Attachment</strong>
-                        <span class="badge bg-primary ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
+                        <span class="badge badge-soft-blue ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="battery-tab" data-bs-toggle="tab" data-bs-target="#battery" type="button" role="tab" onclick="applyTypeFilter('battery')">
                         <i class="fas fa-battery-half me-1"></i>
                         <strong>Battery</strong>
-                        <span class="badge bg-success ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
+                        <span class="badge badge-soft-green ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="charger-tab" data-bs-toggle="tab" data-bs-target="#charger" type="button" role="tab" onclick="applyTypeFilter('charger')">
                         <i class="fas fa-plug me-1"></i>
                         <strong>Charger</strong>
-                        <span class="badge bg-warning ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
+                        <span class="badge badge-soft-yellow ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
                     </button>
                 </li>
             </ul>
@@ -68,35 +74,35 @@
                     <button class="nav-link active btn-sm" id="all-status-tab" type="button" onclick="applyStatusFilter('all')">
                         <i class="fas fa-list me-1"></i>
                         All
-                        <span class="badge bg-secondary ms-1" id="count-all"><?= $detailed_stats['by_status']['all'] ?? 0 ?></span>
+                        <span class="badge badge-soft-gray ms-1" id="count-all"><?= $detailed_stats['by_status']['all'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="available-status-tab" type="button" onclick="applyStatusFilter('AVAILABLE')">
                         <i class="fas fa-check-circle me-1"></i>
                         Available
-                        <span class="badge bg-success ms-1" id="count-available"><?= $detailed_stats['by_status']['available'] ?? 0 ?></span>
+                        <span class="badge badge-soft-green ms-1" id="count-available"><?= $detailed_stats['by_status']['available'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="used-status-tab" type="button" onclick="applyStatusFilter('USED')">
                         <i class="fas fa-link me-1"></i>
                         Used
-                        <span class="badge bg-info ms-1" id="count-used"><?= $detailed_stats['by_status']['used'] ?? 0 ?></span>
+                        <span class="badge badge-soft-cyan ms-1" id="count-used"><?= $detailed_stats['by_status']['used'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="maintenance-status-tab" type="button" onclick="applyStatusFilter('MAINTENANCE')">
                         <i class="fas fa-tools me-1"></i>
                         Maintenance
-                        <span class="badge bg-warning ms-1" id="count-maintenance"><?= $detailed_stats['by_status']['maintenance'] ?? 0 ?></span>
+                        <span class="badge badge-soft-yellow ms-1" id="count-maintenance"><?= $detailed_stats['by_status']['maintenance'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="broken-status-tab" type="button" onclick="applyStatusFilter('BROKEN')">
                         <i class="fas fa-exclamation-triangle me-1"></i>
                         Broken
-                        <span class="badge bg-danger ms-1" id="count-broken"><?= $detailed_stats['by_status']['broken'] ?? 0 ?></span>
+                        <span class="badge badge-soft-red ms-1" id="count-broken"><?= $detailed_stats['by_status']['broken'] ?? 0 ?></span>
                     </button>
                 </li>
             </ul>
@@ -104,7 +110,7 @@
             <!-- Additional Filters (shown based on active tab) -->
             <div class="border-top pt-3 mt-3" id="additionalFilters" style="display: none;">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">
+                    <span class="badge bg-light text-dark border small">
                         <i class="fas fa-sliders-h me-1"></i>Models
                     </span>
                     <div class="btn-group btn-group-sm" role="group" id="modelFilterGroup">
@@ -113,8 +119,8 @@
                 </div>
             </div>
         </div>
-        <div class="card-body">
-            <table id="inventory-attachment-table" class="table table-striped table-hover">
+        <div class="card-body p-0">
+            <table id="inventory-attachment-table" class="table table-striped table-hover mb-0">
                 <thead id="table-header">
                     <!-- Dynamic header will be inserted here -->
                 </thead>
@@ -128,7 +134,7 @@
 <div class="modal fade modal-wide" id="viewAttachmentModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-info text-muted">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Attachment</h5>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
@@ -146,7 +152,7 @@
                             data-bs-target="#att-history-pane" type="button" role="tab"
                             onclick="loadAttachmentHistory(currentAttachmentId)">
                             <i class="fas fa-history me-1"></i>History
-                            <span class="badge bg-secondary ms-1" id="attHistoryBadge" style="display:none;"></span>
+                            <span class="badge badge-soft-gray ms-1" id="attHistoryBadge" style="display:none;"></span>
                         </button>
                     </li>
                 </ul>
@@ -265,7 +271,7 @@
 <div class="modal fade" id="attachToUnitModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success text-muted">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-link me-2"></i>Attach to Unit</h5>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
@@ -313,7 +319,7 @@
 <div class="modal fade" id="swapUnitModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-muted">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Swap Unit</h5>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
@@ -373,7 +379,7 @@
 <div class="modal fade" id="detachFromUnitModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-unlink me-2"></i>Detach from Unit</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -786,11 +792,11 @@
                 render: function(data, type, row) {
                     if (!data) return '-';
                     const map = {
-                        'GOOD':         '<span class="badge bg-success">Good</span>',
-                        'MINOR_DAMAGE': '<span class="badge bg-warning text-dark">Minor Damage</span>',
-                        'MAJOR_DAMAGE': '<span class="badge bg-danger">Major Damage</span>'
+                        'GOOD':         '<span class="badge badge-soft-green">Good</span>',
+                        'MINOR_DAMAGE': '<span class="badge badge-soft-yellow">Minor Damage</span>',
+                        'MAJOR_DAMAGE': '<span class="badge badge-soft-red">Major Damage</span>'
                     };
-                    return map[data] || `<span class="badge bg-secondary">${data}</span>`;
+                    return map[data] || `<span class="badge badge-soft-gray">${data}</span>`;
                 }
             },
             // Status
@@ -799,15 +805,15 @@
                 render: function(data, type, row) {
                     if (!data) return '-';
                     const map = {
-                        'AVAILABLE':  '<span class="badge bg-success">Available</span>',
-                        'IN_USE':     '<span class="badge bg-primary">In Use</span>',
-                        'SPARE':      '<span class="badge bg-info">Spare</span>',
-                        'MAINTENANCE':'<span class="badge bg-warning text-dark">Maintenance</span>',
-                        'BROKEN':     '<span class="badge bg-danger">Broken</span>',
-                        'RESERVED':   '<span class="badge bg-secondary">Reserved</span>',
-                        'SOLD':       '<span class="badge bg-dark">Sold</span>'
+                        'AVAILABLE':  '<span class="badge badge-soft-green">Available</span>',
+                        'IN_USE':     '<span class="badge badge-soft-blue">In Use</span>',
+                        'SPARE':      '<span class="badge badge-soft-cyan">Spare</span>',
+                        'MAINTENANCE':'<span class="badge badge-soft-yellow">Maintenance</span>',
+                        'BROKEN':     '<span class="badge badge-soft-red">Broken</span>',
+                        'RESERVED':   '<span class="badge badge-soft-gray">Reserved</span>',
+                        'SOLD':       '<span class="badge badge-soft-gray">Sold</span>'
                     };
-                    return map[data] || `<span class="badge bg-secondary">${data}</span>`;
+                    return map[data] || `<span class="badge badge-soft-gray">${data}</span>`;
                 }
             },
             // Storage Location
@@ -1169,7 +1175,7 @@
                 <!-- Basic Attachment Information -->
                 <div class="col-md-6 mb-4">
                     <div class="card h-100">
-                        <div class="card-header bg-primary text-dark">
+                        <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i><strong>Attachment Information</strong></h6>
                         </div>
                         <div class="card-body">
@@ -1180,11 +1186,11 @@
                                 <tr><td><strong>SN Battery</strong></td><td>: ${h(data.sn_baterai)}</td></tr>
                                 <tr><td><strong>SN Charger</strong></td><td>: ${h(data.sn_charger)}</td></tr>
                                 <tr><td><strong>Unit</strong></td><td>: ${h(data.no_unit)}</td></tr>
-                                <tr><td><strong>Status</strong></td><td>: <span class="badge bg-primary">${h(data.attachment_status)}</span></td></tr>
+                                <tr><td><strong>Status</strong></td><td>: <span class="badge badge-soft-blue">${h(data.attachment_status)}</span></td></tr>
                                 <tr><td><strong>Unit Status</strong></td><td>: ${h(data.status_unit_name)}</td></tr>
                                 <tr><td><strong>Storage Location</strong></td><td>: ${h(data.lokasi_penyimpanan)}</td></tr>
-                                <tr><td><strong>Physical Condition</strong></td><td>: <span class="badge ${data.kondisi_fisik === 'Baik' ? 'bg-success' : data.kondisi_fisik === 'Rusak Berat' ? 'bg-danger' : 'bg-warning'}">${h(data.kondisi_fisik)}</span></td></tr>
-                                <tr><td><strong>Completeness</strong></td><td>: <span class="badge ${data.kelengkapan === 'Lengkap' ? 'bg-success' : 'bg-warning'}">${h(data.kelengkapan)}</span></td></tr>
+                                <tr><td><strong>Physical Condition</strong></td><td>: <span class="badge ${data.kondisi_fisik === 'Baik' ? 'badge-soft-green' : data.kondisi_fisik === 'Rusak Berat' ? 'badge-soft-red' : 'badge-soft-yellow'}">${h(data.kondisi_fisik)}</span></td></tr>
+                                <tr><td><strong>Completeness</strong></td><td>: <span class="badge ${data.kelengkapan === 'Lengkap' ? 'badge-soft-green' : 'badge-soft-yellow'}">${h(data.kelengkapan)}</span></td></tr>
                                 <tr><td><strong>Entry Date</strong></td><td>: ${h(data.tanggal_masuk)}</td></tr>
                             </table>
                         </div>
@@ -1194,7 +1200,7 @@
                 <!-- Purchase Order Information -->
                 <div class="col-md-6 mb-4">
                     <div class="card h-100">
-                        <div class="card-header bg-warning text-dark">
+                        <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i><strong>Purchase Order Information</strong></h6>
                         </div>
                         <div class="card-body">
@@ -1202,7 +1208,7 @@
                                 <tr><td width="40%"><strong>PO Number</strong></td><td>: ${h(data.no_po) || 'Manual Entry'}</td></tr>
                                 <tr><td><strong>PO Date</strong></td><td>: ${h(data.tanggal_po) || '-'}</td></tr>
                                 <tr><td><strong>Supplier</strong></td><td>: ${h(data.nama_supplier) || '-'}</td></tr>
-                                <tr><td><strong>PO Status</strong></td><td>: <span class="badge bg-secondary">${h(data.status) || '-'}</span></td></tr>
+                                <tr><td><strong>PO Status</strong></td><td>: <span class="badge badge-soft-gray">${h(data.status) || '-'}</span></td></tr>
                             </table>
                         </div>
                     </div>
@@ -1211,7 +1217,7 @@
                 <!-- Additional Information -->
                 <div class="col-12 mb-4">
                     <div class="card">
-                        <div class="card-header bg-info text-dark">
+                        <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i><strong>Additional Information</strong></h6>
                         </div>
                         <div class="card-body">
@@ -1928,7 +1934,7 @@
             <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
                 <i class="fas fa-history text-primary me-2"></i>
                 <span class="fw-semibold">Timeline Attachment</span>
-                <span class="badge bg-primary ms-2">${timeline.length} event</span>
+                <span class="badge badge-soft-blue ms-2">${timeline.length} event</span>
             </div>
             <div style="position:relative; padding-left:2.5rem;">
                 <div style="position:absolute;left:1rem;top:0;bottom:0;width:2px;background:#dee2e6;border-radius:2px;"></div>`;

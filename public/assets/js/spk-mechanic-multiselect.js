@@ -108,12 +108,12 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     getRoleColor(role) {
         const colors = {
-            'MECHANIC_UNIT_PREP': 'primary',
-            'MECHANIC_FABRICATION': 'info', 
-            'MECHANIC_SERVICE_AREA': 'warning',
-            'FOREMAN': 'success',
-            'SUPERVISOR': 'success',
-            'HELPER': 'secondary'
+            'MECHANIC_UNIT_PREP': 'primary',      // Blue
+            'MECHANIC_FABRICATION': 'purple',     // Purple
+            'MECHANIC_SERVICE_AREA': 'warning',   // Orange
+            'FOREMAN': 'success',                 // Green
+            'SUPERVISOR': 'cyan',                 // Cyan/Tosca
+            'HELPER': 'info'                      // Light Blue (lebih terlihat dari secondary)
         };
         return colors[role] || 'light';
     }
@@ -195,8 +195,8 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         this.selectedItems.forEach((item, employeeId) => {
             const primaryLabel = item.isPrimary ? '<i class="fas fa-star text-warning" title="Primary"></i>' : '';
             html += `
-                <span class="selected-item badge badge-soft-${item.roleColor} me-1 mb-1" data-id="${employeeId}" style="font-size:0.85rem;padding:0.5rem 0.75rem;">
-                    ${primaryLabel} ${item.name} <span class="text-muted small">(${item.roleLabel})</span>
+                <span class="selected-item badge badge-soft-${item.roleColor} me-1 mb-1" data-id="${employeeId}" style="font-size:0.9rem;padding:0.6rem 0.8rem;font-weight:600;">
+                    ${primaryLabel} ${item.name} <span class="text-muted small" style="font-weight:500;">(${item.roleLabel})</span>
                     <i class="fas fa-times ms-1 remove-item" data-id="${employeeId}" style="cursor:pointer;"></i>
                 </span>
             `;
@@ -230,9 +230,9 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
                                  data-role="${emp.role}">
                                 <div class="employee-info">
                                     <span class="employee-name">${emp.name}</span>
-                                    <span class="badge badge-soft-${emp.roleColor}" style="font-size:0.7rem;">${emp.roleLabel}</span>
+                                    <span class="badge badge-soft-${emp.roleColor}" style="font-size:0.75rem;font-weight:600;">${emp.roleLabel}</span>
                                 </div>
-                                ${this.selectedItems.has(parseInt(emp.id)) ? '<i class="fas fa-check text-success"></i>' : ''}
+                                ${this.selectedItems.has(parseInt(emp.id)) ? '<i class="fas fa-check text-success" style="font-size:1.1rem;"></i>' : ''}
                             </div>
                         `).join('')}
                     </div>

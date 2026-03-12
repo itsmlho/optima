@@ -65,9 +65,31 @@
         .note-block { border: 1px solid #ccc; padding: 8px; margin-bottom: 15px; min-height: 50px; }
 
         .page-break { page-break-before: always !important; break-before: page !important; }
+        /* Print footer (same pattern as DI / SPK) */
+        .print-footer {
+            position: fixed;
+            bottom: 3mm;
+            left: 8mm;
+            right: 8mm;
+            text-align: center;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 2mm;
+            background: white;
+            z-index: 1000;
+            page-break-inside: avoid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            display: none;
+        }
+
+        @media print {
+            .print-footer { display: block !important; }
+        }
     </style>
 </head>
-<body onload="window.print()">
+<body>
 
     <?php
     $loc       = $location ?? [];
@@ -229,8 +251,30 @@
     <!-- Tidak ada halaman verifikasi tambahan di sini.
          Form verifikasi detail unit akan dipanggil terpisah via print_verification*.php -->
 
-    <div style="margin-top: 15px; text-align: center; font-size: 9px; color: #666;">
-        Dicetak: <?= date('d-m-Y H:i') ?>
+    <div class="print-footer" id="printFooter">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="text-align: left; font-size: 8px;">
+                <strong>PT SARANA MITRA LUAS Tbk</strong><br>
+                <span style="color: #888;">Sistem OPTIMA - Service / Unit Audit</span>
+            </div>
+            <div style="text-align: center; font-size: 8px;">
+                <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
+                <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
+            </div>
+            <div style="text-align: right; font-size: 8px;">
+                <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
+                <span style="color: #888;">Lokasi: <?= esc($loc['location_name'] ?? 'Unknown') ?></span>
+            </div>
+        </div>
     </div>
+
+    <script>
+    // Auto print on load & show footer (following DI print behavior)
+    window.addEventListener('load', () => {
+        const footer = document.getElementById('printFooter');
+        if (footer) footer.style.display = 'block';
+        window.print();
+    });
+    </script>
 </body>
 </html>

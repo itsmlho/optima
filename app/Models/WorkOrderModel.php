@@ -684,12 +684,12 @@ class WorkOrderModel extends Model
     {
         if (!$unitId) return [];
         
-        return $this->db->table('inventory_attachment ia')
-            ->select('a.tipe, a.merk, a.model, ia.sn_attachment')
-            ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'inner')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'attachment')
-            ->where('ia.attachment_id IS NOT NULL')
+        return $this->db->table('inventory_attachments ia')
+            ->select('a.tipe, a.merk, a.model, ia.serial_number as sn_attachment')
+            ->join('attachment a', 'ia.attachment_type_id = a.id_attachment', 'left')
+            ->where('ia.inventory_unit_id', $unitId)
+            ->where('ia.attachment_type_id IS NOT NULL')
+            ->whereIn('ia.status', ['IN_USE', 'SPARE'])
             ->get()
             ->getResultArray();
     }
@@ -701,12 +701,12 @@ class WorkOrderModel extends Model
     {
         if (!$unitId) return [];
         
-        return $this->db->table('inventory_attachment ia')
-            ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai, ia.sn_baterai')
-            ->join('baterai b', 'ia.baterai_id = b.id', 'inner')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'battery')
-            ->where('ia.baterai_id IS NOT NULL')
+        return $this->db->table('inventory_batteries ib')
+            ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai, ib.serial_number as sn_baterai')
+            ->join('baterai b', 'ib.battery_type_id = b.id', 'left')
+            ->where('ib.inventory_unit_id', $unitId)
+            ->where('ib.battery_type_id IS NOT NULL')
+            ->whereIn('ib.status', ['IN_USE', 'SPARE'])
             ->get()
             ->getResultArray();
     }
@@ -718,12 +718,12 @@ class WorkOrderModel extends Model
     {
         if (!$unitId) return [];
         
-        return $this->db->table('inventory_attachment ia')
-            ->select('c.merk_charger, c.tipe_charger, ia.sn_charger')
-            ->join('charger c', 'ia.charger_id = c.id_charger', 'inner')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'charger')
-            ->where('ia.charger_id IS NOT NULL')
+        return $this->db->table('inventory_chargers ic')
+            ->select('c.merk_charger, c.tipe_charger, ic.serial_number as sn_charger')
+            ->join('charger c', 'ic.charger_type_id = c.id_charger', 'left')
+            ->where('ic.inventory_unit_id', $unitId)
+            ->where('ic.charger_type_id IS NOT NULL')
+            ->whereIn('ic.status', ['IN_USE', 'SPARE'])
             ->get()
             ->getResultArray();
     }
