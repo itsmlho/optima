@@ -438,21 +438,43 @@ class Kontrak extends BaseController
             'dibuat_oleh'          => session()->get('user_id') ?? 1, // Default user ID jika session kosong
         ];
 
+        // MANUAL DUPLICATE CHECK: Allow same contract number with different dates (renewals)
+        // Check for exact duplicate: same contract number + same start date
+        $contractNumber = $data['no_kontrak'];
+        $startDate = $data['tanggal_mulai'];
+        
+        if (!empty($contractNumber) && !empty($startDate)) {
+            $exactDuplicate = $this->kontrakModel
+                ->where('no_kontrak', $contractNumber)
+                ->where('tanggal_mulai', $startDate)
+                ->first();
+            
+            if ($exactDuplicate) {
+                $duplicateId = is_array($exactDuplicate) ? $exactDuplicate['id'] : $exactDuplicate->id;
+                
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => "Contract '$contractNumber' with start date '$startDate' already exists (ID: $duplicateId). For contract renewals, please use a different start date.",
+                    'duplicate' => true,
+                    'existing_id' => $duplicateId,
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            // SOFT WARNING: Check if contract number exists with different dates (renewal scenario)
+            $renewals = $this->kontrakModel
+                ->where('no_kontrak', $contractNumber)
+                ->findAll();
+            
+            if (!empty($renewals)) {
+                log_message('info', "Contract renewal detected: Creating renewal for contract '$contractNumber' (existing: " . count($renewals) . " contract(s))");
+                // Don't block, just log for audit trail
+            }
+        }
+
         // Validate using KontrakModel
         if (!$this->kontrakModel->validate($data)) {
             $errors = $this->kontrakModel->errors();
-            $existingId = null;
-
-            // Check if it's a duplicate contract number
-            if (!empty($errors['no_kontrak']) && strpos($errors['no_kontrak'], 'sudah digunakan') !== false) {
-                $contractNumber = trim((string)$this->request->getPost('contract_number'));
-                if ($contractNumber !== '') {
-                    $existing = $this->kontrakModel->where('no_kontrak', $contractNumber)->first();
-                    if ($existing) {
-                        $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
-                    }
-                }
-            }
 
             // Log validation failure using trait
             $options = [
@@ -466,8 +488,6 @@ class Kontrak extends BaseController
                 'success' => false,
                 'message' => lang('App.error_invalid_data'),
                 'errors' => $errors,
-                'duplicate' => $existingId ? true : false,
-                'existing_id' => $existingId,
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -624,34 +644,64 @@ class Kontrak extends BaseController
         // Cast ID to integer to ensure proper comparison
         $contractId = (int) $id;
         
-        // Debug: Let's see the exact query being executed
-        log_message('debug', "Searching for contracts with no_kontrak='$contractNumber' AND id != $contractId");
-        
-        $existing = $this->kontrakModel
-            ->where('no_kontrak', $contractNumber)
-            ->where('id !=', $contractId)
-            ->first();
-
-        log_message('debug', "Existing contract found: " . ($existing ? 'YES' : 'NO'));
-        if ($existing) {
-            log_message('debug', "Existing contract ID: " . (is_array($existing) ? $existing['id'] : $existing->id));
-        }
-
-        if ($existing) {
-            // Debug: Mari kita lihat apa isi dari existing record
-            $existingArray = is_array($existing) ? $existing : $existing->toArray();
-            log_message('debug', "Existing record: " . json_encode($existingArray));
-            
+        // Get current contract data
+        $currentContract = $this->kontrakModel->find($contractId);
+        if (!$currentContract) {
             return $this->response->setJSON([
-                'success' => false, 
-                'message' => lang('Marketing.contract_number') . " '$contractNumber' " . lang('Marketing.already_used') . " (ID: " . (is_array($existing) ? $existing['id'] : $existing->id) . "). Current edit ID: $contractId",
-                'debug_info' => [
-                    'current_id' => $contractId,
-                    'existing_id' => is_array($existing) ? $existing['id'] : $existing->id,
-                    'contract_number' => $contractNumber
-                ],
-                'csrf_hash' => csrf_hash(),
+                'success' => false,
+                'message' => 'Contract not found',
+                'csrf_hash' => csrf_hash()
             ]);
+        }
+        
+        // UPDATED LOGIC: Allow same contract number with different dates (renewals)
+        // Check duplicate based on: contract_number + start_date combination
+        // This allows contract renewals with same number but different periods
+        $startDate = $this->request->getPost('start_date');
+        
+        $contractNumberChanged = ($currentContract['no_kontrak'] !== $contractNumber);
+        $startDateChanged = ($currentContract['tanggal_mulai'] !== $startDate);
+        
+        // Only validate if contract number OR start date changed
+        if ($contractNumberChanged || $startDateChanged) {
+            log_message('debug', "Contract number or date changed. Checking for duplicates...");
+            
+            // Check for exact duplicate: same contract number + same start date
+            $existing = $this->kontrakModel
+                ->where('no_kontrak', $contractNumber)
+                ->where('tanggal_mulai', $startDate)
+                ->where('id !=', $contractId)
+                ->first();
+
+            if ($existing) {
+                $existingArray = is_array($existing) ? $existing : $existing->toArray();
+                log_message('debug', "Duplicate found: " . json_encode($existingArray));
+                
+                return $this->response->setJSON([
+                    'success' => false, 
+                    'message' => "Contract '$contractNumber' with start date '$startDate' already exists (ID: " . (is_array($existing) ? $existing['id'] : $existing->id) . "). For contract renewals, please use a different start date.",
+                    'debug_info' => [
+                        'current_id' => $contractId,
+                        'existing_id' => is_array($existing) ? $existing['id'] : $existing->id,
+                        'contract_number' => $contractNumber,
+                        'start_date' => $startDate
+                    ],
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+            
+            // SOFT WARNING: Check if contract number exists with different dates (renewal scenario)
+            $renewals = $this->kontrakModel
+                ->where('no_kontrak', $contractNumber)
+                ->where('id !=', $contractId)
+                ->findAll();
+            
+            if (!empty($renewals)) {
+                log_message('info', "Contract renewal detected: " . count($renewals) . " other contract(s) with same number");
+                // Don't block, just log for audit trail
+            }
+        } else {
+            log_message('debug', "Contract number and date unchanged, skipping duplicate check");
         }
 
         // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
@@ -673,19 +723,8 @@ class Kontrak extends BaseController
         // Disable model validation temporarily for update to avoid is_unique conflict
         $this->kontrakModel->skipValidation(true);
         
-        // Get old data for logging
-        $oldData = $this->kontrakModel->find($contractId);
-        if (is_object($oldData)) {
-            $oldData = $oldData->toArray();
-        }
-        
-        if (!$oldData) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Contract not found',
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
+        // Use $currentContract (already fetched) as $oldData to avoid duplicate query
+        $oldData = is_object($currentContract) ? $currentContract->toArray() : $currentContract;
         
         if ($this->kontrakModel->update($contractId, $data)) {
             // Update inventory status based on contract status change
@@ -974,7 +1013,7 @@ class Kontrak extends BaseController
             $kontrak = $this->db->table('kontrak k')
                 ->select('k.*,
                     c.customer_name, c.customer_code, c.phone,
-                    (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status = \'ACTIVE\') AS total_units,
+                    (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status IN (\'ACTIVE\', \'AKTIF\', \'TEMP_ACTIVE\')) AS total_units,
                     k.nilai_total AS total_value,
                     k.operator_quantity,
                     k.operator_monthly_rate')
@@ -1051,7 +1090,7 @@ class Kontrak extends BaseController
                 LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
                 LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
                 LEFT JOIN customer_locations cl_unit ON cl_unit.id = ku.customer_location_id
-                WHERE ku.kontrak_id = ? AND ku.status IN ('AKTIF', 'ACTIVE')
+                WHERE ku.kontrak_id = ? AND ku.status IN ('AKTIF', 'ACTIVE', 'TEMP_ACTIVE')
                 ORDER BY iu.no_unit ASC
             ";
             
@@ -1468,7 +1507,7 @@ class Kontrak extends BaseController
                 LEFT JOIN (
                     SELECT ku2.unit_id, ku2.kontrak_id, ku2.customer_location_id
                     FROM kontrak_unit ku2
-                    WHERE ku2.status IN ('AKTIF','ACTIVE') AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
+                    WHERE ku2.status IN ('AKTIF','ACTIVE','TEMP_ACTIVE') AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
                 ) active_ku ON active_ku.unit_id = iu.id_inventory_unit
                 LEFT JOIN kontrak active_k ON active_k.id = active_ku.kontrak_id
                 LEFT JOIN customers active_c ON active_c.id = active_k.customer_id

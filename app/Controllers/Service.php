@@ -3060,29 +3060,32 @@ EOF;
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
         }
         
-        $rolesParam = $this->request->getGet('roles');
-        if (empty($rolesParam)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Roles parameter required']);
-        }
-        
-        $roles = explode(',', $rolesParam);
-        
-        // Validate roles
-        $validRoles = ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'FOREMAN', 'SUPERVISOR', 'HELPER'];
-        $roles = array_intersect($roles, $validRoles);
-        
-        if (empty($roles)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'No valid roles provided']);
-        }
+        // Get department filter (NEW: filter by department instead of role)
+        $departmentId = $this->request->getGet('department_id');
         
         try {
-            $employees = $this->db->table('employees')
+            $builder = $this->db->table('employees')
                 ->select('id, staff_name, staff_role, job_description, departemen_id')
-                ->whereIn('staff_role', $roles)
-                ->where('is_active', 1)
-                ->orderBy('staff_role ASC, staff_name ASC')
+                ->where('is_active', 1);
+            
+            // Filter by department if provided
+            if (!empty($departmentId)) {
+                // Convert to array if comma-separated
+                $departments = is_array($departmentId) ? $departmentId : explode(',', $departmentId);
+                $builder->whereIn('departemen_id', $departments);
+                log_message('info', 'Filtering employees by department(s): ' . implode(', ', $departments));
+            }
+            
+            // Exclude non-mechanic roles (admin, marketing, etc) - only get workshop staff
+            $workshopRoles = ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'FOREMAN', 'SUPERVISOR', 'HELPER'];
+            $builder->whereIn('staff_role', $workshopRoles);
+            
+            $employees = $builder
+                ->orderBy('departemen_id ASC, staff_role ASC, staff_name ASC')
                 ->get()
                 ->getResultArray();
+            
+            log_message('info', "Loaded {count} employees for department filter", ['count' => count($employees)]);
             
             return $this->response->setJSON([
                 'success' => true,
@@ -3090,7 +3093,7 @@ EOF;
                 'csrf_hash' => csrf_hash()
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error fetching employees by roles: ' . $e->getMessage());
+            log_message('error', 'Error fetching employees by department: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false, 
                 'message' => 'Error fetching employees'
