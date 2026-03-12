@@ -283,6 +283,23 @@ Halaman di luar 9 modul utama yang sudah distandarkan:
 | Sparepart Inventory | `warehouse/sparepart.php` | ✅ DONE | Mar 10 2026 | Doc block, card-header bg-light, filter card, badge-soft-* stock, table mb-0 |
 | Audit Approval (Location) | `marketing/audit_approval_location.php` | ✅ DONE | Mar 10 2026 | card-header bg-light, card-body p-0 (already had stat-card, badge refs in doc) |
 | Sparepart Usage & Returns | `warehouse/sparepart_usage.php` | ✅ DONE | Mar 10 2026 | Doc block, style→optima-pro.css, card-header bg-light, modal bg-light, badge-soft-* in JS, table mb-0 |
+| PO Attachment Verification | `warehouse/purchase_orders/po_attachment.php` | ✅ DONE | Mar 12 2026 | Modal bg-light, badge-soft-gray item type, card-header bg-light |
+| PO Unit Verification | `warehouse/purchase_orders/po_unit.php` | ✅ DONE | Mar 12 2026 | Already compliant |
+| SPK Service | `service/spk_service.php` | ✅ DONE | Mar 12 2026 | badge-soft-* for jenis_spk, status, getStatusBadgeClass |
+| Sparepart Validation Modal | `service/sparepart_validation.php` | ✅ DONE | Mar 12 2026 | Modal bg-light, badge-soft-* status/type/source |
+| Work Order Detail | `service/work_order_detail.php` | ✅ DONE | Mar 12 2026 | softBadgeClass helper, badge-soft-* all badges |
+| Unit Movement (Service) | `service/unit_movement.php` | ✅ DONE | Mar 12 2026 | badge-soft-* status/component, modal bg-light |
+| Unit Audit Location/Result | `service/unit_audit_*.php` | ✅ DONE | Mar 12 2026 | badge-soft-* status maps |
+| Unit Verification | `service/unit_verification.php` | ✅ DONE | Mar 12 2026 | badge-soft-gray/cyan counters |
+| Data Unit / Area Employee | `service/data_unit.php`, `area_employee_management.php` | ✅ DONE | Mar 12 2026 | badge-soft-* tabs + DataTable |
+| Kontrak (tabs) | `marketing/kontrak.php` | ✅ DONE | Mar 12 2026 | badge-soft-* tab counters |
+| Quotations | `marketing/quotations.php` | ✅ DONE | Mar 12 2026 | badge-soft-green, chip-gray for specs |
+| Customer Detail | `marketing/customer_detail.php` | ✅ DONE | Mar 12 2026 | badge-soft-* status, softClass |
+| Finance Invoice Detail | `finance/invoice_detail.php` | ✅ DONE | Mar 12 2026 | badge-soft-* status |
+| Purchasing / Supplier | `purchasing/purchasing.php`, `supplier_management.php` | ✅ DONE | Mar 12 2026 | badge-soft-* item types, supplier |
+| Warehouse Index | `warehouse/index.php` | ✅ DONE | Mar 12 2026 | badge-soft-* transaction |
+| PO Rejected Items | `warehouse/purchase_orders/rejected_items.php` | ✅ DONE | Mar 12 2026 | badge-soft-* unit/attachment/sparepart |
+| Invent Attachment | `warehouse/inventory/invent_attachment.php` | ✅ DONE | Mar 12 2026 | badge-soft-* counts, condition, status |
 
 *(Daftar ini di-update tiap batch. Cek tabel ini untuk progress seluruh web.)*
 

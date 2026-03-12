@@ -158,8 +158,8 @@ function renderGrouped(customers) {
                     <i class="fas fa-chevron-down"></i>
                 </span>
                 <strong class="text-dark">${escHtml(cust.customer_name)}</strong>
-                <span class="badge bg-secondary">${filteredLocs.length} lokasi</span>
-                <span class="badge bg-info">${totalAudits} audit</span>
+                <span class="badge badge-soft-gray">${filteredLocs.length} lokasi</span>
+                <span class="badge badge-soft-cyan">${totalAudits} audit</span>
                 </div>
             <div id="uvCustChild${ci}" style="${expanded ? '' : 'display:none'}" class="border-top">`;
 
@@ -226,7 +226,7 @@ function buildAuditRow(a) {
         'APPROVED':        '<span class="badge badge-soft-green">Approved</span>',
         'REJECTED':        '<span class="badge badge-soft-red">Rejected</span>',
     };
-    const statusBadge = statusMap[a.status] || `<span class="badge bg-secondary">${a.status}</span>`;
+    const statusBadge = statusMap[a.status] || `<span class="badge badge-soft-gray">${a.status}</span>`;
     const discrepancy = a.has_discrepancy
         ? '<span class="badge badge-soft-red">Ada</span>'
         : '<span class="badge badge-soft-green">Tidak Ada</span>';

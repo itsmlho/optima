@@ -640,7 +640,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div class="card-body p-4">
                         <table class="table table-sm table-borderless">
-                            <tr><td width="30%"><strong>Item Type</strong></td><td>: <span class="badge bg-secondary">${h(data.item_type)}</span></td></tr>
+                            <tr><td width="30%"><strong>Item Type</strong></td><td>: <span class="badge badge-soft-gray">${h(data.item_type)}</span></td></tr>
                             <tr><td><strong>PO Number</strong></td><td>: ${h(data.no_po)}</td></tr>
                             <tr><td class="align-top"><strong>Description</strong></td><td class="align-top">: ${h(data.keterangan)}</td></tr>
                         </table>

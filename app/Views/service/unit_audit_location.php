@@ -354,13 +354,13 @@ function renderAuditsTable(audits) {
 
 function getStatusBadge(status) {
     const badges = {
-        'DRAFT': '<span class="badge bg-secondary">Draft</span>',
-        'PRINTED': '<span class="badge bg-info">Printed</span>',
-        'IN_PROGRESS': '<span class="badge bg-warning">In Progress</span>',
-        'RESULTS_ENTERED': '<span class="badge bg-primary">Results Entered</span>',
-        'PENDING_APPROVAL': '<span class="badge bg-orange">Pending Approval</span>',
-        'APPROVED': '<span class="badge bg-success">Approved</span>',
-        'REJECTED': '<span class="badge bg-danger">Rejected</span>'
+        'DRAFT': '<span class="badge badge-soft-gray">Draft</span>',
+        'PRINTED': '<span class="badge badge-soft-cyan">Printed</span>',
+        'IN_PROGRESS': '<span class="badge badge-soft-yellow">In Progress</span>',
+        'RESULTS_ENTERED': '<span class="badge badge-soft-blue">Results Entered</span>',
+        'PENDING_APPROVAL': '<span class="badge badge-soft-orange">Pending Approval</span>',
+        'APPROVED': '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED': '<span class="badge badge-soft-red">Rejected</span>'
     };
     return badges[status] || status;
 }

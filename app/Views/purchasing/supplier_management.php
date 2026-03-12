@@ -120,7 +120,7 @@
                             <tr style="cursor: pointer;" onclick="viewSupplierDetail(<?= $supplier['id_supplier'] ?>)">
                                 <td><?= $index + 1 ?></td>
                                 <td>
-                                    <span class="badge bg-primary"><?= esc($supplier['kode_supplier'] ?? '-') ?></span>
+                                    <span class="badge badge-soft-blue"><?= esc($supplier['kode_supplier'] ?? '-') ?></span>
                                 </td>
                                 <td><strong><?= esc($supplier['nama_supplier']) ?></strong></td>
                                 <td><?= esc($supplier['business_type'] ?? '-') ?></td>
@@ -341,8 +341,8 @@ function viewSupplierDetail(id) {
 // Render supplier detail content
 function renderSupplierDetail(supplier) {
     const statusBadge = supplier.status === 'Active' ? 
-        '<span class="badge bg-success">Active</span>' : 
-        '<span class="badge bg-secondary">Inactive</span>';
+        '<span class="badge badge-soft-green">Active</span>' : 
+        '<span class="badge badge-soft-gray">Inactive</span>';
     
     const html = `
         <div class="row">
@@ -731,7 +731,7 @@ function updateSupplierTable(suppliers) {
             <tr style="cursor: pointer;" onclick="viewSupplierDetail(${supplier.id_supplier})">
                 <td>${index + 1}</td>
                 <td>
-                    <span class="badge bg-primary">${supplier.kode_supplier || '-'}</span>
+                    <span class="badge badge-soft-blue">${supplier.kode_supplier || '-'}</span>
                 </td>
                 <td><strong>${supplier.nama_supplier || '-'}</strong></td>
                 <td>${supplier.business_type || '-'}</td>

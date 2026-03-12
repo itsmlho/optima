@@ -25,6 +25,11 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
     if (!$dt || $dt === '0000-00-00 00:00:00') return '-';
     return date($format, strtotime($dt));
 }
+// Map Bootstrap color to badge-soft-* for Optima standards
+function softBadgeClass(?string $c): string {
+    $m = ['primary'=>'blue','success'=>'green','warning'=>'yellow','danger'=>'red','info'=>'cyan','secondary'=>'gray','dark'=>'gray','orange'=>'orange'];
+    return 'badge-soft-'.($m[$c ?? ''] ?? 'gray');
+}
 ?>
 
 <!-- Page Header -->
@@ -43,8 +48,8 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
         <p class="text-muted small mb-0">
             <?= fmtDate($wo['report_date']) ?>
             &bull; <?= esc($wo['order_type']) ?>
-            &bull; <span class="badge bg-<?= $statusColor ?>"><?= esc($wo['status_name']) ?></span>
-            &bull; <span class="badge bg-<?= $priorityColor ?>"><?= esc($wo['priority_name']) ?></span>
+            &bull; <span class="badge <?= softBadgeClass($statusColor) ?>"><?= esc($wo['status_name']) ?></span>
+            &bull; <span class="badge <?= softBadgeClass($priorityColor === 'warning' ? 'warning' : $priorityColor) ?>"><?= esc($wo['priority_name']) ?></span>
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
@@ -80,15 +85,15 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
                     </div>
                     <div class="col-sm-6">
                         <label class="small text-muted d-block mb-1">Tipe Order</label>
-                        <span class="badge bg-info fs-6"><?= esc($wo['order_type']) ?></span>
+                        <span class="badge badge-soft-cyan fs-6"><?= esc($wo['order_type']) ?></span>
                     </div>
                     <div class="col-sm-6">
                         <label class="small text-muted d-block mb-1">Status</label>
-                        <span class="badge bg-<?= $statusColor ?> fs-6"><?= esc($wo['status_name']) ?></span>
+                        <span class="badge <?= softBadgeClass($statusColor) ?> fs-6"><?= esc($wo['status_name']) ?></span>
                     </div>
                     <div class="col-sm-6">
                         <label class="small text-muted d-block mb-1">Priority</label>
-                        <span class="badge bg-<?= $priorityColor ?> fs-6"><?= esc($wo['priority_name']) ?></span>
+                        <span class="badge <?= softBadgeClass($priorityColor === 'warning' ? 'warning' : $priorityColor) ?> fs-6"><?= esc($wo['priority_name']) ?></span>
                     </div>
                     <div class="col-sm-6">
                         <label class="small text-muted d-block mb-1">Kategori</label>
@@ -163,7 +168,7 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
                     <i class="fas fa-toolbox me-2 text-primary"></i>
                     <h5 class="mb-0">Sparepart Digunakan</h5>
                 </div>
-                <span class="badge bg-secondary"><?= count($spareparts) ?> item</span>
+                <span class="badge badge-soft-gray"><?= count($spareparts) ?> item</span>
             </div>
             <?php if (empty($spareparts)): ?>
             <div class="card-body text-center text-muted py-4">
@@ -194,7 +199,7 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
                             <td class="text-center fw-bold text-primary"><?= number_format($sp['quantity_used'] ?? 0) ?></td>
                             <td>
                                 <?php $spStatus = $sp['status'] ?? 'N/A'; ?>
-                                <span class="badge bg-<?= $spStatus === 'USED' ? 'success' : ($spStatus === 'RETURNED' ? 'info' : 'secondary') ?>">
+                                <span class="badge badge-soft-<?= $spStatus === 'USED' ? 'green' : ($spStatus === 'RETURNED' ? 'cyan' : 'gray') ?>">
                                     <?= esc($spStatus) ?>
                                 </span>
                             </td>
@@ -295,7 +300,7 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
                         if ($val === '-') continue;
                     ?>
                     <li class="list-group-item d-flex align-items-center gap-3 px-3 py-2">
-                        <span class="badge bg-<?= $df['color'] ?> rounded-circle p-2">
+                        <span class="badge <?= softBadgeClass($df['color']) ?> rounded-circle p-2">
                             <i class="fas <?= $df['icon'] ?>"></i>
                         </span>
                         <div>
@@ -325,7 +330,7 @@ function fmtDate(?string $dt, string $format = 'd M Y, H:i'): string {
                         <div style="position:absolute;left:-1.35rem;top:4px;width:14px;height:14px;border-radius:50%;background:var(--bs-<?= $history['to_color'] ?? 'secondary' ?>);border:2px solid #fff;box-shadow:0 0 0 2px var(--bs-<?= $history['to_color'] ?? 'secondary' ?>);"></div>
                         <div class="ps-1">
                             <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="badge bg-<?= $history['to_color'] ?? 'secondary' ?> badge-sm"><?= esc($history['to_status'] ?? 'Unknown') ?></span>
+                                <span class="badge <?= softBadgeClass($history['to_color'] ?? 'secondary') ?> badge-sm"><?= esc($history['to_status'] ?? 'Unknown') ?></span>
                                 <?php if (!empty($history['from_status'])): ?>
                                 <small class="text-muted">dari <?= esc($history['from_status']) ?></small>
                                 <?php endif; ?>

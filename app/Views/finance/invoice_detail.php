@@ -65,7 +65,7 @@
         </h4>
         <p class="text-muted small mb-0">
             Kontrak: <?= esc($invoice['contract_number'] ?? '-') ?>
-            &bull; <span class="badge bg-<?= in_array($invoice['status'] ?? '', ['PAID']) ? 'success' : (in_array($invoice['status'] ?? '', ['OVERDUE']) ? 'danger' : (in_array($invoice['status'] ?? '', ['APPROVED','SENT']) ? 'primary' : 'secondary')) ?>"><?= esc($invoice['status'] ?? 'DRAFT') ?></span>
+            &bull; <span class="badge badge-soft-<?= in_array($invoice['status'] ?? '', ['PAID']) ? 'green' : (in_array($invoice['status'] ?? '', ['OVERDUE']) ? 'red' : (in_array($invoice['status'] ?? '', ['APPROVED','SENT']) ? 'blue' : 'gray')) ?>"><?= esc($invoice['status'] ?? 'DRAFT') ?></span>
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">

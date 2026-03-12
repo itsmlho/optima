@@ -115,7 +115,7 @@ $items = $audit['items'] ?? [];
                             <td><?= $item['expected_no_unit'] ?? '-' ?></td>
                             <td><?= $item['expected_serial'] ?? '-' ?></td>
                             <td><?= ($item['expected_merk'] ?? '') . ' ' . ($item['expected_model'] ?? '') ?></td>
-                            <td class="text-center"><?= ($item['expected_is_spare'] ?? 0) == 1 ? '<span class="badge bg-warning">YES</span>' : 'NO' ?></td>
+                            <td class="text-center"><?= ($item['expected_is_spare'] ?? 0) == 1 ? '<span class="badge badge-soft-yellow">YES</span>' : 'NO' ?></td>
                             <td>
                                 <input type="text" class="form-control form-control-sm"
                                     name="items[<?= $item['id'] ?>][actual_no_unit]"
@@ -449,13 +449,13 @@ document.querySelector('input[name="summary[actual_total_units]"]').addEventList
 <?php
 function getStatusBadge($status) {
     $badges = [
-        'DRAFT' => '<span class="badge bg-secondary">Draft</span>',
-        'PRINTED' => '<span class="badge bg-info">Printed</span>',
-        'IN_PROGRESS' => '<span class="badge bg-warning">In Progress</span>',
-        'RESULTS_ENTERED' => '<span class="badge bg-primary">Results Entered</span>',
-        'PENDING_APPROVAL' => '<span class="badge bg-orange">Pending Approval</span>',
-        'APPROVED' => '<span class="badge bg-success">Approved</span>',
-        'REJECTED' => '<span class="badge bg-danger">Rejected</span>'
+        'DRAFT' => '<span class="badge badge-soft-gray">Draft</span>',
+        'PRINTED' => '<span class="badge badge-soft-cyan">Printed</span>',
+        'IN_PROGRESS' => '<span class="badge badge-soft-yellow">In Progress</span>',
+        'RESULTS_ENTERED' => '<span class="badge badge-soft-blue">Results Entered</span>',
+        'PENDING_APPROVAL' => '<span class="badge badge-soft-orange">Pending Approval</span>',
+        'APPROVED' => '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED' => '<span class="badge badge-soft-red">Rejected</span>'
     ];
     return $badges[$status] ?? $status;
 }
