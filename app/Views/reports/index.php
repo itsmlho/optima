@@ -333,7 +333,7 @@
                                             <button class="btn btn-sm btn-primary" onclick="downloadReport(<?= $report['id'] ?>)" title="Download">
                                                 <i class="fas fa-download"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-info" onclick="viewReport(<?= $report['id'] ?>)" title="View">
+                                            <button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewReport(<?= $report['id'] ?>)" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         <?php endif; ?>

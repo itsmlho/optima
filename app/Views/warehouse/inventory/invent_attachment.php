@@ -104,7 +104,7 @@
             <!-- Additional Filters (shown based on active tab) -->
             <div class="border-top pt-3 mt-3" id="additionalFilters" style="display: none;">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="chip chip-gray" style="font-size: 0.7rem;">
+                    <span class="chip chip-gray text-xxs">
                         <i class="fas fa-sliders-h me-1"></i>Models
                     </span>
                     <div class="btn-group btn-group-sm" role="group" id="modelFilterGroup">
@@ -172,7 +172,7 @@
                     <button type="button" class="btn btn-success btn-sm" id="btnAttachToUnit" onclick="openAttachModal()" style="display:none;">
                         <i class="fas fa-link me-1"></i>Install to Unit
                     </button>
-                    <button type="button" class="btn btn-info btn-sm" id="btnSwapUnit" onclick="openSwapModal()" style="display:none;">
+                    <button type="button" class="btn btn-warning btn-sm" id="btnSwapUnit" onclick="openSwapModal()" style="display:none;">
                         <i class="fas fa-exchange-alt me-1"></i>Move to Another Unit
                     </button>
                     <button type="button" class="btn btn-warning btn-sm" id="btnDetachFromUnit" onclick="openDetachModal()" style="display:none;">
@@ -360,7 +360,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-info">
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-exchange-alt me-1"></i>Move Unit
                     </button>
                 </div>

@@ -1021,7 +1021,7 @@ $(document).ready(function() {
                 }
             }
         }, 100);
-        console.log('Closed tab activated - reloading data');
+        // console.log('Closed tab activated - reloading data');
     });
     
     // Also handle click event for closed tab
@@ -1076,18 +1076,18 @@ $(document).ready(function() {
     // Row click events for both tables
         // Enhanced click prevention for View Only users
         if (!canViewService) {
-            console.log('🔒 View Only mode activated for Service - blocking all table interactions');
+            // console.log('🔒 View Only mode activated for Service - blocking all table interactions');
             
             // Override showWorkOrderDetail function
             window.showWorkOrderDetail = function(id, woNumber) {
-                console.log('🚫 Access Denied: showWorkOrderDetail blocked for View Only user');
+                // console.log('🚫 Access Denied: showWorkOrderDetail blocked for View Only user');
                 safeShowNotification('Access Denied: You do not have permission to view work order details.', 'error');
                 return false;
             };
             
             // Prevent all table interactions
             $('#progressWorkOrdersTable, #closedWorkOrdersTable').off('click').on('click', function(e) {
-                console.log('🚫 Table click blocked');
+                // console.log('🚫 Table click blocked');
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
@@ -1096,7 +1096,7 @@ $(document).ready(function() {
             
             // Prevent clicks on table rows
             $('#progressWorkOrdersTable tbody, #closedWorkOrdersTable tbody').off('click').on('click', 'tr', function(e) {
-                console.log('🚫 Row click blocked');
+                // console.log('🚫 Row click blocked');
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
@@ -1221,13 +1221,13 @@ $(document).ready(function() {
         const csrfData = getCsrfTokenData();
         if (csrfData && !formData.has(csrfData.tokenName)) {
             formData.append(csrfData.tokenName, csrfData.tokenValue);
-            console.log('✅ CSRF token manually added to FormData:', csrfData.tokenName);
+            // console.log('✅ CSRF token manually added to FormData:', csrfData.tokenName);
         }
         
         // DEBUG: Log all form data being sent
-        console.log('📤 Form data being submitted:');
+        // console.log('📤 Form data being submitted:');
         for (let pair of formData.entries()) {
-            console.log('  -', pair[0] + ':', pair[1]);
+            // console.log('  -', pair[0] + ':', pair[1]);
         }
         
         // Clear previous errors
@@ -1243,7 +1243,7 @@ $(document).ready(function() {
                 $('#btnSubmitWo').prop('disabled', true).text('Saving...');
             },
             success: function(response) {
-                console.log('✅ Success response:', response);
+                // console.log('✅ Success response:', response);
                 if (response.success) {
                     showAlert('success', response.message);
                     $('#workOrderModal').modal('hide');
@@ -1285,7 +1285,8 @@ $(document).ready(function() {
     // Show Work Order Detail function
     function showWorkOrderDetail(id, woNumber) {
         if (!canViewService) {
-            alert('Access Denied: You do not have permission to view work order details.');
+            if (window.OptimaNotify) OptimaNotify.error('Access Denied: You do not have permission to view work order details.');
+            else alert('Access Denied: You do not have permission to view work order details.');
             return;
         }
         
@@ -1295,8 +1296,8 @@ $(document).ready(function() {
             beforeSend: function() {
             },
             success: function(response) {
-                console.log('📦 Work Order Detail Data:', response.data);
-                console.log('🔧 Spareparts Data:', response.data.spareparts);
+                // console.log('📦 Work Order Detail Data:', response.data);
+                // console.log('🔧 Spareparts Data:', response.data.spareparts);
                 
                 if (response.success) {
                     hideAlert();
@@ -1323,7 +1324,7 @@ $(document).ready(function() {
         let id = $(this).data('id');
         let woNumber = $(this).data('wo-number') || 'WO-' + id;
         
-        console.log('🚀 Start Work clicked (btn-assign) for ID:', id, 'WO Number:', woNumber);
+        // console.log('🚀 Start Work clicked (btn-assign) for ID:', id, 'WO Number:', woNumber);
         
         // Simple SweetAlert with print button
         Swal.fire({
@@ -1396,10 +1397,10 @@ $(document).ready(function() {
         if (!woNumber) {
             let row = $(this).closest('tr');
             woNumber = row.find('td:nth-child(2)').text().trim(); // Work order number is in 2nd column
-            console.log('🔄 Fallback WO number from row:', woNumber);
+            // console.log('🔄 Fallback WO number from row:', woNumber);
         }
         
-        console.log('🟢 Complete button clicked - Opening Complete Modal first');
+        // console.log('🟢 Complete button clicked - Opening Complete Modal first');
         
         // Open Complete Work Order Modal (NOT Unit Verification directly)
         if (typeof window.openCompleteModal === 'function') {
@@ -1449,7 +1450,7 @@ $(document).ready(function() {
 
     // Function to update work order status with confirmation
     function updateWorkOrderStatus(id, status, message) {
-        console.log('🚨 updateWorkOrderStatus called with:', { id, status, message, stack: new Error().stack });
+        // console.log('🚨 updateWorkOrderStatus called with:', { id, status, message, stack: new Error().stack });
         
         Swal.fire({
             title: 'Confirmation',
@@ -1467,7 +1468,7 @@ $(document).ready(function() {
     
     // Function to update work order status directly without confirmation
     function updateWorkOrderStatusDirect(id, status, message) {
-        console.log('🚨 updateWorkOrderStatusDirect called with:', { id, status, message });
+        // console.log('🚨 updateWorkOrderStatusDirect called with:', { id, status, message });
         
         $.ajax({
             url: '<?= base_url('service/work-orders/update-status') ?>',
@@ -1699,21 +1700,21 @@ $(document).ready(function() {
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                console.log('🗑️ Confirmed deletion, sending request...');
+                // console.log('🗑️ Confirmed deletion, sending request...');
                 $.ajax({
                     url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
                     beforeSend: function() {
-                        console.log('🗑️ Sending delete request to:', '<?= base_url('service/work-orders/delete') ?>/' + id);
+                        // console.log('🗑️ Sending delete request to:', '<?= base_url('service/work-orders/delete') ?>/' + id);
                     },
                     success: function(response) {
-                        console.log('✅ Delete response:', response);
+                        // console.log('✅ Delete response:', response);
                         if (response.success) {
                             showAlert('success', response.message);
                             reloadProgressTable();
                             updateStatistics();
                         } else {
-                            console.log('❌ Delete failed:', response.message);
+                            // console.log('❌ Delete failed:', response.message);
                             showAlert('error', response.message);
                         }
                     },
@@ -1796,14 +1797,14 @@ $(document).ready(function() {
                         $.each(response.data, function(index, subcategory) {
                             subcategorySelect.append(`<option value="${subcategory.id}">${subcategory.subcategory_name}</option>`);
                         });
-                        console.log('✅ Subcategories loaded:', response.data.length, 'items');
+                        // console.log('✅ Subcategories loaded:', response.data.length, 'items');
                         
                         // Trigger Select2 update
                         if (subcategorySelect.hasClass('select2-hidden-accessible')) {
                             subcategorySelect.trigger('change');
                         }
                     } else {
-                        console.log('ℹ️ No subcategories found for category:', categoryId);
+                        // console.log('ℹ️ No subcategories found for category:', categoryId);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -1820,12 +1821,12 @@ $(document).ready(function() {
 
     // Helper functions
     function populateEditForm(data) {
-        console.log('🔄 Populating edit form with data:', data);
+        // console.log('🔄 Populating edit form with data:', data);
         
         try {
             // Extract work order data from nested structure
             let workOrder = data.workOrder || data;
-            console.log('📋 Work Order data:', workOrder);
+            // console.log('📋 Work Order data:', workOrder);
             
             // Basic form fields
             if (workOrder.id) $('#work_order_id').val(workOrder.id);
@@ -1840,11 +1841,11 @@ $(document).ready(function() {
             if (workOrder.sparepart_used) $('#sparepart_used').val(workOrder.sparepart_used);
             if (workOrder.notes) $('#notes').val(workOrder.notes);
             
-            console.log('✅ Basic fields populated');
+            // console.log('✅ Basic fields populated');
             
             // Handle Unit selection with Select2
             if (workOrder.unit_id) {
-                console.log('🏢 Setting unit ID:', workOrder.unit_id);
+                // console.log('🏢 Setting unit ID:', workOrder.unit_id);
                 
                 // For Select2, we need to add the option first if it doesn't exist
                 let unitSelect = $('#unit_id');
@@ -1859,10 +1860,10 @@ $(document).ready(function() {
                     }
                     
                     unitSelect.append(`<option value="${workOrder.unit_id}" selected>${unitText}</option>`);
-                    console.log('✅ Unit option added:', unitText);
+                    // console.log('✅ Unit option added:', unitText);
                 } else if (unitExists) {
                     unitSelect.val(workOrder.unit_id);
-                    console.log('✅ Unit selected from existing options');
+                    // console.log('✅ Unit selected from existing options');
                 }
                 
                 // Trigger Select2 update
@@ -1871,7 +1872,7 @@ $(document).ready(function() {
             
             // Handle Category and Subcategory with Select2
             if (workOrder.category_id) {
-                console.log('📂 Setting category ID:', workOrder.category_id);
+                // console.log('📂 Setting category ID:', workOrder.category_id);
                 $('#category_id').val(workOrder.category_id).trigger('change');
                 
                 // Load subcategories if category is selected
@@ -1886,7 +1887,7 @@ $(document).ready(function() {
                                 subcategorySelect.append(`<option value="${subcategory.id}" ${selected}>${subcategory.subcategory_name}</option>`);
                             });
                             subcategorySelect.trigger('change');
-                            console.log('✅ Subcategories populated, selected:', workOrder.subcategory_id);
+                            // console.log('✅ Subcategories populated, selected:', workOrder.subcategory_id);
                         }
                     }, 500); // Allow time for category change to trigger subcategory load
                 }
@@ -1895,7 +1896,7 @@ $(document).ready(function() {
             // Handle Mechanic selections with Select2
             if (workOrder.mechanic_1 || workOrder.mechanic_id) {
                 let mechanicId = workOrder.mechanic_1 || workOrder.mechanic_id;
-                console.log('🔧 Setting mechanic 1 ID:', mechanicId);
+                // console.log('🔧 Setting mechanic 1 ID:', mechanicId);
                 
                 let mechanicSelect = $('#mechanic_1');
                 let mechanicExists = mechanicSelect.find(`option[value="${mechanicId}"]`).length > 0;
@@ -1905,7 +1906,7 @@ $(document).ready(function() {
                     if (mechanic) {
                         let mechanicText = mechanic.staff_name || mechanic.name || `Mechanic ${mechanicId}`;
                         mechanicSelect.append(`<option value="${mechanicId}" selected>${mechanicText}</option>`);
-                        console.log('✅ Mechanic 1 option added:', mechanicText);
+                        // console.log('✅ Mechanic 1 option added:', mechanicText);
                     }
                 } else if (mechanicExists) {
                     mechanicSelect.val(mechanicId);
@@ -1914,7 +1915,7 @@ $(document).ready(function() {
             }
             
             if (workOrder.mechanic_2) {
-                console.log('🔧 Setting mechanic 2 ID:', workOrder.mechanic_2);
+                // console.log('🔧 Setting mechanic 2 ID:', workOrder.mechanic_2);
                 
                 let mechanicSelect = $('#mechanic_2');
                 let mechanicExists = mechanicSelect.find(`option[value="${workOrder.mechanic_2}"]`).length > 0;
@@ -1924,7 +1925,7 @@ $(document).ready(function() {
                     if (mechanic) {
                         let mechanicText = mechanic.staff_name || mechanic.name || `Mechanic ${workOrder.mechanic_2}`;
                         mechanicSelect.append(`<option value="${workOrder.mechanic_2}" selected>${mechanicText}</option>`);
-                        console.log('✅ Mechanic 2 option added:', mechanicText);
+                        // console.log('✅ Mechanic 2 option added:', mechanicText);
                     }
                 } else if (mechanicExists) {
                     mechanicSelect.val(workOrder.mechanic_2);
@@ -1935,7 +1936,7 @@ $(document).ready(function() {
             // Handle Helper selections with Select2
             if (workOrder.helper_1 || workOrder.helper_id) {
                 let helperId = workOrder.helper_1 || workOrder.helper_id;
-                console.log('🛠️ Setting helper 1 ID:', helperId);
+                // console.log('🛠️ Setting helper 1 ID:', helperId);
                 
                 let helperSelect = $('#helper_1');
                 let helperExists = helperSelect.find(`option[value="${helperId}"]`).length > 0;
@@ -1945,7 +1946,7 @@ $(document).ready(function() {
                     if (helper) {
                         let helperText = helper.staff_name || helper.name || `Helper ${helperId}`;
                         helperSelect.append(`<option value="${helperId}" selected>${helperText}</option>`);
-                        console.log('✅ Helper 1 option added:', helperText);
+                        // console.log('✅ Helper 1 option added:', helperText);
                     }
                 } else if (helperExists) {
                     helperSelect.val(helperId);
@@ -1954,7 +1955,7 @@ $(document).ready(function() {
             }
             
             if (workOrder.helper_2) {
-                console.log('🛠️ Setting helper 2 ID:', workOrder.helper_2);
+                // console.log('🛠️ Setting helper 2 ID:', workOrder.helper_2);
                 
                 let helperSelect = $('#helper_2');
                 let helperExists = helperSelect.find(`option[value="${workOrder.helper_2}"]`).length > 0;
@@ -1964,7 +1965,7 @@ $(document).ready(function() {
                     if (helper) {
                         let helperText = helper.staff_name || helper.name || `Helper ${workOrder.helper_2}`;
                         helperSelect.append(`<option value="${workOrder.helper_2}" selected>${helperText}</option>`);
-                        console.log('✅ Helper 2 option added:', helperText);
+                        // console.log('✅ Helper 2 option added:', helperText);
                     }
                 } else if (helperExists) {
                     helperSelect.val(workOrder.helper_2);
@@ -1974,13 +1975,13 @@ $(document).ready(function() {
             
             // Handle Priority
             if (workOrder.priority_id) {
-                console.log('⚠️ Setting priority ID:', workOrder.priority_id);
+                // console.log('⚠️ Setting priority ID:', workOrder.priority_id);
                 $('#priority_id').val(workOrder.priority_id);
             }
             
             // Handle Admin and Foreman
             if (workOrder.admin_id) {
-                console.log('👔 Setting admin ID:', workOrder.admin_id);
+                // console.log('👔 Setting admin ID:', workOrder.admin_id);
                 // Wait for dropdown to be loaded first
                 setTimeout(function() {
                     $('#admin_id').val(workOrder.admin_id).trigger('change');
@@ -1988,7 +1989,7 @@ $(document).ready(function() {
             }
             
             if (workOrder.foreman_id) {
-                console.log('👷 Setting foreman ID:', workOrder.foreman_id);
+                // console.log('👷 Setting foreman ID:', workOrder.foreman_id);
                 setTimeout(function() {
                     $('#foreman_id').val(workOrder.foreman_id).trigger('change');
                 }, 1500);
@@ -1996,14 +1997,14 @@ $(document).ready(function() {
             
             // Handle PIC
             if (workOrder.pic) {
-                console.log('👤 Setting PIC:', workOrder.pic);
+                // console.log('👤 Setting PIC:', workOrder.pic);
                 $('#pic').val(workOrder.pic);
             }
             
             // Handle spareparts if they exist
-            console.log('🔧 Checking spareparts data:', data.spareparts);
+            // console.log('🔧 Checking spareparts data:', data.spareparts);
             if (data.spareparts && data.spareparts.length > 0) {
-                console.log('🔧 Populating spareparts:', data.spareparts);
+                // console.log('🔧 Populating spareparts:', data.spareparts);
                 // Clear existing sparepart rows
                 $('#sparepartTableBody').empty();
                 sparepartRowCount = 0; // Reset counter
@@ -2011,14 +2012,14 @@ $(document).ready(function() {
                 // Add sparepart rows with proper timing
                 setTimeout(function() {
                     data.spareparts.forEach(function(sparepart, index) {
-                        console.log(`🔧 Adding sparepart row ${index + 1}:`, sparepart);
+                        // console.log(`🔧 Adding sparepart row ${index + 1}:`, sparepart);
                         addSparepartRow(sparepart);
                     });
                     
-                    console.log('✅ All sparepart rows added, total:', data.spareparts.length);
+                    // console.log('✅ All sparepart rows added, total:', data.spareparts.length);
                 }, 200);
             } else {
-                console.log('📝 No spareparts data, adding empty row');
+                // console.log('📝 No spareparts data, adding empty row');
                 // Clear existing sparepart rows
                 $('#sparepartTableBody').empty();
                 sparepartRowCount = 0; // Reset counter
@@ -2029,7 +2030,7 @@ $(document).ready(function() {
                 }, 200);
             }
             
-            console.log('✅ Edit form populated successfully');
+            // console.log('✅ Edit form populated successfully');
             
         } catch (error) {
             console.error('❌ Error populating edit form:', error);
@@ -2039,8 +2040,8 @@ $(document).ready(function() {
 
     function populateViewModal(data) {
         // Debug: Log the data structure to understand what we're receiving
-        console.log('Work Order Detail Data:', data);
-        console.log('Accessories Data:', data.unit_accessories || data.accessories);
+        // console.log('Work Order Detail Data:', data);
+        // console.log('Accessories Data:', data.unit_accessories || data.accessories);
         
         // Update modal header with work order number
         $('#viewWoNumberHeader').text(data.work_order_number || '-');
@@ -2242,7 +2243,7 @@ $(document).ready(function() {
     function populateUnitAccessories(accessories) {
         const container = $('#viewUnitAccessoriesList');
         
-        console.log('Raw accessories data:', accessories, typeof accessories);
+        // console.log('Raw accessories data:', accessories, typeof accessories);
         
         // Handle different data types
         let accessoriesArray = [];
@@ -2257,13 +2258,13 @@ $(document).ready(function() {
         } else if (Array.isArray(accessories)) {
             accessoriesArray = accessories;
         } else {
-            console.log('Accessories data is neither array nor string:', accessories);
+            // console.log('Accessories data is neither array nor string:', accessories);
             container.text('-');
             $('#unitAccessoriesInline').hide();
             return;
         }
         
-        console.log('Processed accessories array:', accessoriesArray);
+        // console.log('Processed accessories array:', accessoriesArray);
         
         if (accessoriesArray && accessoriesArray.length > 0) {
             // Create simple comma-separated list like complaint format
@@ -2302,12 +2303,12 @@ $(document).ready(function() {
         const container = $('#viewSparepartBroughtList');
         const section = $('#sparepartBroughtSection');
         
-        console.log('🔧 Raw spareparts data:', spareparts, typeof spareparts);
+        // console.log('🔧 Raw spareparts data:', spareparts, typeof spareparts);
         
         if (spareparts && spareparts.length > 0) {
             let html = '';
             spareparts.forEach(function(sparepart, index) {
-                console.log(`  📦 Item ${index + 1}:`, {
+                // console.log(`  📦 Item ${index + 1}:`, {
                     name: sparepart.name,
                     item_type: sparepart.item_type,
                     is_from_warehouse: sparepart.is_from_warehouse,
@@ -2345,7 +2346,7 @@ $(document).ready(function() {
                     }
                 }
                 
-                console.log(`    ➡️ Type: ${itemType}, Status: ${statusBadge}`);
+                // console.log(`    ➡️ Type: ${itemType}, Status: ${statusBadge}`);
                 
                 html += `
                     <tr>
@@ -2416,25 +2417,25 @@ $(document).ready(function() {
     }
 
     function updateStatistics() {
-        console.log('📊 Updating statistics...');
+        // console.log('📊 Updating statistics...');
         $.ajax({
             url: '<?= base_url('service/work-orders/stats') ?>',
             type: 'GET',
             success: function(response) {
-                console.log('📊 Statistics response:', response);
+                // console.log('📊 Statistics response:', response);
                 if (response.status) {  // Backend menggunakan 'status' bukan 'success'
                     $('#stat-total-work-orders').text(response.data.total_work_orders || 0);
                     $('#stat-open').text(response.data.open_work_orders || 0);
                     $('#stat-in-progress').text(response.data.in_progress_work_orders || 0);
                     $('#stat-completed').text(response.data.completed_work_orders || 0);
-                    console.log('📊 Statistics updated successfully');
+                    // console.log('📊 Statistics updated successfully');
                 } else {
-                    console.log('❌ Failed to update statistics:', response.message);
+                    // console.log('❌ Failed to update statistics:', response.message);
                 }
             },
             error: function(xhr, status, error) {
-                console.log('❌ Error updating statistics:', error);
-                console.log('❌ XHR:', xhr.responseText);
+                // console.log('❌ Error updating statistics:', error);
+                // console.log('❌ XHR:', xhr.responseText);
                 // Don't retry - just skip statistics update
             }
         });
@@ -2490,7 +2491,7 @@ $(document).ready(function() {
 
     // Add Work Order button
     $('#btn-add-wo').on('click', function() {
-        console.log('🆕 Opening new work order modal');
+        // console.log('🆕 Opening new work order modal');
         // Auto generate WO number when opening modal
         generateWorkOrderNumber();
         
@@ -2514,15 +2515,15 @@ $(document).ready(function() {
             url: '<?= base_url('service/work-orders/generate-number') ?>',
             type: 'GET',
             success: function(response) {
-                console.log('🔢 WO number generated:', response);
+                // console.log('🔢 WO number generated:', response);
                 if (response.success) {
                     $('#work_order_number').val(response.work_order_number);
                 } else {
-                    console.log('❌ Failed to generate WO number:', response.message);
+                    // console.log('❌ Failed to generate WO number:', response.message);
                 }
             },
             error: function(xhr, status, error) {
-                console.log('❌ Error generating work order number:', error);
+                // console.log('❌ Error generating work order number:', error);
             }
         });
     }
@@ -2627,7 +2628,7 @@ $(document).ready(function() {
     // Subcategory change handler for auto priority
     $('#subcategory_id').on('change', function() {
         let subcategoryId = $(this).val();
-        console.log('📌 Subcategory changed:', subcategoryId);
+        // console.log('📌 Subcategory changed:', subcategoryId);
         if (subcategoryId) {
             const csrfData = getCsrfTokenData();
             // Get priority for subcategory
@@ -2639,7 +2640,7 @@ $(document).ready(function() {
                     [csrfData.tokenName]: csrfData.tokenValue
                 },
                 success: function(response) {
-                    console.log('✅ Priority response:', response);
+                    // console.log('✅ Priority response:', response);
                     if (response.success && response.priority_id) {
                         setPriority(response.priority_id);
                     } else {
@@ -2651,14 +2652,14 @@ $(document).ready(function() {
                 }
             });
         } else {
-            console.log('⚠️ No subcategory selected, clearing priority');
+            // console.log('⚠️ No subcategory selected, clearing priority');
             $('#priority_id').val('');
             $('#priority_display').val('');
         }
     });
 
     function setPriority(priorityId) {
-        console.log('🎯 Setting priority:', priorityId);
+        // console.log('🎯 Setting priority:', priorityId);
         const csrfData = getCsrfTokenData();
         // Find priority name and set display
         $.ajax({
@@ -2669,11 +2670,11 @@ $(document).ready(function() {
                 [csrfData.tokenName]: csrfData.tokenValue
             },
             success: function(response) {
-                console.log('✅ Priority details:', response);
+                // console.log('✅ Priority details:', response);
                 if (response.success) {
                     $('#priority_id').val(priorityId);
                     $('#priority_display').val(response.priority_name);
-                    console.log('✅ Priority set:', priorityId, '-', response.priority_name);
+                    // console.log('✅ Priority set:', priorityId, '-', response.priority_name);
                 }
             },
             error: function(xhr, status, error) {
@@ -2757,7 +2758,7 @@ $(document).ready(function() {
 
     // Load initial data when modal opens
     $('#workOrderModal').on('shown.bs.modal', function() {
-        console.log('📋 Modal shown, loading data...');
+        // console.log('📋 Modal shown, loading data...');
         
         // Load unit dropdown first - it will handle its own Select2 initialization
         // DO NOT destroy unit_id here - let loadUnitsDropdown() handle it completely
@@ -2767,7 +2768,7 @@ $(document).ready(function() {
         // Initialize Select2 for other dropdowns (NOT unit_id and NOT sparepart - they handle themselves)
         // Use longer delay to ensure unit and sparepart dropdowns are initialized first
         setTimeout(function() {
-            console.log('🔄 Initializing Select2 for other dropdowns (excluding unit_id and sparepart)');
+            // console.log('🔄 Initializing Select2 for other dropdowns (excluding unit_id and sparepart)');
             initializeSelect2();
         }, 800); // Increased delay to ensure unit and sparepart dropdowns are initialized first
         
@@ -2775,8 +2776,8 @@ $(document).ready(function() {
         // Wait for sparepartsData to be available and ensure it's loaded
         setTimeout(function() {
             if ($('#sparepartTableBody tr').length === 0) {
-                console.log('🔧 Adding initial sparepart row');
-                console.log('📦 SparepartsData available:', window.sparepartsData ? window.sparepartsData.length : 0, 'items');
+                // console.log('🔧 Adding initial sparepart row');
+                // console.log('📦 SparepartsData available:', window.sparepartsData ? window.sparepartsData.length : 0, 'items');
                 
                 // Ensure sparepartsData is available
                 if (!window.sparepartsData || !Array.isArray(window.sparepartsData) || window.sparepartsData.length === 0) {
@@ -2784,7 +2785,7 @@ $(document).ready(function() {
                     // Retry after a bit more delay
                     setTimeout(function() {
                         if ($('#sparepartTableBody tr').length === 0) {
-                            console.log('🔧 Retrying to add initial sparepart row');
+                            // console.log('🔧 Retrying to add initial sparepart row');
                             addSparepartRow();
                         }
                     }, 200);
@@ -2872,7 +2873,7 @@ $(document).ready(function() {
             return;
         }
         
-        console.log('✅ Select2 library is available');
+        // console.log('✅ Select2 library is available');
         
         // Safely destroy existing instances - EXCLUDE unit_id (handled separately in loadUnitsDropdown)
         // unit_id should NEVER be destroyed here to prevent duplicate initialization
@@ -2941,7 +2942,7 @@ $(document).ready(function() {
         searchableSelectors.forEach(function(config) {
             // CRITICAL: unit_id is handled separately in loadUnitsDropdown() - NEVER touch it here
             if (config.id === '#unit_id') {
-                console.log('⏭️ Skipping unit_id completely - managed by loadUnitsDropdown()');
+                // console.log('⏭️ Skipping unit_id completely - managed by loadUnitsDropdown()');
                 return; // Skip immediately, don't even check the element
             }
             
@@ -2971,9 +2972,9 @@ $(document).ready(function() {
         // Initialize regular dropdowns - Clean Bootstrap-like appearance
         regularSelectors.forEach(function(config) {
             const $element = $(config.id);
-            console.log('🔍 Checking element:', config.id, 'Found:', $element.length, 'Has Select2:', $element.hasClass('select2-hidden-accessible'));
+            // console.log('🔍 Checking element:', config.id, 'Found:', $element.length, 'Has Select2:', $element.hasClass('select2-hidden-accessible'));
             if ($element.length && !$element.hasClass('select2-hidden-accessible')) {
-                console.log('✅ Initializing Select2 for:', config.id);
+                // console.log('✅ Initializing Select2 for:', config.id);
                 try {
                     $element.select2({
                 ...modalConfig,
@@ -2982,7 +2983,7 @@ $(document).ready(function() {
                         allowClear: false,
                         width: '100%'
                     });
-                    console.log('✅ Successfully initialized Select2 for:', config.id);
+                    // console.log('✅ Successfully initialized Select2 for:', config.id);
                 } catch (e) {
                     console.error('❌ Error initializing Select2 for:', config.id, e);
                 }
@@ -3071,7 +3072,7 @@ $(document).ready(function() {
 
     // Units Dropdown Management
     function loadUnitsDropdown() {
-        console.log('🔄 Loading units dropdown...');
+        // console.log('🔄 Loading units dropdown...');
         const unitSelect = $('#unit_id');
         
         
@@ -3080,7 +3081,7 @@ $(document).ready(function() {
             type: 'GET',
             dataType: 'json',
             success: function(response) {
-                console.log('📦 Units response:', response);
+                // console.log('📦 Units response:', response);
                 
                 if (response.success && response.data) {
                     unitSelect.empty().append('<option value="">-- Select Unit --</option>');
@@ -3100,7 +3101,7 @@ $(document).ready(function() {
                         
                         // Store units globally for area auto-fill
                         window.allUnits = response.data;
-                        console.log('✅ Units loaded successfully:', response.data.length, 'units');
+                        // console.log('✅ Units loaded successfully:', response.data.length, 'units');
                     } else {
                         unitSelect.append('<option value="">No units available</option>');
                         console.warn('⚠️ No units found in response');
@@ -3122,7 +3123,7 @@ $(document).ready(function() {
                                     searching: function() { return "Searching..."; }
                                 }
                             });
-                            console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
+                            // console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
                         } catch (e) {
                             console.error('❌ Error initializing Select2:', e);
                         }
@@ -3196,7 +3197,7 @@ $(document).ready(function() {
 
     // Staff Dropdown Management
     function loadStaffDropdownByArea(staffRole, targetId, areaId) {
-        console.log(`🔄 Loading ${staffRole} for ${targetId}, area: ${areaId}`);
+        // console.log(`🔄 Loading ${staffRole} for ${targetId}, area: ${areaId}`);
         
         $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
@@ -3206,7 +3207,7 @@ $(document).ready(function() {
                 area_id: areaId // Filter by area
             },
             success: function(response) {
-                console.log(`📦 ${staffRole} response for ${targetId}:`, response);
+                // console.log(`📦 ${staffRole} response for ${targetId}:`, response);
                 
                 if (response.success && response.data) {
                     const staffSelect = $('#' + targetId);
@@ -3227,7 +3228,7 @@ $(document).ready(function() {
                         staffSelect.append(`<option value="${staff.id}">${optionText}</option>`);
                     });
                     
-                    console.log(`✅ ${staffRole} loaded: ${response.data.length} items for ${targetId}`);
+                    // console.log(`✅ ${staffRole} loaded: ${response.data.length} items for ${targetId}`);
                 } else {
                     console.error(`❌ No ${staffRole} staff found for area ${areaId}`);
                     const staffSelect = $('#' + targetId);
@@ -3287,7 +3288,7 @@ $(document).ready(function() {
                         staffSelect.trigger('change');
                     }
                     
-                    console.log(`✅ ${staffRole} staff loaded successfully:`, response.data.length, 'items');
+                    // console.log(`✅ ${staffRole} staff loaded successfully:`, response.data.length, 'items');
                 } else {
                     console.error(`❌ Error loading ${staffRole} staff:`, response.message || 'No data received');
                     
@@ -3357,7 +3358,7 @@ $(document).ready(function() {
 
     // Load admin and foreman dropdowns based on area
     function loadAreaStaff(areaId) {
-        console.log('🔄 Loading area staff for area ID:', areaId);
+        // console.log('🔄 Loading area staff for area ID:', areaId);
         
         // Clear dropdowns
         $('#admin_id').html('<option value="">-- Select Admin --</option>');
@@ -3373,7 +3374,7 @@ $(document).ready(function() {
             type: 'POST',
             data: { area_id: areaId },
             success: function(response) {
-                console.log('📦 Area staff response:', response);
+                // console.log('📦 Area staff response:', response);
                 
                 if (response.success) {
                     // Populate admin dropdown
@@ -3411,7 +3412,7 @@ $(document).ready(function() {
                     loadStaffDropdownByArea('HELPER', 'helper_1', areaId);
                     loadStaffDropdownByArea('HELPER', 'helper_2', areaId);
                     
-                    console.log('✅ Area staff loaded successfully');
+                    // console.log('✅ Area staff loaded successfully');
                 } else {
                     console.error('❌ Error loading area staff:', response.message);
                     $('#admin_id').html('<option value="">Error loading staff</option>');
@@ -3485,7 +3486,7 @@ $(document).ready(function() {
      */
     addSparepartRow = function(sparepartData = null) {
         sparepartRowCount++;
-        console.log(`🔧 Adding item row ${sparepartRowCount}`);
+        // console.log(`🔧 Adding item row ${sparepartRowCount}`);
         
         const row = `
             <tr>
@@ -3600,7 +3601,7 @@ $(document).ready(function() {
                     sparepartSelect.append(`<option value="${sparepartValue}">${sparepartLabel}</option>`);
                 }
             });
-            console.log(`✅ Added ${window.sparepartsData.length} spareparts to dropdown #sparepart_${sparepartRowCount}`);
+            // console.log(`✅ Added ${window.sparepartsData.length} spareparts to dropdown #sparepart_${sparepartRowCount}`);
         }
         
         // Initialize Select2 with delay
@@ -3615,7 +3616,7 @@ $(document).ready(function() {
                         minimumInputLength: 0,
                         minimumResultsForSearch: 0
                     });
-                    console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount}`);
+                    // console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount}`);
                 }
             } catch (error) {
                 console.error(`❌ Error initializing Select2:`, error);
@@ -3663,7 +3664,7 @@ $(document).ready(function() {
                     toggleSourceLabel(checkbox[0]);
                 }
                 
-                console.log(`✅ Populated item row ${sparepartRowCount}`);
+                // console.log(`✅ Populated item row ${sparepartRowCount}`);
             } catch (error) {
                 console.error('❌ Error populating row:', error);
             }
@@ -3681,7 +3682,7 @@ $(document).ready(function() {
         const sparepartDropdown = $(`#sparepart_${rowId}`);
         const toolInput = $(`#tool_input_${rowId}`);
         
-        console.log(`🔄 Switching item input for row ${rowId} to type: ${type}`);
+        // console.log(`🔄 Switching item input for row ${rowId} to type: ${type}`);
         
         if (type === 'tool') {
             // Show text input, hide dropdown
@@ -3693,7 +3694,7 @@ $(document).ready(function() {
                 sparepartDropdown.select2('destroy');
             }
             
-            console.log(`✅ Switched to TOOL input (text) for row ${rowId}`);
+            // console.log(`✅ Switched to TOOL input (text) for row ${rowId}`);
         } else {
             // Show dropdown, hide text input
             toolInput.addClass('d-none').removeAttr('required');
@@ -3711,7 +3712,7 @@ $(document).ready(function() {
                 });
             }
             
-            console.log(`✅ Switched to SPAREPART dropdown for row ${rowId}`);
+            // console.log(`✅ Switched to SPAREPART dropdown for row ${rowId}`);
         }
     };
     
@@ -3732,7 +3733,7 @@ $(document).ready(function() {
         }
     };
     
-    console.log('✅ Item management system loaded - Spareparts (dropdown) & Tools (manual input)');
+    // console.log('✅ Item management system loaded - Spareparts (dropdown) & Tools (manual input)');
 });
 
 // Production asset optimization

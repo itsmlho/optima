@@ -599,7 +599,7 @@ function loadUnitsIntoLocation(locationId) {
 function printLocationForm(locationId) {
     const custId = selectedCustomerId || $('#customerSelect').val();
     if (!custId || !locationId) {
-        alert('Pilih customer dan lokasi terlebih dahulu');
+        OptimaNotify.warning('Pilih customer dan lokasi terlebih dahulu');
         return;
     }
     window.open(BASE + 'service/unit-audit/printLocationForm/' + custId + '/' + locationId, '_blank');
@@ -610,7 +610,7 @@ function printLocationForm(locationId) {
 function openVerifikasi(locationId) {
     const custId = selectedCustomerId || $('#customerSelect').val();
     if (!custId) {
-        alert('Pilih customer terlebih dahulu');
+        OptimaNotify.warning('Pilih customer terlebih dahulu');
         return;
     }
 
@@ -823,7 +823,7 @@ $('input[name="vfAlasanReason"]').on('change', onVfAlasanReasonChange);
 $('#vfAlasanSimpan').on('click', function() {
     const reasonInput = $('input[name="vfAlasanReason"]:checked');
     if (!reasonInput.length) {
-        alert('Pilih satu alasan ketidaksesuaian');
+        OptimaNotify.warning('Pilih satu alasan ketidaksesuaian');
         return;
     }
     const reason = reasonInput.val();
@@ -832,14 +832,14 @@ $('#vfAlasanSimpan').on('click', function() {
     if (reason === 'LOCATION_MISMATCH') {
         const targetLoc = $('#vfAlasanLokasiSelect').val();
         if (!targetLoc) {
-            alert('Pilih lokasi yang seharusnya untuk unit ini');
+            OptimaNotify.warning('Pilih lokasi yang seharusnya untuk unit ini');
             return;
         }
         extra.target_location_id = targetLoc;
     } else if (reason === 'UNIT_SWAP') {
         const targetUnit = $('#vfAlasanUnitSelect').val();
         if (!targetUnit) {
-            alert('Pilih unit yang seharusnya untuk kontrak ini');
+            OptimaNotify.warning('Pilih unit yang seharusnya untuk kontrak ini');
             return;
         }
         extra.target_unit_id = targetUnit;
@@ -901,8 +901,8 @@ function submitVerifikasi() {
     const auditDate    = $('#vfAuditDate').val();
     const mechanicName = $('#vfMechanicName').val().trim();
 
-    if (!auditDate) { alert('Tanggal audit wajib diisi'); return; }
-    if (!mechanicName) { alert('Mekanik yang audit wajib diisi'); return; }
+    if (!auditDate) { OptimaNotify.warning('Tanggal audit wajib diisi'); return; }
+    if (!mechanicName) { OptimaNotify.warning('Mekanik yang audit wajib diisi'); return; }
 
     const items = [];
     let hasTidakSesuai = false;
@@ -928,7 +928,7 @@ function submitVerifikasi() {
     });
     if (items.length === 0) return;
     if (invalidRow) {
-        alert('Unit ' + invalidRow + ': pilih alasan ketidaksesuaian (klik Tidak lalu isi alasan).');
+        OptimaNotify.warning('Unit ' + invalidRow + ': pilih alasan ketidaksesuaian (klik Tidak lalu isi alasan).');
         return;
     }
 
@@ -959,16 +959,16 @@ function submitVerifikasi() {
             $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Kirim ke Marketing');
             if (res.success) {
                 $('#verifikasiModal').modal('hide');
-                alert('✅ ' + res.message);
+                OptimaNotify.success(res.message);
                 loadLocations();
                 loadAuditHistory();
             } else {
-                alert('Error: ' + res.message);
+                OptimaNotify.error('Error: ' + res.message);
             }
         },
         error: function() {
             $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Kirim ke Marketing');
-            alert('Terjadi kesalahan saat menyimpan');
+            OptimaNotify.error('Terjadi kesalahan saat menyimpan');
         }
     });
 }
@@ -977,7 +977,7 @@ function submitVerifikasi() {
 
 function openTambahUnit(locationId) {
     const custId = selectedCustomerId || $('#customerSelect').val();
-    if (!custId) { alert('Pilih customer terlebih dahulu'); return; }
+    if (!custId) { OptimaNotify.warning('Pilih customer terlebih dahulu'); return; }
 
     let locName = '', locKontrak = '', kontrakId = '';
     const $row = $('[data-loc]').filter(function() {
@@ -1114,7 +1114,7 @@ function submitTambahUnit() {
     const unitId  = $('#tuUnitSelect').val();
     const notes   = $('#tuNotes').val().trim();
 
-    if (!unitId) { alert('Pilih unit terlebih dahulu'); return; }
+    if (!unitId) { OptimaNotify.warning('Pilih unit terlebih dahulu'); return; }
 
     const formData = new FormData();
     formData.append('customer_id', custId);
@@ -1138,15 +1138,15 @@ function submitTambahUnit() {
             $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Ajukan ke Marketing');
             if (res.success) {
                 $('#tambahUnitModal').modal('hide');
-                alert('✅ ' + res.message + '\nNo. Audit: ' + (res.data?.audit_number || ''));
+                OptimaNotify.success(res.message + ' — No. Audit: ' + (res.data?.audit_number || ''));
                 loadAuditHistory();
             } else {
-                alert('Error: ' + res.message);
+                OptimaNotify.error('Error: ' + res.message);
             }
         },
         error: function() {
             $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Ajukan ke Marketing');
-            alert('Terjadi kesalahan');
+            OptimaNotify.error('Terjadi kesalahan');
         }
     });
 }

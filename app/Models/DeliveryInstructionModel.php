@@ -11,11 +11,11 @@ class DeliveryInstructionModel extends Model
     protected $returnType = 'array';
     protected $allowedFields = [
         'spk_id','jenis_spk','nomor_di','po_kontrak_nomor','pelanggan','lokasi','tanggal_kirim','status','status_di','catatan','dibuat_oleh','dibuat_pada','diperbarui_pada',
-        'contract_id','bast_date','billing_start_date','contract_linked_at','contract_linked_by',
         'jenis_perintah_kerja_id','tujuan_perintah_kerja_id','status_eksekusi_workflow_id',
         'perencanaan_tanggal_approve','estimasi_sampai','nama_supir','no_hp_supir','no_sim_supir','kendaraan','no_polisi_kendaraan',
         'berangkat_tanggal_approve','catatan_berangkat',
-        'sampai_tanggal_approve','catatan_sampai'
+        'sampai_tanggal_approve','catatan_sampai',
+        'invoice_generated','invoice_generated_at'
     ];
     
     // Explicitly disable automatic timestamps since our table uses custom field names
@@ -38,22 +38,24 @@ class DeliveryInstructionModel extends Model
 
     /**
      * Determine initial status based on parent SPK's contract status
-     * Called during DI creation to set AWAITING_CONTRACT or SUBMITTED
+     * Called during DI creation to set appropriate status
      * 
      * @param int $spkId Parent SPK ID
-     * @return string Status ('SUBMITTED' or 'AWAITING_CONTRACT')
+     * @return string Status ('DIAJUKAN' or 'DISETUJUI')
      */
     public function determineInitialStatus(int $spkId): string
     {
         $spkModel = new \App\Models\SpkModel();
         $hasContract = $spkModel->hasContract($spkId);
         
-        return $hasContract ? 'SUBMITTED' : 'AWAITING_CONTRACT';
+        // Return valid ENUM values for status_di column
+        return $hasContract ? 'DISETUJUI' : 'DIAJUKAN';
     }
 
     /**
      * Inherit contract information from parent SPK
      * Used by trigger or manual sync after SPK linking
+     * Contract relationship is handled via spk_id → kontrak_id
      * 
      * @param int $diId Delivery Instruction ID
      * @return bool Success status
@@ -73,18 +75,16 @@ class DeliveryInstructionModel extends Model
             return false;
         }
         
-        // Update DI with contract info from SPK
+        // Update DI status when SPK is linked to contract
+        // Contract info accessed via JOIN: spk.kontrak_id
         return (bool) $this->update($diId, [
-            'contract_id' => $spk['kontrak_id'],
-            'contract_linked_at' => $spk['contract_linked_at'],
-            'contract_linked_by' => $spk['contract_linked_by'],
-            'status' => 'DELIVERED', // Change from AWAITING_CONTRACT
+            'status_di' => 'DISETUJUI',
             'diperbarui_pada' => date('Y-m-d H:i:s'),
         ]);
     }
 
     /**
-     * Get Delivery Instructions in AWAITING_CONTRACT status
+     * Get Delivery Instructions in DIAJUKAN status (waiting for contract)
      * Used for dashboard alerts and follow-up monitoring
      * 
      * @return array List of unlinked DIs with details
@@ -98,8 +98,8 @@ class DeliveryInstructionModel extends Model
                     ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
                     ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
                     ->join('quotations', 'quotations.id_quotation = qs.id_quotation', 'left')
-                    ->where('delivery_instructions.status', 'AWAITING_CONTRACT')
-                    ->orderBy('delivery_instructions.dibuat_pada', 'ASC')
+                    ->where('delivery_instructions.status_di', 'DIAJUKAN')
+                    ->orderBy('delivery_instructions.dibuat_pada', 'DESC')
                     ->findAll();
     }
 

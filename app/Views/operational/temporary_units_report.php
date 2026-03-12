@@ -286,7 +286,7 @@ function processReturn() {
     const kontrakUnitId = $('#returnKontrakUnitId').val();
     
     if (!kontrakUnitId) {
-        alert('Invalid data');
+        OptimaNotify.error('Data tidak valid');
         return;
     }
     
@@ -300,16 +300,17 @@ function processReturn() {
         },
         success: function(response) {
             if (response.success) {
-                alert('Unit returned successfully!');
+                OptimaNotify.success('Unit berhasil dikembalikan!');
                 bootstrap.Modal.getInstance(document.getElementById('returnUnitModal')).hide();
                 temporaryUnitsTable.ajax.reload();
                 loadSummaryStats();
             } else {
-                alert('Error: ' + response.message);
+                if (window.OptimaNotify) OptimaNotify.error('Error: ' + response.message);
+                else alert('Error: ' + response.message);
             }
         },
         error: function() {
-            alert('Failed to process return. Please try again.');
+            OptimaNotify.error('Gagal memproses return. Silakan coba lagi.');
         },
         complete: function() {
             $('#btnConfirmReturn').prop('disabled', false).html('<i class="bi bi-arrow-counterclockwise me-2"></i>Process Return');

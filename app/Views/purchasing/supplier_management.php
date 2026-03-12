@@ -163,7 +163,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-info" onclick="changeSupplierStatus()">
+                <button type="button" class="btn btn-warning" onclick="changeSupplierStatus()">
                     <i class="fas fa-exchange-alt me-2"></i>Change Status
                 </button>
                 <button type="button" class="btn btn-warning" onclick="editSupplierFromModal()">
@@ -291,7 +291,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-info" onclick="saveStatusChange()">
+                <button type="button" class="btn btn-primary" onclick="saveStatusChange()">
                     <i class="fas fa-save me-2"></i>Save Changes
                 </button>
             </div>

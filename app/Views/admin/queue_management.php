@@ -14,7 +14,7 @@
                         <button type="button" class="btn btn-primary btn-sm" onclick="processQueue()">
                             <i class="fas fa-play me-1"></i>Process Queue
                         </button>
-                        <button type="button" class="btn btn-info btn-sm ms-1" onclick="refreshStats()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-1" onclick="refreshStats()">
                             <i class="fas fa-sync me-1"></i>Refresh
                         </button>
                     </div>
@@ -266,28 +266,42 @@ function testNotification() {
 }
 
 function clearCache() {
-    if (confirm('Are you sure you want to clear all cache?')) {
+    Swal.fire({
+        title: 'Clear Cache?',
+        text: 'Semua cache akan dihapus.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Clear!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         fetch('<?= base_url('queue/clear-cache') ?>', {
             method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
         .then(data => {
             showResult(data);
             refreshStats();
         });
-    }
+    });
 }
 
 function cleanFailedJobs() {
-    if (confirm('Are you sure you want to clean all failed jobs?')) {
+    Swal.fire({
+        title: 'Clean Failed Jobs?',
+        text: 'Semua failed jobs akan dibersihkan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Clean!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         fetch('<?= base_url('queue/clean-failed') ?>', {
             method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
         .then(data => {

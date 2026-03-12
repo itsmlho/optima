@@ -602,7 +602,7 @@ function performSearch() {
   const searchValue = document.getElementById('searchValue').value.trim();
   
   if (!searchValue) {
-    alert('Please enter contract number, SPK, or DI');
+    OptimaNotify.warning('Masukkan nomor kontrak, SPK, atau DI');
     return;
   }
   
@@ -620,12 +620,13 @@ function performSearch() {
     if (result.success && result.data) {
       handleSearchResponse(result.data);
     } else {
-      alert(result.message || 'Data not found');
+      if (window.OptimaNotify) OptimaNotify.warning(result.message || 'Data not found');
+      else alert(result.message || 'Data not found');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('An error occurred while fetching data');
+    OptimaNotify.error('Terjadi kesalahan saat mengambil data');
   });
 }
 
@@ -686,7 +687,7 @@ function proceedWithSPK() {
   const spkId = document.getElementById('spkSelect').value;
   
   if (!spkId) {
-    alert('Please select SPK');
+    OptimaNotify.warning('Pilih SPK terlebih dahulu');
     return;
   }
   
@@ -707,12 +708,12 @@ function proceedWithSPK() {
     if (result.success && result.data) {
       handleSearchResponse(result.data);
       } else {
-      alert('SPK not found: ' + (result.message || 'Unknown error'));
+      OptimaNotify.error('SPK tidak ditemukan: ' + (result.message || 'Unknown error'));
       }
     })
     .catch(error => {
     console.error('Error in proceedWithSPK:', error);
-    alert('An error occurred: ' + error.message);
+    OptimaNotify.error('Terjadi kesalahan: ' + error.message);
   });
 }
 
@@ -720,7 +721,7 @@ function proceedWithDI() {
   const diId = document.getElementById('diSelect').value;
   
   if (!diId) {
-    alert('Please select DI');
+    OptimaNotify.warning('Pilih DI terlebih dahulu');
     return;
   }
   
@@ -739,7 +740,7 @@ function proceedWithDI() {
       currentTrackingData = result.data;
       renderTrackingData(result.data);
     } else {
-      alert('DI not found');
+      OptimaNotify.warning('DI tidak ditemukan');
     }
   });
 }

@@ -352,7 +352,7 @@
                         <button class="btn btn-success" onclick="addLeadModal()">
                             <i class="fas fa-user-plus me-2"></i>Add Lead
                         </button>
-                        <button class="btn btn-info" onclick="viewPipelineModal()">
+                        <button class="btn btn-primary" onclick="viewPipelineModal()">
                             <i class="fas fa-funnel-dollar me-2"></i>View Pipeline
                         </button>
                         <button class="btn btn-warning" onclick="followUpReminders()">
@@ -522,35 +522,35 @@ function initializeMarketingCharts() {
 }
 
 function exportMarketingDashboard() {
-    alert('Export marketing dashboard functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export marketing dashboard functionality will be implemented');
 }
 
 function generateMarketingReport() {
-    alert('Generate marketing report functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Generate marketing report functionality will be implemented');
 }
 
 function exportChart(chartId) {
-    alert('Export chart functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export chart functionality will be implemented');
 }
 
 function viewSalesDetails() {
-    alert('View sales details functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('View sales details functionality will be implemented');
 }
 
 function createQuotationModal() {
-    alert('Create quotation modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Create quotation modal will be implemented');
 }
 
 function addLeadModal() {
-    alert('Add lead modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Add lead modal will be implemented');
 }
 
 function viewPipelineModal() {
-    alert('View pipeline modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('View pipeline modal will be implemented');
 }
 
 function followUpReminders() {
-    alert('Follow-up reminders functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Follow-up reminders functionality will be implemented');
 }
 </script>
 

@@ -465,13 +465,16 @@ function submitMovement() {
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 [name="movement_date"]').val(now                $('input.toISOString().slice(0, 16));
 
-                alert('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
+                if (window.OptimaNotify) OptimaNotify.success('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
+                else alert('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
             } else {
-                alert('Error: ' + res.message);
+                if (window.OptimaNotify) OptimaNotify.error('Error: ' + res.message);
+                else alert('Error: ' + res.message);
             }
         },
         error: function() {
-            alert('Terjadi kesalahan saat menyimpan');
+            if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan saat menyimpan');
+            else alert('Terjadi kesalahan saat menyimpan');
         }
     });
 }
@@ -553,59 +556,85 @@ function showMovementDetailModal(data) {
 }
 
 function startMovement(id) {
-    if (!confirm('Mulai pengiriman?')) return;
-
-    $.ajax({
-        url: BASE_URL + 'unit_audit/startMovement/' + id,
-        type: 'POST',
-        data: {},
-        success: function(res) {
-            if (res.success) {
-                $('#detailModal').modal('hide');
-                loadMovements();
-                alert('Movement dimulai!');
-            } else {
-                alert('Error: ' + res.message);
+    Swal.fire({
+        title: 'Mulai Pengiriman?',
+        text: 'Movement akan dimulai.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Mulai!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: BASE_URL + 'unit_audit/startMovement/' + id,
+            type: 'POST',
+            data: {},
+            success: function(res) {
+                if (res.success) {
+                    $('#detailModal').modal('hide');
+                    loadMovements();
+                    OptimaNotify.success('Movement dimulai!');
+                } else {
+                    OptimaNotify.error('Error: ' + res.message);
+                }
             }
-        }
+        });
     });
 }
 
 function confirmArrival(id) {
-    if (!confirm('Konfirmasi unit telah sampai di tujuan?')) return;
-
-    $.ajax({
-        url: BASE_URL + 'unit_audit/confirmArrival/' + id,
-        type: 'POST',
-        data: {},
-        success: function(res) {
-            if (res.success) {
-                $('#detailModal').modal('hide');
-                loadMovements();
-                alert('Movement selesai dan lokasi unit diperbarui!');
-            } else {
-                alert('Error: ' + res.message);
+    Swal.fire({
+        title: 'Konfirmasi Tiba?',
+        text: 'Unit telah sampai di tujuan.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        confirmButtonText: 'Ya, Konfirmasi!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: BASE_URL + 'unit_audit/confirmArrival/' + id,
+            type: 'POST',
+            data: {},
+            success: function(res) {
+                if (res.success) {
+                    $('#detailModal').modal('hide');
+                    loadMovements();
+                    OptimaNotify.success('Movement selesai dan lokasi unit diperbarui!');
+                } else {
+                    OptimaNotify.error('Error: ' + res.message);
+                }
             }
-        }
+        });
     });
 }
 
 function cancelMovement(id) {
-    if (!confirm('Batalkan movement ini?')) return;
-
-    $.ajax({
-        url: BASE_URL + 'unit_audit/cancelMovement/' + id,
-        type: 'POST',
-        data: {},
-        success: function(res) {
-            if (res.success) {
-                $('#detailModal').modal('hide');
-                loadMovements();
-                alert('Movement dibatalkan');
-            } else {
-                alert('Error: ' + res.message);
+    Swal.fire({
+        title: 'Batalkan Movement?',
+        text: 'Movement ini akan dibatalkan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Batalkan!',
+        cancelButtonText: 'Kembali'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: BASE_URL + 'unit_audit/cancelMovement/' + id,
+            type: 'POST',
+            data: {},
+            success: function(res) {
+                if (res.success) {
+                    $('#detailModal').modal('hide');
+                    loadMovements();
+                    OptimaNotify.success('Movement dibatalkan');
+                } else {
+                    OptimaNotify.error('Error: ' + res.message);
+                }
             }
-        }
+        });
     });
 }
 

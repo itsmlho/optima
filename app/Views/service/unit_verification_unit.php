@@ -844,12 +844,14 @@ async function saveUnitVerification() {
             btn.innerHTML = '<i class="fas fa-check me-1"></i>Tersimpan';
             setTimeout(() => window.location.reload(), 900);
         } else {
-            alert('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
+            if (window.OptimaNotify) OptimaNotify.error('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
+            else alert('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Perubahan';
         }
     } catch (e) {
-        alert('Terjadi kesalahan jaringan');
+        if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan jaringan');
+        else alert('Terjadi kesalahan jaringan');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Perubahan';
     }

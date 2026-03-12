@@ -441,12 +441,12 @@ function loadRoles() {
                 updateRoleCount(allRoles.length);
             } else {
                 console.error('Error loading roles:', data.message);
-                alert('Error loading roles: ' + data.message);
+                OptimaNotify.error('Error loading roles: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error loading roles');
+            OptimaNotify.error('Error loading roles');
         });
 }
 
@@ -529,12 +529,13 @@ function editRole(roleId) {
                 new bootstrap.Modal(document.getElementById('roleModal')).show();
             } else {
                 console.error('Error loading role:', data.message);
-                alert('Error loading role: ' + data.message);
+                OptimaNotify.error('Error loading role: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error loading role');
+            if (window.OptimaNotify) OptimaNotify.error('Error loading role');
+            else alert('Error loading role');
         });
 }
 
@@ -557,13 +558,13 @@ function loadPermissions() {
                 return data.permissions;
             } else {
                 console.error('Error loading permissions:', data.message);
-                alert('Error loading permissions: ' + data.message);
+                OptimaNotify.error('Error loading permissions: ' + data.message);
                 throw new Error(data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error loading permissions');
+            OptimaNotify.error('Error loading permissions');
             throw error;
         });
 }
@@ -761,14 +762,14 @@ function saveRole() {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
             loadRoles();
-            alert('Role saved successfully!');
+            OptimaNotify.success('Role saved successfully!');
         } else {
-            alert('Error saving role: ' + data.message);
+            OptimaNotify.error('Error saving role: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error saving role');
+        OptimaNotify.error('Error saving role');
     });
 }
 

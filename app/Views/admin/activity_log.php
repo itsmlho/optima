@@ -18,7 +18,7 @@
                 <button class="btn btn-success" onclick="location.reload()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
-                <a href="<?= base_url('/admin/activity-log/export') ?>" class="btn btn-info">
+                <a href="<?= base_url('/admin/activity-log/export') ?>" class="btn btn-success">
                     <i class="fas fa-download"></i> Export CSV
                 </a>
             </div>
@@ -150,7 +150,7 @@
 <?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
-    console.log('🚀 Initializing OPTIMIZED Activity Log DataTable...');
+    // console.log('🚀 Initializing OPTIMIZED Activity Log DataTable...');
     
     // Destroy existing table if present for clean initialization
     if ($.fn.DataTable.isDataTable('#activityLogTable')) {
@@ -185,7 +185,7 @@ $(document).ready(function() {
                 showNotification('Failed to load activity log data. Please refresh.', 'error');
             },
             dataSrc: function(json) {
-                console.log('📄 DataTables received', json.recordsTotal, 'total records');
+                // console.log('📄 DataTables received', json.recordsTotal, 'total records');
                 return json.data || [];
             }
         },
@@ -224,7 +224,7 @@ $(document).ready(function() {
             row.title = 'Click to view details';
             row.onclick = function() {
                 const activityId = data.activity_id;
-                console.log('🖱️ Activity clicked:', activityId);
+                // console.log('🖱️ Activity clicked:', activityId);
                 if (activityId) {
                     showActivityDetailOptimized(activityId);
                 } else {
@@ -233,16 +233,16 @@ $(document).ready(function() {
             };
         },
         initComplete: function() {
-            console.log('✅ Activity Log DataTable optimized and ready');
+            // console.log('✅ Activity Log DataTable optimized and ready');
         }
     });
     
-    console.log('DataTable initialized');
+    // console.log('DataTable initialized');
 });
 
 // OPTIMIZED: Ultra-fast activity detail modal  
 function showActivityDetailOptimized(activityId) {
-    console.log('🚀 Loading activity detail (optimized):', activityId);
+    // console.log('🚀 Loading activity detail (optimized):', activityId);
     
     // Show modal immediately for instant feedback
     const modal = $('#activityDetailModal');
@@ -266,7 +266,7 @@ function showActivityDetailOptimized(activityId) {
             type: 'GET',
             timeout: 8000,
             success: function(response) {
-                console.log('✅ Activity detail loaded');
+                // console.log('✅ Activity detail loaded');
                 if (response.success) {
                     // Build simplified content for better performance
                     const data = response.data;
@@ -415,12 +415,14 @@ function viewDetails(id) {
                 $('#activityDetailContent').html(content);
                 $('#activityDetailModal').modal('show');
             } else {
-                alert('Error: ' + response.message);
+                if (window.OptimaNotify) OptimaNotify.error('Error: ' + response.message);
+                else alert('Error: ' + response.message);
             }
         },
         error: function(xhr, status, error) {
             console.error('AJAX Error:', error);
-            alert('Error loading activity details: ' + error);
+            if (window.OptimaNotify) OptimaNotify.error('Error loading activity details: ' + error);
+            else alert('Error loading activity details: ' + error);
         }
     });
 }

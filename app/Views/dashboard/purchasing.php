@@ -544,7 +544,7 @@ let unitAssetsTable;
 let currentEditId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initializing Enhanced Unit Assets Management...');
+    // console.log('🚀 Initializing Enhanced Unit Assets Management...');
     
     // Load data immediately with enhanced error handling
     loadUnitAssetsData();
@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Enhanced data loading with improved error handling
 function loadUnitAssetsData() {
-    console.log('📡 Loading unit assets data...');
+    // console.log('📡 Loading unit assets data...');
     
     // Show enhanced loading indicator
     showLoadingTable();
@@ -566,7 +566,7 @@ function loadUnitAssetsData() {
         dataType: 'json',
         timeout: 30000, // 30 second timeout
         success: function(response) {
-            console.log('✅ Data loaded successfully:', response);
+            // console.log('✅ Data loaded successfully:', response);
             
             if (response.success && response.data) {
                 renderEnhancedUnitAssetsTable(response.data);
@@ -601,7 +601,7 @@ function showLoadingTable() {
 
 // Enhanced table rendering with improved status display
 function renderEnhancedUnitAssetsTable(data) {
-    console.log('🔧 Rendering enhanced table with', data.length, 'records');
+    // console.log('🔧 Rendering enhanced table with', data.length, 'records');
     
     let tableBody = '';
     
@@ -658,7 +658,7 @@ function renderEnhancedUnitAssetsTable(data) {
 
 // Enhanced DataTable initialization
 function initializeEnhancedDataTable() {
-    console.log('🔧 Initializing enhanced DataTable...');
+    // console.log('🔧 Initializing enhanced DataTable...');
     
     // Destroy existing table if any
     if (unitAssetsTable) {
@@ -698,7 +698,7 @@ function initializeEnhancedDataTable() {
             }
         ],
         initComplete: function() {
-            console.log('✅ Enhanced DataTable initialized successfully');
+            // console.log('✅ Enhanced DataTable initialized successfully');
             // Add custom styling after initialization
             $('.dataTables_filter input').addClass('form-control-sm').attr('placeholder', 'Search unit assets...');
             $('.dataTables_length select').addClass('form-select form-select-sm');
@@ -799,7 +799,7 @@ function getEnhancedAssetBadge(status) {
 
 // Enhanced fallback data with better styling
 function showFallbackData() {
-    console.log('🔧 Showing enhanced fallback demo data...');
+    // console.log('🔧 Showing enhanced fallback demo data...');
     
     const fallbackData = [
         {
@@ -837,7 +837,7 @@ function showFallbackData() {
 
 // Enhanced filter functions
 function applyFilters() {
-    console.log('🔍 Applying enhanced filters...');
+    // console.log('🔍 Applying enhanced filters...');
     
     const statusFilter = $('#statusFilter').val();
     const departmentFilter = $('#departmentFilter').val();
@@ -863,7 +863,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-    console.log('🔄 Resetting enhanced filters...');
+    // console.log('🔄 Resetting enhanced filters...');
     
     $('#filterForm')[0].reset();
     
@@ -876,14 +876,14 @@ function resetFilters() {
 
 // Enhanced refresh function
 function refreshData() {
-    console.log('🔄 Refreshing unit assets data...');
+    // console.log('🔄 Refreshing unit assets data...');
     showAlert('info', 'Refreshing data...');
     loadUnitAssetsData();
 }
 
 // Enhanced CRUD Functions
 function showCreateModal() {
-    console.log('➕ Opening create modal...');
+    // console.log('➕ Opening create modal...');
     currentEditId = null;
     $('#modalTitle').html('<i class="fas fa-plus me-2"></i>Add Unit Asset');
     $('#submitText').text('Save');
@@ -897,7 +897,7 @@ function showCreateModal() {
 }
 
 function viewUnitAsset(id) {
-    console.log('👁️ Viewing unit asset:', id);
+    // console.log('👁️ Viewing unit asset:', id);
     
     // Show loading in modal
     $('#viewContent').html(`
@@ -935,7 +935,7 @@ function viewUnitAsset(id) {
 }
 
 function editUnitAsset(id) {
-    console.log('✏️ Editing unit asset:', id);
+    // console.log('✏️ Editing unit asset:', id);
     
     currentEditId = id;
     $('#modalTitle').html('<i class="fas fa-edit me-2"></i>Edit Unit Asset');
@@ -969,14 +969,8 @@ function editUnitAsset(id) {
 }
 
 function deleteUnitAsset(id) {
-    console.log('🗑️ Deleting unit asset:', id);
-    
-    // Enhanced confirmation dialog
-    if (confirm(`Are you sure you want to delete unit asset "${id}"?\n\nThis action cannot be undone and will permanently remove all associated data.`)) {
-        
-        // Show loading alert
+    const doDelete = function() {
         showAlert('info', 'Deleting unit asset...');
-        
         $.ajax({
             url: '<?= base_url('warehouse/unit-assets/delete') ?>/' + id,
             type: 'POST',
@@ -987,7 +981,7 @@ function deleteUnitAsset(id) {
             success: function(response) {
                 if (response.success) {
                     showAlert('success', response.message || 'Unit asset deleted successfully');
-                    refreshData(); // Reload data
+                    refreshData();
                 } else {
                     showAlert('error', response.message || 'Failed to delete unit asset');
                 }
@@ -997,12 +991,23 @@ function deleteUnitAsset(id) {
                 showAlert('error', 'Failed to delete unit asset: ' + error);
             }
         });
+    };
+
+    if (window.OptimaConfirm && typeof OptimaConfirm.danger === 'function') {
+        OptimaConfirm.danger({
+            title: 'Hapus Unit Asset?',
+            text: `Are you sure you want to delete unit asset "${id}"?\n\nThis action cannot be undone.`,
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal'
+        }).then((confirmed) => { if (confirmed) doDelete(); });
+    } else if (window.confirm(`Are you sure you want to delete unit asset "${id}"?\n\nThis action cannot be undone and will permanently remove all associated data.`)) {
+        doDelete();
     }
 }
 
 // Enhanced form management
 function populateEnhancedForm(data) {
-    console.log('📝 Populating enhanced form with data:', data);
+    // console.log('📝 Populating enhanced form with data:', data);
     
     const form = document.getElementById('unitAssetForm');
     
@@ -1130,7 +1135,7 @@ function showError(message) {
 
 // Enhanced form handlers
 function initializeFormHandlers() {
-    console.log('🔧 Initializing enhanced form handlers...');
+    // console.log('🔧 Initializing enhanced form handlers...');
     
     // Enhanced modal reset on hide
     $('#unitAssetModal').on('hidden.bs.modal', function() {
@@ -1181,7 +1186,7 @@ function initializeFormHandlers() {
 }
 
 function handleEnhancedFormSubmission() {
-    console.log('📤 Handling enhanced form submission...');
+    // console.log('📤 Handling enhanced form submission...');
     
     const form = document.getElementById('unitAssetForm');
     const formData = new FormData(form);
@@ -1255,16 +1260,16 @@ function displayEnhancedValidationErrors(errors) {
 
 // Export functionality
 function exportUnitAssets() {
-    console.log('📊 Exporting unit assets...');
+    // console.log('📊 Exporting unit assets...');
     showAlert('info', 'Export functionality will be implemented in the next update');
 }
 
 // Page specific initialization  
-console.log('✅ Enhanced Unit Assets Management System loaded successfully');
+// console.log('✅ Enhanced Unit Assets Management System loaded successfully');
 </script>
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
 // Enhanced page initialization complete
-console.log('Enhanced Unit Assets Management ready');
+// console.log('Enhanced Unit Assets Management ready');
 <?= $this->endSection() ?> 

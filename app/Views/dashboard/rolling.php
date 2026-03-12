@@ -307,7 +307,7 @@
                         <button class="btn btn-success" onclick="deployUnitModal()">
                             <i class="fas fa-truck-moving me-2"></i>Deploy Unit
                         </button>
-                        <button class="btn btn-info" onclick="generateReport()">
+                        <button class="btn btn-primary" onclick="generateReport()">
                             <i class="fas fa-file-alt me-2"></i>Generate Report
                         </button>
                         <button class="btn btn-warning" onclick="viewMaintenanceSchedule()">
@@ -450,31 +450,31 @@ function initializeCharts() {
 }
 
 function exportDashboard() {
-    alert('Export dashboard functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export dashboard functionality will be implemented');
 }
 
 function exportChart(chartId) {
-    alert('Export chart functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export chart functionality will be implemented');
 }
 
 function viewChartDetails(type) {
-    alert('View chart details functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('View chart details functionality will be implemented');
 }
 
 function scheduleMaintenanceModal() {
-    alert('Schedule maintenance modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Schedule maintenance modal will be implemented');
 }
 
 function deployUnitModal() {
-    alert('Deploy unit modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Deploy unit modal will be implemented');
 }
 
 function generateReport() {
-    alert('Generate report functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Generate report functionality will be implemented');
 }
 
 function viewMaintenanceSchedule() {
-    alert('View maintenance schedule functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('View maintenance schedule functionality will be implemented');
 }
 </script>
 

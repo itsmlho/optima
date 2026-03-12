@@ -152,7 +152,7 @@ function renderGrouped(customers) {
         html += `
         <div class="uv-cust-block border rounded mb-2" id="uvCust${ci}">
             <div class="uv-cust-header p-3 d-flex align-items-center gap-3"
-                 style="cursor:pointer;background:#f8f9fa;border-radius:6px 6px 0 0;"
+                 class="cursor-pointer" style="background:#f8f9fa;border-radius:6px 6px 0 0;"
                  onclick="toggleBlock('uvCustChild${ci}', this)">
                 <span class="uv-caret text-muted" style="transition:transform .2s;display:inline-block;${expanded ? '' : 'transform:rotate(-90deg)'}">
                     <i class="fas fa-chevron-down"></i>
@@ -172,7 +172,7 @@ function renderGrouped(customers) {
             html += `
             <div class="uv-loc-block border-bottom" id="uvLoc${ci}_${li}">
                 <div class="uv-loc-header px-4 py-2 d-flex align-items-center gap-3"
-                     style="cursor:pointer;background:#fafafa;"
+                     class="cursor-pointer" style="background:#fafafa;"
                      onclick="toggleBlock('uvLocChild${ci}_${li}', this)">
                     <span class="uv-caret text-muted" style="transition:transform .2s;display:inline-block;">
                         <i class="fas fa-chevron-down"></i>
@@ -298,14 +298,27 @@ function verifyUnit(id) {
 }
 
 function submitToMarketing(id) {
-    if (!confirm('Kirim verifikasi ini ke Marketing untuk approval?')) return;
-    fetch(BASE_UV + 'service/unit-audit/submitToMarketing/' + id, { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            alert(data.message || (data.success ? 'Berhasil' : 'Gagal'));
-            if (data.success) loadGroupedData();
-        })
-        .catch(() => alert('Terjadi kesalahan'));
+                Swal.fire({
+        title: 'Kirim ke Marketing?',
+        text: 'Verifikasi ini akan dikirim ke Marketing untuk approval.',
+        icon: 'question',
+                    showCancelButton: true,
+        confirmButtonText: 'Ya, Kirim!',
+        cancelButtonText: 'Batal'
+                }).then((result) => {
+        if (!result.isConfirmed) return;
+        fetch(BASE_UV + 'service/unit-audit/submitToMarketing/' + id, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    OptimaNotify.success(data.message || 'Berhasil');
+                    loadGroupedData();
+                    } else {
+                    OptimaNotify.error(data.message || 'Gagal');
+                }
+            })
+            .catch(() => OptimaNotify.error('Terjadi kesalahan'));
+    });
 }
 
 function escHtml(s) {

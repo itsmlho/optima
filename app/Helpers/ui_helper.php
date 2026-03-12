@@ -155,8 +155,8 @@ if (!function_exists('ui_button')) {
             if (strpos($key, 'data-') === 0 || strpos($key, 'aria-') === 0) {
                 $attributes .= " {$key}=\"" . esc($value) . "\"";
             }
-            // Handle standard HTML attributes (id, onclick, title, etc.)
-            elseif (in_array($key, ['id', 'onclick', 'title', 'name', 'value', 'placeholder', 'tabindex', 'role'])) {
+            // Handle standard HTML attributes (id, onclick, title, target, rel, etc.)
+            elseif (in_array($key, ['id', 'onclick', 'title', 'name', 'value', 'placeholder', 'tabindex', 'role', 'target', 'rel'])) {
                 $attributes .= " {$key}=\"" . esc($value) . "\"";
             }
         }

@@ -529,13 +529,16 @@ function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
                     } else {
                         if (typeof alertSwal === 'function') {
                             alertSwal('error', res.message || 'Gagal update unit');
+                        } else if (window.OptimaNotify) {
+                            OptimaNotify.error(res.message || 'Gagal update unit');
                         } else {
                             alert(res.message || 'Gagal update unit');
                         }
                     }
                 },
                 error: function() {
-                    alert('Error saat update unit');
+                    if (window.OptimaNotify) OptimaNotify.error('Error saat update unit');
+                    else alert('Error saat update unit');
                 }
             });
         }
@@ -686,7 +689,7 @@ function loadDocuments() {
 // ── Stubs for modal-based actions (reuse shared functions from kontrak.php pattern) ──
 
 function uploadContractDocument() {
-    alert('Upload document feature coming soon.');
+    if (window.OptimaNotify) OptimaNotify.info('Upload document feature coming soon.');
 }
 
 async function deleteDocument(docId) {

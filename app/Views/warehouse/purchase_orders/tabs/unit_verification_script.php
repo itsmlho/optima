@@ -421,7 +421,7 @@
                         <td class="text-center" style="background-color: #fafafa; padding: 8px;">
                             <input type="checkbox" class="form-check-input verify-checkbox" 
                                    data-spec-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                     </tr>
                 `;
@@ -444,7 +444,7 @@
                         <td class="text-center" style="background-color: #fafafa; padding: 8px;">
                             <input type="checkbox" class="form-check-input verify-checkbox" 
                                    data-spec-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                     </tr>
                 `;
@@ -1000,14 +1000,14 @@
                                    id="${checkId}_sesuai" 
                                    data-field="${spec.fieldName}"
                                    data-row-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                         <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
                             <input type="checkbox" class="form-check-input verify-checkbox-tidak-sesuai" 
                                    id="${checkId}_tidak_sesuai" 
                                    data-field="${spec.fieldName}"
                                    data-row-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                     </tr>
                 `;
@@ -1069,14 +1069,14 @@
                                    id="${checkId}_sesuai" 
                                    data-field="${spec.fieldName}"
                                    data-row-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                         <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
                             <input type="checkbox" class="form-check-input verify-checkbox-tidak-sesuai" 
                                    id="${checkId}_tidak_sesuai" 
                                    data-field="${spec.fieldName}"
                                    data-row-index="${index}"
-                                   style="cursor: pointer;">
+                                   class="cursor-pointer">
                         </td>
                     </tr>
                 `;

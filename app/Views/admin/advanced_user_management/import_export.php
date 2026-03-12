@@ -340,16 +340,16 @@ $(document).ready(function() {
                 $('#importStatus').text('Import completed!');
                 
                 if (response.success) {
-                    alert('Import completed successfully!\n\n' +
-                          'Created: ' + (response.created || 0) + ' users\n' +
-                          'Updated: ' + (response.updated || 0) + ' users\n' +
-                          'Errors: ' + (response.errors || 0) + ' records');
+                    const msg = 'Import completed successfully!\n\nCreated: ' + (response.created || 0) + ' users\nUpdated: ' + (response.updated || 0) + ' users\nErrors: ' + (response.errors || 0) + ' records';
+                    if (window.OptimaNotify) OptimaNotify.success(msg);
+                    else alert(msg);
                     
                     setTimeout(function() {
                         window.location.href = '<?= base_url('admin/advanced-users') ?>';
                     }, 2000);
                 } else {
-                    alert('Import failed: ' + response.message);
+                    if (window.OptimaNotify) OptimaNotify.error('Import failed: ' + response.message);
+                    else alert('Import failed: ' + response.message);
                     $('#importProgress').hide();
                 }
             },
@@ -357,9 +357,11 @@ $(document).ready(function() {
                 $('#importProgress').hide();
                 try {
                     var response = JSON.parse(xhr.responseText);
-                    alert('Error: ' + response.message);
+                    if (window.OptimaNotify) OptimaNotify.error('Error: ' + response.message);
+                    else alert('Error: ' + response.message);
                 } catch (e) {
-                    alert('An error occurred during import.');
+                    if (window.OptimaNotify) OptimaNotify.error('An error occurred during import.');
+                    else alert('An error occurred during import.');
                 }
             }
         });
@@ -371,7 +373,8 @@ $(document).ready(function() {
         if (file) {
             var fileSize = file.size / 1024 / 1024; // MB
             if (fileSize > 10) {
-                alert('File size must be less than 10MB');
+                if (window.OptimaNotify) OptimaNotify.error('File size must be less than 10MB');
+                else alert('File size must be less than 10MB');
                 $(this).val('');
                 return;
             }
@@ -381,7 +384,8 @@ $(document).ready(function() {
             var isValidFile = allowedExtensions.some(ext => fileName.endsWith(ext));
             
             if (!isValidFile) {
-                alert('Please select a CSV or Excel file');
+                if (window.OptimaNotify) OptimaNotify.warning('Please select a CSV or Excel file');
+                else alert('Please select a CSV or Excel file');
                 $(this).val('');
                 return;
             }

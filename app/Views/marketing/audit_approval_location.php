@@ -505,7 +505,8 @@ function confirmReject() {
     const notes = document.getElementById('rejectNotes').value;
 
     if (!notes.trim()) {
-        alert('Alasan penolakan harus diisi');
+        if (window.OptimaNotify) OptimaNotify.warning('Alasan penolakan harus diisi');
+        else alert('Alasan penolakan harus diisi');
         return;
     }
 
@@ -516,7 +517,8 @@ function confirmReject() {
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.message);
+        if (window.OptimaNotify) OptimaNotify.info(data.message);
+        else alert(data.message);
         $('#rejectModal').modal('hide');
         loadPendingApprovals();
         loadAllAudits();
@@ -534,7 +536,8 @@ function approveAudit() {
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.message);
+        if (window.OptimaNotify) OptimaNotify.info(data.message);
+        else alert(data.message);
         $('#detailModal').modal('hide');
         loadPendingApprovals();
         loadAllAudits();

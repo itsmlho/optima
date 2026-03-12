@@ -1418,11 +1418,11 @@ function showVariablesInfo() {
             if (variable === 'no_unit' || variable === 'customer' || variable === 'quantity' || 
                 variable === 'sparepart_name' || variable === 'nomor_delivery') {
                 badgeClass = ' border-success border-2';
-                badgeText = '<span class="badge bg-success ms-1" style="font-size:0.6rem;">STANDARD</span>';
+                badgeText = '<span class="badge bg-success ms-1 text-xs">STANDARD</span>';
             } else if (variable === 'unit_code' || variable === 'unit_no' || variable === 'customer_name' || 
                        variable === 'qty' || variable === 'nama_sparepart' || variable === 'delivery_number') {
                 badgeClass = ' border-warning border-2';
-                badgeText = '<span class="badge bg-warning ms-1" style="font-size:0.6rem;">ALIAS</span>';
+                badgeText = '<span class="badge bg-warning ms-1 text-xs">ALIAS</span>';
             }
             
             // Get description if available

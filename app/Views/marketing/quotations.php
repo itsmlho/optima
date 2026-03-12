@@ -1899,7 +1899,7 @@ function refreshQuotationActions(quotationId) {
         
         // Always show edit button for quotations that haven't been converted to contract
         if (!data.contract_id) {
-            actionButtons += `<button class="btn btn-info me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
+            actionButtons += `<button class="btn btn-warning btn-sm me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
                 <i class="fas fa-pencil-alt me-1"></i>Edit Keterangan
             </button>`;
         }
@@ -1916,7 +1916,7 @@ function refreshQuotationActions(quotationId) {
         
         // Show print button ONLY if specifications have been created
         if (hasSpecs) {
-            actionButtons += `<button class="btn btn-info me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
+            actionButtons += `<button class="btn btn-outline-secondary btn-sm me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
                 <i class="fas fa-print me-1"></i>Print
             </button>`;
         }
@@ -2031,7 +2031,7 @@ function viewQuotation(id) {
         // Always show edit button for quotations that haven't been converted to contract
         // Allow editing even for DEAL stage to accommodate price/spec changes
         if (!data.contract_id) {
-            actionButtons += `<button class="btn btn-info me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
+            actionButtons += `<button class="btn btn-warning btn-sm me-2" onclick="editQuotation(${data.id_quotation})" title="Tambahkan atau edit keterangan quotation">
                 <i class="fas fa-pencil-alt me-1"></i>Edit Keterangan
             </button>`;
         }
@@ -2049,7 +2049,7 @@ function viewQuotation(id) {
         
         // Show print button ONLY if specifications have been created
         if (hasSpecs) {
-            actionButtons += `<button class="btn btn-info me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
+            actionButtons += `<button class="btn btn-outline-secondary btn-sm me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
                 <i class="fas fa-print me-1"></i>Print
             </button>`;
         }
@@ -2590,7 +2590,7 @@ $(document).on('click', '#specifications-tab', function() {
                             This is currently a prospect. Convert it to quotation to add specifications<br>
                             and define required units, quantities, and pricing.
                         </p>
-                        <button class="btn btn-info btn-lg" onclick="convertToQuotation(${currentQuotationId})">
+                        <button class="btn btn-primary btn-lg" onclick="convertToQuotation(${currentQuotationId})">
                             <i class="fas fa-arrow-right me-2"></i>Convert to Quotation
                         </button>
                     </div>

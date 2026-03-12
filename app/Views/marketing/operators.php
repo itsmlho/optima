@@ -740,8 +740,11 @@ function formatNumber(num) {
 }
 
 function showNotification(message, type) {
-    // Use existing notification system (Toast/SweetAlert)
-    if (typeof Swal !== 'undefined') {
+    if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+        OptimaNotify[type](message);
+    } else if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+        OptimaPro.showNotification(message, type);
+    } else if (typeof Swal !== 'undefined') {
         Swal.fire({
             text: message,
             icon: type,

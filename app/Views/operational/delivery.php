@@ -92,26 +92,26 @@
       </div>
     </div>
     
-    <!-- Filter Tabs -->
-    <ul class="nav nav-tabs mb-3" id="filterTabs">
-      <li class="nav-item">
-        <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('App.all') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('App.submitted') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('App.in_progress') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('App.delivered') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('App.cancelled') ?></a>
-      </li>
-    </ul>
+    <div class="card-body">
+      <!-- Filter Tabs -->
+      <ul class="nav nav-tabs mb-3" id="filterTabs">
+        <li class="nav-item">
+          <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('App.all') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('App.submitted') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('App.in_progress') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('App.delivered') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('App.cancelled') ?></a>
+        </li>
+      </ul>
     
-    <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-striped table-hover mb-0 table-manual-sort" id="diTable">
           <thead class="table-light">
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       ]
     });
     
-    console.log('✅ Operational Delivery DataTable initialized');
+    // console.log('✅ Operational Delivery DataTable initialized');
   } catch(error) {
     console.error('❌ Failed to initialize DataTable:', error);
   }
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       e.preventDefault();
       
       // Debug log
-      console.log('Form submitted. Current variables:', { currentApprovalStage, currentDiId });
+      // console.log('Form submitted. Current variables:', { currentApprovalStage, currentDiId });
       
       // Check if currentApprovalStage is defined
       if (!currentApprovalStage) {
@@ -396,9 +396,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       fd.append('stage', currentApprovalStage);
       
       // Debug: Log all form data
-      console.log('Form data being sent:');
+      // console.log('Form data being sent:');
       for (let [key, value] of fd.entries()) {
-        console.log(key, value);
+        // console.log(key, value);
       }
       
       fetch(`<?= base_url('operational/delivery/approve-stage/') ?>${currentDiId}`, {
@@ -411,14 +411,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
         return r.json();
       }).then(j=>{
-        console.log('Server response:', j); // Debug log
+        // console.log('Server response:', j); // Debug log
         if (j && j.success) {
           bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
           
           // Check if we need to switch filter based on stage completion
           // After 'sampai' approval, status becomes SAMPAI_LOKASI (DELIVERED filter)
           if (currentApprovalStage === 'sampai' && currentFilter === 'INPROGRESS') {
-            console.log('🔀 Stage sampai completed - switching to DELIVERED filter');
+            // console.log('🔀 Stage sampai completed - switching to DELIVERED filter');
             currentFilter = 'DELIVERED';
             
             // Update active tab
@@ -457,8 +457,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     currentDiId = diId;
     
     // Debug log
-    console.log('Opening approval modal:', { stage, stageTitle, diId });
-    console.log('Current variables:', { currentApprovalStage, currentDiId });
+    // console.log('Opening approval modal:', { stage, stageTitle, diId });
+    // console.log('Current variables:', { currentApprovalStage, currentDiId });
     
     document.getElementById('approvalStageTitle').textContent = stageTitle;
     
@@ -589,19 +589,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   // Unified notifier (fallbacks)
   window.notify = function(msg, type='success'){
+    if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') return OptimaNotify[type](msg);
     if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
-    if (typeof showNotification==='function') return showNotification(msg, type);
-    alert(msg);
   }
   
   // Workflow indicator formatter
   // Proses DI function - can be called from table or modal
-  window.prosesDI = function(id) {
-    if (!confirm('Proses DI ini? Status akan berubah ke SIAP KIRIM dan masuk workflow operasional.')) {
-      return;
-    }
+  window.prosesDI = async function(id) {
+    const { isConfirmed } = await Swal.fire({
+      title: 'Proses DI?',
+      text: 'Status akan berubah ke SIAP KIRIM dan masuk workflow operasional.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Proses!',
+      cancelButtonText: 'Batal'
+    });
+    if (!isConfirmed) return;
     
-    console.log('🚀 prosesDI called for DI:', id);
+    // console.log('🚀 prosesDI called for DI:', id);
     
     const formData = new FormData();
     formData.append('action', 'assign_driver');
@@ -611,7 +616,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     formData.append('kendaraan', '');
     formData.append('no_polisi_kendaraan', '-');
     
-    console.log('📤 Sending request to:', `<?= base_url('operational/delivery/update-status/') ?>${id}`);
+    // console.log('📤 Sending request to:', `<?= base_url('operational/delivery/update-status/') ?>${id}`);
     
     fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
       method: 'POST',
@@ -619,26 +624,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
       body: formData
     })
     .then(r => {
-      console.log('📥 Response status:', r.status, r.statusText);
+      // console.log('📥 Response status:', r.status, r.statusText);
       if (!r.ok) {
         throw new Error(`HTTP ${r.status}: ${r.statusText}`);
       }
       return r.json();
     })
     .then(result => {
-      console.log('✅ Server response:', result);
-      console.log('🔍 Current filter value:', currentFilter);
+      // console.log('✅ Server response:', result);
+      // console.log('🔍 Current filter value:', currentFilter);
       
       if (result && result.success) {
         notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan untuk mengisi detail operasional.', 'success');
-        console.log('🔄 Reloading table...');
+        // console.log('🔄 Reloading table...');
         
         // CRITICAL: Switch to INPROGRESS filter so user can see the updated DI
         // When status changes from DIAJUKAN → SIAP_KIRIM, it no longer matches SUBMITTED filter
-        console.log('🔍 Checking filter switch condition: currentFilter === "SUBMITTED"?', currentFilter === 'SUBMITTED');
+        // console.log('🔍 Checking filter switch condition: currentFilter === "SUBMITTED"?', currentFilter === 'SUBMITTED');
         
         if (currentFilter === 'SUBMITTED') {
-          console.log('🔀 Switching from SUBMITTED to INPROGRESS filter');
+          // console.log('🔀 Switching from SUBMITTED to INPROGRESS filter');
           currentFilter = 'INPROGRESS';
           
           // Update active tab
@@ -646,7 +651,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const inprogressTab = document.querySelector('.filter-tab[data-filter="INPROGRESS"]');
           if (inprogressTab) {
             inprogressTab.classList.add('active');
-            console.log('✅ INPROGRESS tab activated');
+            // console.log('✅ INPROGRESS tab activated');
           } else {
             console.warn('⚠️ INPROGRESS tab not found');
           }
@@ -656,17 +661,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const inprogressCard = document.querySelector('.filter-card[data-filter="INPROGRESS"]');
           if (inprogressCard) {
             inprogressCard.classList.add('active');
-            console.log('✅ INPROGRESS card activated');
+            // console.log('✅ INPROGRESS card activated');
           } else {
             console.warn('⚠️ INPROGRESS card not found');
           }
         } else {
-          console.log('⚠️ Filter switch skipped - not on SUBMITTED filter');
+          // console.log('⚠️ Filter switch skipped - not on SUBMITTED filter');
         }
         
         if (typeof diTable !== 'undefined' && diTable) {
           diTable.ajax.reload(null, false); // false = stay on current page
-          console.log('✅ Table reloaded');
+          // console.log('✅ Table reloaded');
         } else {
           console.error('❌ diTable is not defined!');
         }
@@ -736,7 +741,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         try {
           s = JSON.parse(spk.spesifikasi);
         } catch (e) {
-          console.log('Failed to parse spesifikasi:', e);
+          // console.log('Failed to parse spesifikasi:', e);
         }
       }
       const k = kontrak;
@@ -954,7 +959,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       let actionButtons = '';
       
       // Debug: Log the actual status and raw data
-      console.log('🔍 DI Modal Status Debug:', { 
+      // console.log('🔍 DI Modal Status Debug:', { 
         status, 
         status_di: d.status_di, 
         status_eksekusi: d.status_eksekusi,
@@ -967,7 +972,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (status === 'SUBMITTED' || status === 'DIAJUKAN') {
         // Only show Proses DI button for initial statuses
         actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Process DI</button>';
-        console.log('✅ Showing Process DI button for status:', status);
+        // console.log('✅ Showing Process DI button for status:', status);
       } else if (status === 'SIAP_KIRIM' || status === 'DISETUJUI' || status === 'PERSIAPAN_UNIT' || status === 'DALAM_PERJALANAN') {
         // Show approval stage buttons for processed statuses
         let approvalButtons = [];
@@ -992,15 +997,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (sampaiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">✓ Arrive</span>');
         
         actionButtons = approvalButtons.join(' ');
-        console.log('✅ Showing workflow buttons for status:', status);
+        // console.log('✅ Showing workflow buttons for status:', status);
       } else if (status === 'DELIVERED' || status === 'SELESAI' || status === 'COMPLETED') {
         // Show completed status
         actionButtons = `<span class="badge badge-soft-green">Completed</span>`;
-        console.log('✅ Showing completed status for:', status);
+        // console.log('✅ Showing completed status for:', status);
       } else {
         // For any other status, show no action buttons
         actionButtons = '';
-        console.log('⚠️ No action buttons for status:', status);
+        // console.log('⚠️ No action buttons for status:', status);
       }
       
       // Add Print SPK button if SPK exists (for all statuses except SUBMITTED and DIAJUKAN)
@@ -1018,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (jenisPerintahKode === 'TARIK' || jenisPerintahKode === 'TUKAR' || jenisPerintahKode === 'RELOKASI') {
         const printSPPUButton = `<a class="btn btn-outline-success btn-sm" href="<?= base_url('marketing/di/print-withdrawal/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Print SPPU</a>`;
         actionButtons = actionButtons ? `${actionButtons} ${printSPPUButton}` : printSPPUButton;
-        console.log('✅ Added Print SPPU button for command type:', jenisPerintahKode);
+        // console.log('✅ Added Print SPPU button for command type:', jenisPerintahKode);
       }
       
       body.innerHTML = `

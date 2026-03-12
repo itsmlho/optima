@@ -198,6 +198,8 @@ $(document).ready(function() {
         if (!isValid) {
             if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
                 OptimaPro.showNotification(errors.join('<br>'), 'danger', 5000);
+            } else if (window.OptimaNotify) {
+                OptimaNotify.error('Validation Error:\n' + errors.join('\n'));
             } else {
                 alert('Validation Error:\n' + errors.join('\n'));
             }
@@ -214,6 +216,8 @@ $(document).ready(function() {
                 if (response.success) {
                     if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
                         OptimaPro.showNotification(response.message || 'Password berhasil diubah', 'success', 3000);
+                    } else if (window.OptimaNotify) {
+                        OptimaNotify.success(response.message || 'Password berhasil diubah');
                     } else {
                         alert('Success: ' + (response.message || 'Password berhasil diubah'));
                     }
@@ -223,6 +227,8 @@ $(document).ready(function() {
                 } else {
                     if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
                         OptimaPro.showNotification(response.message || 'Failed to change password', 'danger', 5000);
+                    } else if (window.OptimaNotify) {
+                        OptimaNotify.error(response.message || 'Failed to change password');
                     } else {
                         alert('Error: ' + (response.message || 'Failed to change password'));
                     }
@@ -242,6 +248,8 @@ $(document).ready(function() {
                 }
                 if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
                     OptimaPro.showNotification(errorMessage, 'danger', 5000);
+                } else if (window.OptimaNotify) {
+                    OptimaNotify.error(errorMessage);
                 } else {
                     alert('Error: ' + errorMessage);
                 }

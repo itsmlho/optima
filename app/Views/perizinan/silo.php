@@ -657,7 +657,7 @@ function getColumnDefinitions(tableId) {
                         buttons.push('<button type="button" class="btn btn-sm btn-success w-100 mb-1" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO"><i class="fas fa-plus me-1"></i>Create</button>');
                     } else {
                         // Always show detail button
-                        buttons.push('<button type="button" class="btn btn-sm btn-info w-100 mb-1" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
+                        buttons.push('<button type="button" class="btn btn-sm btn-outline-primary w-100 mb-1" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
                         
                         // Show update button based on status (stage by stage)
                         if (row.status !== 'SILO_TERBIT' && row.status !== 'SILO_EXPIRED') {

@@ -638,7 +638,7 @@ async function loadKPIData() {
         if (!response.ok) throw new Error('Failed to load KPI data');
         
         const data = await response.json();
-        console.log('KPI Data received:', data);
+        // console.log('KPI Data received:', data);
         
         // Check if data has expected structure
         if (data && data.kpi) {
@@ -682,7 +682,7 @@ function loadReportDelivery() {
     fetch('<?= base_url('dashboard/report-delivery') ?>')
         .then(response => response.json())
         .then(result => {
-            console.log('Delivery Report Data:', result);
+            // console.log('Delivery Report Data:', result);
             if (result.success && result.data) {
                 const data = result.data;
                 
@@ -768,13 +768,13 @@ function loadTeamPerformance() {
     fetch('<?= base_url('dashboard/team-performance') ?>')
         .then(response => response.json())
         .then(result => {
-            console.log('Team Performance Data:', result);
+            // console.log('Team Performance Data:', result);
             if (result.success && result.data) {
                 const data = result.data;
                 
                 // Debug info
                 if (result.debug) {
-                    console.log('Team Debug:', result.debug);
+                    // console.log('Team Debug:', result.debug);
                 }
                 
                 // Central Team
@@ -955,7 +955,7 @@ function loadRentalTypeAnalytics() {
     fetch('<?= base_url('dashboard/rental-type-analytics') ?>')
         .then(response => response.json())
         .then(result => {
-            console.log('Rental Type Analytics:', result);
+            // console.log('Rental Type Analytics:', result);
             if (result.success && result.data) {
                 const data = result.data.breakdown;
                 
@@ -993,7 +993,7 @@ async function loadUnlinkedDeliveriesWidget() {
         if (!response.ok) throw new Error('Failed to load unlinked deliveries data');
         
         const result = await response.json();
-        console.log('Unlinked Deliveries Widget:', result);
+        // console.log('Unlinked Deliveries Widget:', result);
         
         if (result.success && result.data) {
             const data = result.data;

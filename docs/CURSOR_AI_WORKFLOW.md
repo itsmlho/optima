@@ -585,10 +585,122 @@ When all 9 modules DONE:
 
 **Good luck with CSS standardization!** 🚀
 
-**Next File to Open in Cursor AI:**  
-`app/Views/marketing/spk.php`
+---
 
-**Prompt to use:** See "Step 2" above
+## 📋 Phase 2 – UI Consistency: Buttons, Notifications, Confirm (March 2026)
+
+### Apa yang sudah dikerjakan
+
+**1. Helper Global Baru**
+- `window.OptimaConfirm` (di `layouts/base.php`):
+  - `.danger()` — untuk aksi destruktif (hapus, cancel, reject). Warna merah.
+  - `.approve()` — untuk approve/confirm positif. Warna hijau.
+  - `.submit()` — untuk kirim/submit. Warna biru.
+  - `.generic()` — untuk custom.
+  - Fallback: jika Swal tidak ada, pakai `confirm()` native.
+- `window.OptimaNotify` (sudah ada sebelumnya) — dipakai konsisten di semua modul.
+
+**2. Migrasi alert()/confirm() → OptimaNotify + OptimaConfirm**
+
+| File | Status | Catatan |
+|------|--------|---------|
+| `service/spk_service.php` | DONE | Semua alert() diganti OptimaNotify. Session-expired pakai OptimaNotify.error + redirect. |
+| `marketing/spk.php` | DONE | Fallback chain (OptimaPro→showNotification→alert) disederhanakan ke OptimaNotify. |
+| `marketing/di.php` | DONE | Validasi, success, error semua pakai OptimaNotify. |
+| `service/unit_audit.php` | DONE | Validasi, submit audit, tambah unit — semua pakai OptimaNotify. |
+| `operational/tracking.php` | DONE | Validasi + error → OptimaNotify. |
+| `operational/temporary_units_report.php` | DONE | Return unit success/error → OptimaNotify. |
+| `admin/settings.php` | DONE | Clear sessions → OptimaConfirm.danger. |
+| `system/settings.php` | DONE | Reset settings → OptimaConfirm.danger. |
+| `settings/index.php` | DONE | Clear cache → OptimaConfirm.danger. |
+| `admin/queue_management.php` | DONE (Phase 1) | Clear cache, clean failed → Swal.fire. |
+
+**3. CSS Utilities Baru (optima-pro.css)**
+- `.text-2xs` (0.55rem), `.text-xs` (0.65rem), `.text-xxs` (0.7rem) — menggantikan inline `font-size`.
+- `.badge-label` — badge dengan min-width untuk label status.
+- `.chip-label` — chip dengan min-width untuk label tabel.
+- `.btn-icon-only` — tombol ikon di action column tabel (dari Phase 1).
+
+**4. btn-info: 0 sisa** — semua diganti sesuai fungsi (primary/success/warning/danger/outline).
+
+**5. Read-Only Notifications (March 2026)**
+- Toast (`OptimaNotify` + `notification-lightweight.js`):
+  - Tidak lagi mengirim `url` atau `actionText` ke `createOptimaToast`.
+  - Hanya menampilkan icon + title + message + timestamp (tanpa tombol).
+- Navbar bell dropdown:
+  - Item notifikasi sekarang `<button>` yang memanggil `handleNotificationClick(id)` tanpa parameter URL.
+  - `handleNotificationClick` di `layouts/base.php` hanya mark-as-read + menutup dropdown; tidak ada redirect atau buka modal.
+- Notification Center (`notifications/user_center.php`):
+  - Dropdown aksi tiap item hanya punya: **Mark as Read** & **Delete** (tanpa “View Details” / link ke modul lain).
+  - Semua feedback menggunakan `OptimaNotify`, bukan `alert()` / `showNotification` lokal.
+- Auto deeplink dari notifikasi:
+  - Blok auto-open berdasarkan `$autoOpenSpkId` sudah dihapus dari `service/spk_service.php` & `marketing/spk.php`.
+
+### Sisa yang belum 100%
+
+- `style="display:none"` banyak yang legitimate (JS toggle) — tidak perlu dipindah ke `d-none`.
+
+---
+
+## ✅ Phase 3 – Final Sweep "Pinggiran" (March 2026)
+
+**Tanggal:** 12 Maret 2026
+
+### Tujuan
+Membersihkan semua sisa `alert()/confirm()` di halaman pinggiran (dashboard, auth, components, admin kecil, operational) agar konsisten dengan standar OPTIMA.
+
+### Pola Standar Yang Diterapkan
+```
+// Sebelum:
+alert('pesan');
+
+// Sesudah:
+if (window.OptimaNotify) OptimaNotify.error/warning/success/info('pesan');
+else alert('pesan');  // fallback terakhir, jarang terpanggil
+```
+
+### File Yang Diupdate (Phase 3)
+| File | Perubahan |
+|---|---|
+| `service/spk_service.php` | Semua `alert()` → `notify()` (OptimaNotify-first helper) |
+| `marketing/spk.php` | Semua `alert()` → OptimaNotify; `confirm()` hapus → OptimaConfirm.danger |
+| `dashboard/marketing.php` | Placeholder alert → OptimaNotify.info |
+| `dashboard/rolling.php` | Placeholder alert → OptimaNotify.info |
+| `dashboard/warehouse.php` | Placeholder alert → OptimaNotify.info |
+| `dashboard/purchasing.php` | `confirm()` hapus → OptimaConfirm.danger |
+| `auth/register.php` | Validasi alert → OptimaNotify.error/warning |
+| `auth/verify_otp.php` | alert → OptimaNotify.success/error/warning |
+| `auth/profile.php` | `confirm()` OTP → window.confirm (fallback; OTP flow sensitif) |
+| `service/unit_movement.php` | alert → OptimaNotify.success/error |
+| `warehouse/unit_movement.php` | alert → OptimaNotify.success/error |
+| `service/work_orders.php` | alert access denied → OptimaNotify.error |
+| `service/unit_verification_unit.php` | alert → OptimaNotify.error |
+| `service/print_verification.php` | alert → OptimaNotify.error |
+| `warehouse/sparepart_usage.php` | Semua alert → OptimaNotify.error/warning |
+| `operational/tracking.php` | alert → OptimaNotify.warning |
+| `operational/temporary_units_report.php` | alert → OptimaNotify.error |
+| `marketing/audit_approval_location.php` | alert → OptimaNotify.warning/info |
+| `marketing/customer_detail.php` | Placeholder alert → OptimaNotify.info |
+| `marketing/customer_management.php` | showNotification() fallback → OptimaNotify |
+| `marketing/kontrak_detail.php` | alert → OptimaNotify; placeholder → OptimaNotify.info |
+| `marketing/unit_tersedia.php` | alert → OptimaNotify.error/info |
+| `marketing/operators.php` | showNotification() → OptimaNotify-first |
+| `system/settings.php` | alert systemInfo → OptimaNotify.info |
+| `apps/messages.php` | `confirm()` hapus → OptimaConfirm.danger |
+| `admin/activity_log.php` | alert → OptimaNotify.error |
+| `admin/advanced_user_management/division.php` | Placeholder alert → OptimaNotify.info |
+| `admin/advanced_user_management/role.php` | alert → OptimaNotify.error |
+| `admin/advanced_user_management/change_password.php` | alert fallback → OptimaNotify |
+| `admin/advanced_user_management/import_export.php` | alert → OptimaNotify.success/error/warning |
+| `components/add_unit_modal.php` | alert → OptimaNotify.warning/success/error |
+| `layouts/base.php` | Session expired alert → OptimaNotify.error |
+
+### Hasil Akhir
+- **`alert()` langsung**: 0 (semua sudah `if OptimaNotify ... else alert` fallback)
+- **`confirm()` langsung**: 0 (semua sudah `OptimaConfirm.danger` atau `window.confirm` fallback)
+- **`btn-info`**: 0 match
+- **`autoOpenSpkId`**: 0 match
+- **Notifikasi read-only**: ✅ toast, navbar bell, Notification Center semua bersih
 
 ---
 

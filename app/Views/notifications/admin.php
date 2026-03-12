@@ -465,19 +465,19 @@ function viewRule(ruleId) {
             document.getElementById('ruleDetailsContent').innerHTML = detailsHtml;
             document.getElementById('viewRuleModal').classList.add('show');
         } else {
-            alert('Failed to load rule details: ' + data.message);
+            OptimaNotify.error('Failed to load rule details: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to load rule details');
+        OptimaNotify.error('Failed to load rule details');
     });
 }
 
 function editRuleFromDetail() {
     if (!currentRuleData) {
         console.error('currentRuleData is null - cannot edit rule');
-        alert('Rule data not available. Please try again.');
+        OptimaNotify.error('Rule data not available. Please try again.');
         return;
     }
     
@@ -609,12 +609,12 @@ function editRule() {
             closeActionsModal();
             document.getElementById('ruleModal').classList.add('show');
         } else {
-            alert('Failed to load rule: ' + data.message);
+            OptimaNotify.error('Failed to load rule: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to load rule data');
+        OptimaNotify.error('Failed to load rule data');
     });
 }
 
@@ -853,12 +853,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeModal();
                 location.reload();
             } else {
-                alert('Failed to save rule: ' + data.message);
+                OptimaNotify.error('Failed to save rule: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to save rule');
+            OptimaNotify.error('Failed to save rule');
         });
     });
 

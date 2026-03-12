@@ -352,7 +352,7 @@
                         <button class="btn btn-success" onclick="stockReceiptModal()">
                             <i class="fas fa-arrow-down me-2"></i>Stock Receipt
                         </button>
-                        <button class="btn btn-info" onclick="transferAssetModal()">
+                        <button class="btn btn-primary" onclick="transferAssetModal()">
                             <i class="fas fa-exchange-alt me-2"></i>Transfer Asset
                         </button>
                         <button class="btn btn-warning" onclick="stockAuditModal()">
@@ -521,35 +521,35 @@ function initializeWarehouseCharts() {
 }
 
 function exportWarehouseDashboard() {
-    alert('Export warehouse dashboard functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export warehouse dashboard functionality will be implemented');
 }
 
 function generateInventoryReport() {
-    alert('Generate inventory report functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Generate inventory report functionality will be implemented');
 }
 
 function exportChart(chartId) {
-    alert('Export chart functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Export chart functionality will be implemented');
 }
 
 function viewUtilizationDetails() {
-    alert('View utilization details functionality will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('View utilization details functionality will be implemented');
 }
 
 function addAssetModal() {
-    alert('Add asset modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Add asset modal will be implemented');
 }
 
 function stockReceiptModal() {
-    alert('Stock receipt modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Stock receipt modal will be implemented');
 }
 
 function transferAssetModal() {
-    alert('Transfer asset modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Transfer asset modal will be implemented');
 }
 
 function stockAuditModal() {
-    alert('Stock audit modal will be implemented');
+    if (window.OptimaNotify) OptimaNotify.info('Stock audit modal will be implemented');
 }
 </script>
 

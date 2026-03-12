@@ -220,7 +220,7 @@
                         <a href="<?= base_url('admin/advanced-users/create') ?>" class="btn btn-success">
                             <i class="fas fa-plus"></i> Create New User
                         </a>
-                        <a href="<?= base_url('admin/advanced-users/matrix') ?>" class="btn btn-info">
+                        <a href="<?= base_url('admin/advanced-users/matrix') ?>" class="btn btn-outline-primary">
                             <i class="fas fa-table"></i> Permission Matrix
                         </a>
                         <a href="<?= base_url('admin/advanced-users/quick-assign') ?>" class="btn btn-primary">

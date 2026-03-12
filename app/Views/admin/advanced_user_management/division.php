@@ -56,7 +56,7 @@
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <a href="<?= base_url('admin/advanced-users/show/' . $user['id']) ?>" class="btn btn-info" title="View Details">
+                            <a href="<?= base_url('admin/advanced-users/show/' . $user['id']) ?>" class="btn btn-outline-primary btn-sm" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </a>
                             <button class="btn btn-primary" onclick="viewUserMatrix(<?= $user['id'] ?>)" title="Permission Matrix">
@@ -125,7 +125,8 @@ function exportDivisionUsers() {
 
 function bulkAssignToDivision() {
     // Open bulk assign modal for this division
-    alert('Bulk assignment feature - will be implemented to show users not in this division for bulk addition');
+    if (window.OptimaNotify) OptimaNotify.info('Bulk assignment feature - will be implemented to show users not in this division for bulk addition');
+    else alert('Bulk assignment feature - will be implemented to show users not in this division for bulk addition');
 }
 
 // Add functions that are called from the main index.php but need to work in this context
@@ -148,26 +149,36 @@ function quickAssignMenu(userId) {
 function confirmDeleteUser(userId, userName) {
     if (typeof parent !== 'undefined' && parent.confirmDeleteUser) {
         parent.confirmDeleteUser(userId, userName);
-    } else if (confirm('Are you sure you want to delete user "' + userName + '"?\n\nThis action cannot be undone!')) {
-        // Direct AJAX call if parent function not available
-        $.ajax({
-            url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
-            method: 'DELETE',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert('User deleted successfully');
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
+    } else {
+        Swal.fire({
+            title: 'Hapus User?',
+            text: `User "${userName}" akan dihapus. Tindakan ini tidak dapat dibatalkan!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            $.ajax({
+                url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        OptimaNotify.success('User berhasil dihapus');
+                        location.reload();
+                    } else {
+                        OptimaNotify.error('Error: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    OptimaNotify.error('Terjadi kesalahan saat menghapus user.');
                 }
-            },
-            error: function(xhr) {
-                alert('An error occurred while deleting the user.');
-            }
+            });
         });
     }
 }

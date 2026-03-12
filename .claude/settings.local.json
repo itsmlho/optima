@@ -10,7 +10,9 @@
       "Bash(php c:/laragon/www/optima/tools/add_collapsed_menus.php)",
       "Bash(php c:/laragon/www/optima/tools/add_surat_jalan.php)",
       "Bash(python c:/laragon/www/optima/tools/add_menus_proper.py)",
-      "Bash(mysql -u root optima_ci -e \":*)"
+      "Bash(mysql -u root optima_ci -e \":*)",
+      "Bash(mysql -u root optima_ci -e \"DESCRIBE quotation_specifications;\")",
+      "Bash(mysql -u root optima_ci -e \"CREATE INDEX idx_di_status ON delivery_instructions\\(status_di\\);\")"
     ]
   }
 }

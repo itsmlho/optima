@@ -267,7 +267,7 @@ function createAudit() {
     const auditDate = document.getElementById('modalAuditDate').value;
 
     if (!customerId || !locationId) {
-        alert('Customer dan Lokasi harus dipilih');
+        OptimaNotify.warning('Customer dan Lokasi harus dipilih');
         return;
     }
 
@@ -279,11 +279,11 @@ function createAudit() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
+            OptimaNotify.success(data.message);
             $('#createAuditModal').modal('hide');
             loadAudits();
         } else {
-            alert(data.message);
+            OptimaNotify.error(data.message);
         }
     });
 }
@@ -384,15 +384,27 @@ function inputResults(id) {
 }
 
 function submitToMarketing(id) {
-    if (!confirm('Kirim audit ini ke Marketing untuk approval?')) return;
-
-    fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${id}`, {
-        method: 'POST'
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-        loadAudits();
+    Swal.fire({
+        title: 'Kirim ke Marketing?',
+        text: 'Audit ini akan dikirim ke Marketing untuk approval.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Kirim!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${id}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success !== false) {
+                OptimaNotify.success(data.message);
+            } else {
+                OptimaNotify.error(data.message);
+            }
+            loadAudits();
+        });
     });
 }
 </script>

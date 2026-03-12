@@ -515,7 +515,7 @@ $can_export = $permissions['export'];
                     <i class="fas fa-times me-2"></i>Close
                 </button>
                 <?php if (can_view('purchasing')): ?>
-                <button type="button" class="btn btn-info" id="printPOBtn" onclick="printPOFromModal()" style="display: none;">
+                <button type="button" class="btn btn-outline-secondary" id="printPOBtn" onclick="printPOFromModal()" style="display: none;">
                     <i class="fas fa-print me-2"></i>Print PO
                 </button>
                 <?php else: ?>
@@ -607,7 +607,7 @@ $can_export = $permissions['export'];
                                 <button type="button" class="btn btn-success btn-sm" onclick="openItemModal('attachment')">
                                     <i class="fas fa-tools me-1"></i>Add Attachment
                                 </button>
-                                <button type="button" class="btn btn-info btn-sm" onclick="openItemModal('battery')">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="openItemModal('battery')">
                                     <i class="fas fa-battery-full me-1"></i>Add Battery
                                 </button>
                                 <button type="button" class="btn btn-warning btn-sm" onclick="openItemModal('charger')">
@@ -2426,10 +2426,19 @@ function assignSerialNumbers(deliveryId) {
 }
 
 function proceedWithoutSN() {
-    if (currentDeliveryId && confirm('Are you sure you want to proceed without assigning serial numbers? The delivery will be marked as In Transit.')) {
+    if (!currentDeliveryId) return;
+    Swal.fire({
+        title: 'Lanjutkan Tanpa SN?',
+        text: 'Delivery akan ditandai sebagai In Transit tanpa serial number.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Lanjutkan',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         $('#assignSNModal').modal('hide');
         updateDeliveryStatus(currentDeliveryId, 'In Transit');
-    }
+    });
 }
 
 function loadDeliveryDetailsForSN(deliveryId) {
@@ -2672,15 +2681,30 @@ function showError(message) {
 }
 
 function markAsInTransit(deliveryId) {
-    if (confirm('Are you sure you want to mark this delivery as In Transit?')) {
-        updateDeliveryStatus(deliveryId, 'In Transit');
-    }
+    Swal.fire({
+        title: 'Mark as In Transit?',
+        text: 'Delivery akan ditandai sebagai In Transit.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Tandai!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'In Transit');
+    });
 }
 
 function markAsReceived(deliveryId) {
-    if (confirm('Are you sure you want to mark this delivery as Received?')) {
-        updateDeliveryStatus(deliveryId, 'Received');
-    }
+    Swal.fire({
+        title: 'Mark as Received?',
+        text: 'Delivery akan ditandai sebagai Received.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        confirmButtonText: 'Ya, Received!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'Received');
+    });
 }
 
 
@@ -3183,8 +3207,9 @@ function showNotification(message, type = 'info') {
             timer: 3000,
             showConfirmButton: false
         });
-    } else {
-        alert(message);
+    } else if (window.OptimaNotify) {
+        const method = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info';
+        OptimaNotify[method](message);
     }
 }
 
@@ -3287,11 +3312,7 @@ function initCreatePOModal() {
         const itemData = collectItemData();
         
         if (!itemData) {
-            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('Please complete all required fields!', 'warning');
-            } else {
-                alert('Please complete all required fields!');
-            }
+            OptimaNotify.warning('Please complete all required fields!');
             return;
         }
         
@@ -3317,11 +3338,7 @@ function initCreatePOModal() {
         e.preventDefault(); // Prevent default form submission
         
         if (poItems.length === 0) {
-            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('Please add at least one item to the PO!', 'warning');
-            } else {
-                alert('Please add at least one item to the PO!');
-            }
+            OptimaNotify.warning('Please add at least one item to the PO!');
             return false;
         }
         
@@ -3657,23 +3674,21 @@ function updateItemsTable() {
 
 // Delete item from table
 function deleteItem(index) {
-    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showConfirmDialog === 'function') {
-        OptimaPro.showConfirmDialog({
-            title: 'Delete Item',
-            message: 'Are you sure you want to delete this item from the PO?'
-        }).then(result => {
-            if (result.isConfirmed) {
-                poItems.splice(index, 1);
-                updateItemsTable();
-                document.getElementById('items_json').value = JSON.stringify(poItems);
-                OptimaPro.showNotification('Item successfully deleted', 'success');
-            }
-        });
-    } else if (confirm('Are you sure you want to delete this item from the PO?')) {
+    Swal.fire({
+        title: 'Hapus Item?',
+        text: 'Item ini akan dihapus dari PO.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
         poItems.splice(index, 1);
         updateItemsTable();
         document.getElementById('items_json').value = JSON.stringify(poItems);
-    }
+        OptimaNotify.success('Item berhasil dihapus');
+    });
 }
 
 // Unit form cascading dropdowns (simplified - no tipe)

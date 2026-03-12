@@ -449,7 +449,7 @@
                             required
                         >
                         <label class="form-check-label" for="terms">
-                            Saya menyetujui <a href="#" onclick="alert('Terms & Conditions content'); return false;">Syarat dan Ketentuan</a> yang berlaku <span class="required">*</span>
+                            Saya menyetujui <a href="#" onclick="if(window.OptimaNotify) OptimaNotify.info('Terms & Conditions content'); return false;">Syarat dan Ketentuan</a> yang berlaku <span class="required">*</span>
                         </label>
                     </div>
                 </div>
@@ -616,35 +616,40 @@
             // Validate password match
             if (password !== confirmPassword) {
                 e.preventDefault();
-                alert('❌ Password dan konfirmasi password tidak cocok!');
+                if (window.OptimaNotify) OptimaNotify.error('Password dan konfirmasi password tidak cocok!');
+                else alert('❌ Password dan konfirmasi password tidak cocok!');
                 return false;
             }
             
             // Validate password strength
             if (password.length < 8) {
                 e.preventDefault();
-                alert('❌ Password minimal 8 karakter!');
+                if (window.OptimaNotify) OptimaNotify.error('Password minimal 8 karakter!');
+                else alert('❌ Password minimal 8 karakter!');
                 return false;
             }
             
             // Validate division
             if (!division) {
                 e.preventDefault();
-                alert('❌ Silakan pilih divisi!');
+                if (window.OptimaNotify) OptimaNotify.warning('Silakan pilih divisi!');
+                else alert('❌ Silakan pilih divisi!');
                 return false;
             }
             
             // Validate role
             if (!role) {
                 e.preventDefault();
-                alert('❌ Silakan pilih role!');
+                if (window.OptimaNotify) OptimaNotify.warning('Silakan pilih role!');
+                else alert('❌ Silakan pilih role!');
                 return false;
             }
             
             // Validate terms
             if (!terms) {
                 e.preventDefault();
-                alert('❌ Anda harus menyetujui Syarat dan Ketentuan!');
+                if (window.OptimaNotify) OptimaNotify.warning('Anda harus menyetujui Syarat dan Ketentuan!');
+                else alert('❌ Anda harus menyetujui Syarat dan Ketentuan!');
                 return false;
             }
             

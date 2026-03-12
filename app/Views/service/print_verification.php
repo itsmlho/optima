@@ -633,7 +633,7 @@
         function initiatePrint() {
             // Don't auto-print if in iframe or embedded mode (let parent handle printing)
             if (isInIframe || isEmbedded) {
-                console.log('Verification loaded in embedded mode - auto-print disabled');
+                // console.log('Verification loaded in embedded mode - auto-print disabled');
                 return;
             }
             
@@ -645,14 +645,14 @@
                 try {
                     window.print();
                 } catch (e) {
-                    console.log('Print failed:', e);
+                    // console.log('Print failed:', e);
                 }
             }, 1000);
         }
         
         // Load verification data using same method as unit_verification.php
         function loadVerificationData(workOrderId) {
-            console.log('🔍 Loading unit verification data for WO:', workOrderId);
+            // console.log('🔍 Loading unit verification data for WO:', workOrderId);
             
             // Use jQuery like unit_verification.php for consistency
             if (typeof $ !== 'undefined') {
@@ -661,20 +661,21 @@
                     type: 'POST',
                     data: { work_order_id: workOrderId },
                     success: function(response) {
-                        console.log('📦 Unit verification data received:', response);
-                        console.log('📦 Full response structure:', JSON.stringify(response, null, 2));
+                        // console.log('📦 Unit verification data received:', response);
+                        // console.log('📦 Full response structure:', JSON.stringify(response, null, 2));
                         
                         if (response.success && response.data) {
                             let data = response.data;
-                            console.log('📦 Data structure:', JSON.stringify(data, null, 2));
-                            console.log('📦 Unit data:', data.unit);
-                            console.log('📦 Work order data:', data.work_order);
+                            // console.log('📦 Data structure:', JSON.stringify(data, null, 2));
+                            // console.log('📦 Unit data:', data.unit);
+                            // console.log('📦 Work order data:', data.work_order);
                             
                             // Populate all verification fields
                             populatePrintData(data);
                         } else {
                             console.error('Failed to load data:', response.message);
-                            alert('Failed to load data: ' + (response.message || 'Unknown error'));
+                            if (window.OptimaNotify) OptimaNotify.error('Failed to load data: ' + (response.message || 'Unknown error'));
+                            else alert('Failed to load data: ' + (response.message || 'Unknown error'));
                         }
                     },
                     error: function(xhr, status, error) {
@@ -706,30 +707,30 @@
         }
 
         function populatePrintData(data) {
-            console.log('📝 Populating print verification data:', data);
+            // console.log('📝 Populating print verification data:', data);
             
             // Extract data same as unit_verification.php
             let unitData = data.unit || {};
             let workOrderData = data.work_order || {};
             let attachmentData = data.attachment || {};
             
-            console.log('📝 Unit data extracted:', unitData);
-            console.log('📝 Work order data extracted:', workOrderData);
-            console.log('📝 Attachment data extracted:', attachmentData);
+            // console.log('📝 Unit data extracted:', unitData);
+            // console.log('📝 Work order data extracted:', workOrderData);
+            // console.log('📝 Attachment data extracted:', attachmentData);
             
             // Debug: Check if elements exist before populating
-            console.log('📝 Checking elements existence:');
-            console.log('- print-wo-number:', document.getElementById('print-wo-number') ? 'EXISTS' : 'NOT FOUND');
-            console.log('- print-unit-number:', document.getElementById('print-unit-number') ? 'EXISTS' : 'NOT FOUND');
-            console.log('- info-no-unit:', document.getElementById('info-no-unit') ? 'EXISTS' : 'NOT FOUND');
-            console.log('- db-no-unit:', document.getElementById('db-no-unit') ? 'EXISTS' : 'NOT FOUND');
+            // console.log('📝 Checking elements existence:');
+            // console.log('- print-wo-number:', document.getElementById('print-wo-number') ? 'EXISTS' : 'NOT FOUND');
+            // console.log('- print-unit-number:', document.getElementById('print-unit-number') ? 'EXISTS' : 'NOT FOUND');
+            // console.log('- info-no-unit:', document.getElementById('info-no-unit') ? 'EXISTS' : 'NOT FOUND');
+            // console.log('- db-no-unit:', document.getElementById('db-no-unit') ? 'EXISTS' : 'NOT FOUND');
             
             // Update page title
             document.title = 'Unit Verification - ' + (workOrderData.work_order_number || workOrderData.wo_number || 'N/A');
             
             // Populate header - check both possible field names
             const woNumber = workOrderData.work_order_number || workOrderData.wo_number || '-';
-            console.log('📝 WO Number to populate:', woNumber);
+            // console.log('📝 WO Number to populate:', woNumber);
             
             const printWoElement = document.getElementById('print-wo-number');
             const printUnitElement = document.getElementById('print-unit-number');
@@ -737,33 +738,33 @@
             
             if (printWoElement) {
                 printWoElement.textContent = woNumber;
-                console.log('📝 Updated print-wo-number to:', woNumber);
+                // console.log('📝 Updated print-wo-number to:', woNumber);
             } else {
                 console.error('❌ print-wo-number element not found');
             }
             
             if (printUnitElement) {
                 printUnitElement.textContent = unitData.no_unit || '-';
-                console.log('📝 Updated print-unit-number to:', unitData.no_unit || '-');
+                // console.log('📝 Updated print-unit-number to:', unitData.no_unit || '-');
             } else {
                 console.error('❌ print-unit-number element not found');
             }
             
             if (footerWoElement) {
                 footerWoElement.textContent = woNumber;
-                console.log('📝 Updated footer-wo-number to:', woNumber);
+                // console.log('📝 Updated footer-wo-number to:', woNumber);
             } else {
                 console.error('❌ footer-wo-number element not found');
             }
             
             // Debug: List all available fields in unitData
-            console.log('📝 Available fields in unitData:');
+            // console.log('📝 Available fields in unitData:');
             for (let key in unitData) {
-                console.log(`   ${key}: ${unitData[key]}`);
+                // console.log(`   ${key}: ${unitData[key]}`);
             }
             
             // Populate Unit Database values with debug logging
-            console.log('📝 Populating database values...');
+            // console.log('📝 Populating database values...');
             
             const dbElements = [
                 { id: 'db-no-unit', value: unitData.no_unit },
@@ -783,14 +784,14 @@
                 const element = document.getElementById(item.id);
                 if (element) {
                     element.textContent = item.value || '-';
-                    console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
+                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
                 } else {
                     console.error(`❌ Element ${item.id} not found`);
                 }
             });
             
             // Populate Machine Database values
-            console.log('📝 Populating machine values...');
+            // console.log('📝 Populating machine values...');
             
             const machineElements = [
                 { id: 'db-model-mesin', value: unitData.model_mesin_name },
@@ -804,35 +805,35 @@
                 const element = document.getElementById(item.id);
                 if (element) {
                     element.textContent = item.value || '-';
-                    console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
+                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
                 } else {
                     console.error(`❌ Element ${item.id} not found`);
                 }
             });
             
             // Populate Attachment Database values
-            console.log('📝 Populating attachment values...');
-            console.log('📝 Attachment data available:', attachmentData);
+            // console.log('📝 Populating attachment values...');
+            // console.log('📝 Attachment data available:', attachmentData);
             
             // Check if unit is ELECTRIC department
             const isElectricUnit = unitData.departemen_name === 'ELECTRIC';
-            console.log('📝 Department Check:');
-            console.log('📝 - Unit Data:', unitData);
-            console.log('📝 - Department Name:', unitData.departemen_name);
-            console.log('📝 - Is Electric Unit:', isElectricUnit);
-            console.log('📝 - Comparison Result:', unitData.departemen_name === 'ELECTRIC');
+            // console.log('📝 Department Check:');
+            // console.log('📝 - Unit Data:', unitData);
+            // console.log('📝 - Department Name:', unitData.departemen_name);
+            // console.log('📝 - Is Electric Unit:', isElectricUnit);
+            // console.log('📝 - Comparison Result:', unitData.departemen_name === 'ELECTRIC');
             
             // Show/hide battery and charger rows based on department
             const batteryRows = $('#battery-row, #battery-sn-row, #charger-row, #charger-sn-row');
-            console.log('📝 Battery/Charger rows found:', batteryRows.length);
+            // console.log('📝 Battery/Charger rows found:', batteryRows.length);
             
             if (isElectricUnit) {
                 batteryRows.show();
-                console.log('📝 ✅ Showing battery and charger rows for ELECTRIC unit');
+                // console.log('📝 ✅ Showing battery and charger rows for ELECTRIC unit');
             } else {
                 batteryRows.hide();
-                console.log('📝 ❌ Hiding battery and charger rows for non-ELECTRIC unit');
-                console.log('📝 ❌ Department is:', unitData.departemen_name, '(not ELECTRIC)');
+                // console.log('📝 ❌ Hiding battery and charger rows for non-ELECTRIC unit');
+                // console.log('📝 ❌ Department is:', unitData.departemen_name, '(not ELECTRIC)');
             }
             
             const attachmentElements = [
@@ -848,17 +849,17 @@
                 const element = document.getElementById(item.id);
                 if (element) {
                     element.textContent = item.value || '-';
-                    console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
+                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
                 } else {
                     console.error(`❌ Element ${item.id} not found`);
                 }
             });
             
             // Populate Accessories
-            console.log('📝 Populating accessories...');
+            // console.log('📝 Populating accessories...');
             populateAccessories(data.accessories || []);
             
-            console.log('📝 Print data population completed');
+            // console.log('📝 Print data population completed');
             
             // Double-check battery/charger visibility after a short delay
             setTimeout(function() {
@@ -866,21 +867,21 @@
                 const isElectric = departmentName === 'ELECTRIC';
                 const batteryRows = $('#battery-row, #battery-sn-row, #charger-row, #charger-sn-row');
                 
-                console.log('📝 Final check - Department:', departmentName, 'Is Electric:', isElectric);
+                // console.log('📝 Final check - Department:', departmentName, 'Is Electric:', isElectric);
                 
                 if (isElectric) {
                     batteryRows.show();
-                    console.log('📝 ✅ Final: Showing battery/charger rows');
+                    // console.log('📝 ✅ Final: Showing battery/charger rows');
                 } else {
                     batteryRows.hide();
-                    console.log('📝 ❌ Final: Hiding battery/charger rows for department:', departmentName);
+                    // console.log('📝 ❌ Final: Hiding battery/charger rows for department:', departmentName);
                 }
             }, 100);
         }
         
         // Populate Accessories function
         function populateAccessories(accessories) {
-            console.log('🔧 Populating print accessories:', accessories);
+            // console.log('🔧 Populating print accessories:', accessories);
             
             let checkedCount = 0;
             
@@ -894,7 +895,7 @@
             if (accessories && accessories.length > 0) {
                 accessories.forEach(function(accessory) {
                     let accessoryValue = accessory.name || accessory.accessory_name || accessory;
-                    console.log('🔍 Looking for print accessory:', accessoryValue);
+                    // console.log('🔍 Looking for print accessory:', accessoryValue);
                     
                     // Find checkbox with matching data-accessory value
                     let checkbox = document.querySelector(`[data-accessory="${accessoryValue}"]`);
@@ -902,9 +903,9 @@
                         checkbox.textContent = '✓';
                         checkbox.classList.add('checked');
                         checkedCount++;
-                        console.log('✅ Found exact match for print:', accessoryValue);
+                        // console.log('✅ Found exact match for print:', accessoryValue);
                     } else {
-                        console.log('❌ No match found for print:', accessoryValue);
+                        // console.log('❌ No match found for print:', accessoryValue);
                     }
                 });
             }
@@ -915,7 +916,7 @@
                 summaryElement.textContent = `${checkedCount} aksesoris`;
             }
             
-            console.log(`📊 Print: Auto-checked ${checkedCount} accessories out of ${accessories.length}`);
+            // console.log(`📊 Print: Auto-checked ${checkedCount} accessories out of ${accessories.length}`);
         }
         
         // Initialize

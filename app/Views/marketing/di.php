@@ -125,31 +125,31 @@ $can_export = $permissions['export'];
       </div>
     </div>
     
-    <!-- Filter Tabs -->
-    <ul class="nav nav-tabs mb-3" id="filterTabs">
-      <li class="nav-item">
-        <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('Marketing.in_progress') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('Marketing.delivered') ?></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab text-warning" href="#" data-filter="AWAITING_CONTRACT">
-          <i class="fas fa-exclamation-triangle me-1"></i>Awaiting Contract
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
-      </li>
-    </ul>
+    <div class="card-body">
+      <!-- Filter Tabs -->
+      <ul class="nav nav-tabs mb-3" id="filterTabs">
+        <li class="nav-item">
+          <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('Marketing.in_progress') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('Marketing.delivered') ?></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab text-warning" href="#" data-filter="AWAITING_CONTRACT">
+            <i class="fas fa-exclamation-triangle me-1"></i>Awaiting Contract
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
+        </li>
+      </ul>
     
-    <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-striped table-hover mb-0 table-manual-sort" id="diTable">
           <thead class="table-light">
@@ -1578,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const tarikUnits = Array.from(document.querySelectorAll('input[name="tarik_units[]"]:checked'));
       
       if (!tarikUnits.length) {
-        alert('Select at least one unit to be PULLED from the contract.');
+        OptimaNotify.warning('Pilih minimal satu unit yang akan ditarik dari kontrak.');
         return;
       }
       
@@ -1592,19 +1592,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const tarikUnits = Array.from(document.querySelectorAll('.unit-check-tarik:checked'));
       
       if (!tarikUnits.length) {
-        alert('Select at least one unit to be PULLED from the contract.');
+        OptimaNotify.warning('Pilih minimal satu unit yang akan ditarik dari kontrak.');
         return;
       }
       
       const spkId = document.getElementById('spkPick').value;
       if (!spkId) {
-        alert('Select SPK for TUKAR workflow.');
+        OptimaNotify.warning('Pilih SPK untuk workflow TUKAR.');
         return;
       }
       
       const kontrakId = document.getElementById('kontrakSelect').value;
       if (!kontrakId) {
-        alert('Select contract for TUKAR workflow.');
+        OptimaNotify.warning('Pilih kontrak untuk workflow TUKAR.');
         return;
       }
       
@@ -1616,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (document.getElementById('diUnitsSection').style.display !== 'none'){
         const selected = list ? Array.from(list.querySelectorAll('.unit-check:checked')) : [];
         if (!selected.length){
-          alert('Select at least one unit for this DI.');
+          OptimaNotify.warning('Pilih minimal satu unit untuk DI ini.');
           return;
         }
       }
@@ -1635,26 +1635,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
           bootstrap.Modal.getInstance(document.getElementById('diCreateModal')).hide();
           e.target.reset();
           loadDI();
-          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: ' + (j.nomor||''), 'success');
-          else if (typeof showNotification==='function') showNotification('DI dibuat: ' + (j.nomor||''), 'success');
-          else alert('DI dibuat: ' + (j.nomor||''));
+          OptimaNotify.success('DI dibuat: ' + (j.nomor||''));
         } else {
-          // Format full debug error info if available
-          const debugInfo = j.debug ? `\nDebug Info:\n${JSON.stringify(j.debug, null, 2)}` : '';
-          const msg = (j.message || 'Failed to create DI') + debugInfo;
-          
-          console.error('Enhanced DI Create Error:', j);  // Debug log
-          
-          // Show more detailed error in alert for debugging
-          alert(msg);
-          
-          // Also show in UI notification if available
-          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(j.message || 'Failed to create DI', 'error');
-          else if (typeof showNotification==='function') showNotification(j.message || 'Failed to create DI', 'error');
+          console.error('Enhanced DI Create Error:', j);
+          OptimaNotify.error(j.message || 'Failed to create DI');
         }
       }).catch(error => {
-        console.error('Enhanced DI Create Fetch Error:', error);  // Debug log
-        alert('Network error: ' + error.message);
+        console.error('Enhanced DI Create Fetch Error:', error);
+        OptimaNotify.error('Network error: ' + error.message);
       });
   });
   
@@ -1678,14 +1666,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (j && j.success) {
         bootstrap.Modal.getInstance(document.getElementById('diEditModal')).hide();
         loadDI(); // Reload data
-        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI successfully updated', 'success');
-        else alert('DI successfully updated');
+        OptimaNotify.success('DI berhasil diupdate');
       } else {
-        alert(j.message || 'Failed to update DI');
+        OptimaNotify.error(j.message || 'Gagal mengupdate DI');
       }
     }).catch(error => {
       console.error('DI Edit Error:', error);
-      alert('Network error: ' + error.message);
+      OptimaNotify.error('Network error: ' + error.message);
     });
   });
   
@@ -1720,11 +1707,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
           // Show modal
           new bootstrap.Modal(document.getElementById('diEditModal')).show();
         } else {
-          alert('Failed to load DI data for editing');
+          OptimaNotify.error('Gagal memuat data DI untuk diedit');
         }
       }).catch(error => {
         console.error('Edit DI Load Error:', error);
-        alert('Error loading DI data: ' + error.message);
+        OptimaNotify.error('Error loading DI data: ' + error.message);
       });
   };
   
@@ -1760,7 +1747,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Edit DI from detail modal
   window.editDiFromDetail = function() {
     if (!currentDiId) {
-      alert('DI ID not found');
+      OptimaNotify.error('DI ID tidak ditemukan');
       return;
     }
     
@@ -1798,7 +1785,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Print DI from detail modal
   window.printDiFromDetail = function() {
     if (!currentDiId) {
-      alert('DI ID not found');
+      OptimaNotify.error('DI ID tidak ditemukan');
       return;
     }
     
@@ -1810,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Print Withdrawal Letter (SPPU) from detail modal
   window.printWithdrawalLetter = function() {
     if (!currentDiId) {
-      alert('DI ID not found');
+      OptimaNotify.error('DI ID tidak ditemukan');
       return;
     }
     
@@ -1882,7 +1869,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } catch (error) {
       console.error('Error loading contracts:', error);
       contractSelect.innerHTML = '<option value="">Error loading contracts</option>';
-      alert('Failed to load contracts: ' + error.message);
+      OptimaNotify.error('Gagal memuat kontrak: ' + error.message);
     }
     
     modal.show();

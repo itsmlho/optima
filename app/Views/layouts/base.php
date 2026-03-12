@@ -192,12 +192,11 @@ $currentLang = service('request')->getLocale();
                             tokenValue: decodeURIComponent(value),
                             hash: decodeURIComponent(value) // alias
                         };
-                        console.log('🔐 [getCsrfTokenData] Found CSRF cookie:', tokenData.tokenName, '=', tokenData.tokenValue.substring(0, 20) + '...');
                         return tokenData;
                     }
                 }
             } catch (e) {
-                console.warn('⚠️ [getCsrfTokenData] Cookie access blocked (Tracking Prevention?):', e.message);
+                // Cookie access blocked by browser
             }
             
             // Priority 2: Fallback to meta tag (always works, not blocked by tracking prevention)
@@ -209,12 +208,10 @@ $currentLang = service('request')->getLocale();
                     tokenValue: metaCsrf.content,
                     hash: metaCsrf.content
                 };
-                console.log('📋 [getCsrfTokenData] Using meta tag fallback:', fallbackData.tokenName, '=', fallbackData.tokenValue.substring(0, 20) + '...');
                 return fallbackData;
             }
-            
+
             // Priority 3: Last resort - empty token (will fail, but at least won't crash)
-            console.error('❌ [getCsrfTokenData] No CSRF token found! Neither cookie nor meta tag available.');
             return {
                 cookieName: 'csrf_cookie_name',
                 tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
@@ -229,15 +226,47 @@ $currentLang = service('request')->getLocale();
         };
         
         // Global token variables (updated dynamically)
-        // DEBUG: Check what csrf_token() returns
-        console.log('🔍 [DEBUG] csrf_token() from PHP:', '<?= csrf_token() ?>');
-        console.log('🔍 [DEBUG] csrf_hash() from PHP:', '<?= csrf_hash() ?>');
-        console.log('🔍 [DEBUG] Config tokenName:', '<?= config('Security')->tokenName ?? 'NOT_FOUND' ?>');
-        
         window.csrfTokenName = '<?= csrf_token() ?>'; // Now reads from corrected .env
         window.csrfTokenValue = window.getCsrfToken();
         window.csrfToken = window.csrfTokenValue; // Alias for backward compatibility
         // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
+
+        // ============================================================
+        // GLOBAL AJAX ERROR HANDLER - Handle session expiration
+        // ============================================================
+        (function() {
+            const baseUrl = '<?= base_url() ?>';
+            const loginUrl = baseUrl + '/auth/login';
+
+            // Override fetch API
+            const originalFetch = window.fetch;
+            window.fetch = function(input, init) {
+                return originalFetch.apply(this, arguments).then(function(response) {
+                    // Check for 401 (Unauthorized) or 403 (Forbidden)
+                    if (response.status === 401 || response.status === 403) {
+                        // Try to check if it's a JSON response
+                        response.clone().json().catch(function() {
+                            // Not JSON - it's a full page redirect
+                            if (window.OptimaNotify) OptimaNotify.error('Session Anda telah habis. Silakan login kembali.');
+                            else alert('Session Anda telah habis. Silakan login kembali.');
+                            window.location.href = loginUrl;
+                        });
+                    }
+                    return response;
+                });
+            };
+
+            // Override jQuery AJAX (if jQuery is loaded)
+            if (typeof $ !== 'undefined') {
+                $(document).ajaxError(function(event, xhr, settings, error) {
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        if (window.OptimaNotify) OptimaNotify.error('Session Anda telah habis. Silakan login kembali.');
+                        else alert('Session Anda telah habis. Silakan login kembali.');
+                        window.location.href = loginUrl;
+                    }
+                });
+            }
+        })();
 
         // Global function for mark all as read
         window.markAllAsRead = function() {
@@ -246,32 +275,19 @@ $currentLang = service('request')->getLocale();
             }
         };
         
-        // Global function for handling notification clicks
-        window.handleNotificationClick = function(notificationId, url) {
-            console.log('🔔 Notification clicked:', notificationId, url);
-            
-            // Mark as read first
+        // Global function for handling notification clicks (READ-ONLY)
+        // Behavior: mark as read + close dropdown. No redirect, no modal navigation.
+        window.handleNotificationClick = function(notificationId, url) { // url kept for backward-compat, ignored
             if (window.optimaSSENotifications) {
                 window.optimaSSENotifications.markAsRead(notificationId);
             }
-            
-            // Close notification dropdown
+
             const dropdown = document.querySelector('[data-bs-toggle="dropdown"]');
             if (dropdown) {
                 const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
                 if (bsDropdown) {
                     bsDropdown.hide();
                 }
-            }
-            
-            // Try to open modal instead of redirect
-            const modalOpened = window.tryOpenModalFromUrl(url);
-            
-            // If modal not opened, fallback to normal navigation
-            if (!modalOpened && url && url !== '#') {
-                setTimeout(() => {
-                    window.location.href = url;
-                }, 100);
             }
         };
         
@@ -283,7 +299,7 @@ $currentLang = service('request')->getLocale();
         window.tryOpenModalFromUrl = function(url) {
             if (!url || url === '#') return false;
             
-            console.log('🔍 Trying to open modal for URL:', url);
+ 
             
             // Parse URL to extract module and ID
             const urlObj = new URL(url, window.location.origin);
@@ -294,8 +310,7 @@ $currentLang = service('request')->getLocale();
             let match = pathname.match(/\/purchasing\/(?:po\/)?detail\/(\d+)/);
             if (match) {
                 const poId = match[1];
-                console.log('✅ Opening PO Detail Modal for ID:', poId);
-                
+
                 if (typeof viewPODetail === 'function') {
                     viewPODetail(poId);
                     return true;
@@ -310,8 +325,7 @@ $currentLang = service('request')->getLocale();
             match = pathname.match(/\/service\/work-orders\/detail\/(\d+)/);
             if (match) {
                 const woId = match[1];
-                console.log('✅ Opening Work Order Detail Modal for ID:', woId);
-                
+
                 if (typeof viewWorkOrderDetail === 'function') {
                     viewWorkOrderDetail(woId);
                     return true;
@@ -326,8 +340,7 @@ $currentLang = service('request')->getLocale();
             match = pathname.match(/\/marketing\/spk\/detail\/(\d+)/);
             if (match) {
                 const spkId = match[1];
-                console.log('✅ Opening SPK Detail Modal for ID:', spkId);
-                
+
                 if (typeof viewSPKDetail === 'function') {
                     viewSPKDetail(spkId);
                     return true;
@@ -342,7 +355,6 @@ $currentLang = service('request')->getLocale();
             match = pathname.match(/\/operational\/delivery\/detail\/(\d+)/);
             if (match) {
                 const diId = match[1];
-                console.log('✅ Opening DI Detail Modal for ID:', diId);
                 
                 if (typeof viewDIDetail === 'function') {
                     viewDIDetail(diId);
@@ -353,7 +365,7 @@ $currentLang = service('request')->getLocale();
                 }
             }
             
-            console.log('❌ No modal handler found for URL:', url);
+            // No modal handler found for URL
             return false;
         };
         
@@ -365,13 +377,12 @@ $currentLang = service('request')->getLocale();
             const hash = window.location.hash;
             if (!hash) return;
             
-            console.log('🔗 Handling URL hash:', hash);
+            // Handling URL hash
             
             // Pattern: #view-po-{id}
             let match = hash.match(/#view-po-(\d+)/);
             if (match && typeof viewPODetail === 'function') {
                 const poId = match[1];
-                console.log('✅ Opening PO from hash:', poId);
                 setTimeout(() => viewPODetail(poId), 500);
                 return;
             }
@@ -380,7 +391,6 @@ $currentLang = service('request')->getLocale();
             match = hash.match(/#view-wo-(\d+)/);
             if (match && typeof viewWorkOrderDetail === 'function') {
                 const woId = match[1];
-                console.log('✅ Opening Work Order from hash:', woId);
                 setTimeout(() => viewWorkOrderDetail(woId), 500);
                 return;
             }
@@ -389,7 +399,6 @@ $currentLang = service('request')->getLocale();
             match = hash.match(/#view-spk-(\d+)/);
             if (match && typeof viewSPKDetail === 'function') {
                 const spkId = match[1];
-                console.log('✅ Opening SPK from hash:', spkId);
                 setTimeout(() => viewSPKDetail(spkId), 500);
                 return;
             }
@@ -398,7 +407,6 @@ $currentLang = service('request')->getLocale();
             match = hash.match(/#view-di-(\d+)/);
             if (match && typeof viewDIDetail === 'function') {
                 const diId = match[1];
-                console.log('✅ Opening DI from hash:', diId);
                 setTimeout(() => viewDIDetail(diId), 500);
                 return;
             }
@@ -986,7 +994,6 @@ $currentLang = service('request')->getLocale();
                     // Track when processing started
                     if (!processingStartTimes.has(id)) {
                         processingStartTimes.set(id, Date.now());
-                        console.log('🔄 DataTables processing started:', id);
                     } else {
                         const elapsed = Date.now() - processingStartTimes.get(id);
                         
@@ -1093,12 +1100,10 @@ $currentLang = service('request')->getLocale();
                             const response = xhr.responseJSON || {};
                             console.warn('🔐 Session Expired - Auto logout in 3 seconds');
                             
-                            // Show alert
-                            alert(
-                                '⏱️ Sesi Anda telah berakhir (6 jam)\n\n' +
-                                'Anda akan diarahkan ke halaman login.\n\n' +
-                                'Silakan login kembali untuk melanjutkan.'
-                            );
+                            // Show session expired notification
+                            const sessionMsg = '⏱️ Sesi Anda telah berakhir.\n\nAnda akan diarahkan ke halaman login.\n\nSilakan login kembali untuk melanjutkan.';
+                            if (window.OptimaNotify) OptimaNotify.error(sessionMsg);
+                            else alert(sessionMsg);
                             
                             // Redirect to login after 2 seconds
                             setTimeout(() => {
@@ -1217,7 +1222,6 @@ $currentLang = service('request')->getLocale();
                 updateThemeIcon();
                 
                 themeToggle.addEventListener('click', function() {
-                    console.log('Theme toggle button clicked!');
                     const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
                     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                     
@@ -1247,7 +1251,6 @@ $currentLang = service('request')->getLocale();
                         document.documentElement.style.transition = '';
                     }, 300);
                     
-                    console.log(`Theme switched to: ${newTheme}`);
                 });
                 
                 // Safe theme retrieval function
@@ -1274,7 +1277,6 @@ $currentLang = service('request')->getLocale();
                                 const newTheme = e.matches ? 'dark' : 'light';
                                 document.documentElement.setAttribute('data-bs-theme', newTheme);
                                 updateThemeIcon();
-                                console.log(`System theme changed to: ${newTheme}`);
                             }
                         });
                     } catch (e) {
@@ -1311,6 +1313,94 @@ $currentLang = service('request')->getLocale();
     </script>
     <?= $this->renderSection('script') ?>
     <script>
+    // Unified confirmation helper (OptimaConfirm)
+    (function() {
+        function baseConfirm(options) {
+            const opts = options || {};
+            const title = opts.title || 'Konfirmasi';
+            const icon = opts.icon || 'question';
+            const html = (opts.messageHtml || opts.html || opts.text || '').toString();
+            const confirmText = opts.confirmButtonText || opts.confirmText || 'Ya';
+            const cancelText = opts.cancelButtonText || opts.cancelText || 'Batal';
+            const showCancel = typeof opts.showCancelButton === 'boolean' ? opts.showCancelButton : true;
+            const confirmColor = opts.confirmButtonColor || opts.confirmColor || undefined;
+
+            if (window.Swal) {
+                return Swal.fire({
+                    title,
+                    html,
+                    icon,
+                    showCancelButton: showCancel,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText,
+                    confirmButtonColor: confirmColor
+                });
+            }
+
+            // Fallback: browser confirm (text only, strip HTML)
+            const plain = html.replace(/<[^>]+>/g, '') || title;
+            const ok = window.confirm(plain || 'Apakah Anda yakin?');
+            return Promise.resolve({ isConfirmed: ok, isDismissed: !ok });
+        }
+
+        function withCallback(promise, onConfirm) {
+            if (typeof onConfirm !== 'function') return promise;
+            return promise.then(function(result) {
+                if (result && result.isConfirmed) {
+                    try { onConfirm(result); } catch (e) { console.error('OptimaConfirm callback error', e); }
+                }
+                return result;
+            });
+        }
+
+        window.OptimaConfirm = window.OptimaConfirm || {
+            danger: function(opts) {
+                const o = opts || {};
+                const p = baseConfirm({
+                    title: o.title || 'Hapus Data?',
+                    messageHtml: o.messageHtml || o.html || o.text,
+                    icon: o.icon || 'warning',
+                    confirmButtonText: o.confirmText || 'Ya, Hapus!',
+                    cancelButtonText: o.cancelText || 'Batal',
+                    confirmButtonColor: o.confirmButtonColor || '#dc3545',
+                    showCancelButton: true
+                });
+                return withCallback(p, o.onConfirm);
+            },
+            approve: function(opts) {
+                const o = opts || {};
+                const p = baseConfirm({
+                    title: o.title || 'Approve?',
+                    messageHtml: o.messageHtml || o.html || o.text,
+                    icon: o.icon || 'question',
+                    confirmButtonText: o.confirmText || 'Ya, Approve!',
+                    cancelButtonText: o.cancelText || 'Batal',
+                    confirmButtonColor: o.confirmButtonColor || '#198754',
+                    showCancelButton: true
+                });
+                return withCallback(p, o.onConfirm);
+            },
+            submit: function(opts) {
+                const o = opts || {};
+                const p = baseConfirm({
+                    title: o.title || 'Kirim Data?',
+                    messageHtml: o.messageHtml || o.html || o.text,
+                    icon: o.icon || 'question',
+                    confirmButtonText: o.confirmText || 'Ya, Kirim!',
+                    cancelButtonText: o.cancelText || 'Batal',
+                    confirmButtonColor: o.confirmButtonColor || '#0d6efd',
+                    showCancelButton: true
+                });
+                return withCallback(p, o.onConfirm);
+            },
+            generic: function(opts) {
+                const o = opts || {};
+                const p = baseConfirm(o);
+                return withCallback(p, o.onConfirm);
+            }
+        };
+    })();
+
     // Unified notification wrapper
     window.OptimaNotify = window.OptimaNotify || {
         success: (m,t='Berhasil') => window.createOptimaToast && createOptimaToast({type:'success', title:t, message:m}),
