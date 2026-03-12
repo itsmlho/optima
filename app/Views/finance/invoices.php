@@ -1,5 +1,26 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Finance Invoices Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ *
+ * Quick Reference:
+ * - Status DRAFT     → <span class="badge badge-soft-gray">DRAFT</span>
+ * - Status APPROVED  → <span class="badge badge-soft-blue">APPROVED</span>
+ * - Status SENT      → <span class="badge badge-soft-cyan">SENT</span>
+ * - Status PAID      → <span class="badge badge-soft-green">PAID</span>
+ * - Status OVERDUE   → <span class="badge badge-soft-red">OVERDUE</span>
+ * - Status CANCELLED → <span class="badge badge-soft-gray">CANCELLED</span>
+ * - Type ONE_TIME    → <span class="badge badge-soft-blue">One-Time</span>
+ * - Type RECURRING   → <span class="badge badge-soft-cyan">Recurring</span>
+ *
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+?>
+
 <?= $this->section('css') ?>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
@@ -8,25 +29,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<!-- Page Header -->
-<div class="mb-3">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h4 class="fw-bold mb-1">
-                <i class="fas fa-file-invoice text-primary me-2"></i>Invoice Management
-            </h4>
-            <p class="text-muted mb-0 small">Manage invoices, approvals, dan payment tracking</p>
-        </div>
-        <div>
-            <a href="<?= base_url('finance') ?>" class="btn btn-outline-secondary btn-sm me-2">
-                <i class="fas fa-arrow-left me-2"></i>Dashboard
-            </a>
-            <button class="btn btn-success btn-sm" onclick="showGenerateModal()">
-                <i class="fas fa-plus me-2"></i>Generate Invoice
-            </button>
-        </div>
-    </div>
-</div>
 
     <!-- Back-Billing Alert Widget -->
     <div class="card border-warning border-start border-4 shadow-sm mb-4" id="backBillingAlert" style="display:none;">
@@ -61,7 +63,7 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label small">Status</label>
+                    <label class="form-label fw-semibold small"><i class="fas fa-filter text-primary me-1"></i>Status</label>
                     <select class="form-select form-select-sm" id="filter_status">
                         <option value="">All Status</option>
                         <option value="DRAFT">Draft</option>
@@ -73,7 +75,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">Type</label>
+                    <label class="form-label fw-semibold small"><i class="fas fa-tag text-info me-1"></i>Type</label>
                     <select class="form-select form-select-sm" id="filter_type">
                         <option value="">All Types</option>
                         <option value="ONE_TIME">One-Time</option>
@@ -81,7 +83,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small">Date Range</label>
+                    <label class="form-label fw-semibold small"><i class="fas fa-calendar text-success me-1"></i>Date Range</label>
                     <input type="text" class="form-control form-control-sm" id="filter_daterange" placeholder="Select date range">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -94,10 +96,32 @@
     </div>
 
     <!-- Table -->
-    <div class="card shadow-sm border-0">
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-invoice me-2 text-primary"></i>Invoice Management
+                </h5>
+                <p class="text-muted small mb-0">
+                    Manage invoices, approvals, dan payment tracking
+                    <span class="ms-2 text-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>Tip: Gunakan filter Status dan Date Range untuk mempersempit daftar</small>
+                    </span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="<?= base_url('finance') ?>" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Dashboard
+                </a>
+                <button class="btn btn-success btn-sm" onclick="showGenerateModal()">
+                    <i class="fas fa-plus me-1"></i>Generate Invoice
+                </button>
+            </div>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table id="invoicesTable" class="table table-hover table-striped mb-0" style="width:100%">
+                <table id="invoicesTable" class="table table-hover table-striped mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Invoice No</th>
@@ -118,7 +142,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Generate Invoice Modal -->
 <div class="modal fade modal-wide" id="generateInvoiceModal" tabindex="-1">
@@ -263,7 +286,7 @@ $(document).ready(function() {
             { 
                 data: 'invoice_type',
                 render: function(data) {
-                    return data === 'ONE_TIME' ? '<span class="badge bg-primary">One-Time</span>' : '<span class="badge bg-info">Recurring</span>';
+                    return data === 'ONE_TIME' ? '<span class="badge badge-soft-blue">One-Time</span>' : '<span class="badge badge-soft-cyan">Recurring</span>';
                 }
             },
             { 
@@ -406,7 +429,7 @@ function showBackBillingModal() {
                     <td>${invoice.contract_number}<br><small class="text-muted">${invoice.customer_name}</small></td>
                     <td>${invoice.unit_number}</td>
                     <td>${invoice.period_start} to ${invoice.period_end}</td>
-                    <td><span class="badge bg-danger">${invoice.days_overdue} days</span></td>
+                    <td><span class="badge badge-soft-red">${invoice.days_overdue} days</span></td>
                     <td>Rp ${new Intl.NumberFormat('id-ID').format(invoice.estimated_amount)}</td>
                     <td><button class="btn btn-sm btn-primary" onclick="generateSingleBackBilling(${invoice.contract_id})">Generate</button></td>
                 </tr>`;
@@ -419,7 +442,7 @@ function showBackBillingModal() {
                 <div class="modal fade modal-wide" id="backBillingModal" tabindex="-1">
                     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
                         <div class="modal-content">
-                            <div class="modal-header bg-warning text-white">
+                            <div class="modal-header bg-light">
                                 <h5 class="modal-title">
                                     <i class="fas fa-exclamation-triangle me-2"></i>Missing Invoices Details
                                 </h5>

@@ -96,7 +96,7 @@ $stats = $stats ?? [];
             </button>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-striped table-hover mb-0" id="requestsTable">
                 <thead class="table-light">

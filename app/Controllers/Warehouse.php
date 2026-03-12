@@ -772,22 +772,48 @@ class Warehouse extends BaseController
                     ia.lokasi_penyimpanan,
                     ia.attachment_status,
                     ia.tanggal_masuk as attachment_tanggal_masuk,
-                    ia.catatan_inventory as attachment_catatan,
+                    ia.notes as attachment_catatan,
                     COALESCE(CONCAT(att.tipe, " - ", att.merk, " ", att.model), "-") as attachment_name,
                     COALESCE(att.tipe, "-") as attachment_type,
+                    "-" as baterai_type,
+                    "-" as merk_baterai,
+                    "-" as jenis_baterai,
+                    "-" as charger_type,
+                    "-" as merk_charger,
+                    ia.status as status_attachment_name
+                FROM inventory_attachments ia
+                LEFT JOIN attachment att ON att.id_attachment = ia.attachment_type_id
+                WHERE ia.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    ib.notes as attachment_catatan,
+                    "-" as attachment_name,
+                    "-" as attachment_type,
                     COALESCE(bat.tipe_baterai, "-") as baterai_type,
                     COALESCE(bat.merk_baterai, "-") as merk_baterai,
                     COALESCE(bat.jenis_baterai, "-") as jenis_baterai,
+                    "-" as charger_type,
+                    "-" as merk_charger,
+                    ib.status as status_attachment_name
+                FROM inventory_batteries ib
+                LEFT JOIN baterai bat ON bat.id = ib.battery_type_id  
+                WHERE ib.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    ic.notes as attachment_catatan,
+                    "-" as attachment_name,
+                    "-" as attachment_type,
+                    "-" as baterai_type,
+                    "-" as merk_baterai,
+                    "-" as jenis_baterai,
                     COALESCE(ch.tipe_charger, "-") as charger_type,
                     COALESCE(ch.merk_charger, "-") as merk_charger,
-                    ia.attachment_status as status_attachment_name
-                FROM inventory_attachment ia
-                LEFT JOIN attachment att ON att.id_attachment = ia.attachment_id
-                LEFT JOIN baterai bat ON bat.id = ia.baterai_id  
-                LEFT JOIN charger ch ON ch.id_charger = ia.charger_id
-                WHERE ia.id_inventory_unit = ?
-                ORDER BY ia.tipe_item, ia.tanggal_masuk DESC
-            ', [$id]);
+                    ic.status as status_attachment_name
+                FROM inventory_chargers ic
+                LEFT JOIN charger ch ON ch.id_charger = ic.charger_type_id
+                WHERE ic.inventory_unit_id = ?
+                ORDER BY status_attachment_name
+            ', [$id, $id, $id]);
             
             $attachments = $attachmentQuery->getResultArray();
             

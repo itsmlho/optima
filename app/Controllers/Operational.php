@@ -813,40 +813,30 @@ class Operational extends BaseController
                 
                 // Get attachments for this specific unit with detailed information
                 // Use DISTINCT to avoid duplicates from delivery_items
+                // Note: delivery_items.attachment_id references TYPE tables (baterai/charger/attachment)
+                // Use keterangan field to determine type
                 $unitAttachments = $this->db->query("
                     SELECT DISTINCT
                         di.attachment_id,
                         di.item_type,
-                        ia.tipe_item,
-                        CASE ia.tipe_item
-                            WHEN 'battery' THEN b.merk_baterai
-                            WHEN 'charger' THEN c.merk_charger
-                            ELSE a.merk
-                        END as merk,
-                        CASE ia.tipe_item
-                            WHEN 'battery' THEN b.tipe_baterai
-                            WHEN 'charger' THEN c.tipe_charger
-                            ELSE a.tipe
-                        END as tipe,
-                        CASE ia.tipe_item
-                            WHEN 'battery' THEN b.jenis_baterai
-                            WHEN 'charger' THEN NULL
-                            ELSE a.model
-                        END as model_or_jenis,
+                        di.keterangan,
+                        CASE 
+                            WHEN di.keterangan LIKE '%Battery%' OR di.keterangan LIKE '%Baterai%' THEN 'battery'
+                            WHEN di.keterangan LIKE '%Charger%' THEN 'charger'
+                            ELSE 'attachment'
+                        END as tipe_item,
+                        COALESCE(b.merk_baterai, c.merk_charger, a.merk) as merk,
+                        COALESCE(b.tipe_baterai, c.tipe_charger, a.tipe) as tipe,
+                        COALESCE(b.jenis_baterai, a.model) as model_or_jenis,
                         a.tipe as attachment_type,
                         a.merk as attachment_merk,
                         a.model as attachment_model,
                         b.merk_baterai, b.tipe_baterai, b.jenis_baterai,
                         c.merk_charger, c.tipe_charger
                     FROM delivery_items di
-                    LEFT JOIN inventory_attachment ia ON (
-                        (ia.attachment_id = di.attachment_id AND ia.tipe_item = 'attachment') OR
-                        (ia.baterai_id = di.attachment_id AND ia.tipe_item = 'battery') OR
-                        (ia.charger_id = di.attachment_id AND ia.tipe_item = 'charger')
-                    )
-                    LEFT JOIN attachment a ON a.id_attachment = di.attachment_id AND ia.tipe_item = 'attachment'
-                    LEFT JOIN baterai b ON b.id = di.attachment_id AND ia.tipe_item = 'battery'
-                    LEFT JOIN charger c ON c.id_charger = di.attachment_id AND ia.tipe_item = 'charger'
+                    LEFT JOIN attachment a ON a.id_attachment = di.attachment_id
+                    LEFT JOIN baterai b ON b.id = di.attachment_id
+                    LEFT JOIN charger c ON c.id_charger = di.attachment_id
                     WHERE di.di_id = ? 
                     AND di.item_type = 'ATTACHMENT' 
                     AND di.parent_unit_id = ?
@@ -888,20 +878,24 @@ class Operational extends BaseController
         }
 
         // Get any standalone attachments (without parent_unit_id) with complete detail
+        // Note: delivery_items stores TYPE ID, not inventory instance
         $standaloneAttachments = $this->db->query("
             SELECT
                 di.*,
-                a.tipe, a.merk, a.model,
-                ia.sn_attachment
+                COALESCE(a.tipe, b.tipe_baterai, c.tipe_charger) as tipe,
+                COALESCE(a.merk, b.merk_baterai, c.merk_charger) as merk,
+                COALESCE(a.model, b.jenis_baterai, '') as model
             FROM delivery_items di
             LEFT JOIN attachment a ON a.id_attachment = di.attachment_id
-            LEFT JOIN inventory_attachment ia ON ia.attachment_id = di.attachment_id AND ia.tipe_item = 'attachment'
+            LEFT JOIN baterai b ON b.id = di.attachment_id
+            LEFT JOIN charger c ON c.id_charger = di.attachment_id
             WHERE di.di_id = ?
             AND di.item_type = 'ATTACHMENT'
             AND (di.parent_unit_id IS NULL OR di.parent_unit_id = 0)
         ", [(int)$id])->getResultArray();
 
         // Format standalone attachments with proper labels
+        // Note: delivery_items stores TYPE ID only, not inventory instances with serial numbers
         $formattedStandaloneAttachments = [];
         foreach ($standaloneAttachments as $attachment) {
             $formattedStandaloneAttachments[] = [
@@ -909,7 +903,6 @@ class Operational extends BaseController
                 'tipe' => $attachment['tipe'] ?: '-',
                 'merk' => $attachment['merk'] ?: '-', 
                 'model' => $attachment['model'] ?: '-',
-                'sn_attachment' => $attachment['sn_attachment'] ?: '-',
                 'label' => ($attachment['tipe'] ?: '-') . ' • ' . ($attachment['merk'] ?: '-') . ' • ' . ($attachment['model'] ?: '-')
             ];
         }
@@ -1338,13 +1331,13 @@ class Operational extends BaseController
         }
 
         // Get items untuk DI ini - try delivery_items first
+        // Note: delivery_items stores TYPE ID only, not inventory instance
         $items = $this->db->table('delivery_items di')
             ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
-            ->select('ia.sn_attachment, att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
+            ->select('att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
             ->join('inventory_unit iu','iu.id_inventory_unit = di.unit_id','left')
             ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
-            ->join('inventory_attachment ia', 'ia.id_inventory_attachment = di.attachment_id', 'left')
-            ->join('attachment att', 'att.id_attachment = ia.attachment_id', 'left')
+            ->join('attachment att', 'att.id_attachment = di.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
         
@@ -1389,13 +1382,13 @@ class Operational extends BaseController
         }
 
         // Get items untuk DI ini - try delivery_items first
+        // Note: delivery_items stores TYPE ID only, not inventory instance
         $items = $this->db->table('delivery_items di')
             ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
-            ->select('ia.sn_attachment, att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
+            ->select('att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
             ->join('inventory_unit iu','iu.id_inventory_unit = di.unit_id','left')
             ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
-            ->join('inventory_attachment ia', 'ia.id_inventory_attachment = di.attachment_id', 'left')
-            ->join('attachment att', 'att.id_attachment = ia.attachment_id', 'left')
+            ->join('attachment att', 'att.id_attachment = di.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
         

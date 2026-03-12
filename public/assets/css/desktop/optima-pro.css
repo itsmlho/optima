@@ -1150,6 +1150,12 @@ h6, .h6 { font-size: 1rem; }
     border-color: #ffcdd2;
 }
 
+.bg-secondary-soft,
+.bg-gray-soft {
+    background-color: #f0f1f3;
+    border-color: #dee2e6;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .stat-card {
@@ -2021,6 +2027,34 @@ h6, .h6 { font-size: 1rem; }
     color: #ffffff !important;
 }
 
+/* Purple Badge - Special Status/Mechanic Fabrication */
+.badge-purple-soft {
+    background-color: #e0cffc !important;
+    color: #59359a !important;
+}
+
+.badge-purple {
+    background-color: #6f42c1 !important;
+    color: #ffffff !important;
+}
+
+/* Cyan Badge - Information/Supervisor */
+.badge-cyan-soft {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+}
+
+.badge-cyan {
+    background-color: #0dcaf0 !important;
+    color: #000000 !important;
+}
+
+/* Info Badge - Helper/Light Blue */
+.badge-info {
+    background-color: #17a2b8 !important;
+    color: #ffffff !important;
+}
+
 /* ========================================================================
    BADGE SYSTEM - TAB SPECIFIC (Auto State Change)
    ======================================================================== */
@@ -2127,6 +2161,34 @@ h6, .h6 { font-size: 1rem; }
     background-color: #cff4fc !important;
     color: #055160 !important;
     font-weight: 500;
+}
+
+/* Soft Primary - Mechanic Unit Prep (LEBIH TERLIHAT) */
+.badge-soft-primary {
+    background-color: #cfe2ff !important;
+    color: #084298 !important;
+    font-weight: 600;
+}
+
+/* Soft Info - Helper (LEBIH TERLIHAT) */
+.badge-soft-info {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+    font-weight: 600;
+}
+
+/* Soft Warning - Service Area (LEBIH TERLIHAT) */
+.badge-soft-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+    font-weight: 600;
+}
+
+/* Soft Success - Foreman (LEBIH TERLIHAT) */
+.badge-soft-success {
+    background-color: #d1e7dd !important;
+    color: #0a3622 !important;
+    font-weight: 600;
 }
 
 /* Soft Gray - Disabled/Neutral */
@@ -10252,6 +10314,333 @@ body.sidebar-collapsed .user-name {
 .step-indicator.active .step-number {
     animation: stepActivate 0.4s ease;
 }
+
+/* ========================================================================
+   UNIT VERIFICATION PAGE (service/unit-verification/unit)
+   ======================================================================== */
+.vf-table th {
+    font-size: var(--bs-font-size-sm);
+    font-weight: 600;
+    background: var(--bs-gray-100);
+}
+.vf-table td {
+    font-size: var(--bs-font-size-sm);
+    vertical-align: middle;
+    padding: 0.45rem 0.6rem;
+}
+.vf-table td:first-child {
+    font-weight: 500;
+    white-space: nowrap;
+    width: 20%;
+}
+.vf-table td:nth-child(2) {
+    width: 28%;
+    color: var(--bs-body-color);
+}
+.vf-table td:nth-child(3) {
+    width: 42%;
+}
+.vf-table td:nth-child(4) {
+    width: 10%;
+    text-align: center;
+}
+.vf-table tbody tr:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+.vf-table .form-control,
+.vf-table .form-select {
+    font-size: var(--bs-font-size-sm);
+}
+
+.vf-check {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 2px solid var(--bs-border-color);
+    background: var(--bs-white);
+    transition: var(--bs-transition);
+}
+.vf-check.neutral {
+    border-color: var(--bs-gray-400);
+    color: var(--bs-gray-500);
+}
+.vf-check.match {
+    border-color: var(--bs-success);
+    color: var(--bs-success);
+}
+.vf-check.mismatch {
+    border-color: var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+.acc-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: var(--bs-border-radius);
+    border: 1px solid var(--bs-border-color);
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--bs-font-size-sm);
+    transition: var(--bs-transition);
+}
+.acc-item:hover {
+    background: var(--bs-gray-100);
+}
+.acc-item.active {
+    background: var(--bs-success-soft);
+    border-color: var(--bs-success);
+    color: var(--bs-success);
+    font-weight: 600;
+}
+.acc-item .acc-icon {
+    font-size: 1rem;
+    min-width: 18px;
+    text-align: center;
+}
+
+.vf-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--bs-font-size-lg);
+    font-weight: 600;
+}
+
+.vf-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    z-index: 10;
+}
+
+/* ========================================================================
+   UNIT AUDIT PAGE (service/unit_audit)
+   ======================================================================== */
+.unit-audit .location-item-header { cursor: pointer; transition: background-color .15s ease; }
+.unit-audit .location-item-header:hover { background-color: rgba(13, 110, 253, 0.06); }
+.unit-audit .location-item-selected .location-item-header {
+    background-color: rgba(13, 110, 253, 0.12) !important;
+    border-left: 3px solid #0d6efd;
+    color: inherit;
+}
+.unit-audit .location-item-selected .location-item-header .text-muted { color: #5c636a !important; }
+.unit-audit .location-item-header .btn { flex-shrink: 0; }
+
+.select2-container { z-index: 1 !important; }
+.select2-container--open { z-index: 1040 !important; }
+.select2-dropdown { z-index: 1040 !important; }
+
+#verifikasiModal .modal-body label,
+#verifikasiModal .modal-body h6 { color: #212529 !important; }
+#verifikasiModal #vfUnitTable th { color: #212529; }
+#verifikasiModal .cursor-pointer { cursor: pointer; }
+#verifikasiModal .vf-hasil-cell .badge { white-space: nowrap; }
+#verifikasiModal tr.vf-row-sesuai { background-color: #e9f7ef !important; }
+#verifikasiModal tr.vf-row-tidak { background-color: #fde2e1 !important; }
+#vfAlasanModal .modal-body { font-size: 0.95rem; }
+#vfAlasanModal .form-label.small,
+#vfAlasanModal .form-check-label.small,
+#vfAlasanModal p.small { font-size: 0.95rem !important; }
+
+/* ========================================================================
+   SPK MARKETING PAGE (marketing/spk)
+   ======================================================================== */
+#spkModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.svcUnitDetailBlock {
+    border-left: 3px solid #0d6efd;
+    padding-left: 15px;
+    background-color: #f8f9fa;
+    margin-bottom: 10px;
+}
+
+.svcUnitDetailBlock > div {
+    padding: 2px 0;
+}
+
+/* ========================================================================
+   FINANCE PAYMENTS - COMING SOON PAGE (finance/payments)
+   ======================================================================== */
+.coming-soon-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: 2rem 1rem;
+}
+
+.coming-soon-card {
+    background: white;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.coming-soon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+}
+
+.coming-soon-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.coming-soon-logo { height: 40px; width: auto; }
+
+.logo-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(180deg, #007bff, #00ac69);
+    border-radius: 1px;
+}
+
+.coming-soon-icon {
+    font-size: 4rem;
+    color: #007bff;
+    margin-bottom: 1.5rem;
+    animation: comingSoonBounce 2s ease-in-out infinite;
+}
+
+@keyframes comingSoonBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.coming-soon-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.coming-soon-subtitle {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.coming-soon-divider {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+    margin: 1.5rem auto;
+    border-radius: 2px;
+}
+
+.coming-soon-description {
+    font-size: 1rem;
+    color: #495057;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+}
+
+.coming-soon-features {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.feature-item:hover { background: #e9ecef; transform: translateY(-2px); }
+.feature-item i { color: #00ac69; font-size: 1.2rem; }
+
+.back-btn {
+    margin-top: 2rem;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+    color: #fff;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.back-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .coming-soon-card { background: #2c3034; color: #e2e8f0; }
+[data-bs-theme="dark"] .coming-soon-title { color: #e2e8f0; }
+[data-bs-theme="dark"] .coming-soon-subtitle { color: #adb5bd; }
+[data-bs-theme="dark"] .coming-soon-description { color: #adb5bd; }
+[data-bs-theme="dark"] .feature-item { background: #343a40; color: #adb5bd; }
+[data-bs-theme="dark"] .feature-item:hover { background: #495057; }
+
+@media (max-width: 768px) {
+    .coming-soon-container { padding: 1rem; }
+    .coming-soon-card { padding: 2rem 1.5rem; }
+    .coming-soon-title { font-size: 2rem; }
+    .coming-soon-features { flex-direction: column; gap: 1rem; }
+    .feature-item { justify-content: center; }
+}
+
+/* ========== SPAREPART USAGE PAGE ========== */
+#usageTable { width: 100% !important; }
+#usageTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+#usageTable td { vertical-align: middle; font-size: 0.875rem; }
+#usageTable tbody tr:hover { background-color: #f8f9fa; }
+.sparepart-usage-page .badge { font-weight: 500; padding: 0.35em 0.65em; }
+.sparepart-usage-page .modal-header { border-bottom: 1px solid #dee2e6; }
+.sparepart-usage-page .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ========================================================================
    PAGE-SPECIFIC STYLES (DEPRECATED - REMOVE GRADUALLY)

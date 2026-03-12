@@ -1,12 +1,17 @@
 <?= $this->extend('layouts/base') ?>
-<?= $this->section('content') ?>
 
 <?php
+/**
+ * Customer Detail Module - Marketing
+ * BADGE SYSTEM: Optima badge-soft-* (optima-pro.css). Active → badge-soft-green, Inactive → badge-soft-gray.
+ */
 $customer = $customer ?? [];
 $locations = $locations ?? [];
 $id = $customer['id'] ?? 0;
 $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
 ?>
+
+<?= $this->section('content') ?>
 
 <!-- Page Header -->
 <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
@@ -41,8 +46,8 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
 
         <!-- Customer Info Card -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-building me-2"></i><?= esc($customerName) ?></h5>
+            <div class="card-header bg-light">
+                <h5 class="mb-0 fw-semibold"><i class="fas fa-building me-2 text-primary"></i><?= esc($customerName) ?></h5>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -96,8 +101,8 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="bg-light">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead class="table-light">
                                 <tr>
                                     <th>Nama Lokasi</th>
                                     <th>Alamat</th>

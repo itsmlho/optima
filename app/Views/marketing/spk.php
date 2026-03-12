@@ -155,10 +155,9 @@ $can_export = $permissions['export'];
             </li>
         </ul>
         
-        <div class="card-body">
-            <!-- DataTables will handle pagination and search controls -->
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
+                <table class="table table-striped table-hover mb-0 table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
                     <thead class="table-light">
                         <tr>
                             <th><?= lang('Marketing.spk_number') ?></th>
@@ -343,7 +342,7 @@ $can_export = $permissions['export'];
                             <!-- Specification Detail -->
                             <div id="spesifikasiDetail" class="d-none">
                                 <div class="card border-primary mb-3">
-                                    <div class="card-header bg-primary text-white9, ">
+                                    <div class="card-header bg-light">
                                         <h6 class="mb-0">Selected Specification Details</h6>
                                     </div>
                                     <div class="card-body">
@@ -3451,12 +3450,7 @@ $can_export = $permissions['export'];
     }
     </script>
     
-    <style>
-    /* Ensure the SPK modal body scrolls when content is long */
-    #spkModal .modal-body { max-height: 70vh; overflow-y: auto; }
-    
-    /* Consistent DataTables-like sorting headers */
-    </style>
+    <!-- SPK modal scroll: see optima-pro.css #spkModal .modal-body -->
 
     <!-- SPK Edit Modal -->
     <div class="modal fade" id="spkEditModal" tabindex="-1">
@@ -3538,16 +3532,4 @@ $can_export = $permissions['export'];
 </div>
 <?= $this->endSection() ?>
 
-<!-- CSS untuk svcUnitDetailBlock agar konsisten dengan Service -->
-<style>
-.svcUnitDetailBlock {
-    border-left: 3px solid #0d6efd;
-    padding-left: 15px;
-    background-color: #f8f9fa;
-    margin-bottom: 10px;
-}
-
-.svcUnitDetailBlock > div {
-    padding: 2px 0;
-}
-</style>
+<!-- svcUnitDetailBlock: see optima-pro.css SPK MARKETING PAGE section -->

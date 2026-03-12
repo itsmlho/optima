@@ -1531,9 +1531,30 @@ function bindForms() {
         $('#addEmployeeModal').modal('hide');
         notify('Employee created successfully!','success');
         
-        // Refresh employees table if it exists
-        if (employeesTable) {
-          employeesTable.ajax.reload(null, false);
+        // FORCE reload employees table - MULTIPLE STRATEGIES
+        console.log('🔄 Attempting to refresh employees table...');
+        console.log('employeesTable exists?', !!employeesTable);
+        console.log('employeesTable is DataTable?', employeesTable ? $.fn.DataTable.isDataTable('#employeesTable') : false);
+        
+        if (employeesTable && $.fn.DataTable.isDataTable('#employeesTable')) {
+          console.log('✅ Reloading employees table via ajax.reload()...');
+          employeesTable.ajax.reload(function() {
+            console.log('✅ Employees table reloaded successfully!');
+          }, false); // false = stay on current page
+        } else {
+          console.log('⚠️ Employees table not initialized, initializing now...');
+          // Ensure we're on employees tab
+          if (window.currentActiveTab !== 'employeesTab') {
+            $('#employees-tab').tab('show');
+          }
+          // Initialize or re-initialize
+          setTimeout(function() {
+            if (!employeesTable || !$.fn.DataTable.isDataTable('#employeesTable')) {
+              initializeEmployeeTable();
+            } else {
+              employeesTable.ajax.reload(null, false);
+            }
+          }, 300);
         }
         
         $form[0].reset();

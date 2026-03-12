@@ -757,11 +757,11 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Add Location Modal -->
-<div class="modal fade modal-wide" id="addLocationModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade" id="addLocationModal" tabindex="-1" aria-labelledby="addLocationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><?= lang('Marketing.add_location') ?></h5>
+                <h5 class="modal-title" id="addLocationModalLabel"><?= lang('Marketing.add_location') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addLocationForm">
@@ -788,7 +788,6 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                     </div>
-                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -805,7 +804,6 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                     </div>
-                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -820,12 +818,10 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                     </div>
-                    
                     <div class="form-group">
                         <label for="loc_address">Address <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="loc_address" name="address" rows="3" maxlength="500" required></textarea>
                     </div>
-                    
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
@@ -846,18 +842,14 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                     </div>
-                    
                     <div class="form-group">
                         <label for="loc_notes">Notes</label>
                         <textarea class="form-control" id="loc_notes" name="notes" rows="2" maxlength="255"></textarea>
                     </div>
-                    
                     <div class="form-group">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="loc_is_primary" name="is_primary" value="1">
-                            <label class="form-check-label" for="loc_is_primary">
-                                Set as Primary Location
-                            </label>
+                            <label class="form-check-label" for="loc_is_primary">Set as Primary Location</label>
                         </div>
                     </div>
                 </div>
@@ -1103,7 +1095,7 @@ let currentCustomerName = null;
 let currentContractId = null;
 
 $(document).ready(function() {
-    console.log('🚀 Initializing Customer Management...');
+    console.log('Customer Management ready');
     
     // Check if DataTables library loaded properly
     if (typeof $.fn.DataTable === 'undefined') {
@@ -1133,6 +1125,8 @@ $(document).ready(function() {
         $('#addCustomerForm')[0].reset();
         clearFormErrors('#addCustomerForm');
     });
+    
+    // REMOVED: Manual modal event handlers (not needed with close-reopen pattern)
 });
 
 // Global status filter variable
@@ -2108,11 +2102,14 @@ function openEditCustomerModal(customerId) {
                 // Clear previous errors
                 clearFormErrors('#editCustomerForm');
                 
-                // Hide customer detail modal
-                $('#customerDetailModal').modal('hide');
-                
-                // Show edit modal
+                // Show edit modal di atas customerDetailModal (stacked)
+                $('#editCustomerModal').css('z-index', 1065);
                 $('#editCustomerModal').modal('show');
+                
+                // Fix backdrop z-index
+                $('#editCustomerModal').one('shown.bs.modal', function() {
+                    $('.modal-backdrop').last().css('z-index', 1064);
+                });
                 
                 console.log('✅ Customer data loaded:', customer);
             } else {
@@ -2410,28 +2407,47 @@ function openAddContractModal() {
     $('#addContractModal').modal('show');
 }
 
+// Fix: Pindahkan modal ke body agar tidak terjebak di stacking context main-content
+$(document).ready(function() {
+    $('#addLocationModal').appendTo('body');
+    $('#editCustomerModal').appendTo('body');
+    
+    // Saat modal child ditutup, pastikan body tetap modal-open karena customerDetailModal masih terbuka
+    $('#addLocationModal, #editCustomerModal').on('hidden.bs.modal', function() {
+        if ($('#customerDetailModal').hasClass('show')) {
+            $('body').addClass('modal-open');
+        }
+    });
+});
+
 function openAddLocationModal() {
-    clearFormErrors('#addLocationForm'); // Clear errors on open
-    $('#addLocationModal .modal-title').text('Add New Location');
-    $('#addLocationForm').removeData('location-id');
-    // Clear location code field for new location
-    $('#loc_location_code').val('');
-    // Set customer ID if we have one
-    if (currentCustomerId) {
-        $('#locationCustomerId').val(currentCustomerId);
+    if (!currentCustomerId) {
+        showNotification('Silakan pilih customer terlebih dahulu', 'warning');
+        return;
     }
     
-    // Load areas for location dropdown
+    // Reset form
+    clearFormErrors('#addLocationForm');
+    $('#addLocationForm')[0].reset();
+    $('#addLocationForm').removeData('location-id');
+    $('#addLocationModal .modal-title').text('<?= lang('Marketing.add_location') ?>');
+    $('#locationCustomerId').val(currentCustomerId);
+    $('#loc_location_code').val('');
     loadLocationAreas();
     
-    // Show modal
+    // Show di atas customerDetailModal (stacked modal)
+    $('#addLocationModal').css('z-index', 1065);
     $('#addLocationModal').modal('show');
+    
+    // Fix backdrop z-index agar di antara kedua modal
+    $('#addLocationModal').on('shown.bs.modal', function() {
+        // Backdrop terakhir = backdrop untuk addLocationModal
+        $('.modal-backdrop').last().css('z-index', 1064);
+    });
 }
 
 function openEditLocationModal(locationId) {
     clearFormErrors('#addLocationForm');
-    
-    // Load areas first
     loadLocationAreas();
     
     $.ajax({
@@ -2455,21 +2471,22 @@ function openEditLocationModal(locationId) {
                 $('#loc_notes').val(loc.notes || '');
                 $('#loc_is_primary').prop('checked', loc.is_primary == 1);
                 
-                // Set area_id after areas are loaded
                 if (loc.area_id) {
-                    setTimeout(() => {
-                        $('#loc_area_id').val(loc.area_id);
-                    }, 100);
+                    setTimeout(() => { $('#loc_area_id').val(loc.area_id); }, 100);
                 }
                 
+                // Show di atas customerDetailModal (stacked modal)
+                $('#addLocationModal').css('z-index', 1065);
                 $('#addLocationModal').modal('show');
+                
+                $('#addLocationModal').on('shown.bs.modal', function() {
+                    $('.modal-backdrop').last().css('z-index', 1064);
+                });
             } else {
-                console.error('Failed to load location:', response.message);
                 showNotification(response.message || 'Failed to load location', 'error');
             }
         },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error loading location:', {xhr, status, error});
+        error: function() {
             showNotification('Terjadi kesalahan pada sistem', 'error');
         }
     });
@@ -3333,11 +3350,9 @@ $(document).on('submit', '#editCustomerForm', function(e) {
                     customerTable.ajax.reload(null, false);
                 }
                 
-                // Reload customer detail if still open
-                if (currentCustomerId) {
-                    setTimeout(() => {
-                        openCustomerDetail(currentCustomerId);
-                    }, 500);
+                // Refresh customer detail yang masih terbuka di belakang
+                if (currentCustomerId && $('#customerDetailModal').hasClass('show')) {
+                    openCustomerDetail(currentCustomerId);
                 }
             } else {
                 if (response.errors) {
@@ -3495,12 +3510,15 @@ $(document).on('click', '#btnSaveOnly, #btnSaveAndSpec', function() {
     $('#addContractForm').trigger('submit');
 });
 
+// Location form submit handler
 $(document).on('submit', '#addLocationForm', function(e) {
     e.preventDefault();
     clearFormErrors('#addLocationForm');
 
     const locId = $('#addLocationForm').data('location-id');
-    const url = locId ? `<?= base_url('marketing/customer-management/updateCustomerLocation') ?>/${locId}` : '<?= base_url('marketing/customer-management/storeCustomerLocation') ?>';
+    const url = locId 
+        ? `<?= base_url('marketing/customer-management/updateCustomerLocation') ?>/${locId}` 
+        : '<?= base_url('marketing/customer-management/storeCustomerLocation') ?>';
 
     $.ajax({
         url: url,
@@ -3509,11 +3527,11 @@ $(document).on('submit', '#addLocationForm', function(e) {
         success: function(response) {
             if (response.success) {
                 showNotification(response.message, 'success');
-                $('#addLocationModal').modal('hide');
                 $('#addLocationForm')[0].reset();
                 $('#addLocationForm').removeData('location-id');
+                $('#addLocationModal').modal('hide');
                 
-                // Reload locations if we're in customer detail modal
+                // Refresh locations di customerDetailModal yang masih terbuka
                 if (currentCustomerId) {
                     loadCustomerLocations(currentCustomerId);
                 }

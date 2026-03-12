@@ -236,17 +236,21 @@ Update tracking di bawah ini setiap selesai 1 module.
 
 ### Module Status
 
-| # | Module | File | Status | Date | Notes |
-|---|--------|------|--------|------|-------|
-| 1 | SPK Marketing | `spk_marketing.php` | ⏳ TODO | - | - |
-| 2 | Unit Management | `units.php` | ⏳ TODO | - | - |
-| 3 | Delivery Instructions | `delivery_instructions.php` | ⏳ TODO | - | - |
-| 4 | Unit Deployment | `unit_deployment.php` | ⏳ TODO | - | - |
-| 5 | Audit Approval | `audit_approval.php` | ⏳ TODO | - | - |
-| 6 | Service Requests | `requests.php` | ⏳ TODO | - | - |
-| 7 | Finance Invoices | `invoices.php` | ⏳ TODO | - | - |
-| 8 | Finance Payments | `payments.php` | ⏳ TODO | - | - |
-| 9 | Purchasing | `index.php` | ⏳ TODO | - | - |
+| # | Module | File (actual) | Status | Date | Notes |
+|---|--------|---------------|--------|------|-------|
+| 0 | Customer Management | `marketing/customer_management.php` | ✅ DONE | Mar 2026 | Reference implementation |
+| 0 | Quotations | `marketing/quotations.php` | ✅ DONE | Mar 6 2026 | All badges updated |
+| 0 | Contracts & PO | `marketing/kontrak.php` | ✅ DONE | Mar 11 2026 | Updated, filter → tab (future) |
+| 0 | Unit Verification (unit) | `service/unit_verification_unit.php` | ✅ DONE | Mar 11 2026 | Badge soft, no inline CSS, style di optima-pro.css |
+| 1 | SPK Marketing | `marketing/spk.php` | ✅ DONE | Mar 10 2026 | Doc block OK, badge-soft-* JS OK, style → optima-pro.css, card-body p-0, typo fixed |
+| 2 | Unit Management | `warehouse/inventory/unit/index.php` | ✅ DONE | Mar 10 2026 | Doc block, badge-soft-* tabs + DataTable, table-striped mb-0 |
+| 3 | Delivery Instructions | `marketing/di.php` | ✅ DONE | Mar 10 2026 | cursor-pointer class, card-body p-0, bg-light card header, no inline style |
+| 4 | Unit Deployment | `operational/delivery.php` | ✅ DONE | Mar 10 2026 | Doc block, header inside card, card-body p-0, badge-soft-* in JS |
+| 5 | Audit Approval | `marketing/audit_approval.php` | ✅ DONE | Mar 10 2026 | card-body p-0, doc block OK, badge-soft-* in JS OK |
+| 6 | Service Requests | `service/work_orders.php` | ✅ DONE | Mar 10 2026 | Doc block OK, badge-soft-* in JS OK, mb-0 on tables |
+| 7 | Finance Invoices | `finance/invoices.php` | ✅ DONE | Mar 10 2026 | Doc block, header inside table card, badge-soft-*, filter labels with icons |
+| 8 | Finance Payments | `finance/payments.php` | ✅ DONE | Mar 10 2026 | Doc block, coming-soon styles → optima-pro.css |
+| 9 | Purchasing | `purchasing/purchasing.php` | ✅ DONE | Mar 10 2026 | Doc block, header inside card-header, badge-soft-* (unit/attachment/battery/charger), bg-* removed |
 
 **Legend:**
 - ⏳ TODO - Belum dikerjakan
@@ -258,6 +262,29 @@ Update tracking di bawah ini setiap selesai 1 module.
 ```
 ✅ DONE | March 11, 2026 | All badges updated, tested OK
 ```
+
+### Progress Tambahan (Seluruh Web) — untuk cek
+
+Halaman di luar 9 modul utama yang sudah distandarkan:
+
+| Modul / Halaman | File | Status | Date | Notes |
+|-----------------|------|--------|------|-------|
+| Marketing Dashboard | `marketing/index.php` | ✅ DONE | Mar 10 2026 | Header in card, badge-soft-*, table mb-0 |
+| Unit Tersedia | `marketing/unit_tersedia.php` | ✅ DONE | Mar 10 2026 | Card structure, filter labels, badge-soft-* DataTable |
+| Customer Detail | `marketing/customer_detail.php` | ✅ DONE | Mar 10 2026 | Doc block, bg-light, badge-soft-green/gray, table-light |
+| Unit Audit | `service/unit_audit.php` | ✅ DONE | Mar 10 2026 | Style → optima-pro.css, stat-card, badge-soft-* |
+| Kontrak Detail | `marketing/kontrak_detail.php` | ✅ DONE | Mar 10 2026 | Doc block, badge-soft-*, card-header bg-light, JS badges |
+| Operators | `marketing/operators.php` | ✅ DONE | Mar 10 2026 | Doc block, card-header bg-light, card-body p-0, table mb-0 |
+| Warehouse Index | `warehouse/index.php` | ✅ DONE | Mar 10 2026 | Doc block, card-header bg-light, table mb-0, table-striped |
+| Kontrak Edit | `marketing/kontrak_edit.php` | ✅ DONE | Mar 10 2026 | Doc block, badge-soft-* status, card-header bg-light |
+| Booking (placeholder) | `marketing/booking.php` | ✅ DONE | Mar 10 2026 | Doc block, card + card-header bg-light |
+| Unit Movement (Surat Jalan) | `warehouse/unit_movement.php` | ✅ DONE | Mar 10 2026 | Doc block, stat-card bg-*-soft, badge-soft-* in JS |
+| Attachment/Battery/Charger Inventory | `warehouse/inventory/attachments/index.php` | ✅ DONE | Mar 10 2026 | Doc block, card-header bg-light, badge-soft-* tabs/status/JS, modal bg-light, table mb-0 |
+| Sparepart Inventory | `warehouse/sparepart.php` | ✅ DONE | Mar 10 2026 | Doc block, card-header bg-light, filter card, badge-soft-* stock, table mb-0 |
+| Audit Approval (Location) | `marketing/audit_approval_location.php` | ✅ DONE | Mar 10 2026 | card-header bg-light, card-body p-0 (already had stat-card, badge refs in doc) |
+| Sparepart Usage & Returns | `warehouse/sparepart_usage.php` | ✅ DONE | Mar 10 2026 | Doc block, style→optima-pro.css, card-header bg-light, modal bg-light, badge-soft-* in JS, table mb-0 |
+
+*(Daftar ini di-update tiap batch. Cek tabel ini untuk progress seluruh web.)*
 
 ---
 
@@ -542,6 +569,19 @@ When all 9 modules DONE:
 **Good luck with CSS standardization!** 🚀
 
 **Next File to Open in Cursor AI:**  
-`app/Views/marketing/spk_marketing.php`
+`app/Views/marketing/spk.php`
 
 **Prompt to use:** See "Step 2" above
+
+---
+
+## 📌 File Mapping (Actual Codebase Names)
+
+| Workflow Name | Actual File |
+|---|---|
+| `spk_marketing.php` | `app/Views/marketing/spk.php` |
+| `delivery_instructions.php` | `app/Views/marketing/di.php` |
+| `units.php` (Unit Management) | `app/Views/warehouse/inventory/unit/index.php` |
+| `unit_deployment.php` | `app/Views/operational/delivery.php` |
+| `requests.php` (Service Requests) | `app/Views/service/work_orders.php` |
+| `index.php` (Purchasing) | `app/Views/purchasing/purchasing.php` |

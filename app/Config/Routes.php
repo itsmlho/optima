@@ -549,6 +549,9 @@ $routes->group('service', static function ($routes) {
     $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:view_service']);
     $routes->get('unit-verification/print/(:num)', 'UnitAudit::printVerificationLocation/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit-verification/unit/(:num)/(:num)', 'UnitAudit::verifyUnit/$1/$2', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/unit-master-data/(:num)', 'UnitAudit::getUnitVerificationMasterData/$1', ['filter' => 'permission:view_service']);
+    $routes->post('unit-audit/save-unit-verification', 'UnitAudit::saveUnitVerificationFromAudit', ['filter' => 'permission:create_service']);
     $routes->post('unit-audit/markAuditPrinted/(:num)', 'UnitAudit::markAuditPrinted/$1', ['filter' => 'permission:create_service']);
     $routes->post('unit-audit/markAuditInProgress/(:num)', 'UnitAudit::markAuditInProgress/$1', ['filter' => 'permission:create_service']);
     $routes->post('unit-audit/submitAuditResults', 'UnitAudit::submitAuditResults', ['filter' => 'permission:create_service']);

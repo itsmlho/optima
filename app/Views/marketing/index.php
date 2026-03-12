@@ -1,15 +1,31 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * Marketing Division Dashboard Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Quick Reference: Approved → badge-soft-green, PENDING → badge-soft-yellow, other → badge-soft-gray
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+?>
+
 <?= $this->section('content') ?>
 
 <div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-dark">
-            <i class="fas fa-bullhorn me-2"></i>Marketing Division Dashboard
-        </h1>
-        <div class="d-sm-flex align-items-center">
-            <div class="btn-group" role="group">
+    <!-- Page Header inside card -->
+    <div class="card table-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bullhorn me-2 text-primary"></i>Marketing Division Dashboard
+                </h5>
+                <p class="text-muted small mb-0">
+                    Overview quotations, contracts, and marketing performance
+                    <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Use Quick Access or links below to open modules</small></span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
                 <?= ui_button('refresh', 'Refresh', [
                     'color' => 'outline-info',
                     'size' => 'sm',
@@ -259,10 +275,10 @@
                             </div>
                             <div class="text-end">
                                 <?php
-                                $statusClass = $quotation['status'] == 'Approved' ? 'success' : 
-                                              ($quotation['status'] == 'PENDING' ? 'warning' : 'secondary');
+                                $statusClass = $quotation['status'] == 'Approved' ? 'badge-soft-green' : 
+                                              ($quotation['status'] == 'PENDING' ? 'badge-soft-yellow' : 'badge-soft-gray');
                                 ?>
-                                <span class="badge bg-<?= $statusClass ?>">
+                                <span class="badge <?= $statusClass ?>">
                                     <?= $quotation['status'] ?>
                                 </span>
                                 <br>
@@ -286,7 +302,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-striped table-hover">
+                <table class="table table-striped table-hover mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Contract Number</th>
@@ -309,7 +325,7 @@
                                 <td><?= date('d M Y', strtotime($contract['start_date'])) ?></td>
                                 <td><?= date('d M Y', strtotime($contract['end_date'])) ?></td>
                                 <td>
-                                    <span class="badge bg-success"><?= $contract['status'] ?></span>
+                                    <span class="badge badge-soft-green"><?= $contract['status'] ?></span>
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">

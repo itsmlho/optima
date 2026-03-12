@@ -84,7 +84,7 @@ $stats = $stats ?? [];
 
 <!-- Pending Approvals Table Card -->
 <div class="card table-card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <h5 class="card-title mb-0">
                 <i class="fas fa-check-circle me-2 text-success"></i>
@@ -104,7 +104,7 @@ $stats = $stats ?? [];
             </button>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-striped table-hover mb-0" id="pendingTable">
                 <thead class="table-light">
@@ -134,7 +134,7 @@ $stats = $stats ?? [];
 
 <!-- Riwayat Approval Table Card -->
 <div class="card table-card mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <h5 class="card-title mb-0">
                 <i class="fas fa-history me-2 text-primary"></i>
@@ -142,7 +142,7 @@ $stats = $stats ?? [];
             </h5>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-striped table-hover mb-0 table-sm" id="allTable">
                 <thead class="table-light">

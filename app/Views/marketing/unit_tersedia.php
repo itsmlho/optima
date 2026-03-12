@@ -1,15 +1,11 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
-<div class="container-fluid py-3">
-    <h5 class="mb-3"><i class="fas fa-cog me-2"></i>Page Title</h5>
-    
-    
 <?php
-// Load global permission helper
+/**
+ * Available Units (Unit Tersedia) Module - Marketing
+ * BADGE SYSTEM: Optima badge-soft-* (optima-pro.css). See line ~2030.
+ */
 helper('global_permission');
-
-// Get permissions for marketing module
 $permissions = get_global_permission('marketing');
 $can_view = $permissions['view'];
 $can_create = $permissions['create'];
@@ -18,33 +14,36 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?php if (can_export('marketing')): ?>
-                        <?= ui_button('export', 'Export', [
-                            'color' => 'success',
-                            'size' => 'sm',
-                            'id' => 'btnExport',
-                            'title' => 'Export CSV'
-                        ]) ?>
-                        <?php else: ?>
-                        <?= ui_button('export', 'Export', [
-                            'color' => 'success',
-                            'size' => 'sm',
-                            'id' => 'btnExport',
-                            'disabled' => true,
-                            'title' => 'Access Denied'
-                        ]) ?>
-                        <?php endif; ?>
-                </div>
+<?= $this->section('content') ?>
+<div class="container-fluid py-3">
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check-circle me-2 text-primary"></i>Unit Tersedia
+                </h5>
+                <p class="text-muted small mb-0">
+                    Daftar unit available untuk penawaran dan kontrak (readonly dari Inventory)
+                    <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Filter Tipe/Lokasi lalu Export CSV jika perlu</small></span>
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <?php if ($can_export): ?>
+                <?= ui_button('export', 'Export', ['color' => 'success', 'size' => 'sm', 'id' => 'btnExport', 'title' => 'Export CSV']) ?>
+                <?php else: ?>
+                <?= ui_button('export', 'Export', ['color' => 'success', 'size' => 'sm', 'id' => 'btnExport', 'disabled' => true, 'title' => 'Access Denied']) ?>
+                <?php endif; ?>
+            </div>
         </div>
         <div class="collapse" id="mktFilterCollapse">
                 <div class="border-top bg-light p-3">
                         <form id="mktFilterForm" class="row g-3 align-items-end">
                                 <div class="col-md-4 col-sm-6">
-                                        <label class="form-label small mb-1">Tipe / Jenis</label>
+                                        <label class="form-label fw-semibold small mb-1"><i class="fas fa-tag text-primary me-1"></i>Tipe / Jenis</label>
                                         <input type="text" id="tipeFilter" class="form-control form-control-sm" placeholder="Forklift, Crane...">
                                 </div>
                                 <div class="col-md-4 col-sm-6">
-                                        <label class="form-label small mb-1">Lokasi</label>
+                                        <label class="form-label fw-semibold small mb-1"><i class="fas fa-map-marker-alt text-info me-1"></i>Lokasi</label>
                                         <input type="text" id="lokasiFilter" class="form-control form-control-sm" placeholder="POS 1">
                                 </div>
                                 <div class="col-md-4 col-sm-12 d-flex gap-2">
@@ -73,8 +72,9 @@ $can_export = $permissions['export'];
             Please contact your administrator to request access.
         </div>
         <?php endif; ?>
-        <div class="card-body pt-2">
-            <table id="marketing-units-table" class="table table-sm table-hover w-100 <?= !$can_view ? 'table-disabled' : '' ?>">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table id="marketing-units-table" class="table table-striped table-hover mb-0 table-sm w-100 <?= !$can_view ? 'table-disabled' : '' ?>">
                     <thead class="table-light">
                             <tr>
                                     <th>No. Unit</th>
@@ -89,7 +89,9 @@ $can_export = $permissions['export'];
                             </tr>
                     </thead>
             </table>
-            <small class="text-muted d-block mt-2">Tampilan readonly dari Inventory Unit status 7 & 8. Filter & tab mengikuti gaya halaman Warehouse.</small>
+            </div>
+            <small class="text-muted d-block mt-2 px-3 pb-2">Tampilan readonly dari Inventory Unit status 7 & 8. Filter & tab mengikuti gaya halaman Warehouse.</small>
+        </div>
     </div>
 </div>
 
@@ -128,9 +130,9 @@ let mktStatusFilter = '';
 
 function statusBadge(id){
         id = parseInt(id||0);
-        const map={7:['success','STOCK ASET'],8:['success','STOCK NON ASET']};
-        const cfg = map[id] || ['secondary','UNKNOWN'];
-        return `<span class="badge bg-${cfg[0]}">${cfg[1]}</span>`;
+        const map={7:['badge-soft-green','STOCK ASET'],8:['badge-soft-green','STOCK NON ASET']};
+        const cfg = map[id] || ['badge-soft-gray','UNKNOWN'];
+        return `<span class="badge ${cfg[0]}">${cfg[1]}</span>`;
 }
 
 // Attachment icon dihapus sesuai permintaan, fungsi diganti placeholder bila diperlukan nanti.

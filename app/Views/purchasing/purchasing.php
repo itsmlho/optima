@@ -1,6 +1,23 @@
 <?= $this->extend('layouts/base') ?>
 
 <?php
+/**
+ * Purchase Orders Management Module
+ *
+ * BADGE SYSTEM: Menggunakan Optima Badge Standards (optima-pro.css)
+ * Direct CSS classes - tidak perlu JavaScript helper function
+ *
+ * Quick Reference:
+ * - Status DRAFT      → <span class="badge badge-soft-gray">Draft</span>
+ * - Status SUBMITTED  → <span class="badge badge-soft-yellow">Submitted</span>
+ * - Status APPROVED   → <span class="badge badge-soft-blue">Approved</span>
+ * - Status IN_TRANSIT → <span class="badge badge-soft-cyan">In Transit</span>
+ * - Status RECEIVED   → <span class="badge badge-soft-green">Received</span>
+ * - Count / PO Number → <span class="badge badge-soft-blue font-monospace">PO-001</span>
+ *
+ * See optima-pro.css line ~2030 for complete badge standards
+ */
+
 // Load global permission helper
 helper('global_permission');
 
@@ -14,15 +31,6 @@ $can_export = $permissions['export'];
 ?>
 
 <?= $this->section('content') ?>
-
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="fas fa-shopping-cart me-2 text-primary"></i>
-        Purchase Orders Management
-    </h4>
-    <p class="text-muted mb-0">Create and track purchase orders for units and spare parts from suppliers</p>
-</div>
 
 <!-- Success/Error Messages -->
 <?php if (session()->getFlashdata('success')): ?>
@@ -39,16 +47,22 @@ $can_export = $permissions['export'];
     </div>
 <?php endif; ?>
 
-
-
 <!-- Main Card -->
 <div class="card table-card">
-    <div class="card-header bg-light">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="fas fa-truck me-2"></i><?= lang('App.purchase_orders') ?>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="fas fa-shopping-cart me-2 text-primary"></i><?= lang('App.purchase_orders') ?>
             </h5>
-            <div class="btn-group" role="group">
+            <p class="text-muted small mb-0">
+                Create and track purchase orders for units and spare parts from suppliers
+                <span class="ms-2 text-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Tip: Gunakan tab Progress / Delivery / Completed untuk filter status PO</small>
+                </span>
+            </p>
+        </div>
+        <div class="d-flex gap-2" role="group">
                 <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary" id="btnBuatPO">
                     <i class="fas fa-plus me-1"></i><?= lang('App.create') ?> PO
@@ -84,7 +98,6 @@ $can_export = $permissions['export'];
                 </button>
                 <?php endif; ?>
             </div>
-        </div>
     </div>
 
         <!-- Tabs Navigation -->
@@ -465,12 +478,12 @@ $can_export = $permissions['export'];
                         <ul class="nav nav-tabs" id="poDetailTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="items-tab" type="button" role="tab">
-                                    <i class="fas fa-list me-2"></i>Items List <span class="badge bg-primary ms-1" id="itemsCount">0</span>
+                                    <i class="fas fa-list me-2"></i>Items List <span class="badge badge-soft-blue ms-1" id="itemsCount">0</span>
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="deliveries-tab" type="button" role="tab">
-                                    <i class="fas fa-truck me-2"></i>Deliveries <span class="badge bg-info ms-1" id="deliveriesCount">0</span>
+                                    <i class="fas fa-truck me-2"></i>Deliveries <span class="badge badge-soft-cyan ms-1" id="deliveriesCount">0</span>
                                 </button>
                             </li>
                         </ul>
@@ -908,7 +921,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalUnit > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-primary me-1 mb-1">
+                            <span class="badge badge-soft-blue me-1 mb-1">
                                 <i class="fas fa-truck me-1"></i>${totalUnit} Unit
                             </span>
                         `);
@@ -916,7 +929,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalAttachment > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-info me-1 mb-1">
+                            <span class="badge badge-soft-cyan me-1 mb-1">
                                 <i class="fas fa-puzzle-piece me-1"></i>${totalAttachment} Attachment
                             </span>
                         `);
@@ -924,7 +937,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalBattery > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-warning me-1 mb-1">
+                            <span class="badge badge-soft-yellow me-1 mb-1">
                                 <i class="fas fa-battery-half me-1"></i>${totalBattery} Battery
                             </span>
                         `);
@@ -932,7 +945,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalCharger > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-success me-1 mb-1">
+                            <span class="badge badge-soft-green me-1 mb-1">
                                 <i class="fas fa-plug me-1"></i>${totalCharger} Charger
                             </span>
                         `);
@@ -1231,28 +1244,28 @@ function initPODeliveryTable() {
                     const itemBadges = [];
                     if (itemCounts.unit > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-primary me-1 mb-1">
+                            <span class="badge badge-soft-blue me-1 mb-1">
                                 <i class="fas fa-truck me-1"></i>${itemCounts.unit} Units
                             </span>
                         `);
                     }
                     if (itemCounts.attachment > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-info me-1 mb-1">
+                            <span class="badge badge-soft-cyan me-1 mb-1">
                                 <i class="fas fa-puzzle-piece me-1"></i>${itemCounts.attachment} Attachment
                             </span>
                         `);
                     }
                     if (itemCounts.battery > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-warning me-1 mb-1">
+                            <span class="badge badge-soft-yellow me-1 mb-1">
                                 <i class="fas fa-battery-half me-1"></i>${itemCounts.battery} Battery
                             </span>
                         `);
                     }
                     if (itemCounts.charger > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-success me-1 mb-1">
+                            <span class="badge badge-soft-green me-1 mb-1">
                                 <i class="fas fa-plug me-1"></i>${itemCounts.charger} Charger
                             </span>
                         `);
@@ -1418,7 +1431,7 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalUnit > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-primary me-1 mb-1">
+                            <span class="badge badge-soft-blue me-1 mb-1">
                                 <i class="fas fa-truck me-1"></i>${totalUnit} Units
                             </span>
                         `);
@@ -1426,7 +1439,7 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalAttachment > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-info me-1 mb-1">
+                            <span class="badge badge-soft-cyan me-1 mb-1">
                                 <i class="fas fa-puzzle-piece me-1"></i>${totalAttachment} Attachment
                             </span>
                         `);
@@ -1434,7 +1447,7 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalBattery > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-warning me-1 mb-1">
+                            <span class="badge badge-soft-yellow me-1 mb-1">
                                 <i class="fas fa-battery-half me-1"></i>${totalBattery} Battery
                             </span>
                         `);
@@ -1442,7 +1455,7 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalCharger > 0) {
                         itemBadges.push(`
-                            <span class="badge bg-success me-1 mb-1">
+                            <span class="badge badge-soft-green me-1 mb-1">
                                 <i class="fas fa-plug me-1"></i>${totalCharger} Charger
                             </span>
                         `);
@@ -2181,7 +2194,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                         </div>
                         <div>
                             ${statusBadge}
-                            <span class="badge bg-info ms-2">${itemsInDelivery.length} items</span>
+                            <span class="badge badge-soft-cyan ms-2">${itemsInDelivery.length} items</span>
                         </div>
                     </div>
                     <div class="card-body">
@@ -2976,7 +2989,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = unit.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge badge-soft-green ms-2">Already Delivered</span>' : '';
             
             // Debug logging
             console.log('Unit ' + unit.id_po_unit + ' is_delivered: ' + isDisabled);
@@ -3016,7 +3029,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = attachment.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge badge-soft-green ms-2">Already Delivered</span>' : '';
             
             // Debug logging
             console.log('Attachment ' + attachment.id_po_attachment + ' is_delivered: ' + isDisabled);
@@ -3056,7 +3069,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = battery.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge badge-soft-green ms-2">Already Delivered</span>' : '';
             
             html += `<div class="mb-2 p-2 border rounded ${disabledClass}">
                 <div class="form-check">
@@ -3093,7 +3106,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = charger.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge badge-soft-green ms-2">Already Delivered</span>' : '';
             
             html += `<div class="mb-2 p-2 border rounded ${disabledClass}">
                 <div class="form-check">
@@ -3120,7 +3133,7 @@ function renderDeliveryItems(po, items) {
             <div class="row">
                 <div class="col-6">
                     <strong>Total Items Selected:</strong>
-                    <span id="deliveryTotalSelected" class="badge bg-primary ms-2">0</span>
+                    <span id="deliveryTotalSelected" class="badge badge-soft-blue ms-2">0</span>
                 </div>
                 <div class="col-6 text-end">
                     <small class="text-muted">Check at least one item to deliver</small>

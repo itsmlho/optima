@@ -1,13 +1,21 @@
 <?= $this->extend('layouts/base') ?>
-<?= $this->section('content') ?>
 
 <?php
+/**
+ * Contract Detail (Kontrak Detail) Module - Marketing
+ * BADGE SYSTEM: Optima badge-soft-* (optima-pro.css). ACTIVE→green, EXPIRED→red, PENDING→yellow, CANCELLED→gray.
+ */
 $contract  = $contract ?? [];
 $id        = $contract['id'] ?? 0;
 $noKontrak = $contract['no_kontrak'] ?? 'Contract #' . $id;
 $status    = $contract['status'] ?? '';
-$statusMap = ['ACTIVE' => 'success', 'EXPIRED' => 'danger', 'PENDING' => 'warning', 'CANCELLED' => 'secondary'];
-$statusClass = $statusMap[$status] ?? 'secondary';
+$statusMap = ['ACTIVE' => 'badge-soft-green', 'EXPIRED' => 'badge-soft-red', 'PENDING' => 'badge-soft-yellow', 'CANCELLED' => 'badge-soft-gray'];
+$statusClass = $statusMap[$status] ?? 'badge-soft-gray';
+?>
+
+<?= $this->section('content') ?>
+
+<?php
 $canRenew  = in_array($status, ['ACTIVE', 'EXPIRED']);
 $canAmend  = ($status === 'ACTIVE');
 ?>
@@ -24,7 +32,7 @@ $canAmend  = ($status === 'ACTIVE');
         <h4 class="fw-bold mb-0">
             <i class="fas fa-file-contract me-2 text-primary"></i>Contract Detail
         </h4>
-        <p class="text-muted small mb-0"><?= esc($noKontrak) ?> &bull; <span class="badge bg-<?= $statusClass ?>"><?= esc($status) ?></span></p>
+        <p class="text-muted small mb-0"><?= esc($noKontrak) ?> &bull; <span class="badge <?= $statusClass ?>"><?= esc($status) ?></span></p>
     </div>
     <!-- Action Buttons -->
     <div class="d-flex gap-2 flex-wrap">
@@ -59,10 +67,10 @@ $canAmend  = ($status === 'ACTIVE');
 
         <!-- Tabs -->
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white d-flex align-items-center">
+            <div class="card-header bg-light d-flex align-items-center">
                 <i class="fas fa-file-contract me-2"></i>
                 <strong><?= esc($noKontrak) ?></strong>
-                <span class="ms-auto badge bg-dark"><?= esc($status) ?></span>
+                <span class="ms-auto badge <?= $statusClass ?>"><?= esc($status) ?></span>
             </div>
             <div class="card-body">
 
@@ -77,7 +85,7 @@ $canAmend  = ($status === 'ACTIVE');
                         <button class="nav-link" id="tab-units" data-bs-toggle="tab"
                                 data-bs-target="#pane-units" type="button" role="tab">
                             <i class="fas fa-truck me-1"></i>Units & Locations
-                            <span class="badge bg-primary ms-1" id="totalUnitsCount">–</span>
+                            <span class="badge badge-soft-blue ms-1" id="totalUnitsCount">–</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -219,7 +227,7 @@ $canAmend  = ($status === 'ACTIVE');
 
                     <dt class="col-5 text-muted">Status</dt>
                     <dd class="col-7">
-                        <span class="badge bg-<?= $statusClass ?>"><?= esc($status) ?></span>
+                        <span class="badge <?= $statusClass ?>"><?= esc($status) ?></span>
                     </dd>
 
                     <dt class="col-5 text-muted">Type</dt>
@@ -294,7 +302,7 @@ function loadOverview() {
             const fields = [
                 ['Contract Number', c.no_kontrak],
                 ['Contract Type',   c.rental_type],
-                ['Status',          '<span class="badge bg-' + (c.status === 'ACTIVE' ? 'success' : c.status === 'EXPIRED' ? 'danger' : 'warning') + '">' + c.status + '</span>'],
+                ['Status',          '<span class="badge ' + (c.status === 'ACTIVE' ? 'badge-soft-green' : c.status === 'EXPIRED' ? 'badge-soft-red' : 'badge-soft-yellow') + '">' + c.status + '</span>'],
                 ['PO Number',       c.po_number],
                 ['Start Date',      c.tanggal_mulai],
                 ['End Date',        c.tanggal_berakhir || '<em class="text-muted">Open-ended</em>'],
@@ -385,7 +393,7 @@ function loadUnits() {
                 html += '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + aId + '">';
                 html += '<i class="fas fa-map-marker-alt me-2 text-primary"></i>';
                 html += '<strong>' + loc + '</strong>';
-                html += '<span class="badge bg-primary ms-2">' + units.length + ' unit(s)</span>';
+                html += '<span class="badge badge-soft-blue ms-2">' + units.length + ' unit(s)</span>';
                 html += '<span class="ms-auto text-success small">' + rupiah(locTotal) + '/bln</span>';
                 html += '</button></h2>';
                 html += '<div id="' + aId + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '">';
@@ -417,12 +425,12 @@ function loadUnits() {
                     html += '<td class="text-end">' + rateDisplay + '</td>';
                     html += '<td class="text-center">';
                     if (u.is_spare) {
-                        html += '<span class="badge bg-secondary"><i class="fas fa-shield-alt me-1"></i>Spare</span>';
+                        html += '<span class="badge badge-soft-gray"><i class="fas fa-shield-alt me-1"></i>Spare</span>';
                     } else {
                         html += '-';
                     }
                     html += '</td>';
-                    html += '<td><span class="badge bg-' + (u.status === 'TERSEDIA' ? 'success' : 'warning') + '">' + (u.status || 'Active') + '</span></td>';
+                    html += '<td><span class="badge ' + (u.status === 'TERSEDIA' ? 'badge-soft-green' : 'badge-soft-yellow') + '">' + (u.status || 'Active') + '</span></td>';
                     html += '<td>';
                     html += '<button class="btn btn-xs btn-outline-primary me-1" title="Edit Unit" onclick="openEditUnitModal(' + (u.id_inventory_unit || u.id) + ', \'' + (u.no_unit || '') + '\', ' + parseFloat(u.harga_sewa_bulanan || 0) + ', ' + (u.ku_harga_sewa ? parseFloat(u.ku_harga_sewa) : 'null') + ', ' + (u.is_spare ? 1 : 0) + ')"><i class="fas fa-pencil-alt"></i></button>';
                     html += '<button class="btn btn-xs btn-outline-danger" title="Hapus dari Kontrak" onclick="removeUnitFromContract(' + (u.id_inventory_unit || u.id) + ')"><i class="fas fa-times"></i></button>';

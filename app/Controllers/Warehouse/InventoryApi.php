@@ -17,17 +17,17 @@ class InventoryApi extends BaseController
         $tipe         = $this->request->getGet('tipe');
         $merk         = $this->request->getGet('merk');
 
-        // When tipe/merk filters are provided, query the legacy inventory_attachment table
-        // which stores attachment inventory with the attachment master table join.
+        // When tipe/merk filters are provided, query the inventory_attachments table
+        // with the attachment master table join.
         if ($tipe || $merk) {
             $db      = \Config\Database::connect();
-            $builder = $db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment as id, ia.sn_attachment,
-                          ia.lokasi_penyimpanan, ia.attachment_status as status,
-                          ia.kondisi_fisik, a.tipe, a.merk, a.model')
-                ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
-                ->where('ia.tipe_item', 'attachment')
-                ->where('ia.attachment_status', 'AVAILABLE');
+            $builder = $db->table('inventory_attachments ia')
+                ->select('ia.id as id, ia.serial_number as sn_attachment,
+                          ia.storage_location as lokasi_penyimpanan, ia.status,
+                          ia.physical_condition as kondisi_fisik, a.tipe, a.merk, a.model')
+                ->join('attachment a', 'ia.attachment_type_id = a.id_attachment', 'left')
+                ->where('ia.attachment_type_id IS NOT NULL')
+                ->where('ia.status', 'AVAILABLE');
 
             if ($tipe) {
                 $builder->where('a.tipe', $tipe);
@@ -69,10 +69,14 @@ class InventoryApi extends BaseController
             return $this->response->setJSON(['error' => 'Unit ID required']);
         }
 
-        $m = new InventoryAttachmentModel();
-        $battery = $m->getUnitBattery($unitId);
-        $charger = $m->getUnitCharger($unitId);
-            $attachment = $m->getUnitAttachment($unitId);
+        // Use correct models for each component type
+        $batteryModel = new InventoryBatteryModel();
+        $chargerModel = new InventoryChargerModel();
+        $attachmentModel = new InventoryAttachmentModel();
+        
+        $battery = $batteryModel->getUnitBattery($unitId);
+        $charger = $chargerModel->getUnitCharger($unitId);
+        $attachment = $attachmentModel->getUnitAttachment($unitId);
 
         return $this->response->setJSON([
             'unit_id' => $unitId,

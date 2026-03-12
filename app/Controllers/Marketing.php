@@ -398,31 +398,73 @@ class Marketing extends BaseDataTableController
             
             // Get attachment data (attachment, battery, charger)
             $attachmentSql = 'SELECT 
-                    ia.tipe_item,
-                    ia.attachment_id,
-                    ia.sn_attachment,
-                    ia.baterai_id,
-                    ia.sn_baterai,
-                    ia.charger_id,
-                    ia.sn_charger,
-                    ia.kondisi_fisik,
-                    ia.kelengkapan,
-                    ia.catatan_fisik,
-                    ia.lokasi_penyimpanan,
+                    "attachment" as tipe_item,
+                    ia.attachment_type_id as attachment_id,
+                    ia.serial_number as sn_attachment,
+                    NULL as baterai_id,
+                    NULL as sn_baterai,
+                    NULL as charger_id,
+                    NULL as sn_charger,
+                    ia.physical_condition as kondisi_fisik,
+                    ia.completeness as kelengkapan,
+                    ia.notes as catatan_fisik,
+                    ia.storage_location as lokasi_penyimpanan,
                     COALESCE(att.tipe, "") as attachment_name,
                     COALESCE(att.merk, "") as attachment_merk,
+                    "" as baterai_name,
+                    "" as baterai_merk,
+                    "" as charger_name,
+                    "" as charger_merk
+                FROM inventory_attachments ia
+                LEFT JOIN attachment att ON ia.attachment_type_id = att.id_attachment
+                WHERE ia.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    "battery" as tipe_item,
+                    NULL as attachment_id,
+                    NULL as sn_attachment,
+                    ib.battery_type_id as baterai_id,
+                    ib.serial_number as sn_baterai,
+                    NULL as charger_id,
+                    NULL as sn_charger,
+                    ib.physical_condition as kondisi_fisik,
+                    NULL as kelengkapan,
+                    ib.notes as catatan_fisik,
+                    ib.storage_location as lokasi_penyimpanan,
+                    "" as attachment_name,
+                    "" as attachment_merk,
                     COALESCE(bat.jenis_baterai, "") as baterai_name,
                     COALESCE(bat.merk_baterai, "") as baterai_merk,
+                    "" as charger_name,
+                    "" as charger_merk
+                FROM inventory_batteries ib
+                LEFT JOIN baterai bat ON ib.battery_type_id = bat.id
+                WHERE ib.inventory_unit_id = ?
+                UNION ALL
+                SELECT 
+                    "charger" as tipe_item,
+                    NULL as attachment_id,
+                    NULL as sn_attachment,
+                    NULL as baterai_id,
+                    NULL as sn_baterai,
+                    ic.charger_type_id as charger_id,
+                    ic.serial_number as sn_charger,
+                    ic.physical_condition as kondisi_fisik,
+                    NULL as kelengkapan,
+                    ic.notes as catatan_fisik,
+                    ic.storage_location as lokasi_penyimpanan,
+                    "" as attachment_name,
+                    "" as attachment_merk,
+                    "" as baterai_name,
+                    "" as baterai_merk,
                     COALESCE(chr.tipe_charger, "") as charger_name,
                     COALESCE(chr.merk_charger, "") as charger_merk
-                FROM inventory_attachment ia
-                LEFT JOIN attachment att ON ia.attachment_id = att.id_attachment
-                LEFT JOIN baterai bat ON ia.baterai_id = bat.id
-                LEFT JOIN charger chr ON ia.charger_id = chr.id_charger
-                WHERE ia.id_inventory_unit = ?
-                ORDER BY ia.tipe_item';
+                FROM inventory_chargers ic
+                LEFT JOIN charger chr ON ic.charger_type_id = chr.id_charger
+                WHERE ic.inventory_unit_id = ?
+                ORDER BY tipe_item';
                 
-            $attachmentResult = $db->query($attachmentSql, [$id]);
+            $attachmentResult = $db->query($attachmentSql, [$id, $id, $id]);
             $attachments = $attachmentResult->getResultArray();
             
             // Organize attachments by type
@@ -4190,9 +4232,9 @@ class Marketing extends BaseDataTableController
                      orig.no_unit as original_no_unit,
                      a2.tipe as att_tipe, a2.merk as att_merk, a2.model as att_model,
                      bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai,
-                     ia_bat.sn_baterai,
+                     ib.serial_number as sn_baterai,
                      chr.merk_charger, chr.tipe_charger,
-                     ia_chr.sn_charger')
+                     ic.serial_number as sn_charger')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = delivery_items.unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
@@ -4201,10 +4243,10 @@ class Marketing extends BaseDataTableController
             ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
             ->join('inventory_unit orig', 'orig.id_inventory_unit = ku.original_unit_id', 'left')
             ->join('attachment a2', 'a2.id_attachment = delivery_items.attachment_id', 'left')
-            ->join('inventory_attachment ia_bat', 'ia_bat.id_inventory_unit = iu.id_inventory_unit AND ia_bat.tipe_item = "battery"', 'left')
-            ->join('baterai bat', 'bat.id = ia_bat.baterai_id', 'left')
-            ->join('inventory_attachment ia_chr', 'ia_chr.id_inventory_unit = iu.id_inventory_unit AND ia_chr.tipe_item = "charger"', 'left')
-            ->join('charger chr', 'chr.id_charger = ia_chr.charger_id', 'left')
+            ->join('inventory_batteries ib', 'ib.inventory_unit_id = iu.id_inventory_unit', 'left')
+            ->join('baterai bat', 'bat.id = ib.battery_type_id', 'left')
+            ->join('inventory_chargers ic', 'ic.inventory_unit_id = iu.id_inventory_unit', 'left')
+            ->join('charger chr', 'chr.id_charger = ic.charger_type_id', 'left')
             ->where('delivery_items.di_id', $id)
             ->findAll();
 
