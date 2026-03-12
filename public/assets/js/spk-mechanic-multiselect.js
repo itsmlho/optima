@@ -20,7 +20,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
             stage: options.stage || 'persiapan_unit', // persiapan_unit, fabrikasi, painting, pdi
             maxMechanics: options.maxMechanics || 2,
             maxHelpers: options.maxHelpers || 2,
-            allowedRoles: options.allowedRoles || this.getDefaultRoles(options.stage),
+            departmentId: options.departmentId || null, // NEW: filter by department instead of role
             placeholder: options.placeholder || 'Select mechanics and helpers...',
             searchPlaceholder: options.searchPlaceholder || 'Search by name...',
             ...options
@@ -54,8 +54,16 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     async loadEmployees() {
         try {
-            // Use relative URL to avoid PHP template issues
-            const response = await fetch(`/optima/public/service/employees/by-roles?roles=${this.options.allowedRoles.join(',')}`, {
+            // NEW: Build URL with department filter instead of role filter
+            let apiUrl = `/optima/public/service/employees/by-roles`;
+            if (this.options.departmentId) {
+                apiUrl += `?department_id=${this.options.departmentId}`;
+                console.log(`🔍 Loading employees for department: ${this.options.departmentId}`);
+            } else {
+                console.log('🔍 Loading all workshop employees (no department filter)');
+            }
+            
+            const response = await fetch(apiUrl, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -82,7 +90,8 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
                     roleColor: this.getRoleColor(emp.staff_role)
                 }));
                 this.filteredEmployees = [...this.allEmployees];
-                console.log(`✅ Loaded ${this.allEmployees.length} employees for roles: ${this.options.allowedRoles.join(', ')}`);
+                const deptInfo = this.options.departmentId ? `department ${this.options.departmentId}` : 'all departments';
+                console.log(`✅ Loaded ${this.allEmployees.length} employees for ${deptInfo}`);
             } else {
                 console.error('❌ API Error:', data.message);
                 throw new Error(data.message || 'Failed to load employees');

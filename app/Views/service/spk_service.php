@@ -1024,10 +1024,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	// Global variable to store the current mechanic selector instance
 	let currentMechanicSelector = null;
+	let currentUnitDepartmentId = null; // Track selected unit's department
 	
-	// Initialize multi-mechanic selection based on stage
-	function initializeMechanicSelection(stage) {
-		console.log('🔧 Initializing mechanic selection for stage:', stage);
+	// Initialize multi-mechanic selection based on stage (NEW: department-based filtering)
+	function initializeMechanicSelection(stage, departmentId = null) {
+		console.log('🔧 Initializing mechanic selection for stage:', stage, 'Department:', departmentId);
 		
 		// Check if container exists
 		const container = document.getElementById('mechanicSelectionContainer');
@@ -1048,32 +1049,28 @@ document.addEventListener('DOMContentLoaded', () => {
 			currentMechanicSelector.reset();
 		}
 		
-		// Stage-specific configuration
+		// Stage-specific configuration (UPDATED: removed allowedRoles, using departmentId)
 		const stageConfig = {
 			'persiapan_unit': {
 				stage: 'persiapan_unit',
-				allowedRoles: ['MECHANIC_UNIT_PREP', 'HELPER'],
 				maxMechanics: 2,
 				maxHelpers: 2,
 				placeholder: 'Select unit preparation team...'
 			},
 			'fabrikasi': {
 				stage: 'fabrikasi',
-				allowedRoles: ['MECHANIC_FABRICATION', 'HELPER'],
 				maxMechanics: 2,
 				maxHelpers: 2,
 				placeholder: 'Select fabrication team...'
 			},
 			'painting': {
 				stage: 'painting',
-				allowedRoles: ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'HELPER'],
 				maxMechanics: 2,
 				maxHelpers: 2,
 				placeholder: 'Select painting team...'
 			},
 			'pdi': {
 				stage: 'pdi',
-				allowedRoles: ['FOREMAN', 'SUPERVISOR', 'HELPER'],
 				maxMechanics: 2, // For foreman/supervisor
 				maxHelpers: 1,
 				placeholder: 'Select PDI inspection team...'
@@ -1081,6 +1078,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 		
 		const config = stageConfig[stage] || stageConfig['persiapan_unit'];
+		
+		// Add department filter (NEW: filter by unit's department)
+		if (departmentId) {
+			config.departmentId = departmentId;
+			currentUnitDepartmentId = departmentId;
+		}
 		
 		// Check if the class is available
 		if (typeof window.SPKMechanicMultiSelect === 'undefined') {
@@ -1702,9 +1705,12 @@ document.addEventListener('DOMContentLoaded', () => {
 					console.log(`Checking unit ${unitId} for existing components...`);
 					console.log(`Department: ${departemenId} (${departemenName})`);
 					
-					const isElectric = departemenId === '2';
-					const isGasoline = departemenName === 'GASOLINE';
-					const isDiesel = departemenName === 'DIESEL';
+				// Re-initialize mechanic selector with unit's department
+				if (departemenId && currentApprovalStage) {
+					console.log(`🔄 Re-initializing mechanic selector for department ${departemenId} (${departemenName})`);
+					initializeMechanicSelection(currentApprovalStage, departemenId);
+				}
+				
 					const isNonElectric = isGasoline || isDiesel;
 					
 					console.log(`DEBUG: Unit ${unitId} - Department: ${departemenName} (ID: ${departemenId})`);
