@@ -365,7 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
 				{ 
 					data: 'jenis_spk',
 					render: function(data) {
-						return `<span class="badge bg-dark">${data || 'UNIT'}</span>`;
+						const label = (data || 'UNIT').toUpperCase();
+						const map = {
+							'UNIT': 'badge-soft-blue',
+							'ATTACHMENT': 'badge-soft-purple',
+							'SERVICE': 'badge-soft-green'
+						};
+						const cls = map[label] || 'badge-soft-gray';
+						return `<span class="badge ${cls}">${label}</span>`;
 					}
 				},
 				{ 
@@ -386,15 +393,15 @@ document.addEventListener('DOMContentLoaded', () => {
 					data: 'status',
 					render: function(data) {
 						const statusMap = {
-							'SUBMITTED': 'secondary',
-							'IN_PROGRESS': 'info',
-							'READY': 'success',
-							'COMPLETED': 'primary',
-							'DELIVERED': 'primary',
-							'CANCELLED': 'danger'
+							'SUBMITTED': 'badge-soft-gray',
+							'IN_PROGRESS': 'badge-soft-cyan',
+							'READY': 'badge-soft-green',
+							'COMPLETED': 'badge-soft-blue',
+							'DELIVERED': 'badge-soft-blue',
+							'CANCELLED': 'badge-soft-red'
 						};
-						const badgeClass = statusMap[data] || 'secondary';
-						return `<span class="badge bg-${badgeClass}">${data}</span>`;
+						const badgeClass = statusMap[data] || 'badge-soft-gray';
+						return `<span class="badge ${badgeClass}">${data || 'N/A'}</span>`;
 					}
 				},
 				{ data: 'jumlah_unit', defaultContent: '-' },
@@ -4111,7 +4118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="card-body">
 								<h6 class="card-title">Informasi SPK</h6>
 								<p><strong>Nomor SPK:</strong> ${spk.nomor_spk || '-'}</p>
-								<p><strong>Status:</strong> <span class="badge bg-${getStatusColor(spk.status)}">${spk.status || '-'}</span></p>
+								<p><strong>Status:</strong> <span class="badge ${getStatusBadgeClass(spk.status)}">${spk.status || '-'}</span></p>
 								<p><strong>Rollback Stage:</strong> ${getStageDisplayName(stage)}</p>
 					`;
 					
@@ -4273,16 +4280,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	});
 	
-	// Helper function to get status color
-	function getStatusColor(status) {
-		const colors = {
-			'DRAFT': 'secondary',
-			'IN_PROGRESS': 'warning',
-			'READY': 'info',
-			'COMPLETED': 'success',
-			'DELIVERED': 'primary'
+	// Helper function to get status badge class (soft badges)
+	function getStatusBadgeClass(status) {
+		const map = {
+			'DRAFT': 'badge-soft-gray',
+			'SUBMITTED': 'badge-soft-gray',
+			'IN_PROGRESS': 'badge-soft-cyan',
+			'READY': 'badge-soft-green',
+			'COMPLETED': 'badge-soft-blue',
+			'DELIVERED': 'badge-soft-blue',
+			'CANCELLED': 'badge-soft-red'
 		};
-		return colors[status] || 'secondary';
+		return map[status] || 'badge-soft-gray';
 	}
 	
 	// Check rollback availability when opening approval modal

@@ -10643,5 +10643,185 @@ body.sidebar-collapsed .user-name {
 .sparepart-usage-page .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ========================================================================
+   GLOBAL UTILITIES (v2.1 - March 2026)
+   Reusable patterns used across ALL OPTIMA modules.
+   See docs/CSS_VISUAL_STANDARDS.md § "Global Utility Patterns" for usage.
+   ======================================================================== */
+
+/* ---- Page Title / Subtitle (standalone, outside card) ---- */
+.page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.page-subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+/* ---- Card-Table (card containing a data table) ---- */
+/* Usage: add class "card-table" alongside "card" */
+.card-table > .card-header {
+    background-color: #f8f9fa; /* = bg-light */
+}
+
+.card-table > .card-body {
+    padding: 0;
+}
+
+.card-table .table {
+    margin-bottom: 0;
+}
+
+/* ---- Filter Card ---- */
+.filter-card > .card-header {
+    background-color: #f8f9fa;
+    padding: 0.5rem 1rem;
+}
+
+.filter-card > .card-header h6 {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* ---- Toolbar (action buttons row, auto-wraps on mobile) ---- */
+.toolbar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ---- Code Badge (monospace numbers: contracts, invoices, WO, units) ---- */
+.code-badge {
+    font-family: var(--bs-font-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    font-size: 0.8rem;
+    background: #e7f1ff;
+    color: #084298;
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+/* ---- Chip / Tag (small inline labels: types, source, model filters) ---- */
+.chip {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #e9ecef;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.chip-blue   { background: #e7f1ff; color: #084298; }
+.chip-green  { background: #d1e7dd; color: #0a3622; }
+.chip-yellow { background: #fff3cd; color: #664d03; }
+.chip-red    { background: #f8d7da; color: #58151c; }
+.chip-gray   { background: #e9ecef; color: #495057; }
+.chip-cyan   { background: #cff4fc; color: #055160; }
+.chip-orange { background: #ffe5d0; color: #653208; }
+.chip-purple { background: #e0cffc; color: #59359a; }
+
+/* ---- Table Compact (for modal / detail panel tables) ---- */
+.table-compact td,
+.table-compact th {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+}
+
+/* ---- Table Empty State ---- */
+.table-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6c757d;
+}
+
+.table-empty-state i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    opacity: 0.4;
+}
+
+/* ---- Responsive toolbar ---- */
+@media (max-width: 576px) {
+    .toolbar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .toolbar .btn {
+        flex: 0 0 auto;
+    }
+}
+
+/* ========== WAREHOUSE - PO VERIFICATION VIEWS ========== */
+/* Shared styles for po_unit.php, po_attachment.php, po_sparepart.php, po_verification.php */
+
+.po-group-header {
+    cursor: pointer;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.75rem 1.25rem;
+    transition: background-color 0.2s ease;
+}
+.po-group-header:hover { background-color: #e9ecef; }
+.po-group-header .arrow-icon { transition: transform 0.3s ease; }
+.po-group-header.open .arrow-icon { transform: rotate(180deg); }
+
+.unit-child-item,
+.item-child-item {
+    display: none;
+    padding-left: 2.5rem;
+    border-left: 3px solid #dee2e6;
+}
+.unit-child-item:hover,
+.item-child-item:hover { border-left-color: #0d6efd; }
+
+.list-group-item.active {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+    color: #212529;
+}
+.list-group-item.active .text-muted { color: #6c757d !important; }
+
+.verification-component {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    border-left: 5px solid #6c757d;
+}
+.verification-component[data-status="sesuai"]       { border-left-color: #198754; background-color: #f6fff8; }
+.verification-component[data-status="tidak-sesuai"] { border-left-color: #dc3545; background-color: #fff5f5; }
+.component-header {
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+.component-body { padding: 1.25rem; }
+.note-input-group,
+.sn-input-group    { display: none; margin-top: 1rem; }
+.btn-verify-action.active { background-color: #e9ecef; box-shadow: inset 0 2px 4px rgba(0,0,0,.1); }
+
+/* PO tab pane min-height */
+.tab-pane { min-height: 500px; }
+
+/* po_verification.php progress bar */
+.po-progress-bar { height: 22px; font-size: 0.75rem; background-color: #e9ecef; border-radius: 10px; }
+.po-progress-bar .progress-bar { font-weight: 600; background-color: #6c757d !important; color: #ffffff; }
+
+/* ========================================================================
    PAGE-SPECIFIC STYLES (DEPRECATED - REMOVE GRADUALLY)
    ======================================================================== */

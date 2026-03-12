@@ -2,11 +2,11 @@
 <div class="modal fade" id="sparepartValidationModal" tabindex="-1" aria-labelledby="sparepartValidationModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-black">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title" id="sparepartValidationModalLabel">
                     <i class="fas fa-tools me-2"></i>Validasi Sparepart - WO: <span id="sparepart-wo-number">Loading...</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-black" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
 <!-- Custom CSS untuk Modal Validasi -->
@@ -111,7 +111,7 @@
                 <ul class="nav nav-tabs" id="sparepartTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="used-sparepart-tab" data-bs-toggle="tab" data-bs-target="#used-sparepart" type="button" role="tab">
-                            <i class="fas fa-check-circle me-1"></i>Validasi Sparepart <span id="used-count" class="badge bg-secondary">0</span>
+                            <i class="fas fa-check-circle me-1"></i>Validasi Sparepart <span id="used-count" class="badge badge-soft-gray">0</span>
                         </button>
                     </li>
                 </ul>
@@ -330,16 +330,16 @@ $(document).ready(function() {
             let itemType = item.item_type || 'sparepart';
             let typeBadge = '';
             if (itemType === 'tool') {
-                typeBadge = '<span class="badge bg-secondary" style="font-size: 10px;">🔧 Tool</span>';
+                typeBadge = '<span class="badge badge-soft-gray" style="font-size: 10px;">🔧 Tool</span>';
             } else {
-                typeBadge = '<span class="badge bg-primary" style="font-size: 10px;">⚙ Part</span>';
+                typeBadge = '<span class="badge badge-soft-blue" style="font-size: 10px;">⚙ Part</span>';
             }
             
             // Source badge
             let isFromWarehouse = item.is_from_warehouse !== undefined ? parseInt(item.is_from_warehouse) : 1;
             let sourceBadge = '';
             if (isFromWarehouse === 0) {
-                sourceBadge = '<br><span class="badge bg-warning text-dark mt-1" style="font-size: 9px;">♻ Non-WH</span>';
+                sourceBadge = '<br><span class="badge badge-soft-yellow mt-1" style="font-size: 9px;">♻ Non-WH</span>';
             }
             
             let row = `
@@ -405,10 +405,10 @@ $(document).ready(function() {
      */
     function getStatusBadge(status) {
         switch(status) {
-            case 'sesuai': return '<span class="badge bg-success">✅ Sesuai</span>';
-            case 'kurang': return '<span class="badge bg-warning">⚠️ Kurang</span>';
-            case 'lebih': return '<span class="badge bg-info">📈 Lebih</span>';
-            default: return '<span class="badge bg-secondary">❓ Unknown</span>';
+            case 'sesuai': return '<span class="badge badge-soft-green">✅ Sesuai</span>';
+            case 'kurang': return '<span class="badge badge-soft-yellow">⚠️ Kurang</span>';
+            case 'lebih': return '<span class="badge badge-soft-cyan">📈 Lebih</span>';
+            default: return '<span class="badge badge-soft-gray">❓ Unknown</span>';
         }
     }
 
@@ -679,10 +679,10 @@ $(document).ready(function() {
                                id="warehouse-value-${index}" 
                                value="${isFromWarehouse}">
                         <label class="form-check-label small" for="warehouse-check-${index}">
-                            <span class="badge bg-success warehouse-badge-${index} ${warehouseBadgeClass}">
+                            <span class="badge badge-soft-green warehouse-badge-${index} ${warehouseBadgeClass}">
                                 <i class="fas fa-warehouse"></i> WH
                             </span>
-                            <span class="badge bg-warning text-dark non-warehouse-badge-${index} ${nonWarehouseBadgeClass}">
+                            <span class="badge badge-soft-yellow non-warehouse-badge-${index} ${nonWarehouseBadgeClass}">
                                 <i class="fas fa-recycle"></i> Bekas
                             </span>
                         </label>
