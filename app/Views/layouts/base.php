@@ -49,8 +49,8 @@ $currentLang = service('request')->getLocale();
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
     
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Chart.js (deferred for performance) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     
     <!-- Flatpickr CSS -->
     <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
@@ -801,23 +801,23 @@ $currentLang = service('request')->getLocale();
         LanguageHelper.setLanguage('<?= service('request')->getLocale() ?>');
     }
     </script>
-    <!-- Vendor: DataTables (loaded deferred; initiate only where needed) -->
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <!-- Vendor: DataTables (loaded deferred for better performance) -->
+    <script defer src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script defer src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script defer src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script defer src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
     <!-- Flatpickr -->
     <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     
-    <!-- Moment.js (required for daterangepicker) -->
-    <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
-    
-    <!-- Date Range Picker JS -->
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-    
-    <!-- Global Date Range Picker Script (loaded after daterangepicker) -->
-    <script src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= time() ?>"></script>
+    <!-- Moment.js (required for daterangepicker) - deferred for performance -->
+    <script defer src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+
+    <!-- Date Range Picker JS - deferred -->
+    <script defer src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+    <!-- Global Date Range Picker Script - deferred -->
+    <script defer src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= time() ?>"></script>
     
     <!-- DataTable Date Filter Mixin -->
     <script src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
@@ -830,11 +830,11 @@ $currentLang = service('request')->getLocale();
     <!-- noUiSlider -->
     <script defer src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
     
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
-    
-    <!-- Select2 -->
-    <script src="<?= base_url('assets/js/select2.min.js') ?>"></script>
+    <!-- SweetAlert2 (deferred) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Select2 (deferred) -->
+    <script defer src="<?= base_url('assets/js/select2.min.js') ?>"></script>
     
     <!-- Global Consistent Sorting Headers JavaScript -->
     <script>
