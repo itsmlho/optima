@@ -86,8 +86,8 @@ $currentLang = service('request')->getLocale();
     <!-- Material Symbols Rounded (sidebar icons) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" />
 
-    <!-- Sidebar Scroll Management -->
-    <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
+    <!-- Sidebar Scroll Management (deferred) -->
+    <script defer src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
    
     <!-- OPTIMA Command Palette Search Button — Header Styles -->
     <style>
@@ -793,8 +793,8 @@ $currentLang = service('request')->getLocale();
     <!-- Bootstrap Bundle -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- OPTIMA Language Helper for Multilingual Support -->
-    <script src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= time() ?>"></script>
+    <!-- OPTIMA Language Helper for Multilingual Support (deferred) -->
+    <script defer src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= time() ?>"></script>
     <script>
     // Initialize current language from session
     if (typeof LanguageHelper !== 'undefined') {
@@ -819,11 +819,11 @@ $currentLang = service('request')->getLocale();
     <!-- Global Date Range Picker Script - deferred -->
     <script defer src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= time() ?>"></script>
     
-    <!-- DataTable Date Filter Mixin -->
-    <script src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- Page Date Filter Helper (Universal API for all pages) -->
-    <script src="<?= base_url('assets/js/page-date-filter-helper.js') ?>?v=<?= time() ?>"></script>
+    <!-- DataTable Date Filter Mixin (deferred) -->
+    <script defer src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- Page Date Filter Helper (deferred) -->
+    <script defer src="<?= base_url('assets/js/page-date-filter-helper.js') ?>?v=<?= time() ?>"></script>
     
     <!-- Pickr -->
     <script defer src="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/pickr.min.js"></script>
@@ -914,20 +914,20 @@ $currentLang = service('request')->getLocale();
     });
     </script>
     
-    <!-- Notification Sound Generator -->
-    <script src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- OPTIMA SPA Main System (Single File) -->
-    <script src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- Global Permission System -->
-    <script src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- UI Helpers (Select2, Toasts, Button States, Validation) -->
-    <script src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- OPTIMA Sidebar CodingNepal - Floating, expand/collapse -->
-    <script src="<?= base_url('assets/js/sidebar-codingnepal.js') ?>?v=<?= time() ?>"></script>
+    <!-- Notification Sound Generator (deferred) -->
+    <script defer src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- OPTIMA SPA Main System (deferred) -->
+    <script defer src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- Global Permission System (deferred) -->
+    <script defer src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- UI Helpers (deferred) -->
+    <script defer src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- OPTIMA Sidebar CodingNepal (deferred) -->
+    <script defer src="<?= base_url('assets/js/sidebar-codingnepal.js') ?>?v=<?= time() ?>"></script>
     
     <!-- Global JavaScript Variables -->
     <script>
@@ -1365,7 +1365,7 @@ $currentLang = service('request')->getLocale();
     <!-- ==================================================================== -->
     <!-- LIGHTWEIGHT POLLING NOTIFICATION SYSTEM -->
     <!-- ==================================================================== -->
-    <script src="<?= base_url('assets/js/notification-lightweight.js') ?>"></script>
+    <script defer src="<?= base_url('assets/js/notification-lightweight.js') ?>"></script>
 
     <!-- Metis Dashboard Style Sidebar Toggle (disabled for cn-sidebar-layout / CodingNepal sidebar) -->
     <script>
@@ -1514,8 +1514,8 @@ $currentLang = service('request')->getLocale();
         }
     </script>
     
-    <!-- OPTIMA DataTable Configuration - Centralized Table Behavior -->
-    <script src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= time() ?>"></script>
+    <!-- OPTIMA DataTable Configuration - Centralized Table Behavior (deferred) -->
+    <script defer src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= time() ?>"></script>
 
     <!-- ============================================================
          OPTIMA COMMAND PALETTE (Ctrl+K / ⌘K)

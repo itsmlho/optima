@@ -204,56 +204,45 @@ class CustomerManagementController extends BaseController
                 $builder->limit($length, $start);
             }
 
-            // Clone builder for getting IDs (without limit)
-            $idsBuilder = clone $builder;
-            $customerIds = array_column($idsBuilder->select('id')->get()->getResultArray(), 'id');
+            // Get customers in a single query
+            $customers = $builder->get()->getResultArray();
 
-            // If no customers, return empty
-            if (empty($customerIds)) {
-                $customers = [];
-            } else {
-                // Batch query: Get all counts in ONE query using subqueries
+            // Extract IDs from results for batch count queries
+            $customerIds = array_column($customers, 'id');
+
+            if (!empty($customerIds)) {
                 $customerIdsStr = implode(',', array_map('intval', $customerIds));
 
-                // Get locations count per customer
-                $locationsQuery = "SELECT customer_id, COUNT(*) as cnt FROM customer_locations WHERE customer_id IN ($customerIdsStr) GROUP BY customer_id";
-                $locationsResult = $this->db->query($locationsQuery)->getResultArray();
+                // Batch: locations count per customer
+                $locationsResult = $this->db->query("SELECT customer_id, COUNT(*) as cnt FROM customer_locations WHERE customer_id IN ($customerIdsStr) GROUP BY customer_id")->getResultArray();
                 $locationsByCustomer = array_column($locationsResult, 'cnt', 'customer_id');
 
-                // Get contracts count (not cancelled) per customer
-                $contractsQuery = "SELECT customer_id, COUNT(*) as cnt FROM kontrak WHERE customer_id IN ($customerIdsStr) AND status != 'CANCELLED' GROUP BY customer_id";
-                $contractsResult = $this->db->query($contractsQuery)->getResultArray();
+                // Batch: contracts count (not cancelled) per customer
+                $contractsResult = $this->db->query("SELECT customer_id, COUNT(*) as cnt FROM kontrak WHERE customer_id IN ($customerIdsStr) AND status != 'CANCELLED' GROUP BY customer_id")->getResultArray();
                 $contractsByCustomer = array_column($contractsResult, 'cnt', 'customer_id');
 
-                // Get active contracts count per customer
-                $activeContractsQuery = "SELECT customer_id, COUNT(*) as cnt FROM kontrak WHERE customer_id IN ($customerIdsStr) AND status = 'ACTIVE' GROUP BY customer_id";
-                $activeContractsResult = $this->db->query($activeContractsQuery)->getResultArray();
+                // Batch: active contracts count per customer
+                $activeContractsResult = $this->db->query("SELECT customer_id, COUNT(*) as cnt FROM kontrak WHERE customer_id IN ($customerIdsStr) AND status = 'ACTIVE' GROUP BY customer_id")->getResultArray();
                 $activeContractsByCustomer = array_column($activeContractsResult, 'cnt', 'customer_id');
 
-                // Get units count via kontrak_unit junction table per customer
-                $unitsQuery = "SELECT k.customer_id, COUNT(*) as cnt
+                // Batch: units count via kontrak_unit junction table per customer
+                $unitsResult = $this->db->query("SELECT k.customer_id, COUNT(*) as cnt
                     FROM kontrak_unit ku
                     JOIN kontrak k ON k.id = ku.kontrak_id
                     WHERE k.customer_id IN ($customerIdsStr)
                     AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE')
                     AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
-                    GROUP BY k.customer_id";
-                $unitsResult = $this->db->query($unitsQuery)->getResultArray();
+                    GROUP BY k.customer_id")->getResultArray();
                 $unitsByCustomer = array_column($unitsResult, 'cnt', 'customer_id');
 
-                // Get PO count per customer
-                $poQuery = "SELECT customer_id, COUNT(*) as cnt FROM kontrak
+                // Batch: PO count per customer
+                $poResult = $this->db->query("SELECT customer_id, COUNT(*) as cnt FROM kontrak
                     WHERE customer_id IN ($customerIdsStr)
                     AND status != 'CANCELLED'
                     AND customer_po_number IS NOT NULL
                     AND customer_po_number != ''
-                    GROUP BY customer_id";
-                $poResult = $this->db->query($poQuery)->getResultArray();
+                    GROUP BY customer_id")->getResultArray();
                 $poByCustomer = array_column($poResult, 'cnt', 'customer_id');
-
-                // Apply pagination and get customers
-                $builder->limit($length, $start);
-                $customers = $builder->get()->getResultArray();
 
                 // Map counts to customers
                 foreach ($customers as &$customer) {
@@ -264,7 +253,6 @@ class CustomerManagementController extends BaseController
                     $customer['total_units'] = $unitsByCustomer[$cid] ?? 0;
                     $customer['po_count'] = $poByCustomer[$cid] ?? 0;
 
-                    // Create locations summary with contract units
                     if ($customer['locations_count'] > 0) {
                         $unitText = $customer['total_units'] > 0 ? ', ' . $customer['total_units'] . ' units' : '';
                         $customer['locations_summary'] = $customer['locations_count'] . ' location' .
@@ -1245,13 +1233,6 @@ class CustomerManagementController extends BaseController
             // Check if this is the only location
             $locationCount = $this->locationModel->where('customer_id', $location['customer_id'])->countAllResults();
             
-            if ($locationCount <= 1) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Cannot delete the only location. Customer must have at least one location.'
-                ]);
-            }
-            
             // Check if location has active units via kontrak_unit
             $unitsAtLocation = $this->db->table('kontrak_unit ku')
                 ->select('ku.id, iu.no_unit, mu.merk_unit, mu.model_unit, iu.serial_number, kp.kapasitas_unit, k.no_kontrak')
@@ -1264,12 +1245,26 @@ class CustomerManagementController extends BaseController
                 ->get()
                 ->getResultArray();
             
+            // If has units, always show unit warning (regardless of location count)
             if (!empty($unitsAtLocation)) {
+                $message = 'Lokasi ini masih memiliki ' . count($unitsAtLocation) . ' unit aktif. Silakan hapus/pindahkan unit terlebih dahulu dari halaman kontrak.';
+                if ($locationCount <= 1) {
+                    $message = 'Lokasi ini adalah satu-satunya lokasi customer dan masih memiliki ' . count($unitsAtLocation) . ' unit aktif. Silakan hapus/pindahkan unit terlebih dahulu dari halaman kontrak.';
+                }
                 return $this->response->setJSON([
                     'success' => false,
                     'has_units' => true,
-                    'message' => 'Lokasi ini masih memiliki ' . count($unitsAtLocation) . ' unit aktif. Silakan hapus/pindahkan unit terlebih dahulu dari halaman kontrak.',
+                    'is_only_location' => $locationCount <= 1,
+                    'message' => $message,
                     'units' => $unitsAtLocation
+                ]);
+            }
+            
+            // If no units but only location, block delete
+            if ($locationCount <= 1) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tidak dapat menghapus lokasi terakhir. Customer harus memiliki minimal satu lokasi.'
                 ]);
             }
             

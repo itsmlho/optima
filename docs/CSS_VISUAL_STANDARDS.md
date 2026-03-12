@@ -610,6 +610,185 @@ $can_export = can_export('marketing');
 
 ---
 
+## 🧩 Global Utility Patterns (v2.1)
+
+> Pola reusable yang wajib digunakan di semua modul mulai March 2026.  
+> Semua class tersedia di `optima-pro.css` (bagian GLOBAL UTILITIES).
+
+---
+
+### Page Title & Subtitle
+
+Untuk page header yang berdiri di **luar** card (breadcrumb / standalone title sebelum card grid):
+
+```html
+<div class="mb-4">
+    <h4 class="page-title">
+        <i class="fas fa-truck me-2 text-primary"></i>Surat Jalan
+    </h4>
+    <p class="page-subtitle">Manage perpindahan unit antar workshop</p>
+</div>
+```
+
+```css
+/* di optima-pro.css */
+.page-title   { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; color: #212529; }
+.page-subtitle{ font-size: 0.875rem; color: #6c757d; margin-bottom: 0; }
+```
+
+---
+
+### Card-Table Pattern
+
+Untuk card yang isinya **tabel**. Menggabungkan `card-body p-0`, `table-responsive`, `table mb-0`, `thead table-light`:
+
+```html
+<div class="card card-table">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list me-2 text-primary"></i>Title
+            </h5>
+            <p class="text-muted small mb-0">Subtitle / description</p>
+        </div>
+        <div class="d-flex gap-2"><!-- action buttons --></div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Column</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+### Filter Card Pattern
+
+```html
+<div class="card filter-card mb-3">
+    <div class="card-header bg-light py-2">
+        <h6 class="mb-0">
+            <i class="fas fa-filter me-2 text-primary"></i>Filter
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">
+                    <i class="fas fa-circle-check text-success me-1"></i>Status
+                </label>
+                <select class="form-select">
+                    <option value="">All Status</option>
+                    <option value="ACTIVE">Active</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+### Toolbar Pattern
+
+Untuk baris tombol aksi (Export, Add, Refresh) di card-header agar **auto-wrap** di mobile:
+
+```html
+<div class="toolbar">
+    <button class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-sync me-1"></i>Refresh
+    </button>
+    <button class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel me-1"></i>Export
+    </button>
+    <button class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i>Add
+    </button>
+</div>
+```
+
+```css
+/* di optima-pro.css */
+.toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+```
+
+---
+
+### Mono-label / Code-badge
+
+Untuk nomor penting (kontrak, invoice, WO, unit, customer code):
+
+```html
+<!-- Dalam tabel -->
+<span class="code-badge">WFT/2026/001</span>
+
+<!-- Dalam badge (tabel row atau detail card) -->
+<span class="badge badge-soft-blue font-monospace">CUST-0001</span>
+```
+
+```css
+/* di optima-pro.css */
+.code-badge { font-family: var(--bs-font-monospace); font-size: 0.8rem;
+              background: #e7f1ff; color: #084298; padding: 0.2em 0.5em;
+              border-radius: 4px; white-space: nowrap; }
+```
+
+---
+
+### Chip / Tag
+
+Untuk label kecil (tipe, sumber, model, tag) di detail view:
+
+```html
+<!-- Chip default -->
+<span class="chip">Forklift</span>
+
+<!-- Chip dengan warna soft -->
+<span class="chip chip-blue">Attachment</span>
+<span class="chip chip-green">Warehouse</span>
+<span class="chip chip-yellow">Bekas</span>
+<span class="chip chip-gray">Tool</span>
+```
+
+```css
+/* di optima-pro.css */
+.chip         { display:inline-block; padding:0.25em 0.6em; border-radius:20px;
+                font-size:0.78rem; font-weight:500; background:#e9ecef; color:#495057; }
+.chip-blue    { background:#e7f1ff; color:#084298; }
+.chip-green   { background:#d1e7dd; color:#0a3622; }
+.chip-yellow  { background:#fff3cd; color:#664d03; }
+.chip-red     { background:#f8d7da; color:#58151c; }
+.chip-gray    { background:#e9ecef; color:#495057; }
+.chip-cyan    { background:#cff4fc; color:#055160; }
+.chip-orange  { background:#ffe5d0; color:#653208; }
+```
+
+---
+
+### Table Compact
+
+Untuk tabel di dalam modal atau detail panel (font lebih kecil, padding lebih padat):
+
+```html
+<table class="table table-sm table-compact mb-0">
+    <thead class="table-light"><tr><th>...</th></tr></thead>
+    <tbody>...</tbody>
+</table>
+```
+
+```css
+/* di optima-pro.css */
+.table-compact td, .table-compact th { font-size: 0.8rem; padding: 0.3rem 0.5rem; }
+```
+
+---
+
 ## 📝 Typography
 
 ### Font Weights
@@ -734,14 +913,25 @@ COUNTERS:
 ### CSS Class Quick Reference
 ```
 LAYOUT:
-.card-header           → Card header container
+.card-header bg-light  → Card header (standar OPTIMA)
 .card-body p-0         → Table card body (no padding)
 .table-responsive      → Responsive table wrapper
+.card-table            → Card yang isinya tabel (utility pola)
+.filter-card           → Card filter/search section
+.toolbar               → Baris tombol aksi (auto-wrap di mobile)
+.page-title            → Judul halaman standalone
+.page-subtitle         → Subtitle/deskripsi halaman
 
 TABLE:
 .table-striped         → Striped rows
 .table-hover           → Hover effect
 .table-light           → Light header background
+.table-compact         → Compact tabel (modal/detail panel)
+
+TEXT & LABELS:
+.code-badge            → Nomor penting (kontrak, invoice, WO) - monospace
+.chip                  → Label/tag kecil (neutral)
+.chip-blue/green/etc.  → Label/tag dengan warna soft
 
 TEXT:
 .text-muted            → Gray supporting text
@@ -797,11 +987,14 @@ Gunakan checklist ini saat mengupdate atau membuat module baru:
 ### ✅ Page Structure
 - [ ] Module documentation comment di atas file (dengan badge reference)
 - [ ] Permission checks (can_view, can_create, can_edit, can_delete, can_export)
-- [ ] Statistics cards (jika applicable)
-- [ ] Filter card (jika ada filtering)
-- [ ] Page header INSIDE card-header (bukan standalone)
-- [ ] Page title dengan icon Bootstrap (bi-*)
+- [ ] Statistics cards pakai `stat-card bg-*-soft` (jika applicable)
+- [ ] Filter pakai `filter-card` pattern (jika ada filtering)
+- [ ] Page header INSIDE card-header (bukan standalone), atau pakai `.page-title` + `.page-subtitle`
+- [ ] Page title dengan icon Font Awesome / Bootstrap
 - [ ] Subtitle dengan user tip
+- [ ] Toolbar aksi (Export, Add, Refresh) pakai `.toolbar` di card-header kanan
+- [ ] Nomor penting pakai `.code-badge` atau `badge-soft-blue font-monospace`
+- [ ] Label/tag pakai `.chip .chip-*` (bukan inline badge generik)
 
 ### ✅ Badge Implementation
 - [ ] Semua status badges menggunakan `badge-soft-*`
@@ -965,6 +1158,17 @@ DO NOT:
 
 ---
 
-**Last Updated:** March 11, 2026  
+**Last Updated:** March 12, 2026  
 **Maintained by:** Development Team  
-**Questions?** Refer to `/memories/optima-badge-standards.md` for quick reference
+**Questions?** Refer to `docs/BADGE_STANDARDS.md` for badge quick reference
+
+---
+
+## 🗺️ Module Progress
+
+Progress implementasi standar ini tersimpan di `docs/CURSOR_AI_WORKFLOW.md`  
+bagian **"Progress Tambahan (Seluruh Web)"**.
+
+Cek tabel tersebut untuk status tiap halaman:
+- ✅ DONE — sudah sesuai standar
+- ⏳ TODO — belum disentuh / masih punya `badge bg-*` atau inline style

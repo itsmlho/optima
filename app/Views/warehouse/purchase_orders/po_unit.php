@@ -1,93 +1,13 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+/**
+ * PO Unit Verification - Warehouse
+ * BADGE/CARD: Optima badge-soft-*; modal-header bg-light; styles in optima-pro.css (WAREHOUSE - PO VERIFICATION VIEWS).
+ */
+?>
 <?= $this->section('css') ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-<style>
-    /* General Layout */
-    .table-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    .modal-header {
-        background-color: #343a40; /* Dark, professional header */
-        color: white;
-        border-radius: 15px 15px 0 0;
-    }
-    
-    /* PO List (Left Panel) */
-    .po-group-header {
-        cursor: pointer;
-        background-color: #f8f9fa; /* Light grey for group headers */
-        border-bottom: 1px solid #e9ecef;
-        padding: 0.75rem 1.25rem;
-        transition: background-color 0.2s ease;
-    }
-    .po-group-header:hover {
-        background-color: #e9ecef;
-    }
-    .po-group-header .arrow-icon {
-        transition: transform 0.3s ease;
-    }
-    .po-group-header.open .arrow-icon {
-        transform: rotate(180deg);
-    }
-    .unit-child-item {
-        display: none;
-        padding-left: 2.5rem;
-        border-left: 3px solid #dee2e6; /* Neutral border */
-    }
-    .unit-child-item:hover {
-        border-left-color: #0d6efd; /* Blue accent on hover */
-    }
-    .list-group-item.active {
-        background-color: #e9ecef; /* Consistent light grey for active item */
-        border-color: #dee2e6;
-        color: #212529;
-    }
-    .list-group-item.active .text-muted {
-        color: #6c757d !important;
-    }
-
-    /* New Elegant Modal Styles */
-    .verification-component {
-        border: 1px solid #dee2e6;
-        border-radius: .5rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-        overflow: hidden;
-        border-left: 5px solid #6c757d; /* Default neutral state */
-    }
-    .verification-component[data-status="sesuai"] {
-        border-left-color: #198754;
-        background-color: #f6fff8;
-    }
-    .verification-component[data-status="tidak-sesuai"] {
-        border-left-color: #dc3545;
-        background-color: #fff5f5;
-    }
-    .component-header {
-        padding: .75rem 1.25rem;
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-    }
-    .component-body {
-        padding: 1.25rem;
-    }
-    .spec-details {
-        font-size: .875rem;
-        color: #495057;
-    }
-    .note-input-group, .sn-input-group {
-        display: none; /* Hidden by default */
-        margin-top: 1rem;
-    }
-    .btn-verify-action.active {
-        background-color: #e9ecef;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,.1);
-    }
-</style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -95,7 +15,7 @@
 <div class="row">
     <div class="col-md-4">
         <div class="card table-card">
-            <div class="card-header text-center">
+            <div class="card-header bg-light text-center">
                 <h5 class="fw-bold m-0">Unit untuk Diverifikasi</h5>
             </div>
             <div class="list-group list-group-flush" id="unit-list">
@@ -141,13 +61,13 @@
     </div>
 </div>
 
-<!-- Modal Verifikasi yang Diperbaiki -->
+<!-- Modal Verifikasi -->
 <div class="modal fade modal-wide" id="modalUpdateSN" tabindex="-1" aria-labelledby="modalUpdateSNLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-light" id="modalUpdateSNLabel"><i class="fas fa-clipboard-check me-2"></i>Formulir Inspeksi Unit</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="modalUpdateSNLabel"><i class="fas fa-clipboard-check me-2"></i>Formulir Inspeksi Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="formUpdateSN">
@@ -288,7 +208,7 @@
     }
 
     function submitVerification() {
-    if (window._verifying) return; // double-submit guard
+    if (window._verifying) return;
     let finalStatus = 'Sesuai';
     let fullNotes = [];
     const snData = {};
@@ -311,7 +231,6 @@
             }
         });
         
-        // Mandatory SN validation when finalStatus == 'Sesuai'
         if (finalStatus === 'Sesuai' && (!snData['sn_unit'] || !snData['sn_mesin'])) {
             Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number Unit dan Mesin wajib diisi untuk status Sesuai.'});
             return;
@@ -326,7 +245,7 @@
         const h = (str) => str ? String(str).replace(/</g, '&lt;') : "-";
         return `
             <div class="card table-card animate__animated animate__fadeIn">
-                <div class="card-header p-3 text-center">
+                <div class="card-header bg-light p-3 text-center">
                     <h5 class="fw-bold m-0"><i class="fas fa-truck-ramp-box me-2 text-secondary"></i>Detail Unit: ${h(data.merk_unit)} ${h(data.model_unit)}</h5>
                 </div>
                 <div class="card-body p-4">
@@ -369,7 +288,7 @@
                                  <tbody>
                                      <tr><td width="40%"><strong>Mast</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
                                      <tr><td><strong>Ban</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
-                                     <tr><td><strong>Kondisi</strong></td><td>: <span class="badge bg-info">${h(data.status_penjualan)}</span></td></tr>
+                                     <tr><td><strong>Kondisi</strong></td><td>: <span class="badge badge-soft-cyan">${h(data.status_penjualan)}</span></td></tr>
                                      <tr><td class="align-top"><strong>Keterangan</strong></td><td class="align-top">: ${data.keterangan || "-"}</td></tr>
                                  </tbody>
                              </table>
