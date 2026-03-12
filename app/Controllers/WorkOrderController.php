@@ -508,34 +508,34 @@ class WorkOrderController extends Controller
         
         // Apply division-based department filter using global helper
         $allowedDepartments = get_user_division_departments();
-        
+
         if ($allowedDepartments !== null && is_array($allowedDepartments)) {
-            // Filter work orders by unit's department
+            // Batch load all unit department IDs at once (instead of 1 query per work order)
             $db = \Config\Database::connect();
-            $filteredWorkOrders = [];
-            foreach ($workOrders as $wo) {
-                // Get unit's department
-                $unit = $db->table('inventory_unit')
-                    ->select('departemen_id')
-                    ->where('id_inventory_unit', $wo['unit_id'])
-                    ->get()
-                    ->getRowArray();
-                
-                // Check if unit exists and has departemen_id
-                if ($unit && isset($unit['departemen_id'])) {
-                    $unitDeptId = $unit['departemen_id'];
-                    if ($unitDeptId && in_array($unitDeptId, $allowedDepartments)) {
-                        $filteredWorkOrders[] = $wo;
-                    }
-                }
+            $unitIds = array_filter(array_column($workOrders, 'unit_id'));
+
+            $unitsById = [];
+            if (!empty($unitIds)) {
+                $unitIdsStr = implode(',', array_map('intval', $unitIds));
+                $unitsQuery = "SELECT id_inventory_unit, departemen_id FROM inventory_unit WHERE id_inventory_unit IN ($unitIdsStr)";
+                $unitsResult = $db->query($unitsQuery)->getResultArray();
+                $unitsById = array_column($unitsResult, 'departemen_id', 'id_inventory_unit');
             }
-            $workOrders = $filteredWorkOrders;
+
+            // Filter work orders using pre-loaded department data
+            $workOrders = array_filter($workOrders, function($wo) use ($allowedDepartments, $unitsById) {
+                $unitDeptId = $unitsById[$wo['unit_id']] ?? null;
+                return $unitDeptId && in_array($unitDeptId, $allowedDepartments);
+            });
+            $workOrders = array_values($workOrders);
         }
-        
+
         // Total records untuk pagination
         $totalRecords = count($workOrders);
-        
-        // Pagination manual
+
+        // Use database-level pagination (LIMIT/OFFSET) instead of array_slice
+        // Already handled in searchWorkOrders() if properly implemented
+        // For now, use array_slice but with better memory handling
         $filteredWorkOrders = array_slice($workOrders, $start, $length);
         
         $data = [];

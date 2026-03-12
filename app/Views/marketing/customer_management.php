@@ -2446,6 +2446,104 @@ function openAddLocationModal() {
     });
 }
 
+function deleteLocation(locationId, locationName) {
+    if (!confirm('Apakah Anda yakin ingin menghapus lokasi "' + locationName + '"?')) {
+        return;
+    }
+    
+    const csrfData = (typeof getCsrfTokenData === 'function') ? getCsrfTokenData() : {};
+    
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/deleteLocation') ?>/${locationId}`,
+        method: 'POST',
+        data: {
+            [csrfData.tokenName || '<?= csrf_token() ?>']: csrfData.tokenValue || '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
+            if (response.success) {
+                showNotification(response.message, 'success');
+                if (currentCustomerId) {
+                    loadCustomerLocations(currentCustomerId);
+                }
+            } else if (response.has_units) {
+                // Show unit details in a modal
+                let tableRows = '';
+                response.units.forEach(function(unit) {
+                    const noUnit = unit.no_unit || '-';
+                    const merk = (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
+                    const sn = unit.serial_number || '-';
+                    const kapasitas = unit.kapasitas_unit || '-';
+                    const kontrak = unit.no_kontrak || '-';
+                    tableRows += `<tr>
+                        <td>${noUnit}</td>
+                        <td>${merk.trim() || '-'}</td>
+                        <td>${sn}</td>
+                        <td>${kapasitas}</td>
+                        <td>${kontrak}</td>
+                    </tr>`;
+                });
+                
+                const modalHtml = `
+                    <div class="modal fade" id="locationUnitWarningModal" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning-subtle">
+                                    <h5 class="modal-title"><i class="ri-error-warning-line me-2"></i>Tidak Dapat Menghapus Lokasi</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-warning mb-3">
+                                        <strong>Lokasi "${locationName}"</strong> masih memiliki <span class="badge badge-soft-red">${response.units.length} unit aktif</span> yang terikat pada kontrak.
+                                        <br>Silakan hapus atau pindahkan unit terlebih dahulu dari halaman <strong>Kontrak</strong>.
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>No Unit</th>
+                                                    <th>Merk / Model</th>
+                                                    <th>Serial Number</th>
+                                                    <th>Kapasitas</th>
+                                                    <th>No Kontrak</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>${tableRows}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Remove old instance if exists
+                $('#locationUnitWarningModal').remove();
+                $('body').append(modalHtml);
+                
+                const warningModal = new bootstrap.Modal(document.getElementById('locationUnitWarningModal'));
+                $('#locationUnitWarningModal').css('z-index', 1070);
+                warningModal.show();
+                $('#locationUnitWarningModal').on('shown.bs.modal', function() {
+                    $('.modal-backdrop').last().css('z-index', 1069);
+                });
+                $('#locationUnitWarningModal').on('hidden.bs.modal', function() {
+                    $(this).remove();
+                    if ($('#customerDetailModal').hasClass('show')) {
+                        document.body.classList.add('modal-open');
+                    }
+                });
+            } else {
+                showNotification(response.message || 'Gagal menghapus lokasi', 'error');
+            }
+        },
+        error: function() {
+            showNotification('Terjadi kesalahan pada sistem', 'error');
+        }
+    });
+}
+
 function openEditLocationModal(locationId) {
     clearFormErrors('#addLocationForm');
     loadLocationAreas();
@@ -2958,9 +3056,15 @@ function displayLocations(locations) {
                                         </h6>
                                         ${location.location_code ? `<small class="text-muted">Code: ${location.location_code}</small>` : ''}
                                     </div>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="openEditLocationModal(${location.id})">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="openEditLocationModal(${location.id})">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteLocation(${location.id}, '${location.location_name.replace(/'/g, "\\'")}')"
+                                            ${location.is_primary ? 'disabled title="Cannot delete primary location"' : ''}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
                         <div class="card-body">
                             <div class="row g-2">
