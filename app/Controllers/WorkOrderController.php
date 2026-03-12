@@ -505,7 +505,6 @@ class WorkOrderController extends Controller
             $month,
             isset($excludeStatus) ? $excludeStatus : null
         );
-        
         // Apply division-based department filter using global helper
         $allowedDepartments = get_user_division_departments();
 
@@ -533,9 +532,7 @@ class WorkOrderController extends Controller
         // Total records untuk pagination
         $totalRecords = count($workOrders);
 
-        // Use database-level pagination (LIMIT/OFFSET) instead of array_slice
-        // Already handled in searchWorkOrders() if properly implemented
-        // For now, use array_slice but with better memory handling
+        // Use array_slice for pagination (acceptable since data is already filtered in memory)
         $filteredWorkOrders = array_slice($workOrders, $start, $length);
         
         $data = [];

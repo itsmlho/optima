@@ -1929,6 +1929,7 @@ class WarehousePO extends BaseController
 
     /**
      * Get DataTable data for PO Unit Verification
+     * OPTIMIZED: Use database-level pagination and filtering
      */
     private function getPoUnitVerificationDataTable()
     {
@@ -1937,37 +1938,58 @@ class WarehousePO extends BaseController
         $length = $this->request->getPost('length') ?? 10;
         $searchValue = $this->request->getPost('search')['value'] ?? '';
 
-        $data = $this->pounitsmodel->getPurchaseOrdersWithDetails();
-        
-        // Filter data if search value exists
+        $db = \Config\Database::connect();
+
+        // Build optimized query with JOINs
+        $builder = $db->table('po_units pu');
+        $builder->select([
+            'pu.id_po_unit',
+            'pu.status_verifikasi',
+            'pu.merk_unit',
+            'pu.serial_number_po as serial_number',
+            'pu.tahun_po',
+            'pu.verified_by',
+            'pu.verification_date',
+            'po.no_po',
+            'po.nama_supplier',
+            'mu.model_unit',
+            'mu.id_model_unit'
+        ]);
+        $builder->join('purchase_orders po', 'po.id_po = pu.po_id', 'left');
+        $builder->join('model_unit mu', 'mu.id_model_unit = pu.model_unit_id', 'left');
+
+        // Get total count before search filter
+        $recordsTotal = $builder->countAllResults(false);
+
+        // Apply search filter
         if (!empty($searchValue)) {
-            $data = array_filter($data, function($item) use ($searchValue) {
-                return stripos($item['no_po'], $searchValue) !== false ||
-                       stripos($item['nama_supplier'], $searchValue) !== false ||
-                       stripos($item['merek_unit'], $searchValue) !== false ||
-                       stripos($item['serial_number'], $searchValue) !== false;
-            });
+            $builder->groupStart()
+                ->like('po.no_po', $searchValue)
+                ->orLike('po.nama_supplier', $searchValue)
+                ->orLike('pu.merk_unit', $searchValue)
+                ->orLike('pu.serial_number_po', $searchValue)
+                ->groupEnd();
         }
 
-        $recordsTotal = count($data);
-        $recordsFiltered = $recordsTotal;
+        $recordsFiltered = $builder->countAllResults(false);
 
-        // Paginate
-        $data = array_slice($data, $start, $length);
+        // Apply pagination at database level
+        $builder->limit($length, $start);
+        $data = $builder->get()->getResultArray();
 
         // Format data for DataTable with verification focus
         $formattedData = [];
         foreach ($data as $item) {
             $statusIcon = $this->pounitsmodel->getStatusIcon($item['status_verification']);
             $statusBadge = $this->pounitsmodel->getStatusBadgeClass($item['status_verification']);
-            
+
             $formattedData[] = [
                 'no_po' => $item['no_po'],
                 'nama_supplier' => $item['nama_supplier'] ?? '-',
-                'merek_unit' => $item['merek_unit'],
+                'merek_unit' => $item['merk_unit'],
                 'model_unit' => $item['model_unit'],
                 'serial_number' => $item['serial_number'],
-                'status' => '<i class="' . $statusIcon . '"></i> <span class="badge badge-' . $statusBadge . '">' . 
+                'status' => '<i class="' . $statusIcon . '"></i> <span class="badge badge-' . $statusBadge . '">' .
                            $this->pounitsmodel->getVerificationStatusOptions()[$item['status_verification']] . '</span>',
                 'verified_by' => $item['verified_by'] ? 'User #' . $item['verified_by'] : '-',
                 'verification_date' => $item['verification_date'] ? date('d/m/Y H:i', strtotime($item['verification_date'])) : '-',
@@ -1985,6 +2007,7 @@ class WarehousePO extends BaseController
 
     /**
      * Get DataTable data for PO Attachment Verification
+     * OPTIMIZED: Use database-level pagination and filtering
      */
     private function getPoAttachmentVerificationDataTable()
     {
@@ -1993,36 +2016,54 @@ class WarehousePO extends BaseController
         $length = $this->request->getPost('length') ?? 10;
         $searchValue = $this->request->getPost('search')['value'] ?? '';
 
-        $data = $this->poAttachmentModel->getPurchaseOrdersWithDetails();
-        
-        // Filter data if search value exists
+        $db = \Config\Database::connect();
+
+        // Build optimized query with JOINs - adjust table/column names based on context
+        $builder = $db->table('po_attachments pa');
+        $builder->select([
+            'pa.id_po_attachment',
+            'pa.status_verifikasi',
+            'pa.nama_barang',
+            'pa.model_barang',
+            'pa.jumlah',
+            'pa.verified_by',
+            'pa.verification_date',
+            'po.no_po',
+            'po.nama_supplier'
+        ]);
+        $builder->join('purchase_orders po', 'po.id_po = pa.po_id', 'left');
+
+        // Get total count before search filter
+        $recordsTotal = $builder->countAllResults(false);
+
+        // Apply search filter
         if (!empty($searchValue)) {
-            $data = array_filter($data, function($item) use ($searchValue) {
-                return stripos($item['no_po'], $searchValue) !== false ||
-                       stripos($item['nama_supplier'], $searchValue) !== false ||
-                       stripos($item['nama_barang'], $searchValue) !== false;
-            });
+            $builder->groupStart()
+                ->like('po.no_po', $searchValue)
+                ->orLike('po.nama_supplier', $searchValue)
+                ->orLike('pa.nama_barang', $searchValue)
+                ->groupEnd();
         }
 
-        $recordsTotal = count($data);
-        $recordsFiltered = $recordsTotal;
+        $recordsFiltered = $builder->countAllResults(false);
 
-        // Paginate
-        $data = array_slice($data, $start, $length);
+        // Apply pagination at database level
+        $builder->limit($length, $start);
+        $data = $builder->get()->getResultArray();
 
         // Format data for DataTable with verification focus
         $formattedData = [];
         foreach ($data as $item) {
             $statusIcon = $this->poAttachmentModel->getStatusIcon($item['status_verifikasi']);
             $statusBadge = $this->poAttachmentModel->getStatusBadgeClass($item['status_verifikasi']);
-            
+
             $formattedData[] = [
                 'no_po' => $item['no_po'],
                 'nama_supplier' => $item['nama_supplier'] ?? '-',
                 'nama_barang' => $item['nama_barang'],
                 'model_barang' => $item['model_barang'] ?? '-',
                 'jumlah' => $item['jumlah'],
-                'status' => '<i class="' . $statusIcon . '"></i> <span class="badge badge-' . $statusBadge . '">' . 
+                'status' => '<i class="' . $statusIcon . '"></i> <span class="badge badge-' . $statusBadge . '">' .
                            $this->poAttachmentModel->getVerificationStatusOptions()[$item['status_verifikasi']] . '</span>',
                 'verified_by' => $item['verified_by'] ? 'User #' . $item['verified_by'] : '-',
                 'verification_date' => $item['verification_date'] ? date('d/m/Y H:i', strtotime($item['verification_date'])) : '-',

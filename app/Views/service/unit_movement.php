@@ -193,9 +193,9 @@ $component_types = $component_types ?? [];
 <div class="modal fade" id="createModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Buat Surat Jalan</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="createForm">
@@ -310,9 +310,9 @@ $component_types = $component_types ?? [];
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-light">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Surat Jalan</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detailContent">
                 <!-- Content loaded via AJAX -->
@@ -398,20 +398,20 @@ function renderMovementTable(data) {
 
 function getMovementStatusBadge(status) {
     const badges = {
-        'DRAFT': '<span class="badge bg-secondary">Draft</span>',
-        'IN_TRANSIT': '<span class="badge bg-warning">Dalam Perjalanan</span>',
-        'ARRIVED': '<span class="badge bg-success">Selesai</span>',
-        'CANCELLED': '<span class="badge bg-danger">Batal</span>'
+        'DRAFT': '<span class="badge badge-soft-gray">Draft</span>',
+        'IN_TRANSIT': '<span class="badge badge-soft-yellow">Dalam Perjalanan</span>',
+        'ARRIVED': '<span class="badge badge-soft-green">Selesai</span>',
+        'CANCELLED': '<span class="badge badge-soft-red">Batal</span>'
     };
     return badges[status] || status;
 }
 
 function getComponentBadge(type) {
     const badges = {
-        'FORKLIFT': '<span class="badge bg-primary">Forklift</span>',
-        'ATTACHMENT': '<span class="badge bg-info">Attachment</span>',
-        'CHARGER': '<span class="badge bg-warning">Charger</span>',
-        'BATTERY': '<span class="badge bg-success">Baterai</span>'
+        'FORKLIFT': '<span class="badge badge-soft-blue">Forklift</span>',
+        'ATTACHMENT': '<span class="badge badge-soft-cyan">Attachment</span>',
+        'CHARGER': '<span class="badge badge-soft-yellow">Charger</span>',
+        'BATTERY': '<span class="badge badge-soft-green">Baterai</span>'
     };
     return badges[type] || type;
 }

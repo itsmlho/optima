@@ -667,6 +667,7 @@ class Service extends BaseController
 
     /**
      * DataTables server-side processing endpoint for Service SPK
+     * OPTIMIZED: Use database-level filtering and pagination instead of loading all data
      */
     public function spkData()
     {
@@ -676,114 +677,75 @@ class Service extends BaseController
         $length = $request->getPost('length') ?? 25;
         $search = $request->getPost('search')['value'] ?? '';
         $statusFilter = $request->getPost('status_filter') ?? 'all';
-        
+
         // Get division-based department filtering
         $allowedDeptIds = get_user_division_departments();
-        
-        $builder = $this->spkModel->builder();
-        
-        // Join with quotations for quotation_number
-        $builder->select('spk.*, qs.id_quotation, q.quotation_number')
-            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
-            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left');
-        
-        // Apply status filter (tab filtering)
-        if ($statusFilter !== 'all') {
-            if ($statusFilter === 'COMPLETED') {
-                $builder->whereIn('spk.status', ['COMPLETED', 'DELIVERED']);
-            } else {
-                $builder->where('spk.status', $statusFilter);
-            }
-        }
-        
-        // Apply search filter
-        if (!empty($search)) {
-            $builder->groupStart()
-                ->like('spk.nomor_spk', $search)
-                ->orLike('spk.pelanggan', $search)
-                ->orLike('spk.po_kontrak_nomor', $search)
-                ->orLike('spk.pic', $search)
-                ->orLike('spk.kontak', $search)
-                ->orLike('spk.jenis_spk', $search)
-                ->groupEnd();
-        }
-        
-        // Get all results before filtering by department (for division filter)
-        $allResults = $builder->get()->getResultArray();
-        
-        // Filter by department_id in JSON spesifikasi
-        $filteredData = [];
-        foreach ($allResults as $spk) {
-            try {
-                // Add stage status
-                try {
-                    $stageStatus = $this->getSpkStageStatusData($spk['id']);
-                    if ($stageStatus) {
-                        $spk['stage_status'] = $stageStatus;
-                    }
-                } catch (\Exception $e) {
-                    log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
-                }
-                
-                // Apply department filter
-                if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
-                    $spesifikasi = [];
-                    if (!empty($spk['spesifikasi'])) {
-                        $decoded = json_decode($spk['spesifikasi'], true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $spesifikasi = $decoded;
-                        }
-                    }
-                    
-                    $spkDeptId = null;
-                    if (isset($spesifikasi['departemen_id'])) {
-                        $deptId = $spesifikasi['departemen_id'];
-                        $spkDeptId = is_numeric($deptId) ? (int)$deptId : null;
-                    }
-                    
-                    if ($spkDeptId && in_array($spkDeptId, $allowedDeptIds)) {
-                        $filteredData[] = $spk;
-                    }
-                } else {
-                    $filteredData[] = $spk;
-                }
-            } catch (\Exception $e) {
-                log_message('error', 'Error processing SPK ' . ($spk['id'] ?? 'unknown') . ': ' . $e->getMessage());
-                continue;
-            }
-        }
-        
-        // Get total filtered count
-        $totalFiltered = count($filteredData);
-        
-        // Sort filtered data
+
+        // Get order parameters
         $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
         $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
         $columns = ['nomor_spk', 'jenis_spk', 'po_kontrak_nomor', 'kontrak_id', 'pelanggan', 'pic', 'kontak', 'status', 'jumlah_unit'];
-        
-        if (isset($columns[$orderColumnIndex])) {
-            $sortColumn = $columns[$orderColumnIndex];
-            usort($filteredData, function($a, $b) use ($sortColumn, $orderDir) {
-                $valA = $a[$sortColumn] ?? '';
-                $valB = $b[$sortColumn] ?? '';
-                if ($orderDir === 'asc') {
-                    return $valA <=> $valB;
-                } else {
-                    return $valB <=> $valA;
-                }
-            });
-        } else {
-            // Default sort by ID desc
-            usort($filteredData, function($a, $b) {
-                return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
-            });
+        $sortColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        $db = \Config\Database::connect();
+
+        // Build base query with filters
+        $builder = $db->table('spk');
+
+        // Apply status filter
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'COMPLETED') {
+                $builder->whereIn('status', ['COMPLETED', 'DELIVERED']);
+            } else {
+                $builder->where('status', $statusFilter);
+            }
         }
-        
-        // Apply pagination
-        $paginatedData = array_slice($filteredData, $start, $length);
-        
-        // Get total count (before any filters) - approximate since we need to count all with dept filter
-        $totalRecords = $totalFiltered;
+
+        // Apply search filter
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('nomor_spk', $search)
+                ->orLike('pelanggan', $search)
+                ->orLike('po_kontrak_nomor', $search)
+                ->orLike('pic', $search)
+                ->orLike('kontak', $search)
+                ->orLike('jenis_spk', $search)
+                ->groupEnd();
+        }
+
+        // Get total count (before department filter)
+        $totalRecords = $builder->countAllResults(false);
+
+        // Apply department filter using MySQL JSON extraction if available
+        if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
+            $deptIdsStr = implode(',', array_map('intval', $allowedDeptIds));
+            // MySQL JSON_EXTRACT to filter departemen_id in spesifikasi JSON
+            $builder->where("JSON_UNQUOTE(JSON_EXTRACT(spesifikasi, '\$.departemen_id')) IN ($deptIdsStr)", null, false);
+        }
+
+        // Get filtered count
+        $totalFiltered = $builder->countAllResults(false);
+
+        // Apply sorting and pagination at database level
+        $builder->orderBy($sortColumn, $orderDir === 'asc' ? 'asc' : 'desc');
+        $builder->limit($length, $start);
+
+        // Get paginated results
+        $spkRecords = $builder->get()->getResultArray();
+
+        // Add stage status to each record (minimal impact - only for displayed records)
+        foreach ($spkRecords as &$spk) {
+            try {
+                $stageStatus = $this->getSpkStageStatusData($spk['id']);
+                if ($stageStatus) {
+                    $spk['stage_status'] = $stageStatus;
+                }
+            } catch (\Exception $e) {
+                log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
+            }
+        }
+
+        $paginatedData = $spkRecords;
         
         log_message('info', 'Service SPK DataTables - Draw: ' . $draw . ', Total: ' . $totalRecords . ', Filtered: ' . $totalFiltered . ', Returned: ' . count($paginatedData));
         

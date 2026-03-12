@@ -1165,8 +1165,8 @@ function initializeAreaTable() {
         data: 'is_active',
         render: function(data, type, row) {
           return data == 1 
-            ? '<span class="badge bg-success">Active</span>' 
-            : '<span class="badge bg-secondary">Inactive</span>';
+            ? '<span class="badge badge-soft-green">Active</span>' 
+            : '<span class="badge badge-soft-gray">Inactive</span>';
         }
       }
     ],

@@ -141,7 +141,7 @@
                                             <td><?= $transaction['item'] ?? '-' ?></td>
                                             <td><?= $transaction['quantity'] ?? '-' ?></td>
                                             <td>
-                                                <span class="badge bg-<?= ($transaction['status'] ?? 'secondary') === 'completed' ? 'success' : 'warning' ?>">
+                                                <span class="badge badge-soft-<?= ($transaction['status'] ?? 'secondary') === 'completed' ? 'green' : 'yellow' ?>">
                                                     <?= ucfirst($transaction['status'] ?? 'pending') ?>
                                                 </span>
                                             </td>
@@ -173,7 +173,7 @@
                                             <strong><?= $alert['item_name'] ?? '-' ?></strong>
                                             <span class="text-muted ms-2">(<?= $alert['item_code'] ?? '-' ?>)</span>
                                         </div>
-                                        <span class="badge bg-danger">Stock: <?= $alert['quantity'] ?? 0 ?></span>
+                                        <span class="badge badge-soft-red">Stock: <?= $alert['quantity'] ?? 0 ?></span>
                                     </div>
                                 </div>
                                 <?php endforeach; ?>

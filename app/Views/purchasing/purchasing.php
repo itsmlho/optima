@@ -3605,11 +3605,11 @@ function updateItemsTable() {
     
     let html = '';
     poItems.forEach((item, index) => {
-        const badgeColors = {
-            'unit': 'primary',
-            'attachment': 'success',
-            'battery': 'info',
-            'charger': 'warning'
+        const badgeSoftClasses = {
+            'unit': 'badge-soft-blue',
+            'attachment': 'badge-soft-green',
+            'battery': 'badge-soft-cyan',
+            'charger': 'badge-soft-yellow'
         };
         
         const typeLabels = {
@@ -3640,7 +3640,7 @@ function updateItemsTable() {
         html += `
             <tr>
                 <td>${index + 1}</td>
-                <td><span class="badge bg-${badgeColors[item.item_type]} item-badge">${typeLabels[item.item_type]}</span></td>
+                <td><span class="badge ${badgeSoftClasses[item.item_type] || 'badge-soft-gray'} item-badge">${typeLabels[item.item_type]}</span></td>
                 <td>${description}</td>
                 <td class="text-center">${item.qty}</td>
                 <td class="text-center">

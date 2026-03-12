@@ -110,7 +110,7 @@
             <!-- Additional Filters (shown based on active tab) -->
             <div class="border-top pt-3 mt-3" id="additionalFilters" style="display: none;">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge bg-light text-dark border small">
+                    <span class="chip chip-gray small">
                         <i class="fas fa-sliders-h me-1"></i>Models
                     </span>
                     <div class="btn-group btn-group-sm" role="group" id="modelFilterGroup">
@@ -1948,9 +1948,9 @@
             const user     = item.user || null;
             const ref      = item.ref_number || null;
             const src      = item.source || 'log';
-            const srcBadge = src === 'seed' ? `<span class="badge bg-light text-muted border ms-1" style="font-size:0.6rem;">legacy</span>` : '';
+            const srcBadge = src === 'seed' ? `<span class="chip chip-gray ms-1" style="font-size:0.6rem;">legacy</span>` : '';
             const userHtml = user ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
-            const refHtml  = ref ? `<span class="badge bg-light text-secondary border ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
+            const refHtml  = ref ? `<span class="chip chip-gray ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
 
             html += `<div class="timeline-item mb-3" style="position:relative;">
                 <div style="position:absolute;left:-2.15rem;top:0.25rem;width:1.25rem;height:1.25rem;border-radius:50%;

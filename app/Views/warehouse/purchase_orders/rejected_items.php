@@ -121,7 +121,7 @@ $can_export = $permissions['export'];
                                             <h6 class="mb-1"><?= esc($unit['no_po']) ?></h6>
                                             <small class="text-muted"><?= esc($unit['merk_unit'] ?? '') ?> <?= esc($unit['model_unit'] ?? '') ?></small>
                                         </div>
-                                        <span class="badge bg-danger">Unit</span>
+                                        <span class="badge badge-soft-red">Unit</span>
                                     </div>
                                     
                                     <!-- Informasi Tambahan -->
@@ -166,16 +166,16 @@ $can_export = $permissions['export'];
                                         <small class="text-muted d-block mb-1">Serial Number:</small>
                                         <div class="small">
                                             <?php if (!empty($unit['sn_unit'])): ?>
-                                                <span class="badge bg-secondary me-1">SN Unit: <?= esc($unit['sn_unit']) ?></span>
+                                                <span class="badge badge-soft-gray me-1">SN Unit: <?= esc($unit['sn_unit']) ?></span>
                                             <?php endif; ?>
                                             <?php if (!empty($unit['sn_mesin'])): ?>
-                                                <span class="badge bg-secondary me-1">SN Mesin: <?= esc($unit['sn_mesin']) ?></span>
+                                                <span class="badge badge-soft-gray me-1">SN Mesin: <?= esc($unit['sn_mesin']) ?></span>
                                             <?php endif; ?>
                                             <?php if (!empty($unit['sn_mast'])): ?>
-                                                <span class="badge bg-secondary me-1">SN Mast: <?= esc($unit['sn_mast']) ?></span>
+                                                <span class="badge badge-soft-gray me-1">SN Mast: <?= esc($unit['sn_mast']) ?></span>
                                             <?php endif; ?>
                                             <?php if (!empty($unit['sn_baterai'])): ?>
-                                                <span class="badge bg-secondary me-1">SN Battery: <?= esc($unit['sn_baterai']) ?></span>
+                                                <span class="badge badge-soft-gray me-1">SN Battery: <?= esc($unit['sn_baterai']) ?></span>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -191,7 +191,7 @@ $can_export = $permissions['export'];
                                             <small class="text-muted d-block mb-1">Discrepancies:</small>
                                             <?php foreach ($discrepancies['unit_' . $unit['id_po_unit']] as $disc): ?>
                                                 <div class="small mb-1">
-                                                    <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
+                                                    <span class="badge badge-soft-<?= $disc['discrepancy_type'] === 'Major' ? 'red' : ($disc['discrepancy_type'] === 'Missing' ? 'cyan' : 'yellow') ?> me-1">
                                                         <?= esc($disc['discrepancy_type']) ?>
                                                     </span>
                                                     <strong><?= esc($disc['field_name']) ?>:</strong>
@@ -233,7 +233,7 @@ $can_export = $permissions['export'];
                                             <h6 class="mb-1"><?= esc($att['no_po']) ?></h6>
                                             <small class="text-muted"><?= esc(ucfirst($att['item_type'] ?? 'Attachment')) ?></small>
                                         </div>
-                                        <span class="badge bg-danger">Attachment</span>
+                                        <span class="badge badge-soft-red">Attachment</span>
                                     </div>
                                     
                                     <!-- Informasi Tambahan -->
@@ -276,7 +276,7 @@ $can_export = $permissions['export'];
                                     <?php if (!empty($att['sn'])): ?>
                                     <div class="mb-2">
                                         <small class="text-muted d-block mb-1">Serial Number:</small>
-                                        <span class="badge bg-secondary"><?= esc($att['sn']) ?></span>
+                                        <span class="badge badge-soft-gray"><?= esc($att['sn']) ?></span>
                                     </div>
                                     <?php endif; ?>
                                     
@@ -290,7 +290,7 @@ $can_export = $permissions['export'];
                                             <small class="text-muted d-block mb-1">Discrepancies:</small>
                                             <?php foreach ($discrepancies['attachment_' . $att['id_po_attachment']] as $disc): ?>
                                                 <div class="small mb-1">
-                                                    <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
+                                                    <span class="badge badge-soft-<?= $disc['discrepancy_type'] === 'Major' ? 'red' : ($disc['discrepancy_type'] === 'Missing' ? 'cyan' : 'yellow') ?> me-1">
                                                         <?= esc($disc['discrepancy_type']) ?>
                                                     </span>
                                                     <strong><?= esc($disc['field_name']) ?>:</strong>
@@ -331,7 +331,7 @@ $can_export = $permissions['export'];
                                             <h6 class="mb-1"><?= esc($sp['no_po']) ?></h6>
                                             <small class="text-muted"><?= esc($sp['kode'] ?? '') ?> - <?= esc($sp['desc_sparepart'] ?? '') ?></small>
                                         </div>
-                                        <span class="badge bg-danger">Sparepart</span>
+                                        <span class="badge badge-soft-red">Sparepart</span>
                                     </div>
                                     
                                     <!-- Additional Information -->

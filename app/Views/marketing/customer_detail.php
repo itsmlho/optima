@@ -64,7 +64,7 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
 
                             <dt class="col-sm-4">Status</dt>
                             <dd class="col-sm-8">
-                                <span class="badge bg-<?= ($customer['is_active'] ?? 1) ? 'success' : 'secondary' ?>">
+                                <span class="badge badge-soft-<?= ($customer['is_active'] ?? 1) ? 'green' : 'gray' ?>">
                                     <?= ($customer['is_active'] ?? 1) ? 'Active' : 'Inactive' ?>
                                 </span>
                             </dd>
@@ -118,7 +118,7 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
                                     <td>
                                         <strong><?= esc($loc['location_name'] ?? '-') ?></strong>
                                         <?php if (!empty($loc['is_primary'])): ?>
-                                            <span class="badge bg-primary ms-1">Primary</span>
+                                            <span class="badge badge-soft-blue ms-1">Primary</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= esc($loc['address'] ?? '-') ?></td>
@@ -126,7 +126,7 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
                                     <td><?= esc($loc['contact_person'] ?? '-') ?></td>
                                     <td><?= esc($loc['phone'] ?? '-') ?></td>
                                     <td>
-                                        <span class="badge bg-<?= ($loc['is_active'] ?? 1) ? 'success' : 'secondary' ?>">
+                                        <span class="badge badge-soft-<?= ($loc['is_active'] ?? 1) ? 'green' : 'gray' ?>">
                                             <?= ($loc['is_active'] ?? 1) ? 'Active' : 'Inactive' ?>
                                         </span>
                                     </td>
@@ -244,7 +244,7 @@ function loadCustomerContracts() {
             contracts.forEach(c => {
                 const startDate = c.tanggal_mulai ? new Date(c.tanggal_mulai).toLocaleDateString('id-ID') : '-';
                 const endDate = c.tanggal_berakhir ? new Date(c.tanggal_berakhir).toLocaleDateString('id-ID') : '-';
-                const statusClass = c.status === 'ACTIVE' ? 'success' : c.status === 'EXPIRED' ? 'danger' : 'warning';
+                const softClass = c.status === 'ACTIVE' ? 'badge-soft-green' : c.status === 'EXPIRED' ? 'badge-soft-red' : 'badge-soft-yellow';
 
                 // Get unit count for this contract
                 const unitCount = c.total_units || 0;
@@ -256,7 +256,7 @@ function loadCustomerContracts() {
                 html += '<td>' + startDate + ' s/d ' + endDate + '</td>';
                 html += '<td>' + unitCount + ' unit</td>';
                 html += '<td>' + rupiah(c.nilai_total || 0) + '</td>';
-                html += '<td><span class="badge bg-' + statusClass + '">' + (c.status || '-') + '</span></td>';
+                html += '<td><span class="badge ' + softClass + '">' + (c.status || '-') + '</span></td>';
                 html += '<td><a href="' + BASE_URL + 'marketing/kontrak/detail/' + c.id + '" class="btn btn-xs btn-outline-primary">Detail</a></td>';
                 html += '</tr>';
             });

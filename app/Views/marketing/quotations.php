@@ -1,4 +1,4 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
@@ -1892,7 +1892,7 @@ function refreshQuotationActions(quotationId) {
         
         // Show info if already converted
         if (data.created_customer_id) {
-            actionButtons += `<span class="badge bg-success me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
+            actionButtons += `<span class="badge badge-soft-green me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
                 <i class="fas fa-check-circle me-1"></i>Customer Created
             </span>`;
         }
@@ -2886,16 +2886,16 @@ function displayQuotationSpecifications(specifications) {
         // Technical Specifications
         const techSpecs = [];
         if (spec.valve_name) {
-            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-cog me-1"></i>Valve: ${spec.valve_name}</span>`);
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-cog me-1"></i>Valve: ${spec.valve_name}</span>`);
         }
         if (spec.mast_name) {
-            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-arrows-alt-v me-1"></i>Mast: ${spec.mast_name}</span>`);
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-arrows-alt-v me-1"></i>Mast: ${spec.mast_name}</span>`);
         }
         if (spec.tire_name) {
-            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-circle me-1"></i>Tire: ${spec.tire_name}</span>`);
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-circle me-1"></i>Tire: ${spec.tire_name}</span>`);
         }
         if (spec.wheel_name) {
-            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-circle-notch me-1"></i>Wheel: ${spec.wheel_name}</span>`);
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-circle-notch me-1"></i>Wheel: ${spec.wheel_name}</span>`);
         }
         
         // Attachment Information
@@ -2920,7 +2920,7 @@ function displayQuotationSpecifications(specifications) {
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
                         <span class="badge ${badgeClass} me-2">SPEC-${index + 1}</span>
-                        <span class="badge bg-light text-dark me-2">${specType}</span>
+                        <span class="chip chip-gray me-2">${specType}</span>
                         <strong>${spec.specification_name || 'Specification ' + (index + 1)}</strong>
                     </div>
                     <div>
@@ -6853,7 +6853,7 @@ function showSPKCreationModal(quotation, specifications) {
                                 ${specTitle}
                             </label>
                         </div>
-                        <span class="badge bg-${specType === 'UNIT' ? 'primary' : 'success'}">${specType}</span>
+                        <span class="badge ${specType === 'UNIT' ? 'badge-soft-blue' : 'badge-soft-green'}">${specType}</span>
                     </div>
                     
                     <div class="row g-2 small">

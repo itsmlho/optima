@@ -1,4 +1,4 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?php
 /**
@@ -105,25 +105,25 @@ $can_export = can_export('marketing');
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="tab-all" data-tab="all" type="button" role="tab">
                     <i class="fas fa-list me-2"></i>Semua Kontrak
-                    <span class="badge bg-primary ms-2" id="count-all">0</span>
+                    <span class="badge badge-soft-blue ms-2" id="count-all">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="tab-active" data-tab="active" type="button" role="tab">
                     <i class="fas fa-check-circle me-2"></i>Active
-                    <span class="badge bg-success ms-2" id="count-active">0</span>
+                    <span class="badge badge-soft-green ms-2" id="count-active">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="tab-expiring" data-tab="expiring" type="button" role="tab">
                     <i class="fas fa-exclamation-triangle me-2"></i>Akan Expired
-                    <span class="badge bg-warning ms-2" id="count-expiring">0</span>
+                    <span class="badge badge-soft-orange ms-2" id="count-expiring">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="tab-expired" data-tab="expired" type="button" role="tab">
                     <i class="fas fa-times-circle me-2"></i>Expired
-                    <span class="badge bg-danger ms-2" id="count-expired">0</span>
+                    <span class="badge badge-soft-red ms-2" id="count-expired">0</span>
                 </button>
             </li>
         </ul>
@@ -162,13 +162,13 @@ $can_export = can_export('marketing');
                         </small>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-danger active" data-days="30">
-                                1 Bulan <span class="badge bg-danger ms-1" id="count-expiring-30">0</span>
+                                1 Bulan <span class="badge badge-soft-red ms-1" id="count-expiring-30">0</span>
                             </button>
                             <button type="button" class="btn btn-outline-warning" data-days="90">
-                                3 Bulan <span class="badge bg-warning ms-1" id="count-expiring-90">0</span>
+                                3 Bulan <span class="badge badge-soft-yellow ms-1" id="count-expiring-90">0</span>
                             </button>
                             <button type="button" class="btn btn-outline-info" data-days="180">
-                                6 Bulan <span class="badge bg-info ms-1" id="count-expiring-180">0</span>
+                                6 Bulan <span class="badge badge-soft-cyan ms-1" id="count-expiring-180">0</span>
                             </button>
                         </div>
                     </div>

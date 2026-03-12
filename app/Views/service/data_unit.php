@@ -17,11 +17,11 @@
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
                         <div class="flex-grow-1">
                                 <ul class="nav nav-tabs" id="svcStatusTabs">
-                                        <li class="nav-item"><button class="nav-link active" data-status="" type="button">Semua <span class="badge bg-secondary ms-1" id="svc-count-all">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="7" type="button">Stock Aset <span class="badge bg-success ms-1" id="svc-count-7">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="8" type="button">Non Aset <span class="badge bg-success ms-1" id="svc-count-8">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="3" type="button">Rental <span class="badge bg-warning text-dark ms-1" id="svc-count-3">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="2" type="button">Workshop <span class="badge bg-danger ms-1" id="svc-count-2">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link active" data-status="" type="button">Semua <span class="badge badge-soft-gray ms-1" id="svc-count-all">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="7" type="button">Stock Aset <span class="badge badge-soft-green ms-1" id="svc-count-7">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="8" type="button">Non Aset <span class="badge badge-soft-green ms-1" id="svc-count-8">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="3" type="button">Rental <span class="badge badge-soft-yellow ms-1" id="svc-count-3">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="2" type="button">Workshop <span class="badge badge-soft-red ms-1" id="svc-count-2">0</span></button></li>
                                 </ul>
                         </div>
                         <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -381,7 +381,8 @@ function svcStatusBadge(id,name){
         else if(id===8) cls='success';
         else if(id===3) cls='warning';
         else if(id===2) cls='danger';
-        return `<span class="badge bg-${cls}">${name||'-'}</span>`;
+        const softMap = { success: 'badge-soft-green', warning: 'badge-soft-yellow', danger: 'badge-soft-red', info: 'badge-soft-cyan', primary: 'badge-soft-blue' };
+        return `<span class="badge ${softMap[cls] || 'badge-soft-gray'}">${name||'-'}</span>`;
 }
 function svcActions(id){
         return `<div class="dropdown">`
