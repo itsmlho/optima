@@ -69,11 +69,8 @@ helper('permission_helper');
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
-                    <a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/audit-approval') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>">
+                    <a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'marketing/audit-approval') !== false ? 'active' : '' ?>">
                         <i class="fas fa-check-circle"></i> Audit Approval
-                    </a>
-                    <a href="<?= base_url('/marketing/audit-approval-location') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/audit-approval-location') !== false) ? 'active' : '' ?>">
-                        <i class="fas fa-map-marker-alt"></i> Approve Audit Unit
                     </a>
                     <?php endif; ?>
                 </div>
@@ -310,26 +307,15 @@ helper('permission_helper');
             </li>
             <?php endif; ?>
 
-            <!-- Audit Approval -->
+            <!-- Audit Approval (Pengajuan Unit + Request Lokasi + Approve Audit Lokasi) -->
             <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
             <li class="nav-item">
-                <a class="nav-link text-warning <?= (strpos(current_url(), 'marketing/audit-approval') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>" 
+                <a class="nav-link text-warning <?= strpos(current_url(), 'marketing/audit-approval') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/marketing/audit-approval') ?>"
-                   data-search-terms="audit approval verifikasi unit customer"
+                   data-search-terms="audit approval verifikasi unit customer lokasi"
                    data-tooltip="Audit Approval">
                     <i class="fas fa-check-double"></i>
                     <span class="nav-link-text">Audit Approval</span>
-                </a>
-            </li>
-            
-            <!-- Approve Audit Unit (per Lokasi) -->
-            <li class="nav-item">
-                <a class="nav-link text-warning <?= (strpos(current_url(), 'marketing/audit-approval-location') !== false) ? 'active' : '' ?>" 
-                   href="<?= base_url('/marketing/audit-approval-location') ?>"
-                   data-search-terms="approve audit unit per lokasi location marketing"
-                   data-tooltip="Approve Audit Unit">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span class="nav-link-text">Approve Audit Unit</span>
                 </a>
             </li>
             <?php endif; ?>

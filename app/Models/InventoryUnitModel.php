@@ -511,7 +511,7 @@ class InventoryUnitModel extends Model
     $in_stock  = $this->db->table($this->table)->where('status_unit_id', 7)->countAllResults();
     $non_asset = $this->db->table($this->table)->where('status_unit_id', 8)->countAllResults();
     $rented    = $this->db->table($this->table)->where('status_unit_id', 3)->countAllResults();
-    $sold      = $this->db->table($this->table)->where('status_unit_id', 9)->countAllResults();
+    $sold      = $this->db->table($this->table)->where('status_unit_id', 13)->countAllResults(); // Fixed: SOLD status is 13, not 9
     $workshop  = $this->db->table($this->table)->where('status_unit_id', 2)->countAllResults();
 
         return [

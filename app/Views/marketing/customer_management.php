@@ -419,7 +419,7 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('save', 'Update Customer', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -661,7 +661,7 @@ $can_export = $permissions['export'];
                     <input type="hidden" name="pic_position" value="">
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('save', 'Save Customer', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -748,7 +748,7 @@ $can_export = $permissions['export'];
                 </div>
                 <div class="modal-footer">
                     <input type="hidden" name="submit_action" id="submitAction" value="save_and_spec">
-                    <?= ui_button('cancel', 'Batal', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('save', 'Simpan Kontrak', ['id' => 'btnSaveOnly']) ?>
                 </div>
             </form>
@@ -854,7 +854,7 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('save', 'Save Location', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -1003,7 +1003,7 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Batal', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('submit', 'Buat SPK', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -2197,7 +2197,7 @@ function showDeleteConfirmation(customerId, customerName) {
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d',
         confirmButtonText: 'Yes, Delete',
-        cancelButtonText: 'Cancel',
+        cancelButtonText: window.lang('cancel'),
         reverseButtons: true,
         customClass: {
             confirmButton: 'btn btn-danger',
@@ -2866,7 +2866,7 @@ function deleteContract(contractId) {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#6c757d',
         confirmButtonText: '<i class="fas fa-trash me-2"></i>Ya, Hapus!',
-        cancelButtonText: '<i class="fas fa-times me-2"></i>Batal'
+        cancelButtonText: '<i class="fas fa-times me-2"></i>' + window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             // Show loading

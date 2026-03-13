@@ -450,7 +450,7 @@ function generateRecurringInvoice(scheduleId) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Generate!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         const formData = new FormData();
@@ -480,7 +480,7 @@ function batchGenerateInvoices() {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Generate Semua!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         fetch('<?= base_url('finance/invoices/batch-generate') ?>', {

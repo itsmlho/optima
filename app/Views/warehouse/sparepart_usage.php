@@ -918,7 +918,7 @@ $(document).ready(function() {
             showCancelButton: true,
             confirmButtonColor: '#198754',
             confirmButtonText: 'Ya, Konfirmasi!',
-            cancelButtonText: 'Batal'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (!result.isConfirmed) return;
 

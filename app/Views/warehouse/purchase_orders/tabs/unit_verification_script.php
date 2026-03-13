@@ -878,7 +878,7 @@
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
             cancelButtonColor: '#6b7280',
             confirmButtonText: finalStatus === 'Sesuai' ? '<i class="fas fa-check-circle me-2"></i>Ya, Verifikasi Sesuai' : '<i class="fas fa-exclamation-triangle me-2"></i>Ya, Konfirmasi Tidak Sesuai',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Batal',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>' + window.lang('cancel'),
             reverseButtons: true,
             width: '600px',
             customClass: {

@@ -475,7 +475,7 @@ $can_export = $permissions['export'];
                         <div class="mt-2"><label class="form-label">Notes</label><textarea class="form-control" name="catatan" rows="3" placeholder="Delivery instructions (optional)"></textarea></div>
                     </div>
                     <div class="modal-footer">
-                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                         <?= ui_button('submit', 'Create DI', ['type' => 'submit']) ?>
                     </div>
                 </form>
@@ -522,7 +522,7 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                         <?= ui_button('submit', 'Link Contract', ['type' => 'submit', 'icon' => 'fas fa-link']) ?>
                     </div>
                 </form>
@@ -2745,7 +2745,7 @@ $can_export = $permissions['export'];
                     <?= ui_button('print', 'Print PDF', ['id' => 'btnPrintPdf', 'href' => '#', 'target' => '_blank', 'rel' => 'noopener']) ?>
                     <?= ui_button('edit', 'Edit', ['id' => 'btnEditSpk', 'onclick' => 'editSpk()']) ?>
                     <?= ui_button('delete', 'Delete', ['id' => 'btnDeleteSpk', 'onclick' => 'deleteSpk()']) ?>
-                    <?= ui_button('cancel', 'Tutup', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                 </div>
             </div>
         </div>
@@ -3224,7 +3224,7 @@ $can_export = $permissions['export'];
                 title: 'Hapus SPK?',
                 text: 'Apakah Anda yakin ingin menghapus SPK ini? Tindakan ini tidak dapat dibatalkan.',
                 confirmButtonText: 'Ya, hapus',
-                cancelButtonText: 'Batal'
+                cancelButtonText: window.lang('cancel')
             }).then((confirmed) => {
                 if (confirmed) {
                     proceedDeleteSpk();
@@ -3580,7 +3580,7 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                         <?= ui_button('save', 'Save Changes', ['type' => 'submit']) ?>
                     </div>
                 </form>

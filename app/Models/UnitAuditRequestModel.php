@@ -65,17 +65,21 @@ class UnitAuditRequestModel extends Model
     {
         $builder = $this->db->table('unit_audit_requests uar');
         $builder->select('uar.*,
+            COALESCE(iu.no_unit, iu.no_unit_na, (SELECT iu2.no_unit FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.unit_id")) AS UNSIGNED) LIMIT 1)) as no_unit,
+            iu.no_unit_na,
+            COALESCE(iu.serial_number, (SELECT iu2.serial_number FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.unit_id")) AS UNSIGNED) LIMIT 1)) as serial_number,
+            iu.lokasi_unit,
             c.customer_name,
             c.customer_code,
-            iu.no_unit,
-            iu.no_unit_na,
-            iu.serial_number,
-            iu.lokasi_unit,
             mu.merk_unit,
             mu.model_unit,
             CONCAT(submitter.first_name, " ", COALESCE(submitter.last_name, "")) as submitter_name,
             CONCAT(reviewer.first_name, " ", COALESCE(reviewer.last_name, "")) as reviewer_name,
-            k.no_kontrak')
+            k.no_kontrak,
+            COALESCE(
+                (SELECT cl_loc.location_name FROM customer_locations cl_loc WHERE cl_loc.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.customer_location_id")) AS UNSIGNED) LIMIT 1),
+                (SELECT cl_ku.location_name FROM kontrak_unit ku_loc JOIN customer_locations cl_ku ON cl_ku.id = ku_loc.customer_location_id WHERE ku_loc.kontrak_id = uar.kontrak_id LIMIT 1)
+            ) as lokasi_kontrak')
             ->join('customers c', 'c.id = uar.customer_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = uar.unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
@@ -201,6 +205,11 @@ class UnitAuditRequestModel extends Model
             return ['success' => false, 'message' => 'Request sudah diproses'];
         }
 
+        $proposed = json_decode($request['proposed_data'], true) ?? [];
+        if ($request['request_type'] === 'ADD_UNIT' && !empty($proposed['customer_location_id']) && empty($request['kontrak_id'])) {
+            return ['success' => false, 'message' => 'Unit ini terikat lokasi pending. Approve via Request Lokasi Baru.'];
+        }
+
         $db = $this->db;
         $db->transStart();
 
@@ -214,7 +223,6 @@ class UnitAuditRequestModel extends Model
             ]);
 
             // Apply the change based on request type
-            $proposed = json_decode($request['proposed_data'], true) ?? [];
             $unitId   = $request['unit_id'];
 
             switch ($request['request_type']) {

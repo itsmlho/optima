@@ -113,7 +113,10 @@ $(document).ready(function() {
         $.ajax({
             url: '<?= base_url('service/work-orders/get-complete-data') ?>',
             type: 'POST',
-            data: { work_order_id: workOrderId },
+            data: { 
+                work_order_id: workOrderId,
+                <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+            },
             beforeSend: function() {
                 $('#btn-save-complete').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Loading...');
             },
@@ -178,6 +181,9 @@ $(document).ready(function() {
         
         let formData = $('#completeWorkOrderForm').serialize();
         console.log('💾 Saving complete data:', formData);
+        
+        // Add CSRF token to form data
+        formData += '&<?= csrf_token() ?>=<?= csrf_hash() ?>';
         
         // Disable button
         $('#btn-save-complete').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');

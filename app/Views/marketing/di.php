@@ -570,10 +570,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }
 
-  // Load available contracts for TARIK workflow
+  // Load available contracts for TARIK workflow (includes EXPIRED)
   async function loadKontrakOptionsForTarik() {
     try {
-      const response = await fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>', {
+      const response = await fetch('<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>', {
         method: 'GET',
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
@@ -586,12 +586,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const kontrakSelect = document.getElementById('kontrakSelect');
         
         const optionsHtml = '<option value="">-- Select Contract --</option>' + 
-          result.data.map(k => `<option value="${k.id}">${k.no_kontrak} - ${k.pelanggan}</option>`).join('');
+          result.data.map(k => `<option value="${k.id}">${k.label} (${k.unit_count} units)</option>`).join('');
         
         kontrakSelect.innerHTML = optionsHtml;
         
         // Setup kontrak change handler for TARIK
         setupKontrakChangeForTarik();
+        
+        // Auto-select if kontrak_id is in URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const preselectedKontrak = urlParams.get('kontrak_id');
+        if (preselectedKontrak) {
+          kontrakSelect.value = preselectedKontrak;
+          kontrakSelect.dispatchEvent(new Event('change'));
+        }
         
         console.log('Loaded', result.data.length, 'contract options for TARIK workflow');
       } else {
@@ -930,7 +938,45 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // =====================================================
   // END WORKFLOW BARU
   // =====================================================
-  
+
+  // Auto-open Create DI modal for TARIK when redirected from kontrak page
+  (function autoOpenTarikModal() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('create_tarik') === '1') {
+      const kontrakId = urlParams.get('kontrak_id');
+      setTimeout(() => {
+        const modal = new bootstrap.Modal(document.getElementById('diCreateModal'));
+        modal.show();
+        
+        // Wait for dropdown data to load, then auto-select TARIK
+        setTimeout(async () => {
+          const jenisSelect = document.getElementById('jenisPerintahSelect');
+          if (jenisSelect) {
+            const tarikOption = Array.from(jenisSelect.options).find(o => o.textContent.toUpperCase().includes('TARIK') && !o.textContent.toUpperCase().includes('TUKAR'));
+            if (tarikOption) {
+              jenisSelect.value = tarikOption.value;
+              jenisSelect.dispatchEvent(new Event('change'));
+              
+              // Wait for tujuan dropdown to populate
+              await new Promise(r => setTimeout(r, 500));
+              const tujuanSelect = document.getElementById('tujuanPerintahSelect');
+              if (tujuanSelect) {
+                const habisOption = Array.from(tujuanSelect.options).find(o => o.textContent.toUpperCase().includes('HABIS'));
+                if (habisOption) {
+                  tujuanSelect.value = habisOption.value;
+                  tujuanSelect.dispatchEvent(new Event('change'));
+                }
+              }
+            }
+          }
+        }, 800);
+      }, 300);
+
+      // Clean URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  })();
+
   /**
    * Load DI statistics from server
    */
@@ -1715,15 +1761,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       });
   };
   
-  window.deleteDI = async function(diId) {
-    const confirmed = await confirmSwal({
+  window.deleteDI = function(diId) {
+    OptimaConfirm.danger({
         title: 'Hapus Delivery Instruction',
         text: 'Apakah Anda yakin ingin menghapus DI ini? Tindakan ini tidak dapat dibatalkan.',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    
-    fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
+        onConfirm: function() {
+            fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
       method: 'POST',
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
@@ -1759,27 +1802,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
     editDI(currentDiId);
   };
   
-  // Delete DI from detail modal with SweetAlert2 confirmation
-  window.deleteDiFromDetail = async function() {
+  // Delete DI from detail modal with OptimaConfirm
+  window.deleteDiFromDetail = function() {
     if (!currentDiId) {
       alertSwal('error', 'DI ID tidak ditemukan');
       return;
     }
-    
-    const confirmed = await confirmSwal({
+    OptimaConfirm.danger({
         title: 'Hapus Delivery Instruction',
         text: 'PERINGATAN: Tindakan ini tidak dapat dibatalkan! Apakah Anda benar-benar yakin ingin menghapus DI ini?',
-        type: 'delete',
-        icon: 'warning'
+        icon: 'warning',
+        onConfirm: function() {
+            const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));
+            if (detailModal) detailModal.hide();
+            deleteDI(currentDiId);
+        }
     });
-    if (!confirmed) return;
-    
-    // Close detail modal first
-    const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));
-    if (detailModal) detailModal.hide();
-    
-    // Call existing delete function
-    deleteDI(currentDiId);
   };
   
   // Print DI from detail modal
@@ -1950,7 +1988,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <?= ui_button('print', 'Print DI', ['id' => 'btnPrintDi', 'onclick' => 'printDiFromDetail()']) ?>
         <?= ui_button('edit', 'Edit', ['id' => 'btnEditDi', 'onclick' => 'editDiFromDetail()']) ?>
         <?= ui_button('delete', 'Delete', ['id' => 'btnDeleteDi', 'onclick' => 'deleteDiFromDetail()']) ?>
-        <?= ui_button('cancel', 'Close', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+        <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
       </div>
     </div>
   </div>
@@ -2004,7 +2042,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           </div>
         </div>
         <div class="modal-footer">
-          <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+          <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
           <?= ui_button('save', 'Update DI', ['type' => 'submit']) ?>
         </div>
       </form>
@@ -2052,7 +2090,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           </div>
         </div>
         <div class="modal-footer">
-          <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+          <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
           <?= ui_button('submit', 'Link Contract', ['type' => 'submit', 'color' => 'warning', 'icon' => 'fas fa-link']) ?>
         </div>
       </form>

@@ -70,13 +70,14 @@ class AuditLocationModel extends Model
     // ── Data Retrieval ──────────────────────────────────
 
     /**
-     * Get locations for a customer that have active contracts
+     * Get locations for a customer that have active contracts OR are pending approval
      * Includes periode (contract dates) and last audit info for Service view
      */
     public function getLocationsForCustomer(int $customerId): array
     {
         $rows = $this->db->table('customer_locations cl')
             ->select('cl.id, cl.location_name, cl.address, cl.contact_person, cl.phone,
+                cl.approval_status, cl.requested_by, cl.area_id, a.area_name, a.area_code,
                 COUNT(ku.id) as total_units,
                 SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units,
                 MIN(k.tanggal_mulai) as periode_start,
@@ -93,11 +94,18 @@ class AuditLocationModel extends Model
                  JOIN kontrak k2 ON k2.id = ku2.kontrak_id
                  WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
                  LIMIT 1) as customer_po_number')
+            ->join('areas a', 'a.id = cl.area_id', 'left')
             ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
             ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status = "ACTIVE"', 'left')
             ->where('cl.customer_id', $customerId)
             ->where('cl.is_active', 1)
+            ->groupStart()
+                ->where('cl.approval_status IS NULL')
+                ->orWhere('cl.approval_status', 'APPROVED')
+                ->orWhere('cl.approval_status', 'PENDING')
+            ->groupEnd()
             ->groupBy('cl.id')
+            ->orderBy('cl.approval_status', 'DESC')
             ->orderBy('cl.location_name', 'ASC')
             ->get()
             ->getResultArray();
@@ -115,6 +123,9 @@ class AuditLocationModel extends Model
             $lastAudit = $this->getLastAuditByLocation((int) $row['id']);
             $row['last_audit'] = $lastAudit;
             $row['due_for_reaudit'] = $lastAudit ? $this->isDueForReaudit($lastAudit) : true;
+            
+            // Add is_pending flag for UI
+            $row['is_pending_approval'] = ($row['approval_status'] === 'PENDING');
         }
         return $rows;
     }
@@ -807,6 +818,12 @@ class AuditLocationModel extends Model
         $db->transStart();
 
         try {
+            // Get kontrak_id from pricing (required) or fallback to existing
+            $kontrakId = $pricing['kontrak_id'] ?? $audit['kontrak_id'];
+            if (empty($kontrakId)) {
+                return ['success' => false, 'message' => 'Kontrak/PO harus dipilih'];
+            }
+
             // Calculate price adjustment
             $unitDifference = $audit['actual_total_units'] - $audit['kontrak_total_units'];
             $pricePerUnit = $pricing['price_per_unit'] ?? null;
@@ -819,6 +836,7 @@ class AuditLocationModel extends Model
             // Update audit header
             $this->update($id, [
                 'status'                 => 'APPROVED',
+                'kontrak_id'             => $kontrakId,
                 'reviewed_by'            => $reviewerId,
                 'reviewed_at'            => date('Y-m-d H:i:s'),
                 'unit_difference'        => $unitDifference,
@@ -835,7 +853,7 @@ class AuditLocationModel extends Model
                         // Add new unit to kontrak_unit (unit lebih - add to contract)
                         if (!empty($item['unit_id'])) {
                             $db->table('kontrak_unit')->insert([
-                                'kontrak_id'           => $audit['kontrak_id'],
+                                'kontrak_id'           => $kontrakId,
                                 'unit_id'              => $item['unit_id'],
                                 'customer_location_id' => $audit['customer_location_id'],
                                 'status'               => 'ACTIVE',
@@ -849,7 +867,7 @@ class AuditLocationModel extends Model
                         // Unit kurang - add unit to kontrak at this location
                         if (!empty($item['unit_id'])) {
                             $db->table('kontrak_unit')->insert([
-                                'kontrak_id'           => $audit['kontrak_id'],
+                                'kontrak_id'           => $kontrakId,
                                 'unit_id'              => $item['unit_id'],
                                 'customer_location_id' => $audit['customer_location_id'],
                                 'status'               => 'ACTIVE',

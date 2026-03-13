@@ -54,15 +54,20 @@ if (!function_exists('send_notification')) {
                 
                 // Create notification for each target user
                 foreach ($targetUsers as $user) {
+                    // Get notification style from rule, default to info_only
+                    $notificationStyle = $rule['notification_style'] ?? 'info_only';
+
                     $notificationData = [
                         'user_id' => $user['id'],
                         'title' => $title,
                         'message' => $message,
                         'type' => $rule['type'],
-                        'icon' => 'bell', // Default icon since column doesn't exist
+                        'icon' => 'bell',
                         'related_module' => $eventData['module'] ?? null,
                         'related_id' => $eventData['id'] ?? null,
-                        'url' => $eventData['url'] ?? null,
+                        // For info_only style, set URL to null (no click/redirect)
+                        'url' => ($notificationStyle === 'info_only') ? null : ($eventData['url'] ?? null),
+                        'notification_style' => $notificationStyle,
                         'created_at' => date('Y-m-d H:i:s')
                     ];
                     

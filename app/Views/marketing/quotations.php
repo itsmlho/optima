@@ -252,7 +252,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal']) ?>
                     <?= ui_button('submit', 'Create Prospect', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -333,7 +333,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 <div id="quotationActions">
                     <!-- Action buttons will be populated dynamically -->
                 </div>
-                <?= ui_button('cancel', 'Close', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
             </div>
         </div>
     </div>
@@ -682,7 +682,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal']) ?>
                     <?= ui_button('save', '<span id="submitBtnText">Save Specification</span>', [
                         'type' => 'submit',
                         'id' => 'submitSpecificationBtn'
@@ -749,7 +749,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal']) ?>
                     <?= ui_button('save', 'Save Attachment', [
                         'type' => 'submit',
                         'id' => 'submitAttachmentBtn'
@@ -909,7 +909,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
             <div class="modal-footer">
-                <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                 <?= ui_button('submit', 'Continue', [
                     'id' => 'continueWithLocationBtn',
                     'icon' => 'fas fa-arrow-right'
@@ -1068,7 +1068,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" id="selectedContractId">
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('save', 'Save Contract', ['type' => 'submit']) ?>
                 </div>
             </form>
@@ -1138,7 +1138,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" id="spk_contract_id" name="contract_id">
                 </div>
                 <div class="modal-footer">
-                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                     <?= ui_button('submit', 'Create Selected SPK(s)', [
                         'type' => 'submit',
                         'id' => 'submitSPKBtn',
@@ -2349,7 +2349,7 @@ function convertProspectToCustomer(quotationId) {
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d',
             confirmButtonText: '<i class="fas fa-user-check me-1"></i> Yes, Convert to Customer',
-            cancelButtonText: 'Cancel',
+            cancelButtonText: window.lang('cancel'),
             width: '600px',
             customClass: {
                 popup: 'swal-wide'
@@ -3002,7 +3002,7 @@ function openAddSpecificationModal() {
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonText: 'Convert Now',
-                    cancelButtonText: 'Cancel'
+                    cancelButtonText: window.lang('cancel')
                 }).then((result) => {
                     if (result.isConfirmed) {
                         convertToQuotation(currentQuotationId);
@@ -4531,7 +4531,7 @@ $('#createProspectForm').on('submit', function(e) {
                     icon: 'success',
                     showCancelButton: true,
                     confirmButtonText: 'View Prospect',
-                    cancelButtonText: 'Close'
+                    cancelButtonText: window.lang('close')
                 }).then((result) => {
                     if (result.isConfirmed) {
                         // Open the prospect detail
@@ -4595,7 +4595,7 @@ function convertToQuotation(quotationId) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Convert',
-        cancelButtonText: 'Cancel',
+        cancelButtonText: window.lang('cancel'),
         customClass: {
             popup: 'swal2-small'
         }
@@ -4612,7 +4612,7 @@ function convertToQuotation(quotationId) {
                             icon: 'success',
                             showCancelButton: true,
                             confirmButtonText: 'Add Specifications Now',
-                            cancelButtonText: 'Later'
+                            cancelButtonText: window.lang('later')
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 // Open specifications modal
@@ -4671,7 +4671,7 @@ function openSpecificationsModal(quotationId) {
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonText: 'Convert Now',
-                    cancelButtonText: 'Cancel'
+                    cancelButtonText: window.lang('cancel')
                 }).then((result) => {
                     if (result.isConfirmed) {
                         convertToQuotation(quotationId);
@@ -4900,7 +4900,7 @@ function sendQuotation(quotationId) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Send',
-        cancelButtonText: 'Cancel',
+        cancelButtonText: window.lang('cancel'),
         customClass: {
             popup: 'swal2-small'
         }
@@ -4930,7 +4930,7 @@ function sendQuotation(quotationId) {
                                 icon: 'warning',
                                 showCancelButton: true,
                                 confirmButtonText: 'Add Specifications',
-                                cancelButtonText: 'Cancel'
+                                cancelButtonText: window.lang('cancel')
                             }).then((result) => {
                                 if (result.isConfirmed) {
                                     addSpecifications(quotationId);
@@ -4973,7 +4973,7 @@ function markAsDeal(quotationId) {
                 showCancelButton: true,
                 confirmButtonText: 'Complete Profile First',
                 denyButtonText: 'Mark as Deal Anyway',
-                cancelButtonText: 'Cancel',
+                cancelButtonText: window.lang('cancel'),
                 customClass: {
                     popup: 'swal2-large'
                 }
@@ -5019,7 +5019,7 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Deal',
-        cancelButtonText: 'Cancel',
+        cancelButtonText: window.lang('cancel'),
         customClass: {
             popup: 'swal2-small'
         }
@@ -5129,7 +5129,7 @@ function markAsNotDeal(quotationId) {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Yes, No Deal',
-        cancelButtonText: 'Cancel',
+        cancelButtonText: window.lang('cancel'),
         customClass: {
             popup: 'swal2-small'
         }
@@ -5341,7 +5341,7 @@ function showLocationSelectionModal(customerId, quotationId, dealMessage, locati
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Continue Selection',
-                cancelButtonText: 'Cancel Deal',
+                cancelButtonText: window.lang('cancel_deal'),
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33'
             }).then((result) => {
@@ -6073,7 +6073,7 @@ function createCustomerFromDeal(quotationId) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Create Customer',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId, {
@@ -6087,7 +6087,7 @@ function createCustomerFromDeal(quotationId) {
                             icon: 'success',
                             showCancelButton: true,
                             confirmButtonText: 'View Customer',
-                            cancelButtonText: 'Continue Here'
+                            cancelButtonText: window.lang('continue')
                         }).then((result) => {
                             if (result.isConfirmed && response.customer_id) {
                                 // Redirect to customer detail page
@@ -6145,7 +6145,7 @@ function createContract(quotationId) {
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonText: 'Complete Profile',
-                            cancelButtonText: 'Cancel',
+                            cancelButtonText: window.lang('cancel'),
                             confirmButtonColor: '#3085d6'
                         }).then((result) => {
                             if (result.isConfirmed) {
@@ -6164,7 +6164,7 @@ function createContract(quotationId) {
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: 'Yes, Create',
-                        cancelButtonText: 'Cancel'
+                        cancelButtonText: window.lang('cancel')
                     }).then((result) => {
                         if (result.isConfirmed) {
                             proceedWithContractCreation(quotationId);
@@ -6192,7 +6192,7 @@ function proceedWithContractCreation(quotationId) {
                     icon: 'success',
                     showCancelButton: true,
                     confirmButtonText: 'View Contract',
-                    cancelButtonText: 'Continue Here'
+                    cancelButtonText: window.lang('continue')
                 }).then((result) => {
                     if (result.isConfirmed && response.contract_id) {
                         // Redirect to contract detail page
@@ -6215,7 +6215,7 @@ function proceedWithContractCreation(quotationId) {
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonText: 'Complete Profile',
-                        cancelButtonText: 'Cancel'
+                        cancelButtonText: window.lang('cancel')
                     }).then((result) => {
                         if (result.isConfirmed) {
                             const customerEditUrl = '<?= base_url('customers/edit') ?>/' + response.customer_id;
@@ -6370,7 +6370,7 @@ function simulateWorkflow(prospectName = 'Test Prospect ' + Date.now()) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Start Simulation',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             console.log('Starting workflow simulation...');

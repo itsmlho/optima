@@ -741,16 +741,15 @@ $(document).on('shown.bs.modal', '#approveUserModal', function() {
     }
 });
 
-async function deactivateUser(userId, userName) {
-    const confirmed = await confirmSwal({
+function deactivateUser(userId, userName) {
+    OptimaConfirm.generic({
         title: 'Nonaktifkan User',
         text: `Apakah Anda yakin ingin menonaktifkan user "${userName}"? User tidak akan dapat login ke sistem setelah dinonaktifkan.`,
         icon: 'warning',
-        confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan'
-    });
-    if (!confirmed) return;
-    
-    $.ajax({
+        confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan',
+        confirmButtonColor: '#fd7e14',
+        onConfirm: function() {
+            $.ajax({
         url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
         type: 'POST',
         dataType: 'json',
@@ -776,16 +775,16 @@ async function deactivateUser(userId, userName) {
             alertSwal('error', response.message || 'Terjadi kesalahan saat menonaktifkan user', 'Error');
         }
     });
+        }
+    });
 }
 
-async function confirmDeleteUser(userId, userName) {
-    const confirmed = await confirmSwal({
+function confirmDeleteUser(userId, userName) {
+    OptimaConfirm.danger({
         title: 'Hapus User',
         text: `Apakah Anda yakin ingin menghapus user "${userName}"? Tindakan ini tidak dapat dibatalkan!`,
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
         method: 'DELETE',
         headers: {
@@ -815,15 +814,15 @@ function exportUsers() {
     window.location.href = '<?= base_url('admin/advanced-users/export') ?>';
 }
 
-async function cleanExpiredPermissions() {
-    const confirmed = await confirmSwal({
+function cleanExpiredPermissions() {
+    OptimaConfirm.generic({
         title: 'Bersihkan Permission Kadaluarsa',
         text: 'Ini akan menghapus semua permission yang sudah kadaluarsa atau tidak lagi valid. Lanjutkan?',
         icon: 'warning',
-        confirmText: '<i class="fas fa-broom me-1"></i>Ya, Bersihkan'
-    });
-    if (!confirmed) return;
-    $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
+        confirmText: '<i class="fas fa-broom me-1"></i>Ya, Bersihkan',
+        confirmButtonColor: '#fd7e14',
+        onConfirm: function() {
+            $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
         if (response.success) {
             alertSwal('success', 'Permission kadaluarsa berhasil dibersihkan.\nTerhapus: ' + (response.removed_count || 0) + ' permissions');
             location.reload();
@@ -832,6 +831,8 @@ async function cleanExpiredPermissions() {
         }
     }).fail(function() {
         alertSwal('error', 'Terjadi kesalahan saat membersihkan permission kadaluarsa.');
+    });
+        }
     });
 }
 </script>

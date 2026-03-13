@@ -229,14 +229,12 @@
 
 <?= $this->section('javascript') ?>
 <script>
-async function deleteReport(id) {
-    const confirmed = await confirmSwal({
+function deleteReport(id) {
+    OptimaConfirm.danger({
         title: 'Hapus Report',
         text: 'Apakah Anda yakin ingin menghapus report ini? Tindakan ini tidak dapat dibatalkan.',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: '<?= base_url('reports/delete/') ?>' + id,
         method: 'DELETE',
         dataType: 'json',
@@ -253,6 +251,8 @@ async function deleteReport(id) {
             alertSwal('error', 'Error: ' + error);
         }
     });
+        }
+    });
 }
 
 function refreshPage() {
@@ -263,15 +263,17 @@ function retryGeneration() {
     showNotification('Retry generation feature coming soon!', 'info');
 }
 
-async function regenerateReport() {
-    const confirmed = await confirmSwal({
+function regenerateReport() {
+    OptimaConfirm.generic({
         title: 'Regenerasi Report',
         text: 'Ini akan membuat versi baru dengan data terkini. Lanjutkan?',
         icon: 'info',
-        confirmText: '<i class="fas fa-redo me-1"></i>Ya, Regenerasi'
+        confirmText: '<i class="fas fa-redo me-1"></i>Ya, Regenerasi',
+        confirmButtonColor: '#0d6efd',
+        onConfirm: function() {
+            alertSwal('info', 'Fitur regenerate report akan segera tersedia!');
+        }
     });
-    if (!confirmed) return;
-    alertSwal('info', 'Fitur regenerate report akan segera tersedia!');
 }
 
 function shareReport() {

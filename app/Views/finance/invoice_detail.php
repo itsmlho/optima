@@ -276,15 +276,12 @@
 
 <?= $this->section('scripts') ?>
 <script>
-async function approveInvoice(id) {
-    const ok = await confirmSwal(
-        'Approve Invoice?',
-        'Invoice akan disetujui dan dikirim ke customer.',
-        'Approve', 'success'
-    );
-    if (!ok) return;
-
-    fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
+function approveInvoice(id) {
+    OptimaConfirm.approve({
+        title: 'Approve Invoice?',
+        text: 'Invoice akan disetujui dan dikirim ke customer.',
+        onConfirm: function() {
+            fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -296,6 +293,8 @@ async function approveInvoice(id) {
             alertSwal('error', 'Error: ' + data.message);
         }
     });
+        }
+    });
 }
 
 async function markAsPaid(id) {
@@ -305,7 +304,7 @@ async function markAsPaid(id) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Konfirmasi',
-        cancelButtonText: 'Batal',
+        cancelButtonText: window.lang('cancel'),
         preConfirm: () => document.getElementById('swal-payment-date').value
     });
     if (!isConfirmed || !paymentDate) return;
@@ -338,7 +337,7 @@ async function cancelInvoice(id) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Batalkan',
-        cancelButtonText: 'Kembali',
+        cancelButtonText: window.lang('back'),
         inputValidator: v => !v && 'Alasan harus diisi'
     });
     if (!isConfirmed) return;

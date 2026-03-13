@@ -101,6 +101,8 @@ return [
 
     // Additional Keys
     'work_orders' => 'Perintah Kerja',
+    'work_order' => 'Perintah Kerja',
+    'new_work_order' => 'Perintah Kerja Baru',
     'open' => 'Buka',
     'no_permission_view_spk' => 'Anda tidak memiliki izin untuk melihat SPK ini',
     'preventive_maintenance_system' => 'Sistem Pemeliharaan Berkala',

@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Ya, Proses!',
-      cancelButtonText: 'Batal'
+      cancelButtonText: window.lang('cancel')
     });
     if (!isConfirmed) return;
     

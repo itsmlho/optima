@@ -324,7 +324,7 @@ function resetPermissions() {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Reset!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $('.permission-toggle input[type="checkbox"]').each(function() {

@@ -511,17 +511,13 @@ function editRuleFromDetail() {
     document.getElementById('ruleModal').classList.add('show');
 }
 
-async function deleteRuleFromDetail() {
+function deleteRuleFromDetail() {
     if (!currentRuleId) return;
-    
-    const confirmed = await confirmSwal({
+    OptimaConfirm.danger({
         title: 'Hapus Notification Rule',
         text: 'Apakah Anda yakin ingin menghapus rule notifikasi ini?',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    
-    fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
+        onConfirm: function() {
+            fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
@@ -541,6 +537,8 @@ async function deleteRuleFromDetail() {
     .catch(error => {
         console.error('Error:', error);
         alertSwal('error', 'Gagal menghapus rule');
+    });
+        }
     });
 }
 
@@ -618,77 +616,76 @@ function editRule() {
     });
 }
 
-async function testRule() {
+function testRule() {
     if (!currentRuleId) return;
     
-    const confirmed = await confirmSwal({
+    OptimaConfirm.generic({
         title: 'Test Notification Rule',
         text: 'Kirim notifikasi test untuk rule ini?',
         icon: 'info',
-        confirmText: '<i class="fas fa-play me-1"></i>Ya, Test'
-    });
-    if (!confirmed) return;
-    
-    fetch(`<?= base_url('notifications/testRule') ?>/${currentRuleId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': window.csrfToken
-        },
-        body: JSON.stringify({
-            test_data: {
-                spk_id: 'TEST_001',
-                created_by: '<?= session()->get('name') ?>',
-                timestamp: new Date().toISOString()
-            }
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alertSwal('success', 'Test rule berhasil!');
-        } else {
-            alertSwal('error', data.message, 'Test Gagal');
+        confirmText: '<i class="fas fa-play me-1"></i>Ya, Test',
+        onConfirm: function() {
+            fetch(`<?= base_url('notifications/testRule') ?>/${currentRuleId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': window.csrfToken
+                },
+                body: JSON.stringify({
+                    test_data: {
+                        spk_id: 'TEST_001',
+                        created_by: '<?= session()->get('name') ?>',
+                        timestamp: new Date().toISOString()
+                    }
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alertSwal('success', 'Test rule berhasil!');
+                } else {
+                    alertSwal('error', data.message, 'Test Gagal');
+                }
+                closeActionsModal();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alertSwal('error', 'Gagal menjalankan test rule');
+            });
         }
-        closeActionsModal();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alertSwal('error', 'Gagal menjalankan test rule');
     });
 }
 
-async function deleteRule() {
+function deleteRule() {
     if (!currentRuleId) return;
     
-    const confirmed = await confirmSwal({
+    OptimaConfirm.danger({
         title: 'Hapus Notification Rule',
         text: 'Apakah Anda yakin ingin menghapus rule notifikasi ini?',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    
-    fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': window.csrfToken
+        onConfirm: function() {
+            fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': window.csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeActionsModal();
+                    location.reload();
+                } else {
+                    alertSwal('error', data.message, 'Gagal Hapus Rule');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alertSwal('error', 'Gagal menghapus rule');
+            });
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            closeActionsModal();
-            location.reload();
-        } else {
-            alertSwal('error', data.message, 'Gagal Hapus Rule');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alertSwal('error', 'Gagal menghapus rule');
     });
 }
 

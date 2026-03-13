@@ -14,6 +14,7 @@ return [
     'update' => 'Perbarui',
     'delete' => 'Hapus',
     'save' => 'Simpan',
+    'save_changes' => 'Simpan Perubahan',
     'cancel' => 'Batal',
     'submit' => 'Kirim',
     'view' => 'Lihat',

@@ -998,7 +998,7 @@ function deleteUnitAsset(id) {
             title: 'Hapus Unit Asset?',
             text: `Are you sure you want to delete unit asset "${id}"?\n\nThis action cannot be undone.`,
             confirmButtonText: 'Ya, hapus',
-            cancelButtonText: 'Batal'
+            cancelButtonText: window.lang('cancel')
         }).then((confirmed) => { if (confirmed) doDelete(); });
     } else if (window.confirm(`Are you sure you want to delete unit asset "${id}"?\n\nThis action cannot be undone and will permanently remove all associated data.`)) {
         doDelete();

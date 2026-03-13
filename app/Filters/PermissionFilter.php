@@ -33,9 +33,16 @@ class PermissionFilter implements FilterInterface
         }
 
         $requiredPermission = $arguments[0];
-        
-        // Check if user has required permission
-        if (!hasPermission($requiredPermission)) {
+        // Support OR: "view_service|view_marketing" = user needs any of these
+        $permissions = array_map('trim', explode('|', $requiredPermission));
+        $hasAny = false;
+        foreach ($permissions as $perm) {
+            if (hasPermission($perm)) {
+                $hasAny = true;
+                break;
+            }
+        }
+        if (!$hasAny) {
             if ($request->isAJAX()) {
                 return response()->setJSON([
                     'error' => 'Unauthorized',

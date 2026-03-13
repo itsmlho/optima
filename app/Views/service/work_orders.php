@@ -316,7 +316,7 @@ $assetService = new \App\Services\AssetMinificationService();
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="workOrderFormTitle"><i class="fas fa-plus-circle me-2"></i>Add New Work Order</h5>
+                <h5 class="modal-title" id="workOrderFormTitle"><i class="fas fa-plus-circle me-2"></i><?= lang('Common.add') ?> <?= lang('Service.work_order') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -392,6 +392,12 @@ $assetService = new \App\Services\AssetMinificationService();
                         </div>
                     </div>
                     
+                    <!-- Area Indicator Alert -->
+                    <div id="areaIndicator" class="alert d-none mb-3" role="alert">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        <strong id="areaIndicatorText">Select a unit to see area information</strong>
+                    </div>
+                    
                     <div class="card shadow-sm mb-4">
                         <div class="card-header">
                             <h6 class="mb-0"><i class="fas fa-users-cog me-2"></i>Staff Assignment</h6>
@@ -400,18 +406,18 @@ $assetService = new \App\Services\AssetMinificationService();
                             <!-- Admin & Foreman - Dropdown -->
                             <div class="row mb-3">
                                 <div class="col-md-6 mb-3">
-                                    <label for="admin_id" class="form-label">Admin</label>
+                                    <label for="admin_id" class="form-label">Admin <small class="text-muted">(Optional)</small></label>
                                     <select class="form-select" id="admin_id" name="admin_id">
                                         <option value="" selected>-- Select Admin --</option>
                                     </select>
-                                    <small class="form-text text-muted">Select admin based on area</small>
+                                    <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="foreman_id" class="form-label">Foreman</label>
+                                    <label for="foreman_id" class="form-label">Foreman <small class="text-muted">(Optional)</small></label>
                                     <select class="form-select" id="foreman_id" name="foreman_id">
                                         <option value="" selected>-- Select Foreman --</option>
                                     </select>
-                                    <small class="form-text text-muted">Select foreman based on area</small>
+                                    <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
                             </div>
                             
@@ -498,10 +504,10 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="event.stopPropagation();">
-                        <i class="fas fa-times me-1"></i> Cancel
+                        <i class="fas fa-times me-1"></i> <?= lang('Common.cancel') ?>
                     </button>
                     <button type="submit" class="btn btn-primary" form="workOrderForm" id="btnSubmitWo" onclick="event.stopPropagation();">
-                        <i class="fas fa-save me-1"></i> Save Work Order
+                        <i class="fas fa-save me-1"></i> <?= lang('Common.save') ?> <?= lang('Service.work_order') ?>
                     </button>
                 </div>
             </div>
@@ -511,7 +517,7 @@ $assetService = new \App\Services\AssetMinificationService();
 
 <!-- Modal View Work Order -->
 <div class="modal fade" id="viewWorkOrderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" style="margin-top: 2rem;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -757,7 +763,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 <button type="button" class="btn btn-danger btn-delete-from-view" data-id="" data-wo-number="">
                     <i class="fas fa-trash me-1"></i>Delete Work Order
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
             </div>
         </div>
     </div>
@@ -778,6 +784,20 @@ const canViewService = <?= $can_view ? 'true' : 'false' ?>;
 const canCreateService = <?= $can_create ? 'true' : 'false' ?>;
 const canExportService = <?= $can_export ? 'true' : 'false' ?>;
 
+// Safe language helper function (fallback if window.lang not loaded yet)
+if (typeof window.lang !== 'function') {
+    window.lang = function(key) {
+        const translations = {
+            'cancel': 'Batal',
+            'save': 'Simpan',
+            'delete': 'Hapus',
+            'close': 'Tutup',
+            'submit': 'Submit'
+        };
+        return translations[key] || key;
+    };
+}
+
 $(document).ready(function() {
     // Hide global page loading overlay as soon as this page JS is ready
     try {
@@ -797,7 +817,7 @@ $(document).ready(function() {
     
     // Initialize global spareparts data for dropdowns
     <?php if (!empty($spareparts)): ?>
-        window.sparepartsData = <?= json_encode($spareparts) ?>;
+        window.sparepartsData = <?= json_encode($spareparts, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
     <?php else: ?>
         window.sparepartsData = [];
     <?php endif; ?>
@@ -1133,9 +1153,9 @@ $(document).ready(function() {
         $('#workOrderForm')[0].reset();
         
         // Reset modal title and action
-        $('#workOrderFormTitle').text('New Work Order');
+        $('#workOrderFormTitle').text(typeof window.lang === 'function' ? window.lang('new_work_order') : 'New Work Order');
         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/store') ?>');
-        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Save Work Order');
+        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> ' + (typeof window.lang === 'function' ? window.lang('save') : 'Save') + ' ' + (typeof window.lang === 'function' ? window.lang('work_order') : 'Work Order'));
         
         // Reset custom dropdowns
         resetCustomDropdowns();
@@ -1277,7 +1297,7 @@ $(document).ready(function() {
                 }
             },
             complete: function() {
-                $('#btnSubmitWo').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Work Order');
+                $('#btnSubmitWo').prop('disabled', false).html('<i class="fas fa-save me-1"></i> ' + (typeof window.lang === 'function' ? window.lang('save') : 'Save') + ' ' + (typeof window.lang === 'function' ? window.lang('work_order') : 'Work Order'));
             }
         });
     });
@@ -1342,7 +1362,7 @@ $(document).ready(function() {
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Ya, Mulai',
-            cancelButtonText: 'Batal',
+            cancelButtonText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d',
             allowOutsideClick: false
@@ -1364,7 +1384,7 @@ $(document).ready(function() {
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Pending',
-            cancelButtonText: 'Cancel',
+            cancelButtonText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
             showDenyButton: true,
             denyButtonText: 'Waiting for Sparepart',
             confirmButtonColor: '#ffc107',
@@ -1458,7 +1478,7 @@ $(document).ready(function() {
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Yes',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 updateWorkOrderStatusDirect(id, status, message);
@@ -1501,7 +1521,7 @@ $(document).ready(function() {
             inputPlaceholder: placeholder,
             showCancelButton: true,
             confirmButtonText: 'Update',
-            cancelButtonText: 'Cancel',
+            cancelButtonText: window.lang('cancel'),
             inputValidator: (value) => {
                 if (!value && (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS')) {
                     return 'Notes are required for this status'
@@ -1697,7 +1717,7 @@ $(document).ready(function() {
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Delete',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 // console.log('🗑️ Confirmed deletion, sending request...');
@@ -1746,7 +1766,7 @@ $(document).ready(function() {
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Delete',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -2308,7 +2328,8 @@ $(document).ready(function() {
         if (spareparts && spareparts.length > 0) {
             let html = '';
             spareparts.forEach(function(sparepart, index) {
-                // console.log(`  📦 Item ${index + 1}:`, {
+                /* DISABLED DEBUG LOG
+                console.log('  📦 Item ' + (index + 1) + ':', {
                     name: sparepart.name,
                     item_type: sparepart.item_type,
                     is_from_warehouse: sparepart.is_from_warehouse,
@@ -2316,6 +2337,7 @@ $(document).ready(function() {
                     used_quantity: sparepart.used_quantity,
                     notes: sparepart.notes
                 });
+                */
                 
                 const qtyBrought = (sparepart.qty || sparepart.quantity_brought || 0) + ' ' + (sparepart.satuan || 'pcs');
                 const qtyUsed = sparepart.used_quantity || '-';
@@ -2496,9 +2518,10 @@ $(document).ready(function() {
         generateWorkOrderNumber();
         
         // Ensure form is set for create mode
-        $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>New Work Order');
+        var saveText = (typeof window.lang === 'function' ? window.lang('save') : 'Save') + ' ' + (typeof window.lang === 'function' ? window.lang('work_order') : 'Work Order');
+        $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>' + (typeof window.lang === 'function' ? window.lang('new_work_order') : 'New Work Order'));
         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/store') ?>');
-        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Save Work Order');
+        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> ' + saveText);
         $('#work_order_id').val('');
         
         // Initialize Select2 immediately before showing modal
@@ -2528,16 +2551,9 @@ $(document).ready(function() {
         });
     }
 
-    // Load Unit Verification Data - Now handled by unit_verification.php
-    function loadUnitVerificationData(workOrderId, woNumber) {
-        // Call the function from unit_verification.php
-        if (typeof window.loadUnitVerificationData === 'function') {
-            window.loadUnitVerificationData(workOrderId, woNumber);
-        } else {
-            console.error('❌ loadUnitVerificationData function not found');
-        }
-    }
-
+    // Load Unit Verification Data - Defined in unit_verification.php (included at bottom)
+    // No wrapper needed - window.loadUnitVerificationData is globally available
+    
     // Unit search functionality
     let unitSearchTimeout;
     $('#unit_search').on('input', function() {
@@ -2857,7 +2873,7 @@ $(document).ready(function() {
             $('#work_order_id').val('');
             
             // Reset modal title
-            $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>New Work Order');
+            $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>' + (typeof window.lang === 'function' ? window.lang('new_work_order') : 'New Work Order'));
             
             // Ensure modal body scroll is restored
             $('#workOrderModal .modal-body').css('overflow-y', 'auto');
@@ -3010,18 +3026,33 @@ $(document).ready(function() {
             // Find unit data from loaded units
             const unit = window.allUnits.find(u => u.id == unitId);
             if (unit && unit.area_name) {
+                // CASE 1: Unit has area - filter staff by area
                 $('#area').val(unit.area_name);
                 $('#area_id').val(unit.area_id);
                 
-                // Load area staff
+                // Show area info indicator
+                showAreaIndicator(unit.area_name, true);
+                
+                // Load area-specific staff
                 loadAreaStaff(unit.area_id);
+            } else {
+                // CASE 2: Unit has NO area - show all available staff (fallback)
+                $('#area').val('N/A');
+                $('#area_id').val('');
+                
+                // Show fallback indicator
+                showAreaIndicator(null, false);
+                
+                // Load ALL available staff (not filtered by area)
+                loadAreaStaff(null); // Will fallback to all staff
             }
         } else {
             // Clear area and staff fields if no unit selected
             $('#area').val('');
             $('#area_id').val('');
-            $('#admin').val('').trigger('change');
-            $('#foreman').val('').trigger('change');
+            hideAreaIndicator();
+            $('#admin_id').val('').trigger('change');
+            $('#foreman_id').val('').trigger('change');
             $('#mechanic_1, #mechanic_2').val('').trigger('change');
             $('#helper_1, #helper_2').val('').trigger('change');
         }
@@ -3366,6 +3397,9 @@ $(document).ready(function() {
         $('#pic_name').val('');
         
         if (!areaId) {
+            // FALLBACK: Load ALL available staff when no area specified
+            // console.log('⚠️ No area specified - loading ALL available staff');
+            loadAllStaffFallback();
             return;
         }
         
@@ -3415,15 +3449,15 @@ $(document).ready(function() {
                     // console.log('✅ Area staff loaded successfully');
                 } else {
                     console.error('❌ Error loading area staff:', response.message);
-                    $('#admin_id').html('<option value="">Error loading staff</option>');
-                    $('#foreman_id').html('<option value="">Error loading staff</option>');
+                    // Fallback to all staff if area staff load fails
+                    loadAllStaffFallback();
                 }
             },
             error: function(xhr, status, error) {
                 console.error('❌ Error loading area staff:', error);
                 console.error('❌ Response:', xhr.responseText);
-                $('#admin_id').html('<option value="">Error loading staff</option>');
-                $('#foreman_id').html('<option value="">Error loading staff</option>');
+                // Fallback to all staff on error
+                loadAllStaffFallback();
             }
         });
         
@@ -3436,6 +3470,81 @@ $(document).ready(function() {
                 $('#pic_name').val('');
             }
         });
+    }
+    
+    // NEW: Fallback function to load ALL staff when no area specified
+    function loadAllStaffFallback() {
+        // console.log('🔄 FALLBACK: Loading all available staff (no area filter)');
+        
+        // Load ALL admins (using loadStaffDropdown function that loads all without area filter)
+        $.ajax({
+            url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
+            type: 'POST',
+            data: { staff_role: 'ADMIN' },
+            success: function(response) {
+                if (response.success && response.data && response.data.length > 0) {
+                    $('#admin_id').empty().append('<option value="">-- Select Admin --</option>');
+                    response.data.forEach(function(admin, index) {
+                        $('#admin_id').append('<option value="' + admin.id + '">' + admin.staff_name + '</option>');
+                        if (index === 0) {
+                            $('#admin_id').val(admin.id);
+                            $('#pic_name').val(admin.staff_name);
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Load ALL foremans
+        $.ajax({
+            url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
+            type: 'POST',
+            data: { staff_role: 'FOREMAN' },
+            success: function(response) {
+                if (response.success && response.data && response.data.length > 0) {
+                    $('#foreman_id').empty().append('<option value="">-- Select Foreman --</option>');
+                    response.data.forEach(function(foreman, index) {
+                        $('#foreman_id').append('<option value="' + foreman.id + '">' + foreman.staff_name + '</option>');
+                        if (index === 0) {
+                            $('#foreman_id').val(foreman.id);
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Load ALL mechanics and helpers (using existing loadStaffDropdown function)
+        loadStaffDropdown('MECHANIC', 'mechanic_1');
+        loadStaffDropdown('MECHANIC', 'mechanic_2');
+        loadStaffDropdown('HELPER', 'helper_1');
+        loadStaffDropdown('HELPER', 'helper_2');
+        
+        // console.log('✅ All staff loaded (fallback mode)');
+    }
+    
+    // NEW: Visual indicator functions for area-based staff loading
+    function showAreaIndicator(areaName, hasArea) {
+        var indicator = $('#areaIndicator');
+        var indicatorText = $('#areaIndicatorText');
+        
+        // Remove all alert classes
+        indicator.removeClass('alert-info alert-warning alert-success d-none');
+        
+        if (hasArea && areaName) {
+            // Case 1: Unit HAS area - show info alert with area name
+            indicator.addClass('alert-info');
+            indicatorText.html('<i class="fas fa-filter me-1"></i> Area: <strong>' + areaName + '</strong> — Staff filtered by this area');
+        } else {
+            // Case 2: Unit has NO area - show warning alert
+            indicator.addClass('alert-warning');
+            indicatorText.html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>No Area Assigned</strong> — Showing all available staff (not filtered)');
+        }
+        
+        indicator.removeClass('d-none').fadeIn();
+    }
+    
+    function hideAreaIndicator() {
+        $('#areaIndicator').addClass('d-none').fadeOut();
     }
 
     // Add validation for staff selection
@@ -3752,8 +3861,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php include 'sparepart_validation.php'; ?>
-<?php include 'unit_verification.php'; ?>
 <?php include 'complete_work_order_modal.php'; ?>
+<?php include 'unit_verification.php'; ?>
 
 <?= $this->endSection() ?>
 

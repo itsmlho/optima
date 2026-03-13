@@ -782,7 +782,7 @@ class UnitInventoryController extends BaseController
             'rental_active'    => $counts[7]  ?? 0,
             'maintenance'      => $counts[8]  ?? 0,
             'returned'         => $counts[9]  ?? 0,
-            'sold'             => $counts[10] ?? 0,
+            'sold'             => $counts[13] ?? 0, // Fixed: SOLD is status_unit_id 13, not 10
             'rental_inactive'  => $counts[11] ?? 0,
         ];
     }

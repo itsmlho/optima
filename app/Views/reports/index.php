@@ -589,14 +589,12 @@ function viewReport(id) {
     window.open('<?= base_url('reports/view/') ?>' + id, '_blank');
 }
 
-async function deleteReport(id) {
-    const confirmed = await confirmSwal({
+function deleteReport(id) {
+    OptimaConfirm.danger({
         title: 'Hapus Report',
         text: 'Apakah Anda yakin ingin menghapus report ini? Tindakan ini tidak dapat dibatalkan.',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: '<?= base_url('reports/delete/') ?>' + id,
         method: 'DELETE',
         dataType: 'json',
@@ -611,6 +609,8 @@ async function deleteReport(id) {
         },
         error: function(xhr, status, error) {
             alertSwal('error', 'Error: ' + error);
+        }
+    });
         }
     });
 }
@@ -629,15 +629,15 @@ function exportReportsList() {
     $('#reportsTable').DataTable().button('.buttons-excel').trigger();
 }
 
-async function clearOldReports() {
-    const confirmed = await confirmSwal({
+function clearOldReports() {
+    OptimaConfirm.danger({
         title: 'Hapus Report Lama',
         text: 'Ini akan menghapus semua report yang lebih dari 30 hari. Lanjutkan?',
-        type: 'delete',
-        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Report Lama'
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Report Lama',
+        onConfirm: function() {
+            alertSwal('info', 'Fitur hapus report lama akan segera tersedia!');
+        }
     });
-    if (!confirmed) return;
-    alertSwal('info', 'Fitur hapus report lama akan segera tersedia!');
 }
 
 function showLoading(message) {

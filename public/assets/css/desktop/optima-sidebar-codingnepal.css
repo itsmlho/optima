@@ -438,6 +438,20 @@ body.cn-sidebar-layout {
   font-size: 1.25rem;
 }
 
+/* Font Awesome drop-icon (e.g. clipboard-check): jangan timpa dengan Material Symbols */
+.cn-sidebar-layout .sidebar .nav-link .drop-icon.fas {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900;
+  font-variation-settings: unset;
+}
+.cn-sidebar-layout .sidebar.collapsed .dropdown-menu .nav-link.dropdown-link .drop-icon.fas {
+  font-size: 1.1rem !important;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* Expanded: sembunyikan header flyout (hanya dipakai di collapse) */
 .cn-sidebar-layout .sidebar:not(.collapsed) .dropdown-menu .nav-item-flyout-title {
   display: none;

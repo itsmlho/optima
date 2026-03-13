@@ -141,19 +141,22 @@ class BatchContractOperations extends BaseController
     /**
      * Update inventory units for expired contract
      * Sets all units to "UNIT PULANG" status (ID: 11)
-     * 
+     * Uses kontrak_unit (deployed units) as source of truth
+     *
      * @param int $contractId Contract ID
      * @return int Number of units updated
      */
     protected function updateInventoryUnitsForExpiredContract($contractId)
     {
         try {
-            // Get all units associated with this contract via kontrak_spesifikasi
+            // Get units deployed in this contract via kontrak_unit (source of truth for deployed units)
             $query = $this->db->query("
-                SELECT DISTINCT iu.id
+                SELECT DISTINCT iu.id_inventory_unit
                 FROM inventory_unit iu
-                INNER JOIN kontrak_spesifikasi ks ON ks.inventory_unit_id = iu.id
-                WHERE ks.kontrak_id = ?
+                INNER JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
+                    AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE', 'AKTIF')
+                    AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
+                WHERE ku.kontrak_id = ?
                 AND iu.status_unit_id != 11
             ", [$contractId]);
 
@@ -163,11 +166,11 @@ class BatchContractOperations extends BaseController
                 return 0;
             }
 
-            $unitIds = array_column($units, 'id');
+            $unitIds = array_column($units, 'id_inventory_unit');
 
             // Update all units to "UNIT PULANG" status (ID: 11)
             $this->db->table('inventory_unit')
-                ->whereIn('id', $unitIds)
+                ->whereIn('id_inventory_unit', $unitIds)
                 ->update(['status_unit_id' => 11]);
 
             return count($unitIds);
@@ -198,12 +201,14 @@ class BatchContractOperations extends BaseController
                 AND tanggal_berakhir < CURDATE()
             ")->getRow()->count;
 
-            // Get count of units that need to be returned
+            // Get count of units that need to be returned (via kontrak_unit)
             $stats['units_needing_return'] = $this->db->query("
-                SELECT COUNT(DISTINCT iu.id) as count
+                SELECT COUNT(DISTINCT iu.id_inventory_unit) as count
                 FROM inventory_unit iu
-                INNER JOIN kontrak_spesifikasi ks ON ks.inventory_unit_id = iu.id
-                INNER JOIN kontrak k ON k.id = ks.kontrak_id
+                INNER JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
+                    AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE', 'AKTIF')
+                    AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
+                INNER JOIN kontrak k ON k.id = ku.kontrak_id
                 WHERE k.status = 'ACTIVE'
                 AND k.tanggal_berakhir < CURDATE()
                 AND iu.status_unit_id != 11

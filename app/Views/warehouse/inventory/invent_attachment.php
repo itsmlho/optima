@@ -1291,7 +1291,7 @@
                 confirmButtonColor: '#dc3545',
                 cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Yes, Delete',
-                cancelButtonText: 'Cancel'
+                cancelButtonText: window.lang('cancel')
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({

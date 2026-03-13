@@ -15,7 +15,7 @@
         <div class="card-body">
     <p class="text-muted small mb-0">Halaman booking masih placeholder. Param unit: <?= esc($this->request->getGet('unit') ?? '-') ?></p>
     <p class="text-muted small mt-2">Implementasi form booking, validasi ketersediaan, dan penyimpanan akan ditambahkan.</p>
-    <?= ui_button('back', 'Kembali', [
+    <?= ui_button('back', '', [
         'href' => base_url('marketing/available-units'),
         'color' => 'secondary',
         'size' => 'sm'

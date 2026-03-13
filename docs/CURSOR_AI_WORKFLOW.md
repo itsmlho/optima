@@ -597,7 +597,7 @@ When all 9 modules DONE:
   - `.approve()` — untuk approve/confirm positif. Warna hijau.
   - `.submit()` — untuk kirim/submit. Warna biru.
   - `.generic()` — untuk custom.
-  - Fallback: jika Swal tidak ada, pakai `confirm()` native.
+  - Menggunakan Bootstrap 5 Modal. Fallback: jika Bootstrap tidak ada, pakai `confirm()` native.
 - `window.OptimaNotify` (sudah ada sebelumnya) — dipakai konsisten di semua modul.
 
 **2. Migrasi alert()/confirm() → OptimaNotify + OptimaConfirm**

@@ -487,10 +487,20 @@ class OptimaNotificationLightweight {
                 const isRead = notification.is_read == '1';
                 const readClass = isRead ? '' : 'unread';
                 const unreadDot = isRead ? '' : '<span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style="font-size: 0.5rem;"></span>';
-                
+
+                // Check notification style - info_only means no click/redirect
+                const isInfoOnly = notification.notification_style === 'info_only';
+
+                // For info_only, use a div instead of button, no onclick handler
+                const clickElement = isInfoOnly
+                    ? `<div class="dropdown-item text-start" style="cursor: default; pointer-events: none;">`
+                    : `<button type="button" class="dropdown-item text-start" onclick="handleNotificationClick(${notification.id})">`;
+
+                const closeElement = isInfoOnly ? '</div>' : '</button>';
+
                 html += `
-                    <li class="notification-item ${readClass}" data-id="${notification.id}" data-read="${notification.is_read}">
-                        <button type="button" class="dropdown-item text-start" onclick="handleNotificationClick(${notification.id})">
+                    <li class="notification-item ${readClass} ${isInfoOnly ? 'info-only' : ''}" data-id="${notification.id}" data-read="${notification.is_read}" data-style="${notification.notification_style || 'link'}">
+                        ${clickElement}
                             <div class="d-flex align-items-start position-relative">
                                 <i class="fas fa-${this.getNotificationIcon(notification.type)} text-${this.getNotificationColor(notification.type)} me-2 mt-1"></i>
                                 <div class="flex-grow-1">
@@ -500,7 +510,7 @@ class OptimaNotificationLightweight {
                                 </div>
                                 ${unreadDot}
                             </div>
-                        </button>
+                        ${closeElement}
                     </li>
                 `;
             });

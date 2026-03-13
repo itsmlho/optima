@@ -1014,6 +1014,7 @@ class Kontrak extends BaseController
                 ->select('k.*,
                     c.customer_name, c.customer_code, c.phone,
                     (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status IN (\'ACTIVE\', \'AKTIF\', \'TEMP_ACTIVE\')) AS total_units,
+                    (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) AS lokasi,
                     k.nilai_total AS total_value,
                     k.operator_quantity,
                     k.operator_monthly_rate')

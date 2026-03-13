@@ -305,7 +305,7 @@ $(document).ready(function() {
                 title: 'Konfirmasi',
                 text: `Apakah Anda yakin ingin ${actionText} OTP?`,
                 confirmButtonText: 'Ya',
-                cancelButtonText: 'Batal'
+                cancelButtonText: window.lang('cancel')
             }).then((confirmed) => {
                 if (!confirmed) return;
                 $(this).trigger('click.proceed');

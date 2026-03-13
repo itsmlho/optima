@@ -327,7 +327,7 @@ function deleteMessage() {
             title: 'Hapus Pesan?',
             text: 'Are you sure you want to delete this message?',
             confirmButtonText: 'Ya, hapus',
-            cancelButtonText: 'Batal'
+            cancelButtonText: window.lang('cancel')
         }).then((confirmed) => {
             if (confirmed) {
                 if (window.OptimaNotify) OptimaNotify.success('Message deleted successfully!');

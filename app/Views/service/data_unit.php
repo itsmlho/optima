@@ -104,7 +104,7 @@
                                 <div class="d-flex gap-2">
                                         <button class="btn btn-outline-primary btn-sm" type="button" id="svcEditFromDetail"><i class="fas fa-edit me-1"></i>Edit</button>
                                         <a id="svcWorkOrderBtn" class="btn btn-sm btn-warning" href="#"><i class="fas fa-wrench me-1"></i>Work Order</a>
-                                        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                                        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                                 </div>
                         </div>
         </div>
@@ -359,9 +359,9 @@
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                     <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-save me-2"></i>Simpan Perubahan
+                        <i class="fas fa-save me-2"></i><?= lang('Common.save') ?>
                     </button>
                 </div>
             </form>

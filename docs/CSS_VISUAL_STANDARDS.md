@@ -1038,7 +1038,7 @@ Gunakan checklist ini saat mengupdate atau membuat module baru:
 
 ### ✅ Notifications & Confirmations
 - [ ] Success/error notification pakai `OptimaNotify.success/error/warning/info`
-- [ ] Konfirmasi penting/destruktif pakai `OptimaConfirm.*` (wrapper `Swal.fire`)
+- [ ] Konfirmasi penting/destruktif pakai `OptimaConfirm.*` (Bootstrap 5 Modal)
 - [ ] Tidak ada `alert()` kecuali session-expired fallback
 - [ ] Tidak ada `confirm()` — selalu `OptimaConfirm` / `Swal.fire`
 - [ ] Warna confirm button sesuai fungsi (danger=red, success=green, primary=blue)

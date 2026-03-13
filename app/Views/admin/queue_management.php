@@ -273,7 +273,7 @@ function clearCache() {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Clear!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         fetch('<?= base_url('queue/clear-cache') ?>', {
@@ -296,7 +296,7 @@ function cleanFailedJobs() {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Clean!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         fetch('<?= base_url('queue/clean-failed') ?>', {
