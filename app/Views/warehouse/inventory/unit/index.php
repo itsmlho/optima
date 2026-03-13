@@ -254,7 +254,7 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     const label = data ? data : 'Unknown';
                     const id    = parseInt(row.status_unit_id, 10) || 0;
-                    // Map by status_unit_id: 1=stock avail, 2=stock non-aset, 3=booked, 4-6=progress, 7/11=rental, 8=maintenance, 9=returned, 10=sold
+                    // Map by status_unit_id: 1=avail, 2=non-aset, 3=booked, 4-6=progress, 7=rental, 8=maint, 9=returned, 10=repair, 11=inactive, 13=sold
                     const badgeMap = {
                         1:  'badge-soft-green',   // AVAILABLE_STOCK
                         2:  'badge-soft-yellow',  // STOCK_NON_ASET
@@ -265,8 +265,9 @@ $(document).ready(function() {
                         7:  'badge-soft-yellow',  // RENTAL_ACTIVE
                         8:  'badge-soft-red',     // MAINTENANCE
                         9:  'badge-soft-gray',    // RETURNED
-                        10: 'badge-soft-gray',    // SOLD
+                        10: 'badge-soft-red',     // UNDER_REPAIR
                         11: 'badge-soft-gray',    // RENTAL_INACTIVE
+                        13: 'badge-soft-dark',    // SOLD (fixed from wrong ID 10)
                     };
                     const cls = badgeMap[id] || 'badge-soft-gray';
                     return `<span class="badge ${cls} rounded-pill px-3 py-1 fw-medium shadow-sm">${label}</span>`;

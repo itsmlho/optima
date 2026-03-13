@@ -2640,9 +2640,9 @@ class Operational extends BaseController
             $builder = $this->db->table('kontrak_unit ku');
             $builder->select('
                 ku.id as kontrak_unit_id,
-                ku.temporary_start_date,
+                COALESCE(ku.temporary_start_date, ku.created_at, ku.tanggal_mulai) as temporary_start_date,
                 ku.original_unit_id,
-                DATEDIFF(NOW(), ku.temporary_start_date) as days_borrowed,
+                DATEDIFF(NOW(), COALESCE(ku.temporary_start_date, ku.created_at, ku.tanggal_mulai)) as days_borrowed,
                 c.customer_name,
                 k.no_kontrak,
                 iu_temp.no_unit as temporary_unit,
@@ -2680,7 +2680,8 @@ class Operational extends BaseController
                 }
             }
 
-            $totalRecords = $builder->countAllResults(false);
+            $totalBuilder = clone $builder;
+            $totalRecords = $totalBuilder->countAllResults(false);
             $data = $builder->limit($length, $start)->get()->getResultArray();
 
             return $this->response->setJSON([
@@ -2712,8 +2713,8 @@ class Operational extends BaseController
             $builder = $this->db->table('kontrak_unit ku');
             $builder->select('
                 COUNT(*) as total_temporary,
-                SUM(CASE WHEN DATEDIFF(NOW(), ku.temporary_start_date) > 30 THEN 1 ELSE 0 END) as overdue,
-                AVG(DATEDIFF(NOW(), ku.temporary_start_date)) as avg_days,
+                SUM(CASE WHEN DATEDIFF(NOW(), COALESCE(ku.temporary_start_date, ku.created_at, ku.tanggal_mulai)) > 30 THEN 1 ELSE 0 END) as overdue,
+                AVG(DATEDIFF(NOW(), COALESCE(ku.temporary_start_date, ku.created_at, ku.tanggal_mulai))) as avg_days,
                 SUM(CASE WHEN iu_orig.workflow_status = "MAINTENANCE_COMPLETED" THEN 1 ELSE 0 END) as ready_to_return
             ')
             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
@@ -2724,6 +2725,24 @@ class Operational extends BaseController
 
             if ($customerFilter) {
                 $builder->where('c.id', $customerFilter);
+            }
+
+            if ($durationFilter) {
+                $dateExpr = 'DATEDIFF(NOW(), COALESCE(ku.temporary_start_date, ku.created_at, ku.tanggal_mulai))';
+                switch ($durationFilter) {
+                    case '7':
+                        $builder->where($dateExpr . ' < 7', null, false);
+                        break;
+                    case '30':
+                        $builder->where($dateExpr . ' >= 7 AND ' . $dateExpr . ' <= 30', null, false);
+                        break;
+                    case '60':
+                        $builder->where($dateExpr . ' > 30 AND ' . $dateExpr . ' <= 60', null, false);
+                        break;
+                    case '90':
+                        $builder->where($dateExpr . ' > 60', null, false);
+                        break;
+                }
             }
 
             $stats = $builder->get()->getRowArray();
@@ -2817,6 +2836,17 @@ class Operational extends BaseController
                 throw new \Exception('Original unit is not ready to return (still in maintenance)');
             }
 
+            // Get customer_id and customer_location_id from kontrak and old kontrak_unit (original had the location before replacement)
+            $kontrak = $this->db->table('kontrak')->where('id', $kontrakUnit['kontrak_id'])->get()->getRowArray();
+            $oldKontrakUnit = $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakUnit['kontrak_id'])
+                ->where('unit_id', $kontrakUnit['original_unit_id'])
+                ->where('status', 'TEMPORARILY_REPLACED')
+                ->get()
+                ->getRowArray();
+            $customerId = $kontrak['customer_id'] ?? null;
+            $customerLocationId = $oldKontrakUnit['customer_location_id'] ?? null;
+
             // 1. Disconnect temporary unit
             $this->db->table('inventory_unit')
                 ->where('id_inventory_unit', $kontrakUnit['unit_id'])
@@ -2834,14 +2864,14 @@ class Operational extends BaseController
                 ->where('id_inventory_unit', $kontrakUnit['original_unit_id'])
                 ->update([
                     'kontrak_id' => $kontrakUnit['kontrak_id'],
-                    'customer_id' => $originalUnit['customer_id'], // Restore from backup
-                    'customer_location_id' => $originalUnit['customer_location_id'],
+                    'customer_id' => $customerId,
+                    'customer_location_id' => $customerLocationId,
                     'workflow_status' => 'RETURNED_TO_CUSTOMER',
                     'status_unit_id' => 7, // RENTAL_ACTIVE
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 
-            // 3. Update kontrak_unit - mark temporary assignment as ended
+            // 3. Mark temporary kontrak_unit as ended
             $this->db->table('kontrak_unit')
                 ->where('id', $kontrakUnitId)
                 ->update([
@@ -2850,7 +2880,22 @@ class Operational extends BaseController
                     'return_notes' => 'Original unit returned from maintenance'
                 ]);
 
-            // 4. Create activity log
+            // 4. Restore old kontrak_unit (TEMPORARILY_REPLACED) to ACTIVE so original unit is linked
+            if ($oldKontrakUnit) {
+                $this->db->table('kontrak_unit')
+                    ->where('id', $oldKontrakUnit['id'])
+                    ->update([
+                        'status' => 'ACTIVE',
+                        'temporary_replacement_date' => null,
+                        'temporary_replacement_unit_id' => null,
+                        'maintenance_start' => null,
+                        'maintenance_reason' => null,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                        'updated_by' => session()->get('user_id') ?? null
+                    ]);
+            }
+
+            // 5. Create activity log
             $this->logActivity(
                 'operational',
                 'return_temporary_unit',

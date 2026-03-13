@@ -354,7 +354,7 @@
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Ya, Lanjutkan!',
-            cancelButtonText: 'Batal'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 action();

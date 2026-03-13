@@ -82,12 +82,17 @@ if (!function_exists('get_permission_level')) {
         }
 
         // Super Administrator has full access
-        $userRole = session()->get('role');
+        $userRole = session()->get('role') ?? session()->get('role_name');
         if ($userRole) {
-            $roleKey = strtolower(str_replace(['_', ' '], '', trim($userRole)));
-            if (in_array($roleKey, ['superadministrator', 'superadmin'])) {
+            $roleKey = strtolower(str_replace(['_', ' ', '-'], '', trim($userRole)));
+            if (in_array($roleKey, ['superadministrator', 'superadmin', 'administrator', 'admin'])) {
                 return 'manage';
             }
+        }
+        
+        // Alternative: Check is_super_admin flag directly
+        if (session()->get('is_super_admin') == 1) {
+            return 'manage';
         }
 
         $db = \Config\Database::connect();

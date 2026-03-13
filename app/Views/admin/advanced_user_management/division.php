@@ -157,7 +157,7 @@ function confirmDeleteUser(userId, userName) {
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
             confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (!result.isConfirmed) return;
             $.ajax({

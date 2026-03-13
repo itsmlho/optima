@@ -120,7 +120,8 @@ if (!function_exists('ui_button')) {
         }
         
         $icon = $options['icon'] ?? $config['icon'];
-        $btnText = $text ?: ($options['text'] ?? $config['text']);
+        // Use lang() for button text - if text is provided, use it; otherwise use lang()
+        $btnText = $text ?: ($options['text'] ?? lang('Common.' . $type));
         $size = $options['size'] ?? 'btn-sm';
         $disabled = isset($options['disabled']) && $options['disabled'] ? 'disabled' : '';
 

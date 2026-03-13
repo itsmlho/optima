@@ -289,4 +289,14 @@ class InventoryComponentHelper extends Model
         
         return null;
     }
+    
+    /**
+     * Alias for getComponentType() for backward compatibility
+     * @param int $id
+     * @return string|null - 'attachment', 'battery', 'charger', or null if not found
+     */
+    public function detectComponentType($id)
+    {
+        return $this->getComponentType($id);
+    }
 }

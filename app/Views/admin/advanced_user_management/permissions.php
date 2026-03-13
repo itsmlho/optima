@@ -784,7 +784,7 @@ function deletePermission(id) {
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d',
         confirmButtonText: '<i class="fas fa-trash me-1"></i>Yes, delete it!',
-        cancelButtonText: '<i class="fas fa-times me-1"></i>Cancel'
+        cancelButtonText: '<i class="fas fa-times me-1"></i>' + window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             // Show loading

@@ -166,7 +166,7 @@ $can_export = true;
 							<div class="form-text">Data from inventory_attachment (status 7/8).</div>
 						</div>
 					</div>
-					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save & Mark READY</button></div>
+					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button><button class="btn btn-primary" type="submit">Save & Mark READY</button></div>
 				</form>
 			</div>
 		</div>
@@ -207,7 +207,7 @@ $can_export = true;
 					</form>
 				</div>
 				<div class="modal-footer">
-					<button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+					<button class="btn btn-secondary" type="button" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
 					<button class="btn btn-success" type="submit" form="approvalStageForm">Approve & Save</button>
 				</div>
 			</div>
@@ -231,7 +231,7 @@ $can_export = true;
 					<div id="modalActionButtons">
 						<!-- Buttons will be populated based on status -->
 					</div>
-					<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+					<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
 				</div>
 			</div>
 		</div>
@@ -281,9 +281,9 @@ $can_export = true;
 					</div>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
 					<button type="button" class="btn btn-primary" id="confirmRollbackBtn">
-						<i class="fas fa-save me-1"></i>Simpan Perubahan
+						<i class="fas fa-save me-1"></i><?= lang('Common.save') ?>
 					</button>
 				</div>
 			</div>
@@ -2228,7 +2228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			showCancelButton: true,
 			confirmButtonText: 'YES, MOVE IT',
 			confirmButtonColor: '#ff9800',
-			cancelButtonText: 'CANCEL',
+			cancelButtonText: window.lang('cancel'),
 			cancelButtonColor: '#6c757d',
 			allowOutsideClick: false
 		}).then((result) => {
@@ -2354,7 +2354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							</div>
 						</div>
 						<div class="modal-footer">
-							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
 							<button type="button" class="btn btn-primary" id="confirmNoUnitBtn">Continue</button>
 						</div>
 					</div>
@@ -3742,7 +3742,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		editOptionsHtml += `
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'}</button>
 			</div>
 		`;
 
@@ -4052,7 +4052,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'}</button>
 				<button type="button" class="btn btn-primary" onclick="notify('Save Changes clicked!', 'info')">
 					<i class="fas fa-save me-1"></i>Save Changes
 				</button>
@@ -5163,7 +5163,7 @@ async function openFabrikasiModal(detail) {
           ${html}
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel') + '</button>
           <button type="button" class="btn btn-primary" onclick="submitFabrikasi()">Save & Approve Fabrication</button>
         </div>
       </div>

@@ -370,6 +370,10 @@ $can_export = can_export('marketing');
 
 <?= $this->section('javascript') ?>
 <script>
+const LANG_MARKETING_DI = <?= json_encode([
+    'create_di_retrieval' => lang('Marketing.create_di_retrieval'),
+    'create_di_retrieval_short' => lang('Marketing.create_di_retrieval_short'),
+]) ?>;
 /**
  * Contract & PO Management Module - Using Optima Badge Standards (optima-pro.css)
  * 
@@ -681,10 +685,13 @@ function editContract(id) {
 function buildActionButtons(id, status, days) {
     const canRenew = (status === 'ACTIVE' || status === 'EXPIRED');
     const canAmend = (status === 'ACTIVE');
-    
+    const canCreateDI = (status === 'ACTIVE' || status === 'EXPIRED');
+    const diUrl = '<?= base_url('marketing/di') ?>?create_tarik=1&kontrak_id=';
+
     let renewItem = canRenew ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openRenewalWizard(${id})"><i class="fas fa-sync-alt text-success me-2"></i>Renewal</a></li>` : '';
     let amendItem = canAmend ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openAmendmentModal(${id})"><i class="fas fa-calculator text-warning me-2"></i>Change Rate</a></li>` : '';
-    let divider = (canRenew || canAmend) ? '<li><hr class="dropdown-divider"></li>' : '';
+    let diItem = canCreateDI ? `<li><a class="dropdown-item" href="${diUrl}${id}"><i class="fas fa-truck-loading text-danger me-2"></i>${LANG_MARKETING_DI.create_di_retrieval_short}</a></li>` : '';
+    let divider = (canRenew || canAmend || canCreateDI) ? '<li><hr class="dropdown-divider"></li>' : '';
 
     return `
         <div class="btn-group">
@@ -699,6 +706,7 @@ function buildActionButtons(id, status, days) {
                 <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>Edit Kontrak</a></li>
                 ${renewItem}
                 ${amendItem}
+                ${diItem}
                 ${divider}
                 <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); deleteContract(${id})"><i class="fas fa-trash me-2"></i>Hapus Kontrak</a></li>
             </ul>
@@ -720,14 +728,12 @@ function viewContractUnits(id) {
 }
 
 // Delete contract
-async function deleteContract(id) {
-    const confirmed = await confirmSwal({
+function deleteContract(id) {
+    OptimaConfirm.danger({
         title: 'Hapus Kontrak',
         text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: '<?= base_url('marketing/kontrak/delete') ?>/' + id,
         type: 'POST',
         data: { <?= csrf_token() ?>: '<?= csrf_hash() ?>' },
@@ -741,6 +747,8 @@ async function deleteContract(id) {
         },
         error: function() {
             showNotification('Error deleting contract', 'error');
+        }
+    });
         }
     });
 }
@@ -1377,7 +1385,7 @@ function deleteContractFromModal() {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -1422,7 +1430,7 @@ function deleteDocument(docId) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({

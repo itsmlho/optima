@@ -10431,15 +10431,26 @@ body.sidebar-collapsed .user-name {
 .unit-audit .location-item-selected .location-item-header .text-muted { color: #5c636a !important; }
 .unit-audit .location-item-header .btn { flex-shrink: 0; }
 
-.select2-container { z-index: 1 !important; }
-.select2-container--open { z-index: 1040 !important; }
-.select2-dropdown { z-index: 1040 !important; }
+/* Select2 z-index: Unit Audit page only - page-level Select2 below modals (1050) */
+.unit-audit-page .select2-container { z-index: 1 !important; }
+.unit-audit-page .select2-container--open { z-index: 1040 !important; }
+.unit-audit-page .select2-dropdown { z-index: 1040 !important; }
+/* Override: Select2 inside modals (dropdownParent) must appear above modal content */
+.unit-audit-page .modal .select2-container--open,
+.unit-audit-page .modal .select2-dropdown { z-index: 1060 !important; }
+
+.unit-audit .location-pending-approval .location-item-header {
+    background-color: rgba(255, 193, 7, 0.08);
+    border-left: 3px solid #ffc107;
+}
 
 #verifikasiModal .modal-body label,
 #verifikasiModal .modal-body h6 { color: #212529 !important; }
 #verifikasiModal #vfUnitTable th { color: #212529; }
 #verifikasiModal .cursor-pointer { cursor: pointer; }
 #verifikasiModal .vf-hasil-cell .badge { white-space: nowrap; }
+#verifikasiModal .vf-hasil-cell .btn-group { white-space: nowrap; }
+#verifikasiModal .vf-hasil-cell .btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
 #verifikasiModal tr.vf-row-sesuai { background-color: #e9f7ef !important; }
 #verifikasiModal tr.vf-row-tidak { background-color: #fde2e1 !important; }
 #vfAlasanModal .modal-body { font-size: 0.95rem; }

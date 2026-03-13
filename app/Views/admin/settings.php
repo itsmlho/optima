@@ -426,20 +426,20 @@ function saveAllSettings() {
     });
 }
 
-async function clearCache() {
-    const confirmed = await confirmSwal({
+function clearCache() {
+    OptimaConfirm.danger({
         title: 'Hapus Cache',
         text: 'Apakah Anda yakin ingin menghapus semua cache?',
-        type: 'delete',
-        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Cache'
-    });
-    if (!confirmed) return;
-    fetch('<?= base_url('admin/cache/clear') ?>', {
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Cache',
+        onConfirm: function() {
+            fetch('<?= base_url('admin/cache/clear') ?>', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
     .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
+        }
+    });
 }
 
 function testCacheConnection() {
@@ -482,20 +482,20 @@ function startQueue() {
     });
 }
 
-async function stopQueue() {
-    const confirmed = await confirmSwal({
+function stopQueue() {
+    OptimaConfirm.danger({
         title: 'Hentikan Queue',
         text: 'Apakah Anda yakin ingin menghentikan queue?',
-        type: 'delete',
-        confirmText: '<i class="fas fa-stop me-1"></i>Ya, Hentikan'
-    });
-    if (!confirmed) return;
-    fetch('<?= base_url('admin/queue/stop') ?>', {
+        confirmText: '<i class="fas fa-stop me-1"></i>Ya, Hentikan',
+        onConfirm: function() {
+            fetch('<?= base_url('admin/queue/stop') ?>', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
     .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
+        }
+    });
 }
 
 function createBackup() {
@@ -540,53 +540,55 @@ function showAlert(type, message) {
 }
 
 // Additional functionality
-async function clearLogs() {
-    const confirmed = await confirmSwal({
+function clearLogs() {
+    OptimaConfirm.danger({
         title: 'Hapus Semua Log',
         text: 'Apakah Anda yakin ingin menghapus semua log?',
-        type: 'delete',
-        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Log'
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Log',
+        onConfirm: function() {
+            fetch('<?= base_url('admin/logs/clear') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
+        }
     });
-    if (!confirmed) return;
-    fetch('<?= base_url('admin/logs/clear') ?>', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
-async function clearFailedJobs() {
-    const confirmed = await confirmSwal({
+function clearFailedJobs() {
+    OptimaConfirm.danger({
         title: 'Hapus Failed Jobs',
         text: 'Apakah Anda yakin ingin menghapus semua failed jobs?',
-        type: 'delete',
-        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus'
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus',
+        onConfirm: function() {
+            fetch('<?= base_url('admin/queue/clear-failed') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
+        }
     });
-    if (!confirmed) return;
-    fetch('<?= base_url('admin/queue/clear-failed') ?>', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
-async function optimizeDatabase() {
-    const confirmed = await confirmSwal({
+function optimizeDatabase() {
+    OptimaConfirm.generic({
         title: 'Optimasi Database',
         text: 'Proses ini mungkin membutuhkan beberapa waktu. Apakah Anda yakin?',
         icon: 'info',
-        confirmText: '<i class="fas fa-database me-1"></i>Ya, Optimasi'
+        confirmText: '<i class="fas fa-database me-1"></i>Ya, Optimasi',
+        confirmButtonColor: '#0d6efd',
+        onConfirm: function() {
+            showAlert('info', 'Mengoptimasi database...');
+            fetch('<?= base_url('admin/database/optimize') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
+        }
     });
-    if (!confirmed) return;
-    showAlert('info', 'Mengoptimasi database...');
-    fetch('<?= base_url('admin/database/optimize') ?>', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
 function clearSessions() {

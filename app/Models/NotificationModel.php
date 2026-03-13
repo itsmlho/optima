@@ -22,6 +22,7 @@ class NotificationModel extends Model
         'related_module',
         'related_id',
         'url',
+        'notification_style',
         'is_read',
         'read_at',
         'expires_at'
@@ -68,9 +69,10 @@ class NotificationModel extends Model
             'related_module' => $options['module'] ?? null,
             'related_id' => $options['id'] ?? null,
             'url' => $options['url'] ?? null,
+            'notification_style' => $options['notification_style'] ?? 'info_only',
             'expires_at' => $options['expires_at'] ?? null
         ];
-        
+
         return $this->insert($data);
     }
     
@@ -80,7 +82,7 @@ class NotificationModel extends Model
     public function sendToMultiple($userIds, $title, $message, $options = [])
     {
         $notifications = [];
-        
+
         foreach ($userIds as $userId) {
             $data = [
                 'user_id' => $userId,
@@ -91,12 +93,13 @@ class NotificationModel extends Model
                 'related_module' => $options['module'] ?? null,
                 'related_id' => $options['id'] ?? null,
                 'url' => $options['url'] ?? null,
+                'notification_style' => $options['notification_style'] ?? 'info_only',
                 'expires_at' => $options['expires_at'] ?? null
             ];
-            
+
             $notifications[] = $data;
         }
-        
+
         return $this->insertBatch($notifications);
     }
     

@@ -457,7 +457,7 @@ $can_export = $permissions['export'];
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -513,7 +513,7 @@ $can_export = $permissions['export'];
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -569,7 +569,7 @@ $can_export = $permissions['export'];
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({

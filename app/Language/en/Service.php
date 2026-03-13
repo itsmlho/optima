@@ -101,6 +101,8 @@ return [
 
     // Additional Keys
     'work_orders' => 'Work Orders',
+    'work_order' => 'Work Order',
+    'new_work_order' => 'New Work Order',
     'open' => 'Open',
     'no_permission_view_spk' => 'You do not have permission to view SPK Service',
     'preventive_maintenance_system' => 'Preventive Maintenance System',

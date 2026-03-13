@@ -1,6 +1,6 @@
 <!-- Unit Verification Modal for Complete Action -->
 <div class="modal fade" id="unitVerificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" style="margin-top: 2rem;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -27,6 +27,12 @@
                         <small><strong>🎯 Cara Kerja:</strong> Jika SAMA → Centang "Sesuai" | Jika BERBEDA/KOSONG → Isi data real di kolom 3</small>
                     </div>
                     <small class="text-danger fw-bold">⚠️ Field bertanda * wajib diisi</small>
+                </div>
+                
+                <!-- Verification History Banner -->
+                <div class="alert alert-warning d-none" id="verification-history-banner">
+                    <h6 class="alert-heading mb-2">📜 Riwayat Verifikasi</h6>
+                    <p class="mb-0" id="verification-history-text">Loading...</p>
                 </div>
                 
                 <form id="unitVerificationForm">
@@ -58,13 +64,18 @@
                                     <tr>
                                         <td>Pelanggan <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-pelanggan" readonly></td>
-                                        <td><input type="text" class="form-control form-control-sm" id="verify-pelanggan" name="pelanggan" placeholder="Nama pelanggan real" required></td>
-                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-pelanggan"></td>
+                                        <td><input type="text" class="form-control form-control-sm bg-light" id="verify-pelanggan" name="pelanggan" readonly required></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-pelanggan" checked disabled></td>
                                     </tr>
                                     <tr>
                                         <td>Lokasi <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-lokasi" readonly></td>
-                                        <td><input type="text" class="form-control form-control-sm" id="verify-lokasi" name="lokasi" placeholder="Lokasi real" required></td>
+                                        <td>
+                                            <select class="form-select form-select-sm" id="verify-lokasi" name="lokasi" required>
+                                                <option value="">Pilih Lokasi</option>
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm d-none" id="verify-lokasi-manual" name="lokasi_manual" placeholder="Ketik lokasi manual (double-click untuk kembali ke dropdown)">
+                                        </td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-lokasi"></td>
                                     </tr>
                                     <tr>
@@ -130,7 +141,11 @@
                                     <tr>
                                         <td>Tinggi Mast</td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-tinggi-mast" readonly></td>
-                                        <td><input type="text" class="form-control form-control-sm" id="verify-tinggi-mast" name="tinggi_mast" placeholder="Tinggi mast real"></td>
+                                        <td>
+                                            <select class="form-select form-select-sm" id="verify-tinggi-mast" name="tinggi_mast">
+                                                <option value="">Pilih Model Mast dulu</option>
+                                            </select>
+                                        </td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-tinggi-mast"></td>
                                     </tr>
                                     <tr>
@@ -138,6 +153,12 @@
                                         <td><textarea class="form-control form-control-sm" id="db-keterangan" readonly rows="2"></textarea></td>
                                         <td><textarea class="form-control form-control-sm" id="verify-keterangan" name="keterangan" rows="2" placeholder="Keterangan real"></textarea></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-keterangan"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Hour Meter (HM)</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-hm" readonly></td>
+                                        <td><input type="number" class="form-control form-control-sm" id="verify-hm" name="hour_meter" placeholder="HM saat ini" step="0.01"></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-hm"></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -622,15 +643,26 @@
 
 
 <script>
-$(document).ready(function() {
-    console.log('🔧 Unit Verification JavaScript loaded');
+// Define window.loadUnitVerificationData OUTSIDE document.ready to avoid race conditions
+// This function is called from complete_work_order_modal.php after save success
+window.loadUnitVerificationData = function(workOrderId, woNumber) {
+    console.log('🔍 Loading unit verification data for WO:', workOrderId, 'WO Number:', woNumber);
     
-    // Load Unit Verification Data
-    window.loadUnitVerificationData = function(workOrderId, woNumber) {
-        console.log('🔍 Loading unit verification data for WO:', workOrderId, 'WO Number:', woNumber);
-        
+    // Ensure jQuery is ready before executing DOM operations
+    if (typeof $ === 'undefined') {
+        console.error('❌ jQuery not loaded yet, retrying in 100ms...');
+        setTimeout(function() {
+            window.loadUnitVerificationData(workOrderId, woNumber);
+        }, 100);
+        return;
+    }
+    
+    // Ensure DOM is ready
+    $(function() {
         // Reset modal first
-        resetUnitVerificationModal();
+        if (typeof window.resetUnitVerificationModal === 'function') {
+            window.resetUnitVerificationModal();
+        }
         
         // Set modal title and WO number immediately
         let displayWoNumber = woNumber || workOrderId || 'Loading...';
@@ -640,7 +672,10 @@ $(document).ready(function() {
         $.ajax({
             url: '<?= base_url('service/work-orders/get-unit-verification-data') ?>',
             type: 'POST',
-            data: { work_order_id: workOrderId },
+            data: { 
+                work_order_id: workOrderId,
+                <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+            },
             beforeSend: function() {
             },
             success: function(response) {
@@ -664,21 +699,89 @@ $(document).ready(function() {
                     $('#verify-work-order-id').val(workOrderId);
                     
                     // Populate all verification fields
-                    populateUnitVerificationFields(data);
+                    if (typeof window.populateUnitVerificationFields === 'function') {
+                        window.populateUnitVerificationFields(data);
+                    } else {
+                        console.error('❌ populateUnitVerificationFields not found');
+                    }
+                    
+                    // Load verification history for this unit
+                    if (data.unit && data.unit.id_inventory_unit && typeof window.loadVerificationHistory === 'function') {
+                        window.loadVerificationHistory(data.unit.id_inventory_unit, workOrderId);
+                    }
                     
                 } else {
-                    showAlert('error', response.message || 'Gagal memuat data unit');
+                    if (typeof showAlert === 'function') {
+                        showAlert('error', response.message || 'Gagal memuat data unit');
+                    }
                 }
             },
             error: function(xhr, status, error) {
                 console.error('❌ Error loading unit verification data:', error);
-                showAlert('error', 'Terjadi kesalahan saat memuat data unit');
+                if (typeof showAlert === 'function') {
+                    showAlert('error', 'Terjadi kesalahan saat memuat data unit');
+                }
             }
         });
-    };
+    });
+};
 
-    // Populate Unit Verification Fields
-    function populateUnitVerificationFields(data) {
+// Load Verification History - GLOBAL function
+// Called from loadUnitVerificationData to display previous verification info
+window.loadVerificationHistory = function(unitId, currentWorkOrderId) {
+    console.log('📜 Loading verification history for unit:', unitId);
+    
+    $.ajax({
+        url: '<?= base_url('service/work-orders/get-unit-verification-history') ?>',
+        type: 'POST',
+        data: { 
+            unit_id: unitId,
+            current_work_order_id: currentWorkOrderId,
+            <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
+            console.log('📦 Verification history response:', response);
+            
+            if (response.success && response.data) {
+                let history = response.data;
+                
+                if (history.has_history) {
+                    // Show history banner - unit pernah diverifikasi
+                    let historyHtml = `<strong>Unit ini terakhir diverifikasi pada ${history.verified_at}</strong> oleh <strong>${history.mechanic_name}</strong> di <strong>WO ${history.wo_number}</strong>`;
+                    
+                    $('#verification-history-text').html(historyHtml);
+                    $('#verification-history-banner').removeClass('d-none');
+                    
+                    console.log('✅ Verification history loaded and displayed');
+                } else {
+                    // No history - show "belum pernah diverifikasi" message
+                    let noHistoryHtml = '<strong>Unit ini belum pernah diverifikasi</strong> - Pastikan data yang diisi akurat dan sesuai kondisi lapangan';
+                    
+                    $('#verification-history-text').html(noHistoryHtml);
+                    $('#verification-history-banner').removeClass('d-none');
+                    
+                    console.log('ℹ️ No previous verification history - showing first-time message');
+                }
+            } else {
+                // Error - hide banner
+                $('#verification-history-banner').addClass('d-none');
+                console.log('⚠️ No history data in response');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Error loading verification history:', error);
+            console.error('❌ XHR:', xhr);
+            // Hide banner on error
+            $('#verification-history-banner').addClass('d-none');
+        }
+    });
+};
+
+$(document).ready(function() {
+    console.log('🔧 Unit Verification JavaScript loaded');
+
+    // Populate Unit Verification Fields - GLOBAL function
+    window.populateUnitVerificationFields = function(data) {
         console.log('📝 Populating verification fields with data:', data);
         
         // Extract unit data from response
@@ -724,25 +827,39 @@ $(document).ready(function() {
         // Pre-fill verification fields (verify-*) with database values
         // No Unit - always readonly and auto-filled from database
         $('#verify-no-unit').val(unitData.no_unit || '').attr('readonly', true);
-        $('#verify-pelanggan').val(unitData.pelanggan || 'N/A');
-        $('#verify-lokasi').val(unitData.lokasi || 'N/A');
+        
+        // Pelanggan - always readonly (use DB value)
+        $('#verify-pelanggan').val(unitData.pelanggan || 'N/A').attr('readonly', true);
+        
+        // Lokasi - will be populated by dropdown (see populateLokasiDropdown function)
+        // $('#verify-lokasi') is now a dropdown, populated separately
+        
         $('#verify-serial-number').val(unitData.serial_number || '');
         $('#verify-tahun-unit').val(unitData.tahun_unit || '');
         $('#verify-keterangan').val(unitData.keterangan || '');
         
+        // HM (Hour Meter)
+        $('#verify-hm').val(unitData.hour_meter || '');
+        $('#db-hm').val(unitData.hour_meter || '');
+        
         // SN fields - auto-fill with database values
         $('#verify-sn-mesin').val(unitData.sn_mesin || '');
         $('#verify-sn-mast').val(unitData.sn_mast || '');
-        $('#verify-tinggi-mast').val(unitData.tinggi_mast || '');
+        
+        // Tinggi Mast - will be populated as dropdown when Model Mast is selected (see setSelectedDropdownValues)
+        
         $('#verify-sn-attachment').val(attachmentData.sn_attachment || '');
         $('#verify-sn-baterai').val(attachmentData.sn_baterai || '');
         $('#verify-sn-charger').val(attachmentData.sn_charger || '');
         
         // Populate dropdown options
-        populateDropdownOptions(data.options);
+        window.populateDropdownOptions(data.options);
+        
+        // Populate Lokasi dropdown based on customer
+        window.populateLokasiDropdown(data.customer_locations, unitData.lokasi, unitData.pelanggan);
         
         // Set selected values for dropdowns
-        setSelectedDropdownValues(unitData, attachmentData);
+        window.setSelectedDropdownValues(unitData, attachmentData);
         
         // Show/hide baterai and charger based on departemen
         handleBateraiChargerVisibility(unitData.departemen_name);
@@ -762,24 +879,28 @@ $(document).ready(function() {
         $('#verify-verification-date').val(currentDateTime);
         
         // Handle empty database fields - disable checkbox if DB is empty
-        handleEmptyDatabaseFields();
+        window.handleEmptyDatabaseFields();
         
         // No auto-checking - let user manually check what's correct
-        // Only keep no-unit checkbox checked as it should always be readonly
+        // Only keep no-unit and pelanggan checkbox checked as they are readonly
         $('#check-no-unit').prop('checked', true).prop('disabled', true);
+        $('#check-pelanggan').prop('checked', true).prop('disabled', true);
+        $('#check-tinggi-mast').prop('checked', true).prop('disabled', true);
         
         // Populate Aksesoris from database - IMPORTANT: This should auto-check existing accessories
         console.log('🔧 About to populate accessories:', data.accessories);
-        populateUnitAccessories(data.accessories || []);
+        window.populateUnitAccessories(data.accessories || []);
         
         // Setup tooltips for database fields
-        setupDatabaseFieldTooltips();
+        if (typeof window.setupDatabaseFieldTooltips === 'function') {
+            window.setupDatabaseFieldTooltips();
+        }
         
         console.log('📝 Field population completed');
     }
 
     // Populate Unit Accessories
-    function populateUnitAccessories(accessories) {
+    window.populateUnitAccessories = function(accessories) {
         console.log('🔧 Populating unit accessories:', accessories);
         
         // Clear all accessories checkboxes first
@@ -831,7 +952,7 @@ $(document).ready(function() {
     }
 
     // Update Accessories Count
-    function updateAccessoriesCount() {
+    window.updateAccessoriesCount = function() {
         let checkedCount = $('input[name="accessories[]"]:checked').length;
         $('#accessories-count').text(checkedCount);
     }
@@ -866,9 +987,9 @@ $(document).ready(function() {
         updateAccessoriesCount();
         showAlert('success', 'Aksesoris umum telah dipilih');
     });
-
+    
     // Reset Unit Verification Modal
-    function resetUnitVerificationModal() {
+    window.resetUnitVerificationModal = function() {
         console.log('🔄 Resetting unit verification modal');
         
         // Reset all form fields
@@ -919,7 +1040,57 @@ $(document).ready(function() {
 
 
     // Populate dropdown options
-    function populateDropdownOptions(options) {
+    // Populate Lokasi Dropdown - Customer Locations or POS for Mills
+    window.populateLokasiDropdown = function(customerLocations, currentLokasi, pelanggan) {
+        console.log('📍 Populating Lokasi dropdown:', customerLocations);
+        
+        let lokasiSelect = $('#verify-lokasi');
+        lokasiSelect.empty();
+        
+        // Check if unit has customer (not Mills)
+        if (customerLocations && customerLocations.length > 0) {
+            // Has customer locations
+            lokasiSelect.append('<option value="">Pilih Lokasi Customer</option>');
+            customerLocations.forEach(function(loc) {
+                let selected = (loc.location_name === currentLokasi) ? 'selected' : '';
+                lokasiSelect.append(`<option value="${loc.location_name}" ${selected}>${loc.location_name}</option>`);
+            });
+        } else {
+            // Mills or no customer - show POS options
+            lokasiSelect.append('<option value="">Pilih Lokasi POS</option>');
+            ['POS 1', 'POS 2', 'POS 3', 'POS 4', 'POS 5'].forEach(function(pos) {
+                let selected = (pos === currentLokasi) ? 'selected' : '';
+                lokasiSelect.append(`<option value="${pos}" ${selected}>${pos}</option>`);
+            });
+        }
+        
+        // Add "Input Manual" option at the end
+        lokasiSelect.append('<option value="INPUT_MANUAL">--- Input Manual ---</option>');
+        
+        // If current lokasi doesn't exist in options, add it or set to manual mode
+        if (currentLokasi && currentLokasi !== '' && !lokasiSelect.find(`option[value="${currentLokasi}"]`).length) {
+            // Check if it's not "N/A" - use manual input for custom values
+            if (currentLokasi !== 'N/A') {
+                $('#verify-lokasi-manual').val(currentLokasi).removeClass('d-none');
+                lokasiSelect.val('INPUT_MANUAL').addClass('d-none');
+            } else {
+                // N/A - just add as option
+                lokasiSelect.append(`<option value="${currentLokasi}" selected>${currentLokasi}</option>`);
+                $('#verify-lokasi-manual').addClass('d-none').val('');
+                lokasiSelect.removeClass('d-none');
+            }
+        } else {
+            // Normal mode - show dropdown, hide manual input
+            $('#verify-lokasi-manual').addClass('d-none').val('');
+            lokasiSelect.removeClass('d-none');
+        }
+        
+        // NO SELECT2 - Use plain dropdown for consistency
+        console.log('📍 Lokasi dropdown populated (native dropdown)');
+        console.log('📍 Lokasi dropdown populated');
+    }
+    
+    window.populateDropdownOptions = function(options) {
         console.log('📝 Populating dropdown options:', options);
         
         // Populate Departemen dropdown
@@ -968,13 +1139,25 @@ $(document).ready(function() {
             });
         }
         
-        // Populate Model Mast dropdown
+        // Populate Model Mast dropdown (with deduplication)
         if (options.model_mast && options.model_mast.length > 0) {
             let modelMastSelect = $('#verify-model-mast');
             modelMastSelect.empty().append('<option value="">Pilih Model Mast</option>');
+            
+            // Deduplicate by model name
+            let uniqueMasts = {};
             options.model_mast.forEach(function(mast) {
+                if (!uniqueMasts[mast.name]) {
+                    uniqueMasts[mast.name] = mast;
+                }
+            });
+            
+            // Append unique masts
+            Object.values(uniqueMasts).forEach(function(mast) {
                 modelMastSelect.append(`<option value="${mast.id}">${mast.name}</option>`);
             });
+            
+            console.log('📝 Model Mast populated with', Object.keys(uniqueMasts).length, 'unique items (from', options.model_mast.length, 'total)');
         }
         
         // Initialize Select2 for attachment dropdown with AJAX
@@ -1088,8 +1271,74 @@ $(document).ready(function() {
         });        console.log('📝 Dropdown options populated successfully');
     }
 
+    // Handle Lokasi Dropdown - Toggle between dropdown and manual input
+    $(document).on('change', '#verify-lokasi', function() {
+        let selectedValue = $(this).val();
+        
+        if (selectedValue === 'INPUT_MANUAL') {
+            // Switch to manual input mode
+            $(this).removeClass('form-select').addClass('d-none').removeAttr('name');
+            $('#verify-lokasi-manual').removeClass('d-none').attr('name', 'lokasi').attr('required', true).focus();
+            console.log('📝 Switched to manual lokasi input mode');
+        }
+    });
+    
+    // Allow user to switch back to dropdown (double-click on manual input)
+    $(document).on('dblclick', '#verify-lokasi-manual', function() {
+        if (confirm('Kembali ke pilihan dropdown?')) {
+            $(this).addClass('d-none').removeAttr('name').removeAttr('required').val('');
+            $('#verify-lokasi').removeClass('d-none').addClass('form-select').attr('name', 'lokasi').attr('required', true).val('').focus();
+            console.log('📝 Switched back to dropdown mode');
+        }
+    });
+
     // Set selected values for dropdowns
-    function setSelectedDropdownValues(unitData, attachmentData) {
+    // Model Mast onChange - Populate Tinggi Mast dropdown
+    $(document).on('change', '#verify-model-mast', function() {
+        let mastName = $(this).find('option:selected').text();
+        let tinggiMastSelect = $('#verify-tinggi-mast');
+        
+        if (mastName && mastName !== 'Pilih Model Mast') {
+            console.log('🔧 Model Mast changed, loading Tinggi Mast options for:', mastName);
+            
+            // Show loading state
+            tinggiMastSelect.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+            
+            $.ajax({
+                url: '<?= base_url('service/work-orders/get-mast-heights') ?>',
+                type: 'POST',
+                data: { 
+                    model_name: mastName,
+                    <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
+                    tinggiMastSelect.empty().prop('disabled', false);
+                    
+                    if (response.success && response.data && response.data.length > 0) {
+                        tinggiMastSelect.append('<option value="">Pilih Tinggi Mast</option>');
+                        
+                        response.data.forEach(function(item) {
+                            tinggiMastSelect.append(`<option value="${item.tinggi}">${item.tinggi}</option>`);
+                        });
+                        
+                        console.log('✅ Tinggi Mast options loaded:', response.data.length, 'items');
+                    } else {
+                        tinggiMastSelect.append('<option value="">Tidak ada data</option>');
+                        console.log('⚠️ No tinggi mast data for this model');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('❌ Error loading tinggi mast:', error);
+                    tinggiMastSelect.empty().prop('disabled', false).append('<option value="">Error loading data</option>');
+                }
+            });
+        } else {
+            // Reset tinggi mast dropdown
+            tinggiMastSelect.empty().append('<option value="">Pilih Model Mast dulu</option>').prop('disabled', false);
+        }
+    });
+    
+    window.setSelectedDropdownValues = function(unitData, attachmentData) {
         console.log('📝 Setting selected dropdown values');
         
         // Set departemen
@@ -1120,6 +1369,27 @@ $(document).ready(function() {
         // Set model mast
         if (unitData.model_mast_id) {
             $('#verify-model-mast').val(unitData.model_mast_id);
+            
+            // Trigger change to load tinggi mast options, then set the value
+            if (unitData.tinggi_mast) {
+                let currentTinggiMast = unitData.tinggi_mast;
+                
+                // Wait for AJAX to complete, then set tinggi mast value
+                setTimeout(function() {
+                    let tinggiMastSelect = $('#verify-tinggi-mast');
+                    
+                    // Check if option exists, if not add it
+                    if (tinggiMastSelect.find(`option[value="${currentTinggiMast}"]`).length === 0) {
+                        tinggiMastSelect.append(`<option value="${currentTinggiMast}">${currentTinggiMast}</option>`);
+                    }
+                    
+                    tinggiMastSelect.val(currentTinggiMast);
+                    console.log('📝 Tinggi Mast set to:', currentTinggiMast);
+                }, 500); // Wait 500ms for AJAX to complete
+            }
+            
+            // Trigger the change event to load tinggi mast options
+            $('#verify-model-mast').trigger('change');
         }
         
         // Set attachment
@@ -1170,49 +1440,8 @@ $(document).ready(function() {
         });
     }
 
-    // Handle empty database fields - disable checkbox if DB is empty
-    function handleEmptyDatabaseFields() {
-        $('input[id^="db-"], textarea[id^="db-"]').each(function() {
-            let dbField = $(this);
-            let fieldName = dbField.attr('id').replace('db-', '');
-            let checkbox = $('#check-' + fieldName);
-            let dbValue = dbField.val() ? dbField.val().trim() : '';
-            
-            // If database field is empty, disable the checkbox and add a note
-            if (!dbValue && fieldName !== 'no-unit') {
-                checkbox.prop('disabled', true);
-                checkbox.closest('td').append('<br><small class="text-muted">Data kosong</small>');
-                console.log('🚫 Disabled checkbox for empty field:', fieldName);
-            } else {
-                checkbox.prop('disabled', false);
-                console.log('✅ Enabled checkbox for field with data:', fieldName);
-            }
-        });
-        
-        // Handle dropdown fields
-        let dropdownFields = ['departemen', 'tipe-unit', 'model-unit', 'kapasitas-unit', 'model-mesin', 'model-mast', 'attachment', 'baterai', 'charger'];
-        dropdownFields.forEach(function(fieldName) {
-            let dbField = $('#db-' + fieldName);
-            let checkbox = $('#check-' + fieldName);
-            let dbValue = dbField.val() ? dbField.val().trim() : '';
-            
-            if (!dbValue) {
-                checkbox.prop('disabled', true);
-                checkbox.closest('td').append('<br><small class="text-muted">Data kosong</small>');
-                console.log('🚫 Disabled checkbox for empty dropdown field:', fieldName);
-            } else {
-                checkbox.prop('disabled', false);
-                console.log('✅ Enabled checkbox for dropdown field with data:', fieldName);
-            }
-        });
-        
-        // Always keep no-unit checkbox checked and disabled (readonly)
-        $('#check-no-unit').prop('checked', true).prop('disabled', true);
-        console.log('🔒 No-unit checkbox set to checked and disabled');
-    }
-
     // Show/hide baterai and charger based on departemen
-    function handleBateraiChargerVisibility(departemenName) {
+    window.handleBateraiChargerVisibility = function(departemenName) {
         console.log('📝 Handling baterai/charger visibility for departemen:', departemenName);
         
         if (departemenName === 'ELECTRIC') {
@@ -1232,7 +1461,8 @@ $(document).ready(function() {
         }
     }
 
-    function handleEmptyDatabaseFields() {
+    // Handle empty database fields - disable checkbox if DB is empty
+    window.handleEmptyDatabaseFields = function() {
         $('input[id^="db-"], textarea[id^="db-"]').each(function() {
             let dbField = $(this);
             let fieldName = dbField.attr('id').replace('db-', '');
@@ -1286,7 +1516,7 @@ $(document).ready(function() {
     $(document).on('change', '#verify-departemen', function() {
         let selectedText = $(this).find('option:selected').text();
         console.log('📝 Departemen changed to:', selectedText);
-        handleBateraiChargerVisibility(selectedText);
+        window.handleBateraiChargerVisibility(selectedText);
     });
 
     // Checkbox change handler for "Sesuai" functionality
@@ -1393,20 +1623,20 @@ $(document).ready(function() {
     $('#btn-save-verification').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        saveUnitVerification();
+        window.saveUnitVerification();
     });
 
     // Prevent form submission on Enter key
     $('#unitVerificationForm').on('submit', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        saveUnitVerification();
+        window.saveUnitVerification();
         return false;
     });
 
     // Save Unit Verification function
     let isSubmitting = false;
-    function saveUnitVerification() {
+    window.saveUnitVerification = function() {
         // Prevent double submission
         if (isSubmitting) {
             console.log('⚠️ Form submission already in progress, ignoring duplicate request');
@@ -1428,16 +1658,15 @@ $(document).ready(function() {
         isSubmitting = true;
         $('#btn-save-verification').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
         
+        // Serialize form data and append CSRF token
         let formData = $('#unitVerificationForm').serialize();
+        formData += '&<?= csrf_token() ?>=' + encodeURIComponent('<?= csrf_hash() ?>');
         console.log('📋 Form data being sent:', formData);
         
         $.ajax({
             url: '<?= base_url('service/work-orders/save-unit-verification') ?>',
             type: 'POST',
             data: formData,
-            beforeSend: function() {
-                showAlert('info', 'Menyimpan verifikasi...');
-            },
             success: function(response) {
                 console.log('✅ Server response:', response);
                 if (response.success) {
@@ -1535,7 +1764,7 @@ $(document).ready(function() {
     }
 
     // Helper function for alerts (if not available globally)
-    function showAlert(type, message) {
+    window.showAlert = function(type, message) {
         // Use OptimaPro notification system if available
         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
             let toastType = type === 'error' ? 'danger' : type;
@@ -1569,15 +1798,15 @@ $(document).ready(function() {
     
     // Event handlers for + Tambah buttons
     $('#btn-add-attachment').on('click', function() {
-        openAddAttachmentModal('attachment');
+        window.openAddAttachmentModal('attachment');
     });
     
     $('#btn-add-baterai').on('click', function() {
-        openAddAttachmentModal('battery');
+        window.openAddAttachmentModal('battery');
     });
     
     $('#btn-add-charger').on('click', function() {
-        openAddAttachmentModal('charger');
+        window.openAddAttachmentModal('charger');
     });
     
     // Auto-fill functionality when SN is selected
@@ -1601,9 +1830,9 @@ $(document).ready(function() {
             }
             
             // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-attachment'));
+            window.updateSimpleTooltip($('#db-attachment'));
             if (sn) {
-                updateSimpleTooltip($('#db-sn-attachment'));
+                window.updateSimpleTooltip($('#db-sn-attachment'));
             }
             
             console.log(`📝 Attachment selected: ${name} (SN: ${sn})`);
@@ -1629,9 +1858,9 @@ $(document).ready(function() {
             }
             
             // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-baterai'));
+            window.updateSimpleTooltip($('#db-baterai'));
             if (sn) {
-                updateSimpleTooltip($('#db-sn-baterai'));
+                window.updateSimpleTooltip($('#db-sn-baterai'));
             }
             
             console.log(`📝 Baterai selected: ${name} (SN: ${sn})`);
@@ -1657,9 +1886,9 @@ $(document).ready(function() {
             }
             
             // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-charger'));
+            window.updateSimpleTooltip($('#db-charger'));
             if (sn) {
-                updateSimpleTooltip($('#db-sn-charger'));
+                window.updateSimpleTooltip($('#db-sn-charger'));
             }
             
             console.log(`📝 Charger selected: ${name} (SN: ${sn})`);
@@ -1667,7 +1896,7 @@ $(document).ready(function() {
     });
     
     // Open Add Attachment Modal
-    function openAddAttachmentModal(type) {
+    window.openAddAttachmentModal = function(type) {
         console.log(`📝 Opening add ${type} modal`);
         
         // Set the type in hidden field
@@ -1680,21 +1909,21 @@ $(document).ready(function() {
             $('#charger-fields').hide();
             $('#addAttachmentModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Tambah Attachment Baru');
             // Load attachment master data
-            loadMasterData('attachment', '#new-attachment-id');
+            window.loadMasterData('attachment', '#new-attachment-id');
         } else if (type === 'battery') {
             $('#attachment-fields').hide();
             $('#baterai-fields').show();
             $('#charger-fields').hide();
             $('#addAttachmentModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Tambah Baterai Baru');
             // Load baterai master data
-            loadMasterData('baterai', '#new-baterai-id');
+            window.loadMasterData('baterai', '#new-baterai-id');
         } else if (type === 'charger') {
             $('#attachment-fields').hide();
             $('#baterai-fields').hide();
             $('#charger-fields').show();
             $('#addAttachmentModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Tambah Charger Baru');
             // Load charger master data
-            loadMasterData('charger', '#new-charger-id');
+            window.loadMasterData('charger', '#new-charger-id');
         }
         
         // Reset form
@@ -1706,7 +1935,7 @@ $(document).ready(function() {
     }
     
     // Load master data for dropdown in modal
-    function loadMasterData(type, selectElement) {
+    window.loadMasterData = function(type, selectElement) {
         let url = '';
         switch(type) {
             case 'attachment':
@@ -1805,10 +2034,10 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     $('#addAttachmentModal').modal('hide');
-                    showAlert('success', response.message || 'Attachment berhasil ditambahkan!');
+                    window.showAlert('success', response.message || 'Attachment berhasil ditambahkan!');
                     
                     // Refresh the appropriate dropdown
-                    refreshAttachmentDropdown(type);
+                    window.refreshAttachmentDropdown(type);
                     
                     // Auto-select the newly created item
                     setTimeout(function() {
@@ -1833,7 +2062,7 @@ $(document).ready(function() {
     });
     
     // Refresh dropdown after adding new attachment
-    function refreshAttachmentDropdown(type) {
+    window.refreshAttachmentDropdown = function(type) {
         console.log(`📝 Refreshing ${type} dropdown`);
         
         let selectElement;
@@ -1923,7 +2152,7 @@ $(document).ready(function() {
     }
     
     // Simple tooltip function for database fields
-    function setupDatabaseFieldTooltips() {
+    window.setupDatabaseFieldTooltips = function() {
         console.log('🔧 Setting up simple database field tooltips');
         
         // Database fields that need tooltips
@@ -1938,18 +2167,18 @@ $(document).ready(function() {
             
             // Update tooltip when value changes
             field.on('input change', function() {
-                updateSimpleTooltip($(this));
+                window.updateSimpleTooltip($(this));
             });
             
             // Initialize tooltip for current value
-            updateSimpleTooltip(field);
+            window.updateSimpleTooltip(field);
         });
         
         console.log('✅ Simple database field tooltips setup completed');
     }
     
     // Update simple tooltip using title attribute
-    function updateSimpleTooltip(field) {
+    window.updateSimpleTooltip = function(field) {
         const value = field.val();
         const fieldId = field.attr('id');
         
@@ -1961,7 +2190,7 @@ $(document).ready(function() {
             // Remove tooltip if field is empty
             field.removeAttr('title');
         }
-    }
+    };
 });
 </script>
 

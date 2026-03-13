@@ -52,6 +52,11 @@ $canAmend  = ($status === 'ACTIVE');
             <i class="fas fa-calculator me-1" aria-hidden="true"></i>Change Rate
         </button>
         <?php endif; ?>
+        <?php if (in_array($status, ['ACTIVE', 'EXPIRED'])): ?>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btnCreateDITarik" onclick="openTarikModal()">
+            <i class="fas fa-truck-loading me-1" aria-hidden="true"></i><?= lang('Marketing.create_di_retrieval') ?>
+        </button>
+        <?php endif; ?>
         <button type="button" class="btn btn-outline-info btn-sm" onclick="openHistoryModal(<?= $id ?>)">
             <i class="fas fa-history me-1" aria-hidden="true"></i>History
         </button>
@@ -60,6 +65,18 @@ $canAmend  = ($status === 'ACTIVE');
         </button>
     </div>
 </div>
+
+<?php if ($status === 'EXPIRED'): ?>
+<div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+    <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+    <div class="flex-grow-1">
+        <strong><?= lang('Marketing.contract_expired_no_di_alert') ?></strong>
+    </div>
+    <button type="button" class="btn btn-warning btn-sm" onclick="openTarikModal()">
+        <i class="fas fa-truck-loading me-1"></i><?= lang('Marketing.contract_expired_create_di') ?>
+    </button>
+</div>
+<?php endif; ?>
 
 <div class="row g-4">
     <!-- Main Content (Left) -->
@@ -274,11 +291,116 @@ $canAmend  = ($status === 'ACTIVE');
 <?= $this->include('components/asset_history') ?>
 <?= $this->include('components/add_unit_modal') ?>
 
+<?php if (in_array($status, ['ACTIVE', 'EXPIRED'])): ?>
+<?php $diRetrievalLang = [
+    'modal_title' => lang('Marketing.di_retrieval_modal_title'),
+    'alert' => str_replace('{contract}', esc($noKontrak), lang('Marketing.di_retrieval_alert')),
+    'command_type' => lang('Marketing.di_retrieval_command_type'),
+    'purpose' => lang('Marketing.di_retrieval_purpose'),
+    'select_purpose' => lang('Marketing.di_retrieval_select_purpose'),
+    'delivery_date' => lang('Marketing.di_retrieval_delivery_date'),
+    'location' => lang('Marketing.di_retrieval_location'),
+    'notes' => lang('Marketing.di_retrieval_notes'),
+    'notes_placeholder' => lang('Marketing.di_retrieval_notes_placeholder'),
+    'select_units' => lang('Marketing.di_retrieval_select_units'),
+    'select_all' => lang('Marketing.di_retrieval_select_all'),
+    'clear_all' => lang('Marketing.di_retrieval_clear_all'),
+    'units_selected' => lang('Marketing.di_retrieval_units_selected'),
+    'no_units' => lang('Marketing.di_retrieval_no_units'),
+    'submit' => lang('Marketing.di_retrieval_submit'),
+    'cancel' => lang('Marketing.di_retrieval_cancel'),
+    'processing' => lang('Marketing.di_retrieval_processing'),
+    'success' => lang('Marketing.di_retrieval_success'),
+    'error' => lang('Marketing.di_retrieval_error'),
+    'network_error' => lang('Marketing.di_retrieval_network_error'),
+    'load_error' => lang('Marketing.di_retrieval_load_error'),
+    'min_unit' => lang('Marketing.di_retrieval_min_unit'),
+]; ?>
+<!-- DI Penarikan (TARIK) Modal -->
+<div class="modal fade" id="tarikDIModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-truck-loading me-2"></i><?= $diRetrievalLang['modal_title'] ?></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning small mb-3">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <?= $diRetrievalLang['alert'] ?>
+                </div>
+                <form id="tarikDIForm">
+                    <input type="hidden" name="kontrak_id" value="<?= $id ?>">
+                    <input type="hidden" name="po_kontrak_nomor" value="<?= esc($contract['no_kontrak'] ?? $contract['customer_po_number'] ?? '') ?>">
+                    <input type="hidden" name="pelanggan" id="tarikPelanggan" value="">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= $diRetrievalLang['command_type'] ?></label>
+                            <input type="text" class="form-control" value="TARIK - Tarik Unit" disabled>
+                            <input type="hidden" name="jenis_perintah_kerja_id" id="tarikJenisId" value="">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= $diRetrievalLang['purpose'] ?></label>
+                            <select class="form-select" name="tujuan_perintah_kerja_id" id="tarikTujuanSelect" required>
+                                <option value=""><?= $diRetrievalLang['select_purpose'] ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= $diRetrievalLang['delivery_date'] ?></label>
+                            <input type="date" class="form-control" name="tanggal_kirim" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= $diRetrievalLang['location'] ?></label>
+                            <input type="text" class="form-control" name="lokasi" id="tarikLokasi" value="" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><?= $diRetrievalLang['notes'] ?></label>
+                        <textarea class="form-control" name="catatan" rows="2" placeholder="<?= $diRetrievalLang['notes_placeholder'] ?>"></textarea>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="fas fa-boxes me-1"></i><?= $diRetrievalLang['select_units'] ?></h6>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="tarikSelectAll"><?= $diRetrievalLang['select_all'] ?></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="tarikClearAll"><?= $diRetrievalLang['clear_all'] ?></button>
+                            <span class="badge bg-primary ms-2" id="tarikSelectedCount">0</span> <?= $diRetrievalLang['units_selected'] ?>
+                        </div>
+                    </div>
+                    <div id="tarikUnitsList" class="border rounded p-2" style="max-height:300px;overflow-y:auto">
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-spinner fa-spin me-1"></i><?= lang('Common.loading') ?>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= $diRetrievalLang['cancel'] ?></button>
+                <button type="button" class="btn btn-danger" id="btnSubmitTarikDI" disabled>
+                    <i class="fas fa-truck-loading me-1"></i><?= $diRetrievalLang['submit'] ?>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
 <script>
 const CONTRACT_ID = <?= (int)$id ?>;
+<?php if (in_array($status, ['ACTIVE', 'EXPIRED']) && isset($diRetrievalLang)): ?>
+const LANG_TARIK = <?= json_encode($diRetrievalLang) ?>;
+<?php else: ?>
+const LANG_TARIK = {};
+<?php endif; ?>
 // BASE_URL is already defined globally in base.php
 
 // ── Helper: format rupiah ────────────────────────────────
@@ -485,7 +607,7 @@ function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
         html: htmlContent,
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-save me-1"></i>Simpan',
-        cancelButtonText: 'Batal',
+        cancelButtonText: window.lang('cancel'),
         confirmButtonColor: '#0d6efd',
         didOpen: function() {
             // Apply rupiah formatting on input
@@ -562,15 +684,12 @@ function formatRupiahInput(angka) {
 }
 
 // Remove unit from contract
-async function removeUnitFromContract(unitId) {
-    const confirmed = await confirmSwal({
+function removeUnitFromContract(unitId) {
+    OptimaConfirm.danger({
         title: 'Hapus Unit dari Kontrak',
         text: 'Apakah Anda yakin ingin menghapus unit ini dari kontrak?',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: BASE_URL + 'marketing/kontrak/removeUnit',
         type: 'POST',
         data: {
@@ -587,6 +706,8 @@ async function removeUnitFromContract(unitId) {
         },
         error: function() {
             alertSwal('error', 'Error saat menghapus unit');
+        }
+    });
         }
     });
 }
@@ -692,26 +813,24 @@ function uploadContractDocument() {
     if (window.OptimaNotify) OptimaNotify.info('Upload document feature coming soon.');
 }
 
-async function deleteDocument(docId) {
-    const confirmed = await confirmSwal({
+function deleteDocument(docId) {
+    OptimaConfirm.danger({
         title: 'Hapus Dokumen',
         text: 'Apakah Anda yakin ingin menghapus dokumen ini?',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.post(BASE_URL + 'marketing/kontrak/deleteDocument/' + docId, {}, function(res) {
-        if (res.success) { loadDocuments(); } else { alertSwal('error', res.message || 'Gagal menghapus dokumen.'); }
+        onConfirm: function() {
+            $.post(BASE_URL + 'marketing/kontrak/deleteDocument/' + docId, {}, function(res) {
+                if (res.success) { loadDocuments(); } else { alertSwal('error', res.message || 'Gagal menghapus dokumen.'); }
+            });
+        }
     });
 }
 
-async function deleteContract(id) {
-    const confirmed = await confirmSwal({
+function deleteContract(id) {
+    OptimaConfirm.danger({
         title: 'Hapus Kontrak',
         text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
-        type: 'delete'
-    });
-    if (!confirmed) return;
-    $.ajax({
+        onConfirm: function() {
+            $.ajax({
         url: BASE_URL + 'marketing/kontrak/delete/' + id,
         type: 'POST',
         success: function(res) {
@@ -722,6 +841,8 @@ async function deleteContract(id) {
             }
         },
         error: function() { alertSwal('error', 'Terjadi kesalahan saat menghapus kontrak.'); }
+    });
+        }
     });
 }
 
@@ -807,5 +928,160 @@ $(document).ready(function() {
     $('#tab-history').on('shown.bs.tab', function() { loadHistory(); });
     $('#tab-documents').on('shown.bs.tab', function() { loadDocuments(); });
 });
+
+// ── DI Penarikan (TARIK) from Kontrak Detail ────────────
+<?php if (in_array($status, ['ACTIVE', 'EXPIRED'])): ?>
+
+let tarikJenisId = null;
+let tarikTujuanOptions = [];
+
+function openTarikModal() {
+    const modal = new bootstrap.Modal(document.getElementById('tarikDIModal'));
+    modal.show();
+    loadTarikModalData();
+}
+
+async function loadTarikModalData() {
+    try {
+        // 1. Load jenis perintah to find TARIK id
+        const jenisRes = await fetch(BASE_URL + 'marketing/get-jenis-perintah-kerja', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const jenisData = await jenisRes.json();
+        if (jenisData.success) {
+            const tarikJenis = jenisData.data.find(j => j.kode.toUpperCase() === 'TARIK');
+            if (tarikJenis) {
+                tarikJenisId = tarikJenis.id;
+                document.getElementById('tarikJenisId').value = tarikJenisId;
+
+                // 2. Load tujuan options for TARIK
+                const tujuanRes = await fetch(BASE_URL + 'marketing/get-tujuan-perintah-kerja?jenis_id=' + tarikJenisId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const tujuanData = await tujuanRes.json();
+                if (tujuanData.success) {
+                    tarikTujuanOptions = tujuanData.data;
+                    const sel = document.getElementById('tarikTujuanSelect');
+                    sel.innerHTML = '<option value="">-- Pilih Tujuan Penarikan --</option>';
+                    tujuanData.data.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = t.nama || t.kode;
+                        if (t.kode === 'TARIK_HABIS_KONTRAK') opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                }
+            }
+        }
+
+        // 3. Load contract info for pelanggan/lokasi
+        const kontrakRes = await fetch(BASE_URL + 'marketing/kontrak/get/' + CONTRACT_ID, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const kontrakData = await kontrakRes.json();
+        if (kontrakData.success && kontrakData.data) {
+            document.getElementById('tarikPelanggan').value = kontrakData.data.customer_name || '';
+            document.getElementById('tarikLokasi').value = kontrakData.data.lokasi || kontrakData.data.location_name || '';
+        }
+
+        // 4. Load units from this contract
+        const unitsRes = await fetch(BASE_URL + 'marketing/kontrak/units/' + CONTRACT_ID, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const unitsData = await unitsRes.json();
+        renderTarikUnits(unitsData.success ? (unitsData.data || []) : []);
+
+    } catch (err) {
+        console.error('Error loading tarik modal data:', err);
+        if (window.OptimaNotify) OptimaNotify.error(LANG_TARIK.load_error || 'Gagal memuat data untuk DI penarikan');
+    }
+}
+
+function renderTarikUnits(units) {
+    const container = document.getElementById('tarikUnitsList');
+    if (!units.length) {
+        container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-info-circle me-1"></i>Tidak ada unit di kontrak ini</div>';
+        return;
+    }
+    const noUnitsText = (LANG_TARIK && LANG_TARIK.no_units) ? LANG_TARIK.no_units : 'Tidak ada unit di kontrak ini';
+    if (!units.length) {
+        container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-info-circle me-1"></i>' + noUnitsText + '</div>';
+        return;
+    }
+    container.innerHTML = units.map(u => {
+        const unitId = u.unit_id || u.id_inventory_unit || u.id;
+        const noUnit = u.no_unit || u.unit_label || ('Unit #' + unitId);
+        const serial = u.serial_number || '';
+        const jenis = u.jenis_unit || (u.merk ? u.merk + ' ' + (u.model || '') : '');
+        const location = u.location_name || '';
+        return `
+        <div class="form-check border-bottom py-2">
+            <input class="form-check-input tarik-unit-cb" type="checkbox" name="tarik_units[]" value="${unitId}" id="tarikU_${unitId}" onchange="updateTarikCount()">
+            <label class="form-check-label w-100" for="tarikU_${unitId}">
+                <div class="d-flex justify-content-between">
+                    <div><strong>${noUnit}</strong> ${serial ? '<small class="text-muted">(' + serial + ')</small>' : ''}</div>
+                    <small class="text-muted">${jenis}</small>
+                </div>
+                ${location ? '<small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>' + location + '</small>' : ''}
+            </label>
+        </div>`;
+    }).join('');
+
+    // Select/Clear all handlers
+    document.getElementById('tarikSelectAll').onclick = () => {
+        container.querySelectorAll('.tarik-unit-cb').forEach(cb => cb.checked = true);
+        updateTarikCount();
+    };
+    document.getElementById('tarikClearAll').onclick = () => {
+        container.querySelectorAll('.tarik-unit-cb').forEach(cb => cb.checked = false);
+        updateTarikCount();
+    };
+}
+
+function updateTarikCount() {
+    const count = document.querySelectorAll('.tarik-unit-cb:checked').length;
+    document.getElementById('tarikSelectedCount').textContent = count;
+    document.getElementById('btnSubmitTarikDI').disabled = (count === 0);
+}
+
+// Submit DI Penarikan
+document.getElementById('btnSubmitTarikDI').addEventListener('click', async function() {
+    const form = document.getElementById('tarikDIForm');
+    const fd = new FormData(form);
+
+    const checkedUnits = document.querySelectorAll('.tarik-unit-cb:checked');
+    if (!checkedUnits.length) {
+        if (window.OptimaNotify) OptimaNotify.warning(LANG_TARIK.min_unit || 'Pilih minimal satu unit untuk ditarik');
+        return;
+    }
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + (LANG_TARIK.processing || 'Memproses...');
+
+    try {
+        const response = await fetch(BASE_URL + 'marketing/di/create', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('tarikDIModal')).hide();
+            if (window.OptimaNotify) OptimaNotify.success((LANG_TARIK.success || 'DI Penarikan berhasil dibuat') + ': ' + (result.nomor || ''));
+        } else {
+            if (window.OptimaNotify) OptimaNotify.error(result.message || (LANG_TARIK.error || 'Gagal membuat DI'));
+        }
+    } catch (err) {
+        console.error('Submit tarik DI error:', err);
+        if (window.OptimaNotify) OptimaNotify.error(LANG_TARIK.network_error || 'Network error saat membuat DI');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-truck-loading me-1"></i>' + (LANG_TARIK.submit || 'Buat DI Penarikan');
+    }
+});
+
+<?php endif; ?>
 </script>
 <?= $this->endSection() ?>

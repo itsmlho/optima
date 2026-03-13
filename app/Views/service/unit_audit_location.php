@@ -188,9 +188,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                 <button type="button" class="btn btn-primary" onclick="createAudit()">
-                    <i class="fas fa-plus me-1"></i>Buat Audit
+                    <i class="fas fa-plus me-1"></i><?= lang('Common.add') ?> Audit
                 </button>
             </div>
         </div>
@@ -390,7 +390,7 @@ function submitToMarketing(id) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Kirim!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${id}`, {

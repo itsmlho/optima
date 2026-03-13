@@ -20,7 +20,7 @@
                             <div class="card border-warning">
                                 <div class="card-body text-center">
                                     <h3 class="text-warning" id="totalTemporaryUnits">0</h3>
-                                    <p class="mb-0 small">Total Temp                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            orary Units</p>
+                                    <p class="mb-0 small">Total Temporary Units</p>
                                 </div>
                             </div>
                         </div>
@@ -161,6 +161,18 @@ $(document).ready(function() {
     });
     
     $('#btnConfirmReturn').on('click', processReturn);
+    
+    $(document).on('click', '.btn-return-temp', function() {
+        const btn = $(this);
+        showReturnModal(
+            btn.data('id'),
+            btn.data('customer') || '',
+            btn.data('contract') || '',
+            btn.data('temp') || '',
+            btn.data('orig') || '',
+            btn.data('days') || 0
+        );
+    });
 });
 
 function initializeDataTable() {
@@ -199,10 +211,11 @@ function initializeDataTable() {
             { 
                 data: 'days_borrowed',
                 render: function(data) {
+                    const days = data ?? 0;
                     let badgeClass = 'bg-success';
-                    if (data > 60) badgeClass = 'bg-danger';
-                    else if (data > 30) badgeClass = 'bg-warning';
-                    return `<span class="badge ${badgeClass}">${data} days</span>`;
+                    if (days > 60) badgeClass = 'bg-danger';
+                    else if (days > 30) badgeClass = 'bg-warning';
+                    return `<span class="badge ${badgeClass}">${days} days</span>`;
                 }
             },
             { 
@@ -220,7 +233,7 @@ function initializeDataTable() {
                 render: function(data, type, row) {
                     let returnBtn = '';
                     if (row.original_workflow_status === 'MAINTENANCE_COMPLETED') {
-                        returnBtn = `<button class="btn btn-sm btn-success" onclick="showReturnModal(${row.kontrak_unit_id}, '${row.customer_name}', '${row.no_kontrak}', '${row.temporary_unit}', '${row.original_unit}', ${row.days_borrowed})" title="Process Return">
+                        returnBtn = `<button class="btn btn-sm btn-success btn-return-temp" data-id="${row.kontrak_unit_id}" data-customer="${(row.customer_name || '').replace(/"/g, '&quot;')}" data-contract="${(row.no_kontrak || '').replace(/"/g, '&quot;')}" data-temp="${(row.temporary_unit || '').replace(/"/g, '&quot;')}" data-orig="${(row.original_unit || '').replace(/"/g, '&quot;')}" data-days="${row.days_borrowed ?? 0}" title="Process Return">
                             <i class="bi bi-arrow-counterclockwise"></i> Return
                         </button>`;
                     } else {

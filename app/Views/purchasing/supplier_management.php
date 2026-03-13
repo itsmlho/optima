@@ -561,7 +561,7 @@ function deleteSupplierFromModal() {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Yes, Delete!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({

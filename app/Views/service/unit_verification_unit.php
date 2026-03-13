@@ -560,10 +560,10 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
         </div>
         <div class="d-flex gap-2">
             <a href="<?= base_url('service/unit-verification') ?>" class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-list me-1"></i>Kembali
+                <i class="fas fa-list me-1"></i><?= lang('Common.back') ?>
             </a>
             <button type="button" class="btn btn-primary btn-sm" id="btnSaveVf" onclick="saveUnitVerification()">
-                <i class="fas fa-save me-1"></i>Simpan Perubahan
+                <i class="fas fa-save me-1"></i><?= lang('Common.save_changes') ?>
             </button>
         </div>
     </div>
@@ -847,13 +847,13 @@ async function saveUnitVerification() {
             if (window.OptimaNotify) OptimaNotify.error('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
             else alert('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Perubahan';
+            btn.innerHTML = '<i class="fas fa-save me-1"></i><?= lang('Common.save_changes') ?>';
         }
     } catch (e) {
         if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan jaringan');
         else alert('Terjadi kesalahan jaringan');
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Perubahan';
+        btn.innerHTML = '<i class="fas fa-save me-1"></i><?= lang('Common.save_changes') ?>';
     }
 }
 

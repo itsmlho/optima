@@ -576,7 +576,7 @@ $can_export = $permissions['export'];
             showCancelButton: true,
             confirmButtonColor: '#d33',
             confirmButtonText: 'Yes, delete!',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -941,7 +941,7 @@ $can_export = $permissions['export'];
             showCancelButton: true,
             confirmButtonColor: '#d33',
             confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -968,7 +968,7 @@ $can_export = $permissions['export'];
             showCancelButton: true,
             confirmButtonColor: '#28a745',
             confirmButtonText: 'Yes, Complete it!',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: window.lang('cancel')
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({

@@ -283,7 +283,7 @@ function saveRolePermissions() {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Save',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({

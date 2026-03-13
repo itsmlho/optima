@@ -297,9 +297,9 @@ $component_types = $component_types ?? [];
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                 <button type="button" class="btn btn-primary" onclick="submitMovement()">
-                    <i class="fas fa-save me-1"></i>Simpan
+                    <i class="fas fa-save me-1"></i><?= lang('Common.save') ?>
                 </button>
             </div>
         </div>
@@ -542,11 +542,11 @@ function showMovementDetailModal(data) {
     $('#detailContent').html(content);
 
     // Action buttons
-    let actions = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>';
+    let actions = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel') + '</button>';
 
     if (movement.status === 'DRAFT') {
-        actions += '<button class="btn btn-primary" onclick="startMovement(' + movement.id + ')"><i class="fas fa-truck me-1"></i>Jalankan</button>';
-        actions += '<button class="btn btn-danger" onclick="cancelMovement(' + movement.id + ')"><i class="fas fa-times me-1"></i>Batal</button>';
+        actions += '<button class="btn btn-primary" onclick="startMovement(' + movement.id + ')"><i class="fas fa-truck me-1"></i>' + (typeof window.lang === 'function' ? window.lang('start') : 'Start') + '</button>';
+        actions += '<button class="btn btn-danger" onclick="cancelMovement(' + movement.id + ')"><i class="fas fa-times me-1"></i>' + (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel') + '</button>';
     } else if (movement.status === 'IN_TRANSIT') {
         actions += '<button class="btn btn-success" onclick="confirmArrival(' + movement.id + ')"><i class="fas fa-check me-1"></i>Konfirmasi Tiba</button>';
     }
@@ -562,7 +562,7 @@ function startMovement(id) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Mulai!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
@@ -590,7 +590,7 @@ function confirmArrival(id) {
         showCancelButton: true,
         confirmButtonColor: '#198754',
         confirmButtonText: 'Ya, Konfirmasi!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
@@ -618,7 +618,7 @@ function cancelMovement(id) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: 'Kembali'
+        cancelButtonText: window.lang('back')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({

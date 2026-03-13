@@ -105,7 +105,7 @@ $can_export = $permissions['export'];
             </div>
             <div class="modal-body" id="detailBody"><div class="text-muted text-center py-5">Memuat...</div></div>
             <div class="modal-footer">
-                <?= ui_button('cancel', 'Tutup', [
+                <?= ui_button('cancel', '', [
                     'color' => 'secondary',
                     'size' => 'sm',
                     'data-bs-dismiss' => 'modal'

@@ -3843,6 +3843,67 @@ class Marketing extends BaseDataTableController
     }
 
     /**
+     * Get contracts for TARIK workflow (includes ACTIVE + EXPIRED with units)
+     */
+    public function getContractsForTarik()
+    {
+        try {
+            $builder = $this->db->table('kontrak k');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","TEMPORARILY_REPLACED") AND ku.is_temporary = 0', 'inner');
+            $builder->select('
+                k.id, k.no_kontrak, k.customer_po_number, k.rental_type, k.status,
+                k.tanggal_berakhir,
+                c.customer_name as pelanggan,
+                COUNT(DISTINCT ku.id) as unit_count,
+                (SELECT cl.location_name FROM kontrak_unit ku2 JOIN customer_locations cl ON cl.id = ku2.customer_location_id WHERE ku2.kontrak_id = k.id LIMIT 1) as lokasi
+            ');
+            $builder->whereIn('k.status', ['ACTIVE', 'EXPIRED']);
+            $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, k.status, k.tanggal_berakhir, c.customer_name');
+            $builder->orderBy('k.tanggal_berakhir', 'ASC');
+            $rows = $builder->get()->getResultArray();
+
+            $contracts = array_map(function ($r) {
+                $statusTag = $r['status'] === 'EXPIRED' ? ' [EXPIRED]' : '';
+                $daysInfo = '';
+                if (!empty($r['tanggal_berakhir'])) {
+                    $diff = (int)((strtotime($r['tanggal_berakhir']) - time()) / 86400);
+                    if ($diff < 0) {
+                        $daysInfo = ' (expired ' . abs($diff) . 'd ago)';
+                    } elseif ($diff <= 30) {
+                        $daysInfo = ' (' . $diff . 'd left)';
+                    }
+                }
+                return [
+                    'id' => (int)$r['id'],
+                    'no_kontrak' => $r['no_kontrak'] ?? '',
+                    'customer_po_number' => $r['customer_po_number'] ?? '',
+                    'rental_type' => $r['rental_type'] ?? 'CONTRACT',
+                    'status' => $r['status'],
+                    'pelanggan' => $r['pelanggan'] ?? '',
+                    'lokasi' => $r['lokasi'] ?? '',
+                    'unit_count' => (int)$r['unit_count'],
+                    'tanggal_berakhir' => $r['tanggal_berakhir'] ?? '',
+                    'label' => ($r['no_kontrak'] ?? '') . ' - ' . ($r['pelanggan'] ?? '') . $statusTag . $daysInfo
+                ];
+            }, $rows);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts,
+                'count' => count($contracts)
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getContractsForTarik error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Get specific contract by ID for SPK creation
      */
     public function getKontrak($id)
@@ -5872,6 +5933,16 @@ class Marketing extends BaseDataTableController
     if (is_string($unitIds)) { $unitIds = [$unitIds]; }
     if (!is_array($unitIds)) { $unitIds = []; }
     $unitIds = array_values(array_unique(array_filter(array_map('intval', $unitIds))));
+
+    // Fallback: TARIK workflow uses tarik_units[] instead of unit_ids[]
+    if (empty($unitIds)) {
+        $tarikUnits = $this->request->getPost('tarik_units');
+        if (is_string($tarikUnits)) { $tarikUnits = [$tarikUnits]; }
+        if (is_array($tarikUnits)) {
+            $unitIds = array_values(array_unique(array_filter(array_map('intval', $tarikUnits))));
+        }
+    }
+
     error_log('DI Create Parsed Inputs: spk_id=' . $spkId . ', po=' . $poNo . ', tanggal_kirim=' . ($tanggalKirim ?: '-') . ', unit_ids=' . json_encode($unitIds));
 
     $selected = ['unit_id'=>null,'inventory_attachment_id'=>null];

@@ -1610,7 +1610,7 @@ function bindForms() {
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, Lanjutkan',
-                cancelButtonText: 'Batal'
+                cancelButtonText: window.lang('cancel')
               }).then((result) => {
                 if (result.isConfirmed) submitAssignmentForm($form);
               });
@@ -1713,15 +1713,12 @@ function viewArea(id) {
   });
 }
 
-async function deleteArea(id) {
-  const confirmed = await confirmSwal({
+function deleteArea(id) {
+  OptimaConfirm.danger({
       title: 'Hapus Area',
       text: 'Apakah Anda yakin ingin menghapus area ini?',
-      type: 'delete'
-  });
-  if (!confirmed) return;
-  
-  $.ajax({
+      onConfirm: function() {
+          $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
     type: 'DELETE',
     success: function(resp){
@@ -1761,16 +1758,15 @@ function viewEmployee(id) {
   });
 }
 
-async function deleteEmployee(id) {
-  const confirmed = await confirmSwal({
+function deleteEmployee(id) {
+  OptimaConfirm.generic({
       title: 'Nonaktifkan Karyawan',
       text: 'Karyawan akan dinonaktifkan (bukan dihapus permanen). Lanjutkan?',
       icon: 'warning',
-      confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan'
-  });
-  if (!confirmed) return;
-  
-  $.ajax({
+      confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan',
+      confirmButtonColor: '#fd7e14',
+      onConfirm: function() {
+          $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
     type: 'DELETE',
     success: function(resp){
@@ -1784,6 +1780,8 @@ async function deleteEmployee(id) {
     error: function() {
       notify('Error menonaktifkan karyawan', 'error');
     }
+  });
+      }
   });
 }
 
@@ -1918,16 +1916,13 @@ function loadAvailableEmployeesForAssignment() {
   });
 }
 
-async function removeAssignment(id) {
-  const confirmed = await confirmSwal({
+function removeAssignment(id) {
+  OptimaConfirm.danger({
       title: 'Hapus Assignment',
       text: 'Karyawan akan di-unassign dari area ini. Tindakan ini tidak dapat dibatalkan.',
-      type: 'delete',
-      confirmText: '<i class="fas fa-user-minus me-1"></i>Ya, Hapus Assignment'
-  });
-  if (!confirmed) return;
-  
-  console.log('🗑️ Attempting to delete assignment ID:', id);
+      confirmText: '<i class="fas fa-user-minus me-1"></i>Ya, Hapus Assignment',
+      onConfirm: function() {
+          console.log('🗑️ Attempting to delete assignment ID:', id);
   
   // Immediately disable the delete button to prevent duplicate clicks
   $(`button[onclick*="removeAssignment(${id})"]`).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
@@ -2012,6 +2007,8 @@ async function removeAssignment(id) {
       $(`button[onclick*="removeAssignment(${id})"]`).prop('disabled', false).html('<i class="fas fa-trash"></i>');
       notify('Network error: ' + error, 'error');
     }
+  });
+      }
   });
 }
 
@@ -2309,7 +2306,7 @@ function deleteAreaFromDetail() {
     showCancelButton: true,
     confirmButtonColor: '#dc3545',
     confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: 'Batal'
+    cancelButtonText: window.lang('cancel')
   }).then((result) => {
     if (!result.isConfirmed) return;
     $('#areaDetailModal').modal('hide');
@@ -2364,7 +2361,7 @@ function deleteEmployeeFromDetail() {
     showCancelButton: true,
     confirmButtonColor: '#dc3545',
     confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: 'Batal'
+    cancelButtonText: window.lang('cancel')
   }).then((result) => {
     if (!result.isConfirmed) return;
     $('#employeeDetailModal').modal('hide');

@@ -360,7 +360,7 @@ function markInProgress() {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Mulai!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         fetch(`<?= base_url('service/unit-audit/markAuditInProgress/') ?>${auditId}`, {
@@ -400,7 +400,7 @@ function submitToMarketing() {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Kirim!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         const formData = new FormData();

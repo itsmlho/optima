@@ -72,8 +72,7 @@ helper('permission_helper');
                     <li class="nav-item"><a href="<?= base_url('/marketing/di') ?>" class="nav-link dropdown-link<?= $isMarketingDi ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">local_shipping</span><span class="drop-label">Delivery Instructions</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-link dropdown-link<?= (strpos($cur, 'marketing/audit-approval-location') === false && $isMarketingAudit) ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">check_circle</span><span class="drop-label">Audit Approval</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/marketing/audit-approval-location') ?>" class="nav-link dropdown-link<?= strpos($cur, 'marketing/audit-approval-location') !== false ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">location_on</span><span class="drop-label">Approve Audit Unit</span></a></li>
+                    <li class="nav-item"><a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-link dropdown-link<?= $isMarketingAudit ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">check_circle</span><span class="drop-label">Audit Approval</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
@@ -98,7 +97,7 @@ helper('permission_helper');
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'workorder')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/unit-audit') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">fact_check</span><span class="drop-label">Unit Audit</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/service/unit-verification') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">clipboard_check</span><span class="drop-label">Unit Verification</span></a></li>
+                    <li class="nav-item"><a href="<?= base_url('/service/unit-verification') ?>" class="nav-link dropdown-link"><i class="fas fa-clipboard-check drop-icon" aria-hidden="true"></i><span class="drop-label">Unit Verification</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'area')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area Management</span></a></li>

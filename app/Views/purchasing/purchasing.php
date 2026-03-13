@@ -2433,7 +2433,7 @@ function proceedWithoutSN() {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Ya, Lanjutkan',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $('#assignSNModal').modal('hide');
@@ -2687,7 +2687,7 @@ function markAsInTransit(deliveryId) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Tandai!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'In Transit');
     });
@@ -2701,7 +2701,7 @@ function markAsReceived(deliveryId) {
         showCancelButton: true,
         confirmButtonColor: '#198754',
         confirmButtonText: 'Ya, Received!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'Received');
     });
@@ -2800,7 +2800,7 @@ function deletePO(poId, event) {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -2834,7 +2834,7 @@ function reverifyPO(poId) {
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#6c757d',
         confirmButtonText: 'Yes, continue!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -2868,7 +2868,7 @@ function cancelPO(poId) {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#6c757d',
         confirmButtonText: 'Yes, cancel the PO!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -3229,7 +3229,7 @@ function completePO(poId, event) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Complete!',
-        cancelButtonText: 'Cancel'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -3681,7 +3681,7 @@ function deleteItem(index) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         poItems.splice(index, 1);

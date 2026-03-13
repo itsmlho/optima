@@ -419,8 +419,9 @@ $currentLang = service('request')->getLocale();
         
         // Helper function untuk format waktu relatif (16 jam lalu, dll)
         window.formatRelativeTime = function(timestamp) {
-            if (!timestamp) return 'Baru saja';
-            
+            const lang = window.lang || ((key) => key);
+            if (!timestamp) return lang('just_now');
+
             try {
                 const now = new Date();
                 const notifTime = new Date(timestamp);
@@ -429,63 +430,81 @@ $currentLang = service('request')->getLocale();
                 const diffMin = Math.floor(diffSec / 60);
                 const diffHour = Math.floor(diffMin / 60);
                 const diffDay = Math.floor(diffHour / 24);
-                
-                if (diffSec < 60) return 'Baru saja';
-                if (diffMin < 60) return `${diffMin} menit lalu`;
-                if (diffHour < 24) return `${diffHour} jam lalu`;
-                if (diffDay < 7) return `${diffDay} hari lalu`;
-                
+
+                if (diffSec < 60) return lang('just_now');
+                if (diffMin < 60) return lang('minutes_ago').replace('{count}', diffMin);
+                if (diffHour < 24) return lang('hours_ago').replace('{count}', diffHour);
+                if (diffDay < 7) return lang('days_ago').replace('{count}', diffDay);
+
                 // Lebih dari 7 hari, tampilkan tanggal
                 const day = String(notifTime.getDate()).padStart(2, '0');
                 const month = String(notifTime.getMonth() + 1).padStart(2, '0');
                 const year = notifTime.getFullYear();
                 const hours = String(notifTime.getHours()).padStart(2, '0');
                 const minutes = String(notifTime.getMinutes()).padStart(2, '0');
-                
+
                 return `${day}/${month}/${year} ${hours}:${minutes}`;
             } catch (e) {
-                return 'Baru saja';
+                return lang('just_now');
             }
         };
         
         // Global toast creator (Bootstrap 5 Toast with optional action button)
-        window.createOptimaToast = function({type='info', title='Info', message='', duration=5000, url=null, actionText='Lihat Detail', timestamp=null} = {}) {
-            const color = (type==='success') ? 'success' : (type==='warning') ? 'warning' : (type==='error' || type==='danger') ? 'danger' : 'info';
-            const icon = (type==='success') ? 'fas fa-check-circle' : (type==='warning') ? 'fas fa-exclamation-triangle' : (type==='error' || type==='danger') ? 'fas fa-times-circle' : 'fas fa-info-circle';
-            const iconBg = (type==='success') ? 'text-success' : (type==='warning') ? 'text-warning' : (type==='error' || type==='danger') ? 'text-danger' : 'text-info';
+        // ES5-compatible version (no object destructuring for older browsers)
+        window.createOptimaToast = function(options) {
+            // Default values without object destructuring (ES5-compatible)
+            options = options || {};
+            var type = options.type !== undefined ? options.type : 'info';
+            var title = options.title;
+            var message = options.message !== undefined ? options.message : '';
+            var duration = options.duration !== undefined ? options.duration : 5000;
+            var url = options.url;
+            var actionText = options.actionText;
+            var timestamp = options.timestamp;
+            
+            // Safe evaluation of window.lang (executed when function is CALLED, not defined)
+            if (!title) {
+                title = (typeof window.lang === 'function') ? window.lang('info') : 'Info';
+            }
+            if (!actionText) {
+                actionText = (typeof window.lang === 'function') ? window.lang('view_detail') : 'Lihat Detail';
+            }
+            
+            var color = (type==='success') ? 'success' : (type==='warning') ? 'warning' : (type==='error' || type==='danger') ? 'danger' : 'info';
+            var icon = (type==='success') ? 'fas fa-check-circle' : (type==='warning') ? 'fas fa-exclamation-triangle' : (type==='error' || type==='danger') ? 'fas fa-times-circle' : 'fas fa-info-circle';
+            var iconBg = (type==='success') ? 'text-success' : (type==='warning') ? 'text-warning' : (type==='error' || type==='danger') ? 'text-danger' : 'text-info';
             
             // Format waktu relatif
-            const timeText = window.formatRelativeTime(timestamp);
+            var timeText = window.formatRelativeTime(timestamp);
             
-            const el = document.createElement('div');
-            el.className = `toast`;
+            var el = document.createElement('div');
+            el.className = 'toast';
             el.setAttribute('role','alert');
             el.setAttribute('aria-live','assertive');
             el.setAttribute('aria-atomic','true');
             
             // Build toast body with optional action button
-            let bodyContent = `<div class="toast-body">${escapeHtml(message)}`;
+            var bodyContent = '<div class="toast-body">' + escapeHtml(message);
             if (url && url !== '#' && url !== '') {
-                bodyContent += `
-                    <div class="mt-2 pt-2 border-top">
-                        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='${escapeHtml(url)}'">
-                            <i class="fas fa-external-link-alt me-1"></i>${escapeHtml(actionText)}
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="toast">Tutup</button>
-                    </div>`;
+                bodyContent += '<div class="mt-2 pt-2 border-top">' +
+                    '<button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href=\'' + escapeHtml(url) + '\'">' +
+                    '<i class="fas fa-external-link-alt me-1"></i>' + escapeHtml(actionText) +
+                    '</button>' +
+                    '<button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="toast">Tutup</button>' +
+                    '</div>';
             }
-            bodyContent += `</div>`;
+            bodyContent += '</div>';
             
-            el.innerHTML = `
-                <div class="toast-header">
-                    <i class="${icon} ${iconBg} me-2"></i>
-                    <strong class="me-auto">${escapeHtml(title)}</strong>
-                    <small class="text-muted">${escapeHtml(timeText)}</small>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                ${bodyContent}
-            `;
-            const container = document.getElementById('optima-toast-container');
+            el.innerHTML = 
+                '<div class="toast-header">' +
+                    '<i class="' + icon + ' ' + iconBg + ' me-2"></i>' +
+                    '<strong class="me-auto">' + escapeHtml(title) + '</strong>' +
+                    '<small class="text-muted">' + escapeHtml(timeText) + '</small>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '</div>' +
+                bodyContent;
+                
+            var container = document.getElementById('optima-toast-container');
             if (container) {
                 container.appendChild(el);
             } else {
@@ -493,21 +512,26 @@ $currentLang = service('request')->getLocale();
             }
             try {
                 if (window.bootstrap && bootstrap.Toast) {
-                    const t = new bootstrap.Toast(el, { delay: duration });
-                    el.addEventListener('hidden.bs.toast', () => el.remove());
+                    var t = new bootstrap.Toast(el, { delay: duration });
+                    el.addEventListener('hidden.bs.toast', function() { el.remove(); });
                     t.show();
                 } else if (window.$ && typeof $('.toast').toast === 'function') {
                     $(el).toast({ delay: duration }).toast('show');
                     $(el).on('hidden.bs.toast', function(){ $(this).remove(); });
                 } else {
                     // Fallback: auto-remove without animation
-                    setTimeout(() => { if (el && el.remove) el.remove(); }, duration);
+                    setTimeout(function() { if (el && el.remove) el.remove(); }, duration);
                 }
             } catch (e) {
-                setTimeout(() => { if (el && el.remove) el.remove(); }, duration);
+                setTimeout(function() { if (el && el.remove) el.remove(); }, duration);
             }
         };
-        function escapeHtml(str){ return String(str??'').replace(/[&<>"']/g,s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+        
+        function escapeHtml(str){ 
+            return String(str !== null && str !== undefined ? str : '').replace(/[&<>"']/g, function(s) {
+                return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]);
+            }); 
+        }
         
         // ============================================================
         // GLOBAL SWEETALERT2 HELPERS — OPTIMA Standard
@@ -519,23 +543,26 @@ $currentLang = service('request')->getLocale();
          * @param {Object} opts - { title, text, confirmText, type }
          * @returns {Promise<boolean>} true jika dikonfirmasi
          */
-        window.confirmSwal = async function(opts = {}) {
+        window.confirmSwal = function(opts) {
+            opts = opts || {};
+            var lang = window.lang || function(key) { return key; };
             if (typeof Swal === 'undefined') {
                 // Fallback ke browser confirm jika SweetAlert belum load
-                return Promise.resolve(confirm(opts.text || 'Apakah Anda yakin?'));
+                return Promise.resolve(confirm(opts.text || lang('are_you_sure')));
             }
-            const result = await Swal.fire({
-                title: opts.title || 'Konfirmasi',
-                text: opts.text || 'Apakah Anda yakin?',
+            return Swal.fire({
+                title: opts.title || lang('confirm'),
+                text: opts.text || lang('are_you_sure'),
                 icon: opts.icon || 'warning',
                 showCancelButton: true,
                 confirmButtonColor: opts.type === 'delete' ? '#dc3545' : (opts.type === 'success' ? '#198754' : '#0d6efd'),
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: opts.confirmText || (opts.type === 'delete' ? '<i class="fas fa-trash me-1"></i>Ya, Hapus' : '<i class="fas fa-check me-1"></i>Ya, Lanjutkan'),
-                cancelButtonText: '<i class="fas fa-times me-1"></i>Batal',
+                confirmButtonText: opts.confirmText || (opts.type === 'delete' ? '<i class="fas fa-trash me-1"></i>' + lang('confirm_delete_btn') : '<i class="fas fa-check me-1"></i>' + lang('confirm_continue_btn')),
+                cancelButtonText: '<i class="fas fa-times me-1"></i>' + lang('cancel'),
                 reverseButtons: true,
+            }).then(function(result) {
+                return result.isConfirmed;
             });
-            return result.isConfirmed;
         };
         
         /**
@@ -544,13 +571,15 @@ $currentLang = service('request')->getLocale();
          * @param {string} message
          * @param {string} title
          */
-        window.alertSwal = function(type, message, title = '') {
+        window.alertSwal = function(type, message, title) {
+            title = title || '';
             if (typeof Swal === 'undefined') return;
+            var lang = window.lang || function(key) { return key; };
             Swal.fire({
                 icon: type === 'danger' ? 'error' : type,
-                title: title || (type === 'success' ? 'Berhasil' : type === 'error' || type === 'danger' ? 'Terjadi Kesalahan' : 'Perhatian'),
+                title: title || (type === 'success' ? lang('success') : type === 'error' || type === 'danger' ? lang('error') : lang('warning')),
                 text: message,
-                confirmButtonText: 'OK',
+                confirmButtonText: lang('ok'),
                 confirmButtonColor: '#0d6efd',
             });
         };
@@ -558,13 +587,17 @@ $currentLang = service('request')->getLocale();
         // Backward compatibility & Helper functions
         window.showToast = window.createOptimaToast; // Alias untuk kompatibilitas
         window.OptimaPro = window.OptimaPro || {};
-        window.OptimaPro.showNotification = (msg,type='info') => createOptimaToast({type:type==='error'?'error':type, title:type.toUpperCase(), message:msg});
+        window.OptimaPro.showNotification = function(msg, type) {
+            type = type || 'info';
+            var toastType = type === 'error' ? 'error' : type;
+            return createOptimaToast({type: toastType, title: type.toUpperCase(), message: msg});
+        };
         
         // Track page start time BEFORE load event
         window.pageStartTime = performance.now();
         
         // Define BASE_URL globally for all JavaScript files
-        const BASE_URL = '<?= rtrim(base_url(), '/') ?>/';
+        var BASE_URL = '<?= rtrim(base_url(), '/') ?>/';
         window.BASE_URL = BASE_URL;
     </script>
     <!-- Page Loading -->
@@ -787,6 +820,28 @@ $currentLang = service('request')->getLocale();
 
     <!-- Sidebar Overlay for Mobile -->
     <div class="sidebar-overlay"></div>
+
+    <!-- OptimaConfirm Modal (Bootstrap 5) -->
+    <div class="modal fade" id="optimaConfirmModal" tabindex="-1" aria-labelledby="optimaConfirmModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center" id="optimaConfirmModalLabel">
+                        <span class="optima-confirm-icon me-2"></span>
+                        <span class="optima-confirm-title">Konfirmasi</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0 optima-confirm-text">Apakah Anda yakin?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn optima-confirm-btn" id="optimaConfirmBtn">Ya</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <!-- jQuery (core) -->
@@ -1065,13 +1120,16 @@ $currentLang = service('request')->getLocale();
             }
         });
         
-        // Enhanced OptimaPro notification system (unified)
+        // Enhanced OptimaPro notification system (unified) - ES5-compatible
         window.OptimaPro = window.OptimaPro || {};
-        window.OptimaPro.showNotification = function(message, type = 'info', duration = 5000) {
+        window.OptimaPro.showNotification = function(message, type, duration) {
+            type = type || 'info';
+            duration = duration || 5000;
             if (typeof window.createOptimaToast !== 'function') { console.warn('Toast system not ready'); return; }
-            const t = (type === 'danger') ? 'error' : (type || 'info');
-            const title = (t === 'error') ? 'Error' : (t === 'success') ? 'Success' : (t === 'warning') ? 'Warning' : 'Info';
-            return window.createOptimaToast({ type: t, title, message, duration });
+            var t = (type === 'danger') ? 'error' : (type || 'info');
+            var lang = window.lang || function(key) { return key; };
+            var title = (t === 'error') ? lang('error') : (t === 'success') ? lang('success') : (t === 'warning') ? lang('warning') : lang('info');
+            return window.createOptimaToast({ type: t, title: title, message: message, duration: duration });
         };
         
         // Global AJAX setup — dynamic CSRF token refreshed per request
@@ -1085,7 +1143,7 @@ $currentLang = service('request')->getLocale();
                         // getCsrfToken() reads from session (never stale)
                         const token = (typeof window.getCsrfToken === 'function')
                             ? (window.getCsrfToken() || window.csrfToken || '')
-                            : (window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
+                            : (window.csrfToken || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content')) || '');
                         if (token) {
                             xhr.setRequestHeader('X-CSRF-TOKEN', token);
                         }
@@ -1313,100 +1371,125 @@ $currentLang = service('request')->getLocale();
     </script>
     <?= $this->renderSection('script') ?>
     <script>
-    // Unified confirmation helper (OptimaConfirm)
+    // Unified confirmation helper (OptimaConfirm) - Bootstrap 5 Modal
     (function() {
-        function baseConfirm(options) {
-            const opts = options || {};
-            const title = opts.title || 'Konfirmasi';
-            const icon = opts.icon || 'question';
-            const html = (opts.messageHtml || opts.html || opts.text || '').toString();
-            const confirmText = opts.confirmButtonText || opts.confirmText || 'Ya';
-            const cancelText = opts.cancelButtonText || opts.cancelText || 'Batal';
-            const showCancel = typeof opts.showCancelButton === 'boolean' ? opts.showCancelButton : true;
-            const confirmColor = opts.confirmButtonColor || opts.confirmColor || undefined;
+        const lang = function(k) { return (typeof window.lang === 'function' ? window.lang(k) : k); };
+        const iconMap = { warning: 'bi-exclamation-triangle-fill text-danger', question: 'bi-question-circle-fill text-primary', info: 'bi-info-circle-fill text-info', success: 'bi-check-circle-fill text-success' };
 
-            if (window.Swal) {
-                return Swal.fire({
-                    title,
-                    html,
-                    icon,
-                    showCancelButton: showCancel,
-                    confirmButtonText: confirmText,
-                    cancelButtonText: cancelText,
-                    confirmButtonColor: confirmColor
-                });
+        function showBootstrapConfirm(opts, onConfirm) {
+            const el = document.getElementById('optimaConfirmModal');
+            if (!el || typeof bootstrap === 'undefined') {
+                const plain = (opts.messageHtml || opts.html || opts.text || opts.title || '').toString().replace(/<[^>]+>/g, '') || lang('are_you_sure');
+                if (window.confirm(plain)) { try { if (typeof onConfirm === 'function') onConfirm(); } catch (e) { console.error('OptimaConfirm callback error', e); } }
+                return;
             }
+            const titleEl = el.querySelector('.optima-confirm-title');
+            const iconEl = el.querySelector('.optima-confirm-icon');
+            const textEl = el.querySelector('.optima-confirm-text');
+            const btnEl = document.getElementById('optimaConfirmBtn');
 
-            // Fallback: browser confirm (text only, strip HTML)
-            const plain = html.replace(/<[^>]+>/g, '') || title;
-            const ok = window.confirm(plain || 'Apakah Anda yakin?');
-            return Promise.resolve({ isConfirmed: ok, isDismissed: !ok });
-        }
+            const title = opts.title || lang('confirm');
+            const html = (opts.messageHtml || opts.html || opts.text || '').toString();
+            const confirmText = opts.confirmButtonText || opts.confirmText || lang('yes');
+            const cancelText = opts.cancelButtonText || opts.cancelText || lang('cancel');
+            const iconClass = iconMap[opts.icon || 'question'] || iconMap.question;
+            const btnVariant = opts.confirmButtonColor || opts.confirmColor || 'primary';
+            const btnClassMap = { '#dc3545': 'btn-danger', '#198754': 'btn-success', '#0d6efd': 'btn-primary' };
+            const btnClass = btnClassMap[btnVariant] || (btnVariant.startsWith('#') ? '' : 'btn-' + btnVariant) || 'btn-primary';
 
-        function withCallback(promise, onConfirm) {
-            if (typeof onConfirm !== 'function') return promise;
-            return promise.then(function(result) {
-                if (result && result.isConfirmed) {
-                    try { onConfirm(result); } catch (e) { console.error('OptimaConfirm callback error', e); }
-                }
-                return result;
-            });
+            titleEl.textContent = title;
+            iconEl.className = 'optima-confirm-icon me-2';
+            iconEl.innerHTML = '<i class="bi ' + iconClass + '"></i>';
+            textEl.innerHTML = html || '';
+            btnEl.innerHTML = confirmText;
+            btnEl.className = 'btn ' + btnClass;
+            el.querySelector('.modal-footer .btn-secondary').textContent = cancelText;
+
+            let modalInstance = bootstrap.Modal.getInstance(el);
+            if (!modalInstance) modalInstance = new bootstrap.Modal(el);
+
+            function cleanup() {
+                btnEl.removeEventListener('click', onBtnClick);
+                el.removeEventListener('hidden.bs.modal', onHidden);
+            }
+            function onBtnClick() {
+                modalInstance.hide();
+                try { if (typeof onConfirm === 'function') onConfirm(); } catch (e) { console.error('OptimaConfirm callback error', e); }
+                cleanup();
+            }
+            function onHidden() { cleanup(); }
+
+            btnEl.addEventListener('click', onBtnClick);
+            el.addEventListener('hidden.bs.modal', onHidden);
+            modalInstance.show();
         }
 
         window.OptimaConfirm = window.OptimaConfirm || {
             danger: function(opts) {
                 const o = opts || {};
-                const p = baseConfirm({
-                    title: o.title || 'Hapus Data?',
+                showBootstrapConfirm({
+                    title: o.title || lang('delete') + '?',
                     messageHtml: o.messageHtml || o.html || o.text,
                     icon: o.icon || 'warning',
-                    confirmButtonText: o.confirmText || 'Ya, Hapus!',
-                    cancelButtonText: o.cancelText || 'Batal',
-                    confirmButtonColor: o.confirmButtonColor || '#dc3545',
-                    showCancelButton: true
-                });
-                return withCallback(p, o.onConfirm);
+                    confirmText: o.confirmText || lang('yes') + ', ' + lang('delete') + '!',
+                    cancelText: o.cancelText || lang('cancel'),
+                    confirmButtonColor: '#dc3545'
+                }, o.onConfirm);
             },
             approve: function(opts) {
                 const o = opts || {};
-                const p = baseConfirm({
-                    title: o.title || 'Approve?',
+                showBootstrapConfirm({
+                    title: o.title || lang('approve') + '?',
                     messageHtml: o.messageHtml || o.html || o.text,
                     icon: o.icon || 'question',
-                    confirmButtonText: o.confirmText || 'Ya, Approve!',
-                    cancelButtonText: o.cancelText || 'Batal',
-                    confirmButtonColor: o.confirmButtonColor || '#198754',
-                    showCancelButton: true
-                });
-                return withCallback(p, o.onConfirm);
+                    confirmText: o.confirmText || lang('yes') + ', ' + lang('approve') + '!',
+                    cancelText: o.cancelText || lang('cancel'),
+                    confirmButtonColor: '#198754'
+                }, o.onConfirm);
             },
             submit: function(opts) {
                 const o = opts || {};
-                const p = baseConfirm({
-                    title: o.title || 'Kirim Data?',
+                showBootstrapConfirm({
+                    title: o.title || lang('send') + '?',
                     messageHtml: o.messageHtml || o.html || o.text,
                     icon: o.icon || 'question',
-                    confirmButtonText: o.confirmText || 'Ya, Kirim!',
-                    cancelButtonText: o.cancelText || 'Batal',
-                    confirmButtonColor: o.confirmButtonColor || '#0d6efd',
-                    showCancelButton: true
-                });
-                return withCallback(p, o.onConfirm);
+                    confirmText: o.confirmText || lang('yes') + ', ' + lang('send') + '!',
+                    cancelText: o.cancelText || lang('cancel'),
+                    confirmButtonColor: '#0d6efd'
+                }, o.onConfirm);
             },
             generic: function(opts) {
                 const o = opts || {};
-                const p = baseConfirm(o);
-                return withCallback(p, o.onConfirm);
+                showBootstrapConfirm({
+                    title: o.title || lang('confirm'),
+                    messageHtml: o.messageHtml || o.html || o.text,
+                    icon: o.icon || 'question',
+                    confirmText: o.confirmText || o.confirmButtonText || lang('yes'),
+                    cancelText: o.cancelText || o.cancelButtonText || lang('cancel'),
+                    confirmButtonColor: o.confirmButtonColor || o.confirmColor || '#0d6efd'
+                }, o.onConfirm);
             }
         };
     })();
 
-    // Unified notification wrapper
+    // Unified notification wrapper (ES5-compatible)
     window.OptimaNotify = window.OptimaNotify || {
-        success: (m,t='Berhasil') => window.createOptimaToast && createOptimaToast({type:'success', title:t, message:m}),
-        error: (m,t='Gagal') => window.createOptimaToast && createOptimaToast({type:'error', title:t, message:m}),
-        warning: (m,t='Perhatian') => window.createOptimaToast && createOptimaToast({type:'warning', title:t, message:m}),
-        info: (m,t='Info') => window.createOptimaToast && createOptimaToast({type:'info', title:t, message:m})
+        success: function(m, t) {
+            var title = t || (typeof window.lang === 'function' ? window.lang('success') : 'Sukses');
+            return window.createOptimaToast && createOptimaToast({type:'success', title: title, message: m});
+        },
+        error: function(m, t) {
+            var title = t || (typeof window.lang === 'function' ? window.lang('error') : 'Error');
+            return window.createOptimaToast && createOptimaToast({type:'error', title: title, message: m});
+        },
+        warning: function(m, t) {
+            var title = t || (typeof window.lang === 'function' ? window.lang('warning') : 'Peringatan');
+            return window.createOptimaToast && createOptimaToast({type:'warning', title: title, message: m});
+        },
+        info: function(m, t) {
+            var title = t || (typeof window.lang === 'function' ? window.lang('info') : 'Info');
+            return window.createOptimaToast && createOptimaToast({type:'info', title: title, message: m});
+        }
     };
     // SweetAlert2 monkeypatch to reroute simple toast / trivial result dialogs
     (function(){
@@ -1439,7 +1522,8 @@ $currentLang = service('request')->getLocale();
                             const cText = (a.confirmButtonText||'').toLowerCase();
                             const isConfirmLike = cText && !['','ok','oke','tutup','close','ya','yes'].includes(cText); // treat custom action verbs as confirm dialogs
                             if(!isConfirmLike) {
-                                createOptimaToast({type:icon||'info', title:a.title||icon.toUpperCase()||'Info', message:a.text||a.html||'', duration:a.timer||4000});
+                                const lang = window.lang || ((key) => key);
+                                createOptimaToast({type:icon||'info', title:a.title||icon.toUpperCase()||lang('info'), message:a.text||a.html||'', duration:a.timer||4000});
                                 return Promise.resolve({isConfirmed:true,isToast:true});
                             }
                         }

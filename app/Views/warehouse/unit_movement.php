@@ -556,7 +556,7 @@ function startMovement(id) {
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Mulai!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
@@ -584,7 +584,7 @@ function confirmArrival(id) {
         showCancelButton: true,
         confirmButtonColor: '#198754',
         confirmButtonText: 'Ya, Konfirmasi!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
@@ -612,7 +612,7 @@ function cancelMovement(id) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: 'Kembali'
+        cancelButtonText: window.lang('back')
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({

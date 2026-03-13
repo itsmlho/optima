@@ -66,7 +66,12 @@ class WorkOrderController extends Controller
                 'FOREMAN' => $this->workOrderModel->getStaff('FOREMAN'),
                 'MECHANIC' => $this->workOrderModel->getStaff('MECHANIC'),
                 'HELPER' => $this->workOrderModel->getStaff('HELPER')
-            ]
+            ],
+            // Permission flags for view
+            'can_create' => can_create('service'),
+            'can_edit' => can_edit('service'),
+            'can_delete' => can_delete('service'),
+            'can_export' => can_export('service')
         ];
         
         return view('service/work_orders', $data);
@@ -119,6 +124,8 @@ class WorkOrderController extends Controller
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
         $builder->where('iu.no_unit IS NOT NULL');
+        // Exclude SOLD units (status_unit_id = 13)
+        $builder->where('iu.status_unit_id !=', 13);
         $builder->orderBy('iu.no_unit', 'ASC');
         
         return $builder->get()->getResultArray();
@@ -1131,13 +1138,10 @@ class WorkOrderController extends Controller
                     }
                 }
                 
-                // Check what's still missing and build error message
-                if (!$adminId) {
-                    $missingRoles[] = 'Admin';
-                }
-                if (!$foremanId) {
-                    $missingRoles[] = 'Foreman';
-                }
+                // HYBRID VALIDATION: Only fail if REQUIRED staff (Mechanic/Helper) are missing
+                // Admin and Foreman can be empty if user doesn't manually select them
+                
+                // Check required staff only (Mechanic & Helper)
                 if (empty($mechanicIds)) {
                     $missingRoles[] = 'Mechanic (minimal 1)';
                 }
@@ -1145,15 +1149,23 @@ class WorkOrderController extends Controller
                     $missingRoles[] = 'Helper (minimal 1)';
                 }
                 
+                // Only fail if mechanic or helper is missing
                 if (!empty($missingRoles)) {
                     $areaName = $unitAreaInfo['area_name'] ?? 'Unknown';
                     return $this->response->setJSON([
                         'success' => false,
-                        'message' => 'Staff tidak lengkap untuk Area "' . $areaName . '". Staff yang belum di-assign: ' . implode(', ', $missingRoles) . '. Silakan assign staff terlebih dahulu di Area Management.',
+                        'message' => 'Staff tidak lengkap. Staff yang harus diisi: ' . implode(', ', $missingRoles) . '. Harap pilih minimal 1 mechanic dan 1 helper.',
                         'missing_roles' => $missingRoles,
-                        'area_name' => $areaName,
-                        'redirect_hint' => 'Area Management'
+                        'area_name' => $areaName
                     ]);
+                }
+                
+                // WARN: If admin/foreman still empty after auto-assignment, log warning but allow creation
+                if (!$adminId) {
+                    log_message('warning', 'Work Order created without Admin for unit_id: ' . $input['unit_id'] . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
+                }
+                if (!$foremanId) {
+                    log_message('warning', 'Work Order created without Foreman for unit_id: ' . $input['unit_id'] . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
                 }
             }
             
@@ -3064,6 +3076,127 @@ class WorkOrderController extends Controller
         }
         
         return 'Unknown database error';
+    }
+
+    /**
+     * Get available tinggi mast options for a selected model mast
+     * Returns distinct tinggi_mast values for the given model name
+     */
+    public function getMastHeights()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        try {
+            $modelName = $this->request->getPost('model_name');
+
+            if (empty($modelName)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Model name is required'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Get distinct tinggi_mast values for this model
+            $query = "
+                SELECT DISTINCT tinggi_mast as tinggi
+                FROM tipe_mast
+                WHERE tipe_mast = ?
+                  AND tinggi_mast IS NOT NULL
+                  AND tinggi_mast != ''
+                ORDER BY tinggi_mast ASC
+            ";
+
+            $heights = $db->query($query, [$modelName])->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $heights
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting mast heights: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data tinggi mast: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get unit verification history
+     * Retrieves the most recent verification record for a unit (excluding current work order)
+     */
+    public function getUnitVerificationHistory()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        try {
+            $unitId = $this->request->getPost('unit_id');
+            $currentWorkOrderId = $this->request->getPost('current_work_order_id');
+
+            if (empty($unitId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit ID is required'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Query the most recent verification history for this unit
+            $query = "
+                SELECT 
+                    uvh.verified_at,
+                    wo.work_order_number as wo_number,
+                    e.staff_name as mechanic_name
+                FROM unit_verification_history uvh
+                JOIN work_orders wo ON wo.id = uvh.work_order_id
+                JOIN employees e ON e.id = uvh.verified_by
+                WHERE uvh.unit_id = ?
+            ";
+
+            $params = [$unitId];
+
+            // Exclude current work order if provided
+            if (!empty($currentWorkOrderId)) {
+                $query .= " AND uvh.work_order_id != ?";
+                $params[] = $currentWorkOrderId;
+            }
+
+            $query .= " ORDER BY uvh.verified_at DESC LIMIT 1";
+
+            $history = $db->query($query, $params)->getRowArray();
+
+            if ($history) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data' => [
+                        'has_history' => true,
+                        'verified_at' => date('d M Y H:i', strtotime($history['verified_at'])),
+                        'mechanic_name' => $history['mechanic_name'],
+                        'wo_number' => $history['wo_number']
+                    ]
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data' => ['has_history' => false]
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting unit verification history: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil riwayat verifikasi: ' . $e->getMessage()
+            ]);
+        }
     }
 
     /**

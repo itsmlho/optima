@@ -438,19 +438,29 @@
     <script>
         let verificationLoaded = false;
         
+        // Get CSRF token for fetch requests
+        const csrfToken = '<?= csrf_hash() ?>';
+        const csrfTokenName = '<?= csrf_token() ?>';
+        
         // Load verification content via fetch
         function loadVerificationContent(workOrderId) {
             console.log('Loading verification content for WO:', workOrderId);
             
             // First, load the verification data directly
             console.log('Step 1: Loading verification data...');
+            
+            // Build request body with CSRF token
+            const formData = new URLSearchParams();
+            formData.append('work_order_id', workOrderId);
+            formData.append(csrfTokenName, csrfToken);
+            
             fetch('<?= base_url("service/work-orders/get-unit-verification-data") ?>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: 'work_order_id=' + workOrderId
+                body: formData.toString()
             })
             .then(response => {
                 console.log('Data fetch response status:', response.status);

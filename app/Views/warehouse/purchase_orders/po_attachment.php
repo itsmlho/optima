@@ -293,7 +293,7 @@
                 inputPlaceholder: 'Contoh: Barang rusak, jumlah kurang, dll...',
                 showCancelButton: true,
                 confirmButtonText: 'Submit',
-                cancelButtonText: 'Batal',
+                cancelButtonText: window.lang('cancel'),
                 inputValidator: (value) => !value && 'Anda harus mengisi alasan!'
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -307,7 +307,7 @@
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, Lanjutkan!',
-                cancelButtonText: 'Batal'
+                cancelButtonText: window.lang('cancel')
             }).then((result) => {
                 if (result.isConfirmed) {
                     action();

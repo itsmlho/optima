@@ -14,6 +14,7 @@ return [
     'update' => 'Update',
     'delete' => 'Delete',
     'save' => 'Save',
+    'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',
     'submit' => 'Submit',
     'view' => 'View',

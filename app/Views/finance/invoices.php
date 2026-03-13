@@ -472,17 +472,16 @@ function showBackBillingModal() {
     });
 }
 
-async function autoGenerateBackBilling() {
-    const confirmed = await confirmSwal({
+function autoGenerateBackBilling() {
+    OptimaConfirm.generic({
         title: 'Generate Semua Back-Billing',
         text: 'Ini akan men-generate SEMUA invoice yang belum terbuat. Lanjutkan?',
         icon: 'info',
-        confirmText: '<i class="fas fa-magic me-1"></i>Ya, Generate Semua'
-    });
-    if (!confirmed) return;
-    
-    // Get all unique contract IDs from missing invoices
-    fetch('<?= base_url('finance/detectBackBilling') ?>', {
+        confirmText: '<i class="fas fa-magic me-1"></i>Ya, Generate Semua',
+        confirmButtonColor: '#0d6efd',
+        onConfirm: function() {
+            // Get all unique contract IDs from missing invoices
+            fetch('<?= base_url('finance/detectBackBilling') ?>', {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
@@ -515,6 +514,8 @@ async function autoGenerateBackBilling() {
                 invoicesTable.ajax.reload();
                 $('#backBillingModal').modal('hide');
             });
+        }
+    });
         }
     });
 }
@@ -602,16 +603,13 @@ function submitGenerateInvoice() {
     });
 }
 
-async function approveInvoice(id) {
-    const confirmed = await confirmSwal({
+function approveInvoice(id) {
+    OptimaConfirm.approve({
         title: 'Setujui Invoice',
         text: 'Apakah Anda yakin ingin menyetujui invoice ini?',
-        icon: 'question',
-        confirmText: '<i class="fas fa-check me-1"></i>Ya, Setujui'
-    });
-    if (!confirmed) return;
-    
-    fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
+        confirmText: '<i class="fas fa-check me-1"></i>Ya, Setujui',
+        onConfirm: function() {
+            fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -622,6 +620,8 @@ async function approveInvoice(id) {
             invoicesTable.ajax.reload();
         } else {
             alertSwal('error', data.message, 'Gagal Menyetujui');
+        }
+    });
         }
     });
 }
@@ -659,7 +659,7 @@ function cancelInvoice(id) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: 'Kembali',
+        cancelButtonText: window.lang('back'),
         inputValidator: (value) => {
             if (!value) return 'Alasan harus diisi!';
         }

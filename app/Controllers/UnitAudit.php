@@ -115,9 +115,10 @@ class UnitAudit extends BaseController
                 $proposedData['harga_sewa']   = $this->request->getPost('proposed_harga_sewa');
                 break;
             case 'ADD_UNIT':
-                $proposedData['unit_id']     = $this->request->getPost('proposed_unit_id');
-                $proposedData['is_spare']    = $this->request->getPost('proposed_is_spare') ? 1 : 0;
-                $proposedData['harga_sewa']  = $this->request->getPost('proposed_harga_sewa');
+                $proposedData['unit_id']            = $this->request->getPost('proposed_unit_id');
+                $proposedData['is_spare']           = $this->request->getPost('proposed_is_spare') ? 1 : 0;
+                $proposedData['harga_sewa']         = $this->request->getPost('proposed_harga_sewa');
+                $proposedData['customer_location_id'] = $this->request->getPost('customer_location_id') ?: null;
                 break;
             case 'MARK_SPARE':
                 $proposedData['is_spare'] = 1;
@@ -230,17 +231,7 @@ class UnitAudit extends BaseController
         }
     }
 
-    // ── Marketing Approval ──────────────────────────────
-
-    /**
-     * Approval page (Marketing)
-     */
-    public function approval()
-    {
-        $data['title']   = 'Audit Approval';
-        $data['stats']   = $this->auditModel->getStats();
-        return view('marketing/audit_approval', $data);
-    }
+    // ── Marketing Approval (Pengajuan Unit) ──────────────────────────────
 
     /**
      * Approve request (Marketing)
@@ -319,6 +310,108 @@ class UnitAudit extends BaseController
             return $this->response->setJSON(['success' => true, 'data' => $locations]);
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get all areas for dropdown (with departemen for DIESEL/ELECTRIC badge)
+     */
+    public function getAreas()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $areas = $db->table('areas a')
+                ->select('a.id, a.area_name, a.area_code, a.departemen_id, d.nama_departemen')
+                ->join('departemen d', 'd.id_departemen = a.departemen_id', 'left')
+                ->where('a.is_active', 1)
+                ->orderBy('d.nama_departemen', 'ASC')
+                ->orderBy('a.area_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $areas]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Request to add a new customer location (Service submits, Marketing approves)
+     */
+    public function requestAddLocation()
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        $customerId = $this->request->getPost('customer_id');
+        $locationName = trim($this->request->getPost('location_name') ?? '');
+        $areaId = $this->request->getPost('area_id');
+        $address = trim($this->request->getPost('address') ?? '');
+        $city = trim($this->request->getPost('city') ?? '');
+        $province = trim($this->request->getPost('province') ?? '');
+        $postalCode = trim($this->request->getPost('postal_code') ?? '');
+        $contactPerson = trim($this->request->getPost('contact_person') ?? '');
+        $phone = trim($this->request->getPost('phone') ?? '');
+        $notes = trim($this->request->getPost('notes') ?? '');
+
+        // Validation
+        if (empty($customerId) || empty($locationName) || empty($areaId) || empty($address) || empty($city) || empty($province)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data lokasi tidak lengkap']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            // Check for duplicate location name for this customer
+            $existing = $db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->where('location_name', $locationName)
+                ->where('is_active', 1)
+                ->countAllResults();
+
+            if ($existing > 0) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi dengan nama ini sudah ada']);
+            }
+
+            // Generate location code
+            $now = new \DateTime();
+            $locationCode = 'LOC-' . $now->format('Ymd') . '-' . str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
+
+            // Insert with approval_status = PENDING
+            $data = [
+                'customer_id'      => $customerId,
+                'area_id'          => $areaId,
+                'location_name'    => $locationName,
+                'location_code'    => $locationCode,
+                'location_type'    => 'BRANCH',
+                'address'          => $address,
+                'city'             => $city,
+                'province'         => $province,
+                'postal_code'      => $postalCode,
+                'contact_person'   => $contactPerson,
+                'phone'            => $phone,
+                'notes'            => $notes,
+                'is_primary'       => 0,
+                'is_active'        => 1,
+                'approval_status'  => 'PENDING',
+                'requested_by'     => $userId,
+                'created_at'       => date('Y-m-d H:i:s'),
+                'updated_at'       => date('Y-m-d H:i:s'),
+            ];
+
+            $db->table('customer_locations')->insert($data);
+            $locationId = $db->insertID();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Request lokasi baru dikirim ke Marketing untuk approval',
+                'data'    => ['id' => $locationId, 'location_code' => $locationCode],
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'UnitAudit::requestAddLocation - ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan request lokasi']);
         }
     }
 
@@ -469,6 +562,7 @@ class UnitAudit extends BaseController
         $auditDate    = $this->request->getPost('audit_date') ?: date('Y-m-d');
         $mechanicName = $this->request->getPost('mechanic_name') ? trim($this->request->getPost('mechanic_name')) : '';
         $fieldStatus  = $this->request->getPost('field_status') ?: 'sesuai';
+        $auditSummary = $this->request->getPost('audit_summary') ?: '';
         $items        = $this->request->getPost('items') ?: [];
 
         if (!$customerId || !$locationId) {
@@ -494,6 +588,7 @@ class UnitAudit extends BaseController
                 'status'               => 'PENDING_APPROVAL',
                 'has_discrepancy'      => $hasDiscrepancy,
                 'mechanic_notes'       => $mechanicNotes,
+                'service_notes'        => $auditSummary,
             ]);
 
             if (!empty($items) && is_array($items)) {
@@ -775,11 +870,11 @@ class UnitAudit extends BaseController
     // ═══════════════════════════════════════════════════════
 
     /**
-     * Approval page for location audits (Marketing)
+     * Approval page (Marketing) - Halaman tunggal: Pengajuan Unit + Request Lokasi + Approve Audit Lokasi
      */
     public function approvalLocation()
     {
-        $data['title'] = 'Approve Audit Unit';
+        $data['title'] = 'Audit Approval';
         $data['stats'] = $this->auditLocationModel->getStats();
         return view('marketing/audit_approval_location', $data);
     }
@@ -798,6 +893,601 @@ class UnitAudit extends BaseController
     }
 
     /**
+     * Get pending customer location requests (new locations awaiting approval)
+     * Includes ADD_UNIT requests linked to each location (for combined approval)
+     */
+    public function getPendingLocationRequests()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $requests = $db->table('customer_locations cl')
+                ->select("cl.*, c.customer_name, c.customer_code, a.area_name, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as requested_by_name")
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('areas a', 'a.id = cl.area_id', 'left')
+                ->join('users u', 'u.id = cl.requested_by', 'left')
+                ->where('cl.approval_status', 'PENDING')
+                ->where('cl.is_active', 1)
+                ->orderBy('cl.created_at', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            $locationIds = array_column($requests, 'id');
+            $addUnitByLoc = array_fill_keys($locationIds, []);
+            $pendingByKey = [];
+            foreach ($requests as $r) {
+                $key = (int) $r['customer_id'] . '|' . ($r['location_name'] ?? '');
+                $pendingByKey[$key] = (int) $r['id'];
+            }
+            if (!empty($locationIds)) {
+                $addUnits = $db->table('unit_audit_requests uar')
+                    ->select('uar.*')
+                    ->where('uar.request_type', 'ADD_UNIT')
+                    ->where('uar.status', 'SUBMITTED')
+                    ->get()
+                    ->getResultArray();
+                foreach ($addUnits as $au) {
+                    $proposed = json_decode($au['proposed_data'] ?? '{}', true);
+                    $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
+                    $targetLocId = null;
+                    if ($locId && in_array($locId, $locationIds, true)) {
+                        $targetLocId = $locId;
+                    } else {
+                        $refLoc = $locId ? $db->table('customer_locations')->where('id', $locId)->get()->getRowArray() : null;
+                        if ($refLoc) {
+                            $key = (int) $refLoc['customer_id'] . '|' . ($refLoc['location_name'] ?? '');
+                            $targetLocId = $pendingByKey[$key] ?? null;
+                        }
+                    }
+                    if ($targetLocId) {
+                        $unitId = $proposed['unit_id'] ?? null;
+                        if ($unitId) {
+                            $unit = $db->table('inventory_unit iu')
+                                ->select('iu.*, mu.merk_unit, mu.model_unit, k.kapasitas_unit')
+                                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                                ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                                ->where('iu.id_inventory_unit', $unitId)
+                                ->get()->getRowArray();
+                            $au['no_unit'] = $unit ? ($unit['no_unit'] ?? $unit['no_unit_na'] ?? 'UNIT-' . $unitId) : 'UNIT-' . $unitId;
+                            $au['serial_number'] = $unit ? ($unit['serial_number'] ?? null) : null;
+                            $au['merk_model'] = $unit ? trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? '')) : '-';
+                            $au['kapasitas'] = $unit ? ($unit['kapasitas_unit'] ?? '-') : '-';
+                        }
+                        $addUnitByLoc[$targetLocId][] = $au;
+                    }
+                }
+            }
+            foreach ($requests as &$r) {
+                $r['add_unit_requests'] = $addUnitByLoc[(int) $r['id']] ?? [];
+            }
+
+            return $this->response->setJSON(['success' => true, 'data' => $requests]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get unified approval history: Lokasi Baru (LOC) + Audit Lokasi (AUDLOC) approved
+     * Untuk Riwayat Approval - satu tabel gabungan
+     */
+    public function getApprovalHistory()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $merged = [];
+
+            // 1. Approved Location Requests (Request Lokasi Baru)
+            $locRequests = $db->table('customer_locations cl')
+                ->select("cl.id, cl.location_code, cl.location_name, cl.approved_at,
+                    c.customer_name, c.customer_code, a.area_name,
+                    TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as approved_by_name")
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('areas a', 'a.id = cl.area_id', 'left')
+                ->join('users u', 'u.id = cl.approved_by', 'left')
+                ->where('cl.approval_status', 'APPROVED')
+                ->where('cl.is_active', 1)
+                ->orderBy('cl.approved_at', 'DESC')
+                ->limit(50)
+                ->get()
+                ->getResultArray();
+
+            foreach ($locRequests as $r) {
+                $merged[] = [
+                    'type'            => 'LOCATION_REQUEST',
+                    'id'              => $r['id'],
+                    'code'            => $r['location_code'] ?? 'LOC-' . $r['id'],
+                    'customer_name'   => $r['customer_name'] ?? '-',
+                    'customer_code'   => $r['customer_code'] ?? '',
+                    'location_name'   => $r['location_name'] ?? '-',
+                    'area_name'       => $r['area_name'] ?? '-',
+                    'tanggal'         => $r['approved_at'] ?? null,
+                    'approved_by_name'=> $r['approved_by_name'] ?? '-',
+                    'status'          => 'APPROVED',
+                ];
+            }
+
+            // 2. Approved Location Audits (Approve Audit Lokasi)
+            $auditRows = $db->table('unit_audit_locations ual')
+                ->select('ual.id, ual.audit_number, ual.reviewed_at, ual.kontrak_total_units, ual.actual_total_units, ual.total_price_adjustment,
+                    c.customer_name, cl.location_name,
+                    TRIM(CONCAT(COALESCE(rev.first_name, ""), " ", COALESCE(rev.last_name, ""))) as reviewed_by_name')
+                ->join('customers c', 'c.id = ual.customer_id', 'left')
+                ->join('customer_locations cl', 'cl.id = ual.customer_location_id', 'left')
+                ->join('users rev', 'rev.id = ual.reviewed_by', 'left')
+                ->where('ual.status', 'APPROVED')
+                ->orderBy('ual.reviewed_at', 'DESC')
+                ->limit(50)
+                ->get()
+                ->getResultArray();
+
+            foreach ($auditRows as $a) {
+                $merged[] = [
+                    'type'            => 'AUDIT_LOCATION',
+                    'id'              => $a['id'],
+                    'code'            => $a['audit_number'] ?? 'AUDLOC-' . $a['id'],
+                    'customer_name'   => $a['customer_name'] ?? '-',
+                    'customer_code'   => '',
+                    'location_name'   => $a['location_name'] ?? '-',
+                    'area_name'       => '-',
+                    'tanggal'         => $a['reviewed_at'] ?? null,
+                    'approved_by_name'=> trim($a['reviewed_by_name'] ?? '') ?: '-',
+                    'status'          => 'APPROVED',
+                    'audit_number'    => $a['audit_number'] ?? null,
+                    'kontrak_total_units' => $a['kontrak_total_units'] ?? null,
+                    'actual_total_units'  => $a['actual_total_units'] ?? null,
+                    'total_price_adjustment' => $a['total_price_adjustment'] ?? null,
+                ];
+            }
+
+            // Sort by tanggal DESC
+            usort($merged, function ($a, $b) {
+                $ta = strtotime($a['tanggal'] ?? '0');
+                $tb = strtotime($b['tanggal'] ?? '0');
+                return $tb - $ta;
+            });
+
+            return $this->response->setJSON(['success' => true, 'data' => array_slice($merged, 0, 50)]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get detail of a single approved location request (untuk modal detail)
+     * Includes: requested_by, approved_by, all units (approved + rejected) dengan Merk/Model, Kapasitas, Harga Sewa
+     */
+    public function getLocationRequestDetail($id)
+    {
+        try {
+            $db = \Config\Database::connect();
+            $req = $db->table('customer_locations cl')
+                ->select("cl.*, c.customer_name, c.customer_code, a.area_name,
+                    TRIM(CONCAT(COALESCE(u_approved.first_name, ''), ' ', COALESCE(u_approved.last_name, ''))) as approved_by_name,
+                    TRIM(CONCAT(COALESCE(u_req.first_name, ''), ' ', COALESCE(u_req.last_name, ''))) as requested_by_name")
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('areas a', 'a.id = cl.area_id', 'left')
+                ->join('users u_approved', 'u_approved.id = cl.approved_by', 'left')
+                ->join('users u_req', 'u_req.id = cl.requested_by', 'left')
+                ->where('cl.id', $id)
+                ->where('cl.approval_status', 'APPROVED')
+                ->get()
+                ->getRowArray();
+
+            if (!$req) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
+            }
+
+            $locKey = (int) $req['customer_id'] . '|' . ($req['location_name'] ?? '');
+            $addUnits = $db->table('unit_audit_requests uar')
+                ->select('uar.*')
+                ->where('uar.request_type', 'ADD_UNIT')
+                ->whereIn('uar.status', ['APPROVED', 'REJECTED'])
+                ->get()
+                ->getResultArray();
+
+            $addUnitForLoc = [];
+            foreach ($addUnits as $au) {
+                $proposed = json_decode($au['proposed_data'] ?? '{}', true);
+                $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
+                $match = ($locId === (int) $id);
+                if (!$match && $locId) {
+                    $refLoc = $db->table('customer_locations')->where('id', $locId)->get()->getRowArray();
+                    if ($refLoc) {
+                        $refKey = (int) $refLoc['customer_id'] . '|' . ($refLoc['location_name'] ?? '');
+                        $match = ($refKey === $locKey);
+                    }
+                }
+                if ($match) {
+                    $unitId = $proposed['unit_id'] ?? null;
+                    if ($unitId) {
+                        $unit = $db->table('inventory_unit iu')
+                            ->select('iu.*, mu.merk_unit, mu.model_unit, k.kapasitas_unit')
+                            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                            ->where('iu.id_inventory_unit', $unitId)
+                            ->get()->getRowArray();
+                        $au['no_unit'] = $unit ? ($unit['no_unit'] ?? $unit['no_unit_na'] ?? 'UNIT-' . $unitId) : 'UNIT-' . $unitId;
+                        $au['serial_number'] = $unit ? ($unit['serial_number'] ?? null) : null;
+                        $au['merk_model'] = $unit ? trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? '')) : '-';
+                        $au['kapasitas'] = $unit ? ($unit['kapasitas_unit'] ?? '-') : '-';
+                    }
+                    $au['is_spare'] = !empty($proposed['is_spare']);
+                    $au['harga_sewa_proposed'] = $proposed['harga_sewa'] ?? null;
+                    if ($au['status'] === 'APPROVED' && !empty($au['kontrak_id']) && $unitId) {
+                        $ku = $db->table('kontrak_unit')
+                            ->where('kontrak_id', $au['kontrak_id'])
+                            ->where('unit_id', $unitId)
+                            ->where('customer_location_id', $id)
+                            ->get()->getRowArray();
+                        $au['harga_sewa'] = $ku ? ($ku['harga_sewa'] ?? $au['harga_sewa_proposed']) : $au['harga_sewa_proposed'];
+                    } else {
+                        $au['harga_sewa'] = $au['status'] === 'REJECTED' ? null : $au['harga_sewa_proposed'];
+                    }
+                    $addUnitForLoc[] = $au;
+                }
+            }
+            $req['add_unit_requests'] = $addUnitForLoc;
+
+            return $this->response->setJSON(['success' => true, 'data' => $req]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get recently approved location requests (untuk rollback) - deprecated, use getApprovalHistory
+     */
+    public function getApprovedLocationRequests()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $requests = $db->table('customer_locations cl')
+                ->select("cl.*, c.customer_name, c.customer_code, a.area_name, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as approved_by_name")
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('areas a', 'a.id = cl.area_id', 'left')
+                ->join('users u', 'u.id = cl.approved_by', 'left')
+                ->where('cl.approval_status', 'APPROVED')
+                ->where('cl.is_active', 1)
+                ->orderBy('cl.approved_at', 'DESC')
+                ->limit(20)
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $requests]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Approve a customer location request (combined with ADD_UNIT requests if any)
+     */
+    public function approveLocationRequest($id)
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            // Check if location exists and is pending
+            $location = $db->table('customer_locations')->where('id', $id)->get()->getRowArray();
+            if (!$location) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
+            }
+            if ($location['approval_status'] !== 'PENDING') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi sudah diproses']);
+            }
+
+            $notes = $this->request->getPost('notes') ?? '';
+
+            // Get ADD_UNIT requests for this location (match by id or by customer_id+location_name)
+            $addUnits = $db->table('unit_audit_requests')
+                ->where('request_type', 'ADD_UNIT')
+                ->where('status', 'SUBMITTED')
+                ->get()
+                ->getResultArray();
+            $addUnitsForLoc = [];
+            $locKey = $location ? ((int) $location['customer_id'] . '|' . ($location['location_name'] ?? '')) : null;
+            foreach ($addUnits as $au) {
+                $proposed = json_decode($au['proposed_data'] ?? '{}', true);
+                $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
+                $match = ($locId === (int) $id);
+                if (!$match && $locId && $locKey) {
+                    $refLoc = $db->table('customer_locations')->where('id', $locId)->get()->getRowArray();
+                    if ($refLoc) {
+                        $refKey = (int) $refLoc['customer_id'] . '|' . ($refLoc['location_name'] ?? '');
+                        $match = ($refKey === $locKey);
+                    }
+                }
+                if ($match) {
+                    $addUnitsForLoc[] = $au;
+                }
+            }
+
+            $kontrakId = $this->request->getPost('kontrak_id');
+            $unitPrices = $this->request->getPost('unit_prices'); // JSON: { request_id: price } - hanya yang di-include
+
+            $kontrakInfo = null;
+            if ($kontrakId) {
+                $kontrakInfo = $db->table('kontrak')->where('id', $kontrakId)->get()->getRowArray();
+            }
+
+            $db->transStart();
+
+            // Approve location
+            $db->table('customer_locations')->where('id', $id)->update([
+                'approval_status' => 'APPROVED',
+                'approved_by'     => $userId,
+                'approved_at'     => date('Y-m-d H:i:s'),
+                'approval_notes'  => $notes,
+                'updated_at'      => date('Y-m-d H:i:s'),
+            ]);
+
+            $prices = is_string($unitPrices) ? json_decode($unitPrices, true) : (is_array($unitPrices) ? $unitPrices : []);
+            $unitsAdded = 0;
+            $unitsRejected = 0;
+            $unitIdsAlreadyAdded = [];
+            foreach ($addUnitsForLoc as $req) {
+                $reqId = $req['id'];
+                $isIncluded = isset($prices[$reqId]) || array_key_exists($reqId, $prices);
+                if ($kontrakId && $isIncluded && $kontrakInfo) {
+                    $proposed = json_decode($req['proposed_data'] ?? '{}', true);
+                    $unitId = isset($proposed['unit_id']) ? (int) $proposed['unit_id'] : null;
+                    if ($unitId) {
+                        $hargaSewa = isset($prices[$reqId]) ? (float) $prices[$reqId] : (isset($prices[(string)$reqId]) ? (float) $prices[(string)$reqId] : 0);
+                        $isSpare = !empty($proposed['is_spare']);
+                        $tanggalMulai = $kontrakInfo['tanggal_mulai'] ?? date('Y-m-d');
+                        $tanggalSelesai = $kontrakInfo['tanggal_berakhir'] ?? null;
+
+                        $existing = $db->table('kontrak_unit')
+                            ->where('kontrak_id', $kontrakId)
+                            ->where('unit_id', $unitId)
+                            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE', 'AKTIF'])
+                            ->get()->getRowArray();
+                        if ($existing || in_array($unitId, $unitIdsAlreadyAdded, true)) {
+                            $db->table('unit_audit_requests')->where('id', $reqId)->update([
+                                'status'       => 'REJECTED',
+                                'reviewed_by'  => $userId,
+                                'reviewed_at'  => date('Y-m-d H:i:s'),
+                                'review_notes' => $existing ? 'Unit sudah ada di kontrak' : 'Unit duplikat dalam batch',
+                                'updated_at'   => date('Y-m-d H:i:s'),
+                            ]);
+                            $unitsRejected++;
+                            continue;
+                        }
+                        $insertData = [
+                                'kontrak_id'           => $kontrakId,
+                                'unit_id'              => $unitId,
+                                'customer_location_id' => $id,
+                                'tanggal_mulai'        => $kontrakInfo['tanggal_mulai'] ?? date('Y-m-d'),
+                                'tanggal_selesai'      => $kontrakInfo['tanggal_berakhir'] ?? null,
+                                'status'               => 'ACTIVE',
+                                'is_spare'             => $isSpare ? 1 : 0,
+                                'harga_sewa'           => $hargaSewa,
+                                'created_at'           => date('Y-m-d H:i:s'),
+                            ];
+                            $db->table('kontrak_unit')->insert($insertData);
+                            $unitIdsAlreadyAdded[] = $unitId;
+
+                            $db->table('unit_audit_requests')->where('id', $reqId)->update([
+                                'status'       => 'APPROVED',
+                                'reviewed_by'  => $userId,
+                                'reviewed_at'  => date('Y-m-d H:i:s'),
+                                'review_notes' => 'Approved bersama lokasi',
+                                'kontrak_id'   => $kontrakId,
+                                'updated_at'   => date('Y-m-d H:i:s'),
+                            ]);
+                            $unitsAdded++;
+                        }
+                } else {
+                    $db->table('unit_audit_requests')->where('id', $req['id'])->update([
+                        'status'       => 'REJECTED',
+                        'reviewed_by'  => $userId,
+                        'reviewed_at'  => date('Y-m-d H:i:s'),
+                        'review_notes' => $kontrakId ? 'Unit tidak di-include dalam approval' : 'Lokasi diapprove tanpa unit',
+                        'updated_at'  => date('Y-m-d H:i:s'),
+                    ]);
+                    $unitsRejected++;
+                }
+            }
+
+            $db->transComplete();
+            if ($db->transStatus() === false) {
+                $err = $db->error();
+                $msg = 'Gagal memproses approval';
+                if (!empty($err['message'])) {
+                    $msg .= ': ' . $err['message'];
+                    log_message('error', 'UnitAudit::approveLocationRequest DB error: ' . json_encode($err));
+                }
+                return $this->response->setJSON(['success' => false, 'message' => $msg]);
+            }
+
+            $msg = 'Lokasi berhasil diapprove';
+            if ($unitsAdded > 0) {
+                $msg .= ' dan ' . $unitsAdded . ' unit ditambahkan ke kontrak';
+            }
+            if ($unitsRejected > 0) {
+                $msg .= ' (' . $unitsRejected . ' unit ditolak)';
+            }
+            $msg .= '.';
+
+            return $this->response->setJSON(['success' => true, 'message' => $msg]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Reject a customer location request
+     */
+    public function rejectLocationRequest($id)
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if location exists and is pending
+            $location = $db->table('customer_locations')->where('id', $id)->get()->getRowArray();
+            if (!$location) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
+            }
+            if ($location['approval_status'] !== 'PENDING') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi sudah diproses']);
+            }
+
+            $notes = trim($this->request->getPost('notes') ?? '') ?: null;
+
+            $db->transStart();
+            $db->table('customer_locations')->where('id', $id)->update([
+                'approval_status' => 'REJECTED',
+                'approved_by'     => $userId,
+                'approved_at'     => date('Y-m-d H:i:s'),
+                'approval_notes'  => $notes ?? '',
+                'is_active'       => 0,
+                'updated_at'      => date('Y-m-d H:i:s'),
+            ]);
+
+            // Reject linked ADD_UNIT requests
+            $addUnits = $db->table('unit_audit_requests')
+                ->where('request_type', 'ADD_UNIT')
+                ->where('status', 'SUBMITTED')
+                ->get()
+                ->getResultArray();
+            foreach ($addUnits as $au) {
+                $proposed = json_decode($au['proposed_data'] ?? '{}', true);
+                $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
+                if ($locId === (int) $id) {
+                    $db->table('unit_audit_requests')->where('id', $au['id'])->update([
+                        'status'       => 'REJECTED',
+                        'reviewed_by'  => $userId,
+                        'reviewed_at'  => date('Y-m-d H:i:s'),
+                        'review_notes' => 'Lokasi ditolak',
+                        'updated_at'   => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+            $db->transComplete();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Lokasi berhasil ditolak',
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Rollback approved location request (kembalikan ke PENDING)
+     * - Revert customer_locations ke PENDING
+     * - Hapus unit dari kontrak_unit jika ada
+     * - Revert unit_audit_requests ke SUBMITTED
+     */
+    public function rollbackLocationRequest($id)
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $location = $db->table('customer_locations')->where('id', $id)->get()->getRowArray();
+            if (!$location) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
+            }
+            if ($location['approval_status'] !== 'APPROVED') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Hanya lokasi yang sudah diapprove yang dapat di-rollback']);
+            }
+
+            $db->transStart();
+
+            // Get ADD_UNIT requests that were approved with this location (have kontrak_id)
+            $approvedUnits = $db->table('unit_audit_requests')
+                ->where('request_type', 'ADD_UNIT')
+                ->where('status', 'APPROVED')
+                ->where('kontrak_id IS NOT NULL')
+                ->get()
+                ->getResultArray();
+
+            foreach ($approvedUnits as $au) {
+                $proposed = json_decode($au['proposed_data'] ?? '{}', true);
+                $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
+                if ($locId !== (int) $id) {
+                    continue;
+                }
+                $unitId = $proposed['unit_id'] ?? null;
+                $kontrakId = $au['kontrak_id'] ?? null;
+                if (!$unitId || !$kontrakId) {
+                    continue;
+                }
+                // Hapus dari kontrak_unit
+                $db->table('kontrak_unit')
+                    ->where('kontrak_id', $kontrakId)
+                    ->where('unit_id', $unitId)
+                    ->where('customer_location_id', $id)
+                    ->delete();
+                // Revert unit_audit_requests ke SUBMITTED
+                $db->table('unit_audit_requests')->where('id', $au['id'])->update([
+                    'status'       => 'SUBMITTED',
+                    'reviewed_by'  => null,
+                    'reviewed_at'  => null,
+                    'review_notes' => null,
+                    'kontrak_id'   => null,
+                    'updated_at'   => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            // Revert location ke PENDING
+            $db->table('customer_locations')->where('id', $id)->update([
+                'approval_status' => 'PENDING',
+                'approved_by'     => null,
+                'approved_at'     => null,
+                'approval_notes'  => null,
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->transComplete();
+            if ($db->transStatus() === false) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal rollback']);
+            }
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Lokasi berhasil di-rollback ke status PENDING']);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get contracts for a customer (for Marketing approval dropdown)
+     */
+    public function getContractsForCustomer($customerId)
+    {
+        try {
+            $db = \Config\Database::connect();
+            $contracts = $db->table('kontrak k')
+                ->select('k.id, k.no_kontrak, k.customer_po_number, k.status, k.tanggal_mulai, k.tanggal_berakhir')
+                ->where('k.customer_id', $customerId)
+                ->whereIn('k.status', ['ACTIVE', 'EXPIRED'])
+                ->orderBy('k.status', 'ASC')
+                ->orderBy('k.tanggal_berakhir', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $contracts]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Approve location audit
      */
     public function approveLocationAudit($id)
@@ -807,7 +1497,13 @@ class UnitAudit extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
+        $kontrakId = $this->request->getPost('kontrak_id');
+        if (empty($kontrakId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Pilih kontrak/PO terlebih dahulu']);
+        }
+
         $pricing = [
+            'kontrak_id'       => $kontrakId,
             'price_per_unit'   => $this->request->getPost('price_per_unit'),
             'marketing_notes'  => $this->request->getPost('marketing_notes'),
         ];

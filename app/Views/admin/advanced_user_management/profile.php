@@ -792,7 +792,7 @@ $('#toggleOtpBtn').on('click', function() {
         confirmButtonColor: currentStatus ? '#e74a3b' : '#4e73df',
         cancelButtonColor: '#858796',
         confirmButtonText: 'Ya, ' + actionText,
-        cancelButtonText: 'Batal'
+        cancelButtonText: window.lang('cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             // Disable button
