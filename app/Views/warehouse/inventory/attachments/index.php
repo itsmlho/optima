@@ -8,125 +8,134 @@
 ?>
 <?= $this->section('content') ?>
 
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-puzzle me-2 text-primary"></i>
-        Attachment, Battery & Charger Inventory
-    </h4>
-    <p class="text-muted mb-0">Manage forklift attachments, batteries, and chargers with status tracking and maintenance records</p>
-</div>
-
-    <!-- Inventory Table -->
-    <div class="card table-card">
-        <div class="card-header bg-light">
-            <div class="row align-items-center mb-3">
-                <div class="col">
-                    <h5 class="card-title fw-bold m-0">List Attachment</h5>
-                </div>
-                <div class="col-auto">
-                    <!-- Export Dropdown -->
-                    <div class="btn-group me-2">
-                        <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-file-export me-1"></i>Export
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/attachment') ?>"><i class="fas fa-puzzle-piece me-2"></i>Attachment</a></li>
-                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/battery') ?>"><i class="fas fa-battery-half me-2"></i>Battery</a></li>
-                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/charger') ?>"><i class="fas fa-plug me-2"></i>Charger</a></li>
-                        </ul>
-                    </div>
-
-                    <button type="button" class="btn btn-primary" id="btnTambahItem">
-                        <i class="fas fa-plus me-1"></i>Add Item
-                    </button>
-                </div>
+<!-- Main Card -->
+<div class="card shadow-sm">
+    <div class="card-body">
+        <!-- Header Row -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h4 class="fw-bold mb-1">
+                    <i class="bi bi-puzzle me-2 text-primary"></i>
+                    Attachment, Battery & Charger Inventory
+                </h4>
+                <p class="text-muted mb-0">Manage forklift attachments, batteries, and chargers with status tracking and maintenance records</p>
             </div>
-            
-            <!-- Main Type Tabs -->
-            <ul class="nav nav-tabs mb-3" id="itemTypeTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="attachment-tab" data-bs-toggle="tab" data-bs-target="#attachment" type="button" role="tab" onclick="applyTypeFilter('attachment')">
-                        <i class="fas fa-puzzle-piece me-1"></i>
-                        <strong>Attachment</strong>
-                        <span class="badge badge-soft-blue ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
+            <div class="d-flex gap-2">
+                <!-- Export Dropdown -->
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-file-export me-1"></i>Export
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="battery-tab" data-bs-toggle="tab" data-bs-target="#battery" type="button" role="tab" onclick="applyTypeFilter('battery')">
-                        <i class="fas fa-battery-half me-1"></i>
-                        <strong>Battery</strong>
-                        <span class="badge badge-soft-green ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="charger-tab" data-bs-toggle="tab" data-bs-target="#charger" type="button" role="tab" onclick="applyTypeFilter('charger')">
-                        <i class="fas fa-plug me-1"></i>
-                        <strong>Charger</strong>
-                        <span class="badge badge-soft-yellow ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
-                    </button>
-                </li>
-            </ul>
-            
-            <!-- Status Sub-Tabs -->
-            <ul class="nav nav-pills gap-2 mb-0" id="statusFilterTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active btn-sm" id="all-status-tab" type="button" onclick="applyStatusFilter('all')">
-                        <i class="fas fa-list me-1"></i>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/attachment') ?>"><i class="fas fa-puzzle-piece me-2"></i>Attachment</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/battery') ?>"><i class="fas fa-battery-half me-2"></i>Battery</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/charger') ?>"><i class="fas fa-plug me-2"></i>Charger</a></li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-primary" id="btnTambahItem">
+                    <i class="fas fa-plus me-1"></i>Add Item
+                </button>
+            </div>
+        </div>
+        
+        <!-- Type Filter Tabs -->
+        <ul class="nav nav-pills gap-2 mb-2" id="itemTypeTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="attachment-tab" type="button" onclick="applyTypeFilter('attachment')">
+                    <i class="fas fa-puzzle-piece me-1"></i>
+                    Attachment
+                    <span class="badge badge-soft-blue ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="battery-tab" type="button" onclick="applyTypeFilter('battery')">
+                    <i class="fas fa-battery-half me-1"></i>
+                    Battery
+                    <span class="badge badge-soft-green ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="charger-tab" type="button" onclick="applyTypeFilter('charger')">
+                    <i class="fas fa-plug me-1"></i>
+                    Charger
+                    <span class="badge badge-soft-yellow ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Status Filter Tabs -->
+        <ul class="nav nav-pills gap-2 mb-3" id="statusFilterTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active btn-sm" id="all-status-tab" type="button" onclick="applyStatusFilter('all')">
+                    <i class="fas fa-list me-1"></i>
+                    All
+                    <span class="badge badge-soft-gray ms-1" id="count-all"><?= $detailed_stats['by_status']['all'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm" id="available-status-tab" type="button" onclick="applyStatusFilter('AVAILABLE')">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Available
+                    <span class="badge badge-soft-green ms-1" id="count-available"><?= $detailed_stats['by_status']['available'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm" id="inuse-status-tab" type="button" onclick="applyStatusFilter('IN_USE')">
+                    <i class="fas fa-link me-1"></i>
+                    In Use
+                    <span class="badge badge-soft-cyan ms-1" id="count-inuse"><?= $detailed_stats['by_status']['in_use'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm" id="spare-status-tab" type="button" onclick="applyStatusFilter('SPARE')">
+                    <i class="fas fa-box me-1"></i>
+                    Spare
+                    <span class="badge badge-soft-purple ms-1" id="count-spare"><?= $detailed_stats['by_status']['spare'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm" id="maintenance-status-tab" type="button" onclick="applyStatusFilter('MAINTENANCE')">
+                    <i class="fas fa-tools me-1"></i>
+                    Maintenance
+                    <span class="badge badge-soft-yellow ms-1" id="count-maintenance"><?= $detailed_stats['by_status']['maintenance'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link btn-sm" id="broken-status-tab" type="button" onclick="applyStatusFilter('BROKEN')">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Broken
+                    <span class="badge badge-soft-red ms-1" id="count-broken"><?= $detailed_stats['by_status']['broken'] ?? 0 ?></span>
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Chemistry Filter (only for Battery) -->
+        <div class="mb-3" id="additionalFilters" style="display: none;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small fw-medium">
+                    <i class="fas fa-flask me-1"></i>Battery Type:
+                </span>
+                <div class="btn-group btn-group-sm" role="group" id="chemistryFilterGroup">
+                    <button type="button" class="btn btn-outline-secondary active" data-chemistry="" onclick="applyChemistryFilter('')">
                         All
-                        <span class="badge badge-soft-gray ms-1" id="count-all"><?= $detailed_stats['by_status']['all'] ?? 0 ?></span>
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm" id="available-status-tab" type="button" onclick="applyStatusFilter('AVAILABLE')">
-                        <i class="fas fa-check-circle me-1"></i>
-                        Available
-                        <span class="badge badge-soft-green ms-1" id="count-available"><?= $detailed_stats['by_status']['available'] ?? 0 ?></span>
+                    <button type="button" class="btn btn-outline-warning" data-chemistry="lead_acid" onclick="applyChemistryFilter('lead_acid')">
+                        <i class="fas fa-car-battery me-1"></i>Lead Acid
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm" id="used-status-tab" type="button" onclick="applyStatusFilter('USED')">
-                        <i class="fas fa-link me-1"></i>
-                        Used
-                        <span class="badge badge-soft-cyan ms-1" id="count-used"><?= $detailed_stats['by_status']['used'] ?? 0 ?></span>
+                    <button type="button" class="btn btn-outline-success" data-chemistry="lithium" onclick="applyChemistryFilter('lithium')">
+                        <i class="fas fa-bolt me-1"></i>Lithium-ion
                     </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm" id="maintenance-status-tab" type="button" onclick="applyStatusFilter('MAINTENANCE')">
-                        <i class="fas fa-tools me-1"></i>
-                        Maintenance
-                        <span class="badge badge-soft-yellow ms-1" id="count-maintenance"><?= $detailed_stats['by_status']['maintenance'] ?? 0 ?></span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm" id="broken-status-tab" type="button" onclick="applyStatusFilter('BROKEN')">
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        Broken
-                        <span class="badge badge-soft-red ms-1" id="count-broken"><?= $detailed_stats['by_status']['broken'] ?? 0 ?></span>
-                    </button>
-                </li>
-            </ul>
-            
-            <!-- Additional Filters (shown based on active tab) -->
-            <div class="border-top pt-3 mt-3" id="additionalFilters" style="display: none;">
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="chip chip-gray small">
-                        <i class="fas fa-sliders-h me-1"></i>Models
-                    </span>
-                    <div class="btn-group btn-group-sm" role="group" id="modelFilterGroup">
-                        <!-- Dynamic model buttons will be inserted here -->
-                    </div>
                 </div>
             </div>
         </div>
-        <div class="card-body p-0">
-            <table id="inventory-attachment-table" class="table table-striped table-hover mb-0">
-                <thead id="table-header">
-                    <!-- Dynamic header will be inserted here -->
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        
+        <!-- Table -->
+        <table id="inventory-attachment-table" class="table table-striped table-hover mb-0" style="width:100%">
+            <thead id="table-header">
+                <!-- Dynamic header will be inserted here -->
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 </div>
 
@@ -601,8 +610,36 @@
     var currentTypeFilter = 'attachment';
     var currentStatusFilter = 'all';
     var currentModelFilter = '';
+    var currentChemistryFilter = '';
     var currentAttachmentId = null;
     var attachmentTable = null;
+    var csrfToken = '<?= csrf_hash() ?>';
+    var csrfName = '<?= csrf_token() ?>';
+    
+    // Stats per type for dynamic status filter updates
+    var typeStats = {
+        attachment: <?= json_encode($detailed_stats['attachment'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>,
+        battery: <?= json_encode($detailed_stats['battery'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>,
+        charger: <?= json_encode($detailed_stats['charger'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>
+    };
+    
+    // Helper to update CSRF token from response
+    function updateCsrfToken(response) {
+        if (response && response.csrf_hash) {
+            csrfToken = response.csrf_hash;
+        }
+    }
+    
+    // Update status filter counts based on selected type
+    function updateStatusCounts(type) {
+        var stats = typeStats[type] || typeStats.attachment;
+        $('#count-all').text(stats.total || 0);
+        $('#count-available').text(stats.available || 0);
+        $('#count-inuse').text(stats.in_use || 0);
+        $('#count-spare').text(stats.spare || 0);
+        $('#count-maintenance').text(stats.maintenance || 0);
+        $('#count-broken').text(stats.broken || 0);
+    }
 
 
     $(document).ready(function() {
@@ -844,8 +881,13 @@
                     d.tipe_item = currentTypeFilter;
                     d.status_filter = currentStatusFilter;
                     d.model_filter = currentModelFilter;
-                    d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
+                    d.chemistry_filter = currentChemistryFilter;
+                    d[csrfName] = csrfToken;
                     console.log('Sending data to server:', d);
+                },
+                dataSrc: function(response) {
+                    updateCsrfToken(response);
+                    return response.data || [];
                 },
                 error: function(xhr, error, thrown) {
                     console.log('DataTables Ajax Error:');
@@ -882,9 +924,10 @@
             $.ajax({
                 url: `<?= base_url('warehouse/inventory/attachments/update/') ?>${id}`,
                 type: 'POST',
-                data: $(this).serialize() + '&<?= csrf_token() ?>=<?= csrf_hash() ?>',
+                data: $(this).serialize() + '&' + csrfName + '=' + csrfToken,
                 dataType: 'json',
                 success: function(response) {
+                    updateCsrfToken(response);
                     if (response.success) {
                         $('#editAttachmentModal').modal('hide');
                         attachmentTable.ajax.reload(null, false);
@@ -903,25 +946,23 @@
     window.applyTypeFilter = function(type) {
         console.log('Applying type filter:', type);
         
-        // Remove active class from all tabs
-        $('.nav-link').removeClass('active');
+        // Remove active class from all type tabs only (not status tabs)
+        $('#itemTypeTab .nav-link').removeClass('active');
         
         // Add active class to clicked tab
         if (type === 'attachment') {
             $('#attachment-tab').addClass('active');
-            $('.card-title').text('Attachment Stock List');
         } else if (type === 'battery') {
             $('#battery-tab').addClass('active');
-            $('.card-title').text('Battery Stock List');
         } else if (type === 'charger') {
             $('#charger-tab').addClass('active');
-            $('.card-title').text('Charger Stock List');
         }
         
         // Update current filter
         currentTypeFilter = type;
         currentStatusFilter = 'all'; // Reset status filter when type changes
         currentModelFilter = ''; // Reset model filter
+        currentChemistryFilter = ''; // Reset chemistry filter
         console.log('Current type filter set to:', currentTypeFilter);
         console.log('Status filter reset to:', currentStatusFilter);
         
@@ -929,10 +970,16 @@
         $('#statusFilterTab .nav-link').removeClass('active');
         $('#all-status-tab').addClass('active');
         
-        // Show/hide model filter based on type
-        if (type === 'battery' || type === 'charger') {
+        // Reset chemistry filter buttons
+        $('#chemistryFilterGroup .btn').removeClass('active');
+        $('#chemistryFilterGroup .btn[data-chemistry=""]').addClass('active');
+        
+        // Update status counts for the selected type
+        updateStatusCounts(type);
+        
+        // Show/hide chemistry filter (only for battery)
+        if (type === 'battery') {
             $('#additionalFilters').show();
-            populateModelFilter(type);
         } else {
             $('#additionalFilters').hide();
         }
@@ -960,9 +1007,14 @@
                     d.tipe_item = currentTypeFilter;
                     d.status_filter = currentStatusFilter;
                     d.model_filter = currentModelFilter;
-                    d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
+                    d.chemistry_filter = currentChemistryFilter;
+                    d[csrfName] = csrfToken;
                     console.log('Sending data to server:', d);
                     return d;
+                },
+                dataSrc: function(response) {
+                    updateCsrfToken(response);
+                    return response.data || [];
                 },
                 error: function(xhr, error, thrown) {
                     console.log('DataTables Ajax Error:', {xhr, error, thrown});
@@ -999,8 +1051,10 @@
             $('#all-status-tab').addClass('active');
         } else if (status === 'AVAILABLE') {
             $('#available-status-tab').addClass('active');
-        } else if (status === 'USED') {
-            $('#used-status-tab').addClass('active');
+        } else if (status === 'IN_USE') {
+            $('#inuse-status-tab').addClass('active');
+        } else if (status === 'SPARE') {
+            $('#spare-status-tab').addClass('active');
         } else if (status === 'MAINTENANCE') {
             $('#maintenance-status-tab').addClass('active');
         } else if (status === 'BROKEN') {
@@ -1010,6 +1064,26 @@
         // Update current status filter
         currentStatusFilter = status;
         console.log('Current status filter set to:', currentStatusFilter);
+        
+        // Reload table with new filters
+        if (attachmentTable) {
+            attachmentTable.ajax.reload();
+        }
+    }
+    
+    // Chemistry Type Filter Function (Lead Acid vs Lithium-ion)
+    window.applyChemistryFilter = function(chemistry) {
+        console.log('Applying chemistry filter:', chemistry);
+        
+        // Remove active class from all chemistry buttons
+        $('#chemistryFilterGroup .btn').removeClass('active');
+        
+        // Add active class to clicked button
+        $(`#chemistryFilterGroup .btn[data-chemistry="${chemistry}"]`).addClass('active');
+        
+        // Update current chemistry filter
+        currentChemistryFilter = chemistry;
+        console.log('Current chemistry filter set to:', currentChemistryFilter);
         
         // Reload table with new filters
         if (attachmentTable) {
@@ -1304,9 +1378,10 @@
                     $.ajax({
                         url: `<?= base_url('warehouse/inventory/attachments/delete/') ?>${currentAttachmentId}`,
                         type: 'DELETE',
-                        data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
+                        data: { [csrfName]: csrfToken },
                         dataType: 'json',
                         success: function(response) {
+                            updateCsrfToken(response);
                             if (response.success) {
                                 $('#viewAttachmentModal').modal('hide');
                                 attachmentTable.ajax.reload();
@@ -1571,15 +1646,16 @@
             attachment_id: $('#attach_attachment_id').val(),
             unit_id: $('#attach_unit_id').val(),
             notes: $('#attach_notes').val(),
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            [csrfName]: csrfToken
         };
-        
+
         $.ajax({
             url: '<?= base_url('warehouse/inventory/attachments/attach') ?>',
             type: 'POST',
             data: data,
             dataType: 'json',
             success: function(response) {
+                updateCsrfToken(response);
                 if (response.success) {
                     $('#attachToUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
@@ -1610,15 +1686,16 @@
             from_unit_id: $('#swap_from_unit_id').val(),
             to_unit_id: $('#swap_to_unit_id').val(),
             reason: reason,
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            [csrfName]: csrfToken
         };
-        
+
         $.ajax({
             url: '<?= base_url('warehouse/inventory/attachments/swap') ?>',
             type: 'POST',
             data: data,
             dataType: 'json',
             success: function(response) {
+                updateCsrfToken(response);
                 if (response.success) {
                     $('#swapUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
@@ -1648,15 +1725,16 @@
             attachment_id: $('#detach_attachment_id').val(),
             reason: reason,
             new_location: $('#detach_new_location').val(),
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            [csrfName]: csrfToken
         };
-        
+
         $.ajax({
             url: '<?= base_url('warehouse/inventory/attachments/detach') ?>',
             type: 'POST',
             data: data,
             dataType: 'json',
             success: function(response) {
+                updateCsrfToken(response);
                 if (response.success) {
                     $('#detachFromUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
@@ -1826,7 +1904,7 @@
         }
         
         // Add CSRF token
-        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+        formData.append(csrfName, csrfToken);
         
         $.ajax({
             url: '<?= base_url('warehouse/inventory/attachments/add') ?>',
@@ -1838,6 +1916,7 @@
                 $('#btn-save-item').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
             },
             success: function(response) {
+                updateCsrfToken(response);
                 $('#btn-save-item').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save Item');
                 
                 if (response.success) {

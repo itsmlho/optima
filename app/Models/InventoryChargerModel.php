@@ -304,13 +304,10 @@ class InventoryChargerModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $chargerId,
-                    'inventory_attachment_type' => 'charger',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'detach',
-                    'user_id'                   => session()->get('user_id'),
-                    'note'                      => $reason,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('CHARGER', $chargerId, $oldUnit, [
+                    'notes' => $reason,
+                    'triggered_by' => 'DETACH_FROM_UNIT',
                 ]);
             }
 
@@ -409,13 +406,10 @@ class InventoryChargerModel extends Model
             ]);
 
             // 4. Audit log
-            $db->table('inventory_item_unit_log')->insert([
-                'inventory_attachment_id'   => $chargerId,
-                'inventory_attachment_type' => 'charger',
-                'inventory_unit_id'         => $unitId,
-                'action'                    => 'assign',
-                'user_id'                   => $userId,
-                'note'                      => $note,
+            $auditService = new \App\Services\ComponentAuditService($db);
+            $auditService->logAssignment('CHARGER', $chargerId, $unitId, [
+                'notes' => $note,
+                'triggered_by' => 'ASSIGN_TO_UNIT',
             ]);
 
             $db->transComplete();
@@ -452,13 +446,10 @@ class InventoryChargerModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $chargerId,
-                    'inventory_attachment_type' => 'charger',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'remove',
-                    'user_id'                   => $userId,
-                    'note'                      => $note,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('CHARGER', $chargerId, $oldUnit, [
+                    'notes' => $note,
+                    'triggered_by' => 'REMOVE_FROM_UNIT',
                 ]);
             }
 

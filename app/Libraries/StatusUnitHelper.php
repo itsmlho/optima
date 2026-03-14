@@ -96,6 +96,20 @@ class StatusUnitHelper
             $this->db->table('inventory_unit')
                 ->where('id_inventory_unit', $unitId)
                 ->update(['status_unit_id' => $stockStatus]);
+            
+            // Get components before releasing for audit log
+            $batteries = $this->db->table('inventory_batteries')
+                ->select('id')
+                ->where('inventory_unit_id', $unitId)
+                ->get()->getResultArray();
+            $chargers = $this->db->table('inventory_chargers')
+                ->select('id')
+                ->where('inventory_unit_id', $unitId)
+                ->get()->getResultArray();
+            $attachments = $this->db->table('inventory_attachments')
+                ->select('id')
+                ->where('inventory_unit_id', $unitId)
+                ->get()->getResultArray();
                 
             // Update status in all 3 component tables
             $this->db->table('inventory_batteries')
@@ -109,6 +123,28 @@ class StatusUnitHelper
             $this->db->table('inventory_attachments')
                 ->where('inventory_unit_id', $unitId)
                 ->update(['status' => 'AVAILABLE']);
+            
+            // Log component releases to component_audit_log
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+            
+            foreach ($batteries as $battery) {
+                $auditService->logRemoval('BATTERY', $battery['id'], $unitId, [
+                    'triggered_by' => 'UNIT_REMOVED_FROM_CONTRACT',
+                    'notes' => 'Battery released - unit removed from contract',
+                ]);
+            }
+            foreach ($chargers as $charger) {
+                $auditService->logRemoval('CHARGER', $charger['id'], $unitId, [
+                    'triggered_by' => 'UNIT_REMOVED_FROM_CONTRACT',
+                    'notes' => 'Charger released - unit removed from contract',
+                ]);
+            }
+            foreach ($attachments as $attachment) {
+                $auditService->logRemoval('ATTACHMENT', $attachment['id'], $unitId, [
+                    'triggered_by' => 'UNIT_REMOVED_FROM_CONTRACT',
+                    'notes' => 'Attachment released - unit removed from contract',
+                ]);
+            }
                 
             return;
         }

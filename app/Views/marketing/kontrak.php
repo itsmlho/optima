@@ -391,19 +391,64 @@ const LANG_MARKETING_DI = <?= json_encode([
  * 
  * See docs/BADGE_STANDARDS.md for complete guide
  */
+const KONTRAK_STATE_KEY = 'kontrak_mgmt_state';
+
 let contractsTable;
-let currentTab = 'all';
-let currentRentalType = '';
-let currentExpiringDays = 30; // Default to 1 month
-let currentViewMode = 'flat'; // 'flat' or 'grouped'
-let groupedData = null; // Cache for grouped view data
+let currentTab = (function() {
+    try {
+        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
+        if (s) { const o = JSON.parse(s); if (o.tab) return o.tab; }
+    } catch (e) {}
+    return 'all';
+})();
+let currentRentalType = (function() {
+    try {
+        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
+        if (s) { const o = JSON.parse(s); if (o.rentalType !== undefined) return o.rentalType || ''; }
+    } catch (e) {}
+    return '';
+})();
+let currentExpiringDays = (function() {
+    try {
+        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
+        if (s) { const o = JSON.parse(s); if (o.expiringDays) return parseInt(o.expiringDays, 10) || 30; }
+    } catch (e) {}
+    return 30;
+})();
+let currentViewMode = (function() {
+    try {
+        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
+        if (s) { const o = JSON.parse(s); if (o.viewMode) return o.viewMode; }
+    } catch (e) {}
+    return 'flat';
+})();
+let groupedData = null;
+
+function saveKontrakState() {
+    try {
+        sessionStorage.setItem(KONTRAK_STATE_KEY, JSON.stringify({
+            tab: currentTab,
+            rentalType: currentRentalType,
+            expiringDays: currentExpiringDays,
+            viewMode: currentViewMode
+        }));
+    } catch (e) {}
+}
 
 $(document).ready(function() {
+    // Restore filter UI from saved state (for back navigation UX)
+    applySavedFilterUI();
+    
     // Load statistics and update tab badges
     loadStatistics();
     
     // Initialize DataTable
     initializeContractsTable();
+    
+    // Apply saved view mode (flat/grouped) - must run after table init
+    if (currentViewMode === 'grouped') {
+        switchViewMode('grouped');
+    }
     
     // Setup tab event handlers
     setupTabHandlers();
@@ -419,27 +464,50 @@ $(document).ready(function() {
     });
 });
 
+// Apply saved filter state to UI (for back navigation)
+function applySavedFilterUI() {
+    $('#contractStatusTabs button').removeClass('active');
+    $('#tab-' + currentTab).addClass('active');
+    if (currentTab === 'expiring') {
+        $('#expiringSubTabs').show();
+        $('#expiringSubTabs button').removeClass('active');
+        $('#expiringSubTabs button[data-days="' + currentExpiringDays + '"]').addClass('active');
+    } else {
+        $('#expiringSubTabs').hide();
+    }
+    $('#rentalTypeFilter button').removeClass('active');
+    const $rt = currentRentalType
+        ? $('#rentalTypeFilter button[data-type="' + currentRentalType + '"]')
+        : $('#rentalTypeFilter button[data-type=""]');
+    if ($rt.length) $rt.addClass('active');
+    else $('#rentalTypeFilter button[data-type=""]').addClass('active');
+    // View mode (button state only; switchViewMode applies body visibility after table init)
+    $('#viewModeToggle button').removeClass('active btn-secondary').addClass('btn-outline-secondary');
+    if (currentViewMode === 'grouped') $('#btnGroupedView').addClass('active btn-secondary').removeClass('btn-outline-secondary');
+    else $('#btnFlatView').addClass('active btn-secondary').removeClass('btn-outline-secondary');
+}
+
 // Setup tab click handlers
 function setupTabHandlers() {
-    // Main status tabs
     $('#contractStatusTabs button[data-tab]').on('click', function() {
         const tab = $(this).data('tab');
         switchTab(tab);
+        saveKontrakState();
     });
     
-    // Rental type filter buttons
     $('#rentalTypeFilter button').on('click', function() {
         $('#rentalTypeFilter button').removeClass('active');
         $(this).addClass('active');
         currentRentalType = $(this).data('type') || '';
+        saveKontrakState();
         applyFilters();
     });
     
-    // Expiring period sub-tabs
     $('#expiringSubTabs button').on('click', function() {
         $('#expiringSubTabs button').removeClass('active');
         $(this).addClass('active');
         currentExpiringDays = $(this).data('days');
+        saveKontrakState();
         applyFilters();
     });
 }
@@ -618,6 +686,8 @@ function initializeContractsTable() {
         order: [[0, 'desc']],
         pageLength: 15,
         lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
+        stateSave: true,
+        stateDuration: 60 * 60,
         language: {
             processing: '<i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...',
             emptyTable: 'No contracts found',
@@ -1717,6 +1787,7 @@ $(document).on('submit', '#addContractForm', function(e) {
 
 function switchViewMode(mode) {
     currentViewMode = mode;
+    saveKontrakState();
     const flatBtn     = document.getElementById('btnFlatView');
     const groupedBtn  = document.getElementById('btnGroupedView');
     const flatBody    = document.getElementById('flatViewBody');

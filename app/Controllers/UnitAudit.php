@@ -1776,11 +1776,32 @@ class UnitAudit extends BaseController
 
     private function releaseComponent(\CodeIgniter\Database\BaseConnection $db, string $table, int $id): void
     {
+        // Get old unit_id before releasing
+        $oldRecord = $db->table($table)->select('inventory_unit_id')->where('id', $id)->get()->getRowArray();
+        $oldUnitId = $oldRecord['inventory_unit_id'] ?? null;
+        
         $db->table($table)->where('id', $id)->update([
             'inventory_unit_id' => null,
             'status'            => 'AVAILABLE',
             'updated_at'        => date('Y-m-d H:i:s'),
         ]);
+        
+        // Log to component_audit_log
+        if ($oldUnitId) {
+            $componentType = match($table) {
+                'inventory_batteries' => 'BATTERY',
+                'inventory_chargers' => 'CHARGER',
+                'inventory_attachments' => 'ATTACHMENT',
+                default => 'ATTACHMENT'
+            };
+            
+            $auditService = new \App\Services\ComponentAuditService($db);
+            $auditService->logRemoval($componentType, $id, $oldUnitId, [
+                'triggered_by' => 'UNIT_AUDIT_VERIFICATION',
+                'reference_type' => 'unit_audit',
+                'notes' => $componentType . ' released during unit audit verification',
+            ]);
+        }
     }
 
     private function assignComponent(\CodeIgniter\Database\BaseConnection $db, string $table, int $id, int $unitId): void
@@ -1789,6 +1810,21 @@ class UnitAudit extends BaseController
             'inventory_unit_id' => $unitId,
             'status'            => 'IN_USE',
             'updated_at'        => date('Y-m-d H:i:s'),
+        ]);
+        
+        // Log to component_audit_log
+        $componentType = match($table) {
+            'inventory_batteries' => 'BATTERY',
+            'inventory_chargers' => 'CHARGER',
+            'inventory_attachments' => 'ATTACHMENT',
+            default => 'ATTACHMENT'
+        };
+        
+        $auditService = new \App\Services\ComponentAuditService($db);
+        $auditService->logAssignment($componentType, $id, $unitId, [
+            'triggered_by' => 'UNIT_AUDIT_VERIFICATION',
+            'reference_type' => 'unit_audit',
+            'notes' => $componentType . ' assigned during unit audit verification',
         ]);
     }
 }

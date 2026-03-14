@@ -1129,8 +1129,18 @@ $(document).ready(function() {
     // REMOVED: Manual modal event handlers (not needed with close-reopen pattern)
 });
 
-// Global status filter variable
-let currentStatusFilter = 'all';
+// Global status filter variable - restore from sessionStorage for back navigation UX
+const CUSTOMER_STATE_KEY = 'customer_mgmt_state';
+let currentStatusFilter = (function() {
+    try {
+        const saved = sessionStorage.getItem(CUSTOMER_STATE_KEY);
+        if (saved) {
+            const state = JSON.parse(saved);
+            return state.statusFilter || 'all';
+        }
+    } catch (e) { /* ignore */ }
+    return 'all';
+})();
 
 // Initialize DataTable using OptimaDataTable centralized system
 function initializeCustomerTable() {
@@ -1182,6 +1192,8 @@ function initializeCustomerTable() {
             pageLength: 15,
             lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
             order: [[1, 'asc']],
+            stateSave: true,
+            stateDuration: 60 * 60, // 1 hour - preserves search, page, pagination on back navigation
             columns: [
                 { 
                     data: 'customer_code',
@@ -3180,6 +3192,15 @@ function displayLocations(locations) {
  * Setup status filter tab handlers
  */
 function setupStatusFilterTabs() {
+    // Restore active tab based on saved state (for back navigation UX)
+    $('.customer-status-tabs .nav-link').removeClass('active');
+    const $activeTab = $(`.customer-status-tabs .nav-link[data-status="${currentStatusFilter}"]`);
+    if ($activeTab.length) {
+        $activeTab.addClass('active');
+    } else {
+        $('.customer-status-tabs .nav-link[data-status="all"]').addClass('active');
+    }
+
     $('.customer-status-tabs .nav-link').on('click', function() {
         const status = $(this).data('status');
         
@@ -3187,8 +3208,13 @@ function setupStatusFilterTabs() {
         $('.customer-status-tabs .nav-link').removeClass('active');
         $(this).addClass('active');
         
-        // Update global filter
+        // Update global filter and persist for back navigation
         currentStatusFilter = status;
+        try {
+            const state = JSON.parse(sessionStorage.getItem(CUSTOMER_STATE_KEY) || '{}');
+            state.statusFilter = status;
+            sessionStorage.setItem(CUSTOMER_STATE_KEY, JSON.stringify(state));
+        } catch (e) { /* ignore */ }
         
         console.log('🔄 Status filter changed to:', status);
         

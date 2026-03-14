@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 
 /**
  * Customers API Controller
@@ -25,6 +26,7 @@ use App\Controllers\BaseController;
  */
 class Customers extends BaseController
 {
+    use ActivityLoggingTrait;
     protected $customerModel;
     protected $customerLocationModel;
 
@@ -135,20 +137,27 @@ class Customers extends BaseController
             $locationId = $this->customerLocationModel->insert($data);
 
             if ($locationId) {
+                // Log to system_activity_log
+                $this->logCreate('customer_locations', $locationId, $data, [
+                    'module_name' => 'customers',
+                    'description' => "Customer location '{$data['location_name']}' created for customer #{$data['customer_id']}",
+                    'business_impact' => 'LOW',
+                ]);
+                
                 // If this was triggered from quotation workflow, update quotation status
                 if (!empty($data['quotation_id'])) {
                     log_message('debug', 'Quotation ID provided: ' . $data['quotation_id']);
-                    
+
                     // Only mark as complete if workflow_completed flag is true
                     if (!empty($data['workflow_completed'])) {
                         $quotationModel = new \App\Models\QuotationModel();
                         $quotation = $quotationModel->find($data['quotation_id']);
-                        
+
                         log_message('debug', 'Quotation found: ' . json_encode($quotation));
-                        
+
                         if ($quotation && $quotation['workflow_stage'] === 'DEAL') {
                             log_message('debug', 'Updating quotation workflow status...');
-                            
+
                             // Mark that customer location is now complete using Query Builder
                             $result = $db->table('quotations')
                                 ->where('id_quotation', $data['quotation_id'])
@@ -156,7 +165,7 @@ class Customers extends BaseController
                                     'customer_location_complete' => 1,
                                     'updated_at' => date('Y-m-d H:i:s')
                                 ]);
-                            
+
                             log_message('info', 'Quotation #' . $data['quotation_id'] . ' - Customer location marked as complete. Rows affected: ' . $result);
                         } else {
                             log_message('debug', 'Quotation not in DEAL stage or not found. Stage: ' . ($quotation['workflow_stage'] ?? 'N/A'));

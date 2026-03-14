@@ -634,13 +634,10 @@ class DeliveryInstructionService
                 ]);
 
             // Log the transfer
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $battery['id'],
-                'from_unit_id' => $oldUnitId,
-                'to_unit_id' => $newUnitId,
-                'transfer_type' => 'TUKAR',
-                'triggered_by' => 'DI_WORKFLOW',
-                'created_at' => date('Y-m-d H:i:s')
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+            $auditService->logTransfer('BATTERY', $battery['id'], $oldUnitId, $newUnitId, [
+                'triggered_by' => 'DI_WORKFLOW_TUKAR',
+                'notes' => 'Automatic transfer during TUKAR operation',
             ]);
         }
         
@@ -663,13 +660,10 @@ class DeliveryInstructionService
                 ]);
 
             // Log the transfer
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $charger['id'],
-                'from_unit_id' => $oldUnitId,
-                'to_unit_id' => $newUnitId,
-                'transfer_type' => 'TUKAR',
-                'triggered_by' => 'DI_WORKFLOW',
-                'created_at' => date('Y-m-d H:i:s')
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+            $auditService->logTransfer('CHARGER', $charger['id'], $oldUnitId, $newUnitId, [
+                'triggered_by' => 'DI_WORKFLOW_TUKAR',
+                'notes' => 'Automatic transfer during TUKAR operation',
             ]);
         }
         
@@ -691,17 +685,11 @@ class DeliveryInstructionService
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 
-            // Log the transfer in attachment_transfer_log
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $attachment['id'],
-                'from_unit_id' => $oldUnitId,
-                'to_unit_id' => $newUnitId,
-                'transfer_type' => 'TUKAR',
-                'triggered_by' => 'DI_WORKFLOW',
-                'spk_id' => null,
+            // Log the transfer
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+            $auditService->logTransfer('ATTACHMENT', $attachment['id'], $oldUnitId, $newUnitId, [
+                'triggered_by' => 'DI_WORKFLOW_TUKAR',
                 'notes' => 'Automatic transfer during TUKAR operation',
-                'created_at' => date('Y-m-d H:i:s'),
-                'created_by' => session('user_id')
             ]);
 
             log_message('info', "Transferred attachment {$attachment['id_inventory_attachment']} from unit {$oldUnitId} to unit {$newUnitId} via TUKAR");

@@ -47,10 +47,13 @@ class ActivityLogViewer extends BaseController
         $impactFilter = $request->getPost('impact_filter');
         $criticalOnly = $request->getPost('critical_only');
         $actionFilter = $request->getPost('action_filter');
+        $userFilter = $request->getPost('user_filter');
+        $divisionFilter = $request->getPost('division_filter');
+        $myTeamFilter = $request->getPost('my_team_filter');
 
         // Base query - menggunakan struktur tabel yang sudah dioptimasi
         $builder = $db->table('system_activity_log sal');
-        $builder->select('sal.*, u.username, u.first_name, u.last_name');
+        $builder->select('sal.*, u.username, u.first_name, u.last_name, sal.ip_address');
         $builder->join('users u', 'u.id = sal.user_id', 'left');
 
         // Apply advanced filters
@@ -71,6 +74,42 @@ class ActivityLogViewer extends BaseController
         }
         if ($actionFilter) {
             $builder->where('sal.action_type', $actionFilter);
+        }
+        
+        // User filter - filter by specific user
+        if ($userFilter) {
+            $builder->where('sal.user_id', $userFilter);
+        }
+        
+        // Division filter - filter by users in a specific division
+        if ($divisionFilter) {
+            $builder->whereIn('sal.user_id', function($subquery) use ($divisionFilter) {
+                return $subquery->select('user_id')
+                    ->from('user_divisions')
+                    ->where('division_id', $divisionFilter);
+            });
+        }
+        
+        // My Team filter - show only logs from users in same division(s) as current user
+        if ($myTeamFilter) {
+            $currentUserId = session('user_id');
+            if ($currentUserId) {
+                // Get divisions where current user is head
+                $headDivisions = $db->table('user_divisions')
+                    ->select('division_id')
+                    ->where('user_id', $currentUserId)
+                    ->where('is_head', 1)
+                    ->get()->getResultArray();
+                
+                if (!empty($headDivisions)) {
+                    $divisionIds = array_column($headDivisions, 'division_id');
+                    $builder->whereIn('sal.user_id', function($subquery) use ($divisionIds) {
+                        return $subquery->select('user_id')
+                            ->from('user_divisions')
+                            ->whereIn('division_id', $divisionIds);
+                    });
+                }
+            }
         }
 
         // Search functionality
@@ -602,5 +641,75 @@ class ActivityLogViewer extends BaseController
 
         fclose($output);
         exit;
+    }
+    
+    /**
+     * Get users for filter dropdown
+     */
+    public function getUsers()
+    {
+        $db = \Config\Database::connect();
+        
+        $users = $db->table('users')
+            ->select('id, username, first_name, last_name')
+            ->where('is_active', 1)
+            ->orderBy('first_name', 'ASC')
+            ->get()
+            ->getResultArray();
+        
+        $result = [];
+        foreach ($users as $user) {
+            $result[] = [
+                'id' => $user['id'],
+                'text' => trim($user['first_name'] . ' ' . $user['last_name']) ?: $user['username'],
+            ];
+        }
+        
+        return $this->response->setJSON(['success' => true, 'data' => $result]);
+    }
+    
+    /**
+     * Get divisions for filter dropdown
+     */
+    public function getDivisions()
+    {
+        $db = \Config\Database::connect();
+        
+        $divisions = $db->table('divisions')
+            ->select('id, name')
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->get()
+            ->getResultArray();
+        
+        $result = [];
+        foreach ($divisions as $div) {
+            $result[] = [
+                'id' => $div['id'],
+                'text' => $div['name'],
+            ];
+        }
+        
+        return $this->response->setJSON(['success' => true, 'data' => $result]);
+    }
+    
+    /**
+     * Check if current user is a division head (for showing "My Team" filter)
+     */
+    public function checkIsHead()
+    {
+        $db = \Config\Database::connect();
+        $currentUserId = session('user_id');
+        
+        if (!$currentUserId) {
+            return $this->response->setJSON(['success' => true, 'is_head' => false]);
+        }
+        
+        $isHead = $db->table('user_divisions')
+            ->where('user_id', $currentUserId)
+            ->where('is_head', 1)
+            ->countAllResults() > 0;
+        
+        return $this->response->setJSON(['success' => true, 'is_head' => $isHead]);
     }
 }
