@@ -96,6 +96,33 @@ class InventoryStatusModel extends Model
     {
         try {
             $this->db->transBegin();
+            
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+
+            // Get components to be released BEFORE updating (for audit log)
+            $batteriesToRelease = $this->db->query("
+                SELECT ib.id, ib.inventory_unit_id
+                FROM inventory_batteries ib
+                JOIN inventory_unit iu ON ib.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                WHERE ks.kontrak_id = ? AND ib.status = 'IN_USE'
+            ", [$kontrakId])->getResultArray();
+            
+            $chargersToRelease = $this->db->query("
+                SELECT ic.id, ic.inventory_unit_id
+                FROM inventory_chargers ic
+                JOIN inventory_unit iu ON ic.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                WHERE ks.kontrak_id = ? AND ic.status = 'IN_USE'
+            ", [$kontrakId])->getResultArray();
+            
+            $attachmentsToRelease = $this->db->query("
+                SELECT ia.id, ia.inventory_unit_id
+                FROM inventory_attachments ia
+                JOIN inventory_unit iu ON ia.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                WHERE ks.kontrak_id = ? AND ia.status = 'IN_USE'
+            ", [$kontrakId])->getResultArray();
 
             // Update inventory_unit status to UNIT PULANG (id: 4)
             $this->db->query("
@@ -116,6 +143,17 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND ib.status = 'IN_USE'
             ", [$kontrakId]);
             
+            // Log battery releases
+            foreach ($batteriesToRelease as $battery) {
+                $auditService->logRemoval('BATTERY', $battery['id'], $battery['inventory_unit_id'], [
+                    'event_type' => 'BULK_RELEASED',
+                    'triggered_by' => 'CONTRACT_ENDED',
+                    'reference_type' => 'contract',
+                    'reference_id' => $kontrakId,
+                    'notes' => 'Battery released due to contract end',
+                ]);
+            }
+            
             // Update inventory_chargers status to AVAILABLE when contract ends
             $this->db->query("
                 UPDATE inventory_chargers ic
@@ -127,6 +165,17 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND ic.status = 'IN_USE'
             ", [$kontrakId]);
             
+            // Log charger releases
+            foreach ($chargersToRelease as $charger) {
+                $auditService->logRemoval('CHARGER', $charger['id'], $charger['inventory_unit_id'], [
+                    'event_type' => 'BULK_RELEASED',
+                    'triggered_by' => 'CONTRACT_ENDED',
+                    'reference_type' => 'contract',
+                    'reference_id' => $kontrakId,
+                    'notes' => 'Charger released due to contract end',
+                ]);
+            }
+            
             // Update inventory_attachments status to AVAILABLE when contract ends
             $this->db->query("
                 UPDATE inventory_attachments ia
@@ -137,10 +186,22 @@ class InventoryStatusModel extends Model
                     ia.storage_location = 'Returned from contract'
                 WHERE ks.kontrak_id = ? AND ia.status = 'IN_USE'
             ", [$kontrakId]);
+            
+            // Log attachment releases
+            foreach ($attachmentsToRelease as $attachment) {
+                $auditService->logRemoval('ATTACHMENT', $attachment['id'], $attachment['inventory_unit_id'], [
+                    'event_type' => 'BULK_RELEASED',
+                    'triggered_by' => 'CONTRACT_ENDED',
+                    'reference_type' => 'contract',
+                    'reference_id' => $kontrakId,
+                    'notes' => 'Attachment released due to contract end',
+                ]);
+            }
 
             $this->db->transCommit();
             
-            log_message('info', "InventoryStatusModel: Updated status to UNIT PULANG for contract {$kontrakId}");
+            $totalReleased = count($batteriesToRelease) + count($chargersToRelease) + count($attachmentsToRelease);
+            log_message('info', "InventoryStatusModel: Updated status to UNIT PULANG for contract {$kontrakId}, released {$totalReleased} components");
             return true;
 
         } catch (\Exception $e) {

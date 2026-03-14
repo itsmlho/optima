@@ -1,0 +1,517 @@
+"id";"user_id";"title";"message";"type";"icon";"related_module";"related_id";"url";"payload";"action_type";"modal_type";"modal_id";"is_read";"read_at";"created_at";"updated_at"
+"15";"1";"SPK Baru: SPK/202510/003 - N/A";"SPK baru telah dibuat untuk Sarana Mitra Luas dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"66";"http://localhost/optima1/public/service/spk/detail/66";NULL;"information";NULL;NULL;"1";"2025-10-17 09:25:30";"2025-10-17 09:25:08";"2025-10-17 16:25:30"
+"17";"1";"SPK Baru: SPK/202510/004 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"67";"http://localhost/optima1/public/service/spk/detail/67";NULL;"information";NULL;NULL;"1";"2025-10-23 06:31:22";"2025-10-23 04:42:39";"2025-10-23 13:31:22"
+"19";"1";"SPK Baru: SPK/202510/005 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"68";"http://localhost/optima1/public/service/spk/detail/68";NULL;"information";NULL;NULL;"1";"2025-10-23 06:31:22";"2025-10-23 04:45:39";"2025-10-23 13:31:22"
+"21";"1";"SPK Baru: SPK/202510/006 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"69";"http://localhost/optima1/public/service/spk/detail/69";NULL;"information";NULL;NULL;"1";"2025-10-23 06:31:16";"2025-10-23 06:31:05";"2025-10-23 13:31:16"
+"23";"1";"SPK Baru: SPK/202510/007 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"70";"http://localhost/optima1/public/service/spk/detail/70";NULL;"information";NULL;NULL;"1";"2025-10-23 09:53:11";"2025-10-23 06:34:07";"2025-10-23 16:53:11"
+"25";"1";"SPK Baru: SPK/202510/008 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"71";"http://localhost/optima1/public/service/spk/detail/71";NULL;"information";NULL;NULL;"1";"2025-10-23 09:53:11";"2025-10-23 06:36:38";"2025-10-23 16:53:11"
+"27";"1";"SPK Baru: SPK/202510/009 - N/A";"SPK baru telah dibuat untuk Test dengan departemen N/A. Silakan periksa dan proses sesuai prosedur.";"info";"bell";"spk";"72";"http://localhost/optima1/public/service/spk/detail/72";NULL;"information";NULL;NULL;"1";"2025-10-24 08:43:09";"2025-10-24 08:33:36";"2025-10-24 15:43:09"
+"29";"1";"SPK Baru: SPK/202510/010";"SPK baru SPK/202510/010 telah dibuat untuk pelanggan Test dengan departemen N/A. Silakan proses unit sesuai prosedur.";"info";"bell";"spk";"73";"http://localhost/optima1/public/service/spk/detail/73";NULL;"information";NULL;NULL;"1";"2025-10-24 08:50:29";"2025-10-24 08:43:33";"2025-10-24 15:50:29"
+"31";"1";"SPK Baru: SPK/202510/011";"SPK baru SPK/202510/011 telah dibuat untuk pelanggan Test dengan departemen N/A. Silakan proses unit sesuai prosedur.";"info";"bell";"spk";"74";"http://localhost/optima1/public/service/spk/detail/74";NULL;"information";NULL;NULL;"1";"2025-10-24 09:35:37";"2025-10-24 09:29:25";"2025-10-24 16:35:37"
+"33";"1";"SPK Baru: SPK/202510/012";"SPK baru SPK/202510/012 telah dibuat untuk pelanggan Test dengan departemen N/A. Silakan proses unit sesuai prosedur.";"info";"bell";"spk";"75";"http://localhost/optima1/public/service/spk/detail/75";NULL;"information";NULL;NULL;"1";"2025-10-24 09:40:55";"2025-10-24 09:35:54";"2025-10-24 16:40:55"
+"35";"1";"SPK Baru: SPK/202510/013";"SPK baru SPK/202510/013 telah dibuat untuk pelanggan Test dengan departemen N/A. Silakan proses unit sesuai prosedur.";"info";"bell";"spk";"76";"http://localhost/optima1/public/service/spk/detail/76";NULL;"information";NULL;NULL;"1";"2025-11-28 15:20:22";"2025-10-24 09:41:11";"2025-11-28 15:20:22"
+"37";"1";"SPK Baru: SPK/202512/007";"SPK baru SPK/202512/007 telah dibuat untuk pelanggan Test dengan departemen N/A. Silakan proses unit sesuai prosedur.";"info";"bell";"spk";"94";"http://localhost/optima/public/service/spk/detail/94";NULL;"information";NULL;NULL;"1";"2025-12-09 17:14:17";"2025-12-09 16:57:48";"2025-12-09 17:14:17"
+"38";"1";"Customer Baru: ADITya";"Customer baru telah ditambahkan: ADITya (CUST-20251219-466)";"info";"bell";"customer";"14";"http://localhost/optima/public/marketing/customer-management";NULL;"information";NULL;NULL;"1";"2025-12-19 10:39:18";"2025-12-19 10:20:27";"2025-12-19 10:39:18"
+"39";"1";"Customer Baru: ADITya";"Customer ADITya (CUST-20251219-466) telah dibuat. Tipe: . Kontak: 082136033596 / . Oleh: ";"info";"bell";"customer";"14";"http://localhost/optima/public/marketing/customer-management";NULL;"information";NULL;NULL;"1";"2025-12-19 10:39:59";"2025-12-19 10:20:27";"2025-12-19 10:39:59"
+"40";"1";"Lokasi Baru: ADITya";"Lokasi baru ""Head Office"" telah ditambahkan untuk customer ADITya";"info";"bell";"customer";"23";"http://localhost/optima/public/marketing/customer-management";NULL;"information";NULL;NULL;"1";"2025-12-19 10:39:18";"2025-12-19 10:20:27";"2025-12-19 10:39:18"
+"41";"1";"Peringatan Kontrak Expired: KNTRK/2209/0001";"Kontrak KNTRK/2209/0001 untuk Unknown akan expired dalam 0 hari";;"bell";"contract";"54";"http://localhost/optima/public/marketing/contracts/view/54";NULL;"information";NULL;NULL;"1";"2025-12-19 15:34:32";"2025-12-19 15:16:04";"2025-12-19 15:34:32"
+"42";"1";"Peringatan Kontrak Expired: SML/DS/121025";"Kontrak SML/DS/121025 untuk Test akan expired dalam 0 hari";;"bell";"contract";"55";"http://localhost/optima/public/marketing/contracts/view/55";NULL;"information";NULL;NULL;"1";"2025-12-19 15:34:32";"2025-12-19 15:16:04";"2025-12-19 15:34:32"
+"43";"1";"Peringatan Kontrak Expired: TEST/AUTO/001";"Kontrak TEST/AUTO/001 untuk Test Client akan expired dalam 0 hari";;"bell";"contract";"56";"http://localhost/optima/public/marketing/contracts/view/56";NULL;"information";NULL;NULL;"1";"2025-12-19 15:34:32";"2025-12-19 15:16:04";"2025-12-19 15:34:32"
+"44";"1";"PO Terverifikasi: PO/SML/99012399wad";"Purchase Order PO/SML/99012399wad telah terverifikasi";"success";"bell";"purchasing";"161";"http://localhost/optima/public/warehouse/purchase-orders";NULL;"information";NULL;NULL;"1";"2025-12-20 09:47:34";"2025-12-19 16:23:19";"2025-12-20 09:47:34"
+"45";"1";"Lokasi Baru: Test Client";"Lokasi baru ""Lokasi Utama"" telah ditambahkan untuk customer Test Client";"info";"bell";"customer";"4";"http://localhost/optima/public/marketing/customer-management";NULL;"information";NULL;NULL;"1";"2025-12-20 09:47:34";"2025-12-20 09:14:32";"2025-12-20 09:47:34"
+"46";"1";"Penugasan Area Baru: ";"Unit  ditugaskan ke area Jakarta Selatan untuk customer . Mulai: 2025-12-20. Selesai: ";"info";"bell";"service_area";"54";"http://localhost/optima/public/service/area-management";NULL;"information";NULL;NULL;"1";"2025-12-20 09:47:34";"2025-12-20 09:40:00";"2025-12-20 09:47:34"
+"47";"1";"Penugasan Area Baru: ";"Unit  ditugaskan ke area TANGERANG untuk customer . Mulai: 2025-12-20. Selesai: ";"info";"bell";"service_area";"55";"http://localhost/optima/public/service/area-management";NULL;"information";NULL;NULL;"1";"2025-12-20 21:11:45";"2025-12-20 11:53:14";"2025-12-20 21:11:45"
+"48";"1";"Peringatan Kontrak Expired: KNTRK/2209/0001";"Kontrak KNTRK/2209/0001 untuk Unknown akan expired dalam 0 hari";;"bell";"contract";"54";"http://localhost/optima/public/marketing/contracts/view/54";NULL;"information";NULL;NULL;"1";"2025-12-20 21:11:45";"2025-12-20 21:11:15";"2025-12-20 21:11:45"
+"49";"1";"Peringatan Kontrak Expired: SML/DS/121025";"Kontrak SML/DS/121025 untuk Test akan expired dalam 0 hari";;"bell";"contract";"55";"http://localhost/optima/public/marketing/contracts/view/55";NULL;"information";NULL;NULL;"1";"2025-12-20 21:11:45";"2025-12-20 21:11:15";"2025-12-20 21:11:45"
+"50";"1";"Peringatan Kontrak Expired: TEST/AUTO/001";"Kontrak TEST/AUTO/001 untuk Test Client akan expired dalam 0 hari";;"bell";"contract";"56";"http://localhost/optima/public/marketing/contracts/view/56";NULL;"information";NULL;NULL;"1";"2025-12-20 21:11:45";"2025-12-20 21:11:15";"2025-12-20 21:11:45"
+"51";"1";"Penugasan Area Baru: ";"Unit  ditugaskan ke area TANGERANG untuk customer . Mulai: 2025-12-20. Selesai: ";"info";"bell";"service_area";"56";"http://localhost/optima/public/service/area-management";NULL;"information";NULL;NULL;"1";"2025-12-20 21:49:15";"2025-12-20 21:18:44";"2025-12-20 21:49:15"
+"52";"1";"Peringatan Kontrak Expired: KNTRK/2209/0001";"Kontrak KNTRK/2209/0001 untuk Unknown akan expired dalam 0 hari";;"bell";"contract";"54";"http://localhost/optima/public/marketing/contracts/view/54";NULL;"information";NULL;NULL;"1";"2025-12-22 09:30:47";"2025-12-22 08:34:08";"2025-12-22 09:30:47"
+"53";"1";"Peringatan Kontrak Expired: SML/DS/121025";"Kontrak SML/DS/121025 untuk Test akan expired dalam 0 hari";;"bell";"contract";"55";"http://localhost/optima/public/marketing/contracts/view/55";NULL;"information";NULL;NULL;"1";"2025-12-22 09:30:47";"2025-12-22 08:34:08";"2025-12-22 09:30:47"
+"54";"1";"Peringatan Kontrak Expired: TEST/AUTO/001";"Kontrak TEST/AUTO/001 untuk Test Client akan expired dalam 0 hari";;"bell";"contract";"56";"http://localhost/optima/public/marketing/contracts/view/56";NULL;"information";NULL;NULL;"1";"2025-12-22 09:30:47";"2025-12-22 08:34:08";"2025-12-22 09:30:47"
+"55";"1";"charger Dilepas: ";"charger  telah dilepas dari unit ";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/32";NULL;"information";NULL;NULL;"1";"2025-12-22 13:54:00";"2025-12-22 10:23:46";"2025-12-22 13:54:00"
+"56";"1";"charger Dipasang: ";"charger  telah dipasang ke unit ";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/unit/view/7";NULL;"information";NULL;NULL;"1";"2025-12-22 13:25:56";"2025-12-22 10:24:38";"2025-12-22 13:25:56"
+"57";"1";"charger Swap:  -> ";"charger  di-swap dari unit  ke unit ";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/46";NULL;"information";NULL;NULL;"1";"2025-12-22 13:25:44";"2025-12-22 13:25:01";"2025-12-22 13:25:44"
+"58";"1";"battery Swap:  ? ";"battery () di-swap dari unit  ke unit . Alasan: ";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/26";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 14:31:52";"2025-12-22 21:39:50"
+"59";"1";"battery Swap: 5 ? 3";"battery ( ) di-swap dari unit 5 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/25";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 15:32:49";"2025-12-22 21:39:50"
+"60";"1";"attachment Swap: 1 ? 3";"attachment ( ) di-swap dari unit 1 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/52";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 15:37:14";"2025-12-22 21:39:50"
+"61";"1";"attachment Swap: 3 ? 3";"attachment (CASCADE 77F-RCP-01C PAPER ROLL CLAMP) di-swap dari unit 3 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/36";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 15:55:25";"2025-12-22 21:39:50"
+"62";"1";"battery Swap: 11 ? 3";"battery (JUNGHEINRICH (JHR) 24V / 205AH (2EPZS250L) Lead Acid) di-swap dari unit 11 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/21";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 15:55:56";"2025-12-22 21:39:50"
+"63";"1";"charger Swap: 19 ? 3";"charger (STILL ECOTRON XM(80V / 125A)) di-swap dari unit 19 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/6";NULL;"information";NULL;NULL;"1";"2025-12-22 21:39:50";"2025-12-22 15:56:16";"2025-12-22 21:39:50"
+"64";"1";"attachment Swap: 16 ? 3";"attachment (HELI ZJ33H-B5 PAPER roll CLAMP) di-swap dari unit 16 ke unit 3. Alasan: Emergency - attachment patah";"warning";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachment/view/51";NULL;"information";NULL;NULL;"1";"2025-12-23 02:31:32";"2025-12-22 16:28:59";"2025-12-23 02:31:32"
+"65";"1";"PO Terverifikasi: PO/TERBARU/9923179123";"Purchase Order PO/TERBARU/9923179123 telah terverifikasi";"success";"bell";"purchasing";"160";"http://localhost/optima/public/warehouse/purchase-orders";NULL;"information";NULL;NULL;"1";"2025-12-23 02:38:00";"2025-12-23 01:21:36";"2025-12-23 02:38:00"
+"66";"1";"Peringatan Kontrak Expired: KNTRK/2209/0001";"Kontrak KNTRK/2209/0001 untuk Unknown akan expired dalam 0 hari";;"bell";"contract";"54";"http://localhost/optima/public/marketing/contracts/view/54";NULL;"information";NULL;NULL;"1";"2025-12-23 10:24:33";"2025-12-23 10:08:02";"2025-12-23 10:24:33"
+"67";"1";"Peringatan Kontrak Expired: SML/DS/121025";"Kontrak SML/DS/121025 untuk Test akan expired dalam 0 hari";;"bell";"contract";"55";"http://localhost/optima/public/marketing/contracts/view/55";NULL;"information";NULL;NULL;"1";"2025-12-23 10:24:33";"2025-12-23 10:08:02";"2025-12-23 10:24:33"
+"68";"1";"Peringatan Kontrak Expired: TEST/AUTO/001";"Kontrak TEST/AUTO/001 untuk Test Client akan expired dalam 0 hari";;"bell";"contract";"56";"http://localhost/optima/public/marketing/contracts/view/56";NULL;"information";NULL;NULL;"1";"2025-12-23 10:24:33";"2025-12-23 10:08:02";"2025-12-23 10:24:33"
+"70";"1";"Kontrak Baru: test123";"Kontrak test123 telah dibuat untuk Test - Gudang Perawang dengan nilai ";"success";"bell";"contract";"66";"http://localhost/optima/public/marketing/contracts/view/66";NULL;"information";NULL;NULL;"1";"2025-12-23 13:44:27";"2025-12-23 13:38:22";"2025-12-23 13:44:27"
+"71";"1";"Purchase Order Baru Dibuat";"PO  telah dibuat untuk supplier . Tipe: . Nilai Total: . Tanggal Kirim: . Dibuat oleh: ";"info";"bell";"po";"162";"http://localhost/optima/public/purchasing/detail/162";NULL;"information";NULL;NULL;"1";"2026-01-27 14:21:00";"2026-01-27 14:09:38";"2026-01-27 14:21:00"
+"72";"1";"Delivery Baru: 11223344";"Delivery 11223344 telah dibuat untuk ALFIYAN JAYA STEEL";"info";"bell";"purchasing";"23";"http://localhost/optima/public/purchasing/delivery-detail/23";NULL;"information";NULL;NULL;"1";"2026-01-27 14:20:29";"2026-01-27 14:19:49";"2026-01-27 14:20:29"
+"73";"1";"Purchase Order Baru Dibuat";"PO  telah dibuat untuk supplier . Tipe: . Nilai Total: . Tanggal Kirim: . Dibuat oleh: ";"info";"bell";"po";"163";"http://localhost/optima/public/purchasing/detail/163";NULL;"information";NULL;NULL;"1";"2026-01-27 15:32:15";"2026-01-27 14:37:24";"2026-01-27 15:32:15"
+"74";"1";"Status Surat Jalan Berubah";"Status Surat Jalan 11223344 berubah dari Received menjadi Received. PO: PO/SML/0082-2026. Supplier: ALFIYAN JAYA STEEL. Diubah oleh: System pada ";"warning";"bell";"purchasing";"23";"http://localhost/optima/public/purchasing/delivery-detail/23";NULL;"information";NULL;NULL;"1";"2026-01-27 15:32:15";"2026-01-27 15:31:43";"2026-01-27 15:32:15"
+"75";"1";"PO Terverifikasi: PO/SML/0082-2026";"Purchase Order PO/SML/0082-2026 telah terverifikasi";"success";"bell";"purchasing";"162";"http://localhost/optima/public/warehouse/purchase-orders";NULL;"information";NULL;NULL;"1";"2026-01-28 16:00:43";"2026-01-28 14:33:03";"2026-01-28 16:00:43"
+"76";"1";"PO Terverifikasi: PO/SML/0082-2026";"Purchase Order PO/SML/0082-2026 telah terverifikasi";"success";"bell";"purchasing";"162";NULL;NULL;"information";NULL;NULL;"1";"2026-01-28 16:00:43";"2026-01-28 14:56:34";"2026-01-28 16:00:43"
+"77";"1";"PO Terverifikasi: PO/SML/0082-2026";"Purchase Order PO/SML/0082-2026 telah terverifikasi";"success";"bell";"purchasing";"162";NULL;NULL;"information";NULL;NULL;"1";"2026-01-28 16:00:43";"2026-01-28 15:33:37";"2026-01-28 16:00:43"
+"79";"1";"Customer Baru: ADIT";"Customer baru ADIT telah ditambahkan. CP: , Phone: 082136033596";"info";"bell";"customer";"15";NULL;NULL;"information";NULL;NULL;"1";"2026-01-28 16:39:34";"2026-01-28 16:36:46";"2026-01-28 16:39:34"
+"80";"1";"Lokasi Baru: ADIT";"Lokasi baru ""Head Office"" telah ditambahkan untuk customer ADIT";"info";"bell";"customer";"24";NULL;NULL;"information";NULL;NULL;"1";"2026-01-28 16:39:34";"2026-01-28 16:36:46";"2026-01-28 16:39:34"
+"81";"1";"PDI Completed - SPK Ready - SPK/202510/001";"PDI has been completed for SPK SPK/202510/001. Unit is now READY for delivery. Customer: PT LG Indonesia. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-01-29 15:00:47";"2026-01-29 14:45:29";"2026-01-29 15:00:47"
+"82";"1";"SPK Siap untuk Operasional";"SPK {nomor_spk} untuk customer {pelanggan} sudah siap ({jumlah_unit} unit telah selesai PDI). Silakan buat Delivery Instruction.";"success";"bell";"spk";"57";"http://localhost/optima/public/operational/spk/detail/57";NULL;"information";NULL;NULL;"1";"2026-01-29 15:00:47";"2026-01-29 14:45:29";"2026-01-29 15:00:47"
+"83";"1";"DI Baru: DI/202601/001";"Delivery Instruction DI/202601/001 telah dibuat oleh  untuk customer . Segera proses.";"info";"bell";"delivery";"147";"http://localhost/optima/public/operational/delivery/detail/147";NULL;"information";NULL;NULL;"1";"2026-01-29 15:00:47";"2026-01-29 14:47:18";"2026-01-29 15:00:47"
+"84";"1";"Delivery Assigned: DI/202601/001";"Delivery DI/202601/001 telah di-assign kepada Anda";"warning";"bell";"operational";"147";"http://localhost/optima/public/operational/delivery/147";NULL;"information";NULL;NULL;"1";"2026-01-29 15:00:47";"2026-01-29 14:47:55";"2026-01-29 15:00:47"
+"86";"1";"Quotation Terkirim: QUO/2026/01/0001";"Quotation QUO/2026/01/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"10";NULL;NULL;"information";NULL;NULL;"1";"2026-01-29 16:23:52";"2026-01-29 15:07:43";"2026-01-29 16:23:52"
+"87";"1";"Penugasan Area Baru: ";" ditugaskan ke area JATIM untuk customer . Mulai: 2026-01-29. Selesai: ";"info";"bell";"service_area";"57";"http://localhost/optima/public/service/area-management";NULL;"information";NULL;NULL;"1";"2026-01-29 16:23:52";"2026-01-29 15:15:46";"2026-01-29 16:23:52"
+"88";"1";"battery Dipasang: 4";"battery (REMICO 24V / 250AH AQUAMATIC (12/2EPzS250L) Lead Acid) telah dipasang ke unit 4";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/unit/view/4";NULL;"information";NULL;NULL;"1";"2026-01-29 16:23:52";"2026-01-29 15:59:19";"2026-01-29 16:23:52"
+"89";"1";"attachment Swap: 20 ? ";"attachment (HELI ZJ22H-B5 PAPER ROLL CLAMP) di-swap dari unit 20 ke unit . Alasan: Unit maintenance";"warning";"bell";"inventory";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-01-29 16:23:52";"2026-01-29 16:00:21";"2026-01-29 16:23:52"
+"90";"1";"PO Terverifikasi: PO/SML/0082-2026";"Purchase Order PO/SML/0082-2026 telah terverifikasi";"success";"bell";"purchasing";"162";NULL;NULL;"information";NULL;NULL;"1";"2026-01-29 16:23:52";"2026-01-29 16:11:16";"2026-01-29 16:23:52"
+"92";"1";"Quotation Terkirim: QUO/2026/01/0002";"Quotation QUO/2026/01/0002 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"11";NULL;NULL;"information";NULL;NULL;"1";"2026-01-30 13:57:33";"2026-01-30 13:23:50";"2026-01-30 13:57:33"
+"94";"1";"Kontrak Baru: awdawdawdaw";"Kontrak awdawdawdaw telah dibuat untuk PT TEXASAAAAAA - WORKSHOP 1 dengan nilai ";"success";"bell";"contract";"67";NULL;NULL;"information";NULL;NULL;"1";"2026-01-30 13:57:33";"2026-01-30 13:57:14";"2026-01-30 13:57:33"
+"96";"1";"Quotation Terkirim: QUO/2026/01/0003";"Quotation QUO/2026/01/0003 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"12";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 01:52:42";"2026-01-30 14:29:54";"2026-01-31 01:52:42"
+"98";"1";"Quotation Terkirim: QUO/2026/01/0003";"Quotation QUO/2026/01/0003 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"13";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 01:52:42";"2026-01-30 15:48:13";"2026-01-31 01:52:42"
+"100";"1";"Quotation Terkirim: QUO/2026/01/0003";"Quotation QUO/2026/01/0003 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"14";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 03:46:02";"2026-01-31 01:54:29";"2026-01-31 03:46:02"
+"102";"1";"Kontrak Baru: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";"Kontrak aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa telah dibuat untuk PT SEKAWAN PUTRA PRATAMA - WORKSHOP 1 dengan nilai ";"success";"bell";"contract";"68";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 03:46:02";"2026-01-31 03:45:14";"2026-01-31 03:46:02"
+"104";"1";"Quotation Terkirim: QUO/2026/01/0004";"Quotation QUO/2026/01/0004 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"15";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:45:50";"2026-01-31 04:00:20";"2026-01-31 04:45:50"
+"106";"1";"Kontrak Baru: MAMA98888";"Kontrak MAMA98888 telah dibuat untuk SEKAWAN PUTRA PRATAMA - WORKSHOP 1 dengan nilai ";"success";"bell";"contract";"69";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:45:50";"2026-01-31 04:01:21";"2026-01-31 04:45:50"
+"108";"1";"Quotation Terkirim: QUO/2026/01/0001";"Quotation QUO/2026/01/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"16";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:46:31";"2026-01-31 04:54:25"
+"110";"1";"Kontrak Baru: ADIDIDI";"Kontrak ADIDIDI telah dibuat untuk SEKAWAN PUTRA PRATAMA - WORKSHOP 1 dengan nilai ";"success";"bell";"contract";"70";NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:47:32";"2026-01-31 04:54:25"
+"111";"1";"Unit Preparation Completed - SPK/202601/002";"Unit preparation has been completed for SPK SPK/202601/002. Customer: SEKAWAN PUTRA PRATAMA. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:49:34";"2026-01-31 04:54:25"
+"112";"1";"Fabrication Completed - SPK/202601/002";"Fabrication has been completed for SPK SPK/202601/002. Customer: SEKAWAN PUTRA PRATAMA. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:49:57";"2026-01-31 04:54:25"
+"113";"1";"PDI Completed - SPK Ready - SPK/202601/002";"PDI has been completed for SPK SPK/202601/002. Unit is now READY for delivery. Customer: SEKAWAN PUTRA PRATAMA. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:50:16";"2026-01-31 04:54:25"
+"114";"1";"SPK Siap untuk Operasional";"SPK {nomor_spk} untuk customer {pelanggan} sudah siap ({jumlah_unit} unit telah selesai PDI). Silakan buat Delivery Instruction.";"success";"bell";"spk";"100";"http://localhost/optima/public/operational/spk/detail/100";NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:50:16";"2026-01-31 04:54:25"
+"115";"1";"DI Baru: DI/202601/002";"Delivery Instruction DI/202601/002 telah dibuat oleh  untuk customer . Segera proses.";"info";"bell";"delivery";"148";"http://localhost/optima/public/operational/delivery/detail/148";NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:50:30";"2026-01-31 04:54:25"
+"116";"1";"Delivery Assigned: DI/202601/002";"Delivery DI/202601/002 telah di-assign kepada Anda";"warning";"bell";"operational";"148";"http://localhost/optima/public/operational/delivery/148";NULL;"information";NULL;NULL;"1";"2026-01-31 04:54:25";"2026-01-31 04:51:03";"2026-01-31 04:54:25"
+"117";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-02 02:54:45";"success";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 03:00:10";"2026-02-02 02:54:45";"2026-02-02 03:00:10"
+"118";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 03:00:10";"2026-02-02 02:54:45";"2026-02-02 03:00:10"
+"119";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: - -> -
+- Tipe Unit: - -> -
+- Model Unit: - -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 03:00:10";"2026-02-02 02:54:45";"2026-02-02 03:00:10"
+"120";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: - -> -
+- Tipe Unit: - -> -
+- Model Unit: - -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 03:00:10";"2026-02-02 02:54:45";"2026-02-02 03:00:10"
+"121";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: - -> -
+- Tipe Unit: - -> -
+- Model Unit: - -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin
+
+Total 5 perubahan terdeteksi.";"warning";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 03:00:10";"2026-02-02 02:54:45";"2026-02-02 03:00:10"
+"122";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-02 04:36:47";"success";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 04:48:38";"2026-02-02 04:36:47";"2026-02-02 04:48:38"
+"123";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 04:48:38";"2026-02-02 04:36:47";"2026-02-02 04:48:38"
+"124";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit:  -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 04:48:38";"2026-02-02 04:36:47";"2026-02-02 04:48:38"
+"125";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit:  -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 04:48:38";"2026-02-02 04:36:47";"2026-02-02 04:48:38"
+"126";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit:  -> -
+- Attachment: - -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin
+
+Total 5 perubahan terdeteksi.";"warning";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 04:48:38";"2026-02-02 04:36:47";"2026-02-02 04:48:38"
+"127";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-02 04:52:28";"success";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 05:18:05";"2026-02-02 04:52:28";"2026-02-02 05:18:05"
+"128";"1";"Unit Verification Disimpan - WO: 15098";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 05:18:05";"2026-02-02 04:52:28";"2026-02-02 05:18:05"
+"129";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER roll CLAMP HELI ZJ33H-B5 -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 05:18:05";"2026-02-02 04:52:28";"2026-02-02 05:18:05"
+"130";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER roll CLAMP HELI ZJ33H-B5 -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 05:18:05";"2026-02-02 04:52:28";"2026-02-02 05:18:05"
+"131";"1";"Verifikasi Unit WO: 15098";"Perubahan data yang dilakukan pada No Unit 3:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER roll CLAMP HELI ZJ33H-B5 -> -
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+
+Oleh: superadmin
+
+Total 5 perubahan terdeteksi.";"warning";"bell";"work_order";"47";"http://localhost/optima/public/service/work-orders/view/47";NULL;"information";NULL;NULL;"1";"2026-02-02 05:18:05";"2026-02-02 04:52:28";"2026-02-02 05:18:05"
+"132";"1";"Unit Verification Disimpan - WO: 15076";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-02 06:37:35";"success";"bell";"service";"23";"http://localhost/optima/public/service/work-orders/view/23";NULL;"information";NULL;NULL;"1";"2026-02-02 06:57:52";"2026-02-02 06:37:35";"2026-02-02 06:57:52"
+"133";"1";"Unit Verification Disimpan - WO: 15076";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"23";"http://localhost/optima/public/service/work-orders/view/23";NULL;"information";NULL;NULL;"1";"2026-02-02 06:57:52";"2026-02-02 06:37:35";"2026-02-02 06:57:52"
+"134";"1";"Verifikasi Unit WO: 15076";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> -
+- Charger: - -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"23";"http://localhost/optima/public/service/work-orders/view/23";NULL;"information";NULL;NULL;"1";"2026-02-02 06:57:52";"2026-02-02 06:37:35";"2026-02-02 06:57:52"
+"135";"1";"Verifikasi Unit WO: 15076";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> -
+- Charger: - -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"23";"http://localhost/optima/public/service/work-orders/view/23";NULL;"information";NULL;NULL;"1";"2026-02-02 06:57:52";"2026-02-02 06:37:35";"2026-02-02 06:57:52"
+"136";"1";"Verifikasi Unit WO: 15076";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> -
+- Charger: - -> -
+
+Oleh: superadmin
+
+Total 5 perubahan terdeteksi.";"warning";"bell";"work_order";"23";"http://localhost/optima/public/service/work-orders/view/23";NULL;"information";NULL;NULL;"1";"2026-02-02 06:57:52";"2026-02-02 06:37:35";"2026-02-02 06:57:52"
+"137";"1";"Unit Verification Disimpan - WO: 15075";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-02 16:30:36";"success";"bell";"service";"22";"http://localhost/optima/public/service/work-orders/view/22";NULL;"information";NULL;NULL;"1";"2026-02-04 09:26:42";"2026-02-02 16:30:36";"2026-02-04 09:26:42"
+"138";"1";"Unit Verification Disimpan - WO: 15075";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"22";"http://localhost/optima/public/service/work-orders/view/22";NULL;"information";NULL;NULL;"1";"2026-02-04 09:26:42";"2026-02-02 16:30:36";"2026-02-04 09:26:42"
+"139";"1";"Verifikasi Unit WO: 15075";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: - -> STILL ECOTRON XM(80V / 125A)
+- Baterai: - -> JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750)
+
+Oleh: superadmin";"info";"bell";"work_order";"22";"http://localhost/optima/public/service/work-orders/view/22";NULL;"information";NULL;NULL;"1";"2026-02-04 09:26:42";"2026-02-02 16:30:36";"2026-02-04 09:26:42"
+"140";"1";"Verifikasi Unit WO: 15075";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: - -> STILL ECOTRON XM(80V / 125A)
+- Baterai: - -> JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750)
+
+Oleh: superadmin";"info";"bell";"work_order";"22";"http://localhost/optima/public/service/work-orders/view/22";NULL;"information";NULL;NULL;"1";"2026-02-04 09:26:42";"2026-02-02 16:30:36";"2026-02-04 09:26:42"
+"141";"1";"Verifikasi Unit WO: 15075";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: - -> STILL ECOTRON XM(80V / 125A)
+- Baterai: - -> JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750)
+
+Oleh: superadmin
+
+Total 6 perubahan terdeteksi.";"warning";"bell";"work_order";"22";"http://localhost/optima/public/service/work-orders/view/22";NULL;"information";NULL;NULL;"1";"2026-02-04 09:26:42";"2026-02-02 16:30:36";"2026-02-04 09:26:42"
+"142";"1";"Purchase Order Baru Dibuat";"PO  telah dibuat untuk supplier . Tipe: . Nilai Total: . Tanggal Kirim: . Dibuat oleh: ";"info";"bell";"po";"164";"http://localhost/optima/public/purchasing/detail/164";NULL;"information";NULL;NULL;"1";"2026-02-04 15:55:11";"2026-02-04 09:35:44";"2026-02-04 15:55:11"
+"144";"1";"Quotation Terkirim: QUO/2026/02/0001";"Quotation QUO/2026/02/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"17";NULL;NULL;"information";NULL;NULL;"1";"2026-02-04 15:55:11";"2026-02-04 10:08:35";"2026-02-04 15:55:11"
+"145";"1";"Unit Verification Disimpan - WO: 15074";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-06 16:39:13";"success";"bell";"service";"20";"http://localhost/optima/public/service/work-orders/view/20";NULL;"information";NULL;NULL;"1";"2026-02-06 16:39:35";"2026-02-06 16:39:13";"2026-02-06 16:39:35"
+"146";"1";"Unit Verification Disimpan - WO: 15074";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"20";"http://localhost/optima/public/service/work-orders/view/20";NULL;"information";NULL;NULL;"1";"2026-02-06 16:39:35";"2026-02-06 16:39:13";"2026-02-06 16:39:35"
+"147";"1";"Verifikasi Unit WO: 15074";"Perubahan data yang dilakukan pada No Unit 12:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Alat Berat -> -
+- Model Unit: M420MSDTT -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 24V / 205AH (2EPZS250L) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"20";"http://localhost/optima/public/service/work-orders/view/20";NULL;"information";NULL;NULL;"1";"2026-02-06 16:39:35";"2026-02-06 16:39:13";"2026-02-06 16:39:35"
+"148";"1";"Verifikasi Unit WO: 15074";"Perubahan data yang dilakukan pada No Unit 12:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Alat Berat -> -
+- Model Unit: M420MSDTT -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 24V / 205AH (2EPZS250L) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"20";"http://localhost/optima/public/service/work-orders/view/20";NULL;"information";NULL;NULL;"1";"2026-02-06 16:39:35";"2026-02-06 16:39:13";"2026-02-06 16:39:35"
+"149";"1";"Verifikasi Unit WO: 15074";"Perubahan data yang dilakukan pada No Unit 12:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Alat Berat -> -
+- Model Unit: M420MSDTT -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 24V / 205AH (2EPZS250L) -> -
+
+Oleh: superadmin
+
+Total 6 perubahan terdeteksi.";"warning";"bell";"work_order";"20";"http://localhost/optima/public/service/work-orders/view/20";NULL;"information";NULL;NULL;"1";"2026-02-06 16:39:35";"2026-02-06 16:39:13";"2026-02-06 16:39:35"
+"150";"1";"Unit Verification Disimpan - WO: 15073";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-06 16:43:55";"success";"bell";"service";"19";"http://localhost/optima/public/service/work-orders/view/19";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:43:55";"2026-02-07 22:19:57"
+"151";"1";"Unit Verification Disimpan - WO: 15073";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"19";"http://localhost/optima/public/service/work-orders/view/19";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:43:55";"2026-02-07 22:19:57"
+"152";"1";"Verifikasi Unit WO: 15073";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> PAPER ROLL CLAMP CASCADE 77F-RCP-01C
+- Baterai: REMICO 24V / 250AH AQUAMATIC (12/2EPzS250L) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"19";"http://localhost/optima/public/service/work-orders/view/19";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:43:55";"2026-02-07 22:19:57"
+"153";"1";"Verifikasi Unit WO: 15073";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> PAPER ROLL CLAMP CASCADE 77F-RCP-01C
+- Baterai: REMICO 24V / 250AH AQUAMATIC (12/2EPzS250L) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"19";"http://localhost/optima/public/service/work-orders/view/19";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:43:56";"2026-02-07 22:19:57"
+"154";"1";"Verifikasi Unit WO: 15073";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> PAPER ROLL CLAMP CASCADE 77F-RCP-01C
+- Baterai: REMICO 24V / 250AH AQUAMATIC (12/2EPzS250L) -> -
+
+Oleh: superadmin
+
+Total 5 perubahan terdeteksi.";"warning";"bell";"work_order";"19";"http://localhost/optima/public/service/work-orders/view/19";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:43:56";"2026-02-07 22:19:57"
+"155";"1";"Unit Verification Disimpan - WO: 15072";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-06 16:50:36";"success";"bell";"service";"18";"http://localhost/optima/public/service/work-orders/view/18";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:50:36";"2026-02-07 22:19:57"
+"156";"1";"Unit Verification Disimpan - WO: 15072";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"18";"http://localhost/optima/public/service/work-orders/view/18";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:50:36";"2026-02-07 22:19:57"
+"157";"1";"Verifikasi Unit WO: 15072";"Perubahan data yang dilakukan pada No Unit 2:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: LPE200 -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"18";"http://localhost/optima/public/service/work-orders/view/18";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:50:36";"2026-02-07 22:19:57"
+"158";"1";"Verifikasi Unit WO: 15072";"Perubahan data yang dilakukan pada No Unit 2:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: LPE200 -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"18";"http://localhost/optima/public/service/work-orders/view/18";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:50:36";"2026-02-07 22:19:57"
+"159";"1";"Verifikasi Unit WO: 15072";"Perubahan data yang dilakukan pada No Unit 2:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: LPE200 -> -
+
+Oleh: superadmin
+
+Total 3 perubahan terdeteksi.";"warning";"bell";"work_order";"18";"http://localhost/optima/public/service/work-orders/view/18";NULL;"information";NULL;NULL;"1";"2026-02-07 22:19:57";"2026-02-06 16:50:36";"2026-02-07 22:19:57"
+"160";"1";"Quotation Terkirim: QUO/2026/02/0003";"Quotation QUO/2026/02/0003 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"20";NULL;NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-07 22:21:44";"2026-02-08 02:32:26"
+"161";"1";"Quotation Terkirim: QUO/2026/02/0004";"Quotation QUO/2026/02/0004 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"21";NULL;NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-07 22:54:30";"2026-02-08 02:32:26"
+"162";"1";"Unit Verification Disimpan - WO: 15071";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-08 00:44:55";"success";"bell";"service";"17";"http://localhost/optima/public/service/work-orders/view/17";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 00:44:55";"2026-02-08 02:32:26"
+"163";"1";"Unit Verification Disimpan - WO: 15071";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"17";"http://localhost/optima/public/service/work-orders/view/17";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 00:44:55";"2026-02-08 02:32:26"
+"164";"1";"Verifikasi Unit WO: 15071";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER ROLL CLAMP CASCADE 77F-RCP-01C -> SIDE SHIFTER CASCADE 50D-BCS-64A
+
+Oleh: superadmin";"info";"bell";"work_order";"17";"http://localhost/optima/public/service/work-orders/view/17";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 00:44:55";"2026-02-08 02:32:26"
+"165";"1";"Verifikasi Unit WO: 15071";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER ROLL CLAMP CASCADE 77F-RCP-01C -> SIDE SHIFTER CASCADE 50D-BCS-64A
+
+Oleh: superadmin";"info";"bell";"work_order";"17";"http://localhost/optima/public/service/work-orders/view/17";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 00:44:55";"2026-02-08 02:32:26"
+"166";"1";"Verifikasi Unit WO: 15071";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: PAPER ROLL CLAMP CASCADE 77F-RCP-01C -> SIDE SHIFTER CASCADE 50D-BCS-64A
+
+Oleh: superadmin
+
+Total 4 perubahan terdeteksi.";"warning";"bell";"work_order";"17";"http://localhost/optima/public/service/work-orders/view/17";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 00:44:55";"2026-02-08 02:32:26"
+"167";"1";"Unit Verification Disimpan - WO: 15070";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-08 01:43:53";"success";"bell";"service";"15";"http://localhost/optima/public/service/work-orders/view/15";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:43:53";"2026-02-08 02:32:26"
+"168";"1";"Unit Verification Disimpan - WO: 15070";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"15";"http://localhost/optima/public/service/work-orders/view/15";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:43:53";"2026-02-08 02:32:26"
+"169";"1";"Verifikasi Unit WO: 15070";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: SIDE SHIFTER CASCADE 50D-BCS-64A -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"15";"http://localhost/optima/public/service/work-orders/view/15";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:43:53";"2026-02-08 02:32:26"
+"170";"1";"Verifikasi Unit WO: 15070";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: SIDE SHIFTER CASCADE 50D-BCS-64A -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"15";"http://localhost/optima/public/service/work-orders/view/15";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:43:53";"2026-02-08 02:32:26"
+"171";"1";"Verifikasi Unit WO: 15070";"Perubahan data yang dilakukan pada No Unit 4:
+- Departemen: GASOLINE -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: SIDE SHIFTER CASCADE 50D-BCS-64A -> -
+
+Oleh: superadmin
+
+Total 4 perubahan terdeteksi.";"warning";"bell";"work_order";"15";"http://localhost/optima/public/service/work-orders/view/15";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:43:53";"2026-02-08 02:32:26"
+"172";"1";"Unit Verification Disimpan - WO: 15069";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin
+Tanggal: 2026-02-08 01:53:41";"success";"bell";"service";"14";"http://localhost/optima/public/service/work-orders/view/14";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:53:41";"2026-02-08 02:32:26"
+"173";"1";"Unit Verification Disimpan - WO: 15069";"Unit  telah diverifikasi.
+
+Status: COMPLETED
+Oleh: superadmin";"info";"bell";"service";"14";"http://localhost/optima/public/service/work-orders/view/14";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:53:41";"2026-02-08 02:32:26"
+"174";"1";"Verifikasi Unit WO: 15069";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"14";"http://localhost/optima/public/service/work-orders/view/14";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:53:41";"2026-02-08 02:32:26"
+"175";"1";"Verifikasi Unit WO: 15069";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750) -> -
+
+Oleh: superadmin";"info";"bell";"work_order";"14";"http://localhost/optima/public/service/work-orders/view/14";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:53:41";"2026-02-08 02:32:26"
+"176";"1";"Verifikasi Unit WO: 15069";"Perubahan data yang dilakukan pada No Unit 1:
+- Departemen: ELECTRIC -> -
+- Tipe Unit: Forklift -> -
+- Model Unit: EP20CA -> -
+- Attachment: - -> SIDE SHIFTER CASCADE 50D-BCS-64A
+- Charger: STILL ECOTRON XM(80V / 125A) -> -
+- Baterai: JUNGHEINRICH (JHR) 48V / 750AH AQUAMATIC (6PZS750) -> -
+
+Oleh: superadmin
+
+Total 6 perubahan terdeteksi.";"warning";"bell";"work_order";"14";"http://localhost/optima/public/service/work-orders/view/14";NULL;"information";NULL;NULL;"1";"2026-02-08 02:32:26";"2026-02-08 01:53:41";"2026-02-08 02:32:26"
+"177";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:18:46";"2026-02-11 17:14:27";"2026-02-11 17:18:46"
+"178";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:18:46";"2026-02-11 17:14:45";"2026-02-11 17:18:46"
+"179";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:18:46";"2026-02-11 17:16:44";"2026-02-11 17:18:46"
+"180";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:22:21";"2026-02-11 17:44:25"
+"181";"1";"Delivery Assigned: DI/202509/TEST001";"Delivery DI/202509/TEST001 telah di-assign kepada Anda";"warning";"bell";"operational";"100";"http://localhost/optima/public/operational/delivery/100";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:22:28";"2026-02-11 17:44:25"
+"182";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:25:06";"2026-02-11 17:44:25"
+"183";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:25:11";"2026-02-11 17:44:25"
+"184";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:25:16";"2026-02-11 17:44:25"
+"185";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:33:06";"2026-02-11 17:44:25"
+"186";"1";"Delivery Assigned: DI/202509/TEST001";"Delivery DI/202509/TEST001 telah di-assign kepada Anda";"warning";"bell";"operational";"100";"http://localhost/optima/public/operational/delivery/100";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:33:23";"2026-02-11 17:44:25"
+"187";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:33:51";"2026-02-11 17:44:25"
+"188";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:37:34";"2026-02-11 17:44:25"
+"189";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-11 17:44:25";"2026-02-11 17:40:00";"2026-02-11 17:44:25"
+"190";"1";"Delivery Assigned: DI/202512/001";"Delivery DI/202512/001 telah di-assign kepada Anda";"warning";"bell";"operational";"144";"http://localhost/optima/public/operational/delivery/144";NULL;"information";NULL;NULL;"1";"2026-02-12 08:21:03";"2026-02-11 17:53:00";"2026-02-12 08:21:03"
+"191";"1";"battery Dipasang: 2";"battery (JUNGHEINRICH (JHR) 24V / 205AH (2EPZS250L) Lead Acid) telah dipasang ke unit 2";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/unit/view/2";NULL;"information";NULL;NULL;"1";"2026-02-12 15:01:29";"2026-02-12 13:31:22";"2026-02-12 15:01:29"
+"192";"1";"charger Dipasang: 2";"charger (HAWKER SDC-ECO(24V / 60A)) telah dipasang ke unit 2";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/unit/view/2";NULL;"information";NULL;NULL;"1";"2026-02-12 15:01:29";"2026-02-12 13:31:32";"2026-02-12 15:01:29"
+"193";"1";"Unit Preparation Completed - SPK/202602/004";"Unit preparation has been completed for SPK SPK/202602/004. Customer: PT AMANAH. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-02-13 13:23:31";"2026-02-12 15:14:19";"2026-02-13 13:23:31"
+"194";"1";"Fabrication Completed - SPK/202510/002";"Fabrication has been completed for SPK SPK/202510/002. Customer: Sarana Mitra Luas. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-02-13 13:23:31";"2026-02-13 08:48:18";"2026-02-13 13:23:31"
+"195";"1";"Quotation Terkirim: QUO/2026/02/0005";"Quotation QUO/2026/02/0005 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"22";NULL;NULL;"information";NULL;NULL;"1";"2026-02-13 21:11:12";"2026-02-13 14:00:00";"2026-02-13 21:11:12"
+"196";"1";" Dilepas: ";" () telah dilepas dari unit ";"info";"bell";"inventory";NULL;"http://localhost/optima/public/warehouse/attachments";NULL;"information";NULL;NULL;"1";"2026-02-15 21:58:02";"2026-02-15 00:23:57";"2026-02-15 21:58:02"
+"197";"1";"Quotation Terkirim: QUO/2026/02/0001";"Quotation QUO/2026/02/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"23";NULL;NULL;"information";NULL;NULL;"1";"2026-02-24 10:49:42";"2026-02-19 14:04:07";"2026-02-24 10:49:42"
+"206";"1";"Delivery Dalam Perjalanan: ";"Delivery  sedang dalam perjalanan ke ";"info";"bell";"operational";"0";"http://localhost/optima/public/operational/delivery/detail/";"{""id"": null, ""eta"": """", ""module"": ""operational"", ""ref_id"": 0, ""customer"": """", ""event_code"": ""delivery_in_transit"", ""destination"": """", ""driver_name"": """", ""triggered_at"": ""2026-02-28 12:13:40"", ""customer_name"": """", ""nomor_delivery"": """", ""delivery_number"": """", ""current_location"": """"}";"information";NULL;NULL;"1";"2026-03-02 20:56:25";"2026-02-28 12:13:40";"2026-03-02 20:56:25"
+"208";"1";"Delivery Sampai: ";"Delivery  telah sampai di lokasi ";"success";"bell";"operational";"0";"http://localhost/optima/public/operational/delivery/detail/";"{""id"": null, ""module"": ""operational"", ""ref_id"": 0, ""customer"": """", ""location"": """", ""event_code"": ""delivery_arrived"", ""driver_name"": """", ""arrival_time"": ""2026-02-28 12:19:48"", ""triggered_at"": ""2026-02-28 12:19:48"", ""customer_name"": """", ""nomor_delivery"": """", ""delivery_number"": """"}";"information";NULL;NULL;"1";"2026-03-02 20:56:25";"2026-02-28 12:19:48";"2026-03-02 20:56:25"
+"209";"1";"Delivery Dalam Perjalanan: ";"Delivery  sedang dalam perjalanan ke ";"info";"bell";"operational";"0";"http://localhost/optima/public/operational/delivery/detail/";"{""id"": null, ""eta"": """", ""module"": ""operational"", ""ref_id"": 0, ""customer"": """", ""event_code"": ""delivery_in_transit"", ""destination"": """", ""driver_name"": """", ""triggered_at"": ""2026-02-28 12:35:01"", ""customer_name"": """", ""nomor_delivery"": """", ""delivery_number"": """", ""current_location"": """"}";"information";NULL;NULL;"1";"2026-03-02 20:56:25";"2026-02-28 12:35:01";"2026-03-02 20:56:25"
+"210";"1";"Delivery Sampai: ";"Delivery  telah sampai di lokasi ";"success";"bell";"operational";"0";"http://localhost/optima/public/operational/delivery/detail/";"{""id"": null, ""module"": ""operational"", ""ref_id"": 0, ""customer"": """", ""location"": """", ""event_code"": ""delivery_arrived"", ""driver_name"": """", ""arrival_time"": ""2026-02-28 12:35:08"", ""triggered_at"": ""2026-02-28 12:35:08"", ""customer_name"": """", ""nomor_delivery"": """", ""delivery_number"": """"}";"information";NULL;NULL;"1";"2026-03-02 20:56:25";"2026-02-28 12:35:08";"2026-03-02 20:56:25"
+"211";"34";"Quotation Terkirim: QUO/2026/03/0001";"Quotation QUO/2026/03/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"24";NULL;NULL;"information";NULL;NULL;"0";NULL;"2026-03-10 14:29:43";"2026-03-10 14:29:43"
+"212";"1";"Quotation Terkirim: QUO/2026/03/0001";"Quotation QUO/2026/03/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"24";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 14:29:43";"2026-03-11 08:23:33"
+"213";"34";"Quotation Terkirim: QUO/2026/03/0001";"Quotation QUO/2026/03/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"24";NULL;NULL;"information";NULL;NULL;"0";NULL;"2026-03-10 14:33:53";"2026-03-10 14:33:53"
+"214";"1";"Quotation Terkirim: QUO/2026/03/0001";"Quotation QUO/2026/03/0001 telah dikirim ke  via email. Email: . Oleh: System";"info";"bell";"marketing";"24";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 14:33:53";"2026-03-11 08:23:33"
+"215";"34";"Customer Baru: PT TEXAS";"Customer baru PT TEXAS telah ditambahkan. CP: , Phone: 082136033596";"info";"bell";"customer";"247";NULL;NULL;"information";NULL;NULL;"0";NULL;"2026-03-10 16:21:36";"2026-03-10 16:21:36"
+"216";"1";"Customer Baru: PT TEXAS";"Customer baru PT TEXAS telah ditambahkan. CP: , Phone: 082136033596";"info";"bell";"customer";"247";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:21:36";"2026-03-11 08:23:33"
+"217";"1";"Lokasi Baru: PT TEXAS";"Lokasi baru ""Head Office"" telah ditambahkan untuk customer PT TEXAS";"info";"bell";"customer";"400";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:21:36";"2026-03-11 08:23:33"
+"218";"1";"Customer Diupdate: Jimmy Forklift";"Data customer Jimmy Forklift telah diperbarui";"info";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:56:07";"2026-03-11 08:23:33"
+"219";"1";"Status Customer Berubah: Jimmy Forklift";"Status customer Jimmy Forklift (CUST-0103) berubah dari Active ke Inactive. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:56:07";"2026-03-11 08:23:33"
+"220";"1";"Customer Diupdate: PT ARK Logistics & Facility Management";"Data customer PT ARK Logistics & Facility Management telah diperbarui";"info";"bell";"customer";"8";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:56:59";"2026-03-11 08:23:33"
+"221";"1";"Status Customer Berubah: PT ARK Logistics & Facility Management";"Status customer PT ARK Logistics & Facility Management (CUST-0008) berubah dari Active ke Inactive. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"8";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 16:56:59";"2026-03-11 08:23:33"
+"222";"1";"Customer Diupdate: Koperasi Karyawan Seiwa Indonesia";"Data customer Koperasi Karyawan Seiwa Indonesia telah diperbarui";"info";"bell";"customer";"123";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 17:03:43";"2026-03-11 08:23:33"
+"223";"1";"Status Customer Berubah: Koperasi Karyawan Seiwa Indonesia";"Status customer Koperasi Karyawan Seiwa Indonesia (CUST-0123) berubah dari Active ke Inactive. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"123";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 17:03:43";"2026-03-11 08:23:33"
+"224";"1";"Customer Diupdate: PT Anugerah Kertas Utama";"Data customer PT Anugerah Kertas Utama telah diperbarui";"info";"bell";"customer";"5";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 17:10:51";"2026-03-11 08:23:33"
+"225";"1";"Status Customer Berubah: PT Anugerah Kertas Utama";"Status customer PT Anugerah Kertas Utama (CUST-0005) berubah dari Active ke Inactive. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"5";NULL;NULL;"information";NULL;NULL;"1";"2026-03-11 08:23:33";"2026-03-10 17:10:51";"2026-03-11 08:23:33"
+"226";"1";"Customer Diupdate: Jimmy Forklift";"Data customer Jimmy Forklift telah diperbarui";"info";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:17:08";"2026-03-12 17:08:44"
+"227";"1";"Status Customer Berubah: Jimmy Forklift";"Status customer Jimmy Forklift (CUST-0103) berubah dari Inactive ke Active. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:17:08";"2026-03-12 17:08:44"
+"228";"1";"Customer Diupdate: Jimmy Forklift";"Data customer Jimmy Forklift telah diperbarui";"info";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:17:14";"2026-03-12 17:08:44"
+"229";"1";"Status Customer Berubah: Jimmy Forklift";"Status customer Jimmy Forklift (CUST-0103) berubah dari Active ke Inactive. Alasan: Status updated from Customer Management. Oleh: System";"warning";"bell";"customer";"103";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:17:14";"2026-03-12 17:08:44"
+"230";"1";"Lokasi Baru: Jimmy Forklift";"Lokasi baru ""Head Office Rancaekek"" telah ditambahkan untuk customer Jimmy Forklift";"info";"bell";"customer";"184";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:17:36";"2026-03-12 17:08:44"
+"231";"1";"Lokasi Baru: Jimmy Forklift";"Lokasi baru ""Head Office Rancaekek1"" telah ditambahkan untuk customer Jimmy Forklift";"info";"bell";"customer";"401";NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 14:18:03";"2026-03-12 17:08:44"
+"232";"1";"Unit Preparation Completed - SPK/202603/002";"Unit preparation has been completed for SPK SPK/202603/002. Customer: PT LG Electronics Indonesia. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 15:37:17";"2026-03-12 17:08:44"
+"233";"1";"Fabrication Completed - SPK/202603/002";"Fabrication has been completed for SPK SPK/202603/002. Customer: PT LG Electronics Indonesia. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 17:05:49";"2026-03-12 17:08:44"
+"234";"1";"PDI Completed - SPK Ready - SPK/202603/002";"PDI has been completed for SPK SPK/202603/002. Unit is now READY for delivery. Customer: PT LG Electronics Indonesia. Approved by: superadmin.";"info";"bell";"service";NULL;NULL;NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 17:06:10";"2026-03-12 17:08:44"
+"235";"1";"SPK Siap untuk Operasional";"SPK {nomor_spk} untuk customer {pelanggan} sudah siap ({jumlah_unit} unit telah selesai PDI). Silakan buat Delivery Instruction.";"success";"bell";"spk";"110";"http://localhost/optima/public/operational/spk/detail/110";NULL;"information";NULL;NULL;"1";"2026-03-12 17:08:44";"2026-03-12 17:06:10";"2026-03-12 17:08:44"
+"236";"1";"DI Baru: DI/202603/001";"Delivery Instruction DI/202603/001 telah dibuat oleh  untuk customer . Segera proses.";"info";"bell";"delivery";"149";"http://localhost/optima/public/operational/delivery/detail/149";NULL;"information";NULL;NULL;"1";"2026-03-12 18:51:29";"2026-03-12 17:45:20";"2026-03-12 18:51:29"
+"237";"1";"Delivery Assigned: DI/202603/001";"Delivery DI/202603/001 telah di-assign kepada Anda";"warning";"bell";"operational";"149";"http://localhost/optima/public/operational/delivery/149";NULL;"information";NULL;NULL;"1";"2026-03-12 18:51:29";"2026-03-12 17:58:55";"2026-03-12 18:51:29"

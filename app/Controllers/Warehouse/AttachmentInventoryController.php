@@ -187,7 +187,8 @@ class AttachmentInventoryController extends BaseController
                     'status_unit' => $this->request->getPost('status_unit'),
                     'tipe_item' => $this->request->getPost('tipe_item'),
                     'status_filter' => $this->request->getPost('status_filter'),
-                    'model_filter' => $this->request->getPost('model_filter')
+                    'model_filter' => $this->request->getPost('model_filter'),
+                    'chemistry_filter' => $this->request->getPost('chemistry_filter')
                 ];
 
                 // Debug logging
@@ -242,6 +243,7 @@ class AttachmentInventoryController extends BaseController
         $batteryStats = $batteryModel->getStats();
         $chargerStats = $chargerModel->getStats();
 
+        // Send stats per type so JavaScript can update status counts dynamically
         $detailed_stats = [
             'by_type' => [
                 'attachment' => $attachmentStats['total'],
@@ -249,13 +251,18 @@ class AttachmentInventoryController extends BaseController
                 'charger' => $chargerStats['total'],
                 'total' => $attachmentStats['total'] + $batteryStats['total'] + $chargerStats['total']
             ],
+            // Stats per type for dynamic status filter updates
+            'attachment' => $attachmentStats,
+            'battery' => $batteryStats,
+            'charger' => $chargerStats,
+            // Default to attachment stats (initial selected type)
             'by_status' => [
-                'all' => $attachmentStats['total'] + $batteryStats['total'] + $chargerStats['total'],
-                'available' => $attachmentStats['available'] + $batteryStats['available'] + $chargerStats['available'],
-                'in_use' => $attachmentStats['in_use'] + $batteryStats['in_use'] + $chargerStats['in_use'],
-                'spare' => $attachmentStats['spare'] + $batteryStats['spare'] + $chargerStats['spare'],
-                'maintenance' => $attachmentStats['maintenance'] + $batteryStats['maintenance'] + $chargerStats['maintenance'],
-                'broken' => $attachmentStats['broken'] + $batteryStats['broken'] + $chargerStats['broken'],
+                'all' => $attachmentStats['total'],
+                'available' => $attachmentStats['available'],
+                'in_use' => $attachmentStats['in_use'],
+                'spare' => $attachmentStats['spare'],
+                'maintenance' => $attachmentStats['maintenance'],
+                'broken' => $attachmentStats['broken'],
             ]
         ];
 
@@ -266,7 +273,7 @@ class AttachmentInventoryController extends BaseController
                 '/' => 'Dashboard',
                 '/warehouse/inventory/attachments' => 'Inventory Attachment'
             ],
-            'stats' => $attachmentStats, // For backward compatibility
+            'stats' => $attachmentStats,
             'detailed_stats' => $detailed_stats
         ];
 
@@ -656,14 +663,16 @@ class AttachmentInventoryController extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => ucfirst($tipeItem) . " item deleted successfully."
+                'message' => ucfirst($tipeItem) . " item deleted successfully.",
+                'csrf_hash' => csrf_hash()
             ]);
 
         } catch (\Exception $e) {
             log_message('error', '[AttachmentInventoryController::deleteAttachment] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Server error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ])->setStatusCode(500);
         }
     }
@@ -1406,20 +1415,23 @@ class AttachmentInventoryController extends BaseController
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => $message
+                    'message' => $message,
+                    'csrf_hash' => csrf_hash()
                 ]);
             } else {
                 $db->transRollback();
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal memasang attachment'
+                    'message' => 'Gagal memasang attachment',
+                    'csrf_hash' => csrf_hash()
                 ]);
             }
         } catch (\Exception $e) {
             log_message('error', '[AttachmentInventoryController::attachToUnit] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ]);
         }
     }
@@ -1590,7 +1602,8 @@ class AttachmentInventoryController extends BaseController
             log_message('info', '[AttachmentInventoryController::swapUnit] Success');
             return $this->response->setJSON([
                 'success' => true,
-                'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}"
+                'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}",
+                'csrf_hash' => csrf_hash()
             ]);
 
         } catch (\Exception $e) {
@@ -1598,7 +1611,8 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::swapUnit] Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ]);
         }
     }
@@ -1695,19 +1709,22 @@ class AttachmentInventoryController extends BaseController
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => "Berhasil melepas attachment dari Unit {$unitInfo}"
+                    'message' => "Berhasil melepas attachment dari Unit {$unitInfo}",
+                    'csrf_hash' => csrf_hash()
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal melepas attachment'
+                    'message' => 'Gagal melepas attachment',
+                    'csrf_hash' => csrf_hash()
                 ]);
             }
         } catch (\Exception $e) {
             log_message('error', '[AttachmentInventoryController::detachFromUnit] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ]);
         }
     }

@@ -4,10 +4,13 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\InventoryUnitModel;
+use App\Traits\ActivityLoggingTrait;
 use Config\Database;
 
 class UnitInventoryController extends BaseController
 {
+    use ActivityLoggingTrait;
+    
     protected InventoryUnitModel $inventoryUnitModel;
 
     public function __construct()
@@ -499,6 +502,50 @@ class UnitInventoryController extends BaseController
             log_message('warning', 'getMovementHistory timeline: ' . $e->getMessage());
         }
 
+        // ── Source 4: component_audit_log (component attach/detach/transfer) ───────────
+        try {
+            if ($db->tableExists('component_audit_log')) {
+                $rows = $db->table('component_audit_log cal')
+                    ->select('cal.*, CONCAT(u.first_name, " ", u.last_name) as actor_name')
+                    ->join('users u', 'u.id = cal.performed_by', 'left')
+                    ->groupStart()
+                        ->where('cal.from_unit_id', $unitId)
+                        ->orWhere('cal.to_unit_id', $unitId)
+                    ->groupEnd()
+                    ->orderBy('cal.performed_at', 'DESC')
+                    ->limit(50)
+                    ->get()->getResultArray();
+
+                foreach ($rows as $r) {
+                    $isIncoming = (int)($r['to_unit_id'] ?? 0) === $unitId;
+                    $typeIcon = match(strtoupper($r['component_type'] ?? '')) {
+                        'BATTERY' => 'fa-car-battery',
+                        'CHARGER' => 'fa-plug',
+                        'ATTACHMENT' => 'fa-puzzle-piece',
+                        default => 'fa-cog'
+                    };
+                    $events[] = [
+                        'type'       => 'component',
+                        'icon'       => $typeIcon,
+                        'color'      => $isIncoming ? 'success' : 'warning',
+                        'event_date' => $r['performed_at'],
+                        'title'      => ($r['event_title'] ?? ucfirst(strtolower($r['component_type'] ?? 'Component'))) . ' ' . strtolower($r['event_type'] ?? ''),
+                        'subtitle'   => $r['notes'] ?? '',
+                        'reference'  => $r['triggered_by'] ?? '—',
+                        'status'     => ucfirst(strtolower($r['event_type'] ?? 'Unknown')),
+                        'status_cls' => $isIncoming ? 'success' : 'warning',
+                        'meta'       => [
+                            'component_type' => $r['component_type'],
+                            'component_id' => $r['component_id'],
+                            'actor' => $r['actor_name'] ?? 'System',
+                        ],
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'getMovementHistory component_audit_log: ' . $e->getMessage());
+        }
+
         // ── Merge & sort all events chronologically ───────────────────────
         usort($events, fn($a, $b) => strcmp($b['event_date'] ?? '', $a['event_date'] ?? ''));
 
@@ -521,15 +568,63 @@ class UnitInventoryController extends BaseController
 
         try {
             $db     = Database::connect();
+            $unitId = (int)$id;
+            $allEvents = [];
+            
+            // Source 1: unit_timeline
             $events = $db->table('unit_timeline ut')
                 ->select('ut.*, CONCAT(u.first_name, " ", u.last_name) as actor_name')
                 ->join('users u', 'u.id = ut.performed_by', 'left')
-                ->where('ut.unit_id', (int)$id)
+                ->where('ut.unit_id', $unitId)
                 ->orderBy('ut.performed_at', 'DESC')
                 ->limit(40)
                 ->get()->getResultArray();
 
-            if (empty($events)) {
+            foreach ($events as $ev) {
+                $allEvents[] = [
+                    'source' => 'unit_timeline',
+                    'event_category' => $ev['event_category'] ?? 'STATUS',
+                    'event_title' => $ev['event_title'] ?? '',
+                    'event_description' => $ev['event_description'] ?? '',
+                    'performed_at' => $ev['performed_at'] ?? '',
+                    'actor_name' => $ev['actor_name'] ?? 'System',
+                ];
+            }
+
+            // Source 2: component_audit_log
+            if ($db->tableExists('component_audit_log')) {
+                $componentEvents = $db->table('component_audit_log cal')
+                    ->select('cal.*, CONCAT(u.first_name, " ", u.last_name) as actor_name')
+                    ->join('users u', 'u.id = cal.performed_by', 'left')
+                    ->groupStart()
+                        ->where('cal.from_unit_id', $unitId)
+                        ->orWhere('cal.to_unit_id', $unitId)
+                    ->groupEnd()
+                    ->orderBy('cal.performed_at', 'DESC')
+                    ->limit(30)
+                    ->get()->getResultArray();
+
+                foreach ($componentEvents as $ce) {
+                    $isIncoming = (int)($ce['to_unit_id'] ?? 0) === $unitId;
+                    $componentLabel = ucfirst(strtolower($ce['component_type'] ?? 'Component'));
+                    $eventLabel = strtolower($ce['event_type'] ?? 'updated');
+                    $allEvents[] = [
+                        'source' => 'component_audit_log',
+                        'event_category' => 'COMPONENT',
+                        'event_title' => "{$componentLabel} {$eventLabel}" . ($isIncoming ? ' (dipasang)' : ' (dilepas)'),
+                        'event_description' => $ce['notes'] ?? ($ce['triggered_by'] ?? ''),
+                        'performed_at' => $ce['performed_at'] ?? '',
+                        'actor_name' => $ce['actor_name'] ?? 'System',
+                        'component_type' => $ce['component_type'],
+                    ];
+                }
+            }
+
+            // Sort all events by performed_at descending
+            usort($allEvents, fn($a, $b) => strcmp($b['performed_at'] ?? '', $a['performed_at'] ?? ''));
+            $allEvents = array_slice($allEvents, 0, 50);
+
+            if (empty($allEvents)) {
                 return $this->response->setJSON([
                     'success' => true,
                     'html'    => '<div class="text-center text-muted py-3 fst-italic small">No events recorded yet.</div>',
@@ -551,9 +646,22 @@ class UnitInventoryController extends BaseController
             ];
 
             $html = '<ul class="list-unstyled mb-0">';
-            foreach ($events as $ev) {
+            foreach ($allEvents as $ev) {
                 $cat   = strtoupper($ev['event_category'] ?? 'STATUS');
-                [$ico, $col] = $catMeta[$cat] ?? ['fa-circle', 'secondary'];
+                
+                // For component events, use specific icon based on component_type
+                if ($cat === 'COMPONENT' && !empty($ev['component_type'])) {
+                    $ico = match(strtoupper($ev['component_type'])) {
+                        'BATTERY' => 'fa-car-battery',
+                        'CHARGER' => 'fa-plug',
+                        'ATTACHMENT' => 'fa-puzzle-piece',
+                        default => 'fa-cog'
+                    };
+                    $col = 'dark';
+                } else {
+                    [$ico, $col] = $catMeta[$cat] ?? ['fa-circle', 'secondary'];
+                }
+                
                 $time  = !empty($ev['performed_at']) ? date('d M Y H:i', strtotime($ev['performed_at'])) : '—';
                 $actor = !empty($ev['actor_name']) ? esc($ev['actor_name']) : 'System';
                 $html .= '<li class="d-flex gap-2 mb-3 align-items-start">';
@@ -609,6 +717,15 @@ class UnitInventoryController extends BaseController
                     log_message('warning', 'Auto-assign NA number failed: ' . $e->getMessage());
                 }
             }
+            
+            // Log to system_activity_log
+            $unitNumber = $data['no_unit'] ?? $data['no_unit_na'] ?? "ID #{$id}";
+            $this->logCreate('inventory_unit', $id, $data, [
+                'module_name' => 'warehouse',
+                'description' => "Unit {$unitNumber} created",
+                'business_impact' => 'MEDIUM',
+            ]);
+            
             return redirect()->to("warehouse/inventory/unit/{$id}")->with('success', 'Unit berhasil ditambahkan.');
         } catch (\Throwable $e) {
             log_message('error', 'UnitInventoryController::store: ' . $e->getMessage());
@@ -716,6 +833,16 @@ class UnitInventoryController extends BaseController
 
         try {
             $this->inventoryUnitModel->update((int)$id, ['status_unit_id' => 10]);
+            
+            // Log to system_activity_log
+            $unitNumber = $unit['no_unit'] ?? $unit['no_unit_na'] ?? "ID #{$id}";
+            $this->logDelete('inventory_unit', $id, $unit, [
+                'module_name' => 'warehouse',
+                'description' => "Unit {$unitNumber} deactivated (soft delete)",
+                'business_impact' => 'HIGH',
+                'is_critical' => true,
+            ]);
+            
             return $this->response->setJSON(['success' => true, 'message' => 'Unit berhasil di-nonaktifkan.']);
         } catch (\Throwable $e) {
             log_message('error', 'UnitInventoryController::destroy: ' . $e->getMessage());

@@ -14,10 +14,12 @@ use App\Models\InventoryAttachmentModel;
 use App\Models\InventoryBatteryModel;
 use App\Models\InventoryChargerModel;
 use App\Models\InventoryComponentHelper;
+use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\Controller;
 
 class WorkOrderController extends Controller
 {
+    use ActivityLoggingTrait;
     protected $workOrderModel;
     protected $workOrderAssignmentModel;
     protected $areaEmployeeModel;
@@ -47,9 +49,33 @@ class WorkOrderController extends Controller
     {
         // Check user permissions via session
         $session = session();
-        $userRole = $session->get('role_name');
+        $userRole = $session->get('role');
         if (empty($userRole)) {
             return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view work orders');
+        }
+        
+        // Get user's department scope using proper RBAC infrastructure
+        $scope = get_user_area_department_scope();
+        $userDepartemenIds = []; // empty = no filter (full access)
+        $userAreaIds = [];
+        $scopeType = null;
+        
+        if ($scope !== null) {
+            $userDepartemenIds = !empty($scope['departments']) ? $scope['departments'] : [];
+            $userAreaIds = !empty($scope['areas']) ? $scope['areas'] : [];
+            $scopeType = $scope['scope_type'] ?? null;
+        }
+        
+        // Get department names for display
+        $userDepartemenName = null;
+        if (!empty($userDepartemenIds)) {
+            $db = \Config\Database::connect();
+            $depts = $db->table('departemen')
+                ->select('nama_departemen')
+                ->whereIn('id_departemen', $userDepartemenIds)
+                ->get()
+                ->getResultArray();
+            $userDepartemenName = implode(', ', array_column($depts, 'nama_departemen'));
         }
         
         $data = [
@@ -60,13 +86,18 @@ class WorkOrderController extends Controller
             'categories' => $this->workOrderModel->getCategories(),
             'units' => $this->getUnits(),
             'areas' => $this->areaModel->getActiveAreas(),
-            'spareparts' => $this->getSparepartsForDropdown(),
+            'spareparts' => [], // REMOVED: Pre-loading 14k+ items - now using AJAX search
             'staff' => [
                 'ADMIN' => $this->workOrderModel->getStaff('ADMIN'),
                 'FOREMAN' => $this->workOrderModel->getStaff('FOREMAN'),
                 'MECHANIC' => $this->workOrderModel->getStaff('MECHANIC'),
                 'HELPER' => $this->workOrderModel->getStaff('HELPER')
             ],
+            // User department scope for filtering
+            'user_departemen_ids' => $userDepartemenIds,
+            'user_departemen_name' => $userDepartemenName,
+            'user_area_ids' => $userAreaIds,
+            'scope_type' => $scopeType,
             // Permission flags for view
             'can_create' => can_create('service'),
             'can_edit' => can_edit('service'),
@@ -107,25 +138,103 @@ class WorkOrderController extends Controller
         }
     }
 
+    /**
+     * AJAX endpoint for sparepart search (Select2 AJAX)
+     * Optimized for large datasets (14k+ items)
+     */
+    public function searchSpareparts()
+    {
+        try {
+            $searchTerm = $this->request->getGet('q') ?? '';
+            $page = (int)($this->request->getGet('page') ?? 1);
+            $perPage = 30; // Limit results per page
+            
+            $db = \Config\Database::connect();
+            $builder = $db->table('sparepart');
+            
+            // Select fields
+            $builder->select('id_sparepart, kode, desc_sparepart');
+            
+            // Search filter
+            if (!empty($searchTerm)) {
+                $builder->groupStart()
+                    ->like('kode', $searchTerm)
+                    ->orLike('desc_sparepart', $searchTerm)
+                    ->groupEnd();
+            }
+            
+            // Count total for pagination
+            $totalCount = $builder->countAllResults(false);
+            
+            // Pagination
+            $builder->orderBy('kode', 'ASC');
+            $builder->limit($perPage, ($page - 1) * $perPage);
+            
+            $spareparts = $builder->get()->getResultArray();
+            
+            // Format for Select2
+            $results = [];
+            foreach ($spareparts as $sparepart) {
+                $results[] = [
+                    'id' => $sparepart['kode'] . ' - ' . $sparepart['desc_sparepart'],
+                    'text' => $sparepart['kode'] . ' - ' . $sparepart['desc_sparepart'],
+                    'kode' => $sparepart['kode'],
+                    'desc' => $sparepart['desc_sparepart']
+                ];
+            }
+            
+            // Add manual input option at the end of first page
+            if ($page === 1) {
+                $results[] = [
+                    'id' => 'INPUT_MANUAL',
+                    'text' => '--- Input Manual ---'
+                ];
+            }
+            
+            return $this->response->setJSON([
+                'results' => $results,
+                'pagination' => [
+                    'more' => ($page * $perPage) < $totalCount
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in searchSpareparts: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'results' => [],
+                'pagination' => ['more' => false]
+            ]);
+        }
+    }
+
     // Mendapatkan daftar unit dengan customer dan area info
     private function getUnits()
     {
         $db = \Config\Database::connect();
         $builder = $db->table('inventory_unit iu');
-        $builder->select('iu.id_inventory_unit, iu.no_unit, 
+        $builder->select('iu.id_inventory_unit, iu.no_unit, iu.departemen_id,
                          COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
                          a.id as area_id, a.area_name, a.area_code,
+                         d.nama_departemen as departemen_name,
                          mu.merk_unit, tu.tipe');
         // Updated: JOIN via kontrak_unit junction table (source of truth)
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
         $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('areas a', 'c.area_id = a.id', 'left');
+        $builder->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
         $builder->where('iu.no_unit IS NOT NULL');
         // Exclude SOLD units (status_unit_id = 13)
         $builder->where('iu.status_unit_id !=', 13);
+        
+        // Apply department scope filtering
+        $scope = get_user_area_department_scope();
+        if ($scope !== null && !empty($scope['departments'])) {
+            $builder->whereIn('iu.departemen_id', array_map('intval', $scope['departments']));
+        }
+        
         $builder->orderBy('iu.no_unit', 'ASC');
         
         return $builder->get()->getResultArray();
@@ -157,9 +266,11 @@ class WorkOrderController extends Controller
             
             // Direct approach: inventory_unit already has area_id column!
             $builder = $db->table('inventory_unit iu');
-            $builder->select('a.id as area_id, a.area_name, a.area_code,
+            $builder->select('a.id as area_id, a.area_name, a.area_code, a.departemen_id,
+                             d.nama_departemen as departemen_name,
                              s.staff_name as foreman_name, s.id as foreman_id');
             $builder->join('areas a', 'iu.area_id = a.id', 'left');
+            $builder->join('departemen d', 'a.departemen_id = d.id_departemen', 'left');
             $builder->join('area_employee_assignments aea', 'a.id = aea.area_id AND aea.is_active = 1', 'left');
             $builder->join('work_order_staff_backup_final s', 'aea.employee_id = s.id AND s.staff_role = "FOREMAN" AND s.is_active = 1', 'left');
             $builder->where('iu.id_inventory_unit', $unitId);
@@ -256,6 +367,17 @@ class WorkOrderController extends Controller
     {
         $staffRole = $this->request->getPost('staff_role');
         $areaId = $this->request->getPost('area_id');
+        $departemenId = $this->request->getPost('departemen_id');
+        // Support multiple department IDs (e.g. from scope)
+        $departemenIds = $this->request->getPost('departemen_ids');
+        
+        // Auto-apply user's department scope if no explicit filter sent
+        if (empty($departemenId) && empty($departemenIds) && empty($areaId)) {
+            $scope = get_user_area_department_scope();
+            if ($scope !== null && !empty($scope['departments'])) {
+                $departemenIds = $scope['departments'];
+            }
+        }
         
         if (!$staffRole) {
             return $this->response->setJSON([
@@ -267,7 +389,30 @@ class WorkOrderController extends Controller
         try {
             $db = \Config\Database::connect();
             
-            if ($areaId) {
+            if ($departemenId || !empty($departemenIds)) {
+                // Filter by department(s) (DIESEL/ELECTRIC/multi)
+                $builder = $db->table('employees e');
+                $builder->select('e.id, e.staff_name, e.staff_role, e.staff_code, e.employee_code');
+                
+                // Handle MECHANIC and HELPER role matching
+                if ($staffRole === 'MECHANIC') {
+                    $builder->like('e.staff_role', 'MECHANIC', 'both');
+                } elseif ($staffRole === 'HELPER') {
+                    $builder->like('e.staff_role', 'HELPER', 'both');
+                } else {
+                    $builder->where('e.staff_role', $staffRole);
+                }
+                
+                $builder->where('e.is_active', 1);
+                
+                if (!empty($departemenIds) && is_array($departemenIds)) {
+                    $builder->whereIn('e.departemen_id', array_map('intval', $departemenIds));
+                } else {
+                    $builder->where('e.departemen_id', (int) $departemenId);
+                }
+                $builder->orderBy('e.staff_name', 'ASC');
+                
+            } elseif ($areaId) {
                 // Use area_employee_assignments table with employees for area-based filtering
                 $builder = $db->table('employees e');
                 $builder->select('e.id, e.staff_name, e.staff_role');
@@ -878,11 +1023,20 @@ class WorkOrderController extends Controller
                 ORDER BY wsh.created_at ASC
             ", [$id])->getResultArray();
 
-            // Spareparts used
+            // Spareparts used (with enhanced source tracking)
             $spareparts = $db->query("
-                SELECT wos.*, s.kode as sparepart_code, s.desc_sparepart as sparepart_name
+                SELECT 
+                    wos.*, 
+                    COALESCE(wos.sparepart_code, s.kode) as sparepart_code,
+                    COALESCE(wos.sparepart_name, s.desc_sparepart) as sparepart_name,
+                    wos.source_type,
+                    wos.source_unit_id,
+                    wos.source_notes,
+                    iu.no_unit as source_unit_number,
+                    iu.no_unit_na as source_unit_number_alt
                 FROM work_order_spareparts wos
                 LEFT JOIN sparepart s ON wos.sparepart_id = s.id_sparepart
+                LEFT JOIN inventory_unit iu ON wos.source_unit_id = iu.id_inventory_unit
                 WHERE wos.work_order_id = ?
                 ORDER BY wos.id ASC
             ", [$id])->getResultArray();
@@ -939,13 +1093,19 @@ class WorkOrderController extends Controller
             
             log_message('debug', 'WO Store Final Input: ' . print_r($input, true));
             
-            // Debug individual required fields
+            // Debug individual required fields (safe array handling)
             log_message('debug', 'WO Store Required Fields Check:');
-            log_message('debug', 'unit_id: ' . ($input['unit_id'] ?? 'NULL') . ' (empty: ' . (empty($input['unit_id']) ? 'YES' : 'NO') . ')');
-            log_message('debug', 'order_type: ' . ($input['order_type'] ?? 'NULL') . ' (empty: ' . (empty($input['order_type']) ? 'YES' : 'NO') . ')');
-            log_message('debug', 'priority_id: ' . ($input['priority_id'] ?? 'NULL') . ' (empty: ' . (empty($input['priority_id']) ? 'YES' : 'NO') . ')');
-            log_message('debug', 'category_id: ' . ($input['category_id'] ?? 'NULL') . ' (empty: ' . (empty($input['category_id']) ? 'YES' : 'NO') . ')');
-            log_message('debug', 'complaint_description: ' . ($input['complaint_description'] ?? 'NULL') . ' (empty: ' . (empty($input['complaint_description']) ? 'YES' : 'NO') . ')');
+            $unitIdLog = isset($input['unit_id']) ? (is_array($input['unit_id']) ? json_encode($input['unit_id']) : $input['unit_id']) : 'NULL';
+            $orderTypeLog = isset($input['order_type']) ? (is_array($input['order_type']) ? json_encode($input['order_type']) : $input['order_type']) : 'NULL';
+            $priorityIdLog = isset($input['priority_id']) ? (is_array($input['priority_id']) ? json_encode($input['priority_id']) : $input['priority_id']) : 'NULL';
+            $categoryIdLog = isset($input['category_id']) ? (is_array($input['category_id']) ? json_encode($input['category_id']) : $input['category_id']) : 'NULL';
+            $complaintLog = isset($input['complaint_description']) ? (is_array($input['complaint_description']) ? json_encode($input['complaint_description']) : substr($input['complaint_description'], 0, 100)) : 'NULL';
+            
+            log_message('debug', 'unit_id: ' . $unitIdLog . ' (empty: ' . (empty($input['unit_id']) ? 'YES' : 'NO') . ')');
+            log_message('debug', 'order_type: ' . $orderTypeLog . ' (empty: ' . (empty($input['order_type']) ? 'YES' : 'NO') . ')');
+            log_message('debug', 'priority_id: ' . $priorityIdLog . ' (empty: ' . (empty($input['priority_id']) ? 'YES' : 'NO') . ')');
+            log_message('debug', 'category_id: ' . $categoryIdLog . ' (empty: ' . (empty($input['category_id']) ? 'YES' : 'NO') . ')');
+            log_message('debug', 'complaint_description: ' . $complaintLog . ' (empty: ' . (empty($input['complaint_description']) ? 'YES' : 'NO') . ')');
             
             // Validation rules (removed status_id from required fields)
             $rules = [
@@ -1012,7 +1172,8 @@ class WorkOrderController extends Controller
                     
                     if ($category && !empty($category->default_priority_id)) {
                         $input['priority_id'] = $category->default_priority_id;
-                        log_message('debug', 'Auto-assigned priority_id: ' . $input['priority_id']);
+                        $priorityLog = is_array($input['priority_id']) ? json_encode($input['priority_id']) : $input['priority_id'];
+                        log_message('debug', 'Auto-assigned priority_id: ' . $priorityLog);
                     } else {
                         // Default to priority 1 (LOW) if no default priority set
                         $input['priority_id'] = 1;
@@ -1162,14 +1323,40 @@ class WorkOrderController extends Controller
                 
                 // WARN: If admin/foreman still empty after auto-assignment, log warning but allow creation
                 if (!$adminId) {
-                    log_message('warning', 'Work Order created without Admin for unit_id: ' . $input['unit_id'] . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
+                    $unitIdLog = is_array($input['unit_id']) ? json_encode($input['unit_id']) : $input['unit_id'];
+                    log_message('warning', 'Work Order created without Admin for unit_id: ' . $unitIdLog . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
                 }
                 if (!$foremanId) {
-                    log_message('warning', 'Work Order created without Foreman for unit_id: ' . $input['unit_id'] . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
+                    $unitIdLog = is_array($input['unit_id']) ? json_encode($input['unit_id']) : $input['unit_id'];
+                    log_message('warning', 'Work Order created without Foreman for unit_id: ' . $unitIdLog . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
                 }
             }
             
-            log_message('debug', 'Final admin_id: ' . ($adminId ?? 'NULL') . ', foreman_id: ' . ($foremanId ?? 'NULL'));
+            // Safe logging: Handle if admin/foreman are arrays (defensive coding)
+            $adminIdLog = is_array($adminId) ? json_encode($adminId) : ($adminId ?? 'NULL');
+            $foremanIdLog = is_array($foremanId) ? json_encode($foremanId) : ($foremanId ?? 'NULL');
+            log_message('debug', 'Final admin_id: ' . $adminIdLog . ', foreman_id: ' . $foremanIdLog);
+            
+            // Ensure admin_id and foreman_id are scalar values (fix potential Select2 array issue)
+            if (is_array($adminId)) {
+                log_message('warning', 'admin_id received as array, taking first value: ' . json_encode($adminId));
+                $adminId = !empty($adminId) ? reset($adminId) : null;
+            }
+            if (is_array($foremanId)) {
+                log_message('warning', 'foreman_id received as array, taking first value: ' . json_encode($foremanId));
+                $foremanId = !empty($foremanId) ? reset($foremanId) : null;
+            }
+            
+            // Sanitize ALL scalar input fields - ensure they're not arrays
+            $scalarFields = ['unit_id', 'order_type', 'priority_id', 'requested_repair_time', 
+                            'category_id', 'subcategory_id', 'complaint_description', 'pic', 'hm'];
+            
+            foreach ($scalarFields as $field) {
+                if (isset($input[$field]) && is_array($input[$field])) {
+                    log_message('warning', $field . ' received as array, taking first value: ' . json_encode($input[$field]));
+                    $input[$field] = !empty($input[$field]) ? reset($input[$field]) : null;
+                }
+            }
             
             $data = [
                 'work_order_number' => $woNumber,
@@ -1205,7 +1392,16 @@ class WorkOrderController extends Controller
                 if (!$result) {
                     $errors = $this->workOrderModel->errors();
                     log_message('error', 'Model errors: ' . print_r($errors, true));
-                    throw new \Exception('Gagal menyimpan work order: ' . implode(', ', $errors));
+                    // Safely format errors (handle nested arrays)
+                    $errorMessages = [];
+                    foreach ($errors as $field => $message) {
+                        if (is_array($message)) {
+                            $errorMessages[] = $field . ': ' . implode('; ', array_map('strval', $message));
+                        } else {
+                            $errorMessages[] = is_string($message) ? $message : $field . ': ' . json_encode($message);
+                        }
+                    }
+                    throw new \Exception('Gagal menyimpan work order: ' . implode(', ', $errorMessages));
                 }
 
                 // Add initial status history for new work order
@@ -1265,24 +1461,77 @@ class WorkOrderController extends Controller
                     $sparepartNames = $input['sparepart_name'] ?? [];
                     $sparepartQuantities = $input['sparepart_quantity'] ?? [];
                     $sparepartUnits = $input['sparepart_unit'] ?? [];
-                    $isFromWarehouse = $input['is_from_warehouse'] ?? []; // ← NEW: Get warehouse source flags
+                    $sparepartNotes = $input['sparepart_notes'] ?? [];
+                    
+                    // Enhanced source tracking
+                    $sourceTypes = $input['source_type'] ?? []; // WAREHOUSE, BEKAS, KANIBAL
+                    $sourceUnitIds = $input['source_unit_id'] ?? [];
+                    $sourceNotes = $input['source_notes'] ?? [];
                     
                     for ($i = 0; $i < count($sparepartNames); $i++) {
-                        if (!empty($sparepartNames[$i])) {
-                            // Parse sparepart dari format "KODE - NAMA"
-                            $parts = explode(' - ', $sparepartNames[$i], 2);
-                            if (count($parts) >= 2) {
+                        // Safety: skip if empty or if value is an array (shouldn't happen but defensive)
+                        $currentName = $sparepartNames[$i];
+                        if (is_array($currentName)) {
+                            log_message('warning', "sparepart_name[{$i}] received as array, skipping: " . json_encode($currentName));
+                            continue;
+                        }
+                        if (!empty($currentName)) {
+                            $currentName = trim((string)$currentName);
+                            // Check if format is "KODE - NAMA" (from dropdown) or manual entry (no separator)
+                            if (strpos($currentName, ' - ') !== false) {
+                                // Dropdown selection: Parse format "KODE - NAMA"
+                                $parts = explode(' - ', $currentName, 2);
                                 $sparepartCode = trim($parts[0]);
                                 $sparepartName = trim($parts[1]);
-                                
-                                $spareparts[] = [
-                                    'sparepart_code' => $sparepartCode,
-                                    'sparepart_name' => $sparepartName,
-                                    'quantity_brought' => $sparepartQuantities[$i] ?? 1,
-                                    'satuan' => $sparepartUnits[$i] ?? 'pcs',
-                                    'is_from_warehouse' => isset($isFromWarehouse[$i]) && $isFromWarehouse[$i] == '1' ? 1 : 0 // ← NEW
-                                ];
+                            } else {
+                                // Manual entry: No code, just name
+                                $sparepartCode = null; // Will be NULL in database
+                                $sparepartName = $currentName;
+                                log_message('info', "[WO Created] Manual sparepart entry: {$sparepartName}");
                             }
+                            
+                            // Get source type (default: WAREHOUSE) - ensure scalar
+                            $sourceType = $sourceTypes[$i] ?? 'WAREHOUSE';
+                            if (is_array($sourceType)) $sourceType = reset($sourceType) ?: 'WAREHOUSE';
+                            
+                            // Validation: KANIBAL must have source_unit_id - ensure scalar
+                            $sourceUnitId = !empty($sourceUnitIds[$i]) ? $sourceUnitIds[$i] : null;
+                            if (is_array($sourceUnitId)) $sourceUnitId = reset($sourceUnitId) ?: null;
+                            if ($sourceType === 'KANIBAL' && !$sourceUnitId) {
+                                throw new \Exception("Sparepart KANIBAL '{$sparepartName}' harus memiliki unit sumber. Pilih unit asal copotan.");
+                            }
+                            
+                            // Validation: WAREHOUSE source should not allow manual entry (optional - can be removed if user wants flexibility)
+                            // if ($sourceType === 'WAREHOUSE' && $sparepartCode === null) {
+                            //     throw new \Exception("Sparepart WAREHOUSE harus dipilih dari dropdown. Manual entry hanya untuk BEKAS/KANIBAL.");
+                            // }
+                            
+                            // Set is_from_warehouse for backward compatibility
+                            $isFromWarehouse = ($sourceType === 'WAREHOUSE') ? 1 : 0;
+                            
+                            // Ensure all values are scalar before inserting
+                            $qty = $sparepartQuantities[$i] ?? 1;
+                            $satuan = $sparepartUnits[$i] ?? 'pcs';
+                            $notes = $sparepartNotes[$i] ?? null;
+                            $srcNote = $sourceNotes[$i] ?? null;
+                            if (is_array($qty)) $qty = reset($qty) ?: 1;
+                            if (is_array($satuan)) $satuan = reset($satuan) ?: 'pcs';
+                            if (is_array($notes)) $notes = reset($notes) ?: null;
+                            if (is_array($srcNote)) $srcNote = reset($srcNote) ?: null;
+                            
+                            $spareparts[] = [
+                                'sparepart_code' => $sparepartCode, // NULL for manual entries
+                                'sparepart_name' => $sparepartName,
+                                'quantity_brought' => $qty,
+                                'satuan' => $satuan,
+                                'notes' => $notes,
+                                // Enhanced source tracking
+                                'source_type' => $sourceType,
+                                'source_unit_id' => $sourceUnitId,
+                                'source_notes' => $srcNote,
+                                // Backward compatibility
+                                'is_from_warehouse' => $isFromWarehouse
+                            ];
                         }
                     }
                     
@@ -1291,7 +1540,7 @@ class WorkOrderController extends Controller
                         if (!$sparepartsAdded) {
                             throw new \Exception('Gagal menyimpan data sparepart');
                         }
-                        log_message('debug', 'Spareparts added successfully');
+                        log_message('info', '[WO Created] Added ' . count($spareparts) . ' spareparts with enhanced source tracking');
                     }
                 }
                 
@@ -1333,6 +1582,13 @@ class WorkOrderController extends Controller
                 } catch (\Exception $notifError) {
                     log_message('error', 'Failed to send workorder creation notification: ' . $notifError->getMessage());
                 }
+                
+                // Log to system_activity_log
+                $this->logCreate('work_orders', $result, $data, [
+                    'module_name' => 'service',
+                    'description' => "Work Order {$woNumber} created",
+                    'business_impact' => 'MEDIUM',
+                ]);
                 
                 return $this->response->setJSON([
                     'success' => true,
@@ -1425,6 +1681,13 @@ class WorkOrderController extends Controller
         }
         
         if ($result) {
+            // Log to system_activity_log
+            $this->logUpdate('work_orders', $id, $prevData, $data, [
+                'module_name' => 'service',
+                'description' => "Work Order #{$id} updated",
+                'business_impact' => 'MEDIUM',
+            ]);
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Work Order berhasil diupdate'
@@ -1475,13 +1738,13 @@ class WorkOrderController extends Controller
             $result = $this->workOrderModel->delete($id);
             
             if ($result) {
-                // Log activity
-                try {
-                    // Log deletion activity
-                    log_message('info', 'Work Order deleted: ID=' . $id . ' by user_id=' . (session()->get('user_id') ?? 1) . ' from IP=' . $this->request->getIPAddress());
-                } catch (\Exception $logError) {
-                    log_message('error', 'Failed to log work order deletion: ' . $logError->getMessage());
-                }
+                // Log to system_activity_log
+                $this->logDelete('work_orders', $id, $workOrder, [
+                    'module_name' => 'service',
+                    'description' => "Work Order {$workOrder['work_order_number']} deleted",
+                    'business_impact' => 'HIGH',
+                    'is_critical' => true,
+                ]);
                 
                 return $this->response->setJSON([
                     'success' => true,
@@ -2069,6 +2332,9 @@ class WorkOrderController extends Controller
         try {
             $db = \Config\Database::connect();
             
+            // Get user's department/area scope for filtering
+            $scope = get_user_area_department_scope();
+            
             // Use area_id from inventory_unit (iu.area_id) - the actual unit area
             // Show ALL units with ALL statuses
             $sql = "SELECT 
@@ -2084,7 +2350,9 @@ class WorkOrderController extends Controller
                         su.status_unit as status,
                         iu.workflow_status,
                         a.id as area_id, 
-                        a.area_name
+                        a.area_name,
+                        iu.departemen_id,
+                        dep.nama_departemen as departemen_name
                     FROM inventory_unit iu
                     -- Updated: JOIN via kontrak_unit junction table (source of truth)
                     LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
@@ -2096,10 +2364,24 @@ class WorkOrderController extends Controller
                     LEFT JOIN kapasitas kp ON iu.kapasitas_unit_id = kp.id_kapasitas
                     LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
                     LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
-                    WHERE iu.no_unit IS NOT NULL
-                    ORDER BY iu.no_unit ASC";
+                    LEFT JOIN departemen dep ON iu.departemen_id = dep.id_departemen
+                    WHERE iu.no_unit IS NOT NULL";
             
-            $result = $db->query($sql);
+            $bindings = [];
+            
+            // Apply department/area scope filtering
+            if ($scope !== null) {
+                if (!empty($scope['departments'])) {
+                    $deptIds = array_map('intval', $scope['departments']);
+                    $placeholders = implode(',', array_fill(0, count($deptIds), '?'));
+                    $sql .= " AND iu.departemen_id IN ({$placeholders})";
+                    $bindings = array_merge($bindings, $deptIds);
+                }
+            }
+            
+            $sql .= " ORDER BY iu.no_unit ASC";
+            
+            $result = $db->query($sql, $bindings);
             $units = $result->getResultArray();
             
             // Handle null values
@@ -3485,9 +3767,9 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             if ($oldModelId != $newModelId) {
                 $newModelName = '';
                 if (!empty($newModelId)) {
-                    $modelQuery = $db->table('model_unit')->select('model')->where('id_model_unit', $newModelId)->get();
+                    $modelQuery = $db->table('model_unit')->select('model_unit')->where('id_model_unit', $newModelId)->get();
                     $model = $modelQuery ? $modelQuery->getRowArray() : null;
-                    $newModelName = $model ? ($model['model'] ?? '') : '';
+                    $newModelName = $model ? ($model['model_unit'] ?? '') : '';
                 }
                 $allChanges[] = "Model Unit: " . ($oldUnitData['model_unit_name'] ?? '-') . " → " . ($newModelName ?: '-');
             }
@@ -3591,6 +3873,8 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             }
             
             // STEP 1: Release ALL old components from this unit (set to AVAILABLE and detach)
+            $auditService = new \App\Services\ComponentAuditService($db);
+            
             // Release batteries
             $oldBatteries = $db->table('inventory_batteries')
                 ->where('inventory_unit_id', $unitId)
@@ -3606,6 +3890,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'storage_location' => 'Workshop',
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
+                
+                // Log to component_audit_log
+                $auditService->logRemoval('BATTERY', $oldBat['id'], $unitId, [
+                    'work_order_id' => $workOrderId,
+                    'triggered_by' => 'UNIT_VERIFICATION',
+                    'reference_type' => 'work_order',
+                    'reference_id' => $workOrderId,
+                    'notes' => 'Battery released during unit verification',
+                ]);
                 
                 log_message('info', "[WorkOrder] Released battery {$oldBat['id']} from unit {$unitId}");
             }
@@ -3626,6 +3919,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
                 
+                // Log to component_audit_log
+                $auditService->logRemoval('CHARGER', $oldChr['id'], $unitId, [
+                    'work_order_id' => $workOrderId,
+                    'triggered_by' => 'UNIT_VERIFICATION',
+                    'reference_type' => 'work_order',
+                    'reference_id' => $workOrderId,
+                    'notes' => 'Charger released during unit verification',
+                ]);
+                
                 log_message('info', "[WorkOrder] Released charger {$oldChr['id']} from unit {$unitId}");
             }
             
@@ -3644,6 +3946,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'storage_location' => 'Workshop',
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
+                
+                // Log to component_audit_log
+                $auditService->logRemoval('ATTACHMENT', $oldAtt['id'], $unitId, [
+                    'work_order_id' => $workOrderId,
+                    'triggered_by' => 'UNIT_VERIFICATION',
+                    'reference_type' => 'work_order',
+                    'reference_id' => $workOrderId,
+                    'notes' => 'Attachment released during unit verification',
+                ]);
                 
                 log_message('info', "[WorkOrder] Released attachment {$oldAtt['id']} from unit {$unitId}");
             }
@@ -3678,6 +3989,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         throw new \Exception('Gagal update data attachment: ' . $errorMsg);
                     }
                     
+                    // Log to component_audit_log
+                    $auditService->logAssignment(strtoupper($componentType), $attachmentInventoryId, $unitId, [
+                        'work_order_id' => $workOrderId,
+                        'triggered_by' => 'UNIT_VERIFICATION',
+                        'reference_type' => 'work_order',
+                        'reference_id' => $workOrderId,
+                        'notes' => ucfirst($componentType) . ' attached during unit verification',
+                    ]);
+                    
                     log_message('info', "[WorkOrder] Attached {$componentType} {$attachmentInventoryId} to unit {$unitId}");
                 }
             }
@@ -3711,6 +4031,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         throw new \Exception('Gagal update data charger: ' . $errorMsg);
                     }
                     
+                    // Log to component_audit_log
+                    $auditService->logAssignment(strtoupper($componentType), $chargerInventoryId, $unitId, [
+                        'work_order_id' => $workOrderId,
+                        'triggered_by' => 'UNIT_VERIFICATION',
+                        'reference_type' => 'work_order',
+                        'reference_id' => $workOrderId,
+                        'notes' => ucfirst($componentType) . ' attached during unit verification',
+                    ]);
+                    
                     log_message('info', "[WorkOrder] Attached {$componentType} {$chargerInventoryId} to unit {$unitId}");
                 }
             }
@@ -3743,6 +4072,15 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         $errorMsg = $this->getMySQLError($db);
                         throw new \Exception('Gagal update data baterai: ' . $errorMsg);
                     }
+                    
+                    // Log to component_audit_log
+                    $auditService->logAssignment(strtoupper($componentType), $bateraiInventoryId, $unitId, [
+                        'work_order_id' => $workOrderId,
+                        'triggered_by' => 'UNIT_VERIFICATION',
+                        'reference_type' => 'work_order',
+                        'reference_id' => $workOrderId,
+                        'notes' => ucfirst($componentType) . ' attached during unit verification',
+                    ]);
                     
                     log_message('info', "[WorkOrder] Attached {$componentType} {$bateraiInventoryId} to unit {$unitId}");
                 }
@@ -3811,7 +4149,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                             'module' => 'work_order_verification',
                             'attachment_id' => $recordId,
                             'tipe_item' => 'Charger',
-                            'attachment_info' => ($chargerInfo['merk'] ?? '') . ' - ' . ($chargerInfo['model'] ?? ''),
+                            'attachment_info' => ($chargerInfo['merk_charger'] ?? '') . ' - ' . ($chargerInfo['tipe_charger'] ?? ''),
                             'from_unit_id' => $fromUnitId,
                             'from_unit_number' => $fromUnit['no_unit'] ?? "ID {$fromUnitId}",
                             'to_unit_id' => $unitId,
@@ -3983,6 +4321,31 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             
             log_message('info', "[WorkOrder] WO {$workOrderId} successfully updated to COMPLETED. Update result: " . json_encode($woUpdated));
 
+            // Insert unit_verification_history
+            $verificationHistoryData = [
+                'unit_id' => $unitId,
+                'work_order_id' => $workOrderId,
+                'verified_by' => session()->get('user_id') ?: 1,
+                'verified_at' => date('Y-m-d H:i:s'),
+                'verification_data' => json_encode([
+                    'unit_changes' => $allChanges,
+                    'components' => [
+                        'attachment_id' => $attachmentInventoryId ?? null,
+                        'charger_id' => $chargerInventoryId ?? null,
+                        'battery_id' => $bateraiInventoryId ?? null,
+                    ],
+                    'old_data' => $oldUnitData,
+                    'new_data' => $unitUpdateData,
+                ]),
+                'created_at' => date('Y-m-d H:i:s'),
+            ];
+            
+            // Check if table exists before inserting
+            if ($db->tableExists('unit_verification_history')) {
+                $db->table('unit_verification_history')->insert($verificationHistoryData);
+                log_message('info', "[WorkOrder] Inserted unit_verification_history for unit {$unitId}, WO {$workOrderId}");
+            }
+            
             // Insert status history
             $historyData = [
                 'work_order_id' => $workOrderId,
@@ -4224,6 +4587,23 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                             ->where('work_order_id', $workOrderId)
                             ->update($updateData);
 
+                        // ✅ Insert into work_order_sparepart_usage table for tracking
+                        if ($quantityUsed > 0) {
+                            $usageData = [
+                                'work_order_sparepart_id' => $sparepart['id'],
+                                'work_order_id' => $workOrderId,
+                                'quantity_used' => $quantityUsed,
+                                'quantity_returned' => $quantityReturn > 0 ? $quantityReturn : 0,
+                                'usage_notes' => $sparepart['notes'] ?? null,
+                                'used_at' => date('Y-m-d H:i:s'),
+                                'created_at' => date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s')
+                            ];
+                            
+                            $db->table('work_order_sparepart_usage')->insert($usageData);
+                            log_message('info', "Created usage record for WO {$workOrderId}, Sparepart: {$originalSparepart['sparepart_name']}, Used Qty: {$quantityUsed}");
+                        }
+
                         // ✅ ONLY create return record if FROM WAREHOUSE and has quantity to return
                         if ($quantityReturn > 0 && $isFromWarehouse == 1) {
                             $returnData = [
@@ -4273,6 +4653,24 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     ];
                     
                     $db->table('work_order_spareparts')->insert($additionalData);
+                    $additionalSparepartId = $db->insertID();
+                    
+                    // ✅ Insert into work_order_sparepart_usage table for additional spareparts
+                    if ($additionalSparepartId && $sparepart['quantity'] > 0) {
+                        $usageData = [
+                            'work_order_sparepart_id' => $additionalSparepartId,
+                            'work_order_id' => $workOrderId,
+                            'quantity_used' => $sparepart['quantity'],
+                            'quantity_returned' => 0,
+                            'usage_notes' => $sparepart['notes'] ?? null,
+                            'used_at' => date('Y-m-d H:i:s'),
+                            'created_at' => date('Y-m-d H:i:s'),
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ];
+                        
+                        $db->table('work_order_sparepart_usage')->insert($usageData);
+                        log_message('info', "Created usage record for additional sparepart - WO {$workOrderId}, Sparepart: {$sparepartData['desc_sparepart']}");
+                    }
                 }
             }
 

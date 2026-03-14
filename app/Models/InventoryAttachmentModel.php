@@ -274,13 +274,10 @@ class InventoryAttachmentModel extends Model
                 'updated_at'        => date('Y-m-d H:i:s'),
             ]);
 
-            $db->table('inventory_item_unit_log')->insert([
-                'inventory_attachment_id'   => $attachmentId,
-                'inventory_attachment_type' => 'attachment',
-                'inventory_unit_id'         => $unitId,
-                'action'                    => 'assign',
-                'user_id'                   => $userId,
-                'note'                      => $note,
+            $auditService = new \App\Services\ComponentAuditService($db);
+            $auditService->logAssignment('ATTACHMENT', $attachmentId, $unitId, [
+                'notes' => $note,
+                'triggered_by' => 'ASSIGN_TO_UNIT',
             ]);
 
             $db->transComplete();
@@ -317,13 +314,10 @@ class InventoryAttachmentModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $attachmentId,
-                    'inventory_attachment_type' => 'attachment',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'remove',
-                    'user_id'                   => $userId,
-                    'note'                      => $note,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('ATTACHMENT', $attachmentId, $oldUnit, [
+                    'notes' => $note,
+                    'triggered_by' => 'REMOVE_FROM_UNIT',
                 ]);
             }
 
@@ -398,13 +392,10 @@ class InventoryAttachmentModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $attachmentId,
-                    'inventory_attachment_type' => 'attachment',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'detach',
-                    'user_id'                   => session()->get('user_id'),
-                    'note'                      => $reason,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('ATTACHMENT', $attachmentId, $oldUnit, [
+                    'notes' => $reason,
+                    'triggered_by' => 'DETACH_FROM_UNIT',
                 ]);
             }
 

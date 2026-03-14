@@ -804,6 +804,7 @@ $(document).ready(function() {
         }
         
         let formData = $('#sparepartValidationForm').serialize();
+        formData += '&<?= csrf_token() ?>=' + encodeURIComponent('<?= csrf_hash() ?>');
         console.log('📋 Sparepart validation data being sent:', formData);
         
         $.ajax({

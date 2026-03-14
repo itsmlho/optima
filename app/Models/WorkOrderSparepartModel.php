@@ -22,6 +22,9 @@ class WorkOrderSparepartModel extends Model
         'satuan',
         'notes',
         'is_from_warehouse',
+        'source_type',
+        'source_unit_id',
+        'source_notes',
         'quantity_used',
         'is_additional',
         'sparepart_validated'
@@ -39,7 +42,10 @@ class WorkOrderSparepartModel extends Model
         'item_type' => 'permit_empty|in_list[sparepart,tool]',
         'quantity_brought' => 'required|integer|greater_than[0]',
         'satuan' => 'required|max_length[50]',
-        'is_from_warehouse' => 'permit_empty|in_list[0,1]'
+        'is_from_warehouse' => 'permit_empty|in_list[0,1]',
+        'source_type' => 'permit_empty|in_list[WAREHOUSE,BEKAS,KANIBAL]',
+        'source_unit_id' => 'permit_empty|integer',
+        'source_notes' => 'permit_empty|max_length[1000]'
     ];
 
     protected $validationMessages = [
@@ -66,8 +72,33 @@ class WorkOrderSparepartModel extends Model
         'satuan' => [
             'required' => 'Satuan harus diisi',
             'max_length' => 'Satuan maksimal 50 karakter'
+        ],
+        'source_type' => [
+            'in_list' => 'Source type harus WAREHOUSE, BEKAS, atau KANIBAL'
+        ],
+        'source_unit_id' => [
+            'integer' => 'Unit ID harus berupa angka'
+        ],
+        'source_notes' => [
+            'max_length' => 'Catatan sumber maksimal 1000 karakter'
         ]
     ];
+
+    /**
+     * Before Insert/Update: Validate KANIBAL requires source_unit_id
+     */
+    protected $beforeInsert = ['validateKanibalSource'];
+    protected $beforeUpdate = ['validateKanibalSource'];
+
+    protected function validateKanibalSource(array $data)
+    {
+        if (isset($data['data']['source_type']) && $data['data']['source_type'] === 'KANIBAL') {
+            if (empty($data['data']['source_unit_id'])) {
+                throw new \Exception('Unit sumber harus dipilih untuk sparepart KANIBAL/Copotan');
+            }
+        }
+        return $data;
+    }
 
     /**
      * Add multiple spareparts to work order
@@ -127,8 +158,14 @@ class WorkOrderSparepartModel extends Model
             wos.quantity_brought as qty,
             wos.satuan,
             wos.notes,
-            wos.is_from_warehouse
+            wos.is_from_warehouse,
+            wos.source_type,
+            wos.source_unit_id,
+            wos.source_notes,
+            iu.no_unit as source_unit_number,
+            iu.no_unit_na as source_unit_number_alt
         ')
+        ->join('inventory_unit iu', 'wos.source_unit_id = iu.id_inventory_unit', 'left')
         ->where('wos.work_order_id', $workOrderId)
         ->orderBy('wos.id', 'ASC')
         ->findAll();

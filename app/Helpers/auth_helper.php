@@ -221,8 +221,12 @@ if (!function_exists('get_user_area_department_scope')) {
             
             log_message('debug', "Processing scope for user ID: {$userId}, Role: {$userRole}");
             
+            // Normalize role: convert underscores/hyphens to spaces for consistent matching
+            // Session stores slug (e.g., 'admin_service_pusat'), comparisons use name format
+            $normalizedRole = strtolower(str_replace(['_', '-'], ' ', $userRole));
+            
             // 1. SUPER ADMINISTRATOR - Full Access
-            if (in_array(strtolower($userRole), ['super administrator', 'administrator', 'super_admin'])) {
+            if (in_array($normalizedRole, ['super administrator', 'administrator', 'super admin'])) {
                 log_message('debug', 'Super Administrator detected - granting full access');
                 return null; // Full access
             }
@@ -238,29 +242,34 @@ if (!function_exists('get_user_area_department_scope')) {
             log_message('debug', 'Service division user detected - applying area/department filtering');
             
             // 3. HEAD SERVICE - Full Service Access
-            if (strtolower($userRole) === 'head service') {
+            if ($normalizedRole === 'head service') {
                 log_message('debug', 'Head Service detected - granting full service access');
                 return null; // Full access to all service operations
             }
             
             // 4. ADMIN SERVICE PUSAT - All Service Areas (can see all areas)
-            if (strtolower($userRole) === 'admin service pusat') {
+            if ($normalizedRole === 'admin service pusat') {
                 return getUserServiceAccess($userId, 'ALL');
             }
             
             // 5. ADMIN SERVICE AREA - Branch Areas Only  
-            if (strtolower($userRole) === 'admin service area') {
+            if ($normalizedRole === 'admin service area') {
                 return getUserServiceAccess($userId, 'BRANCH');
             }
             
             // 6. SUPERVISOR/STAFF SERVICE - Based on assignments
-            if (in_array(strtolower($userRole), ['supervisor service', 'staff service'])) {
+            if (in_array($normalizedRole, ['supervisor service', 'staff service'])) {
                 return getUserServiceAccess($userId, 'ASSIGNED');
             }
             
             // 7. LEGACY SERVICE ROLES - Department specific
-            if (strpos(strtolower($userRole), 'service') !== false) {
+            if (strpos($normalizedRole, 'service') !== false) {
                 return getLegacyServiceAccess($userRole);
+            }
+            
+            // 8. MANAGER SERVICE AREA
+            if ($normalizedRole === 'manager service area') {
+                return getUserServiceAccess($userId, 'ALL');
             }
             
             // 8. DEFAULT FOR SERVICE DIVISION - Limited access

@@ -114,6 +114,22 @@ class InventoryBatteryModel extends Model
         if (!empty($request['model_filter'])) {
             $builder->where('ib.voltage', $request['model_filter']);
         }
+        
+        // Filter by chemistry type (Lead Acid vs Lithium-ion)
+        if (!empty($request['chemistry_filter'])) {
+            if ($request['chemistry_filter'] === 'lithium') {
+                $builder->groupStart();
+                $builder->like('b.jenis_baterai', 'LiFeP');
+                $builder->orLike('b.jenis_baterai', 'Lithium');
+                $builder->orLike('b.jenis_baterai', 'Li-ion');
+                $builder->groupEnd();
+            } elseif ($request['chemistry_filter'] === 'lead_acid') {
+                // All batteries not explicitly marked as Lithium are Lead Acid
+                $builder->notLike('b.jenis_baterai', 'LiFeP');
+                $builder->notLike('b.jenis_baterai', 'Lithium');
+                $builder->notLike('b.jenis_baterai', 'Li-ion');
+            }
+        }
 
         // Search functionality
         if (!empty($request['search']['value'])) {
@@ -303,13 +319,10 @@ class InventoryBatteryModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $batteryId,
-                    'inventory_attachment_type' => 'battery',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'detach',
-                    'user_id'                   => session()->get('user_id'),
-                    'note'                      => $reason,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('BATTERY', $batteryId, $oldUnit, [
+                    'notes' => $reason,
+                    'triggered_by' => 'DETACH_FROM_UNIT',
                 ]);
             }
 
@@ -409,13 +422,10 @@ class InventoryBatteryModel extends Model
             ]);
 
             // 4. Audit log
-            $db->table('inventory_item_unit_log')->insert([
-                'inventory_attachment_id'   => $batteryId,
-                'inventory_attachment_type' => 'battery',
-                'inventory_unit_id'         => $unitId,
-                'action'                    => 'assign',
-                'user_id'                   => $userId,
-                'note'                      => $note,
+            $auditService = new \App\Services\ComponentAuditService($db);
+            $auditService->logAssignment('BATTERY', $batteryId, $unitId, [
+                'notes' => $note,
+                'triggered_by' => 'ASSIGN_TO_UNIT',
             ]);
 
             $db->transComplete();
@@ -452,13 +462,10 @@ class InventoryBatteryModel extends Model
             ]);
 
             if ($oldUnit) {
-                $db->table('inventory_item_unit_log')->insert([
-                    'inventory_attachment_id'   => $batteryId,
-                    'inventory_attachment_type' => 'battery',
-                    'inventory_unit_id'         => $oldUnit,
-                    'action'                    => 'remove',
-                    'user_id'                   => $userId,
-                    'note'                      => $note,
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditService->logRemoval('BATTERY', $batteryId, $oldUnit, [
+                    'notes' => $note,
+                    'triggered_by' => 'REMOVE_FROM_UNIT',
                 ]);
             }
 

@@ -193,8 +193,46 @@ function softBadgeClass(?string $c): string {
                         <?php foreach ($spareparts as $i => $sp): ?>
                         <tr>
                             <td class="text-muted"><?= $i + 1 ?></td>
-                            <td><code><?= esc($sp['sparepart_code'] ?? '-') ?></code></td>
-                            <td><?= esc($sp['sparepart_name'] ?? esc($sp['item_name'] ?? '-')) ?></td>
+                            <td>
+                                <?php if (empty($sp['sparepart_code'])): ?>
+                                    <span class="badge bg-warning text-dark">Manual Entry</span>
+                                    <div class="small text-muted">(Menunggu kode WH)</div>
+                                <?php else: ?>
+                                    <code><?= esc($sp['sparepart_code']) ?></code>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?= esc($sp['sparepart_name'] ?? esc($sp['item_name'] ?? '-')) ?>
+                                
+                                <!-- Source Type Badge -->
+                                <?php if (!empty($sp['source_type'])): ?>
+                                    <div class="mt-1">
+                                        <?php if ($sp['source_type'] === 'WAREHOUSE'): ?>
+                                            <span class="badge badge-soft-green">
+                                                <i class="fas fa-warehouse"></i> Warehouse
+                                            </span>
+                                        <?php elseif ($sp['source_type'] === 'BEKAS'): ?>
+                                            <span class="badge badge-soft-yellow">
+                                                <i class="fas fa-recycle"></i> Bekas
+                                            </span>
+                                        <?php elseif ($sp['source_type'] === 'KANIBAL'): ?>
+                                            <span class="badge badge-soft-orange">
+                                                <i class="fas fa-exchange-alt"></i> Kanibal
+                                            </span>
+                                            <?php if (!empty($sp['source_unit_number'])): ?>
+                                                <div class="small text-muted mt-1">
+                                                    Dari Unit: <strong><?= esc($sp['source_unit_number']) ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($sp['source_notes'])): ?>
+                                                <div class="small text-muted">
+                                                    Alasan: <?= esc($sp['source_notes']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td class="text-center"><?= number_format($sp['quantity_brought'] ?? 0) ?></td>
                             <td class="text-center fw-bold text-primary"><?= number_format($sp['quantity_used'] ?? 0) ?></td>
                             <td>

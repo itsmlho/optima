@@ -1,1 +1,0 @@
-\$url . ' - Active: ' . (\$isMarketing ? 'YES' : 'NO') . PHP_EOL;

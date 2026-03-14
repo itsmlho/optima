@@ -507,6 +507,8 @@ $routes->group('service', static function ($routes) {
     // Work Order area and sparepart endpoints
     $routes->post('work-orders/get-unit-area', 'WorkOrderController::getUnitArea');
     $routes->get('work-orders/spareparts-dropdown', 'WorkOrderController::sparepartsDropdown');
+    $routes->get('work-orders/search-spareparts', 'WorkOrderController::searchSpareparts'); // AJAX search for Select2
+    $routes->get('service/work-orders/search-spareparts', 'WorkOrderController::searchSpareparts'); // With service prefix
     // Complete Work Order endpoints (before verification)
     $routes->post('work-orders/get-complete-data', 'WorkOrderController::getCompleteData');
     $routes->post('work-orders/save-complete', 'WorkOrderController::saveCompleteWorkOrder');
@@ -806,6 +808,12 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('invent_sparepart', 'Warehouse::inventSparepart'); // Untuk AJAX DataTable
         $routes->get('get_sparepart/(:num)', 'Warehouse::getInventorySparepart/$1'); // Untuk mengambil data edit
         $routes->post('update_sparepart/(:num)', 'Warehouse::updateInventorySparepart/$1'); // Untuk menyimpan data edit
+        
+        // Manual Entry Management Routes
+        $routes->get('manual-entries', 'Warehouse::manualEntriesManagement');
+        $routes->post('get-manual-entries-data', 'Warehouse::getManualEntriesData');
+        $routes->post('get-manual-entry-wos', 'Warehouse::getManualEntryWOs');
+        $routes->post('link-manual-entries', 'Warehouse::linkManualEntriesToOfficial');
 
         // Unit Inventory (SPA + CRUD)
         $routes->group('unit', function($routes) {
@@ -1361,6 +1369,9 @@ $routes->group('admin', static function ($routes) {
     $routes->post('activity-log/data', 'ActivityLogViewer::getData');
     $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
     $routes->get('activity-log/export', 'ActivityLogViewer::export');
+    $routes->get('activity-log/users', 'ActivityLogViewer::getUsers');
+    $routes->get('activity-log/divisions', 'ActivityLogViewer::getDivisions');
+    $routes->get('activity-log/check-is-head', 'ActivityLogViewer::checkIsHead');
 });
 
 // Dashboard Activity Log Widget Routes

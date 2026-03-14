@@ -1,0 +1,60 @@
+# ================================================================
+# OPTIMA ERP - CRON JOB CONFIGURATION
+# ================================================================
+# Description: Automated tasks for Optima ERP system
+# Install: Copy these lines to your server crontab
+#          Command: crontab -e
+# ================================================================
+
+# ----------------------------------------------------------------
+# INVOICE AUTOMATION
+# ----------------------------------------------------------------
+# Auto-generate invoices for DIs 30 days past completion
+# Runs daily at 1:00 AM
+# ----------------------------------------------------------------
+
+# Production Path (update with your actual path)
+0 1 * * * cd /c/laragon/www/optima && php spark jobs:invoice-automation >> /c/laragon/www/optima/writable/logs/invoice-automation.log 2>&1
+
+# Alternative schedules (uncomment as needed):
+
+# Every 6 hours (for high-volume environments)
+# 0 */6 * * * cd /c/laragon/www/optima && php spark jobs:invoice-automation >> /c/laragon/www/optima/writable/logs/invoice-automation.log 2>&1
+
+# Twice daily (morning and evening)
+# 0 1,13 * * * cd /c/laragon/www/optima && php spark jobs:invoice-automation >> /c/laragon/www/optima/writable/logs/invoice-automation.log 2>&1
+
+# Every Monday at 2 AM (for testing/low-volume)
+# 0 2 * * 1 cd /c/laragon/www/optima && php spark jobs:invoice-automation >> /c/laragon/www/optima/writable/logs/invoice-automation.log 2>&1
+
+# ----------------------------------------------------------------
+# TESTING & VERIFICATION
+# ----------------------------------------------------------------
+# Test the command manually before adding to cron:
+# cd /c/laragon/www/optima
+# php spark jobs:invoice-automation --dry-run --verbose
+# php spark jobs:invoice-automation
+# 
+# Check logs:
+# tail -f writable/logs/invoice-automation.log
+# tail -f writable/logs/log-*.log
+# ----------------------------------------------------------------
+
+# ----------------------------------------------------------------
+# WINDOWS TASK SCHEDULER (if not using cron)
+# ----------------------------------------------------------------
+# For Windows servers without cron, use Task Scheduler:
+# 
+# 1. Open Task Scheduler
+# 2. Create Basic Task > Name: "Optima Invoice Automation"
+# 3. Trigger: Daily at 1:00 AM
+# 4. Action: Start a program
+#    Program: C:\laragon\bin\php\php-8.1.10-Win32-vs16-x64\php.exe
+#    Arguments: spark jobs:invoice-automation
+#    Start in: C:\laragon\www\optima
+# 5. Finish
+# ----------------------------------------------------------------
+
+# ================================================================
+# END OF CRON CONFIGURATION
+# ================================================================

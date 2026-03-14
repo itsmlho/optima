@@ -130,7 +130,7 @@ class AreaModel extends Model
         $builder = $this->db->table('vw_area_staff_summary');
         
         if ($areaId) {
-            $builder->where('areas.id', $areaId);
+            $builder->where('area_id', $areaId);
         }
         
         return $builder->get()->getResultArray();

@@ -1,6 +1,0 @@
-ID_Unit;SN_Unit;Status_Tagihan_ACC;Status_Kontrak_MKT;Aktif_Service_SRV;Lokasi_Gudang_INV;Masalah;Rekomendasi_Validasi
-1158;182ZR3191;DITAGIH;ADA_KONTRAK;SERVIS_JALAN;"BP. AMEL ( DIJUAL 10.7.24)";"Di-Tagih (Active Billing) tapi master status JUAL/RONGSOK.";"Cek Accounting apakah ID unit tagihan salah, atau Warehouse salah tulis status."
-1363;44926;DITAGIH;ADA_KONTRAK;KOSONG;"DIJUAL(BPK. EMAN 17.7.20)(NO STIKER DIPAKE NO 770)";"Di-Tagih (Active Billing) tapi master status JUAL/RONGSOK.";"Cek Accounting apakah ID unit tagihan salah, atau Warehouse salah tulis status."
-1674;63045;DITAGIH;KOSONG;KOSONG;"DIJUAL RONGSOK (BPK. PREDI PT. LENTERA 03-10-2025)";"Di-Tagih (Active Billing) tapi master status JUAL/RONGSOK. | [WARNING] Ditagihkan tapi tidak ada kontrak dari Marketing maupun catatan Service.";"Cek Accounting apakah ID unit tagihan salah, atau Warehouse salah tulis status."
-1814;68666;DITAGIH;ADA_KONTRAK;KOSONG;"BP. AMEL( DIJUAL 12.2.25) RONGSOK";"Di-Tagih (Active Billing) tapi master status JUAL/RONGSOK.";"Cek Accounting apakah ID unit tagihan salah, atau Warehouse salah tulis status."
-3952;010353E2139;DITAGIH;ADA_KONTRAK;KOSONG;"CV SETIA ALUMUNIUM JAYA ABADI(DIJUAL 13.7.24)";"Di-Tagih (Active Billing) tapi master status JUAL/RONGSOK.";"Cek Accounting apakah ID unit tagihan salah, atau Warehouse salah tulis status."

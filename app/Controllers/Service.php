@@ -1995,18 +1995,22 @@ class Service extends BaseController
                 $transferType = ($componentData['action'] === 'replace' && $old_unit_id) ? 'TRANSFER' : 'NEW_ASSIGNMENT';
                 $triggeredBy = $transferType === 'TRANSFER' ? 'KANIBAL_PERSIAPAN_UNIT' : 'PERSIAPAN_UNIT';
                 
-                $this->db->table('attachment_transfer_log')->insert([
-                    'attachment_id' => $componentData['new_inventory_attachment_id'],
-                    'from_unit_id' => $old_unit_id,
-                    'to_unit_id' => $unit_id,
-                    'transfer_type' => $transferType,
-                    'triggered_by' => $triggeredBy,
-                    'spk_id' => $spk_id,
-                    'stage_name' => $stage_name,
-                    'notes' => ucfirst($type) . ' ' . ($transferType === 'TRANSFER' ? 'transferred' : 'assigned'),
-                    'created_by' => session('user_id') ?? 1,
-                    'created_at' => date('Y-m-d H:i:s')
-                ]);
+                $auditService = new \App\Services\ComponentAuditService($this->db);
+                if ($transferType === 'TRANSFER') {
+                    $auditService->logTransfer(strtoupper($type), $componentData['new_inventory_attachment_id'], $old_unit_id, $unit_id, [
+                        'triggered_by' => $triggeredBy,
+                        'spk_id' => $spk_id,
+                        'stage_name' => $stage_name,
+                        'notes' => ucfirst($type) . ' transferred',
+                    ]);
+                } else {
+                    $auditService->logAssignment(strtoupper($type), $componentData['new_inventory_attachment_id'], $unit_id, [
+                        'triggered_by' => $triggeredBy,
+                        'spk_id' => $spk_id,
+                        'stage_name' => $stage_name,
+                        'notes' => ucfirst($type) . ' assigned',
+                    ]);
+                }
                 
                 log_message('info', "Component {$type} ID {$componentData['new_inventory_attachment_id']} {$transferType} to unit {$unit_id}");
             }
@@ -2026,61 +2030,49 @@ class Service extends BaseController
         try {
             log_message('info', "🔧 LEGACY: Processing battery={$battery_id}, charger={$charger_id}, unit={$unit_id}");
             
+            $auditService = new \App\Services\ComponentAuditService($this->db);
+            
             // Update battery attachment
             if ($battery_id) {
-            // Defensive: Explicitly set only allowed fields
-            $updateData = [
-                'inventory_unit_id' => $unit_id, 
-                'status' => 'IN_USE', 
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
+                $updateData = [
+                    'inventory_unit_id' => $unit_id, 
+                    'status' => 'IN_USE', 
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+                
+                $this->db->table('inventory_batteries')
+                    ->where('id', $battery_id)
+                    ->update($updateData);
+                
+                // Log to audit table
+                $auditService->logAssignment('BATTERY', $battery_id, $unit_id, [
+                    'triggered_by' => 'PERSIAPAN_UNIT',
+                    'spk_id' => $spk_id,
+                    'stage_name' => $stage_name,
+                    'notes' => 'Battery assigned (legacy method)',
+                ]);
+            }
             
-            $this->db->table('inventory_batteries')
-                ->where('id', $battery_id)
-                ->update($updateData);
-            
-            // Log to audit table
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $battery_id,
-                'from_unit_id' => null,
-                'to_unit_id' => $unit_id,
-                'transfer_type' => 'NEW_ASSIGNMENT',
-                'triggered_by' => 'PERSIAPAN_UNIT',
-                'spk_id' => $spk_id,
-                'stage_name' => $stage_name,
-                'notes' => 'Battery assigned (legacy method)',
-                'created_by' => session('user_id') ?? 1,
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
-        }
-        
-        // Update charger attachment
-        if ($charger_id) {
-            // Defensive: Explicitly set only allowed fields
-            $updateData = [
-                'inventory_unit_id' => $unit_id, 
-                'status' => 'IN_USE', 
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-            
-            $this->db->table('inventory_chargers')
-                ->where('id', $charger_id)
-                ->update($updateData);
-            
-            // Log to audit table
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $charger_id,
-                'from_unit_id' => null,
-                'to_unit_id' => $unit_id,
-                'transfer_type' => 'NEW_ASSIGNMENT',
-                'triggered_by' => 'PERSIAPAN_UNIT',
-                'spk_id' => $spk_id,
-                'stage_name' => $stage_name,
-                'notes' => 'Charger assigned (legacy method)',
-                'created_by' => session('user_id') ?? 1,
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
-        }
+            // Update charger attachment
+            if ($charger_id) {
+                $updateData = [
+                    'inventory_unit_id' => $unit_id, 
+                    'status' => 'IN_USE', 
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+                
+                $this->db->table('inventory_chargers')
+                    ->where('id', $charger_id)
+                    ->update($updateData);
+                
+                // Log to audit table
+                $auditService->logAssignment('CHARGER', $charger_id, $unit_id, [
+                    'triggered_by' => 'PERSIAPAN_UNIT',
+                    'spk_id' => $spk_id,
+                    'stage_name' => $stage_name,
+                    'notes' => 'Charger assigned (legacy method)',
+                ]);
+            }
         } catch (\Exception $e) {
             log_message('error', "❌ ERROR in processLegacyComponentData: " . $e->getMessage());
             log_message('error', "📍 Error location: " . $e->getFile() . ':' . $e->getLine());
@@ -2475,15 +2467,15 @@ try {
         
         error_log('✅ KANIBAL STEP 2 SUCCESS: ' . ucfirst($componentType) . ' ' . $attachment_id . ' attached to unit ' . $unit_id . ' (affected: ' . $affected2 . ')');
         
-        // Insert audit log
+        // Insert audit log to component_audit_log
         $spk_id = %SPK_ID%;
         $stage_name = '%STAGE_NAME%';
         $created_by = %CREATED_BY%;
         
-        $auditSql = "INSERT INTO attachment_transfer_log 
-                     (attachment_id, from_unit_id, to_unit_id, transfer_type, triggered_by, spk_id, stage_name, created_by, created_at) 
+        $auditSql = "INSERT INTO component_audit_log 
+                     (component_type, component_id, event_type, event_category, from_unit_id, to_unit_id, spk_id, stage_name, triggered_by, performed_by, performed_at, created_at) 
                      VALUES 
-                     ($attachment_id, " . ($old_unit_id ? $old_unit_id : 'NULL') . ", $unit_id, 'TRANSFER', 'KANIBAL_FABRIKASI', $spk_id, '$stage_name', $created_by, '" . date('Y-m-d H:i:s') . "')";
+                     (UPPER('$componentType'), $attachment_id, 'TRANSFERRED', 'TRANSFER', " . ($old_unit_id ? $old_unit_id : 'NULL') . ", $unit_id, $spk_id, '$stage_name', 'KANIBAL_FABRIKASI', $created_by, NOW(), NOW())";
         
         $mysqli->query($auditSql);
         error_log('📝 AUDIT LOG: Transfer logged from unit ' . ($old_unit_id ?? 'NULL') . ' to unit ' . $unit_id);
@@ -2504,15 +2496,15 @@ try {
         
         error_log('✅ NORMAL MODE SUCCESS: Attachment ' . $attachment_id . ' assigned to unit ' . $unit_id . ' (affected rows: ' . $affected_rows . ')');
         
-        // Insert audit log
+        // Insert audit log to component_audit_log
         $spk_id = %SPK_ID%;
         $stage_name = '%STAGE_NAME%';
         $created_by = %CREATED_BY%;
         
-        $auditSql = "INSERT INTO attachment_transfer_log 
-                     (attachment_id, from_unit_id, to_unit_id, transfer_type, triggered_by, spk_id, stage_name, created_by, created_at) 
+        $auditSql = "INSERT INTO component_audit_log 
+                     (component_type, component_id, event_type, event_category, from_unit_id, to_unit_id, spk_id, stage_name, triggered_by, performed_by, performed_at, created_at) 
                      VALUES 
-                     ($attachment_id, NULL, $unit_id, 'NEW_ASSIGNMENT', 'FABRIKASI', $spk_id, '$stage_name', $created_by, '" . date('Y-m-d H:i:s') . "')";
+                     (UPPER('$componentType'), $attachment_id, 'ASSIGNED', 'ASSIGNMENT', NULL, $unit_id, $spk_id, '$stage_name', 'FABRIKASI', $created_by, NOW(), NOW())";
         
         $mysqli->query($auditSql);
         error_log('📝 AUDIT LOG: New assignment logged to unit ' . $unit_id);
@@ -3662,6 +3654,10 @@ EOF;
             return;
         }
         
+        // Get old unit_id before releasing
+        $oldRecord = $db->table($tableName)->select('inventory_unit_id')->where('id', $attachmentId)->get()->getRowArray();
+        $oldUnitId = $oldRecord['inventory_unit_id'] ?? null;
+        
         $db->table($tableName)
             ->where('id', $attachmentId)
             ->update([
@@ -3669,6 +3665,15 @@ EOF;
                 'status' => 'AVAILABLE',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+        
+        // Log to component_audit_log
+        if ($oldUnitId) {
+            $auditService = new \App\Services\ComponentAuditService($db);
+            $auditService->logRemoval(strtoupper($componentType), $attachmentId, $oldUnitId, [
+                'triggered_by' => 'SERVICE_UNIT_VERIFICATION',
+                'notes' => ucfirst($componentType) . ' released during service unit verification',
+            ]);
+        }
         
         log_message('info', "Released {$componentType} ID: {$attachmentId}");
     }
@@ -3703,9 +3708,16 @@ EOF;
             ->where('id', $attachmentId)
             ->update([
                 'inventory_unit_id' => $unitId,
-                'status' => $componentType === 'attachment' ? 'IN_USE' : 'IN_USE',
+                'status' => 'IN_USE',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+        
+        // Log to component_audit_log
+        $auditService = new \App\Services\ComponentAuditService($db);
+        $auditService->logAssignment(strtoupper($componentType), $attachmentId, $unitId, [
+            'triggered_by' => 'SERVICE_UNIT_VERIFICATION',
+            'notes' => ucfirst($componentType) . ' attached during service unit verification',
+        ]);
         
         log_message('info', "Attached {$componentType} ID: {$attachmentId} to unit ID: {$unitId}");
     }

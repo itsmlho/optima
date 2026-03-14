@@ -471,16 +471,16 @@ $assetService = new \App\Services\AssetMinificationService();
                             </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-striped table-hover table-sm" id="sparepartTable">
+                                <table class="table table-striped table-hover table-sm" id="sparepartTable" style="table-layout: fixed; width: 100%;">
                                     <thead class="table-light">
                                         <tr>
-                                            <th width="12%">Type*</th>
-                                            <th width="28%">Item Name*</th>
-                                            <th width="10%">Qty*</th>
-                                            <th width="10%">Unit*</th>
-                                            <th width="15%">Source*</th>
-                                            <th width="20%">Notes</th>
-                                            <th width="5%">Action</th>
+                                            <th style="width: 100px;">Type*</th>
+                                            <th style="width: 280px;">Item Name*</th>
+                                            <th style="width: 80px;">Qty*</th>
+                                            <th style="width: 90px;">Unit*</th>
+                                            <th style="width: 110px;">Source*</th>
+                                            <th style="width: auto;">Notes</th>
+                                            <th style="width: 60px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="sparepartTableBody">
@@ -815,11 +815,32 @@ $(document).ready(function() {
         console.warn('Failed to hide pageLoading overlay early:', e);
     }
     
-    // Initialize global spareparts data for dropdowns
-    <?php if (!empty($spareparts)): ?>
-        window.sparepartsData = <?= json_encode($spareparts, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+    // REMOVED: Pre-loading 14k+ spareparts (performance optimization)
+    // Now using AJAX Select2 for on-demand search via /service/work-orders/search-spareparts
+    // <?php if (!empty($spareparts)): ?>
+    //     window.sparepartsData = <?= json_encode($spareparts, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+    // <?php else: ?>
+    //     window.sparepartsData = [];
+    // <?php endif; ?>
+    
+    // Initialize global units data for KANIBAL source selection
+    <?php if (!empty($units)): ?>
+        window.unitsData = <?= json_encode($units, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
     <?php else: ?>
-        window.sparepartsData = [];
+        window.unitsData = [];
+    <?php endif; ?>
+    
+    // Initialize user department scope for filtering
+    <?php if (!empty($user_departemen_ids)): ?>
+        window.currentUserDepartment = {
+            ids: <?= json_encode(array_map('intval', $user_departemen_ids)) ?>,
+            name: '<?= esc($user_departemen_name ?? '', 'js') ?>',
+            scopeType: '<?= esc($scope_type ?? '', 'js') ?>'
+        };
+        console.log('🔐 User Department Scope:', window.currentUserDepartment.name, '| IDs:', window.currentUserDepartment.ids, '| Type:', window.currentUserDepartment.scopeType);
+    <?php else: ?>
+        window.currentUserDepartment = null;
+        console.log('ℹ️ No department filtering - full access');
     <?php endif; ?>
     
     // Force close all modals on page load with multiple methods (except work order modal)
@@ -2779,7 +2800,23 @@ $(document).ready(function() {
         // Load unit dropdown first - it will handle its own Select2 initialization
         // DO NOT destroy unit_id here - let loadUnitsDropdown() handle it completely
         loadUnitsDropdown();
-        loadMechanicHelperDropdowns();
+        
+        // Initialize staff dropdowns with department filtering
+        if (window.currentUserDepartment && window.currentUserDepartment.ids && window.currentUserDepartment.ids.length > 0) {
+            console.log(`🔐 Filtering staff by department: ${window.currentUserDepartment.name} (IDs: ${window.currentUserDepartment.ids})`);
+            
+            // Load all staff filtered by department scope (backend auto-applies scope)
+            loadStaffByDepartmentScope('ADMIN', 'admin_id');
+            loadStaffByDepartmentScope('FOREMAN', 'foreman_id');
+            loadStaffByDepartmentScope('MECHANIC', 'mechanic_1');
+            loadStaffByDepartmentScope('MECHANIC', 'mechanic_2');
+            loadStaffByDepartmentScope('HELPER', 'helper_1');
+            loadStaffByDepartmentScope('HELPER', 'helper_2');
+        } else {
+            console.log('ℹ️ No department filtering - loading ALL staff with Select2');
+            // Load ALL staff (Admin, Foreman, Mechanic, Helper) with Select2
+            loadAllStaffFallback();
+        }
         
         // Initialize Select2 for other dropdowns (NOT unit_id and NOT sparepart - they handle themselves)
         // Use longer delay to ensure unit and sparepart dropdowns are initialized first
@@ -3275,12 +3312,20 @@ $(document).ready(function() {
     }
     
     function loadStaffDropdown(staffRole, targetId) {
+        console.log(`🔄 Loading ${staffRole} for ${targetId}...`);
+        
+        // Build data object with CSRF token
+        const ajaxData = { 
+            staff_role: staffRole
+        };
+        ajaxData[window.csrfTokenName] = window.csrfTokenValue;
         
         $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
-            data: { staff_role: staffRole },
+            data: ajaxData,
             success: function(response) {
+                console.log(`📦 ${staffRole} response for ${targetId}:`, response);
                 
                 if (response.success && response.data) {
                     const staffSelect = $('#' + targetId);
@@ -3301,25 +3346,27 @@ $(document).ready(function() {
                         staffSelect.append(`<option value="${staff.id}">${optionText}</option>`);
                     });
                     
-                    // Re-initialize Select2 if not already initialized
-                    if (!staffSelect.hasClass('select2-hidden-accessible')) {
-                        staffSelect.select2({
-                            placeholder: placeholderText,
-                            allowClear: true,
-                            width: '100%',
-                            dropdownParent: $('#workOrderModal'),
-                            minimumInputLength: 0,
-                            language: {
-                                noResults: function() { return "No results found"; },
-                                searching: function() { return "Searching..."; }
-                            }
-                        });
-                    } else {
-                        // Just trigger change to update Select2
-                        staffSelect.trigger('change');
+                    console.log(`🔧 Initializing Select2 for ${targetId}...`);
+                    
+                    // ALWAYS destroy first, then re-initialize
+                    if (staffSelect.hasClass('select2-hidden-accessible')) {
+                        staffSelect.select2('destroy');
                     }
                     
-                    // console.log(`✅ ${staffRole} staff loaded successfully:`, response.data.length, 'items');
+                    // Initialize Select2
+                    staffSelect.select2({
+                        placeholder: placeholderText,
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal'),
+                        minimumInputLength: 0,
+                        language: {
+                            noResults: function() { return "No results found"; },
+                            searching: function() { return "Searching..."; }
+                        }
+                    });
+                    
+                    console.log(`✅ ${staffRole} loaded with Select2 for ${targetId}: ${response.data.length} items`);
                 } else {
                     console.error(`❌ Error loading ${staffRole} staff:`, response.message || 'No data received');
                     
@@ -3333,7 +3380,8 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.error(`❌ AJAX Error loading ${staffRole} staff:`, error);
+                console.error(`❌ AJAX Error loading ${staffRole} for ${targetId}:`, error);
+                console.error('Response:', xhr.responseText);
                 
                 // Add placeholder even on error
                 const staffSelect = $('#' + targetId);
@@ -3426,6 +3474,18 @@ $(document).ready(function() {
                         $('#admin_id').html('<option value="">No admin assigned to this area</option>');
                     }
                     
+                    // Initialize Select2 for Admin (NEW)
+                    if (!$('#admin_id').hasClass('select2-hidden-accessible')) {
+                        $('#admin_id').select2({
+                            placeholder: '-- Select Admin --',
+                            allowClear: true,
+                            width: '100%',
+                            dropdownParent: $('#workOrderModal')
+                        });
+                    } else {
+                        $('#admin_id').trigger('change.select2');
+                    }
+                    
                     // Populate foreman dropdown
                     if (response.data.foremans && response.data.foremans.length > 0) {
                         response.data.foremans.forEach(function(foreman, index) {
@@ -3438,6 +3498,18 @@ $(document).ready(function() {
                         });
                     } else {
                         $('#foreman_id').html('<option value="">No foreman assigned to this area</option>');
+                    }
+                    
+                    // Initialize Select2 for Foreman (NEW)
+                    if (!$('#foreman_id').hasClass('select2-hidden-accessible')) {
+                        $('#foreman_id').select2({
+                            placeholder: '-- Select Foreman --',
+                            allowClear: true,
+                            width: '100%',
+                            dropdownParent: $('#workOrderModal')
+                        });
+                    } else {
+                        $('#foreman_id').trigger('change.select2');
                     }
                     
                     // Load mechanic and helper dropdowns for this area
@@ -3474,13 +3546,16 @@ $(document).ready(function() {
     
     // NEW: Fallback function to load ALL staff when no area specified
     function loadAllStaffFallback() {
-        // console.log('🔄 FALLBACK: Loading all available staff (no area filter)');
+        console.log('🔄 FALLBACK: Loading all available staff (no area filter, WITH Select2)');
         
-        // Load ALL admins (using loadStaffDropdown function that loads all without area filter)
+        // Load ALL admins with Select2
+        const adminData = { staff_role: 'ADMIN' };
+        adminData[window.csrfTokenName] = window.csrfTokenValue;
+        
         $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
-            data: { staff_role: 'ADMIN' },
+            data: adminData,
             success: function(response) {
                 if (response.success && response.data && response.data.length > 0) {
                     $('#admin_id').empty().append('<option value="">-- Select Admin --</option>');
@@ -3491,15 +3566,30 @@ $(document).ready(function() {
                             $('#pic_name').val(admin.staff_name);
                         }
                     });
+                    
+                    // Initialize Select2 for Admin
+                    if ($('#admin_id').hasClass('select2-hidden-accessible')) {
+                        $('#admin_id').select2('destroy');
+                    }
+                    $('#admin_id').select2({
+                        placeholder: '-- Select Admin --',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal')
+                    });
+                    console.log('✅ Admin dropdown loaded with Select2:', response.data.length, 'items');
                 }
             }
         });
         
-        // Load ALL foremans
+        // Load ALL foremans with Select2
+        const foremanData = { staff_role: 'FOREMAN' };
+        foremanData[window.csrfTokenName] = window.csrfTokenValue;
+        
         $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
-            data: { staff_role: 'FOREMAN' },
+            data: foremanData,
             success: function(response) {
                 if (response.success && response.data && response.data.length > 0) {
                     $('#foreman_id').empty().append('<option value="">-- Select Foreman --</option>');
@@ -3509,11 +3599,23 @@ $(document).ready(function() {
                             $('#foreman_id').val(foreman.id);
                         }
                     });
+                    
+                    // Initialize Select2 for Foreman
+                    if ($('#foreman_id').hasClass('select2-hidden-accessible')) {
+                        $('#foreman_id').select2('destroy');
+                    }
+                    $('#foreman_id').select2({
+                        placeholder: '-- Select Foreman --',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal')
+                    });
+                    console.log('✅ Foreman dropdown loaded with Select2:', response.data.length, 'items');
                 }
             }
         });
         
-        // Load ALL mechanics and helpers (using existing loadStaffDropdown function)
+        // Load ALL mechanics and helpers (using existing loadStaffDropdown function with Select2)
         loadStaffDropdown('MECHANIC', 'mechanic_1');
         loadStaffDropdown('MECHANIC', 'mechanic_2');
         loadStaffDropdown('HELPER', 'helper_1');
@@ -3521,6 +3623,279 @@ $(document).ready(function() {
         
         // console.log('✅ All staff loaded (fallback mode)');
     }
+    
+    /**
+     * Filter staff by unit's department (DIESEL/ELECTRIC)
+     * Called when unit is selected in the form
+     */
+    function filterStaffByUnitDepartment(unitId) {
+        if (!unitId) {
+            // No unit selected, load all staff
+            loadAllStaffFallback();
+            return;
+        }
+        
+        // Find unit in unitsData
+        const selectedUnit = window.unitsData.find(u => u.id_inventory_unit == unitId);
+        
+        if (!selectedUnit || !selectedUnit.area_id) {
+            console.warn('⚠️ Unit has no area assigned, loading all staff');
+            loadAllStaffFallback();
+            return;
+        }
+        
+        // Get department from area
+        const unitAreaData = { unit_id: unitId };
+        unitAreaData[window.csrfTokenName] = window.csrfTokenValue;
+        
+        $.ajax({
+            url: '<?= base_url('service/work-orders/get-unit-area') ?>',
+            type: 'POST',
+            data: unitAreaData,
+            success: function(response) {
+                if (response.success && response.data && response.data.departemen_id) {
+                    const departemenId = response.data.departemen_id;
+                    const departemenName = response.data.departemen_name || '';
+                    
+                    console.log(`🔍 Unit department: ${departemenName} (ID: ${departemenId})`);
+                    
+                    // Filter staff by department
+                    loadStaffByDepartment(departemenId, 'MECHANIC', 'mechanic_1');
+                    loadStaffByDepartment(departemenId, 'MECHANIC', 'mechanic_2');
+                    loadStaffByDepartment(departemenId, 'HELPER', 'helper_1');
+                    loadStaffByDepartment(departemenId, 'HELPER', 'helper_2');
+                } else {
+                    console.warn('⚠️ No department info, loading all staff');
+                    loadAllStaffFallback();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error getting unit department:', error);
+                loadAllStaffFallback();
+            }
+        });
+    }
+    
+    /**
+     * Load staff filtered by department
+     */
+    function loadStaffByDepartment(departemenId, staffRole, targetId) {
+        // Build data object with CSRF token
+        const ajaxData = { 
+            staff_role: staffRole,
+            departemen_id: departemenId
+        };
+        ajaxData[window.csrfTokenName] = window.csrfTokenValue;
+        
+        $.ajax({
+            url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
+            type: 'POST',
+            data: ajaxData,
+            success: function(response) {
+                if (response.success && response.data) {
+                    const staffSelect = $('#' + targetId);
+                    
+                    // Determine placeholder text based on role
+                    let placeholderText;
+                    if (staffRole === 'ADMIN') {
+                        placeholderText = '-- Select Admin --';
+                    } else if (staffRole === 'FOREMAN') {
+                        placeholderText = '-- Select Foreman --';
+                    } else if (staffRole === 'MECHANIC') {
+                        placeholderText = targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --';
+                    } else if (staffRole === 'HELPER') {
+                        placeholderText = targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --';
+                    } else {
+                        placeholderText = `-- Select ${staffRole} --`;
+                    }
+                    
+                    // Clear and add placeholder
+                    staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
+                    
+                    // Add staff options
+                    response.data.forEach(function(staff, index) {
+                        let staffName = staff.staff_name || staff.name || 'Unknown';
+                        let staffCode = staff.staff_code || staff.employee_code || '';
+                        let optionText = staffCode ? `${staffName} (${staffCode})` : staffName;
+                        
+                        staffSelect.append(`<option value="${staff.id}">${optionText}</option>`);
+                        
+                        // Auto-select first admin (for PIC)
+                        if (staffRole === 'ADMIN' && targetId === 'admin_id' && index === 0) {
+                            staffSelect.val(staff.id);
+                            $('#pic_name').val(staffName);
+                        }
+                        
+                        // Auto-select first foreman
+                        if (staffRole === 'FOREMAN' && targetId === 'foreman_id' && index === 0) {
+                            staffSelect.val(staff.id);
+                        }
+                    });
+                    
+                    // Initialize/Re-initialize Select2
+                    if (staffSelect.hasClass('select2-hidden-accessible')) {
+                        staffSelect.select2('destroy');
+                    }
+                    
+                    staffSelect.select2({
+                        placeholder: placeholderText,
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal'),
+                        minimumInputLength: 0
+                    });
+                    
+                    console.log(`✅ Loaded ${response.data.length} ${staffRole} for department ${departemenId}`);
+                } else {
+                    console.error(`❌ No ${staffRole} found for department`);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(`❌ Error loading ${staffRole} by department:`, error);
+            }
+        });
+    }
+    
+    /**
+     * Load staff filtered by user's department scope (sends departemen_ids[])
+     * Backend auto-applies scope when no explicit filter is sent
+     */
+    function loadStaffByDepartmentScope(staffRole, targetId) {
+        const ajaxData = { 
+            staff_role: staffRole
+        };
+        
+        // Send department IDs if available
+        if (window.currentUserDepartment && window.currentUserDepartment.ids) {
+            window.currentUserDepartment.ids.forEach(function(id, index) {
+                ajaxData['departemen_ids[' + index + ']'] = id;
+            });
+        }
+        
+        ajaxData[window.csrfTokenName] = window.csrfTokenValue;
+        
+        $.ajax({
+            url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
+            type: 'POST',
+            data: ajaxData,
+            success: function(response) {
+                if (response.success && response.data) {
+                    const staffSelect = $('#' + targetId);
+                    
+                    let placeholderText;
+                    if (staffRole === 'ADMIN') {
+                        placeholderText = '-- Select Admin --';
+                    } else if (staffRole === 'FOREMAN') {
+                        placeholderText = '-- Select Foreman --';
+                    } else if (staffRole === 'MECHANIC') {
+                        placeholderText = targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --';
+                    } else if (staffRole === 'HELPER') {
+                        placeholderText = targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --';
+                    } else {
+                        placeholderText = `-- Select ${staffRole} --`;
+                    }
+                    
+                    staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
+                    
+                    response.data.forEach(function(staff, index) {
+                        let staffName = staff.staff_name || staff.name || 'Unknown';
+                        let staffCode = staff.staff_code || staff.employee_code || '';
+                        let optionText = staffCode ? `${staffName} (${staffCode})` : staffName;
+                        
+                        staffSelect.append(`<option value="${staff.id}">${optionText}</option>`);
+                        
+                        if (staffRole === 'ADMIN' && targetId === 'admin_id' && index === 0) {
+                            staffSelect.val(staff.id);
+                            $('#pic_name').val(staffName);
+                        }
+                        if (staffRole === 'FOREMAN' && targetId === 'foreman_id' && index === 0) {
+                            staffSelect.val(staff.id);
+                        }
+                    });
+                    
+                    if (staffSelect.hasClass('select2-hidden-accessible')) {
+                        staffSelect.select2('destroy');
+                    }
+                    
+                    staffSelect.select2({
+                        placeholder: placeholderText,
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal'),
+                        minimumInputLength: 0
+                    });
+                    
+                    console.log(`✅ Loaded ${response.data.length} ${staffRole} (dept scope)`);
+                } else {
+                    console.error(`❌ No ${staffRole} found for department scope`);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(`❌ Error loading ${staffRole} by dept scope:`, error);
+            }
+        });
+    }
+    
+    /**
+     * Format sparepart option with badge for code
+     */
+    function formatSparepartOption(sparepart) {
+        if (!sparepart.id) return sparepart.text;
+        
+        const text = sparepart.text || '';
+        // Format: "[CODE] NAME" → show with badge
+        const match = text.match(/^\[([^\]]+)\]\s+(.+)$/);
+        
+        if (match) {
+            const code = match[1];
+            const name = match[2];
+            return $(`<span><span class="badge bg-primary me-2">${code}</span>${name}</span>`);
+        }
+        
+        return $(`<span>${text}</span>`);
+    }
+    
+    /**
+     * Format selected sparepart (show full text)
+     */
+    function formatSparepartSelection(sparepart) {
+        return sparepart.text || sparepart.id;
+    }
+    
+    /**
+     * Trigger manual input for sparepart (called from dropdown button)
+     */
+    window.triggerManualInput = function(rowId) {
+        const sparepartDropdown = $(`#sparepart_${rowId}`);
+        const manualInput = $(`#sparepart_manual_${rowId}`);
+        
+        // Close dropdown
+        sparepartDropdown.select2('close');
+        
+        // Hide dropdown
+        sparepartDropdown.addClass('d-none').removeAttr('name').removeAttr('required');
+        
+        // Destroy Select2
+        if (sparepartDropdown.hasClass('select2-hidden-accessible')) {
+            sparepartDropdown.select2('destroy');
+        }
+        
+        // Show manual input
+        manualInput.removeClass('d-none')
+                   .attr('name', 'sparepart_name[]')
+                   .attr('required', 'required')
+                   .focus();
+        
+        console.log(`📝 Switched to manual input for row ${rowId}`);
+    };
+    
+    // Unit change handler - Filter staff by unit department
+    $('#unit_id').on('change', function() {
+        const unitId = $(this).val();
+        if (unitId) {
+            filterStaffByUnitDepartment(unitId);
+        }
+    });
     
     // NEW: Visual indicator functions for area-based staff loading
     function showAreaIndicator(areaName, hasArea) {
@@ -3615,17 +3990,22 @@ $(document).ready(function() {
                 <td>
                     <!-- Dynamic Input Container -->
                     <div id="item_input_container_${sparepartRowCount}">
-                        <!-- Sparepart Dropdown (Default) -->
+                        <!-- Sparepart Dropdown (Default - active) -->
                         <select class="form-select form-select-sm" 
                                 name="sparepart_name[]" 
                                 id="sparepart_${sparepartRowCount}" 
                                 required>
                             <option value="">-- Select Sparepart --</option>
                         </select>
-                        <!-- Tool Text Input (Hidden by default) -->
+                        <!-- Manual Sparepart Input (Hidden by default - NO name attr) -->
                         <input type="text" 
                                class="form-control form-control-sm d-none" 
-                               name="sparepart_name[]" 
+                               id="sparepart_manual_${sparepartRowCount}"
+                               placeholder="Ketik nama sparepart manual" 
+                               maxlength="255">
+                        <!-- Tool Text Input (Hidden by default - NO name attr until activated) -->
+                        <input type="text" 
+                               class="form-control form-control-sm d-none" 
                                id="tool_input_${sparepartRowCount}"
                                placeholder="e.g., Kunci Inggris 12mm" 
                                maxlength="255">
@@ -3662,32 +4042,53 @@ $(document).ready(function() {
                     </select>
                 </td>
                 <td>
-                    <!-- Source Toggle -->
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               name="is_from_warehouse[]" 
-                               id="warehouse_${sparepartRowCount}" 
-                               value="1" 
-                               checked 
-                               onchange="toggleSourceLabel(this)">
-                        <label class="form-check-label small" for="warehouse_${sparepartRowCount}">
-                            <span class="badge badge-soft-green warehouse-badge">
-                                <i class="fas fa-warehouse"></i> WH
-                            </span>
-                            <span class="badge badge-soft-yellow non-warehouse-badge d-none">
-                                <i class="fas fa-recycle"></i> Bekas
-                            </span>
-                        </label>
-                    </div>
+                    <!-- Source Type Dropdown -->
+                    <select class="form-select form-select-sm" 
+                            name="source_type[]" 
+                            id="source_type_${sparepartRowCount}" 
+                            onchange="toggleKanibalFields(${sparepartRowCount})" 
+                            required>
+                        <option value="WAREHOUSE" selected>
+                            <i class="fas fa-warehouse"></i> Warehouse
+                        </option>
+                        <option value="BEKAS">
+                            <i class="fas fa-recycle"></i> Bekas
+                        </option>
+                        <option value="KANIBAL">
+                            <i class="fas fa-exchange-alt"></i> Kanibal
+                        </option>
+                    </select>
                 </td>
                 <td>
-                    <!-- Notes/Keterangan -->
-                    <input type="text" 
-                           class="form-control form-control-sm" 
-                           name="sparepart_notes[]" 
-                           placeholder="Optional notes..." 
-                           maxlength="255">
+                    <!-- KANIBAL Fields (Hidden by default) -->
+                    <div class="kanibal-fields d-none" id="kanibal_fields_${sparepartRowCount}">
+                        <div class="mb-2">
+                            <label class="form-label form-label-sm mb-1">Dari Unit *</label>
+                            <select class="form-select form-select-sm" 
+                                    name="source_unit_id[]" 
+                                    id="source_unit_${sparepartRowCount}">
+                                <option value="">-- Pilih Unit Sumber --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label form-label-sm mb-1">Alasan *</label>
+                            <textarea class="form-control form-control-sm" 
+                                      name="source_notes[]" 
+                                      id="source_notes_${sparepartRowCount}"
+                                      rows="2" 
+                                      placeholder="Contoh: Unit rusak total"
+                                      maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes for non-KANIBAL -->
+                    <div class="non-kanibal-notes" id="non_kanibal_notes_${sparepartRowCount}">
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               name="sparepart_notes[]" 
+                               placeholder="Optional notes..." 
+                               maxlength="255">
+                    </div>
                 </td>
                 <td>
                     <button type="button" class="btn btn-danger btn-sm removeSparepartRow">
@@ -3698,37 +4099,62 @@ $(document).ready(function() {
         `;
         $('#sparepartTableBody').append(row);
         
-        // Initialize Select2 for sparepart dropdown
+        // Initialize Select2 for sparepart dropdown WITH AJAX (optimized for 14k+ items)
         const sparepartSelect = $(`#sparepart_${sparepartRowCount}`);
         
-        // Populate sparepart dropdown data
-        if (window.sparepartsData && Array.isArray(window.sparepartsData) && window.sparepartsData.length > 0) {
-            window.sparepartsData.forEach(function(sparepart) {
-                const sparepartValue = sparepart.text || sparepart.nama_sparepart || sparepart.desc_sparepart || '';
-                const sparepartLabel = sparepart.text || sparepart.nama_sparepart || sparepart.desc_sparepart || '';
-                if (sparepartValue) {
-                    sparepartSelect.append(`<option value="${sparepartValue}">${sparepartLabel}</option>`);
-                }
-            });
-            // console.log(`✅ Added ${window.sparepartsData.length} spareparts to dropdown #sparepart_${sparepartRowCount}`);
-        }
+        // REMOVED: Pre-population of 14,000+ items (performance killer)
+        // NOW: Use AJAX Select2 for on-demand loading
         
-        // Initialize Select2 with delay
+        // Initialize Select2 with AJAX configuration
         setTimeout(function() {
             try {
                 if (!sparepartSelect.hasClass('select2-hidden-accessible')) {
                     sparepartSelect.select2({
-                        placeholder: '-- Select Sparepart --',
+                        placeholder: '-- Ketik untuk cari sparepart --',
                         allowClear: true,
                         width: '100%',
                         dropdownParent: $('#workOrderModal'),
-                        minimumInputLength: 0,
-                        minimumResultsForSearch: 0
+                        minimumInputLength: 2, // Require 2 characters before searching
+                        ajax: {
+                            url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+                            dataType: 'json',
+                            delay: 250, // Debounce requests
+                            data: function (params) {
+                                return {
+                                    q: params.term, // Search term
+                                    page: params.page || 1
+                                };
+                            },
+                            processResults: function (data, params) {
+                                params.page = params.page || 1;
+                                return {
+                                    results: data.results,
+                                    pagination: {
+                                        more: data.pagination.more
+                                    }
+                                };
+                            },
+                            cache: true
+                        },
+                        language: {
+                            inputTooShort: function() {
+                                return 'Ketik minimal 2 karakter untuk mencari...';
+                            },
+                            searching: function() {
+                                return 'Mencari sparepart...';
+                            },
+                            noResults: function() {
+                                return 'Tidak ada sparepart ditemukan';
+                            },
+                            loadingMore: function() {
+                                return 'Memuat lebih banyak...';
+                            }
+                        }
                     });
-                    // console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount}`);
+                    console.log(`✅ AJAX Select2 initialized for sparepart_${sparepartRowCount} (on-demand loading)`);
                 }
             } catch (error) {
-                console.error(`❌ Error initializing Select2:`, error);
+                console.error(`❌ Error initializing AJAX Select2:`, error);
             }
         }, 150);
         
@@ -3741,14 +4167,15 @@ $(document).ready(function() {
                     switchItemInput(sparepartRowCount, sparepartData.item_type);
                 }
                 
-                // Set item name
+                // Set item name (for edit mode - add option manually)
                 const itemName = sparepartData.sparepart_name || sparepartData.name;
                 if (itemName) {
                     if (sparepartData.item_type === 'tool') {
                         $(`#tool_input_${sparepartRowCount}`).val(itemName);
                     } else {
+                        // Add the existing sparepart as an option (for edit mode)
                         if (sparepartSelect.find(`option[value="${itemName}"]`).length === 0) {
-                            sparepartSelect.append(`<option value="${itemName}">${itemName}</option>`);
+                            sparepartSelect.append(`<option value="${itemName}" selected>${itemName}</option>`);
                         }
                         sparepartSelect.val(itemName).trigger('change');
                     }
@@ -3773,7 +4200,7 @@ $(document).ready(function() {
                     toggleSourceLabel(checkbox[0]);
                 }
                 
-                // console.log(`✅ Populated item row ${sparepartRowCount}`);
+                console.log(`✅ Populated item row ${sparepartRowCount} (edit mode)`);
             } catch (error) {
                 console.error('❌ Error populating row:', error);
             }
@@ -3783,41 +4210,162 @@ $(document).ready(function() {
     };
     
     /**
+     * Add Manual Entry Button to Sparepart Dropdown (Below Search Box)
+     * Triggered when sparepart Select2 dropdown opens
+     */
+    $(document).on('select2:open', '[id^="sparepart_"]:not([id$="_manual"])', function() {
+        const $select = $(this);
+        const rowId = $select.attr('id').replace('sparepart_', '');
+        const $dropdown = $('.select2-dropdown:last');
+        
+        // Remove existing manual entry button (if any)
+        $dropdown.find('.sparepart-manual-entry-btn').remove();
+        
+        // Create manual entry button
+        const manualButton = $(`
+            <div class="sparepart-manual-entry-btn" 
+                 style="padding: 12px 15px; 
+                        cursor: pointer; 
+                        border: 2px solid #007bff; 
+                        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                        text-align: center;
+                        font-weight: 600;
+                        color: #0d47a1;
+                        margin: 0;
+                        border-radius: 0;
+                        border-left: 0;
+                        border-right: 0;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        transition: all 0.2s ease;">
+                <i class="fas fa-pencil-alt me-2"></i>
+                <span>📝 Input Manual Sparepart</span>
+            </div>
+        `);
+        
+        // Hover effects
+        manualButton.hover(
+            function() {
+                $(this).css({
+                    'background': 'linear-gradient(135deg, #bbdefb 0%, #90caf9 100%)',
+                    'transform': 'scale(1.02)',
+                    'box-shadow': '0 4px 8px rgba(0,0,0,0.15)'
+                });
+            },
+            function() {
+                $(this).css({
+                    'background': 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                    'transform': 'scale(1)',
+                    'box-shadow': '0 2px 4px rgba(0,0,0,0.1)'
+                });
+            }
+        );
+        
+        // Click event
+        manualButton.on('click', function() {
+            console.log(`📝 Manual entry button clicked for row ${rowId}`);
+            
+            // Close Select2
+            $select.select2('close');
+            
+            // Switch to manual input
+            const manualInput = $(`#sparepart_manual_${rowId}`);
+            
+            // Hide dropdown
+            $select.addClass('d-none').removeAttr('name').removeAttr('required');
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            
+            // Show manual input
+            manualInput.removeClass('d-none')
+                       .attr('name', 'sparepart_name[]')
+                       .attr('required', 'required')
+                       .focus();
+            
+            console.log(`✅ Switched to manual input for row ${rowId}`);
+        });
+        
+        // Insert button IMMEDIATELY AFTER search container (CRITICAL POSITION)
+        const $searchContainer = $dropdown.find('.select2-search');
+        if ($searchContainer.length > 0) {
+            $searchContainer.after(manualButton);
+            console.log(`✅ Manual entry button added below search for row ${rowId}`);
+        } else {
+            // Fallback: prepend to results
+            $dropdown.find('.select2-results').prepend(manualButton);
+            console.log(`⚠️ Manual entry button added at top of results for row ${rowId}`);
+        }
+    });
+    
+    /**
      * Switch Item Input - Toggle between Dropdown (Sparepart) and Text Input (Tool)
      */
     window.switchItemInput = function(rowId, itemType = null) {
         const typeSelect = $(`#item_type_${rowId}`);
         const type = itemType || typeSelect.val();
         const sparepartDropdown = $(`#sparepart_${rowId}`);
+        const manualInput = $(`#sparepart_manual_${rowId}`);
         const toolInput = $(`#tool_input_${rowId}`);
         
-        // console.log(`🔄 Switching item input for row ${rowId} to type: ${type}`);
-        
         if (type === 'tool') {
-            // Show text input, hide dropdown
-            sparepartDropdown.addClass('d-none').removeAttr('required');
-            toolInput.removeClass('d-none').attr('required', 'required');
+            // TOOL mode: show text input, hide dropdown & manual
+            sparepartDropdown.addClass('d-none').removeAttr('required').removeAttr('name');
+            manualInput.addClass('d-none').removeAttr('required').removeAttr('name');
+            toolInput.removeClass('d-none').attr('required', 'required').attr('name', 'sparepart_name[]');
             
             // Destroy Select2 if exists
             if (sparepartDropdown.hasClass('select2-hidden-accessible')) {
                 sparepartDropdown.select2('destroy');
             }
-            
-            // console.log(`✅ Switched to TOOL input (text) for row ${rowId}`);
         } else {
-            // Show dropdown, hide text input
-            toolInput.addClass('d-none').removeAttr('required');
-            sparepartDropdown.removeClass('d-none').attr('required', 'required');
+            // SPAREPART mode: show dropdown, hide text inputs
+            toolInput.addClass('d-none').removeAttr('required').removeAttr('name');
+            manualInput.addClass('d-none').removeAttr('required').removeAttr('name');
+            sparepartDropdown.removeClass('d-none').attr('required', 'required').attr('name', 'sparepart_name[]');
             
-            // Re-initialize Select2
+            // Re-initialize Select2 with AJAX (optimized)
             if (!sparepartDropdown.hasClass('select2-hidden-accessible')) {
                 sparepartDropdown.select2({
-                    placeholder: '-- Select Sparepart --',
+                    placeholder: '-- Ketik untuk cari sparepart --',
                     allowClear: true,
                     width: '100%',
                     dropdownParent: $('#workOrderModal'),
-                    minimumInputLength: 0,
-                    minimumResultsForSearch: 0
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term,
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data, params) {
+                            params.page = params.page || 1;
+                            return {
+                                results: data.results,
+                                pagination: {
+                                    more: data.pagination.more
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    language: {
+                        inputTooShort: function() {
+                            return 'Ketik minimal 2 karakter untuk mencari...';
+                        },
+                        searching: function() {
+                            return 'Mencari sparepart...';
+                        },
+                        noResults: function() {
+                            return 'Tidak ada sparepart ditemukan';
+                        },
+                        loadingMore: function() {
+                            return 'Memuat lebih banyak...';
+                        }
+                    }
                 });
             }
             
@@ -3826,23 +4374,130 @@ $(document).ready(function() {
     };
     
     /**
-     * Toggle Source Label Function - Switch between Warehouse and Bekas badge
+     * Toggle KANIBAL Fields - Show/hide unit selector and notes when KANIBAL selected
      */
-    window.toggleSourceLabel = function(checkbox) {
-        const row = $(checkbox).closest('tr');
-        const warehouseBadge = row.find('.warehouse-badge');
-        const nonWarehouseBadge = row.find('.non-warehouse-badge');
+    window.toggleKanibalFields = function(rowId) {
+        const sourceTypeSelect = $(`#source_type_${rowId}`);
+        const sourceType = sourceTypeSelect.val();
+        const kanibalFields = $(`#kanibal_fields_${rowId}`);
+        const nonKanibalNotes = $(`#non_kanibal_notes_${rowId}`);
+        const sourceUnitSelect = $(`#source_unit_${rowId}`);
+        const sourceNotesTextarea = $(`#source_notes_${rowId}`);
         
-        if (checkbox.checked) {
-            warehouseBadge.removeClass('d-none');
-            nonWarehouseBadge.addClass('d-none');
+        if (sourceType === 'KANIBAL') {
+            // Show KANIBAL-specific fields
+            kanibalFields.removeClass('d-none');
+            nonKanibalNotes.addClass('d-none');
+            
+            // Make fields required
+            sourceUnitSelect.attr('required', 'required');
+            sourceNotesTextarea.attr('required', 'required');
+            
+            // Populate unit dropdown if not already populated
+            if (sourceUnitSelect.children().length <= 1) {
+                // Populate with full unit data like main Unit field
+                if (window.unitsData && Array.isArray(window.unitsData) && window.unitsData.length > 0) {
+                    window.unitsData.forEach(function(unit) {
+                        const unitNumber = unit.no_unit || unit.unit_number;
+                        const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
+                        sourceUnitSelect.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                    });
+                    
+                    // Convert to Select2
+                    sourceUnitSelect.select2({
+                        placeholder: '-- Pilih Unit Sumber --',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal'),
+                        minimumInputLength: 0,
+                        language: {
+                            noResults: function() { return "Unit tidak ditemukan"; },
+                            searching: function() { return "Mencari..."; }
+                        }
+                    });
+                }
+            }
+            
+            console.log(`✅ KANIBAL fields shown for row ${rowId}`);
         } else {
-            warehouseBadge.addClass('d-none');
-            nonWarehouseBadge.removeClass('d-none');
+            // Hide KANIBAL-specific fields
+            kanibalFields.addClass('d-none');
+            nonKanibalNotes.removeClass('d-none');
+            
+            // Remove required attribute
+            sourceUnitSelect.removeAttr('required').val('');
+            sourceNotesTextarea.removeAttr('required').val('');
+            
+            console.log(`✅ KANIBAL fields hidden for row ${rowId}`);
         }
     };
     
-    // console.log('✅ Item management system loaded - Spareparts (dropdown) & Tools (manual input)');
+    /**
+     * Handle Sparepart Dropdown - Toggle between dropdown and manual input
+     */
+    $(document).on('change', '[id^="sparepart_"]:not([id$="_manual"])', function() {
+        const rowId = $(this).attr('id').replace('sparepart_', '');
+        const selectedValue = $(this).val();
+        
+        if (selectedValue === 'INPUT_MANUAL') {
+            // Switch to manual input mode
+            const manualInput = $(`#sparepart_manual_${rowId}`);
+            
+            // Hide dropdown, remove name attribute
+            $(this).addClass('d-none').removeAttr('name').removeAttr('required');
+            
+            // Destroy Select2 if active
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+            
+            // Show manual input, add name attribute
+            manualInput.removeClass('d-none')
+                       .attr('name', 'sparepart_name[]')
+                       .attr('required', 'required')
+                       .focus();
+            
+            console.log(`📝 Switched to manual sparepart input for row ${rowId}`);
+        }
+    });
+    
+    /**
+     * Allow user to switch back from manual input to dropdown (double-click)
+     */
+    $(document).on('dblclick', '[id^="sparepart_manual_"]', function() {
+        if (!confirm('Kembali ke pilihan dropdown?')) return;
+        
+        const rowId = $(this).attr('id').replace('sparepart_manual_', '');
+        const dropdown = $(`#sparepart_${rowId}`);
+        
+        // Hide manual input, remove name attribute
+        $(this).addClass('d-none')
+               .removeAttr('name')
+               .removeAttr('required')
+               .val('');
+        
+        // Show dropdown, restore name attribute
+        dropdown.removeClass('d-none')
+                .attr('name', 'sparepart_name[]')
+                .attr('required', 'required')
+                .val('');
+        
+        // Re-initialize Select2
+        if (!dropdown.hasClass('select2-hidden-accessible')) {
+            dropdown.select2({
+                placeholder: '-- Select Sparepart --',
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('#workOrderModal'),
+                minimumInputLength: 0,
+                minimumResultsForSearch: 0
+            });
+        }
+        
+        console.log(`📝 Switched back to dropdown for row ${rowId}`);
+    });
+    
+    // console.log('✅ Item management system loaded - Spareparts (dropdown/manual) & Tools (manual input)');
 });
 
 // Production asset optimization

@@ -56,6 +56,7 @@ class UnitTimelineService
 
     /**
      * Generic timeline record writer.
+     * Updated to use correct schema: event_category, event_title, event_description
      */
     protected function record(int $unitId, string $eventType, string $title, array $meta = []): bool
     {
@@ -64,14 +65,35 @@ class UnitTimelineService
                 return true; // Table not yet created — skip silently
             }
 
+            // Map event types to categories
+            $category = $this->mapEventTypeToCategory($eventType);
+            
+            // Build description from metadata
+            $description = '';
+            if (!empty($meta['customer'])) {
+                $description .= "Customer: {$meta['customer']}";
+            }
+            if (!empty($meta['location'])) {
+                $description .= ($description ? ', ' : '') . "Location: {$meta['location']}";
+            }
+            if (!empty($meta['note'])) {
+                $description .= ($description ? '. ' : '') . $meta['note'];
+            }
+            if (!empty($meta['reason'])) {
+                $description .= ($description ? ' - ' : '') . "Reason: {$meta['reason']}";
+            }
+
             $this->db->table('unit_timeline')->insert([
-                'unit_id'      => $unitId,
-                'event_type'   => $eventType,
-                'title'        => $title,
-                'metadata'     => json_encode($meta, JSON_UNESCAPED_UNICODE),
-                'performed_by' => $meta['performed_by'] ?? null,
-                'performed_at' => date('Y-m-d H:i:s'),
-                'created_at'   => date('Y-m-d H:i:s'),
+                'unit_id'           => $unitId,
+                'event_category'    => $category,
+                'event_title'       => $title,
+                'event_description' => $description ?: null,
+                'metadata'          => json_encode($meta, JSON_UNESCAPED_UNICODE),
+                'reference_type'    => $meta['reference_type'] ?? null,
+                'reference_id'      => $meta['reference_id'] ?? null,
+                'performed_by'      => $meta['performed_by'] ?? session('user_id'),
+                'performed_at'      => date('Y-m-d H:i:s'),
+                'created_at'        => date('Y-m-d H:i:s'),
             ]);
 
             return true;
@@ -79,5 +101,21 @@ class UnitTimelineService
             log_message('error', '[UnitTimelineService] ' . $e->getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Map event type to category
+     */
+    protected function mapEventTypeToCategory(string $eventType): string
+    {
+        return match(strtoupper($eventType)) {
+            'DEPLOYMENT', 'RETRIEVAL', 'DELIVERY' => 'DELIVERY',
+            'STATUS_CHANGE', 'STATUS' => 'STATUS',
+            'CONTRACT', 'KONTRAK' => 'CONTRACT',
+            'SERVICE', 'MAINTENANCE', 'REPAIR' => 'SERVICE',
+            'COMPONENT', 'ATTACHMENT', 'BATTERY', 'CHARGER' => 'COMPONENT',
+            'LOCATION', 'MOVE' => 'LOCATION',
+            default => 'STATUS'
+        };
     }
 }
