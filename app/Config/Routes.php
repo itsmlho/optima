@@ -276,8 +276,13 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('di/data', 'Marketing::diData'); // DataTables endpoint
     $routes->post('di/stats', 'Marketing::diStats'); // Statistics endpoint
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
+    $routes->post('di/update/(:num)', 'Marketing::diUpdate/$1');
+    $routes->post('di/link-to-contract', 'Marketing::linkDIToContract');
     $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // SPPU - Surat Perintah Penarikan Unit
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
+    $routes->post('spk/link-to-contract', 'Marketing::linkSPKToContract');
+    $routes->get('spk/contracts-for-linking/(:num)', 'Marketing::getContractsForSPKLinking/$1');
+    $routes->get('contracts/by-customer/(:num)', 'Marketing::getContractsByCustomer/$1');
     
     // Workflow API endpoints
     $routes->get('get-jenis-perintah-kerja', 'Marketing::getJenisPerintahKerja');
@@ -761,6 +766,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('cancelMovement/(:num)', 'Warehouse\UnitMovementController::cancelMovement/$1');
         $routes->get('getMovementDetail/(:num)', 'Warehouse\UnitMovementController::getMovementDetail/$1');
         $routes->get('getAvailableUnits', 'Warehouse\UnitMovementController::getAvailableUnits');
+        $routes->get('getComponentsByType', 'Warehouse\UnitMovementController::getComponentsByType');
     });
 
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders
@@ -1000,6 +1006,17 @@ $routes->group('finance', static function ($routes) {
     $routes->get('expenses', 'Finance::expenses');
     $routes->get('reports', 'Finance::reports');
     $routes->post('invoices/create', 'Finance::createInvoice');
+    $routes->post('invoices/datatable', 'Finance::getInvoiceDataTable');
+    $routes->get('invoices/datatable', 'Finance::getInvoiceDataTable');
+    $routes->get('invoices/view/(:num)', 'Finance::viewInvoice/$1');
+    $routes->get('invoices/get-ready-dis', 'Finance::getReadyDIs');
+    $routes->get('invoices/get-active-schedules', 'Finance::getActiveSchedules');
+    $routes->post('invoices/generate-from-di', 'Finance::generateInvoiceFromDI');
+    $routes->post('invoices/generate-recurring', 'Finance::generateRecurringInvoice');
+    $routes->post('invoices/approve/(:num)', 'Finance::approveInvoice/$1');
+    $routes->post('invoices/mark-paid/(:num)', 'Finance::markAsPaid/$1');
+    $routes->post('invoices/cancel/(:num)', 'Finance::cancelInvoice/$1');
+    $routes->get('invoices/check-di-readiness/(:num)', 'Finance::checkDIReadiness/$1');
     $routes->post('payments/update/(:num)', 'Finance::updatePaymentStatus/$1');
     
     // Back-Billing Routes

@@ -103,7 +103,8 @@ class AuthFilter implements FilterInterface
                 $response = service('response');
                 return $response->setStatusCode(401)->setJSON([
                     'success' => false,
-                    'message' => 'Unauthorized: Session expired. Please login again.',
+                    'code'    => 'SESSION_EXPIRED',
+                    'message' => 'Sesi Anda telah berakhir. Silakan login kembali.',
                     'redirect' => '/auth/login'
                 ]);
             }

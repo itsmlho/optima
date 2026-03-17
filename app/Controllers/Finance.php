@@ -82,8 +82,9 @@ class Finance extends Controller
             $builder->join('kontrak k', 'k.id = i.contract_id', 'left');
             $builder->join('customers c', 'c.id = k.customer_id', 'left');
 
-            // Search
-            $search = $this->request->getGet('search')['value'] ?? '';
+            // Search (getVar handles both GET and POST)
+            $searchArr = $this->request->getVar('search');
+            $search = is_array($searchArr) ? ($searchArr['value'] ?? '') : ($searchArr ?? '');
             if (!empty($search)) {
                 $builder->groupStart()
                     ->like('i.invoice_number', $search)
@@ -92,24 +93,31 @@ class Finance extends Controller
                     ->groupEnd();
             }
 
+            // Status filter
+            $statusFilter = $this->request->getVar('status');
+            if (!empty($statusFilter) && $statusFilter !== 'all') {
+                $builder->where('i.status', $statusFilter);
+            }
+
             // Count
             $totalRecords = $builder->countAllResults(false);
 
             // Order
-            $orderColumn = $this->request->getGet('order')[0]['column'] ?? 0;
-            $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'desc';
-            $columns = ['i.invoice_number', 'i.invoice_date', 'k.no_kontrak', 'c.customer_name', 'i.total_amount', 'i.status'];
+            $orderArr = $this->request->getVar('order');
+            $orderColumn = is_array($orderArr) ? ($orderArr[0]['column'] ?? 0) : 0;
+            $orderDir = is_array($orderArr) ? ($orderArr[0]['dir'] ?? 'desc') : 'desc';
+            $columns = ['i.invoice_number', 'i.issue_date', 'k.no_kontrak', 'c.customer_name', 'i.total_amount', 'i.status'];
             $builder->orderBy($columns[$orderColumn] ?? 'i.id', $orderDir);
 
             // Pagination
-            $start = $this->request->getGet('start') ?? 0;
-            $length = $this->request->getGet('length') ?? 10;
+            $start  = (int) ($this->request->getVar('start') ?? 0);
+            $length = (int) ($this->request->getVar('length') ?? 10);
             $builder->limit($length, $start);
 
             $invoices = $builder->get()->getResultArray();
 
             return $this->response->setJSON([
-                'draw' => intval($this->request->getGet('draw')),
+                'draw' => intval($this->request->getVar('draw')),
                 'recordsTotal' => $totalRecords,
                 'recordsFiltered' => $totalRecords,
                 'data' => $invoices
@@ -813,5 +821,43 @@ class Finance extends Controller
                 'message' => 'Failed to get back-billing statistics: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Update payment status (alias for markAsPaid, used by legacy route)
+     */
+    public function updatePaymentStatus($invoiceId)
+    {
+        return $this->markAsPaid($invoiceId);
+    }
+
+    /**
+     * Payments page (coming soon placeholder)
+     */
+    public function payments()
+    {
+        return view('finance/payments', [
+            'title' => 'Payments',
+        ]);
+    }
+
+    /**
+     * Expenses page (coming soon placeholder)
+     */
+    public function expenses()
+    {
+        return view('finance/expenses', [
+            'title' => 'Expenses',
+        ]);
+    }
+
+    /**
+     * Reports page (coming soon placeholder)
+     */
+    public function reports()
+    {
+        return view('finance/reports', [
+            'title' => 'Financial Reports',
+        ]);
     }
 }

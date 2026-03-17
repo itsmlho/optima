@@ -242,9 +242,20 @@ class SpkModel extends Model
             return ['success' => false, 'message' => 'Failed to update SPK', 'di_count' => 0];
         }
         
-        // Count affected DIs (database trigger will auto-update them)
+        // Propagate contract_id and pelanggan_id to all DIs under this SPK
         $diModel = new \App\Models\DeliveryInstructionModel();
         $diCount = $diModel->where('spk_id', $spkId)->countAllResults();
+
+        if ($diCount > 0) {
+            $diModel->where('spk_id', $spkId)
+                    ->where('contract_id IS NULL')
+                    ->set([
+                        'contract_id'     => $contractId,
+                        'pelanggan_id'    => $contract['customer_id'] ?? null,
+                        'diperbarui_pada' => date('Y-m-d H:i:s'),
+                    ])
+                    ->update();
+        }
         
         return [
             'success' => true, 

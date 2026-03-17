@@ -45,7 +45,8 @@ class PermissionFilter implements FilterInterface
         if (!$hasAny) {
             if ($request->isAJAX()) {
                 return response()->setJSON([
-                    'error' => 'Unauthorized',
+                    'success' => false,
+                    'code'    => 'ACCESS_DENIED',
                     'message' => 'Anda tidak memiliki akses ke fitur ini.'
                 ])->setStatusCode(403);
             } else {

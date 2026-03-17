@@ -15,7 +15,10 @@ class DeliveryInstructionModel extends Model
         'perencanaan_tanggal_approve','estimasi_sampai','nama_supir','no_hp_supir','no_sim_supir','kendaraan','no_polisi_kendaraan',
         'berangkat_tanggal_approve','catatan_berangkat',
         'sampai_tanggal_approve','catatan_sampai',
-        'invoice_generated','invoice_generated_at'
+        'invoice_generated','invoice_generated_at',
+        // Contract linking fields
+        'contract_id','pelanggan_id','bast_date','billing_start_date',
+        'contract_linked_at','contract_linked_by',
     ];
     
     // Explicitly disable automatic timestamps since our table uses custom field names

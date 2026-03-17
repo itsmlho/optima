@@ -93,7 +93,7 @@ class UnitMovementController extends BaseController
             'origin_type'           => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
             'destination_type'      => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
             'movement_date'         => 'required|valid_date',
-            'component_type'        => 'permit_empty|in_list[FORKLIFT,ATTACHMENT,CHARGER,BATTERY]',
+            'component_type'        => 'permit_empty|in_list[FORKLIFT,ATTACHMENT,CHARGER,BATTERY,SPAREPART]',
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
@@ -283,5 +283,76 @@ class UnitMovementController extends BaseController
             'success' => true,
             'data' => $units,
         ]);
+    }
+
+    /**
+     * Get components by type for dropdown (Attachment, Charger, Battery, Sparepart)
+     */
+    public function getComponentsByType()
+    {
+        if (!$this->checkAccess('view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        $type = strtoupper($this->request->getGet('type') ?? '');
+        $db   = \Config\Database::connect();
+        $data = [];
+
+        try {
+            switch ($type) {
+                case 'ATTACHMENT':
+                    if ($db->tableExists('inventory_attachments')) {
+                        $rows = $db->table('inventory_attachments ia')
+                            ->select('ia.id_inventory_attachment as id, CONCAT(IFNULL(a.tipe,""), " ", IFNULL(a.merk,""), " ", IFNULL(a.model,"")) as label, IFNULL(ia.lokasi,"") as location, IFNULL(ia.status,"") as status')
+                            ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+                            ->get()->getResultArray();
+                        $data = $rows;
+                    }
+                    break;
+                case 'CHARGER':
+                    if ($db->tableExists('inventory_chargers')) {
+                        $rows = $db->table('inventory_chargers ic')
+                            ->select('ic.id_inventory_charger as id, CONCAT(IFNULL(ic.merk,""), " ", IFNULL(ic.model,""), " SN:", IFNULL(ic.serial_number,"")) as label, IFNULL(ic.lokasi,"") as location, IFNULL(ic.status,"") as status')
+                            ->get()->getResultArray();
+                        $data = $rows;
+                    }
+                    break;
+                case 'BATTERY':
+                    if ($db->tableExists('inventory_batteries')) {
+                        $rows = $db->table('inventory_batteries ib')
+                            ->select('ib.id_inventory_battery as id, CONCAT(IFNULL(ib.merk,""), " ", IFNULL(ib.model,""), " SN:", IFNULL(ib.serial_number,"")) as label, IFNULL(ib.lokasi,"") as location, IFNULL(ib.status,"") as status')
+                            ->get()->getResultArray();
+                        $data = $rows;
+                    }
+                    break;
+                case 'SPAREPART':
+                    if ($db->tableExists('inventory_spareparts')) {
+                        $rows = $db->table('inventory_spareparts')
+                            ->select('id, CONCAT(IFNULL(nama,""), " (", IFNULL(part_number,""), ")") as label, "" as location, "" as status')
+                            ->get()->getResultArray();
+                        $data = $rows;
+                    }
+                    break;
+                case 'FORKLIFT':
+                    $units = $this->unitModel->getUnitsForDropdown();
+                    $data  = $units;
+                    break;
+                default:
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Invalid component type: ' . $type,
+                    ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => $data,
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

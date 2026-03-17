@@ -188,6 +188,37 @@ class UnitMovementModel extends Model
             ]);
         }
 
+        // Update component location if this is a component movement
+        if (!empty($movement['component_id']) && !empty($movement['component_type'])) {
+            $dest = $movement['destination_location'];
+            $compId = (int) $movement['component_id'];
+            $db = \Config\Database::connect();
+
+            switch (strtoupper($movement['component_type'])) {
+                case 'ATTACHMENT':
+                    if ($db->tableExists('inventory_attachments')) {
+                        $db->table('inventory_attachments')
+                            ->where('id_inventory_attachment', $compId)
+                            ->update(['lokasi' => $dest]);
+                    }
+                    break;
+                case 'CHARGER':
+                    if ($db->tableExists('inventory_chargers')) {
+                        $db->table('inventory_chargers')
+                            ->where('id_inventory_charger', $compId)
+                            ->update(['lokasi' => $dest]);
+                    }
+                    break;
+                case 'BATTERY':
+                    if ($db->tableExists('inventory_batteries')) {
+                        $db->table('inventory_batteries')
+                            ->where('id_inventory_battery', $compId)
+                            ->update(['lokasi' => $dest]);
+                    }
+                    break;
+            }
+        }
+
         return true;
     }
 
@@ -243,10 +274,11 @@ class UnitMovementModel extends Model
     public static function getComponentTypes()
     {
         return [
-            'FORKLIFT'   => 'Forklift',
+            'FORKLIFT'   => 'Forklift / Unit',
             'ATTACHMENT' => 'Attachment',
             'CHARGER'    => 'Charger',
             'BATTERY'    => 'Baterai',
+            'SPAREPART'  => 'Sparepart',
         ];
     }
 }

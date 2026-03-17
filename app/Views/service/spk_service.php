@@ -1458,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	}
 	
-	// Custom template for unit dropdown (2-line format: [no] Merk Model [SN] / [status] [location])
+	// Custom template for unit dropdown (3-line format: [no] Merk Model [SN] / [status] [location] / [kapasitas] [dept])
 	function formatUnitOption(unit) {
 		if (!unit.id) return unit.text;
 		
@@ -1469,9 +1469,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		const isAssigned = $option.data('is-assigned') || false;
 		const merkUnit = $option.data('merk-unit') || '';
 		const modelUnit = $option.data('model-unit') || '';
+		const kapasitas = $option.data('kapasitas') || '';
+		const departemen = ($option.data('departemen') || '').toUpperCase();
 		const serialNumber = unit.text.includes('SN:') ? unit.text.split('SN:')[1]?.split('|')[0]?.trim() : '';
 		
-		// Build 2-line display
+		// Build 3-line display
 		let html = '<div style="line-height:1.3; padding:4px 0; border-bottom:1px solid #e9ecef">';
 		
 		// Line 1: [No Unit] Merk Model [SN]
@@ -1486,28 +1488,28 @@ document.addEventListener('DOMContentLoaded', () => {
 		html += '</div>';
 		
 		// Line 2: [Status] [Location] (smaller badges)
-		html += '<div>';
+		html += '<div style="margin-bottom:2px">';
 		if (statusName) {
 			let statusColor = 'secondary'; // default
 			const statusUpper = statusName.toUpperCase();
 			
 			// Map status to badge colors
 			if (statusUpper.includes('AVAILABLE')) {
-				statusColor = 'success'; // hijau
+				statusColor = 'success';
 			} else if (statusUpper.includes('RETURNED')) {
-				statusColor = 'cyan'; // biru muda
+				statusColor = 'cyan';
 			} else if (statusUpper.includes('BOOKED')) {
-				statusColor = 'warning'; // kuning
+				statusColor = 'warning';
 			} else if (statusUpper.includes('SPARE')) {
-				statusColor = 'purple'; // ungu
+				statusColor = 'purple';
 			} else if (statusUpper.includes('NON_ASSET') || statusUpper.includes('NON ASSET')) {
-				statusColor = 'info'; // biru
+				statusColor = 'info';
 			} else if (statusUpper.includes('RENTAL') || statusUpper.includes('RENTED')) {
-				statusColor = 'orange'; // orange
+				statusColor = 'orange';
 			} else if (statusUpper.includes('PREPARATION') || statusUpper.includes('READY')) {
-				statusColor = 'indigo'; // indigo
+				statusColor = 'indigo';
 			} else if (statusUpper.includes('MAINTENANCE') || statusUpper.includes('REPAIR')) {
-				statusColor = 'danger'; // merah
+				statusColor = 'danger';
 			}
 			
 			html += `<span class="badge badge-soft-${statusColor} me-1" style="font-size:0.65rem; padding:2px 6px">${statusName}</span>`;
@@ -1517,6 +1519,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 		if (isAssigned) {
 			html += `<span class="badge badge-soft-danger me-1" style="font-size:0.65rem; padding:2px 6px">USED IN SPK</span>`;
+		}
+		html += '</div>';
+		
+		// Line 3: [Kapasitas] [Department]
+		html += '<div>';
+		if (kapasitas && kapasitas !== '-') {
+			html += `<span class="badge badge-soft-orange me-1" style="font-size:0.65rem; padding:2px 6px">${kapasitas}</span>`;
+		}
+		if (departemen) {
+			const deptColor = departemen === 'ELECTRIC' ? 'green' : (departemen === 'GASOLINE' ? 'orange' : (departemen === 'DIESEL' ? 'blue' : 'gray'));
+			html += `<span class="badge badge-soft-${deptColor} me-1" style="font-size:0.65rem; padding:2px 6px">${departemen}</span>`;
 		}
 		html += '</div>';
 		
@@ -1667,6 +1680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					option.setAttribute('data-status-unit', x.status_unit_id || '');
 					option.setAttribute('data-departemen-id', x.departemen_id || '');
 					option.setAttribute('data-departemen', x.departemen_name || '');
+					option.setAttribute('data-kapasitas', x.kapasitas_unit || '');
 					option.setAttribute('data-is-assigned', isAssigned || false);
 					
 					currentUnitPick.appendChild(option);
@@ -1714,6 +1728,11 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					console.log(`Checking unit ${unitId} for existing components...`);
 					console.log(`Department: ${departemenId} (${departemenName})`);
+					
+					// Determine department type for electric/gasoline/diesel logic
+					const isElectric = (departemenName || '').toUpperCase() === 'ELECTRIC';
+					const isGasoline = (departemenName || '').toUpperCase() === 'GASOLINE';
+					const isDiesel   = (departemenName || '').toUpperCase() === 'DIESEL';
 					
 				// Re-initialize mechanic selector with unit's department
 				if (departemenId && currentApprovalStage) {

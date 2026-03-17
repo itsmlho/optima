@@ -4077,12 +4077,16 @@ class Marketing extends BaseDataTableController
             spk.kontak as spk_kontak,
             spk.nomor_spk,
             spk.po_kontrak_nomor,
+            spk.kontrak_id as spk_kontrak_id,
             jpk.nama as jenis_perintah,
             jpk.kode as jenis_perintah_kode,
             tpk.nama as tujuan_perintah,
-            tpk.kode as tujuan_perintah_kode
+            tpk.kode as tujuan_perintah_kode,
+            k.no_kontrak as linked_contract_number,
+            k.customer_id as spk_customer_id
         ')
         ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+        ->join('kontrak k', 'k.id = delivery_instructions.contract_id', 'left')
         ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
         ->join('tujuan_perintah_kerja tpk', 'tpk.id = delivery_instructions.tujuan_perintah_kerja_id', 'left');
         
@@ -4226,7 +4230,7 @@ class Marketing extends BaseDataTableController
     // Detailed DI info (for Marketing view)
     public function diDetail($id)
     {
-    $di = $this->diModel->find((int)$id);
+        $di = $this->diModel->find((int)$id);
         if (!$di) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
         }
@@ -4235,6 +4239,22 @@ class Marketing extends BaseDataTableController
         if (!empty($di['spk_id'])) {
             $spk = $this->spkModel->find((int)$di['spk_id']);
         }
+
+        // Resolve pelanggan_id: DI may have it directly, or inherit from SPK's contract
+        if (empty($di['pelanggan_id']) && !empty($spk) && !empty($spk['kontrak_id'])) {
+            $kontrak = $this->db->table('kontrak')
+                ->select('id, customer_id, no_kontrak')
+                ->where('id', $spk['kontrak_id'])
+                ->get()->getRowArray();
+            if ($kontrak && !empty($kontrak['customer_id'])) {
+                $di['pelanggan_id'] = $kontrak['customer_id'];
+                // Also backfill contract_id on DI if missing
+                if (empty($di['contract_id'])) {
+                    $di['contract_id'] = $kontrak['id'];
+                }
+            }
+        }
+
         // Items
         $items = $this->diItemModel
             ->select('delivery_items.*, iu.no_unit, mu.merk_unit, mu.model_unit, a2.tipe as att_tipe, a2.merk as att_merk, a2.model as att_model')
@@ -8793,16 +8813,17 @@ class Marketing extends BaseDataTableController
 
             // Update DI with contract linkage
             $updateData = [
-                'contract_id' => $contractId,
+                'contract_id'        => $contractId,
+                'pelanggan_id'       => $contract['customer_id'] ?? null,
                 'contract_linked_at' => date('Y-m-d H:i:s'),
                 'contract_linked_by' => $userId,
-                'status_di' => 'SUBMITTED', // Change from AWAITING_CONTRACT to SUBMITTED
-                'diperbarui_pada' => date('Y-m-d H:i:s'),
+                'status_di'          => 'SUBMITTED',
+                'diperbarui_pada'    => date('Y-m-d H:i:s'),
             ];
 
             // If BAST date provided, set billing start date
             if (!empty($bastDate)) {
-                $updateData['bast_date'] = $bastDate;
+                $updateData['bast_date']          = $bastDate;
                 $updateData['billing_start_date'] = $bastDate;
             }
 
@@ -8883,12 +8904,11 @@ class Marketing extends BaseDataTableController
         try {
             $db = \Config\Database::connect();
             
-            // Query contracts for this customer
-            $query = $db->table('kontraks')
-                ->select('kontraks.*, customers.nama_perusahaan as customer_name')
-                ->join('customers', 'customers.id = kontraks.pelanggan_id', 'left')
-                ->where('kontraks.pelanggan_id', $customerId)
-                ->orderBy('kontraks.tanggal_kontrak', 'DESC')
+            // Query contracts for this customer (table is 'kontrak')
+            $query = $db->table('kontrak')
+                ->select('kontrak.id, kontrak.no_kontrak, kontrak.no_kontrak as nomor_kontrak, kontrak.pelanggan as customer_name, kontrak.tanggal_mulai, kontrak.tanggal_mulai as tanggal_kontrak, kontrak.tanggal_selesai, kontrak.status, kontrak.status as status_kontrak')
+                ->where('kontrak.customer_id', $customerId)
+                ->orderBy('kontrak.tanggal_mulai', 'DESC')
                 ->get();
             
             $contracts = $query->getResultArray();
@@ -9355,6 +9375,99 @@ class Marketing extends BaseDataTableController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to convert prospect: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get contracts available for SPK linking (by customer from SPK's quotation)
+     */
+    public function getContractsForSPKLinking($spkId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $spkId = $spkId ?? $this->request->getGet('spk_id');
+            if (!$spkId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'SPK ID required']);
+            }
+
+            $spk = $this->spkModel->find((int) $spkId);
+            if (!$spk) {
+                return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+            }
+
+            // Get customer from quotation chain
+            $customerId = null;
+            if (!empty($spk['quotation_specification_id'])) {
+                $row = $this->db->table('quotation_specifications qs')
+                    ->select('q.customer_id')
+                    ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+                    ->where('qs.id_specification', $spk['quotation_specification_id'])
+                    ->get()->getRowArray();
+                $customerId = $row['customer_id'] ?? null;
+            }
+
+            $builder = $this->db->table('kontrak')
+                ->select('kontrak.id, kontrak.no_kontrak, kontrak.pelanggan as customer_name, kontrak.tanggal_mulai, kontrak.tanggal_selesai, kontrak.status');
+
+            if ($customerId) {
+                $builder->where('kontrak.customer_id', $customerId);
+            }
+
+            $contracts = $builder->orderBy('kontrak.tanggal_mulai', 'DESC')->get()->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => $contracts,
+                'spk'     => ['id' => $spk['id'], 'nomor_spk' => $spk['nomor_spk']],
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getContractsForSPKLinking - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat kontrak: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Update DI fields (partial update via AJAX)
+     */
+    public function diUpdate($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        $di = $this->diModel->find((int) $id);
+        if (!$di) {
+            return $this->response->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
+        }
+
+        try {
+            $data = $this->request->getPost();
+            // Only allow safe fields to be updated
+            $allowed = ['catatan', 'status', 'status_di', 'tanggal_kirim', 'lokasi', 'pelanggan',
+                        'nama_supir', 'no_hp_supir', 'no_sim_supir', 'kendaraan', 'no_polisi_kendaraan',
+                        'estimasi_sampai', 'diperbarui_pada'];
+            $updateData = array_intersect_key($data, array_flip($allowed));
+            $updateData['diperbarui_pada'] = date('Y-m-d H:i:s');
+
+            $this->diModel->update((int) $id, $updateData);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'DI berhasil diperbarui',
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::diUpdate - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
             ]);
         }
     }

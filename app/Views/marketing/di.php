@@ -1878,6 +1878,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       const customerId = diData.data.pelanggan_id;
       
+      if (!customerId) {
+        throw new Error('Customer ID tidak ditemukan pada DI ini. Pastikan DI/SPK terhubung ke master customer.');
+      }
+      
       // Load contracts for this customer
       const contractRes = await fetch(`<?= base_url('marketing/contracts/by-customer/') ?>${customerId}`);
       const contractData = await contractRes.json();
@@ -1888,18 +1892,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       const contracts = contractData.data || [];
       
-      // Populate dropdown with DEAL contracts only
-      contractSelect.innerHTML = '<option value="">- Select Contract -</option>';
+      // Populate dropdown with ACTIVE contracts
+      contractSelect.innerHTML = '<option value="">- Pilih Kontrak -</option>';
       
-      const dealContracts = contracts.filter(c => c.status_kontrak === 'DEAL');
+      const activeContracts = contracts.filter(c => !c.status_kontrak || c.status_kontrak === 'ACTIVE' || c.status_kontrak === 'DEAL');
       
-      if (dealContracts.length === 0) {
-        contractSelect.innerHTML = '<option value="">No DEAL contracts available for this customer</option>';
+      if (activeContracts.length === 0 && contracts.length === 0) {
+        contractSelect.innerHTML = '<option value="">Tidak ada kontrak untuk customer ini</option>';
       } else {
-        dealContracts.forEach(contract => {
+        const displayContracts = activeContracts.length > 0 ? activeContracts : contracts;
+        displayContracts.forEach(contract => {
           const option = document.createElement('option');
           option.value = contract.id;
-          option.textContent = `${contract.nomor_kontrak} - ${contract.customer_name || ''} (${contract.tanggal_kontrak || ''})`;
+          option.textContent = `${contract.nomor_kontrak || contract.no_kontrak} - ${contract.customer_name || ''} (${contract.tanggal_kontrak || contract.tanggal_mulai || ''})`;
           contractSelect.appendChild(option);
         });
       }

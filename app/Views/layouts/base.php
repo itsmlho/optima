@@ -599,6 +599,52 @@ $currentLang = service('request')->getLocale();
         // Define BASE_URL globally for all JavaScript files
         var BASE_URL = '<?= rtrim(base_url(), '/') ?>/';
         window.BASE_URL = BASE_URL;
+
+        // Global auth/session error handler module
+        window.OptimaAuth = {
+            _sessionExpiredShown: false,
+            handleSessionExpired: function(response) {
+                if (this._sessionExpiredShown) return;
+                this._sessionExpiredShown = true;
+                var loginUrl = '<?= base_url('auth/login') ?>';
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sesi Berakhir',
+                        text: (response && response.message) ? response.message : 'Sesi Anda telah berakhir. Silakan login kembali.',
+                        confirmButtonText: 'Login Kembali',
+                        allowOutsideClick: false,
+                    }).then(function() {
+                        window.location.href = loginUrl;
+                    });
+                } else {
+                    alert('Sesi Anda telah berakhir. Silakan login kembali.');
+                    window.location.href = loginUrl;
+                }
+            },
+            handleAccessDenied: function(response) {
+                var msg = (response && response.message) ? response.message : 'Anda tidak memiliki akses ke fitur ini.';
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: msg });
+                } else {
+                    alert(msg);
+                }
+            },
+            handleHttpError: function(xhr) {
+                if (xhr.status === 401) {
+                    this.handleSessionExpired(xhr.responseJSON || {});
+                    return true;
+                }
+                if (xhr.status === 403) {
+                    var r = xhr.responseJSON || {};
+                    if (r.code === 'ACCESS_DENIED') {
+                        this.handleAccessDenied(r);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
     </script>
     <!-- Page Loading -->
     <div class="loading-overlay" id="pageLoading">
@@ -1156,25 +1202,47 @@ $currentLang = service('request')->getLocale();
                         // 401 Unauthorized - Session Expired
                         if (xhr.status === 401) {
                             const response = xhr.responseJSON || {};
-                            console.warn('🔐 Session Expired - Auto logout in 3 seconds');
-                            
-                            // Show session expired notification
-                            const sessionMsg = '⏱️ Sesi Anda telah berakhir.\n\nAnda akan diarahkan ke halaman login.\n\nSilakan login kembali untuk melanjutkan.';
-                            if (window.OptimaNotify) OptimaNotify.error(sessionMsg);
-                            else alert(sessionMsg);
-                            
-                            // Redirect to login after 2 seconds
-                            setTimeout(() => {
+                            console.warn('🔐 Session Expired (code:', response.code, ')');
+                            if (window.OptimaAuth) {
+                                window.OptimaAuth.handleSessionExpired(response);
+                            } else if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Sesi Berakhir',
+                                    text: 'Sesi Anda telah berakhir. Silakan login kembali.',
+                                    confirmButtonText: 'Login',
+                                    allowOutsideClick: false,
+                                }).then(() => {
+                                    window.location.href = '<?= base_url('auth/login') ?>';
+                                });
+                            } else {
+                                alert('Sesi Anda telah berakhir. Silakan login kembali.');
                                 window.location.href = '<?= base_url('auth/login') ?>';
-                            }, 2000);
-                            
+                            }
                             return false;
                         }
                         
-                        // 403 Forbidden - CSRF Token Expired
+                        // 403 Forbidden - Access Denied or CSRF Token Expired
                         if (xhr.status === 403) {
                             const response = xhr.responseJSON || {};
                             const message = response.message || '';
+                            
+                            // ACCESS_DENIED from PermissionFilter
+                            if (response.code === 'ACCESS_DENIED') {
+                                console.warn('🔐 Access Denied');
+                                if (window.OptimaAuth) {
+                                    window.OptimaAuth.handleAccessDenied(response);
+                                } else if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Akses Ditolak',
+                                        text: message || 'Anda tidak memiliki akses ke fitur ini.',
+                                    });
+                                } else {
+                                    alert(message || 'Anda tidak memiliki akses ke fitur ini.');
+                                }
+                                return false;
+                            }
                             
                             // Detect CSRF token mismatch/expiry
                             if (message.includes('not allowed') || 
@@ -1183,18 +1251,20 @@ $currentLang = service('request')->getLocale();
                                 
                                 console.warn('🔐 CSRF Token Expired - Session timeout detected');
                                 
-                                // Show user-friendly alert with auto-refresh option
-                                const shouldRefresh = confirm(
-                                    '⏱️ Sesi Anda telah berakhir\n\n' +
-                                    'Untuk melanjutkan bekerja, halaman perlu di-refresh.\n\n' +
-                                    'Tekan OK untuk refresh sekarang.'
-                                );
-                                
-                                if (shouldRefresh) {
-                                    window.location.reload();
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Sesi Berakhir',
+                                        text: 'Token keamanan telah kedaluwarsa. Halaman perlu di-refresh.',
+                                        confirmButtonText: 'Refresh Sekarang',
+                                        allowOutsideClick: false,
+                                    }).then(() => { window.location.reload(); });
+                                } else {
+                                    if (confirm('Sesi Anda telah berakhir. Refresh halaman sekarang?')) {
+                                        window.location.reload();
+                                    }
                                 }
                                 
-                                // Prevent error from bubbling to module handlers
                                 return false;
                             }
                         }
