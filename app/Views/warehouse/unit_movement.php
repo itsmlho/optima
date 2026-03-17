@@ -187,30 +187,43 @@ $component_types = $component_types ?? [];
 <div class="modal fade" id="createModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Buat Surat Jalan</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2 text-primary"></i>Buat Surat Jalan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="createForm">
+                    <!-- Baris pertama: pilih tipe komponen dulu, baru unit jika diperlukan -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Pilih Unit</label>
+                                <label class="form-label">Tipe Barang / Komponen <span class="text-danger">*</span></label>
+                                <select class="form-select" name="component_type" id="componentTypeSelect" onchange="onComponentTypeChange()" required>
+                                    <option value="FORKLIFT">Forklift / Unit</option>
+                                    <option value="ATTACHMENT">Attachment</option>
+                                    <option value="CHARGER">Charger</option>
+                                    <option value="BATTERY">Baterai</option>
+                                    <option value="SPAREPART">Sparepart</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6" id="unitSelectCol">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Unit (jika Forklift)</label>
                                 <select class="form-select" id="unitSelect" name="unit_id">
                                     <option value="">-- Unit Utama (Opsional) --</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                    </div>
+                    <div class="row" id="componentIdRow" style="display:none;">
+                        <div class="col-md-12">
                             <div class="mb-3">
-                                <label class="form-label">Tipe Komponen</label>
-                                <select class="form-select" name="component_type">
-                                    <option value="FORKLIFT">Forklift</option>
-                                    <option value="ATTACHMENT">Attachment</option>
-                                    <option value="CHARGER">Charger</option>
-                                    <option value="BATTERY">Baterai</option>
+                                <label class="form-label" id="componentIdLabel">Pilih Komponen</label>
+                                <select class="form-select" name="component_id" id="componentIdSelect">
+                                    <option value="">-- Pilih Komponen --</option>
                                 </select>
+                                <small class="text-muted">Pilih komponen spesifik yang dipindahkan</small>
                             </div>
                         </div>
                     </div>
@@ -219,13 +232,13 @@ $component_types = $component_types ?? [];
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Lokasi Asal <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="origin_location" placeholder="Contoh: Workshop POS 1" required>
+                                <input type="text" class="form-control" name="origin_location" id="originLocationInput" placeholder="Contoh: Workshop POS 1" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Tipe Asal <span class="text-danger">*</span></label>
-                                <select class="form-select" name="origin_type" required>
+                                <select class="form-select" name="origin_type" id="originTypeSelect" onchange="onOriginTypeChange()" required>
                                     <option value="POS_1">POS 1 (Workshop Utama)</option>
                                     <option value="POS_2">POS 2</option>
                                     <option value="POS_3">POS 3</option>
@@ -233,8 +246,13 @@ $component_types = $component_types ?? [];
                                     <option value="POS_5">POS 5</option>
                                     <option value="WAREHOUSE">Gudang</option>
                                     <option value="CUSTOMER_SITE">Lokasi Customer</option>
-                                    <option value="OTHER">Lainnya</option>
+                                    <option value="OTHER">Lainnya (ketik manual)</option>
                                 </select>
+                            </div>
+                            <div class="mb-3" id="originTypeOtherGroup" style="display:none;">
+                                <label class="form-label">Tipe Asal (Lainnya)</label>
+                                <input type="text" class="form-control" id="originTypeOtherInput" placeholder="Misal: Mills Area Jateng">
+                                <small class="text-muted">Teks ini akan ikut dicatat di lokasi asal.</small>
                             </div>
                         </div>
                     </div>
@@ -243,13 +261,13 @@ $component_types = $component_types ?? [];
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Lokasi Tujuan <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="destination_location" placeholder="Contoh: Workshop POS 2" required>
+                                <input type="text" class="form-control" name="destination_location" id="destinationLocationInput" placeholder="Contoh: Workshop POS 2" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Tipe Tujuan <span class="text-danger">*</span></label>
-                                <select class="form-select" name="destination_type" required>
+                                <select class="form-select" name="destination_type" id="destinationTypeSelect" onchange="onDestinationTypeChange()" required>
                                     <option value="POS_1">POS 1 (Workshop Utama)</option>
                                     <option value="POS_2">POS 2</option>
                                     <option value="POS_3">POS 3</option>
@@ -257,8 +275,13 @@ $component_types = $component_types ?? [];
                                     <option value="POS_5">POS 5</option>
                                     <option value="WAREHOUSE">Gudang</option>
                                     <option value="CUSTOMER_SITE">Lokasi Customer</option>
-                                    <option value="OTHER">Lainnya</option>
+                                    <option value="OTHER">Lainnya (ketik manual)</option>
                                 </select>
+                            </div>
+                            <div class="mb-3" id="destinationTypeOtherGroup" style="display:none;">
+                                <label class="form-label">Tipe Tujuan (Lainnya)</label>
+                                <input type="text" class="form-control" id="destinationTypeOtherInput" placeholder="Misal: Mills Area Jatim">
+                                <small class="text-muted">Teks ini akan ikut dicatat di lokasi tujuan.</small>
                             </div>
                         </div>
                     </div>
@@ -304,9 +327,9 @@ $component_types = $component_types ?? [];
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Surat Jalan</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye me-2 text-info"></i>Detail Surat Jalan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detailContent">
                 <!-- Content loaded via AJAX -->
@@ -322,11 +345,37 @@ $component_types = $component_types ?? [];
 
 <?= $this->section('javascript') ?>
 <script>
-const BASE_URL = '<?= base_url() ?>';
+// Use BASE_URL from layout (base.php); avoid redeclaring to prevent SyntaxError
+var _movementBaseUrl = (typeof BASE_URL !== 'undefined') ? BASE_URL : '<?= base_url() ?>';
+const CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
+const CSRF_HASH = '<?= csrf_hash() ?>';
+
+// Global AJAX setup for CSRF
+$.ajaxSetup({
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    beforeSend: function(xhr, settings) {
+        if (settings.type === 'POST' && settings.data instanceof FormData) {
+            settings.data.append(CSRF_TOKEN_NAME, CSRF_HASH);
+        } else if (settings.type === 'POST' && typeof settings.data === 'string') {
+            settings.data += '&' + CSRF_TOKEN_NAME + '=' + CSRF_HASH;
+        } else if (settings.type === 'POST') {
+            settings.data = settings.data || {};
+            settings.data[CSRF_TOKEN_NAME] = CSRF_HASH;
+        }
+    }
+});
 
 $(document).ready(function() {
     loadMovements();
     loadUnitsForSelect();
+
+    // Inisialisasi Select2 untuk semua dropdown di modal create
+    if ($.fn.select2) {
+        $('#componentTypeSelect, #unitSelect, #componentIdSelect, #originTypeSelect, #destinationTypeSelect').select2({
+            dropdownParent: $('#createModal'),
+            width: '100%'
+        });
+    }
 
     // Set default datetime
     const now = new Date();
@@ -342,7 +391,7 @@ function loadMovements() {
     const dateTo = $('#filterDateTo').val();
 
     $.ajax({
-        url: BASE_URL + 'warehouse/movements/getMovements',
+        url: _movementBaseUrl + 'warehouse/movements/getMovements',
         type: 'GET',
         data: {
             status: status,
@@ -373,10 +422,22 @@ function renderMovementTable(data) {
         const statusBadge = getMovementStatusBadge(item.status);
         const date = new Date(item.movement_date).toLocaleDateString('id-ID');
 
+        // Build item label: unit or component
+        let itemLabel = '<span class="text-muted">-</span>';
+        if (item.no_unit || item.no_unit_na) {
+            itemLabel = (item.no_unit || item.no_unit_na) + '<br><small class="text-muted">' + (item.merk_unit || '') + '</small>';
+        } else if (item.attachment_item_number) {
+            itemLabel = item.attachment_item_number;
+        } else if (item.charger_item_number) {
+            itemLabel = item.charger_item_number;
+        } else if (item.battery_item_number) {
+            itemLabel = item.battery_item_number;
+        }
+
         html += '<tr>';
         html += '<td><strong>' + (item.surat_jalan_number || '-') + '</strong></td>';
         html += '<td><small>' + (item.movement_number || '-') + '</small></td>';
-        html += '<td>' + (item.no_unit || item.no_unit_na || '<span class="text-muted">-</span>') + '<br><small class="text-muted">' + (item.merk_unit || '') + '</small></td>';
+        html += '<td>' + itemLabel + '</td>';
         html += '<td>' + getComponentBadge(item.component_type) + '</td>';
         html += '<td>' + item.origin_location + '<br><small class="text-muted">' + item.origin_type + '</small></td>';
         html += '<td>' + item.destination_location + '<br><small class="text-muted">' + item.destination_type + '</small></td>';
@@ -405,9 +466,76 @@ function getComponentBadge(type) {
         'FORKLIFT': '<span class="badge badge-soft-blue">Forklift</span>',
         'ATTACHMENT': '<span class="badge badge-soft-cyan">Attachment</span>',
         'CHARGER': '<span class="badge badge-soft-yellow">Charger</span>',
-        'BATTERY': '<span class="badge badge-soft-green">Baterai</span>'
+        'BATTERY': '<span class="badge badge-soft-green">Baterai</span>',
+        'SPAREPART': '<span class="badge badge-soft-purple">Sparepart</span>'
     };
-    return badges[type] || type;
+    return badges[type] || type || '-';
+}
+
+function onComponentTypeChange() {
+    const type = $('#componentTypeSelect').val();
+    const row = $('#componentIdRow');
+    const select = $('#componentIdSelect');
+    const label = $('#componentIdLabel');
+    const unitCol = $('#unitSelectCol');
+
+    if (type === 'FORKLIFT' || type === 'SPAREPART' || !type) {
+        row.hide();
+        select.val('');
+        unitCol.show();
+        return;
+    }
+
+    // For ATTACHMENT / CHARGER / BATTERY: show component dropdown, hide unit select
+    unitCol.hide();
+    $('#unitSelect').val('');
+    row.show();
+
+    const labels = { 'ATTACHMENT': 'Pilih Attachment', 'CHARGER': 'Pilih Charger', 'BATTERY': 'Pilih Baterai' };
+    label.text(labels[type] || 'Pilih Komponen');
+
+    select.html('<option value="">Memuat...</option>');
+    select.prop('disabled', true);
+
+    $.ajax({
+        url: _movementBaseUrl + 'warehouse/movements/getComponentsByType',
+        type: 'GET',
+        data: { type: type },
+        success: function(res) {
+            let html = '<option value="">-- Pilih --</option>';
+            if (res.success && res.data) {
+                res.data.forEach(c => {
+                    html += `<option value="${c.id}">${c.label} — ${c.location} [${c.status}]</option>`;
+                });
+            }
+            select.html(html);
+            select.prop('disabled', false);
+        },
+        error: function() {
+            select.html('<option value="">Error memuat data</option>');
+            select.prop('disabled', false);
+        }
+    });
+}
+
+function onOriginTypeChange() {
+    const val = $('#originTypeSelect').val();
+    if (val === 'OTHER') {
+        $('#originTypeOtherGroup').show();
+    } else {
+        $('#originTypeOtherGroup').hide();
+        $('#originTypeOtherInput').val('');
+    }
+}
+
+function onDestinationTypeChange() {
+    const val = $('#destinationTypeSelect').val();
+    if (val === 'OTHER') {
+        $('#destinationTypeOtherGroup').show();
+    } else {
+        $('#destinationTypeOtherGroup').hide();
+        $('#destinationTypeOtherInput').val('');
+    }
 }
 
 function showCreateModal() {
@@ -416,15 +544,18 @@ function showCreateModal() {
 
 function loadUnitsForSelect() {
     $.ajax({
-        url: BASE_URL + 'warehouse/movements/getAvailableUnits',
+        url: _movementBaseUrl + 'warehouse/movements/getAvailableUnits',
         type: 'GET',
         success: function(res) {
             if (res.success) {
                 let html = '<option value="">-- Unit Utama (Opsional) --</option>';
                 res.data.forEach(unit => {
+                    const labelNoUnit = unit.no_unit || unit.no_unit_na || ('UNIT-' + unit.id_inventory_unit);
+                    const labelMerkModel = (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
+                    const sn = unit.serial_number ? (' | SN: ' + unit.serial_number) : '';
+                    const cap = unit.tipe ? (' | ' + unit.tipe) : ''; // tipe biasanya berisi tipe+jenis/kategori kapasitas
                     html += '<option value="' + unit.id_inventory_unit + '">' +
-                            (unit.no_unit || unit.no_unit_na || 'UNIT-' + unit.id_inventory_unit) +
-                            ' - ' + (unit.merk_unit || '') + ' ' + (unit.model_unit || '') +
+                            labelNoUnit + ' - ' + labelMerkModel + sn + cap +
                             '</option>';
                 });
                 $('#unitSelect').html(html);
@@ -442,8 +573,25 @@ function submitMovement() {
 
     const formData = new FormData(form);
 
+    // Jika tipe asal/tujuan = OTHER dan user isi teks lain, gabungkan ke lokasi
+    const originType = formData.get('origin_type');
+    const originOther = $('#originTypeOtherInput').val().trim();
+    if (originType === 'OTHER' && originOther) {
+        const base = $('#originLocationInput').val().trim();
+        const combined = base ? (base + ' - ' + originOther) : originOther;
+        formData.set('origin_location', combined);
+    }
+
+    const destType = formData.get('destination_type');
+    const destOther = $('#destinationTypeOtherInput').val().trim();
+    if (destType === 'OTHER' && destOther) {
+        const base = $('#destinationLocationInput').val().trim();
+        const combined = base ? (base + ' - ' + destOther) : destOther;
+        formData.set('destination_location', combined);
+    }
+
     $.ajax({
-        url: BASE_URL + 'warehouse/movements/createMovement',
+        url: _movementBaseUrl + 'warehouse/movements/createMovement',
         type: 'POST',
         data: formData,
         processData: false,
@@ -475,7 +623,7 @@ function submitMovement() {
 
 function viewMovementDetail(id) {
     $.ajax({
-        url: BASE_URL + 'warehouse/movements/getMovementDetail/' + id,
+        url: _movementBaseUrl + 'warehouse/movements/getMovementDetail/' + id,
         type: 'GET',
         success: function(res) {
             if (res.success) {
@@ -551,23 +699,44 @@ function showMovementDetailModal(data) {
 
 function startMovement(id) {
     Swal.fire({
-        title: 'Mulai Pengiriman?',
-        text: 'Movement akan dimulai.',
+        title: 'Mulai Pengiriman',
+        html:
+            '<div class="mb-3 text-start">' +
+            '<label class="form-label">Nama Driver <span class="text-danger">*</span></label>' +
+            '<input id="swalDriverName" class="form-control" placeholder="Nama driver">' +
+            '</div>' +
+            '<div class="mb-3 text-start">' +
+            '<label class="form-label">No. Kendaraan <span class="text-danger">*</span></label>' +
+            '<input id="swalVehicleNumber" class="form-control" placeholder="Contoh: B 1234 ABC">' +
+            '</div>' +
+            '<div class="text-start">' +
+            '<label class="form-label">Catatan (opsional)</label>' +
+            '<textarea id="swalNotes" class="form-control" rows="2" placeholder="Catatan pengiriman..."></textarea>' +
+            '</div>',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Ya, Mulai!',
-        cancelButtonText: window.lang('cancel')
+        confirmButtonText: '<i class="fas fa-truck me-1"></i> Mulai Kirim',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            const driverName = document.getElementById('swalDriverName').value.trim();
+            const vehicleNumber = document.getElementById('swalVehicleNumber').value.trim();
+            if (!driverName || !vehicleNumber) {
+                Swal.showValidationMessage('Nama driver dan no. kendaraan wajib diisi');
+                return false;
+            }
+            return { driver_name: driverName, vehicle_number: vehicleNumber, notes: document.getElementById('swalNotes').value };
+        }
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
-            url: BASE_URL + 'warehouse/movements/startMovement/' + id,
+            url: _movementBaseUrl + 'warehouse/movements/startMovement/' + id,
             type: 'POST',
-            data: {},
+            data: result.value,
             success: function(res) {
                 if (res.success) {
                     $('#detailModal').modal('hide');
                     loadMovements();
-                    OptimaNotify.success('Movement dimulai!');
+                    OptimaNotify.success('Movement dimulai! Driver: ' + result.value.driver_name);
                 } else {
                     OptimaNotify.error('Error: ' + res.message);
                 }
@@ -584,11 +753,11 @@ function confirmArrival(id) {
         showCancelButton: true,
         confirmButtonColor: '#198754',
         confirmButtonText: 'Ya, Konfirmasi!',
-        cancelButtonText: window.lang('cancel')
+        cancelButtonText: typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
-            url: BASE_URL + 'warehouse/movements/confirmArrival/' + id,
+            url: _movementBaseUrl + 'warehouse/movements/confirmArrival/' + id,
             type: 'POST',
             data: {},
             success: function(res) {
@@ -612,11 +781,11 @@ function cancelMovement(id) {
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: window.lang('back')
+        cancelButtonText: typeof window.lang === 'function' ? window.lang('back') : 'Kembali'
     }).then((result) => {
         if (!result.isConfirmed) return;
         $.ajax({
-            url: BASE_URL + 'warehouse/movements/cancelMovement/' + id,
+            url: _movementBaseUrl + 'warehouse/movements/cancelMovement/' + id,
             type: 'POST',
             data: {},
             success: function(res) {

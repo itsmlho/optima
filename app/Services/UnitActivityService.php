@@ -1,0 +1,657 @@
+<?php
+
+namespace App\Services;
+
+/**
+ * UnitActivityService
+ * 
+ * Provides comprehensive activity tracking for inventory units.
+ * Queries multiple data sources and returns unified timeline data.
+ */
+class UnitActivityService
+{
+    protected $db;
+
+    public function __construct()
+    {
+        $this->db = \Config\Database::connect();
+    }
+
+    /**
+     * Get unified timeline of all unit activities
+     * Merges data from all sources, sorted by date (newest first)
+     */
+    public function getUnifiedTimeline(int $unitId, ?string $category = null, int $limit = 100): array
+    {
+        $events = [];
+
+        // Collect events from all sources
+        $events = array_merge($events, $this->getRegistrationEvents($unitId));
+        $events = array_merge($events, $this->getSPKEvents($unitId));
+        $events = array_merge($events, $this->getMovementEvents($unitId));
+        $events = array_merge($events, $this->getDIEvents($unitId));
+        $events = array_merge($events, $this->getContractEvents($unitId));
+        $events = array_merge($events, $this->getServiceEvents($unitId));
+        $events = array_merge($events, $this->getVerificationEvents($unitId));
+        $events = array_merge($events, $this->getComponentEvents($unitId));
+        $events = array_merge($events, $this->getStatusEvents($unitId));
+
+        // Filter by category if specified
+        if ($category && $category !== 'all') {
+            $events = array_filter($events, fn($e) => strtolower($e['category']) === strtolower($category));
+        }
+
+        // Sort by date descending (newest first)
+        usort($events, fn($a, $b) => strtotime($b['date']) - strtotime($a['date']));
+
+        // Limit results
+        return array_slice($events, 0, $limit);
+    }
+
+    /**
+     * Get unit registration event
+     */
+    protected function getRegistrationEvents(int $unitId): array
+    {
+        $events = [];
+        
+        try {
+            $unit = $this->db->table('inventory_unit')
+                ->select('id_inventory_unit, created_at, lokasi_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->get()->getRowArray();
+
+            if ($unit && !empty($unit['created_at'])) {
+                $events[] = [
+                    'category' => 'REGISTRATION',
+                    'icon' => 'box',
+                    'color' => 'gray',
+                    'title' => 'Unit Registered',
+                    'description' => 'Unit masuk ke inventory',
+                    'detail' => 'Location: ' . ($unit['lokasi_unit'] ?? 'POS 1'),
+                    'date' => $unit['created_at'],
+                    'reference_type' => 'unit',
+                    'reference_id' => $unitId,
+                    'reference_number' => null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getRegistrationEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get SPK stage events (minimal for timeline)
+     */
+    protected function getSPKEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('spk_unit_stages')) {
+                return $events;
+            }
+
+            $stages = $this->db->table('spk_unit_stages sus')
+                ->select('sus.*, s.nomor_spk, s.pelanggan, s.status as spk_status')
+                ->join('spk s', 's.id = sus.spk_id', 'left')
+                ->where('sus.unit_id', $unitId)
+                ->orderBy('sus.created_at', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($stages as $stage) {
+                $stageName = $stage['stage_name'] ?? 'unknown';
+                $stageLabels = [
+                    'persiapan_unit' => 'Persiapan Unit',
+                    'fabrikasi' => 'Fabrikasi',
+                    'painting' => 'Painting',
+                    'pdi' => 'PDI (Pre-Delivery Inspection)',
+                ];
+                $isCompleted = !empty($stage['tanggal_approve']);
+
+                $events[] = [
+                    'category' => 'SPK',
+                    'icon' => 'clipboard-list',
+                    'color' => 'blue',
+                    'title' => 'SPK Stage: ' . ($stageLabels[$stageName] ?? ucfirst($stageName)),
+                    'description' => $stage['nomor_spk'] ?? '-',
+                    'detail' => $isCompleted ? 'Completed' : 'In Progress',
+                    'date' => $stage['tanggal_approve'] ?? $stage['created_at'],
+                    'reference_type' => 'spk',
+                    'reference_id' => $stage['spk_id'],
+                    'reference_number' => $stage['nomor_spk'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getSPKEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get internal movement events (surat jalan)
+     */
+    protected function getMovementEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('unit_movements')) {
+                return $events;
+            }
+
+            $movements = $this->db->table('unit_movements')
+                ->where('unit_id', $unitId)
+                ->orderBy('movement_date', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($movements as $mov) {
+                $events[] = [
+                    'category' => 'MOVEMENT',
+                    'icon' => 'truck',
+                    'color' => 'cyan',
+                    'title' => 'Internal Movement',
+                    'description' => ($mov['origin_location'] ?? '-') . ' → ' . ($mov['destination_location'] ?? '-'),
+                    'detail' => implode(' | ', array_filter([
+                        !empty($mov['surat_jalan_number']) ? 'Surat Jalan: ' . $mov['surat_jalan_number'] : null,
+                        'Status: ' . ($mov['status'] ?? '-'),
+                        !empty($mov['reason']) ? 'Reason: ' . $mov['reason'] : null,
+                    ])),
+                    'date' => $mov['movement_date'] ?? $mov['created_at'],
+                    'reference_type' => 'movement',
+                    'reference_id' => $mov['id'],
+                    'reference_number' => $mov['surat_jalan_number'] ?? $mov['movement_number'] ?? null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getMovementEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get Delivery Instruction events
+     */
+    protected function getDIEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('delivery_items') || !$this->db->tableExists('delivery_instructions')) {
+                return $events;
+            }
+
+            $diItems = $this->db->table('delivery_items di')
+                ->select('di.*, dins.nomor_di, dins.status_di, dins.pelanggan, dins.lokasi, dins.tanggal_kirim, dins.dibuat_pada')
+                ->join('delivery_instructions dins', 'dins.id = di.di_id', 'left')
+                ->where('di.unit_id', $unitId)
+                ->where('di.item_type', 'UNIT')
+                ->orderBy('dins.dibuat_pada', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($diItems as $di) {
+                $statusLabels = [
+                    'DIAJUKAN' => 'DI Submitted',
+                    'DISETUJUI' => 'DI Approved',
+                    'PERSIAPAN_UNIT' => 'Unit Preparation',
+                    'SIAP_KIRIM' => 'Ready to Ship',
+                    'DALAM_PERJALANAN' => 'In Transit',
+                    'SAMPAI_LOKASI' => 'Delivered',
+                    'SELESAI' => 'Completed',
+                ];
+
+                $events[] = [
+                    'category' => 'DELIVERY',
+                    'icon' => 'shipping-fast',
+                    'color' => 'green',
+                    'title' => $statusLabels[$di['status_di']] ?? 'Delivery: ' . ($di['status_di'] ?? '-'),
+                    'description' => $di['nomor_di'] ?? '-',
+                    'detail' => implode(' | ', array_filter([
+                        'Customer: ' . ($di['pelanggan'] ?? '-'),
+                        'Location: ' . ($di['lokasi'] ?? '-'),
+                        !empty($di['tanggal_kirim']) ? 'Ship Date: ' . date('d M Y', strtotime($di['tanggal_kirim'])) : null,
+                    ])),
+                    'date' => $di['dibuat_pada'] ?? $di['created_at'],
+                    'reference_type' => 'di',
+                    'reference_id' => $di['di_id'],
+                    'reference_number' => $di['nomor_di'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getDIEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get contract events
+     */
+    protected function getContractEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('kontrak_unit')) {
+                return $events;
+            }
+
+            $contracts = $this->db->table('kontrak_unit ku')
+                ->select('ku.*, k.no_kontrak, c.customer_name, cl.location_name')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
+                ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
+                ->where('ku.unit_id', $unitId)
+                ->orderBy('ku.tanggal_mulai', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($contracts as $contract) {
+                // Contract Start Event
+                if (!empty($contract['tanggal_mulai'])) {
+                    $events[] = [
+                        'category' => 'CONTRACT',
+                        'icon' => 'file-contract',
+                        'color' => 'purple',
+                        'title' => 'Contract Started',
+                        'description' => $contract['no_kontrak'] ?? '-',
+                        'detail' => implode(' | ', array_filter([
+                            'Customer: ' . ($contract['customer_name'] ?? '-'),
+                            'Location: ' . ($contract['location_name'] ?? '-'),
+                        ])),
+                        'date' => $contract['tanggal_mulai'],
+                        'reference_type' => 'contract',
+                        'reference_id' => $contract['kontrak_id'],
+                        'reference_number' => $contract['no_kontrak'],
+                    ];
+                }
+
+                // Contract End Event
+                if (!empty($contract['tanggal_selesai'])) {
+                    $events[] = [
+                        'category' => 'CONTRACT',
+                        'icon' => 'file-contract',
+                        'color' => 'purple',
+                        'title' => 'Contract Ended',
+                        'description' => $contract['no_kontrak'] ?? '-',
+                        'detail' => 'Status: ' . ($contract['status'] ?? '-'),
+                        'date' => $contract['tanggal_selesai'],
+                        'reference_type' => 'contract',
+                        'reference_id' => $contract['kontrak_id'],
+                        'reference_number' => $contract['no_kontrak'],
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getContractEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get service/work order events (minimal for timeline)
+     */
+    protected function getServiceEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('work_orders')) {
+                return $events;
+            }
+
+            $workOrders = $this->db->table('work_orders wo')
+                ->select('wo.*, woc.category_name, wos.status_name')
+                ->join('work_order_categories woc', 'woc.id = wo.category_id', 'left')
+                ->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left')
+                ->where('wo.unit_id', $unitId)
+                ->whereNull('wo.deleted_at')
+                ->orderBy('wo.report_date', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($workOrders as $wo) {
+                $events[] = [
+                    'category' => 'SERVICE',
+                    'icon' => 'tools',
+                    'color' => 'orange',
+                    'title' => 'Work Order: ' . ($wo['status_name'] ?? 'Created'),
+                    'description' => $wo['work_order_number'] ?? '-',
+                    'detail' => $wo['category_name'] ?? '-',
+                    'date' => $wo['report_date'] ?? $wo['created_at'],
+                    'reference_type' => 'work_order',
+                    'reference_id' => $wo['id'],
+                    'reference_number' => $wo['work_order_number'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getServiceEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get unit verification events
+     */
+    protected function getVerificationEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('unit_verification_history')) {
+                return $events;
+            }
+
+            $verifications = $this->db->table('unit_verification_history uvh')
+                ->select('uvh.*, wo.work_order_number,
+                    COALESCE(CONCAT(e.first_name, " ", e.last_name), CONCAT(u.first_name, " ", u.last_name)) as verifier_name')
+                ->join('work_orders wo', 'wo.id = uvh.work_order_id', 'left')
+                ->join('employees e', 'e.id = uvh.verified_by', 'left')
+                ->join('users u', 'u.id = uvh.verified_by', 'left')
+                ->where('uvh.unit_id', $unitId)
+                ->orderBy('uvh.verified_at', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($verifications as $v) {
+                $verificationType = $v['verification_type'] ?? 'WO';
+                $title = $verificationType === 'STANDALONE' ? 'Unit Verified (Standalone)' : 'Unit Verified';
+                
+                $events[] = [
+                    'category' => 'VERIFICATION',
+                    'icon' => 'check-circle',
+                    'color' => 'success',
+                    'title' => $title,
+                    'description' => !empty($v['work_order_number']) ? $v['work_order_number'] : 'Standalone Verification',
+                    'detail' => 'By: ' . ($v['verifier_name'] ?? '-'),
+                    'date' => $v['verified_at'],
+                    'reference_type' => 'verification',
+                    'reference_id' => $v['id'],
+                    'reference_number' => $v['work_order_number'] ?? null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getVerificationEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get component change events
+     */
+    protected function getComponentEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('component_audit_log')) {
+                return $events;
+            }
+
+            $logs = $this->db->table('component_audit_log')
+                ->where('unit_id', $unitId)
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($logs as $log) {
+                $actionLabels = [
+                    'ATTACH' => 'Component Attached',
+                    'DETACH' => 'Component Detached',
+                    'SWAP' => 'Component Swapped',
+                ];
+
+                $events[] = [
+                    'category' => 'COMPONENT',
+                    'icon' => 'puzzle-piece',
+                    'color' => 'teal',
+                    'title' => $actionLabels[$log['action']] ?? 'Component: ' . ($log['action'] ?? '-'),
+                    'description' => ucfirst(strtolower($log['component_type'] ?? 'Component')),
+                    'detail' => implode(' | ', array_filter([
+                        !empty($log['serial_number']) ? 'S/N: ' . $log['serial_number'] : null,
+                        !empty($log['notes']) ? $log['notes'] : null,
+                    ])),
+                    'date' => $log['created_at'],
+                    'reference_type' => 'component',
+                    'reference_id' => $log['component_id'],
+                    'reference_number' => $log['serial_number'] ?? null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getComponentEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get status change events from unit_timeline
+     */
+    protected function getStatusEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('unit_timeline')) {
+                return $events;
+            }
+
+            $timeline = $this->db->table('unit_timeline')
+                ->where('unit_id', $unitId)
+                ->orderBy('performed_at', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($timeline as $event) {
+                $events[] = [
+                    'category' => 'STATUS',
+                    'icon' => 'sync-alt',
+                    'color' => 'yellow',
+                    'title' => $event['event_title'] ?? 'Status Change',
+                    'description' => $event['event_category'] ?? '-',
+                    'detail' => $event['event_description'] ?? '',
+                    'date' => $event['performed_at'] ?? $event['created_at'],
+                    'reference_type' => $event['reference_type'] ?? null,
+                    'reference_id' => $event['reference_id'] ?? null,
+                    'reference_number' => null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getStatusEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get detailed service history (Unified: Work Orders + SPK with spareparts)
+     * Used for Service & Parts tab - returns single sorted array
+     */
+    public function getServiceHistory(int $unitId): array
+    {
+        $unified = [];
+
+        // Get Work Orders with spareparts
+        try {
+            $workOrders = $this->db->table('work_orders wo')
+                ->select('wo.*, woc.category_name, wos.status_name, wos.status_color,
+                          CONCAT(u.first_name, " ", u.last_name) as mechanic_name')
+                ->join('work_order_categories woc', 'woc.id = wo.category_id', 'left')
+                ->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left')
+                ->join('users u', 'u.id = wo.mechanic_id', 'left')
+                ->where('wo.unit_id', $unitId)
+                ->whereNull('wo.deleted_at')
+                ->orderBy('wo.report_date', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($workOrders as $wo) {
+                $spareparts = [];
+                try {
+                    $spareparts = $this->db->table('work_order_spareparts')
+                        ->where('work_order_id', $wo['id'])
+                        ->get()->getResultArray();
+                } catch (\Throwable $e) {}
+
+                $unified[] = [
+                    'type' => 'WO',
+                    'type_label' => 'Work Order',
+                    'reference_number' => $wo['work_order_number'] ?? '-',
+                    'reference_id' => $wo['id'],
+                    'stage_category' => $wo['category_name'] ?? '-',
+                    'description' => $wo['complaint_description'] ?? '',
+                    'mechanic' => $wo['mechanic_name'] ?? '-',
+                    'customer' => null,
+                    'status' => $wo['status_name'] ?? 'Pending',
+                    'status_color' => $wo['status_color'] ?? 'warning',
+                    'is_completed' => strtolower($wo['status_name'] ?? '') === 'completed',
+                    'date' => $wo['report_date'] ?? $wo['created_at'],
+                    'spareparts' => $spareparts,
+                    'url' => base_url('service/work-orders/' . $wo['id']),
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getServiceHistory WO: ' . $e->getMessage());
+        }
+
+        // Get SPK preparations with spareparts
+        try {
+            if ($this->db->tableExists('spk_unit_stages')) {
+                $spkStages = $this->db->table('spk_unit_stages sus')
+                    ->select('sus.*, s.nomor_spk, s.pelanggan, s.lokasi')
+                    ->join('spk s', 's.id = sus.spk_id', 'left')
+                    ->where('sus.unit_id', $unitId)
+                    ->orderBy('sus.created_at', 'DESC')
+                    ->get()->getResultArray();
+
+                $stageLabels = [
+                    'persiapan_unit' => 'Persiapan Unit',
+                    'fabrikasi' => 'Fabrikasi',
+                    'painting' => 'Painting',
+                    'pdi' => 'PDI',
+                ];
+
+                foreach ($spkStages as $stage) {
+                    $spareparts = [];
+                    if ($this->db->tableExists('spk_spareparts')) {
+                        try {
+                            $spareparts = $this->db->table('spk_spareparts')
+                                ->where('spk_id', $stage['spk_id'])
+                                ->where('unit_id', $unitId)
+                                ->where('stage_name', $stage['stage_name'])
+                                ->get()->getResultArray();
+                        } catch (\Throwable $e) {}
+                    }
+
+                    $stageName = $stage['stage_name'] ?? 'unknown';
+                    $isCompleted = !empty($stage['tanggal_approve']);
+
+                    $unified[] = [
+                        'type' => 'SPK',
+                        'type_label' => 'SPK Preparation',
+                        'reference_number' => $stage['nomor_spk'] ?? '-',
+                        'reference_id' => $stage['spk_id'],
+                        'stage_category' => $stageLabels[$stageName] ?? ucfirst($stageName),
+                        'description' => null,
+                        'mechanic' => $stage['mekanik'] ?? '-',
+                        'customer' => $stage['pelanggan'] ?? '-',
+                        'status' => $isCompleted ? 'Completed' : 'In Progress',
+                        'status_color' => $isCompleted ? 'success' : 'warning',
+                        'is_completed' => $isCompleted,
+                        'date' => $stage['tanggal_approve'] ?? $stage['created_at'],
+                        'spareparts' => $spareparts,
+                        'url' => base_url('operational/spk/' . $stage['spk_id']),
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getServiceHistory SPK: ' . $e->getMessage());
+        }
+
+        // Sort by date descending
+        usort($unified, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+
+        return $unified;
+    }
+
+    /**
+     * Get contract history (detailed)
+     * Used for Contracts tab
+     */
+    public function getContractHistory(int $unitId): array
+    {
+        $contracts = [];
+
+        try {
+            if (!$this->db->tableExists('kontrak_unit')) {
+                return $contracts;
+            }
+
+            $contracts = $this->db->table('kontrak_unit ku')
+                ->select('ku.*, 
+                          k.no_kontrak, k.tanggal_mulai as contract_start, k.tanggal_berakhir as contract_end,
+                          k.rental_type, k.jenis_sewa, k.status as contract_status,
+                          c.customer_name, c.customer_code,
+                          cl.location_name, cl.city, cl.address')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
+                ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
+                ->where('ku.unit_id', $unitId)
+                ->orderBy('ku.tanggal_mulai', 'DESC')
+                ->get()->getResultArray();
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getContractHistory: ' . $e->getMessage());
+        }
+
+        return $contracts;
+    }
+
+    /**
+     * Get quick stats for overview
+     */
+    public function getQuickStats(int $unitId): array
+    {
+        $stats = [
+            'total_work_orders' => 0,
+            'total_contracts' => 0,
+            'total_movements' => 0,
+            'total_spk' => 0,
+        ];
+
+        try {
+            if ($this->db->tableExists('work_orders')) {
+                $stats['total_work_orders'] = $this->db->table('work_orders')
+                    ->where('unit_id', $unitId)
+                    ->whereNull('deleted_at')
+                    ->countAllResults();
+            }
+
+            if ($this->db->tableExists('kontrak_unit')) {
+                $stats['total_contracts'] = $this->db->table('kontrak_unit')
+                    ->where('unit_id', $unitId)
+                    ->countAllResults();
+            }
+
+            if ($this->db->tableExists('unit_movements')) {
+                $stats['total_movements'] = $this->db->table('unit_movements')
+                    ->where('unit_id', $unitId)
+                    ->countAllResults();
+            }
+
+            if ($this->db->tableExists('spk_unit_stages')) {
+                $stats['total_spk'] = $this->db->table('spk_unit_stages')
+                    ->where('unit_id', $unitId)
+                    ->select('spk_id')
+                    ->distinct()
+                    ->countAllResults();
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getQuickStats: ' . $e->getMessage());
+        }
+
+        return $stats;
+    }
+}
