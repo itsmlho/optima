@@ -746,58 +746,52 @@ function startMovement(id) {
 }
 
 function confirmArrival(id) {
-    Swal.fire({
+    OptimaConfirm.approve({
         title: 'Konfirmasi Tiba?',
         text: 'Unit telah sampai di tujuan.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#198754',
-        confirmButtonText: 'Ya, Konfirmasi!',
-        cancelButtonText: typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $.ajax({
-            url: _movementBaseUrl + 'warehouse/movements/confirmArrival/' + id,
-            type: 'POST',
-            data: {},
-            success: function(res) {
-                if (res.success) {
-                    $('#detailModal').modal('hide');
-                    loadMovements();
-                    OptimaNotify.success('Movement selesai dan lokasi unit diperbarui!');
-                } else {
-                    OptimaNotify.error('Error: ' + res.message);
+        confirmText: 'Ya, Konfirmasi!',
+        cancelText: typeof window.lang === 'function' ? window.lang('cancel') : 'Batal',
+        onConfirm: function() {
+            $.ajax({
+                url: _movementBaseUrl + 'warehouse/movements/confirmArrival/' + id,
+                type: 'POST',
+                data: {},
+                success: function(res) {
+                    if (res.success) {
+                        $('#detailModal').modal('hide');
+                        loadMovements();
+                        OptimaNotify.success('Movement selesai dan lokasi unit diperbarui!');
+                    } else {
+                        OptimaNotify.error('Error: ' + res.message);
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 }
 
 function cancelMovement(id) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Batalkan Movement?',
         text: 'Movement ini akan dibatalkan.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: typeof window.lang === 'function' ? window.lang('back') : 'Kembali'
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $.ajax({
-            url: _movementBaseUrl + 'warehouse/movements/cancelMovement/' + id,
-            type: 'POST',
-            data: {},
-            success: function(res) {
-                if (res.success) {
-                    $('#detailModal').modal('hide');
-                    loadMovements();
-                    OptimaNotify.success('Movement dibatalkan');
-                } else {
-                    OptimaNotify.error('Error: ' + res.message);
+        confirmText: 'Ya, Batalkan!',
+        cancelText: typeof window.lang === 'function' ? window.lang('back') : 'Kembali',
+        onConfirm: function() {
+            $.ajax({
+                url: _movementBaseUrl + 'warehouse/movements/cancelMovement/' + id,
+                type: 'POST',
+                data: {},
+                success: function(res) {
+                    if (res.success) {
+                        $('#detailModal').modal('hide');
+                        loadMovements();
+                        OptimaNotify.success('Movement dibatalkan');
+                    } else {
+                        OptimaNotify.error('Error: ' + res.message);
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 }
 

@@ -340,7 +340,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 // Utility functions
@@ -412,21 +411,20 @@ function saveDeliveryStatus() {
         contentType: false,
         success: function(response) {
             if (response.success) {
-                Swal.fire('Success!', response.message, 'success').then(() => {
-                    location.reload();
-                });
+                OptimaNotify.success(response.message);
+                setTimeout(() => location.reload(), 1200);
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaNotify.error(response.message);
             }
         },
         error: function() {
-            Swal.fire('Error', 'Failed to update delivery status', 'error');
+            OptimaNotify.error('Failed to update delivery status');
         }
     });
 }
 
 function verifyDelivery(deliveryId) {
-    Swal.fire('Info', 'Delivery verification feature coming soon!', 'info');
+    OptimaNotify.info('Delivery verification feature coming soon!');
 }
 </script>
 <?= $this->endSection() ?>

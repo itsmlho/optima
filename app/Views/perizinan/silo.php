@@ -516,7 +516,6 @@
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 let siloTable;      // Tab Semua
@@ -1069,21 +1068,13 @@ function createSilo() {
     });
     
     if (selectedUnits.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Warning',
-            text: 'Select at least 1 unit'
-        });
+        OptimaNotify.warning('Select at least 1 unit');
         return;
     }
     
     const namaPtPjk3 = $('#nama_pt_pjk3').val();
     if (!namaPtPjk3 || namaPtPjk3.trim() === '') {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Warning',
-            text: 'Nama PT PJK3 must be filled'
-        });
+        OptimaNotify.warning('Nama PT PJK3 must be filled');
         return;
     }
     
@@ -1101,11 +1092,7 @@ function createSilo() {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil',
-                    text: response.message
-                });
+                OptimaNotify.success(response.message);
                 $('#createModal').modal('hide');
                 // Reload all tables
                 if (siloTable) siloTable.ajax.reload();
@@ -1117,20 +1104,12 @@ function createSilo() {
                 // Update badge counts
                 updateTabBadges();
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message
-                });
+                OptimaNotify.error(response.message);
             }
         },
         error: function(xhr) {
             const response = xhr.responseJSON;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: response?.message || 'An error occurred while creating the submission'
-            });
+            OptimaNotify.error(response?.message || 'An error occurred while creating the submission');
         }
     });
 }
@@ -1146,11 +1125,7 @@ function showUpdateModal(siloId) {
                 const nextStatus = getNextStatus(silo.status);
                 
                 if (!nextStatus) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Cannot Update',
-                        text: 'Status has reached the final stage and cannot be updated further.'
-                    });
+                    OptimaNotify.warning('Status has reached the final stage and cannot be updated further.');
                     return;
                 }
 
@@ -1223,11 +1198,7 @@ function updateSiloStatus(siloId) {
                 if (fileInput && fileInput.files.length > 0) {
                     uploadFile(siloId, fileInput.files[0], formData.get('status') === 'SURAT_KETERANGAN_PJK3' ? 'pjk3' : 'silo');
                 } else {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: response.message
-                    });
+                    OptimaNotify.success(response.message);
                     $('#updateModal').modal('hide');
                     // Reload all tables
                     if (siloTable) siloTable.ajax.reload();
@@ -1240,20 +1211,12 @@ function updateSiloStatus(siloId) {
                     updateTabBadges();
                 }
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message
-                });
+                OptimaNotify.error(response.message);
             }
         },
         error: function(xhr) {
             const response = xhr.responseJSON;
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: response?.message || 'An error occurred while updating the status'
-            });
+            OptimaNotify.error(response?.message || 'An error occurred while updating the status');
         }
     });
 }
@@ -1262,11 +1225,7 @@ function uploadFile(siloId, file, fileType) {
     // Check file size (15MB = 15728640 bytes)
     const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
-        Swal.fire({
-            icon: 'error',
-            title: 'File Too Large',
-            text: 'Maximum file size is 15MB. Your file: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB'
-        });
+        OptimaNotify.error('Maximum file size is 15MB. Your file: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB');
         return;
     }
 
@@ -1294,11 +1253,7 @@ function uploadFile(siloId, file, fileType) {
         success: function(response) {
             Swal.close();
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success',
-                    text: response.message || 'File uploaded successfully'
-                });
+                OptimaNotify.success(response.message || 'File uploaded successfully');
                 $('#updateModal').modal('hide');
                 // Reload all tables
                 if (siloTable) siloTable.ajax.reload();
@@ -1310,11 +1265,7 @@ function uploadFile(siloId, file, fileType) {
                 // Update badge counts
                 updateTabBadges();
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message || 'Failed to upload file'
-                });
+                OptimaNotify.error(response.message || 'Failed to upload file');
             }
         },
         error: function(xhr, status, error) {
@@ -1335,11 +1286,7 @@ function uploadFile(siloId, file, fileType) {
                 }
             }
             
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: errorMessage
-            });
+            OptimaNotify.error(errorMessage);
         }
     });
 }

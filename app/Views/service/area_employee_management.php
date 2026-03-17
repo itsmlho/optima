@@ -1604,15 +1604,14 @@ function bindForms() {
             );
             
             if (existingPrimary) {
-              Swal.fire({
+              OptimaConfirm.generic({
                 title: 'Duplikat PRIMARY?',
                 text: `Sudah ada PRIMARY ${role} (${existingPrimary.staff_name}) di area ini. Lanjutkan membuat assignment PRIMARY baru?`,
                 icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Lanjutkan',
-                cancelButtonText: window.lang('cancel')
-              }).then((result) => {
-                if (result.isConfirmed) submitAssignmentForm($form);
+                confirmText: 'Ya, Lanjutkan',
+                cancelText: window.lang('cancel'),
+                confirmButtonColor: 'warning',
+                onConfirm: function() { submitAssignmentForm($form); }
               });
               return;
             }
@@ -2299,18 +2298,15 @@ function deleteAreaFromDetail() {
     return;
   }
   
-  Swal.fire({
+  OptimaConfirm.danger({
     title: 'Hapus Area?',
     text: `Area "${currentAreaData?.area_name || 'this area'}" akan dihapus. Tindakan ini tidak dapat dibatalkan.`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc3545',
-    confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: window.lang('cancel')
-  }).then((result) => {
-    if (!result.isConfirmed) return;
-    $('#areaDetailModal').modal('hide');
-    deleteArea(currentAreaId);
+    confirmText: 'Ya, Hapus!',
+    cancelText: window.lang('cancel'),
+    onConfirm: function() {
+      $('#areaDetailModal').modal('hide');
+      deleteArea(currentAreaId);
+    }
   });
 }
 
@@ -2354,18 +2350,15 @@ function deleteEmployeeFromDetail() {
     return;
   }
   
-  Swal.fire({
+  OptimaConfirm.danger({
     title: 'Hapus Karyawan?',
     text: 'Karyawan akan dinonaktifkan (bukan dihapus permanen).',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc3545',
-    confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: window.lang('cancel')
-  }).then((result) => {
-    if (!result.isConfirmed) return;
-    $('#employeeDetailModal').modal('hide');
-    deleteEmployee(currentEmployeeId);
+    confirmText: 'Ya, Hapus!',
+    cancelText: window.lang('cancel'),
+    onConfirm: function() {
+      $('#employeeDetailModal').modal('hide');
+      deleteEmployee(currentEmployeeId);
+    }
   });
 }
 

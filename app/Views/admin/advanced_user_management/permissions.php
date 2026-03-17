@@ -408,7 +408,6 @@
 <?= $this->section('javascript') ?>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 const columnsDefault = [
@@ -460,16 +459,11 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     $('#createPermissionModal').modal('hide');
-                    Swal.fire({
-                        title: 'Success!',
-                        text: response.message,
-                        icon: 'success',
-                        timer: 3000
-                    });
+                    OptimaNotify.success(response.message);
                     permissionsTable.ajax.reload();
                     $('#createPermissionForm')[0].reset();
                 } else {
-                    Swal.fire('Error!', response.message || 'Failed to create permission.', 'error');
+                    OptimaNotify.error(response.message || 'Failed to create permission.');
                 }
             },
             error: function(xhr) {
@@ -477,7 +471,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     message = xhr.responseJSON.message;
                 }
-                Swal.fire('Error!', message, 'error');
+                OptimaNotify.error(message);
             },
             complete: function() {
                 submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Create Permission');
@@ -500,23 +494,14 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     $('#editPermissionModal').modal('hide');
-                    Swal.fire({
-                        title: 'Success!',
-                        text: response.message,
-                        icon: 'success',
-                        timer: 3000
-                    });
+                    OptimaNotify.success(response.message);
                     permissionsTable.ajax.reload();
                 } else {
                     let msg = response.message || 'Failed to update permission.';
                     if (response.errors) {
-                        msg += '<br><small>' + Object.values(response.errors).join('<br>') + '</small>';
+                        msg += ' ' + Object.values(response.errors).join(' ');
                     }
-                    Swal.fire({
-                        title: 'Error!',
-                        html: msg,
-                        icon: 'error'
-                    });
+                    OptimaNotify.error(msg);
                 }
             },
             error: function(xhr) {
@@ -524,7 +509,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     message = xhr.responseJSON.message;
                 }
-                Swal.fire('Error!', message, 'error');
+                OptimaNotify.error(message);
             },
             complete: function() {
                 submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Update Permission');
@@ -549,12 +534,12 @@ function initializeDataTable() {
                 d.filter = currentPermissionFilter;
                 return d;
             },
-            error: function(xhr, error, thrown) {
-                console.error('DataTable Ajax Error:', error, thrown);
-                Swal.fire('Error!', 'Failed to load permissions data.', 'error');
-            }
-        },
-        columns: columnsDefault, // default
+                error: function(xhr, error, thrown) {
+                    console.error('DataTable Ajax Error:', error, thrown);
+                    OptimaNotify.error('Failed to load permissions data.');
+                }
+            },
+            columns: columnsDefault, // default
         order: [[2, 'asc'], [3, 'asc'], [0, 'asc']], // Order by: Module, Page, Display Name
         language: {
             processing: '<i class="fas fa-spinner fa-spin"></i> Loading...',
@@ -643,7 +628,7 @@ function filterPermissions(filterType) {
                 },
                 error: function(xhr, error, thrown) {
                     console.error('DataTable Ajax Error:', error, thrown);
-                    Swal.fire('Error!', 'Failed to load permissions data.', 'error');
+                    OptimaNotify.error('Failed to load permissions data.');
                 }
             },
             columns: columnsByModule,
@@ -712,15 +697,7 @@ function filterPermissions(filterType) {
 
 function refreshPermissionTable() {
     permissionsTable.ajax.reload();
-    
-    // Show loading toast
-    Swal.fire({
-        title: 'Refreshing...',
-        text: 'Loading latest permissions data',
-        icon: 'info',
-        timer: 1500,
-        showConfirmButton: false
-    });
+    OptimaNotify.info('Loading latest permissions data');
 }
 
 function updatePermissionStats(stats) {
@@ -766,37 +743,23 @@ function editPermission(id) {
             
             $('#editPermissionModal').modal('show');
         } else {
-            Swal.fire('Error!', response.message || 'Failed to load permission.', 'error');
+            OptimaNotify.error(response.message || 'Failed to load permission.');
         }
     }).fail(function() {
-        Swal.fire('Error!', 'Failed to load permission details.', 'error');
+        OptimaNotify.error('Failed to load permission details.');
     }).always(function() {
         loadingBtn.html(originalHtml).prop('disabled', false);
     });
 }
 
 function deletePermission(id) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Are you sure?',
-        text: "This permission will be permanently deleted and removed from all roles!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash me-1"></i>Yes, delete it!',
-        cancelButtonText: '<i class="fas fa-times me-1"></i>' + window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Show loading
-            Swal.fire({
-                title: 'Deleting...',
-                text: 'Please wait while we delete the permission',
-                icon: 'info',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+        text: 'This permission will be permanently deleted and removed from all roles!',
+        confirmText: 'Yes, delete it!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            OptimaPro.showLoading('Deleting permission...');
             
             $.ajax({
                 url: `<?= base_url('admin/permissions/delete') ?>/${id}`,
@@ -806,24 +769,21 @@ function deletePermission(id) {
                     '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                 },
                 success: function(response) {
+                    OptimaPro.hideLoading();
                     if (response.success) {
-                        Swal.fire({
-                            title: 'Deleted!',
-                            text: response.message,
-                            icon: 'success',
-                            timer: 3000
-                        });
+                        OptimaNotify.success(response.message);
                         permissionsTable.ajax.reload();
                     } else {
-                        Swal.fire('Error!', response.message, 'error');
+                        OptimaNotify.error(response.message);
                     }
                 },
                 error: function(xhr) {
+                    OptimaPro.hideLoading();
                     let message = 'Failed to delete permission.';
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         message = xhr.responseJSON.message;
                     }
-                    Swal.fire('Error!', message, 'error');
+                    OptimaNotify.error(message);
                 }
             });
         }

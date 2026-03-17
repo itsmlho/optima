@@ -190,6 +190,162 @@ class Service extends BaseController
     }
 
     /**
+     * Check if an SPK has spareparts and whether all are validated
+     */
+    public function checkSpkSpareparts($spkId)
+    {
+        if (!$this->canAccess('service')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $spkId = (int)$spkId;
+        $sparepartModel = new \App\Models\SpkSparepartModel();
+        $spareparts = $sparepartModel->where('spk_id', $spkId)->findAll();
+
+        $count = count($spareparts);
+        $allValidated = $count > 0 && count(array_filter($spareparts, fn($s) => empty($s['sparepart_validated']))) === 0;
+
+        return $this->response->setJSON([
+            'success'       => true,
+            'has_spareparts' => $count > 0,
+            'count'          => $count,
+            'all_validated'  => $allValidated
+        ]);
+    }
+
+    /**
+     * Get spareparts for a specific SPK (for validation table)
+     */
+    public function getSpkSpareparts($spkId)
+    {
+        if (!$this->canAccess('service')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $spkId = (int)$spkId;
+        $sparepartModel = new \App\Models\SpkSparepartModel();
+        $spareparts = $sparepartModel->where('spk_id', $spkId)->findAll();
+
+        // Enrich with source_unit_no for KANIBAL items
+        foreach ($spareparts as &$item) {
+            $item['source_unit_no'] = '';
+            if (!empty($item['source_unit_id'])) {
+                $unit = $this->db->table('inventory_unit')
+                    ->select('no_unit')
+                    ->where('id_inventory_unit', $item['source_unit_id'])
+                    ->get()->getRowArray();
+                $item['source_unit_no'] = $unit['no_unit'] ?? '';
+            }
+        }
+        unset($item);
+
+        return $this->response->setJSON([
+            'success'    => true,
+            'spareparts' => $spareparts
+        ]);
+    }
+
+    /**
+     * Validate actual sparepart usage after PDI and create return requests
+     */
+    public function validateSpareparts($spkId)
+    {
+        if (!$this->canAccess('service')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $spkId = (int)$spkId;
+        $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+        if (!$spk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+        }
+
+        $rawData = $this->request->getPost('validation_data');
+        $notes   = $this->request->getPost('notes') ?? '';
+
+        $validationData = is_string($rawData) ? json_decode($rawData, true) : $rawData;
+        if (empty($validationData) || !is_array($validationData)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data validasi tidak boleh kosong']);
+        }
+
+        $sparepartModel = new \App\Models\SpkSparepartModel();
+        $db = $this->db;
+        $db->transStart();
+
+        try {
+            $validatedCount  = 0;
+            $returnsGenerated = 0;
+
+            foreach ($validationData as $item) {
+                $sparepartId   = (int)($item['sparepart_id'] ?? 0);
+                $quantityUsed  = max(0, (int)($item['quantity_used'] ?? 0));
+                $quantityReturn = max(0, (int)($item['quantity_return'] ?? 0));
+
+                if (!$sparepartId) continue;
+
+                // Fetch original sparepart record
+                $sp = $sparepartModel->find($sparepartId);
+                if (!$sp || (int)$sp['spk_id'] !== $spkId) continue;
+
+                // Clamp used to brought
+                $quantityUsed  = min($quantityUsed, (int)$sp['quantity_brought']);
+                $quantityReturn = (int)$sp['quantity_brought'] - $quantityUsed;
+
+                // Update sparepart validation
+                $sparepartModel->update($sparepartId, [
+                    'quantity_used'       => $quantityUsed,
+                    'sparepart_validated' => 1
+                ]);
+                $validatedCount++;
+
+                // Create return record if there is any leftover
+                if ($quantityReturn > 0) {
+                    $db->table('spk_sparepart_returns')->insert([
+                        'spk_id'             => $spkId,
+                        'spk_sparepart_id'   => $sparepartId,
+                        'sparepart_code'     => $sp['sparepart_code'] ?? null,
+                        'sparepart_name'     => $sp['sparepart_name'],
+                        'item_type'          => $sp['item_type'] ?? 'sparepart',
+                        'quantity_brought'   => $sp['quantity_brought'],
+                        'quantity_used'      => $quantityUsed,
+                        'quantity_return'    => $quantityReturn,
+                        'satuan'             => $sp['satuan'],
+                        'is_from_warehouse'  => $sp['is_from_warehouse'] ?? 0,
+                        'source_type'        => $sp['source_type'] ?? null,
+                        'source_unit_id'     => $sp['source_unit_id'] ?? null,
+                        'status'             => 'PENDING',
+                        'return_notes'       => $notes,
+                        'confirmed_by'       => null,
+                        'confirmed_at'       => null,
+                        'created_at'         => date('Y-m-d H:i:s'),
+                        'updated_at'         => date('Y-m-d H:i:s')
+                    ]);
+                    $returnsGenerated++;
+                }
+            }
+
+            $db->transComplete();
+
+            if (!$db->transStatus()) {
+                throw new \Exception('Transaksi gagal');
+            }
+
+            return $this->response->setJSON([
+                'success'           => true,
+                'message'           => 'Validasi sparepart berhasil disimpan',
+                'validated_count'   => $validatedCount,
+                'returns_generated' => $returnsGenerated,
+                'csrf_hash'         => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', 'validateSpareparts error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Update component assignment in new inventory tables (batteries, chargers, attachments)
      */
     private function updateComponentAssignment($unitId, $componentType, $inventoryAttachmentId, $action = 'assign')
@@ -1522,9 +1678,12 @@ class Service extends BaseController
             // Check if all stages are completed and update SPK status if needed
             $this->checkAndUpdateSpkStatus($id);
             
+            $spk = $this->spkModel->find($id);
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Stage ' . $approvalData['stage'] . ' berhasil di-approve'
+                'message' => 'Stage ' . $approvalData['stage'] . ' berhasil di-approve',
+                'stage'      => $approvalData['stage'],
+                'spk_number' => $spk['nomor_spk'] ?? 'N/A'
             ]);
             
         } catch (\Exception $e) {

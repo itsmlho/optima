@@ -1946,12 +1946,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         modal.hide();
         
         // Show success message
-        Swal.fire({
-          icon: 'success',
-          title: 'Contract Linked!',
-          html: result.message || 'DI has been successfully linked to contract.<br>Invoice generation is now enabled.',
-          confirmButtonColor: '#28a745'
-        });
+        OptimaNotify.success(result.message || 'DI has been successfully linked to contract. Invoice generation is now enabled.');
         
         // Reload DI table
         loadDI();
@@ -1960,12 +1955,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
     } catch (error) {
       console.error('Error linking contract:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Link Failed',
-        text: error.message || 'An error occurred while linking contract',
-        confirmButtonColor: '#dc3545'
-      });
+      OptimaNotify.error(error.message || 'An error occurred while linking contract');
     } finally {
       OptimaPro.hideLoading();
       submitBtn.disabled = false;

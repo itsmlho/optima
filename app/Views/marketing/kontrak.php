@@ -1447,17 +1447,12 @@ function editContractFromModal() {
 function deleteContractFromModal() {
     if (!currentContractId) return;
     
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Delete Contract?',
-        text: "This action cannot be undone. All related data will be removed.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        text: 'This action cannot be undone. All related data will be removed.',
+        confirmText: 'Yes, delete it!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             $.ajax({
                 url: '<?= base_url('marketing/kontrak/delete') ?>/' + currentContractId,
                 type: 'POST',
@@ -1467,14 +1462,14 @@ function deleteContractFromModal() {
                 success: function(response) {
                     if (response.success) {
                         $('#contractDetailModal').modal('hide');
-                        Swal.fire('Deleted!', 'Contract has been deleted.', 'success');
+                        OptimaNotify.success('Contract has been deleted.');
                         refreshTable();
                     } else {
-                        Swal.fire('Error', response.message || 'Failed to delete contract', 'error');
+                        OptimaNotify.error(response.message || 'Failed to delete contract');
                     }
                 },
                 error: function() {
-                    Swal.fire('Error', 'Error deleting contract', 'error');
+                    OptimaNotify.error('Error deleting contract');
                 }
             });
         }
@@ -1493,29 +1488,26 @@ function uploadContractDocument() {
  * Delete Document
  */
 function deleteDocument(docId) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Hapus Dokumen?',
         text: 'Dokumen yang dihapus tidak dapat dikembalikan.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $.ajax({
-            url: '<?= base_url('marketing/kontrak/deleteDocument') ?>/' + docId,
-            type: 'POST',
-            data: { 
-                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
-            },
-            success: function(response) {
-                if (response.success) {
-                    loadContractDocuments(currentContractId);
-                    OptimaNotify.success('Dokumen berhasil dihapus');
+        confirmText: 'Ya, Hapus!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            $.ajax({
+                url: '<?= base_url('marketing/kontrak/deleteDocument') ?>/' + docId,
+                type: 'POST',
+                data: { 
+                    [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        loadContractDocuments(currentContractId);
+                        OptimaNotify.success('Dokumen berhasil dihapus');
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 }
 

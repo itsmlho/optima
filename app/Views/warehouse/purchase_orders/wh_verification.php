@@ -277,7 +277,6 @@ $can_export = $permissions['export'];
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 // Define base URL for AJAX requests

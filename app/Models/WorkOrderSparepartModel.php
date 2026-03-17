@@ -37,7 +37,7 @@ class WorkOrderSparepartModel extends Model
     // Validation rules
     protected $validationRules = [
         'work_order_id' => 'required|integer',
-        'sparepart_code' => 'required|max_length[50]',
+        'sparepart_code' => 'permit_empty|max_length[50]',   // NULL allowed for manual entries
         'sparepart_name' => 'required|max_length[255]',
         'item_type' => 'permit_empty|in_list[sparepart,tool]',
         'quantity_brought' => 'required|integer|greater_than[0]',
@@ -115,14 +115,21 @@ class WorkOrderSparepartModel extends Model
             // Insert new spareparts
             $insertData = [];
             foreach ($spareparts as $sparepart) {
-                if (!empty($sparepart['sparepart_code']) && !empty($sparepart['quantity_brought'])) {
+                // Accept rows that have at least a name (manual entries have no sparepart_code)
+                $hasIdentifier = !empty($sparepart['sparepart_name']) || !empty($sparepart['sparepart_code']);
+                if ($hasIdentifier && !empty($sparepart['quantity_brought'])) {
                     $insertData[] = [
-                        'work_order_id' => $workOrderId,
-                        'sparepart_code' => $sparepart['sparepart_code'],
-                        'sparepart_name' => $sparepart['sparepart_name'] ?? '',
-                        'quantity_brought' => $sparepart['quantity_brought'],
-                        'satuan' => $sparepart['satuan'] ?? 'pcs',
-                        'notes' => $notes
+                        'work_order_id'     => $workOrderId,
+                        'sparepart_code'    => $sparepart['sparepart_code'] ?? null,
+                        'sparepart_name'    => $sparepart['sparepart_name'] ?? '',
+                        'item_type'         => $sparepart['item_type'] ?? 'sparepart',
+                        'quantity_brought'  => $sparepart['quantity_brought'],
+                        'satuan'            => $sparepart['satuan'] ?? 'pcs',
+                        'notes'             => $sparepart['notes'] ?? null,
+                        'source_type'       => $sparepart['source_type'] ?? 'WAREHOUSE',
+                        'is_from_warehouse' => $sparepart['is_from_warehouse'] ?? 1,
+                        'source_unit_id'    => $sparepart['source_unit_id'] ?? null,
+                        'source_notes'      => $sparepart['source_notes'] ?? null,
                     ];
                 }
             }

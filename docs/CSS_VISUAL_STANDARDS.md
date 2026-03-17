@@ -1040,8 +1040,10 @@ Gunakan checklist ini saat mengupdate atau membuat module baru:
 - [ ] Success/error notification pakai `OptimaNotify.success/error/warning/info`
 - [ ] Konfirmasi penting/destruktif pakai `OptimaConfirm.*` (Bootstrap 5 Modal)
 - [ ] Tidak ada `alert()` kecuali session-expired fallback
-- [ ] Tidak ada `confirm()` — selalu `OptimaConfirm` / `Swal.fire`
+- [ ] Tidak ada `confirm()` — selalu `OptimaConfirm.show/danger/approve/submit/generic`
+- [ ] Tidak ada `Swal.fire` dipanggil langsung di module baru — gunakan `OptimaConfirm.*`
 - [ ] Warna confirm button sesuai fungsi (danger=red, success=green, primary=blue)
+- [ ] Tidak ada `<script src="sweetalert2">` lokal di view — SweetAlert hanya tersedia global via base.php
 - [ ] Notifikasi (toast, dropdown, Notification Center) bersifat **read-only** (tanpa tombol aksi & tanpa redirect ke halaman lain)
 
 ### ✅ Dropdowns & Filters
@@ -1285,14 +1287,15 @@ Optima menggunakan **unified toast system** yang sudah terdaftar di `layouts/bas
 ```
 OptimaNotify.success/error/warning/info  →  createOptimaToast  →  toast popup
 OptimaPro.showNotification(msg, type)    →  createOptimaToast  →  toast popup
+OptimaConfirm.*                          →  Bootstrap 5 modal  →  #optimaConfirmModal
 Swal.fire (simple, non-confirm)          →  auto-rerouted to toast via monkeypatch
-Swal.fire (with showCancelButton)        →  stays as SweetAlert2 modal
+Swal.fire (with showCancelButton)        →  auto-rerouted to OptimaConfirm via monkeypatch
 ```
 
 ### Standard Notification Calls
 
 ```javascript
-// Preferred — use OptimaNotify
+// Notifikasi — gunakan OptimaNotify
 OptimaNotify.success('Data berhasil disimpan');
 OptimaNotify.error('Gagal menyimpan data');
 OptimaNotify.warning('Perhatian: data akan dihapus');
@@ -1300,37 +1303,61 @@ OptimaNotify.info('Memuat data...');
 
 // Alternative — OptimaPro (legacy, still supported)
 OptimaPro.showNotification('Berhasil', 'success');
+```
 
-// SweetAlert2 — ONLY for confirmations / complex dialogs
-Swal.fire({
+### Standard Confirmation Calls (OptimaConfirm)
+
+```javascript
+// Hapus / Destruktif → OptimaConfirm.danger
+OptimaConfirm.danger({
+    title: 'Hapus data?',
+    text: 'Tindakan ini tidak dapat dibatalkan.',
+    confirmText: 'Ya, Hapus!',
+    onConfirm: function() { /* delete action */ }
+});
+
+// Approval → OptimaConfirm.approve
+OptimaConfirm.approve({
+    title: 'Setujui PO?',
+    text: 'PO akan diteruskan ke tahap berikutnya.',
+    onConfirm: function() { /* approve action */ }
+});
+
+// Submit / Kirim → OptimaConfirm.submit
+OptimaConfirm.submit({
+    title: 'Kirim data?',
+    onConfirm: function() { /* submit action */ }
+});
+
+// Umum → OptimaConfirm.show (alias OptimaConfirm.generic)
+OptimaConfirm.show({
     title: 'Konfirmasi',
-    text: 'Yakin ingin menghapus?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc3545',
-    confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: 'Batal'
-}).then((result) => {
-    if (result.isConfirmed) { /* delete action */ }
+    text: 'Apakah Anda yakin?',
+    icon: 'question',
+    confirmText: 'Ya',
+    cancelText: 'Batal',
+    confirmButtonColor: 'primary', // atau 'danger','success','warning','secondary'
+    onConfirm: function() { /* action */ }
 });
 ```
 
 ### Confirmation Patterns
 
-| Tipe | Icon | Confirm Button | Cancel Button |
-|------|------|----------------|---------------|
-| **Delete** | `warning` | `btn-danger` "Ya, Hapus!" | "Batal" |
-| **Approve** | `question` | `btn-success` "Ya, Approve!" | "Batal" |
-| **Submit/Send** | `question` | `btn-primary` "Ya, Kirim!" | "Batal" |
-| **Rollback** | `warning` | `btn-warning` "Ya, Rollback!" | "Batal" |
-| **Logout** | `question` | `btn-secondary` "Ya, Logout" | "Batal" |
+| Tipe | Method | Icon | Confirm Button | Cancel Button |
+|------|--------|------|----------------|---------------|
+| **Delete** | `OptimaConfirm.danger()` | `warning` | `btn-danger` "Ya, Hapus!" | "Batal" |
+| **Approve** | `OptimaConfirm.approve()` | `question` | `btn-success` "Ya, Approve!" | "Batal" |
+| **Submit/Send** | `OptimaConfirm.submit()` | `question` | `btn-primary` "Ya, Kirim!" | "Batal" |
+| **Generic** | `OptimaConfirm.show()` | `question` | sesuai `confirmButtonColor` | "Batal" |
 
 ### Rules
 
 1. **Jangan pakai `alert()`** kecuali session-expired fallback.
-2. **Jangan pakai `confirm()`** — selalu gunakan `Swal.fire` dengan `showCancelButton: true`.
-3. **Simple success/error → OptimaNotify**, bukan Swal.fire.
-4. **Swal.fire tanpa showCancelButton** otomatis di-redirect ke toast oleh monkeypatch di base.php.
+2. **Jangan pakai `confirm()`** bawaan browser — selalu `OptimaConfirm.*`.
+3. **Simple success/error → `OptimaNotify`**, bukan `Swal.fire` langsung.
+4. **Jangan pakai `Swal.fire` di module baru** — gunakan `OptimaConfirm.*` / `OptimaNotify.*`.
+5. **Jangan tambahkan** `<script src="sweetalert2">` di file view — sudah tersedia global via `base.php`.
+6. **Legacy code** yang masih memanggil `Swal.fire` akan otomatis di-reroute ke Optima modal/toast via monkeypatch di `base.php`.
 
 ---
 

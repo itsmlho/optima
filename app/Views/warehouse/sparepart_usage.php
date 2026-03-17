@@ -113,6 +113,12 @@
                         <strong><?= lang('Warehouse.returns') ?></strong>
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="nonwh-tab" data-bs-toggle="tab" data-bs-target="#nonwh" type="button" role="tab" aria-controls="nonwh" aria-selected="false">
+                        <i class="fas fa-recycle me-1"></i>
+                        <strong>Non-Warehouse</strong>
+                    </button>
+                </li>
             </ul>
         </div>
         
@@ -180,7 +186,8 @@
                         <table class="table table-striped table-hover table-sm mb-0" id="returnsTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 140px;">Work Order</th>
+                                    <th style="width: 60px;">Source</th>
+                                    <th style="width: 130px;">Reference</th>
                                     <th style="min-width: 200px;">Item Details</th>
                                     <th style="width: 180px;">Customer / Unit</th>
                                     <th style="width: 120px;">Mechanic</th>
@@ -194,6 +201,30 @@
                         </table>
                     </div>
                     <?php endif; ?>
+                </div>
+
+                <!-- Tab Non-Warehouse (Bekas / Kanibal) -->
+                <div class="tab-pane fade" id="nonwh" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0" id="nonwhTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">Source</th>
+                                    <th style="width: 120px;">Reference</th>
+                                    <th>Item Name</th>
+                                    <th style="width: 80px;">Type</th>
+                                    <th style="width: 90px;">Item Source</th>
+                                    <th>Notes</th>
+                                    <th style="width: 80px; text-align: center;">Qty</th>
+                                    <th style="width: 180px;">Customer / Unit</th>
+                                    <th style="width: 110px;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- DataTable will populate here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -247,9 +278,10 @@
 
 <?= $this->section('javascript') ?>
 <script>
-let usageTable, returnsTable;
+let usageTable, returnsTable, nonwhTable;
 let usageTableInitialized = false;
 let returnsTableInitialized = false;
+let nonwhTableInitialized = false;
 
 // Setup CSRF token for all AJAX requests
 $.ajaxSetup({
@@ -290,6 +322,11 @@ $(document).ready(function() {
                 <?php if (isset($return_table_exists) && $return_table_exists): ?>
                 initializeReturnsTable();
                 <?php endif; ?>
+            }
+
+            // Initialize Non-Warehouse Table when nonwh tab is shown
+            if (targetTab === '#nonwh' && !nonwhTableInitialized) {
+                initializeNonwhTable();
             }
         }, 150);
     });
@@ -561,9 +598,16 @@ $(document).ready(function() {
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
-            { 
-                data: 'work_order_number',
-                name: 'work_order_number',
+            {
+                data: 'source_type',
+                orderable: false,
+                render: function(data) {
+                    if (data === 'SPK') return '<span class="badge badge-soft-purple">SPK</span>';
+                    return '<span class="badge badge-soft-blue">WO</span>';
+                }
+            },
+            {
+                data: 'reference_number',
                 render: function(data, type, row) {
                     return `<strong class="text-primary">${data}</strong><br><small class="text-muted">${row.created_at}</small>`;
                 }
@@ -572,42 +616,29 @@ $(document).ready(function() {
                 data: 'sparepart_name',
                 name: 'sparepart_name',
                 render: function(data, type, row) {
-                    // Type badge
-                    let typeBadge = '';
-                    if (row.item_type === 'tool') {
-                        typeBadge = '<span class="badge badge-soft-gray me-1">🔧 Tool</span>';
-                    } else {
-                        typeBadge = '<span class="badge badge-soft-blue me-1">⚙ Part</span>';
-                    }
-                    
-                    // Source badge
-                    let sourceBadge = '';
-                    if (row.is_from_warehouse !== undefined && parseInt(row.is_from_warehouse) === 0) {
-                        sourceBadge = '<span class="badge badge-soft-yellow">♻ Bekas</span>';
-                    } else {
-                        sourceBadge = '<span class="badge badge-soft-green">🏪 WH</span>';
-                    }
-                    
+                    let typeBadge = row.item_type === 'tool'
+                        ? '<span class="badge badge-soft-gray me-1">🔧 Tool</span>'
+                        : '<span class="badge badge-soft-blue me-1">⚙ Part</span>';
+                    let sourceBadge = parseInt(row.is_from_warehouse) === 0
+                        ? '<span class="badge badge-soft-yellow">♻ Bekas</span>'
+                        : '<span class="badge badge-soft-green">🏪 WH</span>';
                     return `${typeBadge} ${sourceBadge}<br><strong>${data}</strong><br><small class="text-muted">${row.sparepart_code}</small>`;
                 }
             },
             { 
                 data: 'customer_name',
-                name: 'customer_name',
                 render: function(data, type, row) {
                     return `<strong>${data || '-'}</strong><br><small class="text-muted"><i class="fas fa-truck"></i> ${row.unit_number || '-'}</small>`;
                 }
             },
             { 
                 data: 'mechanic_name',
-                name: 'mechanic_name',
                 render: function(data) {
                     return data && data !== '-' ? `<small>${data}</small>` : '<small class="text-muted">-</small>';
                 }
             },
             { 
                 data: 'quantity_brought',
-                name: 'quantity_brought',
                 className: 'text-center',
                 render: function(data, type, row) {
                     let html = `<small class="text-muted d-block">Brought: <span class="badge badge-soft-cyan">${data}</span></small>`;
@@ -615,7 +646,6 @@ $(document).ready(function() {
                     if (row.quantity_return > 0) {
                         html += `<small class="text-muted d-block">Return: <span class="badge badge-soft-yellow">${row.quantity_return}</span></small>`;
                     }
-                    // Add status badge
                     if (row.status === 'PENDING') {
                         html += `<small class="d-block mt-1"><span class="badge badge-soft-yellow">Pending</span></small>`;
                     } else if (row.status === 'CONFIRMED') {
@@ -626,11 +656,10 @@ $(document).ready(function() {
             },
             {
                 data: 'id',
-                name: 'id',
                 orderable: false,
                 className: 'text-center',
                 render: function(data, type, row) {
-                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewReturnDetail(${data})" title="View Detail">
+                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewReturnDetail(${data}, '${row.source_type}')" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
                 }
@@ -657,6 +686,93 @@ $(document).ready(function() {
         // console.log('Returns table initialized successfully');
     }
     <?php endif; ?>
+
+    function initializeNonwhTable() {
+        if (nonwhTableInitialized) return;
+        if ($('#nonwhTable').length === 0) return;
+
+        nonwhTable = $('#nonwhTable').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: '<?= base_url('warehouse/sparepart-usage/get-manual-entries') ?>',
+                type: 'POST',
+                data: function(d) {
+                    d.<?= csrf_token() ?> = '<?= csrf_hash() ?>';
+                    return d;
+                }
+            },
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+            columns: [
+                {
+                    data: 'source_type',
+                    orderable: false,
+                    render: function(data) {
+                        return data === 'SPK'
+                            ? '<span class="badge badge-soft-purple">SPK</span>'
+                            : '<span class="badge badge-soft-blue">WO</span>';
+                    }
+                },
+                {
+                    data: 'reference_number',
+                    render: function(data) {
+                        return `<strong class="text-primary">${data}</strong>`;
+                    }
+                },
+                { data: 'item_name' },
+                {
+                    data: 'item_type',
+                    orderable: false,
+                    render: function(data) {
+                        return data === 'tool'
+                            ? '<span class="badge badge-soft-gray">🔧 Tool</span>'
+                            : '<span class="badge badge-soft-blue">⚙ Part</span>';
+                    }
+                },
+                {
+                    data: 'item_source',
+                    orderable: false,
+                    render: function(data) {
+                        const src = (data || '').toUpperCase();
+                        if (src === 'KANIBAL') return '<span class="badge badge-soft-orange">♻ Kanibal</span>';
+                        return '<span class="badge badge-soft-yellow">♻ Bekas</span>';
+                    }
+                },
+                {
+                    data: 'source_notes',
+                    render: function(data) {
+                        return data && data !== '-' ? `<small>${data}</small>` : '<small class="text-muted">-</small>';
+                    }
+                },
+                {
+                    data: 'quantity_brought',
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        return `<span class="badge badge-soft-cyan">${data}</span> <small>${row.satuan}</small>`;
+                    }
+                },
+                {
+                    data: 'customer_name',
+                    render: function(data, type, row) {
+                        return `<strong>${data || '-'}</strong><br><small class="text-muted">${row.unit_number || '-'}</small>`;
+                    }
+                },
+                { data: 'created_at' }
+            ],
+            order: [[8, 'desc']],
+            pageLength: 25,
+            language: {
+                search: "Search:",
+                lengthMenu: "Show _MENU_ entries",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                infoEmpty: "Showing 0 to 0 of 0 entries",
+                infoFiltered: "(filtered from _MAX_ total entries)",
+                paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+            }
+        });
+
+        nonwhTableInitialized = true;
+    }
 
     // View usage detail
     window.viewUsageDetail = function(id) {
@@ -800,9 +916,15 @@ $(document).ready(function() {
     };
 
     // View return detail
-    window.viewReturnDetail = function(id) {
+    window.viewReturnDetail = function(id, sourceType) {
+        // For SPK returns, use the UNION getReturns data we already have in the table row
+        // Fallback: sourceType defaults to 'WO' for backward compatibility
+        sourceType = sourceType || 'WO';
+        
         $.ajax({
-            url: '<?= base_url('warehouse/sparepart-usage/get-return-detail') ?>/' + id,
+            url: sourceType === 'SPK'
+                ? '<?= base_url('warehouse/sparepart-usage/get-return-detail') ?>/' + id + '?source=SPK'
+                : '<?= base_url('warehouse/sparepart-usage/get-return-detail') ?>/' + id,
             type: 'GET',
             beforeSend: function() {
                 $('#returnDetailBody').html('<div class="text-center py-5"><i class="fas fa-circle-notch fa-spin text-primary fs-2"></i><p class="mt-2 text-muted">Loading return details...</p></div>');
@@ -810,30 +932,32 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     const data = response.data;
+                    const src  = sourceType;
                     
-                    // Type and Source badges
-                    let typeBadge = '';
-                    if (data.item_type === 'tool') {
-                        typeBadge = '<span class="badge badge-soft-gray">🔧 Tool</span>';
-                    } else {
-                        typeBadge = '<span class="badge badge-soft-blue">⚙ Sparepart</span>';
-                    }
-                    
-                    let sourceBadge = '';
-                    if (data.is_from_warehouse !== undefined && parseInt(data.is_from_warehouse) === 0) {
-                        sourceBadge = '<span class="badge badge-soft-yellow ms-2">♻ Non-Warehouse</span>';
-                    } else {
-                        sourceBadge = '<span class="badge badge-soft-green ms-2">🏪 Warehouse</span>';
-                    }
+                    let typeBadge = data.item_type === 'tool'
+                        ? '<span class="badge badge-soft-gray">🔧 Tool</span>'
+                        : '<span class="badge badge-soft-blue">⚙ Sparepart</span>';
+                    let sourceBadge = parseInt(data.is_from_warehouse) === 0
+                        ? '<span class="badge badge-soft-yellow ms-2">♻ Non-Warehouse</span>'
+                        : '<span class="badge badge-soft-green ms-2">🏪 Warehouse</span>';
+                    let srcBadge = src === 'SPK'
+                        ? '<span class="badge badge-soft-purple me-1">SPK</span>'
+                        : '<span class="badge badge-soft-blue me-1">WO</span>';
                     
                     let html = `
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>Work Order:</strong><br>
-                                <span class="badge badge-soft-blue">${data.work_order_number || '-'}</span>
+                                <strong>Source:</strong><br>
+                                ${srcBadge}
                             </div>
                             <div class="col-md-6">
-                                <strong>WO Date:</strong><br>
+                                <strong>${src === 'SPK' ? 'SPK Number' : 'Work Order'}:</strong><br>
+                                <span class="badge badge-soft-blue">${data.work_order_number || data.reference_number || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Date:</strong><br>
                                 ${data.report_date_formatted || '-'}
                             </div>
                         </div>
@@ -847,11 +971,11 @@ $(document).ready(function() {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <strong>Item Code:</strong><br>
-                                ${data.sparepart_code}
+                                ${data.sparepart_code || '-'}
                             </div>
                             <div class="col-md-6">
                                 <strong>Item Name:</strong><br>
-                                <strong>${data.sparepart_name}</strong>
+                                <strong>${data.sparepart_name || '-'}</strong>
                             </div>
                         </div>
                         <hr>
@@ -888,15 +1012,18 @@ $(document).ready(function() {
                             </div>
                             <div class="col-md-6">
                                 <strong>Status:</strong><br>
-                                <span class="badge ${data.status === 'PENDING' ? 'badge-pending' : 'badge-confirmed'}">${data.status}</span>
+                                <span class="badge ${data.status === 'PENDING' ? 'badge-soft-yellow' : 'badge-soft-green'}">${data.status}</span>
                             </div>
                         </div>
                         <hr>
                         ${data.return_notes ? `<div class="mb-3"><strong>Return Notes:</strong><br>${data.return_notes}</div>` : ''}
-                        ${data.confirmed_at ? `<div class="mb-3"><strong>Confirmed At:</strong><br>${data.confirmed_at_formatted} by ${data.confirmed_by_name || '-'}</div>` : ''}
+                        ${data.confirmed_at ? `<div class="mb-3"><strong>Confirmed At:</strong><br>${data.confirmed_at_formatted || data.confirmed_at} by ${data.confirmed_by_name || '-'}</div>` : ''}
                     `;
                     
                     if (data.status === 'PENDING') {
+                        const confirmUrl = src === 'SPK'
+                            ? '<?= base_url('warehouse/sparepart-usage/confirm-spk-return') ?>/' + id
+                            : '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id;
                         html += `
                             <hr>
                             <div class="mb-3">
@@ -904,7 +1031,7 @@ $(document).ready(function() {
                                 <textarea class="form-control" id="confirm-notes" rows="3" placeholder="Add notes if necessary..."></textarea>
                             </div>
                             <div class="d-grid">
-                                <button class="btn btn-success" onclick="confirmReturn(${data.id})">
+                                <button class="btn btn-success" onclick="doConfirmReturn('${confirmUrl}')">
                                     <i class="fas fa-check me-2"></i>Confirm Return
                                 </button>
                             </div>
@@ -932,43 +1059,42 @@ $(document).ready(function() {
         }
     };
 
-    // Confirm return
-    window.confirmReturn = function(id) {
-        Swal.fire({
+    // Generic confirm return — works for both WO and SPK
+    window.doConfirmReturn = function(url) {
+        OptimaConfirm.approve({
             title: 'Konfirmasi Return?',
             text: 'Sparepart return ini akan dikonfirmasi.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#198754',
-            confirmButtonText: 'Ya, Konfirmasi!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (!result.isConfirmed) return;
-
-            const notes = $('#confirm-notes').val() || null;
-
-            $.ajax({
-                url: '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id,
-                type: 'POST',
-                data: { 
-                    notes: notes,
-                    <?= csrf_token() ?>: '<?= csrf_hash() ?>'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        OptimaNotify.success('Sparepart return berhasil dikonfirmasi');
-                        $('#returnDetailModal').modal('hide');
-                        if (returnsTable && returnsTableInitialized) {
-                            returnsTable.ajax.reload();
+            confirmText: 'Ya, Konfirmasi!',
+            cancelText: window.lang ? window.lang('cancel') : 'Batal',
+            onConfirm: function() {
+                const notes = $('#confirm-notes').val() || null;
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: { 
+                        notes: notes,
+                        <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            OptimaNotify.success('Sparepart return berhasil dikonfirmasi');
+                            $('#returnDetailModal').modal('hide');
+                            if (returnsTable && returnsTableInitialized) returnsTable.ajax.reload();
+                        } else {
+                            OptimaNotify.error('Error: ' + (response.message || 'Gagal mengonfirmasi'));
                         }
-                    } else {
-                        OptimaNotify.error('Error: ' + (response.message || 'Gagal mengonfirmasi'));
+                    },
+                    error: function() {
+                        OptimaNotify.error('Terjadi kesalahan saat konfirmasi');
                     }
-                },
-                error: function() {
-                    OptimaNotify.error('Terjadi kesalahan saat konfirmasi');
-                }
+                });
+            }
         });
+    };
+
+    // Legacy WO confirm return
+    window.confirmReturn = function(id) {
+        doConfirmReturn('<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id);
     };
     
     // View work order detail (for Usage tab)

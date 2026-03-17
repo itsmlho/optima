@@ -860,14 +860,7 @@ document.getElementById('ruleForm').addEventListener('submit', async function(e)
                 modal.hide();
             }
             
-            // Show success message
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: result.message,
-                showConfirmButton: false,
-                timer: 1500
-            });
+            OptimaNotify.success(result.message);
             
             // Reload DataTable instead of full page
             if (ruleId && result.rule) {
@@ -891,11 +884,11 @@ document.getElementById('ruleForm').addEventListener('submit', async function(e)
                 }, 1500);
             }
         } else {
-            Swal.fire('Error', result.message || 'Failed to save rule', 'error');
+            OptimaNotify.error(result.message || 'Failed to save rule');
         }
     } catch (error) {
         console.error('Submit error:', error);
-        Swal.fire('Error', 'Failed to save rule: ' + error.message, 'error');
+        OptimaNotify.error('Failed to save rule: ' + error.message);
     }
 });
 
@@ -985,11 +978,11 @@ async function editRule(ruleId) {
             );
         } else {
             console.error('❌ Failed to load rule:', result.message);
-            Swal.fire('Error', result.message || 'Failed to load rule data', 'error');
+            OptimaNotify.error(result.message || 'Failed to load rule data');
         }
     } catch (error) {
         console.error('❌ Error in editRule:', error);
-        Swal.fire('Error', 'Failed to load rule data: ' + error.message, 'error');
+        OptimaNotify.error('Failed to load rule data: ' + error.message);
     }
 }
 
@@ -1060,7 +1053,7 @@ async function viewRuleDetail(ruleId) {
             new bootstrap.Modal(document.getElementById('viewRuleModal')).show();
         }
     } catch (error) {
-        Swal.fire('Error', 'Failed to load rule details', 'error');
+        OptimaNotify.error('Failed to load rule details');
     }
 }
 
@@ -1080,28 +1073,24 @@ async function toggleRuleStatus(ruleId) {
         if (result.success) {
             showNotification('Rule status updated successfully', 'success');
         } else {
-            Swal.fire('Error', result.message, 'error');
+            OptimaNotify.error(result.message);
             // Revert checkbox
             const checkbox = document.getElementById(`status_${ruleId}`);
             checkbox.checked = !checkbox.checked;
         }
     } catch (error) {
-        Swal.fire('Error', 'Failed to update rule status', 'error');
+        OptimaNotify.error('Failed to update rule status');
     }
 }
 
 // Delete Rule
 function deleteRule(ruleId) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Are you sure?',
-        text: "This notification rule will be permanently deleted!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
+        text: 'This notification rule will be permanently deleted!',
+        confirmText: 'Yes, delete it!',
+        cancelText: window.lang('cancel'),
+        onConfirm: async function() {
             try {
                 const response = await fetch(`${baseUrl}/notifications/admin/delete-rule/${ruleId}`, {
                     method: 'POST',
@@ -1114,20 +1103,13 @@ function deleteRule(ruleId) {
                 const result = await response.json();
                 
                 if (result.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Deleted!',
-                        text: result.message,
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        location.reload();
-                    });
+                    OptimaNotify.success(result.message);
+                    setTimeout(() => location.reload(), 1200);
                 } else {
-                    Swal.fire('Error', result.message, 'error');
+                    OptimaNotify.error(result.message);
                 }
             } catch (error) {
-                Swal.fire('Error', 'Failed to delete rule', 'error');
+                OptimaNotify.error('Failed to delete rule');
             }
         }
     });
@@ -1344,22 +1326,14 @@ async function loadNotificationVariables() {
         console.log('Notification variables loaded:', Object.keys(availableVariables).length, 'events');
     } catch (error) {
         console.error('Error loading notification variables:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to load notification variables data'
-        });
+        OptimaNotify.error('Failed to load notification variables data');
     }
 }
 
 function showVariablesInfo() {
     // Check if data loaded
     if (!availableVariables || !availableVariables.events) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Data Not Loaded',
-            text: 'Please wait for variable data to load...'
-        });
+        OptimaNotify.warning('Please wait for variable data to load...');
         loadNotificationVariables().then(() => showVariablesInfo());
         return;
     }
@@ -1504,19 +1478,7 @@ function copyToClipboard(text, element) {
         element.style.backgroundColor = '#d4edda';
         element.style.transition = 'background-color 0.3s';
         
-        // Show toast notification
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2000,
-            timerProgressBar: true
-        });
-        
-        Toast.fire({
-            icon: 'success',
-            title: `Copied: ${text}`
-        });
+        OptimaNotify.success('Copied: ' + text);
         
         // Reset background after animation
         setTimeout(() => {
@@ -1524,12 +1486,7 @@ function copyToClipboard(text, element) {
         }, 500);
     }).catch(err => {
         console.error('Failed to copy:', err);
-        Swal.fire({
-            icon: 'error',
-            title: 'Copy Failed',
-            text: 'Failed to copy to clipboard',
-            timer: 2000
-        });
+        OptimaNotify.error('Failed to copy to clipboard');
     });
 }
 

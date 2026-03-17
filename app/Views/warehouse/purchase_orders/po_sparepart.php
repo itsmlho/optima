@@ -105,7 +105,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function toggleDropdown(element) {
         const poId = $(element).data('po-id');

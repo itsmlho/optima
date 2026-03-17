@@ -1467,6 +1467,7 @@ class WorkOrderController extends Controller
                     $sourceTypes = $input['source_type'] ?? []; // WAREHOUSE, BEKAS, KANIBAL
                     $sourceUnitIds = $input['source_unit_id'] ?? [];
                     $sourceNotes = $input['source_notes'] ?? [];
+                    $itemTypes = $input['item_type'] ?? [];
                     
                     for ($i = 0; $i < count($sparepartNames); $i++) {
                         // Safety: skip if empty or if value is an array (shouldn't happen but defensive)
@@ -1514,14 +1515,17 @@ class WorkOrderController extends Controller
                             $satuan = $sparepartUnits[$i] ?? 'pcs';
                             $notes = $sparepartNotes[$i] ?? null;
                             $srcNote = $sourceNotes[$i] ?? null;
+                            $itemType = $itemTypes[$i] ?? 'sparepart';
                             if (is_array($qty)) $qty = reset($qty) ?: 1;
                             if (is_array($satuan)) $satuan = reset($satuan) ?: 'pcs';
                             if (is_array($notes)) $notes = reset($notes) ?: null;
                             if (is_array($srcNote)) $srcNote = reset($srcNote) ?: null;
+                            if (is_array($itemType)) $itemType = reset($itemType) ?: 'sparepart';
                             
                             $spareparts[] = [
                                 'sparepart_code' => $sparepartCode, // NULL for manual entries
                                 'sparepart_name' => $sparepartName,
+                                'item_type' => $itemType,
                                 'quantity_brought' => $qty,
                                 'satuan' => $satuan,
                                 'notes' => $notes,

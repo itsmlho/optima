@@ -252,12 +252,12 @@ function loadUserPermissions(userId) {
                 $('#loadingIndicator').hide();
                 $('#userInfoBanner, #filterSection, #permissionsList').show();
             } else {
-                Swal.fire('Error', response.message || 'Failed to load permissions', 'error');
+                OptimaNotify.error(response.message || 'Failed to load permissions');
                 $('#loadingIndicator').hide();
             }
         },
         error: function(xhr) {
-            Swal.fire('Error', 'Failed to load user permissions', 'error');
+            OptimaNotify.error('Failed to load user permissions');
             $('#loadingIndicator').hide();
         }
     });
@@ -412,15 +412,14 @@ function denyPermission(permissionId) {
 }
 
 function removeOverride(permissionId) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Remove Override?',
         text: 'User will fallback to role permissions',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Remove',
-        confirmButtonColor: '#6c757d'
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Remove',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'secondary',
+        onConfirm: function() {
             $.ajax({
                 url: `${base_url}/permission-management/revoke-user-permission`,
                 type: 'POST',
@@ -432,10 +431,10 @@ function removeOverride(permissionId) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Success', response.message, 'success');
+                        OptimaNotify.success(response.message);
                         loadUserPermissions(currentUserId);
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaNotify.error(response.message);
                     }
                 }
             });
@@ -458,14 +457,14 @@ function updateUserPermission(permissionId, granted, reason, expiresAt = null) {
         },
         success: function(response) {
             if (response.success) {
-                Swal.fire('Success', response.message, 'success');
+                OptimaNotify.success(response.message);
                 loadUserPermissions(currentUserId);
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaNotify.error(response.message);
             }
         },
         error: function(xhr) {
-            Swal.fire('Error', 'Failed to update permission', 'error');
+            OptimaNotify.error('Failed to update permission');
         }
     });
 }
@@ -492,7 +491,7 @@ function executeQuickGrant() {
     const expires = $('#quickGrantExpires').val();
 
     if (!selectedPerms || selectedPerms.length === 0) {
-        Swal.fire('Error', 'Please select at least one permission', 'error');
+        OptimaNotify.error('Please select at least one permission');
         return;
     }
 
@@ -514,25 +513,22 @@ function executeQuickGrant() {
         success: function(response) {
             if (response.success) {
                 $('#quickGrantModal').modal('hide');
-                Swal.fire('Success', response.message, 'success');
+                OptimaNotify.success(response.message);
                 loadUserPermissions(currentUserId);
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaNotify.error(response.message);
             }
         }
     });
 }
 
 function clearAllOverrides() {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Clear All Overrides?',
         text: 'This will remove all user-specific permissions. User will only have role permissions.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes,Clear All',
-        confirmButtonColor: '#dc3545'
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, Clear All',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             // Get all permission IDs with overrides
             const overrideIds = [];
             for (const [module, pages] of Object.entries(allUserPermissions)) {
@@ -560,7 +556,7 @@ function clearAllOverrides() {
             });
 
             Promise.all(promises).then(() => {
-                Swal.fire('Success', `${overrideIds.length} overrides cleared`, 'success');
+                OptimaNotify.success(`${overrideIds.length} overrides cleared`);
                 loadUserPermissions(currentUserId);
             });
         }

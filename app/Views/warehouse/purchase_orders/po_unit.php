@@ -90,7 +90,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Toast helper (fallback aman bila fungsi global belum ada)
     function unitToast(type, message, title = 'Verifikasi Unit') {

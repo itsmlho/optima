@@ -343,6 +343,55 @@ $can_export = true;
 			</div>
 		</div>
 	</div>
+
+	<!-- Sparepart Validation Modal (shown after PDI approval) -->
+	<div class="modal fade" id="spkSparepartValidationModal" tabindex="-1">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header" style="background: linear-gradient(135deg, #1a7a4a 0%, #28a745 100%);">
+					<h5 class="modal-title text-white"><i class="fas fa-clipboard-check me-2"></i>Validasi Sparepart – SPK <span id="validationSpkNumber" class="fw-bold"></span></h5>
+					<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<input type="hidden" id="validationSpkId" value="">
+					<div class="alert alert-warning py-2 mb-3">
+						<i class="fas fa-info-circle me-1"></i>
+						<strong>Validasi Pemakaian:</strong> Isi jumlah yang benar-benar digunakan. Sisa otomatis menjadi permintaan pengembalian ke Warehouse.
+					</div>
+					<div class="mb-3">
+						<label class="form-label fw-semibold">Catatan Validasi</label>
+						<textarea class="form-control form-control-sm" id="validationNotes" rows="2" placeholder="Catatan pengembalian (opsional)..."></textarea>
+					</div>
+					<div class="table-responsive">
+						<table class="table table-sm table-bordered" id="sparepartValidationTable">
+							<thead class="table-light">
+								<tr>
+									<th style="width: 40px;">No</th>
+									<th>Type</th>
+									<th>Item</th>
+									<th style="width: 90px;" class="text-center">Dibawa</th>
+									<th style="width: 110px;" class="text-center">Digunakan</th>
+									<th style="width: 90px;" class="text-center">Kembali</th>
+									<th style="width: 80px;">Satuan</th>
+									<th style="width: 110px;">Status</th>
+								</tr>
+							</thead>
+							<tbody id="sparepartValidationRows">
+								<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="modal-footer d-flex justify-content-between">
+					<small class="text-muted"><i class="fas fa-info-circle me-1"></i>Kembali = Dibawa − Digunakan (akan dikirim ke Warehouse)</small>
+					<div class="d-flex gap-2">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+						<button type="button" class="btn btn-success" id="saveSparepartValidationBtn"><i class="fas fa-check me-1"></i>Validasi &amp; Simpan</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <?= $this->endSection() ?>
@@ -352,7 +401,6 @@ $can_export = true;
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
 
 <script>
@@ -3662,6 +3710,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Reset editing unit index
 				currentEditingUnitIndex = null;
+
+				// Trigger sparepart validation after PDI approval
+				if (currentApprovalStage === 'pdi') {
+					const spkIdForValidation = currentApprovalSpkId;
+					const spkNumberForValidation = j.spk_number || 'N/A';
+					setTimeout(() => checkAndTriggerSparepartValidation(spkIdForValidation, spkNumberForValidation), 1000);
+				}
 			} else {
 				notify(j.message || 'Failed to save approval', 'error');
 			}
@@ -5779,6 +5834,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 
 			// Get item name depending on type
 			let name = '';
+			let sparepartCode = '';
 			if (itype === 'tool') {
 				name = document.getElementById(`spk_tool_input_${rc}`)?.value.trim() || '';
 			} else {
@@ -5787,7 +5843,22 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 				if ($manual.is(':visible')) {
 					name = $manual.val()?.trim() || '';
 				} else {
-					name = $sel.val()?.trim() || '';
+					// Use Select2 data first (has kode/desc props from AJAX response)
+					const selData = $sel.select2('data');
+					if (selData && selData[0] && selData[0].kode) {
+						sparepartCode = selData[0].kode;
+						name = selData[0].desc || selData[0].text?.trim() || '';
+					} else {
+						// Fallback: parse "CODE - NAME" format from value string
+						const rawVal = $sel.val()?.trim() || '';
+						const dashIdx = rawVal.indexOf(' - ');
+						if (dashIdx > -1) {
+							sparepartCode = rawVal.substring(0, dashIdx);
+							name = rawVal.substring(dashIdx + 3);
+						} else {
+							name = rawVal;
+						}
+					}
 				}
 			}
 
@@ -5805,7 +5876,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 
 			items.push({
 				sparepart_name   : name,
-				sparepart_code   : '',
+				sparepart_code   : sparepartCode,
 				item_type        : itype,
 				source_type      : source,
 				quantity_brought : qty,
@@ -5849,6 +5920,193 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		}).catch(err => {
 			btn.disabled = false;
 			btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Sparepart';
+			notify('Error: ' + err.message, 'error');
+		});
+	});
+
+	// ==========================================
+	// SPAREPART VALIDATION MODAL (after PDI)
+	// ==========================================
+
+	/**
+	 * Check if SPK has unvalidated spareparts; show modal if needed.
+	 */
+	window.checkAndTriggerSparepartValidation = function(spkId, spkNumber) {
+		if (!spkId) return;
+		fetch(window.baseUrl + 'service/spk/check-spareparts/' + spkId, {
+			headers: {'X-Requested-With': 'XMLHttpRequest'}
+		})
+		.then(r => r.json())
+		.then(res => {
+			if (res.success && res.has_spareparts && !res.all_validated) {
+				showSparepartValidationModal(spkId, spkNumber);
+			}
+		})
+		.catch(err => console.error('checkSpkSpareparts error:', err));
+	};
+
+	function showSparepartValidationModal(spkId, spkNumber) {
+		document.getElementById('validationSpkId').value   = spkId;
+		document.getElementById('validationSpkNumber').textContent = spkNumber;
+		document.getElementById('validationNotes').value   = '';
+		loadSparepartsForValidation(spkId);
+		bootstrap.Modal.getOrCreateInstance(document.getElementById('spkSparepartValidationModal')).show();
+	}
+
+	function loadSparepartsForValidation(spkId) {
+		const tbody = document.getElementById('sparepartValidationRows');
+		tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>';
+
+		fetch(window.baseUrl + 'service/spk/get-spareparts/' + spkId, {
+			headers: {'X-Requested-With': 'XMLHttpRequest'}
+		})
+		.then(r => r.json())
+		.then(res => {
+			if (res.success) {
+				populateValidationTable(res.spareparts);
+			} else {
+				tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3">Gagal memuat sparepart</td></tr>';
+			}
+		})
+		.catch(() => {
+			tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3">Error memuat data</td></tr>';
+		});
+	}
+
+	function populateValidationTable(spareparts) {
+		const tbody = document.getElementById('sparepartValidationRows');
+		if (!spareparts || spareparts.length === 0) {
+			tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Tidak ada sparepart terdaftar</td></tr>';
+			return;
+		}
+		tbody.innerHTML = '';
+		spareparts.forEach((sp, idx) => {
+			const isValidated = parseInt(sp.sparepart_validated) === 1;
+			const brought     = parseInt(sp.quantity_brought) || 0;
+			const usedVal     = parseInt(sp.quantity_used)    || 0;
+			const returnVal   = brought - usedVal;
+			const statusBadge = isValidated
+				? '<span class="badge badge-soft-green">Validated</span>'
+				: '<span class="badge badge-soft-yellow">Belum Validasi</span>';
+			const typeLabel = sp.item_type === 'tool' ? '<span class="badge badge-soft-cyan">Tool</span>' : '<span class="badge badge-soft-blue">Sparepart</span>';
+			const sourceNote = sp.source_unit_no ? ` (${sp.source_unit_no})` : '';
+			const inputAttrs = isValidated ? `value="${usedVal}" readonly class="form-control form-control-sm text-center bg-light"` : `value="${brought}" min="0" max="${brought}" class="form-control form-control-sm text-center qty-used-input"`;
+
+			tbody.innerHTML += `
+				<tr data-sparepart-id="${sp.id}" data-brought="${brought}" data-validated="${isValidated ? 1 : 0}">
+					<td class="text-center">${idx + 1}</td>
+					<td>${typeLabel}</td>
+					<td>${esc(sp.sparepart_name)}${sourceNote}</td>
+					<td class="text-center fw-bold text-primary">${brought}</td>
+					<td class="text-center"><input type="number" ${inputAttrs} oninput="calculateReturn(this)"></td>
+					<td class="text-center fw-bold return-qty" style="${returnVal > 0 ? 'color:#0d6efd;' : ''}">${isValidated ? returnVal : 0}</td>
+					<td>${esc(sp.satuan)}</td>
+					<td>${statusBadge}</td>
+				</tr>`;
+		});
+	}
+
+	function esc(str) {
+		const d = document.createElement('div');
+		d.textContent = str || '';
+		return d.innerHTML;
+	}
+
+	window.calculateReturn = function(input) {
+		const row     = input.closest('tr');
+		const brought = parseInt(row.dataset.brought)  || 0;
+		let used      = parseInt(input.value)           || 0;
+		if (used < 0)       { used = 0; input.value = 0; }
+		if (used > brought) { used = brought; input.value = brought; }
+		const returnQty = brought - used;
+		const returnCell = row.querySelector('.return-qty');
+		returnCell.textContent = returnQty;
+		returnCell.style.color = returnQty > 0 ? '#0d6efd' : '';
+		returnCell.style.fontWeight = returnQty > 0 ? 'bold' : '';
+	};
+
+	document.getElementById('saveSparepartValidationBtn').addEventListener('click', function() {
+		const spkId = document.getElementById('validationSpkId').value;
+		const notes = document.getElementById('validationNotes').value.trim();
+		const rows  = document.querySelectorAll('#sparepartValidationRows tr[data-sparepart-id]');
+
+		const validationData = [];
+		let hasError = false;
+
+		rows.forEach(row => {
+			if (parseInt(row.dataset.validated) === 1) return; // skip already validated
+			const sparepartId  = row.dataset.sparepartId || row.getAttribute('data-sparepart-id');
+			const brought      = parseInt(row.dataset.brought) || 0;
+			const usedInput    = row.querySelector('.qty-used-input');
+			const quantityUsed = usedInput ? (parseInt(usedInput.value) || 0) : 0;
+			if (quantityUsed < 0 || quantityUsed > brought) {
+				hasError = true;
+			}
+			validationData.push({
+				sparepart_id:    sparepartId,
+				quantity_used:   quantityUsed,
+				quantity_return: brought - quantityUsed
+			});
+		});
+
+		if (hasError) {
+			notify('Jumlah digunakan tidak valid (harus 0 – Dibawa)', 'error');
+			return;
+		}
+		if (validationData.length === 0) {
+			notify('Tidak ada item yang perlu divalidasi', 'warning');
+			return;
+		}
+
+		if (!confirm('Simpan validasi sparepart? Aksi ini tidak dapat dibatalkan.')) return;
+
+		const btn = this;
+		btn.disabled = true;
+		btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
+
+		const fd = new FormData();
+		fd.append(window.csrfTokenName, window.csrfTokenValue);
+		fd.append('validation_data', JSON.stringify(validationData));
+		fd.append('notes', notes);
+
+		fetch(window.baseUrl + 'service/spk/validate-spareparts/' + spkId, {
+			method:  'POST',
+			headers: {'X-Requested-With': 'XMLHttpRequest'},
+			body:    fd
+		})
+		.then(r => r.json())
+		.then(res => {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
+			if (res.success) {
+				notify(res.message || 'Validasi berhasil disimpan', 'success');
+				bootstrap.Modal.getInstance(document.getElementById('spkSparepartValidationModal')).hide();
+				if (res.returns_generated > 0) {
+					setTimeout(() => {
+						if (typeof Swal !== 'undefined') {
+							Swal.fire({
+								icon: 'info',
+								title: 'Permintaan Pengembalian Dibuat',
+								text: `${res.returns_generated} permintaan pengembalian sparepart telah dikirim ke Warehouse (status: PENDING).`,
+								confirmButtonText: 'OK'
+							});
+						} else {
+							alert(`${res.returns_generated} permintaan pengembalian sparepart dikirim ke Warehouse.`);
+						}
+					}, 500);
+				}
+				window.reloadSpkTable();
+				// Update CSRF token if returned
+				if (res.csrf_hash && window.csrfTokenName) {
+					window.csrfTokenValue = res.csrf_hash;
+				}
+			} else {
+				notify(res.message || 'Gagal menyimpan validasi', 'error');
+			}
+		})
+		.catch(err => {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
 			notify('Error: ' + err.message, 'error');
 		});
 	});

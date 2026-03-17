@@ -1243,12 +1243,7 @@ $(document).ready(function() {
         // Frontend validation - Complaint Description
         const complaintDesc = $('#complaint_description').val();
         if (!complaintDesc || complaintDesc.trim().length < 3) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Validation Error',
-                text: 'Complaint Description wajib diisi minimal 3 karakter',
-                confirmButtonText: 'OK'
-            });
+            OptimaNotify.error('Complaint Description wajib diisi minimal 3 karakter');
             $('#complaint_description').addClass('is-invalid').focus();
             return false;
         }
@@ -1367,28 +1362,21 @@ $(document).ready(function() {
         
         // console.log('🚀 Start Work clicked (btn-assign) for ID:', id, 'WO Number:', woNumber);
         
-        // Simple SweetAlert with print button
-        Swal.fire({
+        // OptimaConfirm with print button in HTML
+        OptimaConfirm.approve({
             title: 'Start Work?',
             html: `
                 <p>Make sure the Work Order document and Unit Verification Form have been printed before starting the work.</p>
                 <p><strong>NOTE:</strong> Unit Verification is mandatory and must be documented to complete the Work Order.</p>
                 <div class="mt-3">
-                    <button type="button" class="btn btn-primary" onclick="window.open('<?= base_url('service/work-orders/print') ?>/' + ${id}, '_blank')">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.open('<?= base_url('service/work-orders/print') ?>/' + ${id}, '_blank')">
                         <i class="fas fa-print me-2"></i>Print Work Order
                     </button>
                 </div>
-                
             `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Mulai',
-            cancelButtonText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            allowOutsideClick: false
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Ya, Mulai',
+            cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
+            onConfirm: function() {
                 updateWorkOrderStatusDirect(id, 'IN_PROGRESS', 'Work order dimulai');
             }
         });
@@ -1448,12 +1436,7 @@ $(document).ready(function() {
             window.openCompleteModal(id, woNumber);
         } else {
             console.error('❌ openCompleteModal function not found');
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to open Complete modal. Please refresh the page.',
-                confirmButtonColor: '#d33'
-            });
+            OptimaNotify.error('Failed to open Complete modal. Please refresh the page.');
         }
     });
     
@@ -1493,15 +1476,14 @@ $(document).ready(function() {
     function updateWorkOrderStatus(id, status, message) {
         // console.log('🚨 updateWorkOrderStatus called with:', { id, status, message, stack: new Error().stack });
         
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Confirmation',
             text: 'Are you sure you want to change the work order status?',
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            onConfirm: function() {
                 updateWorkOrderStatusDirect(id, status, message);
             }
         });
@@ -1630,7 +1612,7 @@ $(document).ready(function() {
                     }, 300);
                 } else {
                     console.error('❌ Edit failed:', response.message);
-                    Swal.fire('Error', response.message || 'Failed to load work order data', 'error');
+                    OptimaNotify.error(response.message || 'Failed to load work order data');
                 }
             },
             error: function(xhr, status, error) {
@@ -1653,7 +1635,7 @@ $(document).ready(function() {
                     }
                 }
                 
-                Swal.fire('Error', errorMessage, 'error');
+                OptimaNotify.error(errorMessage);
             }
         });
     });
@@ -1693,7 +1675,7 @@ $(document).ready(function() {
                     
                 } else {
                     console.error('❌ Edit failed:', response.message);
-                    Swal.fire('Error', response.message || 'Failed to load work order data', 'error');
+                    OptimaNotify.error(response.message || 'Failed to load work order data');
                 }
             },
             error: function(xhr, status, error) {
@@ -1716,7 +1698,7 @@ $(document).ready(function() {
                     }
                 }
                 
-                Swal.fire('Error', errorMessage, 'error');
+                OptimaNotify.error(errorMessage);
             }
         });
     });
@@ -1730,24 +1712,16 @@ $(document).ready(function() {
         
         $('#viewWorkOrderModal').modal('hide');
         
-        Swal.fire({
+        OptimaConfirm.danger({
             title: 'Delete Confirmation',
             text: `Are you sure you want to delete Work Order ${woNumber}?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, Delete',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Delete',
+            cancelText: window.lang('cancel'),
+            onConfirm: function() {
                 // console.log('🗑️ Confirmed deletion, sending request...');
                 $.ajax({
                     url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
-                    beforeSend: function() {
-                        // console.log('🗑️ Sending delete request to:', '<?= base_url('service/work-orders/delete') ?>/' + id);
-                    },
                     success: function(response) {
                         // console.log('✅ Delete response:', response);
                         if (response.success) {
@@ -1755,17 +1729,14 @@ $(document).ready(function() {
                             reloadProgressTable();
                             updateStatistics();
                         } else {
-                            // console.log('❌ Delete failed:', response.message);
                             showAlert('error', response.message);
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('❌ Delete error:', error);
-                        console.error('❌ Delete response:', xhr.responseText);
                         showAlert('error', 'Failed to delete work order');
                     }
                 });
-            } else {
             }
         });
     });
@@ -1779,22 +1750,15 @@ $(document).ready(function() {
         let $row = $(this).closest('tr');
         let woNumber = $row.find('td:nth-child(2)').text(); // Get WO number from table row
         
-        Swal.fire({
+        OptimaConfirm.danger({
             title: 'Delete Confirmation',
             text: `Are you sure you want to delete Work Order ${woNumber}?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, Delete',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Delete',
+            cancelText: window.lang('cancel'),
+            onConfirm: function() {
                 $.ajax({
                     url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
-                    beforeSend: function() {
-                    },
                     success: function(response) {
                         if (response.success) {
                             showAlert('success', response.message);
@@ -1815,7 +1779,6 @@ $(document).ready(function() {
                         }
                     }
                 });
-            } else {
             }
         });
     });
@@ -2075,7 +2038,7 @@ $(document).ready(function() {
             
         } catch (error) {
             console.error('❌ Error populating edit form:', error);
-            Swal.fire('Error', 'An error occurred while populating the edit form: ' + error.message, 'error');
+            OptimaNotify.error('An error occurred while populating the edit form: ' + error.message);
         }
     }
 
@@ -3101,12 +3064,7 @@ $(document).ready(function() {
         const mechanic2 = $('#mechanic_2').val();
         
         if (mechanic1 && mechanic2 && mechanic1 === mechanic2) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Duplikasi Mekanik',
-                text: 'Tidak dapat memilih mekanik yang sama untuk Mechanic 1 dan Mechanic 2!',
-                confirmButtonText: 'OK'
-            });
+            OptimaNotify.warning('Tidak dapat memilih mekanik yang sama untuk Mechanic 1 dan Mechanic 2!');
             // Clear the dropdown that was just changed
             $(this).val('').trigger('change');
         }
@@ -3118,12 +3076,7 @@ $(document).ready(function() {
         const helper2 = $('#helper_2').val();
         
         if (helper1 && helper2 && helper1 === helper2) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Duplikasi Helper',
-                text: 'Tidak dapat memilih helper yang sama untuk Helper 1 dan Helper 2!',
-                confirmButtonText: 'OK'
-            });
+            OptimaNotify.warning('Tidak dapat memilih helper yang sama untuk Helper 1 dan Helper 2!');
             // Clear the dropdown that was just changed
             $(this).val('').trigger('change');
         }

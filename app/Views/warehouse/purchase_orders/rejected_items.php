@@ -449,17 +449,14 @@ $can_export = $permissions['export'];
 
     // Re-verification functions
     function reverifyUnit(idUnit, poId) {
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Re-verify Unit?',
             text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Reset for Re-verify',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            onConfirm: function() {
                 $.ajax({
                     url: '<?= base_url('warehouse/purchase-orders/reverify-unit') ?>',
                     type: 'POST',
@@ -473,31 +470,16 @@ $can_export = $permissions['export'];
                     success: function(r) {
                         OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success',
-                                text: r.message || 'Unit status has been reset. Please re-verify.',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
+                            OptimaNotify.success(r.message || 'Unit status has been reset. Please re-verify.');
+                            setTimeout(() => location.reload(), 1200);
                         } else {
                             OptimaPro.hideLoading();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: r.message || 'Failed to reset unit status.'
-                            });
+                            OptimaNotify.error(r.message || 'Failed to reset unit status.');
                         }
                     },
                     error: function(xhr) {
                         OptimaPro.hideLoading();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'An error occurred while resetting unit status.'
-                        });
+                        OptimaNotify.error('An error occurred while resetting unit status.');
                     }
                 });
             }
@@ -505,17 +487,14 @@ $can_export = $permissions['export'];
     }
 
     function reverifyAttachment(idAttachment, poId) {
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Re-verify Attachment?',
             text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Reset for Re-verify',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            onConfirm: function() {
                 $.ajax({
                     url: '<?= base_url('warehouse/purchase-orders/reverify-attachment') ?>',
                     type: 'POST',
@@ -529,31 +508,16 @@ $can_export = $permissions['export'];
                     success: function(r) {
                         OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success',
-                                text: r.message || 'Attachment status has been reset.',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
+                            OptimaNotify.success(r.message || 'Attachment status has been reset.');
+                            setTimeout(() => location.reload(), 1200);
                         } else {
                             OptimaPro.hideLoading();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: r.message || 'Failed to reset attachment status.'
-                            });
+                            OptimaNotify.error(r.message || 'Failed to reset attachment status.');
                         }
                     },
                     error: function(xhr) {
                         OptimaPro.hideLoading();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'An error occurred while resetting attachment status.'
-                        });
+                        OptimaNotify.error('An error occurred while resetting attachment status.');
                     }
                 });
             }
@@ -561,17 +525,14 @@ $can_export = $permissions['export'];
     }
 
     function reverifySparepart(idSparepart, poId) {
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Re-verify Sparepart?',
             text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, Reset for Re-verify',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Reset for Re-verify',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            onConfirm: function() {
                 $.ajax({
                     url: '<?= base_url('warehouse/purchase-orders/reverify-sparepart') ?>',
                     type: 'POST',
@@ -585,31 +546,16 @@ $can_export = $permissions['export'];
                     success: function(r) {
                         OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success',
-                                text: r.message || 'SSparepart status has been reset.',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
+                            OptimaNotify.success(r.message || 'Sparepart status has been reset.');
+                            setTimeout(() => location.reload(), 1200);
                         } else {
                             OptimaPro.hideLoading();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: r.message || 'Failed to reset sparepart status.'
-                            });
+                            OptimaNotify.error(r.message || 'Failed to reset sparepart status.');
                         }
                     },
                     error: function(xhr) {
                         OptimaPro.hideLoading();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'An error occurred while resetting sparepart status.'
-                        });
+                        OptimaNotify.error('An error occurred while resetting sparepart status.');
                     }
                 });
             }

@@ -2189,7 +2189,7 @@ function deleteCustomer(customerId) {
  * Show deletion confirmation dialog (when customer CAN be deleted)
  */
 function showDeleteConfirmation(customerId, customerName) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Delete Customer?',
         html: `
             <div class="text-start">
@@ -2204,20 +2204,9 @@ function showDeleteConfirmation(customerId, customerName) {
                 </p>
             </div>
         `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, Delete',
-        cancelButtonText: window.lang('cancel'),
-        reverseButtons: true,
-        customClass: {
-            confirmButton: 'btn btn-danger',
-            cancelButton: 'btn btn-secondary'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // User confirmed - proceed with deletion
+        confirmText: 'Yes, Delete',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             performCustomerDeletion(customerId);
         }
     });
@@ -2243,7 +2232,7 @@ function showDeletionBlockedWarning(data) {
     
     reasonsHtml += '</ul>';
     
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Cannot Delete Customer',
         html: `
             <div class="text-start">
@@ -2263,12 +2252,9 @@ function showDeletionBlockedWarning(data) {
                 </p>
             </div>
         `,
-        icon: 'error',
-        confirmButtonText: 'OK, I Understand',
-        confirmButtonColor: '#0d6efd',
-        customClass: {
-            confirmButton: 'btn btn-primary'
-        }
+        icon: 'danger',
+        confirmText: 'OK, I Understand',
+        cancelText: null
     });
 }
 
@@ -2300,14 +2286,7 @@ function performCustomerDeletion(customerId) {
             }
             
             if (response.success) {
-                // Show success message
-                Swal.fire({
-                    title: 'Deleted!',
-                    text: response.message || 'Customer has been deleted successfully',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                OptimaNotify.success(response.message || 'Customer has been deleted successfully');
                 
                 // Close customer detail modal
                 $('#customerDetailModal').modal('hide');
@@ -2870,59 +2849,31 @@ function editContract(contractId) {
 }
 
 function deleteContract(contractId) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Hapus Kontrak?',
         html: 'Apakah Anda yakin ingin menghapus kontrak ini?<br><small class="text-danger">Tindakan ini tidak dapat dibatalkan!</small>',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash me-2"></i>Ya, Hapus!',
-        cancelButtonText: '<i class="fas fa-times me-2"></i>' + window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Show loading
-            Swal.fire({
-                title: 'Menghapus...',
-                html: 'Mohon tunggu, sedang menghapus kontrak...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    OptimaPro.showLoading('Deleting customer...');
-                }
-            });
+        confirmText: 'Ya, Hapus!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            OptimaPro.showLoading('Menghapus kontrak...');
             
             $.ajax({
                 url: `<?= base_url('marketing/kontrak/delete') ?>/${contractId}`,
                 type: 'POST',
                 dataType: 'json',
                 success: function(response) {
+                    OptimaPro.hideLoading();
                     if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message || 'Kontrak berhasil dihapus',
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            // Refresh contracts tab
-                            loadCustomerContracts(currentCustomerId);
-                        });
+                        OptimaNotify.success(response.message || 'Kontrak berhasil dihapus');
+                        loadCustomerContracts(currentCustomerId);
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal!',
-                            text: response.message || 'Gagal menghapus kontrak'
-                        });
+                        OptimaNotify.error(response.message || 'Gagal menghapus kontrak');
                     }
                 },
                 error: function(xhr) {
+                    OptimaPro.hideLoading();
                     console.error('Delete error:', xhr);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Terjadi kesalahan saat menghapus kontrak'
-                    });
+                    OptimaNotify.error('Terjadi kesalahan saat menghapus kontrak');
                 }
             });
         }
@@ -3600,13 +3551,7 @@ $(document).on('submit', '#editContractForm', function(e) {
         success: function(response) {
             OptimaPro.hideLoading();
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: response.message || 'Contract updated successfully',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                OptimaNotify.success(response.message || 'Contract updated successfully');
                 
                 // Close edit modal
                 $('#editContractModal').modal('hide');
@@ -3622,11 +3567,7 @@ $(document).on('submit', '#editContractForm', function(e) {
                 }
             } else {
                 OptimaPro.hideLoading();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: response.message || 'Failed to update contract'
-                });
+                OptimaNotify.error(response.message || 'Failed to update contract');
             }
         },
         error: function(xhr) {
@@ -3635,11 +3576,7 @@ $(document).on('submit', '#editContractForm', function(e) {
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
             }
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: errorMsg
-            });
+            OptimaNotify.error(errorMsg);
         }
     });
 });

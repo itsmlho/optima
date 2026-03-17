@@ -588,207 +588,156 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
         }
 
-        $request = $this->request;
-        $draw = $request->getPost('draw') ?? 1;
-        $start = $request->getPost('start') ?? 0;
-        $length = $request->getPost('length') ?? 10;
-        $search = $request->getPost('search')['value'] ?? '';
-        $status = $request->getPost('status') ?? 'PENDING';
+        $request    = $this->request;
+        $draw       = $request->getPost('draw')   ?? 1;
+        $start      = (int)($request->getPost('start')  ?? 0);
+        $length     = (int)($request->getPost('length') ?? 25);
+        $search     = $request->getPost('search')['value'] ?? '';
+        $statusFilter = $request->getPost('status') ?? 'PENDING';
 
         try {
             $db = \Config\Database::connect();
-            
-            // Check if table and status column exist
-            if (!$db->tableExists('work_order_sparepart_returns')) {
-                return $this->response->setJSON([
-                    'draw' => $draw,
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => [],
-                    'error' => 'Table work_order_sparepart_returns does not exist'
-                ]);
-            }
-            
-            // Check if status column exists
-            $fields = $db->getFieldNames('work_order_sparepart_returns');
-            $hasStatusColumn = in_array('status', $fields);
-            
-            // Build query
-            $builder = $db->table('work_order_sparepart_returns wosr')
-                ->select('
-                    wosr.*,
-                    wo.work_order_number,
-                    wo.report_date,
-                    wo.id as work_order_id,
-                    wo.mechanic_id,
-                    wo.helper_id,
-                    COALESCE(mech_emp.staff_name, "Unknown Mechanic") as mechanic_name,
-                    COALESCE(help_emp.staff_name, "Unknown Helper") as helper_name,
-                    c.customer_name,
-                    iu.no_unit as unit_number,
-                    mdu.merk_unit,
-                    mdu.model_unit,
-                    u.username as confirmed_by_name
-                ')
-                ->join('work_orders wo', 'wo.id = wosr.work_order_id', 'left')
-                ->join('employees mech_emp', 'mech_emp.id = wo.mechanic_id', 'left')
-                ->join('employees help_emp', 'help_emp.id = wo.helper_id', 'left')
-                ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
-                ->join('model_unit mdu', 'mdu.id_model_unit = iu.model_unit_id', 'left')
-                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
-                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customers c', 'c.id = k.customer_id', 'left')
-                ->join('users u', 'u.id = wosr.confirmed_by', 'left');
-            
-            // Only filter by status if column exists
-            if ($hasStatusColumn && $status !== 'ALL') {
-                $builder->where('wosr.status', $status);
-            }
 
-            // Apply search
+            $searchEsc = $db->escapeLikeString($search);
+
+            // --- WO returns sub-query ---
+            $woStatusWhere  = $statusFilter !== 'ALL' ? "AND wosr.status = '{$db->escape($statusFilter)}'" : '';
+            $woSearchWhere  = '';
             if (!empty($search)) {
-                $builder->groupStart()
-                    ->like('wo.work_order_number', $search)
-                    ->orLike('wosr.sparepart_code', $search)
-                    ->orLike('wosr.sparepart_name', $search)
-                    ->orLike('c.customer_name', $search)
-                    ->orLike('iu.no_unit', $search)
-                ->groupEnd();
+                $woSearchWhere = "AND (wo.work_order_number LIKE '%{$searchEsc}%'
+                                   OR wosr.sparepart_name  LIKE '%{$searchEsc}%'
+                                   OR wosr.sparepart_code  LIKE '%{$searchEsc}%'
+                                   OR c.customer_name      LIKE '%{$searchEsc}%'
+                                   OR iu.no_unit           LIKE '%{$searchEsc}%')";
             }
+            $woSql = "
+                SELECT
+                    'WO'                                        AS source_type,
+                    wosr.id,
+                    wo.work_order_number                        AS reference_number,
+                    wosr.sparepart_code,
+                    wosr.sparepart_name,
+                    wosr.item_type,
+                    wosr.is_from_warehouse,
+                    wosr.quantity_brought,
+                    wosr.quantity_used,
+                    wosr.quantity_return,
+                    wosr.satuan,
+                    wosr.status,
+                    wosr.return_notes,
+                    wosr.created_at,
+                    wosr.confirmed_at,
+                    COALESCE(e.staff_name, '') AS mechanic_name,
+                    COALESCE(c.customer_name, '-') AS customer_name,
+                    COALESCE(iu.no_unit, '-')      AS unit_number,
+                    COALESCE(u.username, '-')       AS confirmed_by_name,
+                    wo.report_date
+                FROM work_order_sparepart_returns wosr
+                LEFT JOIN work_orders wo          ON wo.id = wosr.work_order_id
+                LEFT JOIN employees e             ON e.id  = wo.mechanic_id
+                LEFT JOIN inventory_unit iu       ON iu.id_inventory_unit = wo.unit_id
+                LEFT JOIN kontrak_unit ku         ON ku.unit_id = iu.id_inventory_unit
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT JOIN kontrak k               ON k.id  = ku.kontrak_id
+                LEFT JOIN customers c             ON c.id  = k.customer_id
+                LEFT JOIN users u                 ON u.id  = wosr.confirmed_by
+                WHERE 1=1 {$woStatusWhere} {$woSearchWhere}
+            ";
 
-            // Get total records
-            $totalRecords = $builder->countAllResults(false);
-
-            // Apply pagination
-            $builder->limit($length, $start);
-
-            // Apply ordering
-            $order = $request->getPost('order')[0] ?? null;
-            if ($order) {
-                $columnIndex = $order['column'] ?? 0;
-                $columnDir = $order['dir'] ?? 'DESC';
-                
-                $columns = [
-                    0 => 'wosr.created_at',
-                    1 => 'wo.work_order_number',
-                    2 => 'wosr.sparepart_name',
-                    3 => 'c.customer_name',
-                    4 => 'wosr.quantity_return'
-                ];
-                
-                if (isset($columns[$columnIndex])) {
-                    $builder->orderBy($columns[$columnIndex], $columnDir);
-                } else {
-                    $builder->orderBy('wosr.created_at', 'DESC');
-                }
-            } else {
-                $builder->orderBy('wosr.created_at', 'DESC');
+            // --- SPK returns sub-query ---
+            $spkStatusWhere = $statusFilter !== 'ALL' ? "AND ssr.status = '{$db->escape($statusFilter)}'" : '';
+            $spkSearchWhere = '';
+            if (!empty($search)) {
+                $spkSearchWhere = "AND (s.nomor_spk         LIKE '%{$searchEsc}%'
+                                    OR ssr.sparepart_name   LIKE '%{$searchEsc}%'
+                                    OR ssr.sparepart_code   LIKE '%{$searchEsc}%'
+                                    OR s.pelanggan          LIKE '%{$searchEsc}%')";
             }
+            $spkSql = "
+                SELECT
+                    'SPK'                                       AS source_type,
+                    ssr.id,
+                    s.nomor_spk                                 AS reference_number,
+                    ssr.sparepart_code,
+                    ssr.sparepart_name,
+                    ssr.item_type,
+                    ssr.is_from_warehouse,
+                    ssr.quantity_brought,
+                    ssr.quantity_used,
+                    ssr.quantity_return,
+                    ssr.satuan,
+                    ssr.status,
+                    ssr.return_notes,
+                    ssr.created_at,
+                    ssr.confirmed_at,
+                    ''                                          AS mechanic_name,
+                    COALESCE(s.pelanggan, '-')                  AS customer_name,
+                    COALESCE(iu.no_unit, '-')                   AS unit_number,
+                    COALESCE(u.username, '-')                    AS confirmed_by_name,
+                    DATE(s.dibuat_pada)                         AS report_date
+                FROM spk_sparepart_returns ssr
+                LEFT JOIN spk s                   ON s.id  = ssr.spk_id
+                LEFT JOIN kontrak k               ON k.id  = s.kontrak_id
+                LEFT JOIN kontrak_unit ku         ON ku.kontrak_id = k.id
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT JOIN inventory_unit iu       ON iu.id_inventory_unit = ku.unit_id
+                LEFT JOIN users u                 ON u.id  = ssr.confirmed_by
+                WHERE 1=1 {$spkStatusWhere} {$spkSearchWhere}
+            ";
 
-            $results = $builder->get()->getResultArray();
+            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
 
-            // Get mechanics/helpers dari work_order_assignments juga
-            $workOrderIds = array_unique(array_filter(array_column($results, 'work_order_id')));
-            $assignmentMechanics = [];
-            
-            if (!empty($workOrderIds)) {
-                // Get all assignments
-                $allAssignments = $db->table('work_order_assignments')
-                    ->whereIn('work_order_id', $workOrderIds)
-                    ->where('is_active', 1)
-                    ->get()
-                    ->getResultArray();
-                
-                // Get staff names from employees table
-                $staffIds = array_unique(array_filter(array_column($allAssignments, 'staff_id')));
-                $staffMap = [];
-                if (!empty($staffIds)) {
-                    $staffData = $db->table('employees')
-                        ->whereIn('id', $staffIds)
-                        ->get()
-                        ->getResultArray();
-                    
-                    foreach ($staffData as $staff) {
-                        $staffMap[$staff['id']] = $staff['staff_name'];
-                    }
-                }
-                
-                // Group by work_order_id
-                foreach ($allAssignments as $assignment) {
-                    $woId = $assignment['work_order_id'];
-                    $staffId = $assignment['staff_id'];
-                    $role = $assignment['role'];
-                    
-                    if (!isset($assignmentMechanics[$woId])) {
-                        $assignmentMechanics[$woId] = [];
-                    }
-                    
-                    if (isset($staffMap[$staffId]) && !empty($staffMap[$staffId])) {
-                        $roleLabel = $role === 'MECHANIC' ? 'MECHANIC' : 'HELPER';
-                        $assignmentMechanics[$woId][] = $staffMap[$staffId] . ' (' . $roleLabel . ')';
-                    }
-                }
-            }
+            $totalRecords = (int)($db->query(
+                "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS combined"
+            )->getRowArray()['cnt'] ?? 0);
 
-            // Format data
+            $rows = $db->query(
+                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+            )->getResultArray();
+
             $data = [];
-            foreach ($results as $row) {
-                $woId = $row['work_order_id'] ?? null;
-                
-                // Combine mechanic_name dan helper_name dari work_orders dengan assignments
-                $mechanicHelperNames = [];
-                
-                // Dari work_orders - tampilkan hanya nama valid (bukan Unknown atau kosong)
-                if (!empty($row['mechanic_name']) && !in_array(trim($row['mechanic_name']), ['Unknown Mechanic', 'Unknown', '-', 'NULL'])) {
-                    $mechanicHelperNames[] = $row['mechanic_name'] . ' (MECHANIC)';
-                }
-                if (!empty($row['helper_name']) && !in_array(trim($row['helper_name']), ['Unknown Helper', 'Unknown', '-', 'NULL'])) {
-                    $mechanicHelperNames[] = $row['helper_name'] . ' (HELPER)';
-                }
-                
-                // Dari work_order_assignments
-                if ($woId && isset($assignmentMechanics[$woId])) {
-                    $mechanicHelperNames = array_merge($mechanicHelperNames, $assignmentMechanics[$woId]);
-                }
-                
-                // Remove duplicates and format
-                $mechanicHelperNames = !empty($mechanicHelperNames) ? implode(', ', array_unique($mechanicHelperNames)) : '-';
-                
+            foreach ($rows as $row) {
                 $data[] = [
-                    'id' => $row['id'],
-                    'work_order_number' => $row['work_order_number'] ?? '-',
-                    'sparepart_code' => $row['sparepart_code'],
-                    'sparepart_name' => $row['sparepart_name'],
-                    'customer_name' => $row['customer_name'] ?? '-',
-                    'unit_number' => $row['unit_number'] ?? '-',
-                    'mechanic_name' => $mechanicHelperNames,
-                    'quantity_brought' => $row['quantity_brought'],
-                    'quantity_used' => $row['quantity_used'],
-                    'quantity_return' => $row['quantity_return'],
-                    'satuan' => $row['satuan'],
-                    'status' => $row['status'] ?? 'N/A',
-                    'created_at' => $row['created_at'] ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
-                    'confirmed_at' => $row['confirmed_at'] ? date('d/m/Y H:i', strtotime($row['confirmed_at'])) : '-',
+                    'id'                => $row['id'],
+                    'source_type'       => $row['source_type'],
+                    'reference_number'  => $row['reference_number'] ?? '-',
+                    'sparepart_code'    => $row['sparepart_code'] ?? '-',
+                    'sparepart_name'    => $row['sparepart_name'] ?? '-',
+                    'item_type'         => $row['item_type'] ?? 'sparepart',
+                    'is_from_warehouse' => (int)($row['is_from_warehouse'] ?? 1),
+                    'quantity_brought'  => $row['quantity_brought'],
+                    'quantity_used'     => $row['quantity_used'],
+                    'quantity_return'   => $row['quantity_return'],
+                    'satuan'            => $row['satuan'] ?? 'PCS',
+                    'status'            => $row['status'] ?? 'PENDING',
+                    'return_notes'      => $row['return_notes'] ?? '',
+                    'mechanic_name'     => $row['mechanic_name'] ?: '-',
+                    'customer_name'     => $row['customer_name'] ?? '-',
+                    'unit_number'       => $row['unit_number'] ?? '-',
                     'confirmed_by_name' => $row['confirmed_by_name'] ?? '-',
-                    'report_date' => $row['report_date'] ? date('d/m/Y', strtotime($row['report_date'])) : '-'
+                    'created_at'        => $row['created_at']   ? date('d/m/Y H:i', strtotime($row['created_at']))   : '-',
+                    'confirmed_at'      => $row['confirmed_at'] ? date('d/m/Y H:i', strtotime($row['confirmed_at'])) : '-',
+                    'report_date'       => $row['report_date']  ? date('d/m/Y', strtotime($row['report_date']))       : '-',
                 ];
             }
 
             return $this->response->setJSON([
-                'draw' => intval($draw),
-                'recordsTotal' => $totalRecords,
+                'draw'            => intval($draw),
+                'recordsTotal'    => $totalRecords,
                 'recordsFiltered' => $totalRecords,
-                'data' => $data
+                'data'            => $data,
             ]);
 
         } catch (\Exception $e) {
             log_message('error', 'Error getting sparepart returns: ' . $e->getMessage());
             return $this->response->setJSON([
-                'draw' => intval($draw),
-                'recordsTotal' => 0,
+                'draw'            => intval($draw),
+                'recordsTotal'    => 0,
                 'recordsFiltered' => 0,
-                'data' => [],
-                'error' => $e->getMessage()
+                'data'            => [],
+                'error'           => $e->getMessage(),
             ]);
         }
     }
@@ -806,38 +755,51 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
         }
 
+        $source = $this->request->getGet('source') ?? 'WO';
+
         try {
-            $return = $this->returnModel->getReturnDetail($id);
-            
-            if (!$return) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Return record not found'
-                ]);
+            if ($source === 'SPK') {
+                $db = \Config\Database::connect();
+                $return = $db->table('spk_sparepart_returns ssr')
+                    ->select('
+                        ssr.*,
+                        s.nomor_spk as work_order_number,
+                        DATE(s.dibuat_pada) as report_date,
+                        COALESCE(s.pelanggan, \'-\') as customer_name,
+                        COALESCE(iu.no_unit, \'-\') as unit_number,
+                        \'\' as mechanic_name,
+                        u.username as confirmed_by_name
+                    ')
+                    ->join('spk s', 's.id = ssr.spk_id', 'left')
+                    ->join('kontrak k', 'k.id = s.kontrak_id', 'left')
+                    ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                    ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id', 'left')
+                    ->join('users u', 'u.id = ssr.confirmed_by', 'left')
+                    ->where('ssr.id', $id)
+                    ->get()->getRowArray();
+            } else {
+                $return = $this->returnModel->getReturnDetail($id);
             }
 
-            // Format dates
-            if ($return['created_at']) {
+            if (!$return) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Return record not found']);
+            }
+
+            if (!empty($return['created_at'])) {
                 $return['created_at_formatted'] = date('d/m/Y H:i', strtotime($return['created_at']));
             }
-            if ($return['confirmed_at']) {
+            if (!empty($return['confirmed_at'])) {
                 $return['confirmed_at_formatted'] = date('d/m/Y H:i', strtotime($return['confirmed_at']));
             }
-            if ($return['report_date']) {
+            if (!empty($return['report_date'])) {
                 $return['report_date_formatted'] = date('d/m/Y', strtotime($return['report_date']));
             }
 
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $return
-            ]);
+            return $this->response->setJSON(['success' => true, 'data' => $return]);
 
         } catch (\Exception $e) {
             log_message('error', 'Error getting return detail: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
     }
 
@@ -1057,6 +1019,197 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Confirm an SPK sparepart return (warehouse receives item back)
+     */
+    public function confirmSpkReturn($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        if (!$this->canAccess('warehouse')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+        }
+
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not logged in']);
+        }
+
+        $notes = $this->request->getPost('notes') ?? null;
+
+        try {
+            $db = \Config\Database::connect();
+
+            $record = $db->table('spk_sparepart_returns')
+                ->where('id', $id)
+                ->get()->getRowArray();
+
+            if (!$record) {
+                return $this->response->setJSON(['success' => false, 'message' => 'SPK return record not found']);
+            }
+
+            if ($record['status'] !== 'PENDING') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Return sudah dikonfirmasi atau dibatalkan']);
+            }
+
+            $updated = $db->table('spk_sparepart_returns')->update(
+                [
+                    'status'       => 'CONFIRMED',
+                    'confirmed_by' => $userId,
+                    'confirmed_at' => date('Y-m-d H:i:s'),
+                    'return_notes' => $notes ?? $record['return_notes'],
+                ],
+                ['id' => $id]
+            );
+
+            if ($updated) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Pengembalian sparepart SPK berhasil dikonfirmasi',
+                ]);
+            }
+
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengonfirmasi pengembalian']);
+
+        } catch (\Exception $e) {
+            log_message('error', 'confirmSpkReturn error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get non-warehouse (bekas/kanibal/manual) sparepart entries
+     * Combines WO and SPK spareparts where is_from_warehouse = 0
+     */
+    public function getManualEntries()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        if (!$this->canAccess('warehouse')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+        }
+
+        $request    = $this->request;
+        $draw       = $request->getPost('draw')   ?? 1;
+        $start      = (int)($request->getPost('start')  ?? 0);
+        $length     = (int)($request->getPost('length') ?? 25);
+        $search     = $request->getPost('search')['value'] ?? '';
+
+        try {
+            $db        = \Config\Database::connect();
+            $searchEsc = $db->escapeLikeString($search);
+
+            $woSearchWhere = '';
+            if (!empty($search)) {
+                $woSearchWhere = "AND (wo.work_order_number LIKE '%{$searchEsc}%'
+                                   OR wosp.sparepart_name  LIKE '%{$searchEsc}%'
+                                   OR c.customer_name      LIKE '%{$searchEsc}%')";
+            }
+            $woSql = "
+                SELECT
+                    'WO'                               AS source_type,
+                    wo.work_order_number               AS reference_number,
+                    wosp.sparepart_name                AS item_name,
+                    wosp.item_type,
+                    wosp.source_type                   AS item_source,
+                    COALESCE(wosp.source_notes,'')     AS source_notes,
+                    wosp.quantity_brought,
+                    wosp.satuan,
+                    COALESCE(c.customer_name, '-')     AS customer_name,
+                    COALESCE(iu.no_unit, '-')          AS unit_number,
+                    wosp.created_at
+                FROM work_order_spareparts wosp
+                INNER JOIN work_orders wo         ON wo.id = wosp.work_order_id
+                LEFT  JOIN inventory_unit iu      ON iu.id_inventory_unit = wo.unit_id
+                LEFT  JOIN kontrak_unit ku        ON ku.unit_id = iu.id_inventory_unit
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT  JOIN kontrak k              ON k.id  = ku.kontrak_id
+                LEFT  JOIN customers c            ON c.id  = k.customer_id
+                WHERE wosp.is_from_warehouse = 0
+                {$woSearchWhere}
+            ";
+
+            $spkSearchWhere = '';
+            if (!empty($search)) {
+                $spkSearchWhere = "AND (s.nomor_spk           LIKE '%{$searchEsc}%'
+                                    OR ssp.sparepart_name     LIKE '%{$searchEsc}%'
+                                    OR s.pelanggan            LIKE '%{$searchEsc}%')";
+            }
+            $spkSql = "
+                SELECT
+                    'SPK'                              AS source_type,
+                    s.nomor_spk                        AS reference_number,
+                    ssp.sparepart_name                 AS item_name,
+                    ssp.item_type,
+                    ssp.source_type                    AS item_source,
+                    COALESCE(ssp.source_notes,'')      AS source_notes,
+                    ssp.quantity_brought,
+                    ssp.satuan,
+                    COALESCE(s.pelanggan, '-')         AS customer_name,
+                    COALESCE(iu.no_unit, '-')          AS unit_number,
+                    ssp.created_at
+                FROM spk_spareparts ssp
+                INNER JOIN spk s                  ON s.id  = ssp.spk_id
+                LEFT  JOIN kontrak k              ON k.id  = s.kontrak_id
+                LEFT  JOIN kontrak_unit ku        ON ku.kontrak_id = k.id
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT  JOIN inventory_unit iu      ON iu.id_inventory_unit = ku.unit_id
+                WHERE ssp.is_from_warehouse = 0
+                {$spkSearchWhere}
+            ";
+
+            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
+
+            $totalRecords = (int)($db->query(
+                "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS combined"
+            )->getRowArray()['cnt'] ?? 0);
+
+            $rows = $db->query(
+                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+            )->getResultArray();
+
+            $data = [];
+            foreach ($rows as $row) {
+                $data[] = [
+                    'source_type'      => $row['source_type'],
+                    'reference_number' => $row['reference_number'] ?? '-',
+                    'item_name'        => $row['item_name'] ?? '-',
+                    'item_type'        => $row['item_type'] ?? 'sparepart',
+                    'item_source'      => $row['item_source'] ?? 'BEKAS',
+                    'source_notes'     => $row['source_notes'] ?? '-',
+                    'quantity_brought' => $row['quantity_brought'],
+                    'satuan'           => $row['satuan'] ?? 'PCS',
+                    'customer_name'    => $row['customer_name'] ?? '-',
+                    'unit_number'      => $row['unit_number'] ?? '-',
+                    'created_at'       => $row['created_at'] ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
+                ];
+            }
+
+            return $this->response->setJSON([
+                'draw'            => intval($draw),
+                'recordsTotal'    => $totalRecords,
+                'recordsFiltered' => $totalRecords,
+                'data'            => $data,
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getManualEntries error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'draw'            => intval($draw),
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+                'error'           => $e->getMessage(),
             ]);
         }
     }

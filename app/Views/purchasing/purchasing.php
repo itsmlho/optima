@@ -704,7 +704,6 @@ $can_export = $permissions['export'];
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
 <script>
@@ -2427,17 +2426,17 @@ function assignSerialNumbers(deliveryId) {
 
 function proceedWithoutSN() {
     if (!currentDeliveryId) return;
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Lanjutkan Tanpa SN?',
         text: 'Delivery akan ditandai sebagai In Transit tanpa serial number.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Lanjutkan',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $('#assignSNModal').modal('hide');
-        updateDeliveryStatus(currentDeliveryId, 'In Transit');
+        confirmText: 'Ya, Lanjutkan',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'warning',
+        onConfirm: function() {
+            $('#assignSNModal').modal('hide');
+            updateDeliveryStatus(currentDeliveryId, 'In Transit');
+        }
     });
 }
 
@@ -2681,29 +2680,24 @@ function showError(message) {
 }
 
 function markAsInTransit(deliveryId) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Mark as In Transit?',
         text: 'Delivery akan ditandai sebagai In Transit.',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Tandai!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'In Transit');
+        confirmText: 'Ya, Tandai!',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() { updateDeliveryStatus(deliveryId, 'In Transit'); }
     });
 }
 
 function markAsReceived(deliveryId) {
-    Swal.fire({
+    OptimaConfirm.approve({
         title: 'Mark as Received?',
         text: 'Delivery akan ditandai sebagai Received.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#198754',
-        confirmButtonText: 'Ya, Received!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) updateDeliveryStatus(deliveryId, 'Received');
+        confirmText: 'Ya, Received!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() { updateDeliveryStatus(deliveryId, 'Received'); }
     });
 }
 
@@ -2762,9 +2756,7 @@ function getDeliveryStatusBadgeClass2(status) {
 }
 
 function addNewDelivery(poId) {
-    if (typeof Swal === 'undefined') return;
-    
-    Swal.fire('Info', 'Add new delivery feature coming soon!', 'info');
+    OptimaNotify.info('Add new delivery feature coming soon!');
 }
 
 // Duplicate function removed
@@ -2784,39 +2776,33 @@ function addNewDelivery(poId) {
 
 function deletePO(poId, event) {
     if (event) event.preventDefault();
-    if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
     
     // Check permission for deleting PO
     <?php if (!can_manage('purchasing')): ?>
-    Swal.fire('Access Denied', 'You do not have permission to delete Purchase Orders', 'error');
+    OptimaNotify.error('You do not have permission to delete Purchase Orders');
     return;
     <?php endif; ?>
     
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Are you sure?',
         text: 'This PO data will be permanently deleted!',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, delete it!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             $.ajax({
                 type: 'DELETE',
                 url: '<?= base_url('/purchasing/delete-po/') ?>' + poId,
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Deleted!', 'PO has been deleted successfully.', 'success');
+                        OptimaNotify.success('PO has been deleted successfully.');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
+                        OptimaNotify.error(response.message || 'An error occurred.');
                     }
                 },
                 error: function() {
-                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
+                    OptimaNotify.error('Unable to connect to the server.');
                 }
             });
         }
@@ -2824,33 +2810,28 @@ function deletePO(poId, event) {
 }
 
 function reverifyPO(poId) {
-    if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
-    
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Reverify PO?',
         text: 'This PO will be returned to the verification queue. Are you sure you want to continue?',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, continue!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, continue!',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/reverify-po/') ?>' + poId,
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Success!', 'PO has been returned to the verification queue.', 'success');
+                        OptimaNotify.success('PO has been returned to the verification queue.');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
+                        OptimaNotify.error(response.message || 'An error occurred.');
                     }
                 },
                 error: function() {
-                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
+                    OptimaNotify.error('Unable to connect to the server.');
                 }
             });
         }
@@ -2858,33 +2839,26 @@ function reverifyPO(poId) {
 }
 
 function cancelPO(poId) {
-    if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
-    
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Complete and Cancel PO?',
         text: 'The status of this PO will be changed to "Cancelled". This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, cancel the PO!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, cancel the PO!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/cancel-po/') ?>' + poId,
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Cancelled!', 'PO has been cancelled successfully.', 'success');
+                        OptimaNotify.success('PO has been cancelled successfully.');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
+                        OptimaNotify.error(response.message || 'An error occurred.');
                     }
                 },
                 error: function() {
-                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
+                    OptimaNotify.error('Unable to connect to the server.');
                 }
             });
         }
@@ -2894,8 +2868,7 @@ function cancelPO(poId) {
 // Removed duplicate refreshTable function - using the one above
 
 function exportData() {
-    if (typeof Swal === 'undefined') return;
-    Swal.fire('Info', 'Export feature coming soon!', 'info');
+    OptimaNotify.info('Export feature coming soon!');
 }
 
 // Wrapper functions for modal actions
@@ -3197,20 +3170,8 @@ function updateDeliveryTotal() {
 
 // Notification helper function
 function showNotification(message, type = 'info') {
-    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-        OptimaPro.showNotification(message, type);
-    } else if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: type === 'success' ? 'Success' : type === 'error' ? 'Error!' : 'Info',
-            text: message,
-            icon: type,
-            timer: 3000,
-            showConfirmButton: false
-        });
-    } else if (window.OptimaNotify) {
-        const method = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info';
-        OptimaNotify[method](message);
-    }
+    const method = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info';
+    OptimaNotify[method](message);
 }
 
 function trackDeliveries(poId, event) {
@@ -3221,32 +3182,28 @@ function trackDeliveries(poId, event) {
 
 function completePO(poId, event) {
     if (event) event.stopPropagation();
-    if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
     
-    Swal.fire({
+    OptimaConfirm.approve({
         title: 'Complete PO?',
         text: 'All items have been received. Mark this PO as completed?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Complete!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, Complete!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/complete-po/') ?>' + poId,
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Success!', 'PO has been marked as completed.', 'success');
+                        OptimaNotify.success('PO has been marked as completed.');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                         $('#viewPOModal').modal('hide');
                     } else {
-                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
+                        OptimaNotify.error(response.message || 'An error occurred.');
                     }
                 },
                 error: function() {
-                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
+                    OptimaNotify.error('Unable to connect to the server.');
                 }
             });
         }
@@ -3273,12 +3230,7 @@ function initCreatePOModal() {
     // Button handler to open modal
     $('#btnBuatPO').off('click').on('click', function() {
         <?php if (!can_create('purchasing')): ?>
-        Swal.fire({
-            icon: 'error',
-            title: 'Access Denied',
-            text: 'You do not have permission to create Purchase Orders',
-            confirmButtonColor: '#d33'
-        });
+        OptimaNotify.error('You do not have permission to create Purchase Orders');
         return false;
         <?php endif; ?>
         
@@ -3358,19 +3310,7 @@ function initCreatePOModal() {
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    // Show success notification using OptimaPro theme
-                    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification(response.message, 'success');
-                    } else {
-                        // Fallback notification
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message,
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    }
+                    OptimaNotify.success(response.message);
                     
                     // Close modal and refresh table
                     $('#createPoModal').modal('hide');
@@ -3378,16 +3318,7 @@ function initCreatePOModal() {
                         refreshTable();
                     }
                 } else {
-                    // Show error notification
-                    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification(response.message, 'error');
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: response.message
-                        });
-                    }
+                    OptimaNotify.error(response.message);
                 }
             },
             error: function(xhr, status, error) {
@@ -3398,15 +3329,7 @@ function initCreatePOModal() {
                     errorMessage = xhr.responseJSON.message;
                 }
                 
-                if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification(errorMessage, 'error');
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: errorMessage
-                    });
-                }
+                OptimaNotify.error(errorMessage);
             },
             complete: function() {
                 // Restore button state
@@ -3674,20 +3597,17 @@ function updateItemsTable() {
 
 // Delete item from table
 function deleteItem(index) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Hapus Item?',
         text: 'Item ini akan dihapus dari PO.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        poItems.splice(index, 1);
-        updateItemsTable();
-        document.getElementById('items_json').value = JSON.stringify(poItems);
-        OptimaNotify.success('Item berhasil dihapus');
+        confirmText: 'Ya, Hapus!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            poItems.splice(index, 1);
+            updateItemsTable();
+            document.getElementById('items_json').value = JSON.stringify(poItems);
+            OptimaNotify.success('Item berhasil dihapus');
+        }
     });
 }
 

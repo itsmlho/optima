@@ -599,6 +599,9 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/print/(:num)', 'Service::spkPrint/$1');
     $routes->get('spk/print-sparepart/(:num)', 'Service::printSpkSparepartRequest/$1');
     $routes->post('spk/save-sparepart/(:num)', 'Service::saveSparepartRequest/$1');
+    $routes->get('spk/check-spareparts/(:num)', 'Service::checkSpkSpareparts/$1');
+    $routes->get('spk/get-spareparts/(:num)', 'Service::getSpkSpareparts/$1');
+    $routes->post('spk/validate-spareparts/(:num)', 'Service::validateSpareparts/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');
     $routes->post('spk/approve-fabrikasi', 'Service::approveFabrikasi');
@@ -756,6 +759,8 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('get-returns', 'Warehouse\SparepartUsageController::getReturns');
         $routes->get('get-return-detail/(:num)', 'Warehouse\SparepartUsageController::getReturnDetail/$1');
         $routes->post('confirm-return/(:num)', 'Warehouse\SparepartUsageController::confirmReturn/$1');
+        $routes->post('confirm-spk-return/(:num)', 'Warehouse\SparepartUsageController::confirmSpkReturn/$1');
+        $routes->post('get-manual-entries', 'Warehouse\SparepartUsageController::getManualEntries');
     });
 
     // Unit Movement / Surat Jalan Routes (moved from service)

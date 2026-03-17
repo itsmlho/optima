@@ -413,7 +413,6 @@ $can_export = $permissions['export'];
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     // ========================================
@@ -569,25 +568,21 @@ $can_export = $permissions['export'];
     }
 
     function deleteUnitPO(id) {
-        Swal.fire({
+        OptimaConfirm.danger({
             title: 'Are you sure?',
-            text: "This PO data will be permanently deleted!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Yes, delete!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            text: 'This PO data will be permanently deleted!',
+            confirmText: 'Yes, delete!',
+            cancelText: window.lang('cancel'),
+            onConfirm: function() {
                 $.ajax({
                     type: 'DELETE',
                     url: '<?= base_url('/purchasing/delete-po-unit/') ?>' + id,
                     success: function(data) {
                         if (data.success) {
-                            Swal.fire('Deleted!', 'PO has been successfully deleted.', 'success');
+                            OptimaNotify.success('PO has been successfully deleted.');
                             poUnitTable.ajax.reload();
                         } else {
-                            Swal.fire('Failed!', 'An error occurred while deleting the PO.', 'error');
+                            OptimaNotify.error('An error occurred while deleting the PO.');
                         }
                     }
                 });
@@ -760,7 +755,7 @@ $can_export = $permissions['export'];
         });
         
         if (finalStatus === 'Correct' && !snData['serial_number']) {
-            Swal.fire({icon:'warning', title:'SN Required', text:'Serial number is required for Correct status.'});
+            OptimaNotify.warning('Serial number is required for Correct status.');
             return;
         }
         
@@ -793,7 +788,7 @@ $can_export = $permissions['export'];
                 
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
-                    Swal.fire('Success!', 'Verification successful!', 'success');
+                    OptimaNotify.success('Verification successful!');
                     
                     let sisaElem = $(`#lbl-remain-po-${poId}`);
                     let sisaCount = parseInt(sisaElem.text()) - 1;
@@ -813,13 +808,13 @@ $can_export = $permissions['export'];
                         </div>
                     `);
                 } else {
-                    Swal.fire('Error!', response.message || 'An error occurred.', 'error');
+                    OptimaNotify.error(response.message || 'An error occurred.');
                 }
             },
             error: (xhr) => {
                 window._verifyingAttachment = false;
                 $('#btn-submit-attachment-verification').prop('disabled', false);
-                Swal.fire("Error", "An unexpected error occurred.", "error");
+                OptimaNotify.error('An unexpected error occurred.');
                 console.error(xhr.responseText);
             }
         });
@@ -934,25 +929,21 @@ $can_export = $permissions['export'];
     }
 
     function deleteSparepartPO(id) {
-        Swal.fire({
+        OptimaConfirm.danger({
             title: 'Are you sure?',
-            text: "This PO data will be permanently deleted!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            text: 'This PO data will be permanently deleted!',
+            confirmText: 'Yes, delete it!',
+            cancelText: window.lang('cancel'),
+            onConfirm: function() {
                 $.ajax({
                     url: `<?= base_url('purchasing/delete-po-sparepart/') ?>${id}`,
                     type: 'POST',
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Success!', 'PO data has been deleted.', 'success');
+                            OptimaNotify.success('PO data has been deleted.');
                             poSparepartTable.ajax.reload();
                         } else {
-                            Swal.fire('Failed!', response.message || 'Failed to delete data.', 'error');
+                            OptimaNotify.error(response.message || 'Failed to delete data.');
                         }
                     }
                 });
@@ -961,25 +952,21 @@ $can_export = $permissions['export'];
     }
 
     function resolveSparepartPO(id) {
-        Swal.fire({
+        OptimaConfirm.approve({
             title: 'Complete this PO?',
             text: "Make sure all issues with the supplier have been resolved. The status will be changed to 'Completed'.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            confirmButtonText: 'Yes, Complete it!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Yes, Complete it!',
+            cancelText: window.lang('cancel'),
+            onConfirm: function() {
                 $.ajax({
                     url: `<?= base_url('purchasing/resolve-po-sparepart/') ?>${id}`,
                     type: 'POST',
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Success!', 'PO status has been changed to Completed.', 'success');
+                            OptimaNotify.success('PO status has been changed to Completed.');
                             poSparepartTable.ajax.reload();
                         } else {
-                            Swal.fire('Failed!', response.message || 'Failed to change status.', 'error');
+                            OptimaNotify.error(response.message || 'Failed to change status.');
                         }
                     }
                 });

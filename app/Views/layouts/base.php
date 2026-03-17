@@ -1464,8 +1464,15 @@ $currentLang = service('request')->getLocale();
             const cancelText = opts.cancelButtonText || opts.cancelText || lang('cancel');
             const iconClass = iconMap[opts.icon || 'question'] || iconMap.question;
             const btnVariant = opts.confirmButtonColor || opts.confirmColor || 'primary';
-            const btnClassMap = { '#dc3545': 'btn-danger', '#198754': 'btn-success', '#0d6efd': 'btn-primary' };
-            const btnClass = btnClassMap[btnVariant] || (btnVariant.startsWith('#') ? '' : 'btn-' + btnVariant) || 'btn-primary';
+            const btnClassMap = {
+                '#dc3545': 'btn-danger', '#d33': 'btn-danger', '#c82333': 'btn-danger', 'danger': 'btn-danger',
+                '#198754': 'btn-success', '#28a745': 'btn-success', '#3a9b68': 'btn-success', 'success': 'btn-success',
+                '#0d6efd': 'btn-primary', '#3085d6': 'btn-primary', '#007bff': 'btn-primary', 'primary': 'btn-primary',
+                '#ffc107': 'btn-warning', 'warning': 'btn-warning',
+                '#6c757d': 'btn-secondary', 'secondary': 'btn-secondary',
+                '#0dcaf0': 'btn-info', 'info': 'btn-info'
+            };
+            const btnClass = btnClassMap[btnVariant] || (btnVariant.startsWith('#') ? 'btn-primary' : 'btn-' + btnVariant) || 'btn-primary';
 
             titleEl.textContent = title;
             iconEl.className = 'optima-confirm-icon me-2';
@@ -1538,6 +1545,9 @@ $currentLang = service('request')->getLocale();
                     cancelText: o.cancelText || o.cancelButtonText || lang('cancel'),
                     confirmButtonColor: o.confirmButtonColor || o.confirmColor || '#0d6efd'
                 }, o.onConfirm);
+            },
+            show: function(opts) {
+                return window.OptimaConfirm.generic(opts);
             }
         };
     })();
@@ -1597,6 +1607,43 @@ $currentLang = service('request')->getLocale();
                                 return Promise.resolve({isConfirmed:true,isToast:true});
                             }
                         }
+                    }
+                    // Confirmation dialog (showCancelButton:true) → OptimaConfirm Bootstrap modal
+                    if (typeof a === 'object' && a && a.showCancelButton && window.OptimaConfirm) {
+                        return new Promise(function(resolve) {
+                            var resolved = false;
+                            function done(isConfirmed) {
+                                if (resolved) return;
+                                resolved = true;
+                                resolve({ isConfirmed: isConfirmed, isDismissed: !isConfirmed, dismiss: isConfirmed ? undefined : 'cancel', value: isConfirmed ? true : undefined });
+                            }
+                            var icon = (a.icon || 'question').toLowerCase();
+                            if (!['warning','question','info','success','error'].includes(icon)) icon = 'question';
+                            var rawColor = (a.confirmButtonColor || '').toLowerCase();
+                            var confirmColor = 'primary';
+                            if (['#dc3545','#d33','#c82333','danger'].includes(rawColor)) confirmColor = 'danger';
+                            else if (['#198754','#28a745','#3a9b68','success'].includes(rawColor)) confirmColor = 'success';
+                            else if (['#ffc107','warning'].includes(rawColor)) confirmColor = 'warning';
+                            else if (['#6c757d','secondary'].includes(rawColor)) confirmColor = 'secondary';
+                            var el = document.getElementById('optimaConfirmModal');
+                            function onHide() {
+                                if (el) el.removeEventListener('hidden.bs.modal', onHide);
+                                done(false);
+                            }
+                            window.OptimaConfirm.generic({
+                                title: a.title || 'Konfirmasi',
+                                html: a.html || a.text || '',
+                                icon: icon,
+                                confirmText: a.confirmButtonText || 'Ya',
+                                cancelText: a.cancelButtonText || 'Batal',
+                                confirmButtonColor: confirmColor,
+                                onConfirm: function() {
+                                    if (el) el.removeEventListener('hidden.bs.modal', onHide);
+                                    done(true);
+                                }
+                            });
+                            if (el) el.addEventListener('hidden.bs.modal', onHide);
+                        });
                     }
                 } catch(e) {}
                 return orig.apply(this, arguments);

@@ -100,7 +100,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // --- FUNGSI UTAMA ---
     $(document).ready(function() {
