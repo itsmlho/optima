@@ -64,7 +64,7 @@ if ($aksesorisRaw) {
         <a href="<?= base_url('warehouse/inventory/unit') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back
         </a>
-        <button type="button" class="btn btn-outline-info btn-sm" onclick="fetchUnitHistory(<?= $unit['id_inventory_unit'] ?>)">
+        <button type="button" class="btn btn-outline-info btn-sm" onclick="fetchUnitHistory(<?= (int)($unit['id_inventory_unit'] ?? 0) ?>)">
             <i class="fas fa-history me-1" aria-hidden="true"></i>Refresh History
         </button>
     </div>
@@ -83,7 +83,7 @@ if ($aksesorisRaw) {
             </div>
             <div class="card-body">
 
-                <!-- Native Bootstrap 5 Nav Tabs -->
+                <!-- Native Bootstrap 5 Nav Tabs (Ramping: Overview, Spesifikasi, Aktivitas) -->
                 <ul class="nav nav-tabs nav-fill mb-3" id="detailTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">
@@ -92,27 +92,12 @@ if ($aksesorisRaw) {
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-components" data-bs-toggle="tab" data-bs-target="#pane-components" type="button" role="tab">
-                            <i class="fas fa-cogs me-1"></i>Specifications
+                            <i class="fas fa-cogs me-1"></i>Spesifikasi
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-movement" data-bs-toggle="tab" data-bs-target="#pane-movement" type="button" role="tab">
-                            <i class="fas fa-route me-1"></i>Movements
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-workorder" data-bs-toggle="tab" data-bs-target="#pane-workorder" type="button" role="tab">
-                            <i class="fas fa-tools me-1"></i>Work Orders
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab">
-                            <i class="fas fa-wrench me-1"></i>Spareparts
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-contracts" data-bs-toggle="tab" data-bs-target="#pane-contracts" type="button" role="tab">
-                            <i class="fas fa-file-contract me-1"></i>Contracts/Rental
+                        <button class="nav-link" id="tab-aktivitas" data-bs-toggle="tab" data-bs-target="#pane-aktivitas" type="button" role="tab">
+                            <i class="fas fa-stream me-1"></i>Aktivitas
                         </button>
                     </li>
                 </ul>
@@ -194,6 +179,46 @@ if ($aksesorisRaw) {
 
                     <!-- ── Technical Specs ── -->
                     <div class="tab-pane fade" id="pane-components" role="tabpanel">
+
+                        <!-- Komponen Terpasang Saat Ini (di Spesifikasi) -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i><strong>Komponen Terpasang Saat Ini</strong></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 small">
+                                    <?php
+                                    $comp = $current_components ?? ['battery' => null, 'charger' => null, 'attachment' => null];
+                                    $hasAny = !empty($comp['battery']) || !empty($comp['charger']) || !empty($comp['attachment']);
+                                    ?>
+                                    <?php if (!$hasAny): ?>
+                                    <p class="text-muted mb-0">Tidak ada attachment, charger, atau baterai terpasang.</p>
+                                    <?php else: ?>
+                                    <?php if (!empty($comp['attachment'])): $a = $comp['attachment']; ?>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-secondary me-1">Attachment</span>
+                                        <strong><?= esc(trim(($a['merk'] ?? '').' '.($a['model'] ?? '').' '.($a['tipe'] ?? '')) ?: 'N/A') ?></strong>
+                                        <?php if (!empty($a['sn_attachment'])): ?><br><span class="text-muted font-monospace">S/N: <?= esc($a['sn_attachment']) ?></span><?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($comp['charger'])): $c = $comp['charger']; ?>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-info me-1">Charger</span>
+                                        <strong><?= esc(trim(($c['merk_charger'] ?? '').' '.($c['tipe_charger'] ?? '')) ?: 'N/A') ?></strong>
+                                        <?php if (!empty($c['sn_charger'])): ?><br><span class="text-muted font-monospace">S/N: <?= esc($c['sn_charger']) ?></span><?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($comp['battery'])): $b = $comp['battery']; ?>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-warning text-dark me-1">Baterai</span>
+                                        <strong><?= esc(trim(($b['merk_baterai'] ?? '').' '.($b['tipe_baterai'] ?? '').' '.($b['jenis_baterai'] ?? '')) ?: 'N/A') ?></strong>
+                                        <?php if (!empty($b['sn_baterai'])): ?><br><span class="text-muted font-monospace">S/N: <?= esc($b['sn_baterai']) ?></span><?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
 
                         <?php if($can_edit): ?>
                         <div class="alert alert-light border small py-2 mb-3 d-flex align-items-center gap-2">
@@ -496,147 +521,40 @@ if ($aksesorisRaw) {
                         </div><!-- /row -->
                     </div>
 
-                    <!-- ── Pergerakan / Movement History ── -->
-                    <div class="tab-pane fade" id="pane-movement" role="tabpanel">
+                    <!-- ── Aktivitas (Unified Timeline) ── -->
+                    <div class="tab-pane fade" id="pane-aktivitas" role="tabpanel">
                         <div class="card border-0 mb-0">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-route me-2"></i><strong>Unit Movement History</strong></h6>
+                            <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <h6 class="mb-0"><i class="fas fa-stream me-2"></i><strong>Timeline Aktivitas</strong></h6>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <select id="filter-aktivitas" class="form-select form-select-sm" style="min-width:140px;">
+                                        <option value="all">Semua</option>
+                                        <option value="REGISTRATION">Registrasi</option>
+                                        <option value="SPK">SPK</option>
+                                        <option value="MOVEMENT">Movement</option>
+                                        <option value="DELIVERY">DI</option>
+                                        <option value="CONTRACT">Kontrak</option>
+                                        <option value="SERVICE">Work Order</option>
+                                        <option value="VERIFICATION">Verifikasi</option>
+                                        <option value="COMPONENT">Komponen</option>
+                                        <option value="SPAREPART">Sparepart</option>
+                                        <option value="STATUS">Status</option>
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-refresh-aktivitas" title="Refresh">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
-                                <!-- Loader -->
-                                <div id="movement-loader" class="text-center py-5">
+                                <div id="aktivitas-loader" class="text-center py-5" style="display:none;">
                                     <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
-                                    <p class="text-muted mt-2 small">Loading movement history...</p>
+                                    <p class="text-muted mt-2 small">Loading aktivitas...</p>
                                 </div>
-                                <!-- Empty state -->
-                                <div id="movement-empty" class="text-center py-5" style="display:none;">
-                                    <i class="fas fa-route fa-3x text-muted mb-3 d-block"></i>
-                                    <p class="text-muted mb-0">No movement records found for this unit.</p>
+                                <div id="aktivitas-empty" class="text-center py-5" style="display:none;">
+                                    <i class="fas fa-stream fa-3x text-muted mb-3 d-block"></i>
+                                    <p class="text-muted mb-0">Tidak ada aktivitas tercatat.</p>
                                 </div>
-                                <!-- Timeline container -->
-                                <div id="movement-timeline" class="ps-1" style="display:none;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── Work Orders ── -->
-                    <div class="tab-pane fade" id="pane-workorder" role="tabpanel">
-                        <div class="card border-0 mb-0">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-wrench me-2"></i><strong>Service History (W.O.)</strong></h6>
-                                <button class="btn btn-sm btn-primary"><i class="fas fa-plus me-1"></i> New W.O.</button>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover mb-0">
-                                        <thead class="bg-light small">
-                                            <tr>
-                                                <th>W.O. No.</th>
-                                                <th>Date</th>
-                                                <th>Work Type</th>
-                                                <th>Technician</th>
-                                                <th class="text-center">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="small">
-                                            <?php if(empty($work_orders)): ?>
-                                            <tr>
-                                                <td colspan="5" class="text-center py-4 text-muted">No service history found.</td>
-                                            </tr>
-                                            <?php else: foreach($work_orders as $wo): ?>
-                                            <tr>
-                                                <td class="fw-bold"><a href="#"><?= esc($wo['wo_number']) ?></a></td>
-                                                <td><?= date('d M Y', strtotime($wo['date'])) ?></td>
-                                                <td><?= esc($wo['type']) ?></td>
-                                                <td><?= esc($wo['technician']) ?></td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-<?= $wo['status'] == 'COMPLETED' ? 'success' : 'warning' ?>">
-                                                        <?= esc($wo['status']) ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── Spareparts Form ── -->
-                    <div class="tab-pane fade" id="pane-parts" role="tabpanel">
-                        <div class="card border-0 mb-0">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="fas fa-cogs me-2"></i><strong>Spare Part Usage</strong></h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover mb-0">
-                                        <thead class="bg-light small">
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>W.O. Reference</th>
-                                                <th>Part Name</th>
-                                                <th class="text-end">Qty Used</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="small">
-                                            <?php if(empty($sparepart_usages)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center py-4 text-muted">No spare part records found.</td>
-                                            </tr>
-                                            <?php else: foreach($sparepart_usages as $sp): ?>
-                                            <tr>
-                                                <td><?= date('d M Y', strtotime($sp['date'])) ?></td>
-                                                <td><a href="#"><?= esc($sp['wo_ref']) ?></a></td>
-                                                <td class="fw-bold"><?= esc($sp['part_name']) ?></td>
-                                                <td class="text-end fw-bold text-primary"><?= esc($sp['qty']) ?> <span class="text-muted fw-normal"><?= esc($sp['uom']) ?></span></td>
-                                            </tr>
-                                            <?php endforeach; endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── Contract / Rental ── -->
-                    <div class="tab-pane fade" id="pane-contracts" role="tabpanel">
-                        <div class="card border-0 mb-0">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="fas fa-file-contract me-2"></i><strong>Contract Rental History</strong></h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover mb-0">
-                                        <thead class="bg-light small">
-                                            <tr>
-                                                <th>Contract No.</th>
-                                                <th>Customer & Location</th>
-                                                <th>Period</th>
-                                                <th class="text-center">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="small">
-                                            <?php if(empty($rental_history)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center py-4 text-muted">No rental contract history found.</td>
-                                            </tr>
-                                            <?php else: foreach($rental_history as $rt): ?>
-                                            <tr>
-                                                <td class="fw-bold"><a href="#"><?= esc($rt['contract_no']) ?></a></td>
-                                                <td class="fw-bold"><?= esc($rt['customer']) ?></td>
-                                                <td><?= date('M Y', strtotime($rt['start_date'])) ?> – <?= date('M Y', strtotime($rt['end_date'])) ?></td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-<?= $rt['status'] == 'ACTIVE' ? 'success' : 'secondary' ?>">
-                                                        <?= esc($rt['status']) ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <div id="aktivitas-timeline" class="ps-1" style="display:none;"></div>
                             </div>
                         </div>
                     </div>
@@ -708,21 +626,43 @@ if ($aksesorisRaw) {
 
 <?= $this->section('javascript') ?>
 <script>
-    $(document).ready(function() {
-        // Force Overview tab active on every page load (prevent browser tab-state memory)
-        const overviewTab = document.getElementById('tab-overview');
-        if (overviewTab) bootstrap.Tab.getOrCreateInstance(overviewTab).show();
-
-        // Auto load history
-        fetchUnitHistory(<?= $unit['id_inventory_unit'] ?>);
+(function(){
+    var unitId = <?= (int)($unit['id_inventory_unit'] ?? 0) ?>;
+    var baseUnitUrl = <?= json_encode(base_url('warehouse/inventory/unit/')) ?>;
+    window._unitId = unitId;
+    window._baseUnitUrl = baseUnitUrl;
+    if (window.location.hash) { try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e){} }
+    function forceOverviewTab() {
+        var t = document.getElementById('tab-overview');
+        var p = document.getElementById('pane-overview');
+        if (!t || !p) return;
+        var container = t.closest('.card');
+        if (container) {
+            container.querySelectorAll('.nav-link').forEach(function(el){ el.classList.remove('active'); });
+            container.querySelectorAll('.tab-pane').forEach(function(el){ el.classList.remove('show','active'); });
+        }
+        t.classList.add('active');
+        p.classList.add('show','active');
+        try { if (window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(t).show(); } catch(e){}
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function(){ forceOverviewTab(); setTimeout(forceOverviewTab, 100); });
+    } else {
+        forceOverviewTab();
+        setTimeout(forceOverviewTab, 100);
+    }
+    window.addEventListener('load', function(){ setTimeout(forceOverviewTab, 0); });
+    $(document).ready(function(){
+        forceOverviewTab();
+        fetchUnitHistory(unitId);
     });
-
-    function fetchUnitHistory(unitId) {
+})();
+    function fetchUnitHistory(uid) {
+        var baseUnitUrl = window._baseUnitUrl || '';
         $('#history-timeline-container').hide();
         $('#history-loader').show();
-        
         $.ajax({
-            url: `<?= base_url('warehouse/inventory/unit/') ?>${unitId}/timeline`,
+            url: baseUnitUrl + uid + '/timeline',
             type: 'GET',
             success: function(response) {
                 if (response.success) {
@@ -740,95 +680,117 @@ if ($aksesorisRaw) {
         });
     }
 
-    // ── Pergerakan tab: lazy AJAX load ─────────────────────────────────
-    let _movementLoaded = false;
+    var UNIT_ID = window._unitId;
+    var _aktivitasLoaded = false;
 
-    $('#tab-movement').on('shown.bs.tab', function () {
-        if (!_movementLoaded) {
-            loadMovementHistory(<?= (int)$unit['id_inventory_unit'] ?>);
-        }
+    $('#tab-aktivitas').on('shown.bs.tab', function () {
+        loadAktivitas(UNIT_ID);
     });
 
-    function loadMovementHistory(unitId) {
-        $('#movement-loader').show();
-        $('#movement-empty').hide();
-        $('#movement-timeline').hide().empty();
+    $('#filter-aktivitas').on('change', function () {
+        _aktivitasLoaded = false;
+        loadAktivitas(UNIT_ID);
+    });
+
+    $('#btn-refresh-aktivitas').on('click', function () {
+        _aktivitasLoaded = false;
+        loadAktivitas(UNIT_ID);
+    });
+
+    function loadAktivitas(uid) {
+        var baseUnitUrl = window._baseUnitUrl || '';
+        var category = $('#filter-aktivitas').val() || 'all';
+        $('#aktivitas-loader').show();
+        $('#aktivitas-empty').hide();
+        $('#aktivitas-timeline').hide().empty();
 
         $.ajax({
-            url  : `<?= base_url('warehouse/inventory/unit/') ?>${unitId}/movements`,
-            type : 'GET',
+            url: baseUnitUrl + uid + '/activity',
+            type: 'GET',
+            data: { category: category },
             dataType: 'json',
             success: function (res) {
-                $('#movement-loader').hide();
+                $('#aktivitas-loader').hide();
                 if (!res.success || !res.events || res.events.length === 0) {
-                    $('#movement-empty').show();
+                    $('#aktivitas-empty').show();
                     return;
                 }
-                _movementLoaded = true;
+                _aktivitasLoaded = true;
 
-                let iconMap = {
-                    delivery : 'fa-truck',
-                    rental   : 'fa-file-contract',
-                    location : 'fa-map-marker-alt',
-                    system   : 'fa-circle'
-                };
-                let colorMap = {
-                    delivery : 'primary',
-                    rental   : 'warning',
-                    location : 'success',
-                    system   : 'info'
+                const iconMap = {
+                    'box': 'fa-box',
+                    'clipboard-list': 'fa-clipboard-list',
+                    'truck': 'fa-truck',
+                    'shipping-fast': 'fa-shipping-fast',
+                    'file-contract': 'fa-file-contract',
+                    'tools': 'fa-tools',
+                    'check-circle': 'fa-check-circle',
+                    'puzzle-piece': 'fa-puzzle-piece',
+                    'wrench': 'fa-wrench',
+                    'sync-alt': 'fa-sync-alt'
                 };
 
-                let html = '';
+                var refLabels = {
+                    'spk': 'No. SPK',
+                    'di': 'No. DI',
+                    'delivery': 'No. DI',
+                    'work_order': 'No. WO',
+                    'wo': 'No. WO',
+                    'contract': 'No. Kontrak',
+                    'movement': 'No. Surat Jalan',
+                    'verification': 'WO/Verifikasi',
+                    'component': 'Komponen'
+                };
+                function esc(s) { if (s == null || s === undefined) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+                var html = '';
                 res.events.forEach(function (ev, idx) {
-                    let dateStr  = ev.event_date ? new Date(ev.event_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '—';
-                    let icon     = iconMap[ev.type]  || 'fa-circle';
-                    let color    = colorMap[ev.type] || 'secondary';
-                    let isLast   = idx === res.events.length - 1;
-
-                    // Build meta key-value rows
-                    let metaHtml = '';
-                    if (ev.meta && Object.keys(ev.meta).length > 0) {
-                        Object.entries(ev.meta).forEach(function ([k, v]) {
-                            if (v) metaHtml += `<span class="me-3 text-nowrap"><i class="fas fa-minus me-1 small"></i>${k}: <strong>${v}</strong></span>`;
-                        });
-                        if (metaHtml) metaHtml = `<div class="text-muted small mt-1 flex-wrap d-flex gap-1">${metaHtml}</div>`;
+                    var dateStr = ev.date ? new Date(ev.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                    var icon = iconMap[ev.icon] || 'fa-circle';
+                    var color = ev.color || 'secondary';
+                    var isLast = idx === res.events.length - 1;
+                    var url = (ev.meta && ev.meta.url) ? ev.meta.url : null;
+                    var refNum = ev.reference_number || ev.description || '';
+                    var refNumDisplay = refNum || '-';
+                    var refType = (ev.reference_type || '').toLowerCase();
+                    if (!refType) {
+                        var cat = (ev.category || '').toUpperCase();
+                        if (cat === 'SPK') refType = 'spk';
+                        else if (cat === 'DELIVERY') refType = 'di';
+                        else if (cat === 'SERVICE') refType = 'work_order';
+                        else if (cat === 'CONTRACT') refType = 'contract';
+                        else if (cat === 'MOVEMENT') refType = 'movement';
                     }
+                    var refLabel = refLabels[refType] || 'Referensi';
+                    var refLine = url
+                        ? '<span class="text-muted small">' + esc(refLabel) + ': </span><a href="' + esc(url) + '" class="text-primary small fw-semibold">' + esc(refNumDisplay) + '</a>'
+                        : '<span class="text-muted small">' + esc(refLabel) + ': </span><span class="font-monospace small">' + esc(refNumDisplay) + '</span>';
+                    var detailLine = ev.detail ? '<div class="text-muted small mt-1">' + esc(ev.detail) + '</div>' : '';
+                    var descLine = (ev.description && ev.description !== refNum) ? '<div class="text-muted small">' + esc(ev.description) + '</div>' : '';
 
-                    html += `
-                        <div class="d-flex gap-3 mb-0">
-                            <!-- Icon + vertical line -->
-                            <div class="flex-shrink-0 text-center" style="width:42px;">
-                                <div class="rounded-circle bg-${color} text-white d-flex align-items-center justify-content-center mx-auto mb-0" style="width:36px;height:36px;">
-                                    <i class="fas ${icon} small"></i>
-                                </div>
-                                ${!isLast ? '<div class="border-start border-2 border-secondary mx-auto" style="width:2px;min-height:40px;opacity:.25;"></div>' : ''}
-                            </div>
-                            <!-- Content -->
-                            <div class="flex-grow-1 pb-4 ${!isLast ? 'border-bottom' : ''}">
-                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
-                                    <div>
-                                        <div class="fw-semibold text-dark">${ev.title}</div>
-                                        <div class="text-muted small">${ev.subtitle}</div>
-                                        ${ev.reference && ev.reference !== '—' ? `<span class="font-monospace small text-primary">${ev.reference}</span>` : ''}
-                                        ${metaHtml}
-                                    </div>
-                                    <div class="text-end flex-shrink-0">
-                                        <div class="small text-muted mb-1">${dateStr}</div>
-                                        <span class="badge bg-${ev.status_cls || 'secondary'}">${ev.status}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
+                    html += '<div class="d-flex gap-3 mb-0">' +
+                        '<div class="flex-shrink-0 text-center" style="width:42px;">' +
+                        '<div class="rounded-circle bg-' + color + ' text-white d-flex align-items-center justify-content-center mx-auto mb-0" style="width:36px;height:36px;"><i class="fas ' + icon + ' small"></i></div>' +
+                        (!isLast ? '<div class="border-start border-2 border-secondary mx-auto" style="width:2px;min-height:40px;opacity:.25;"></div>' : '') +
+                        '</div>' +
+                        '<div class="flex-grow-1 pb-4 ' + (!isLast ? 'border-bottom' : '') + '">' +
+                        '<div class="d-flex justify-content-between align-items-start flex-wrap gap-1">' +
+                        '<div class="min-w-0">' +
+                        '<div class="fw-semibold text-dark">' + esc(ev.title || 'Event') + '</div>' +
+                        (refLine ? '<div class="mt-1">' + refLine + '</div>' : '') +
+                        descLine +
+                        detailLine +
+                        '</div>' +
+                        '<div class="text-end flex-shrink-0">' +
+                        '<div class="small text-muted mb-1">' + esc(dateStr) + '</div>' +
+                        '<span class="badge bg-' + color + '">' + esc(ev.category || '') + '</span>' +
+                        '</div></div></div></div>';
                 });
 
-                $('#movement-timeline').html(html).show();
+                $('#aktivitas-timeline').html(html).show();
             },
             error: function () {
-                $('#movement-loader').hide();
-                $('#movement-timeline')
-                    .html('<div class="alert alert-danger small">Failed to load movement history.</div>')
-                    .show();
+                $('#aktivitas-loader').hide();
+                $('#aktivitas-timeline').html('<div class="alert alert-danger small">Gagal memuat aktivitas.</div>').show();
             }
         });
     }
@@ -853,7 +815,7 @@ if ($aksesorisRaw) {
         $('#btnSaveSpecs').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>').addClass('disabled');
 
         let data = {
-            '<?= csrf_token() ?>': $('meta[name="<?= csrf_token() ?>"]').attr('content'),
+            <?= json_encode(csrf_token()) ?>: $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content'),
             model_mesin_id   : $('select[name="model_mesin_id"]').val(),
             sn_mesin         : $('input[name="sn_mesin"]').val(),
             kapasitas_unit_id: $('select[name="kapasitas_unit_id"]').val(),
@@ -869,13 +831,13 @@ if ($aksesorisRaw) {
         if (banInput.length) data.ban_id = banInput.val();
 
         $.ajax({
-            url: '<?= base_url("warehouse/inventory/unit/".$unit["id_inventory_unit"]."/inline-update") ?>',
+            url: (window._baseUnitUrl || '') + (window._unitId || '') + '/inline-update',
             type: 'POST',
             data: data,
             success: function(res) {
                 $('#btnSaveSpecs').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
 
-                if (res.csrf_hash) $('meta[name="<?= csrf_token() ?>"]').attr('content', res.csrf_hash);
+                if (res.csrf_hash) $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content', res.csrf_hash);
 
                 if (res.success) {
                     Swal.fire({icon: 'success', title: 'Saved', text: res.message, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000});
@@ -933,18 +895,18 @@ if ($aksesorisRaw) {
         let catatan = $('#inputCatatan').val();
 
         let data = {
-            '<?= csrf_token() ?>': $('meta[name="<?= csrf_token() ?>"]').attr('content'),
+            <?= json_encode(csrf_token()) ?>: $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content'),
             keterangan: catatan
         };
 
         $.ajax({
-            url: '<?= base_url("warehouse/inventory/unit/".$unit["id_inventory_unit"]."/inline-update") ?>',
+            url: (window._baseUnitUrl || '') + (window._unitId || '') + '/inline-update',
             type: 'POST',
             data: data,
             success: function(res) {
                 $('#btnSaveCatatan').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
 
-                if (res.csrf_hash) $('meta[name="<?= csrf_token() ?>"]').attr('content', res.csrf_hash);
+                if (res.csrf_hash) $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content', res.csrf_hash);
 
                 if (res.success) {
                     Swal.fire({icon: 'success', title: 'Saved', text: res.message, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000});

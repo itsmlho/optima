@@ -2116,7 +2116,7 @@ class WorkOrderController extends Controller
             $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
             $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
-            $builder->join('tipe_unit tu', 'iu.jenis_unit_id = tu.id_tipe_unit', 'left');
+            $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
             $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
             $builder->groupStart()
                 ->like('iu.no_unit', $query)

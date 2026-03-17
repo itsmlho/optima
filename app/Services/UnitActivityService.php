@@ -34,6 +34,7 @@ class UnitActivityService
         $events = array_merge($events, $this->getServiceEvents($unitId));
         $events = array_merge($events, $this->getVerificationEvents($unitId));
         $events = array_merge($events, $this->getComponentEvents($unitId));
+        $events = array_merge($events, $this->getSparepartUsageEvents($unitId));
         $events = array_merge($events, $this->getStatusEvents($unitId));
 
         // Filter by category if specified
@@ -73,6 +74,7 @@ class UnitActivityService
                     'reference_type' => 'unit',
                     'reference_id' => $unitId,
                     'reference_number' => null,
+                    'meta' => [],
                 ];
             }
         } catch (\Throwable $e) {
@@ -95,7 +97,7 @@ class UnitActivityService
             }
 
             $stages = $this->db->table('spk_unit_stages sus')
-                ->select('sus.*, s.nomor_spk, s.pelanggan, s.status as spk_status')
+                ->select('sus.*, s.nomor_spk, s.spk_number, s.no_spk, s.pelanggan, s.status as spk_status')
                 ->join('spk s', 's.id = sus.spk_id', 'left')
                 ->where('sus.unit_id', $unitId)
                 ->orderBy('sus.created_at', 'DESC')
@@ -111,17 +113,20 @@ class UnitActivityService
                 ];
                 $isCompleted = !empty($stage['tanggal_approve']);
 
+                $spkNumber = $stage['nomor_spk'] ?? $stage['spk_number'] ?? $stage['no_spk'] ?? null;
+
                 $events[] = [
                     'category' => 'SPK',
                     'icon' => 'clipboard-list',
                     'color' => 'blue',
                     'title' => 'SPK Stage: ' . ($stageLabels[$stageName] ?? ucfirst($stageName)),
-                    'description' => $stage['nomor_spk'] ?? '-',
+                    'description' => $spkNumber ?? '-',
                     'detail' => $isCompleted ? 'Completed' : 'In Progress',
                     'date' => $stage['tanggal_approve'] ?? $stage['created_at'],
                     'reference_type' => 'spk',
                     'reference_id' => $stage['spk_id'],
-                    'reference_number' => $stage['nomor_spk'],
+                    'reference_number' => $spkNumber,
+                    'meta' => ['url' => base_url('service/spk/detail/' . $stage['spk_id'])],
                 ];
             }
         } catch (\Throwable $e) {
@@ -164,6 +169,7 @@ class UnitActivityService
                     'reference_type' => 'movement',
                     'reference_id' => $mov['id'],
                     'reference_number' => $mov['surat_jalan_number'] ?? $mov['movement_number'] ?? null,
+                    'meta' => ['url' => base_url('warehouse/unit-movement')],
                 ];
             }
         } catch (\Throwable $e) {
@@ -186,7 +192,7 @@ class UnitActivityService
             }
 
             $diItems = $this->db->table('delivery_items di')
-                ->select('di.*, dins.nomor_di, dins.status_di, dins.pelanggan, dins.lokasi, dins.tanggal_kirim, dins.dibuat_pada')
+                ->select('di.*, dins.nomor_di, dins.di_number, dins.no_di, dins.status_di, dins.pelanggan, dins.lokasi, dins.tanggal_kirim, dins.dibuat_pada')
                 ->join('delivery_instructions dins', 'dins.id = di.di_id', 'left')
                 ->where('di.unit_id', $unitId)
                 ->where('di.item_type', 'UNIT')
@@ -204,12 +210,14 @@ class UnitActivityService
                     'SELESAI' => 'Completed',
                 ];
 
+                $diNumber = $di['nomor_di'] ?? $di['di_number'] ?? $di['no_di'] ?? null;
+
                 $events[] = [
                     'category' => 'DELIVERY',
                     'icon' => 'shipping-fast',
                     'color' => 'green',
                     'title' => $statusLabels[$di['status_di']] ?? 'Delivery: ' . ($di['status_di'] ?? '-'),
-                    'description' => $di['nomor_di'] ?? '-',
+                    'description' => $diNumber ?? '-',
                     'detail' => implode(' | ', array_filter([
                         'Customer: ' . ($di['pelanggan'] ?? '-'),
                         'Location: ' . ($di['lokasi'] ?? '-'),
@@ -218,7 +226,8 @@ class UnitActivityService
                     'date' => $di['dibuat_pada'] ?? $di['created_at'],
                     'reference_type' => 'di',
                     'reference_id' => $di['di_id'],
-                    'reference_number' => $di['nomor_di'],
+                    'reference_number' => $diNumber,
+                    'meta' => ['url' => base_url('operational/delivery/detail/' . $di['di_id'])],
                 ];
             }
         } catch (\Throwable $e) {
@@ -251,6 +260,7 @@ class UnitActivityService
 
             foreach ($contracts as $contract) {
                 // Contract Start Event
+                $contractUrl = base_url('marketing/kontrak/detail/' . $contract['kontrak_id']);
                 if (!empty($contract['tanggal_mulai'])) {
                     $events[] = [
                         'category' => 'CONTRACT',
@@ -266,6 +276,7 @@ class UnitActivityService
                         'reference_type' => 'contract',
                         'reference_id' => $contract['kontrak_id'],
                         'reference_number' => $contract['no_kontrak'],
+                        'meta' => ['url' => $contractUrl],
                     ];
                 }
 
@@ -282,6 +293,7 @@ class UnitActivityService
                         'reference_type' => 'contract',
                         'reference_id' => $contract['kontrak_id'],
                         'reference_number' => $contract['no_kontrak'],
+                        'meta' => ['url' => $contractUrl],
                     ];
                 }
             }
@@ -325,6 +337,7 @@ class UnitActivityService
                     'reference_type' => 'work_order',
                     'reference_id' => $wo['id'],
                     'reference_number' => $wo['work_order_number'],
+                    'meta' => ['url' => base_url('service/work-orders/detail/' . $wo['id'])],
                 ];
             }
         } catch (\Throwable $e) {
@@ -359,18 +372,50 @@ class UnitActivityService
             foreach ($verifications as $v) {
                 $verificationType = $v['verification_type'] ?? 'WO';
                 $title = $verificationType === 'STANDALONE' ? 'Unit Verified (Standalone)' : 'Unit Verified';
-                
+                $detail = 'By: ' . ($v['verifier_name'] ?? '-');
+
+                // Parse verification_data for "what changed" (unit_changes, components)
+                $meta = ['url' => null, 'changes' => []];
+                if (!empty($v['verification_data'])) {
+                    $vd = is_string($v['verification_data']) ? json_decode($v['verification_data'], true) : $v['verification_data'];
+                    if (is_array($vd)) {
+                        $changes = [];
+                        if (!empty($vd['unit_changes']) && is_array($vd['unit_changes'])) {
+                            foreach ($vd['unit_changes'] as $field => $diff) {
+                                if (is_array($diff) && isset($diff['before'], $diff['after'])) {
+                                    $changes[] = $field . ': ' . ($diff['before'] ?? '-') . ' → ' . ($diff['after'] ?? '-');
+                                } elseif (is_string($diff)) {
+                                    $changes[] = $field . ': ' . $diff;
+                                }
+                            }
+                        }
+                        if (!empty($vd['components']) && is_array($vd['components'])) {
+                            foreach ($vd['components'] as $comp => $val) {
+                                $changes[] = $comp . ': ' . (is_array($val) ? json_encode($val) : $val);
+                            }
+                        }
+                        $meta['changes'] = $changes;
+                        if (!empty($changes)) {
+                            $detail .= "\nYang berubah: " . implode('; ', array_slice($changes, 0, 5));
+                        }
+                    }
+                }
+                if (!empty($v['work_order_id'])) {
+                    $meta['url'] = base_url('service/work-orders/detail/' . $v['work_order_id']);
+                }
+
                 $events[] = [
                     'category' => 'VERIFICATION',
                     'icon' => 'check-circle',
                     'color' => 'success',
                     'title' => $title,
                     'description' => !empty($v['work_order_number']) ? $v['work_order_number'] : 'Standalone Verification',
-                    'detail' => 'By: ' . ($v['verifier_name'] ?? '-'),
+                    'detail' => $detail,
                     'date' => $v['verified_at'],
                     'reference_type' => 'verification',
                     'reference_id' => $v['id'],
                     'reference_number' => $v['work_order_number'] ?? null,
+                    'meta' => $meta,
                 ];
             }
         } catch (\Throwable $e) {
@@ -381,7 +426,8 @@ class UnitActivityService
     }
 
     /**
-     * Get component change events
+     * Get component change events (attachment/charger/battery attach/detach/transfer)
+     * Uses from_unit_id / to_unit_id (component_audit_log schema)
      */
     protected function getComponentEvents(int $unitId): array
     {
@@ -392,36 +438,111 @@ class UnitActivityService
                 return $events;
             }
 
-            $logs = $this->db->table('component_audit_log')
-                ->where('unit_id', $unitId)
-                ->orderBy('created_at', 'DESC')
+            $logs = $this->db->table('component_audit_log cal')
+                ->select('cal.*, CONCAT(u.first_name, " ", u.last_name) as actor_name')
+                ->join('users u', 'u.id = cal.performed_by', 'left')
+                ->groupStart()
+                    ->where('cal.from_unit_id', $unitId)
+                    ->orWhere('cal.to_unit_id', $unitId)
+                ->groupEnd()
+                ->orderBy('cal.performed_at', 'DESC')
                 ->get()->getResultArray();
 
+            $eventTypeLabels = [
+                'ASSIGNED' => 'Attached',
+                'REMOVED' => 'Detached',
+                'TRANSFERRED' => 'Transferred',
+                'ATTACHED' => 'Attached',
+                'DETACHED' => 'Detached',
+                'REPLACED' => 'Replaced',
+            ];
+
             foreach ($logs as $log) {
-                $actionLabels = [
-                    'ATTACH' => 'Component Attached',
-                    'DETACH' => 'Component Detached',
-                    'SWAP' => 'Component Swapped',
-                ];
+                $isIncoming = (int)($log['to_unit_id'] ?? 0) === $unitId;
+                $eventType = $log['event_type'] ?? 'ASSIGNED';
+                $label = $eventTypeLabels[$eventType] ?? ucfirst(strtolower($eventType));
+                $direction = $isIncoming ? '→ Incoming' : '← Outgoing';
 
                 $events[] = [
                     'category' => 'COMPONENT',
                     'icon' => 'puzzle-piece',
                     'color' => 'teal',
-                    'title' => $actionLabels[$log['action']] ?? 'Component: ' . ($log['action'] ?? '-'),
-                    'description' => ucfirst(strtolower($log['component_type'] ?? 'Component')),
+                    'title' => ucfirst(strtolower($log['component_type'] ?? 'Component')) . ' ' . $label . ' ' . $direction,
+                    'description' => $log['event_title'] ?? ($log['triggered_by'] ?? 'Manual'),
                     'detail' => implode(' | ', array_filter([
-                        !empty($log['serial_number']) ? 'S/N: ' . $log['serial_number'] : null,
+                        !empty($log['actor_name']) ? 'By: ' . $log['actor_name'] : null,
                         !empty($log['notes']) ? $log['notes'] : null,
                     ])),
-                    'date' => $log['created_at'],
+                    'date' => $log['performed_at'] ?? $log['created_at'],
                     'reference_type' => 'component',
                     'reference_id' => $log['component_id'],
-                    'reference_number' => $log['serial_number'] ?? null,
+                    'reference_number' => null,
+                    'meta' => [
+                        'url' => null,
+                        'spk_id' => $log['spk_id'] ?? null,
+                        'work_order_id' => $log['work_order_id'] ?? null,
+                    ],
                 ];
             }
         } catch (\Throwable $e) {
             log_message('warning', '[UnitActivityService] getComponentEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get sparepart usage events from work_order_spareparts (via work_orders.unit_id)
+     */
+    protected function getSparepartUsageEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('work_order_spareparts') || !$this->db->tableExists('work_orders')) {
+                return $events;
+            }
+
+            $rows = $this->db->table('work_order_spareparts wos')
+                ->select('wos.*, wo.work_order_number, wo.unit_id, wo.report_date,
+                    CONCAT(u.first_name, " ", u.last_name) as mechanic_name')
+                ->join('work_orders wo', 'wo.id = wos.work_order_id', 'inner')
+                ->join('users u', 'u.id = wo.mechanic_id', 'left')
+                ->where('wo.unit_id', $unitId)
+                ->whereNull('wo.deleted_at')
+                ->groupStart()
+                    ->where('wos.quantity_used >', 0)
+                    ->orWhere('wos.quantity_brought >', 0)
+                ->groupEnd()
+                ->orderBy('wo.report_date', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($rows as $row) {
+                $qty = (int)($row['quantity_used'] ?? $row['quantity_brought'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $partName = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+                $events[] = [
+                    'category' => 'SPAREPART',
+                    'icon' => 'wrench',
+                    'color' => 'indigo',
+                    'title' => 'Sparepart dipakai: ' . $partName,
+                    'description' => $row['work_order_number'] ?? '-',
+                    'detail' => implode(' | ', array_filter([
+                        'Qty: ' . $qty . ' ' . ($row['satuan'] ?? ''),
+                        !empty($row['mechanic_name']) ? 'Mekanik: ' . $row['mechanic_name'] : null,
+                    ])),
+                    'date' => $row['report_date'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'reference_type' => 'work_order',
+                    'reference_id' => $row['work_order_id'],
+                    'reference_number' => $row['work_order_number'],
+                    'meta' => [
+                        'url' => base_url('service/work-orders/detail/' . $row['work_order_id']),
+                    ],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getSparepartUsageEvents: ' . $e->getMessage());
         }
 
         return $events;
@@ -456,6 +577,7 @@ class UnitActivityService
                     'reference_type' => $event['reference_type'] ?? null,
                     'reference_id' => $event['reference_id'] ?? null,
                     'reference_number' => null,
+                    'meta' => [],
                 ];
             }
         } catch (\Throwable $e) {
@@ -508,7 +630,7 @@ class UnitActivityService
                     'is_completed' => strtolower($wo['status_name'] ?? '') === 'completed',
                     'date' => $wo['report_date'] ?? $wo['created_at'],
                     'spareparts' => $spareparts,
-                    'url' => base_url('service/work-orders/' . $wo['id']),
+                    'url' => base_url('service/work-orders/detail/' . $wo['id']),
                 ];
             }
         } catch (\Throwable $e) {
@@ -561,7 +683,7 @@ class UnitActivityService
                         'is_completed' => $isCompleted,
                         'date' => $stage['tanggal_approve'] ?? $stage['created_at'],
                         'spareparts' => $spareparts,
-                        'url' => base_url('operational/spk/' . $stage['spk_id']),
+                        'url' => base_url('service/spk/detail/' . $stage['spk_id']),
                     ];
                 }
             }

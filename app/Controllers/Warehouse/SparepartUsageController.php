@@ -71,7 +71,8 @@ class SparepartUsageController extends BaseController
     }
 
     /**
-     * Get usage list grouped by Work Order (DataTable)
+     * Get usage list grouped by Work Order + SPK (DataTable)
+     * Combines WO spareparts and SPK spareparts in one view
      */
     public function getUsageGrouped()
     {
@@ -84,91 +85,191 @@ class SparepartUsageController extends BaseController
         }
 
         $request = $this->request;
-        $draw = $request->getPost('draw') ?? 1;
-        $start = $request->getPost('start') ?? 0;
-        $length = $request->getPost('length') ?? 10;
-        $search = $request->getPost('search')['value'] ?? '';
+        $draw    = $request->getPost('draw')   ?? 1;
+        $start   = (int)($request->getPost('start')  ?? 0);
+        $length  = (int)($request->getPost('length') ?? 25);
+        $search  = $request->getPost('search')['value'] ?? '';
 
         try {
             $db = \Config\Database::connect();
-            
-            // Get work orders that have sparepart usage
-            $builder = $db->table('work_orders wo')
-                ->select('
-                    wo.id as work_order_id,
-                    wo.work_order_number,
-                    wo.report_date,
-                    wo.created_at,
-                    c.customer_name,
-                    iu.no_unit as unit_number,
-                    mu.merk_unit,
-                    mu.model_unit,
-                    COUNT(DISTINCT wosp.id) as total_items,
-                    SUM(CASE WHEN wosp.is_from_warehouse = 1 THEN 1 ELSE 0 END) as warehouse_items,
-                    SUM(CASE WHEN wosp.is_from_warehouse = 0 THEN 1 ELSE 0 END) as nonwarehouse_items
-                ')
-                ->join('work_order_spareparts wosp', 'wosp.work_order_id = wo.id', 'inner')
-                ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
-                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
-                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customers c', 'c.id = k.customer_id', 'left')
-                ->groupBy('wo.id');
 
-            // Apply search
+            $searchEsc = $db->escapeLikeString($search);
+
+            // --- WO sub-query ---
+            $woWhere = '';
             if (!empty($search)) {
-                $builder->groupStart()
-                    ->like('wo.work_order_number', $search)
-                    ->orLike('c.customer_name', $search)
-                    ->orLike('iu.no_unit', $search)
-                    ->orLike('mu.merk_unit', $search)
-                ->groupEnd();
+                $woWhere = "AND (wo.work_order_number LIKE '%{$searchEsc}%'
+                              OR c.customer_name LIKE '%{$searchEsc}%'
+                              OR iu.no_unit      LIKE '%{$searchEsc}%')";
             }
+            $woSql = "
+                SELECT
+                    'WO'                               AS record_source,
+                    wo.id                              AS record_id,
+                    wo.work_order_number               AS reference_number,
+                    wo.report_date                     AS record_date,
+                    wo.created_at                      AS created_at,
+                    COALESCE(c.customer_name, '-')     AS customer_name,
+                    COALESCE(iu.no_unit, '-')          AS unit_number,
+                    COALESCE(mu.merk_unit, '')         AS merk_unit,
+                    COALESCE(mu.model_unit, '')        AS model_unit,
+                    COUNT(DISTINCT wosp.id)            AS total_items,
+                    SUM(wosp.is_from_warehouse = 1)    AS warehouse_items,
+                    SUM(wosp.is_from_warehouse = 0)    AS nonwarehouse_items
+                FROM work_orders wo
+                INNER JOIN work_order_spareparts wosp ON wosp.work_order_id = wo.id
+                LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit  = wo.unit_id
+                LEFT  JOIN model_unit mu      ON mu.id_model_unit       = iu.model_unit_id
+                LEFT  JOIN kontrak_unit ku    ON ku.unit_id = iu.id_inventory_unit
+                                             AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                             AND ku.is_temporary = 0
+                LEFT  JOIN kontrak k          ON k.id  = ku.kontrak_id
+                LEFT  JOIN customers c        ON c.id  = k.customer_id
+                WHERE wo.deleted_at IS NULL
+                {$woWhere}
+                GROUP BY wo.id
+            ";
 
-            // Get total records
-            $totalRecords = $builder->countAllResults(false);
+            // --- SPK sub-query ---
+            $spkWhere = '';
+            if (!empty($search)) {
+                $spkWhere = "AND (s.nomor_spk  LIKE '%{$searchEsc}%'
+                              OR s.pelanggan  LIKE '%{$searchEsc}%')";
+            }
+            $spkSql = "
+                SELECT
+                    'SPK'                              AS record_source,
+                    s.id                               AS record_id,
+                    s.nomor_spk                        AS reference_number,
+                    DATE(s.dibuat_pada)                AS record_date,
+                    s.dibuat_pada                      AS created_at,
+                    COALESCE(s.pelanggan, '-')         AS customer_name,
+                    COALESCE(iu.no_unit, '-')          AS unit_number,
+                    COALESCE(mu.merk_unit, '')         AS merk_unit,
+                    COALESCE(mu.model_unit, '')        AS model_unit,
+                    COUNT(DISTINCT ssp.id)             AS total_items,
+                    SUM(ssp.is_from_warehouse = 1)     AS warehouse_items,
+                    SUM(ssp.is_from_warehouse = 0)     AS nonwarehouse_items
+                FROM spk s
+                INNER JOIN spk_spareparts ssp ON ssp.spk_id = s.id
+                LEFT  JOIN kontrak k          ON k.id = s.kontrak_id
+                LEFT  JOIN kontrak_unit ku    ON ku.kontrak_id = k.id
+                                             AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                             AND ku.is_temporary = 0
+                LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit = ku.unit_id
+                LEFT  JOIN model_unit mu      ON mu.id_model_unit = iu.model_unit_id
+                WHERE s.deleted_at IS NULL
+                {$spkWhere}
+                GROUP BY s.id
+            ";
 
-            // Apply pagination
-            $builder->limit($length, $start);
+            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
 
-            // Apply ordering - default by date desc
-            $builder->orderBy('wo.created_at', 'DESC');
+            // Total count
+            $countResult = $db->query("SELECT COUNT(*) as cnt FROM ({$unionSql}) AS combined")->getRowArray();
+            $totalRecords = (int)($countResult['cnt'] ?? 0);
 
-            $results = $builder->get()->getResultArray();
+            // Paginated result
+            $rows = $db->query(
+                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+            )->getResultArray();
 
-            // Format data
             $data = [];
-            foreach ($results as $row) {
+            foreach ($rows as $row) {
                 $data[] = [
-                    'work_order_id' => $row['work_order_id'],
-                    'work_order_number' => $row['work_order_number'],
-                    'report_date' => $row['report_date'] ? date('d/m/Y', strtotime($row['report_date'])) : '-',
-                    'created_at' => $row['created_at'] ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
-                    'customer_name' => $row['customer_name'] ?? '-',
-                    'unit_number' => $row['unit_number'] ?? '-',
-                    'unit_info' => trim(($row['merk_unit'] ?? '') . ' ' . ($row['model_unit'] ?? '')) ?: '-',
-                    'total_items' => (int)$row['total_items'],
-                    'warehouse_items' => (int)$row['warehouse_items'],
-                    'nonwarehouse_items' => (int)$row['nonwarehouse_items']
+                    'record_source'    => $row['record_source'],
+                    'record_id'        => $row['record_id'],
+                    'reference_number' => $row['reference_number'],
+                    'report_date'      => $row['record_date']  ? date('d/m/Y', strtotime($row['record_date']))  : '-',
+                    'created_at'       => $row['created_at']   ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
+                    'customer_name'    => $row['customer_name'],
+                    'unit_number'      => $row['unit_number'],
+                    'unit_info'        => trim($row['merk_unit'] . ' ' . $row['model_unit']) ?: '-',
+                    'total_items'      => (int)$row['total_items'],
+                    'warehouse_items'  => (int)$row['warehouse_items'],
+                    'nonwarehouse_items' => (int)$row['nonwarehouse_items'],
                 ];
             }
 
             return $this->response->setJSON([
-                'draw' => intval($draw),
-                'recordsTotal' => $totalRecords,
+                'draw'            => intval($draw),
+                'recordsTotal'    => $totalRecords,
                 'recordsFiltered' => $totalRecords,
-                'data' => $data
+                'data'            => $data,
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting grouped usage: ' . $e->getMessage());
+            log_message('error', 'getUsageGrouped error: ' . $e->getMessage());
             return $this->response->setJSON([
-                'draw' => intval($draw),
-                'recordsTotal' => 0,
+                'draw'            => intval($draw),
+                'recordsTotal'    => 0,
                 'recordsFiltered' => 0,
-                'data' => [],
-                'error' => $e->getMessage()
+                'data'            => [],
+                'error'           => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Get sparepart details for a specific SPK (expand row)
+     */
+    public function getSpkSpareparts(int $spkId)
+    {
+        if (!$this->canAccess('warehouse')) {
+            return $this->response->setJSON([]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            $spareparts = $db->table('spk_spareparts ssp')
+                ->select('ssp.*, iu.no_unit as source_unit_number')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ssp.source_unit_id', 'left')
+                ->where('ssp.spk_id', $spkId)
+                ->get()->getResultArray();
+
+            if (empty($spareparts)) {
+                return $this->response->setJSON([]);
+            }
+
+            $spkInfo = $db->table('spk s')
+                ->select('s.nomor_spk, DATE(s.dibuat_pada) as spk_date, s.pelanggan as customer_name,
+                          iu.no_unit as unit_number, CONCAT_WS(" ", mu.merk_unit, mu.model_unit) as unit_info')
+                ->join('kontrak k', 'k.id = s.kontrak_id', 'left')
+                ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->where('s.id', $spkId)
+                ->get()->getRowArray();
+
+            $result = [];
+            foreach ($spareparts as $item) {
+                $result[] = [
+                    'id'               => $item['id'],
+                    'sparepart_code'   => $item['sparepart_code'] ?? '-',
+                    'sparepart_name'   => $item['sparepart_name'],
+                    'item_type'        => $item['item_type'] ?? 'sparepart',
+                    'is_from_warehouse'=> (int)($item['is_from_warehouse'] ?? 1),
+                    'source_type'      => $item['source_type'] ?? 'WAREHOUSE',
+                    'source_unit_number' => $item['source_unit_number'] ?? null,
+                    'quantity_brought' => $item['quantity_brought'],
+                    'quantity_used'    => $item['quantity_used'] ?? 0,
+                    'quantity_return'  => 0,
+                    'usage_notes'      => $item['source_notes'] ?? $item['notes'] ?? '-',
+                    'work_order_number'=> $spkInfo['nomor_spk'] ?? '-',
+                    'report_date'      => isset($spkInfo['spk_date']) ? date('d/m/Y', strtotime($spkInfo['spk_date'])) : '-',
+                    'mechanic_name'    => '-',
+                    'customer_name'    => $spkInfo['customer_name'] ?? '-',
+                    'unit_number'      => $spkInfo['unit_number']   ?? '-',
+                    'unit_info'        => $spkInfo['unit_info']     ?? '-',
+                ];
+            }
+
+            return $this->response->setJSON($result);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getSpkSpareparts error: ' . $e->getMessage());
+            return $this->response->setJSON([]);
         }
     }
 

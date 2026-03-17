@@ -1,0 +1,15 @@
+[33m1623288[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31mupstream/main[m[33m, [m[1;31mupstream/HEAD[m[33m)[m feat: Enhance various controllers and routes with new functionalities, including contract linking, invoice management, and component handling
+[33mea6006d[m feat: Enhance SPK service with sparepart printing functionality and improve unit filtering logic
+[33m9b12c58[m feat: Add SPK Sparepart Integration Documentation
+[33m41a83f0[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m security: remove sensitive files from tracking (.env_production, backups/, SQL dumps)
+[33mda5d2da[m Add migration scripts for new tables and procedures, create test service users and department scope testing scripts
+[33m193e138[m Refactor code structure for improved readability and maintainability
+[33m1bfd915[m Implement feature X to enhance user experience and fix bug Y in module Z
+[33m56ba236[m feat: Implement UI consistency improvements and notification system updates
+[33m1ad2dc4[m refactor(database): update performance indexes documentation to indicate existing indexes
+[33m54995c5[m feat(service): implement department-based filtering for employee selection feat(spk-mechanic-multiselect): update to support department filtering instead of role-based feat(kontrak): enhance duplicate contract handling for renewals with logging
+[33mc1853d6[m Refactor badge styles across multiple views to use badge-soft-* classes for consistency
+[33me3b305a[m feat: Update UI components and styles for warehouse PO verification
+[33m335f46f[m feat(customer-management): add delete location functionality with confirmation modal
+[33m22b27f7[m feat(database): Fix inventory attachment references in triggers and procedures
+[33m62c49b5[m fix: remove border-radius from nav-link for completely flat design

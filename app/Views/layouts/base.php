@@ -188,7 +188,7 @@ $currentLang = service('request')->getLocale();
                     if (name && name.startsWith('csrf')) {
                         const tokenData = {
                             cookieName: name,
-                            tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
+                            tokenName: <?= json_encode(csrf_token()) ?>,
                             tokenValue: decodeURIComponent(value),
                             hash: decodeURIComponent(value) // alias
                         };
@@ -203,8 +203,8 @@ $currentLang = service('request')->getLocale();
             const metaCsrf = document.querySelector('meta[name="csrf-token"]');
             if (metaCsrf && metaCsrf.content) {
                 const fallbackData = {
-                    cookieName: '<?= config('Security')->cookieName ?? 'csrf_cookie_name' ?>',
-                    tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
+                    cookieName: <?= json_encode(config('Security')->cookieName ?? 'csrf_cookie_name') ?>,
+                    tokenName: <?= json_encode(csrf_token()) ?>,
                     tokenValue: metaCsrf.content,
                     hash: metaCsrf.content
                 };
@@ -214,7 +214,7 @@ $currentLang = service('request')->getLocale();
             // Priority 3: Last resort - empty token (will fail, but at least won't crash)
             return {
                 cookieName: 'csrf_cookie_name',
-                tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
+                tokenName: <?= json_encode(csrf_token()) ?>,
                 tokenValue: '',
                 hash: ''
             };
@@ -226,7 +226,7 @@ $currentLang = service('request')->getLocale();
         };
         
         // Global token variables (updated dynamically)
-        window.csrfTokenName = '<?= csrf_token() ?>'; // Now reads from corrected .env
+        window.csrfTokenName = <?= json_encode(csrf_token()) ?>;
         window.csrfTokenValue = window.getCsrfToken();
         window.csrfToken = window.csrfTokenValue; // Alias for backward compatibility
         // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
@@ -235,7 +235,7 @@ $currentLang = service('request')->getLocale();
         // GLOBAL AJAX ERROR HANDLER - Handle session expiration
         // ============================================================
         (function() {
-            const baseUrl = '<?= base_url() ?>';
+            const baseUrl = <?= json_encode(base_url()) ?>;
             const loginUrl = baseUrl + '/auth/login';
 
             // Override fetch API
@@ -597,7 +597,7 @@ $currentLang = service('request')->getLocale();
         window.pageStartTime = performance.now();
         
         // Define BASE_URL globally for all JavaScript files
-        var BASE_URL = '<?= rtrim(base_url(), '/') ?>/';
+        var BASE_URL = <?= json_encode(rtrim(base_url(), '/') . '/') ?>;
         window.BASE_URL = BASE_URL;
 
         // Global auth/session error handler module
@@ -606,7 +606,7 @@ $currentLang = service('request')->getLocale();
             handleSessionExpired: function(response) {
                 if (this._sessionExpiredShown) return;
                 this._sessionExpiredShown = true;
-                var loginUrl = '<?= base_url('auth/login') ?>';
+                var loginUrl = <?= json_encode(base_url('auth/login')) ?>;
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'warning',
@@ -907,7 +907,7 @@ $currentLang = service('request')->getLocale();
     <script>
     // Initialize current language from session
     if (typeof LanguageHelper !== 'undefined') {
-        LanguageHelper.setLanguage('<?= service('request')->getLocale() ?>');
+        LanguageHelper.setLanguage(<?= json_encode(service('request')->getLocale()) ?>);
     }
     </script>
     <!-- Vendor: DataTables (loaded deferred for better performance) -->
@@ -1041,15 +1041,15 @@ $currentLang = service('request')->getLocale();
     <!-- Global JavaScript Variables -->
     <script>
         // Set global variables
-        window.baseUrl = '<?= base_url() ?>';
-        window.csrfToken = '<?= csrf_hash() ?>';
-        window.csrfTokenName = '<?= csrf_token() ?>';
+        window.baseUrl = <?= json_encode(base_url()) ?>;
+        window.csrfToken = <?= json_encode(csrf_hash()) ?>;
+        window.csrfTokenName = <?= json_encode(csrf_token()) ?>;
         window.currentUser = {
-            id: '<?= session()->get('user_id') ?>',
-            name: '<?= session()->get('first_name') . ' ' . session()->get('last_name') ?>',
-            email: '<?= session()->get('email') ?>',
-            role: '<?= session()->get('role') ?>',
-            avatar: '<?= session()->get('avatar') ?: base_url('assets/images/default-avatar.svg') ?>'
+            id: <?= json_encode((string)(session()->get('user_id') ?? '')) ?>,
+            name: <?= json_encode(trim((session()->get('first_name') ?? '') . ' ' . (session()->get('last_name') ?? ''))) ?>,
+            email: <?= json_encode((string)(session()->get('email') ?? '')) ?>,
+            role: <?= json_encode((string)(session()->get('role') ?? '')) ?>,
+            avatar: <?= json_encode((string)(session()->get('avatar') ?: base_url('assets/images/default-avatar.svg'))) ?>
         };
         
         // Global permissions for JavaScript
@@ -1213,11 +1213,11 @@ $currentLang = service('request')->getLocale();
                                     confirmButtonText: 'Login',
                                     allowOutsideClick: false,
                                 }).then(() => {
-                                    window.location.href = '<?= base_url('auth/login') ?>';
+                                    window.location.href = <?= json_encode(base_url('auth/login')) ?>;
                                 });
                             } else {
                                 alert('Sesi Anda telah berakhir. Silakan login kembali.');
-                                window.location.href = '<?= base_url('auth/login') ?>';
+                                window.location.href = <?= json_encode(base_url('auth/login')) ?>;
                             }
                             return false;
                         }

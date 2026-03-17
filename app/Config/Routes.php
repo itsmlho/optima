@@ -598,6 +598,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/detail/(:num)', 'Service::spkDetail/$1');
     $routes->get('spk/print/(:num)', 'Service::spkPrint/$1');
     $routes->get('spk/print-sparepart/(:num)', 'Service::printSpkSparepartRequest/$1');
+    $routes->post('spk/save-sparepart/(:num)', 'Service::saveSparepartRequest/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');
     $routes->post('spk/approve-fabrikasi', 'Service::approveFabrikasi');
@@ -751,6 +752,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('get-usage-grouped', 'Warehouse\SparepartUsageController::getUsageGrouped');
         $routes->get('get-usage-detail/(:num)', 'Warehouse\SparepartUsageController::getUsageDetail/$1');
         $routes->get('get-work-order-spareparts/(:num)', 'Warehouse\SparepartUsageController::getWorkOrderSpareparts/$1');
+        $routes->get('get-spk-spareparts/(:num)', 'Warehouse\SparepartUsageController::getSpkSpareparts/$1');
         $routes->post('get-returns', 'Warehouse\SparepartUsageController::getReturns');
         $routes->get('get-return-detail/(:num)', 'Warehouse\SparepartUsageController::getReturnDetail/$1');
         $routes->post('confirm-return/(:num)', 'Warehouse\SparepartUsageController::confirmReturn/$1');
@@ -831,6 +833,7 @@ $routes->group('warehouse', static function ($routes) {
             $routes->get('(:num)',               'Warehouse\UnitInventoryController::show/$1');
             $routes->post('(:num)/destroy',      'Warehouse\UnitInventoryController::destroy/$1');
             $routes->get('(:num)/timeline',      'Warehouse\UnitInventoryController::getTimeline/$1');
+            $routes->get('(:num)/activity',      'Warehouse\UnitInventoryController::getActivity/$1');
             $routes->get('(:num)/movements',     'Warehouse\UnitInventoryController::getMovementHistory/$1');
             $routes->get('(:num)/print',         'Warehouse\UnitInventoryController::printUnit/$1');
             $routes->post('(:num)/inline-update','Warehouse\UnitInventoryController::inlineUpdate/$1');

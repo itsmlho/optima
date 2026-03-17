@@ -289,6 +289,60 @@ $can_export = true;
 			</div>
 		</div>
 	</div>
+
+	<!-- Input Sparepart Modal -->
+	<div class="modal fade" id="spkInputSparepartModal" tabindex="-1">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title"><i class="fas fa-toolbox me-2 text-primary"></i>Items Brought (Spareparts &amp; Tools) – SPK <span id="inputSparepartSpkNumber" class="fw-bold text-primary"></span></h5>
+					<button class="btn-close" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<input type="hidden" id="inputSparepartSpkId" value="">
+					<div class="mb-3">
+						<label class="form-label fw-semibold">Catatan Umum</label>
+						<textarea class="form-control form-control-sm" id="inputSparepartNotes" rows="2" placeholder="Catatan opsional untuk seluruh daftar..."></textarea>
+					</div>
+					<div class="card shadow-sm mb-0">
+						<div class="card-header">
+							<h6 class="mb-0"><i class="fas fa-toolbox me-2"></i>Items Brought (Spareparts &amp; Tools)</h6>
+						</div>
+						<div class="card-body p-2">
+							<div class="table-responsive">
+								<table class="table table-striped table-hover table-sm" id="sparepartInputTable" style="table-layout: fixed; width: 100%;">
+									<thead class="table-light">
+										<tr>
+											<th style="width: 100px;">Type <span class="text-danger">*</span></th>
+											<th style="width: 280px;">Item Name <span class="text-danger">*</span></th>
+											<th style="width: 70px;">Qty <span class="text-danger">*</span></th>
+											<th style="width: 90px;">Unit <span class="text-danger">*</span></th>
+											<th style="width: 110px;">Source <span class="text-danger">*</span></th>
+											<th style="width: auto;">Notes / Kanibal</th>
+											<th style="width: 50px;">Del</th>
+										</tr>
+									</thead>
+									<tbody id="sparepartInputRows"></tbody>
+								</table>
+							</div>
+							<div class="mt-2">
+								<button type="button" class="btn btn-success btn-sm" id="btnAddSparepartRow">
+									<i class="fas fa-plus"></i> Add Item
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer d-flex justify-content-between">
+					<small class="text-muted"><i class="fas fa-info-circle me-1"></i>Fields dengan <span class="text-danger">*</span> wajib diisi</small>
+					<div class="d-flex gap-2">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
+						<button type="button" class="btn btn-primary" id="btnSubmitSparepartInput"><i class="fas fa-save me-1"></i>Simpan Sparepart</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <?= $this->endSection() ?>
@@ -417,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						let actions = '';
 						
 						if (row.status === 'SUBMITTED') {
-							actions = '<span class="text-muted">Menunggu diproses</span>';
+							actions = `<button class="btn btn-sm btn-success" onclick="prosesSPK(${row.id});return false;"><i class="fas fa-play me-1"></i>Proses SPK</button><br><small class="text-muted">Menunggu diproses</small>`;
 						} else if (row.status === 'IN_PROGRESS') {
 							// Show approval stage buttons
 							const stageStatus = row.stage_status || {};
@@ -494,12 +548,17 @@ document.addEventListener('DOMContentLoaded', () => {
 							actions = '<span class="badge badge-soft-blue"><i class="fas fa-flag-checkered me-1"></i>Completed</span>';
 						}
 						
-						// Sparepart indicator: show in action column only if NOT yet planned
+						// Sparepart indicator: icon-only when alongside stage button, full text when alone
 						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
-							actions += ` <a href="#" onclick="openDetail(${row.id}, false);return false;" class="badge badge-soft-orange ms-1" title="Sparepart belum direncanakan"><i class="fas fa-tools me-1"></i>Input Sparepart</a>`;
+							const hasStageBtn = actions.length > 0;
+							if (hasStageBtn) {
+								actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id});return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
+							} else {
+								actions = `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id});return false;"><i class="fas fa-tools me-1"></i>Add Sparepart</button>`;
+							}
 						}
 						
-						return actions || '<span class="text-muted">-</span>';
+						return `<div class="d-flex gap-1 align-items-center">${actions || '<span class="text-muted">-</span>'}</div>`;
 					}
 				}
 			],
@@ -545,6 +604,33 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (spkTable && spkTable.ajax) {
 			spkTable.ajax.reload();
 		}
+	};
+
+	// Proses SPK directly from action column
+	window.prosesSPK = function(id) {
+		confirmSwal({
+			title: 'Proses SPK?',
+			text: 'Status SPK akan berubah menjadi IN_PROGRESS.',
+			confirmText: 'Ya, Proses',
+			icon: 'question'
+		}).then(function(confirmed) {
+			if (!confirmed) return;
+			const formData = new FormData();
+			formData.append(window.csrfTokenName, window.csrfTokenValue);
+			formData.append('status', 'IN_PROGRESS');
+			fetch('<?= base_url('service/spk/update-status/') ?>' + id, {
+				method: 'POST',
+				headers: {'X-Requested-With': 'XMLHttpRequest'},
+				body: formData
+			}).then(r => r.json()).then(res => {
+				if (res && res.success) {
+					notify('SPK berhasil diproses. Status: IN_PROGRESS.', 'success');
+					window.reloadSpkTable();
+				} else {
+					notify(res.message || 'Gagal memproses SPK', 'error');
+				}
+			}).catch(() => notify('Terjadi kesalahan sistem', 'error'));
+		});
 	};
 
 	let currentSpkId = null;
@@ -648,13 +734,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				actionButtons = `
 					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
-					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : '<span class="badge badge-soft-orange ms-1"><i class="fas fa-tools me-1"></i>Sparepart belum direncanakan</span>'}
+					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : '<span class="badge badge-soft-yellow ms-1"><i class="fas fa-tools me-1"></i>Sparepart belum direncanakan</span>'}`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;
@@ -2233,33 +2319,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		const installedMerk = selectedOption.dataset.installedMerk;
 		const installedModel = selectedOption.dataset.installedModel;
 		
-		Swal.fire({
-			icon: 'warning',
-			title: `${itemType} In Use`,
-			html: `<div class="text-start">
-				<p class="mb-2"><strong>Attention!</strong> The selected ${itemType} is currently installed on another unit:</p>
-				<div class="alert alert-warning mb-3">
-					<strong>Current Unit:</strong><br>
-					<i class="fas fa-forklift me-2"></i>Unit No: ${installedUnitNo || 'N/A'}<br>
-					<i class="fas fa-barcode me-2"></i>Serial: ${installedSN || 'N/A'}<br>
-					<i class="fas fa-cube me-2"></i>${installedMerk || ''} ${installedModel || ''}
-				</div>
-				<p class="mb-2"><strong>Options:</strong></p>
-				<ul class="mb-0">
-					<li><strong>YES</strong> - Move the ${itemType} from the old unit to the new unit (cannibalization process)</li>
-					<li><strong>CANCEL</strong> - Cancel the selection of this ${itemType}</li>
-				</ul>
-			</div>`,
-			showCancelButton: true,
-			confirmButtonText: 'YES, MOVE IT',
-			confirmButtonColor: '#ff9800',
-			cancelButtonText: window.lang('cancel'),
-			cancelButtonColor: '#6c757d',
-			allowOutsideClick: false
-		}).then((result) => {
-			if (result.isConfirmed) {
+		confirmSwal({
+			title: `${itemType} Sedang Dipakai`,
+			text: `${itemType} ini sedang terpasang di Unit ${installedUnitNo || 'N/A'} (${installedMerk || ''} ${installedModel || ''}, SN: ${installedSN || 'N/A'}). Lanjutkan proses kanibal untuk memindahkannya?`,
+			confirmText: 'Ya, Pindahkan',
+			icon: 'warning'
+		}).then((confirmed) => {
+			if (confirmed) {
 				// User confirmed kanibal - keep selection
-				console.log(`Kanibal confirmed for ${itemType}:`, selectedOption.value);
 				// Add flag to indicate this is a kanibal operation
 				selectedOption.dataset.kanibal = 'true';
 			} else {
@@ -3568,20 +3635,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					// Second alert: No Unit information (after short delay)
 					setTimeout(() => {
-						Swal.fire({
-							icon: 'info',
-							title: 'Unit Number Assigned',
-							html: `<div class="text-center">
-								<p class="mb-2">This unit has been assigned the number:</p>
-								<div class="p-2 bg-white bg-opacity-10 rounded">
-									<h2 class="display-4 fw-bold text-primary mb-0">${j.no_unit}</h2>
-								</div>
-							</div>`,
-							confirmButtonText: 'OK, Understand',
-							confirmButtonColor: '#000000',
-							allowOutsideClick: false,
-							width: '400px'
-						});
+						alertSwal('info', `Nomor unit ${j.no_unit} telah ditetapkan untuk unit ini.`, 'Nomor Unit Ditetapkan');
 					}, 500);
 					
 					// Third alert: Attachment transfer (if applicable)
@@ -5263,14 +5317,7 @@ function validateDuplicateSelection(selectElement, type) {
 		const typeLabel = type === 'attachment' ? 'Attachment' : 
 		                 type === 'battery' ? 'Battery' : 'Charger';
 		
-		Swal.fire({
-			icon: 'warning',
-			title: 'Duplicate Detected!',
-			html: `<p><strong>${typeLabel}</strong> that you selected is already used in <strong>${conflictingUnitLabel}</strong>.</p>
-			       <p>Please select a different ${typeLabel.toLowerCase()}.</p>`,
-			confirmButtonText: 'OK',
-			confirmButtonColor: '#f39c12'
-		});
+		alertSwal('warning', `${typeLabel} yang dipilih sudah digunakan di ${conflictingUnitLabel}. Pilih ${typeLabel.toLowerCase()} yang berbeda.`, 'Duplikat Terdeteksi!');
 		
 		// Clear the selection
 		selectElement.value = '';
@@ -5472,6 +5519,339 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			console.log('DEBUG: No department name found, skipping departmental rules');
 		}
 	}
+
+	// ============================================================
+	// SPK INPUT SPAREPART MODAL — matches Work Order "Items Brought"
+	// ============================================================
+	let _spkSpRowCount = 0;
+
+	window.openInputSparepart = function(id) {
+		_spkSpRowCount = 0;
+		document.getElementById('inputSparepartSpkId').value = id;
+		document.getElementById('inputSparepartSpkNumber').textContent = '#' + id;
+		document.getElementById('inputSparepartNotes').value = '';
+		document.getElementById('sparepartInputRows').innerHTML = '';
+		_addSpkSparepartRow();
+		bootstrap.Modal.getOrCreateInstance(document.getElementById('spkInputSparepartModal')).show();
+	};
+
+	document.getElementById('btnAddSparepartRow').addEventListener('click', function() {
+		_addSpkSparepartRow();
+	});
+
+	$(document).on('click', '.spk-remove-sp-row', function() {
+		$(this).closest('tr').remove();
+	});
+
+	function _addSpkSparepartRow() {
+		_spkSpRowCount++;
+		const rc = _spkSpRowCount;
+
+		const row = `
+			<tr>
+				<td>
+					<select class="form-select form-select-sm" name="sp_item_type_${rc}"
+							id="spk_item_type_${rc}"
+							onchange="switchSpkItemInput(${rc})" required>
+						<option value="sparepart" selected>Sparepart</option>
+						<option value="tool">Tool</option>
+					</select>
+				</td>
+				<td>
+					<div id="spk_item_input_${rc}">
+						<select class="form-select form-select-sm"
+								name="sp_name_${rc}"
+								id="spk_sparepart_${rc}"
+								required>
+							<option value="">-- Select Sparepart --</option>
+						</select>
+						<input type="text"
+							   class="form-control form-control-sm d-none"
+							   id="spk_sparepart_manual_${rc}"
+							   placeholder="Ketik nama sparepart manual"
+							   maxlength="255">
+						<input type="text"
+							   class="form-control form-control-sm d-none"
+							   id="spk_tool_input_${rc}"
+							   placeholder="e.g., Kunci Inggris 12mm"
+							   maxlength="255">
+					</div>
+				</td>
+				<td>
+					<input type="number" class="form-control form-control-sm"
+						   name="sp_qty_${rc}" value="1" min="1" required>
+				</td>
+				<td>
+					<select class="form-select form-select-sm" name="sp_satuan_${rc}" required>
+						<option value="PCS" selected>PCS</option>
+						<option value="UNIT">UNIT</option>
+						<option value="SET">SET</option>
+						<option value="PASANG">PASANG</option>
+						<option value="KG">KG</option>
+						<option value="GRAM">GRAM</option>
+						<option value="METER">METER</option>
+						<option value="CM">CM</option>
+						<option value="LITER">LITER</option>
+						<option value="ML">ML</option>
+					</select>
+				</td>
+				<td>
+					<select class="form-select form-select-sm"
+							name="sp_source_${rc}"
+							id="spk_source_${rc}"
+							onchange="toggleSpkKanibalFields(${rc})"
+							required>
+						<option value="WAREHOUSE" selected>Warehouse</option>
+						<option value="BEKAS">Bekas</option>
+						<option value="KANIBAL">Kanibal</option>
+					</select>
+				</td>
+				<td>
+					<div class="d-none" id="spk_kanibal_fields_${rc}">
+						<select class="form-select form-select-sm mb-1"
+								id="spk_kanibal_unit_${rc}"
+								style="width:100%">
+							<option value="">-- Pilih Unit Sumber --</option>
+						</select>
+						<textarea class="form-control form-control-sm"
+								  id="spk_kanibal_reason_${rc}"
+								  rows="1"
+								  placeholder="Alasan kanibal *"
+								  maxlength="255"></textarea>
+					</div>
+					<div id="spk_notes_${rc}">
+						<input type="text" class="form-control form-control-sm"
+							   name="sp_notes_${rc}"
+							   placeholder="Optional notes..."
+							   maxlength="255">
+					</div>
+				</td>
+				<td>
+					<button type="button" class="btn btn-danger btn-sm spk-remove-sp-row">
+						<i class="fas fa-times"></i>
+					</button>
+				</td>
+			</tr>
+		`;
+
+		$('#sparepartInputRows').append(row);
+
+		// Initialize Select2 with AJAX for sparepart dropdown
+		setTimeout(function() {
+			const $sel = $(`#spk_sparepart_${rc}`);
+			if (!$sel.hasClass('select2-hidden-accessible')) {
+				$sel.select2({
+					placeholder: '-- Ketik untuk cari sparepart --',
+					allowClear: true,
+					width: '100%',
+					dropdownParent: $('#spkInputSparepartModal'),
+					minimumInputLength: 2,
+					ajax: {
+						url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+						dataType: 'json',
+						delay: 250,
+						data: function(params) { return { q: params.term, page: params.page || 1 }; },
+						processResults: function(data, params) {
+							params.page = params.page || 1;
+							return { results: data.results, pagination: { more: data.pagination.more } };
+						},
+						cache: true
+					},
+					language: {
+						inputTooShort: function() { return 'Ketik minimal 2 karakter...'; },
+						searching: function() { return 'Mencari sparepart...'; },
+						noResults: function() { return 'Tidak ada sparepart ditemukan'; },
+						loadingMore: function() { return 'Memuat lebih banyak...'; }
+					}
+				});
+			}
+		}, 150);
+	}
+
+	// Toggle sparepart / tool input type
+	window.switchSpkItemInput = function(rc) {
+		const type = $(`#spk_item_type_${rc}`).val();
+		const $drop = $(`#spk_sparepart_${rc}`);
+		const $manual = $(`#spk_sparepart_manual_${rc}`);
+		const $tool = $(`#spk_tool_input_${rc}`);
+
+		if (type === 'tool') {
+			$drop.addClass('d-none').removeAttr('required').removeAttr('name');
+			$manual.addClass('d-none').removeAttr('required').removeAttr('name');
+			$tool.removeClass('d-none').attr('required', 'required').attr('name', `sp_name_${rc}`);
+			if ($drop.hasClass('select2-hidden-accessible')) $drop.select2('destroy');
+		} else {
+			$tool.addClass('d-none').removeAttr('required').removeAttr('name');
+			$manual.addClass('d-none').removeAttr('required').removeAttr('name');
+			$drop.removeClass('d-none').attr('required', 'required').attr('name', `sp_name_${rc}`);
+		}
+	};
+
+	// Toggle KANIBAL fields
+	window.toggleSpkKanibalFields = function(rc) {
+		const val = $(`#spk_source_${rc}`).val();
+		const $kanibal = $(`#spk_kanibal_fields_${rc}`);
+		const $notes   = $(`#spk_notes_${rc}`);
+		const $unitSel = $(`#spk_kanibal_unit_${rc}`);
+
+		if (val === 'KANIBAL') {
+			$kanibal.removeClass('d-none');
+			$notes.addClass('d-none');
+			// Init Select2 AJAX for unit dropdown if not yet done
+			if (!$unitSel.hasClass('select2-hidden-accessible')) {
+				$unitSel.select2({
+					placeholder: '-- Cari No. Unit --',
+					allowClear: true,
+					width: '100%',
+					dropdownParent: $('#spkInputSparepartModal'),
+					minimumInputLength: 1,
+					ajax: {
+						url: '<?= base_url('service/work-orders/search-units') ?>',
+						type: 'POST',
+						dataType: 'json',
+						delay: 300,
+						data: function(params) {
+							return {
+								[window.csrfTokenName]: window.csrfTokenValue,
+								query: params.term
+							};
+						},
+						processResults: function(data) {
+							if (!data.success) return { results: [] };
+							return {
+								results: data.data.map(u => ({
+									id: u.no_unit,
+									text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '') + (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+								}))
+							};
+						},
+						cache: true
+					},
+					language: {
+						inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+						searching: function() { return 'Mencari unit...'; },
+						noResults: function() { return 'Unit tidak ditemukan'; }
+					}
+				});
+			}
+		} else {
+			$kanibal.addClass('d-none');
+			$notes.removeClass('d-none');
+			if ($unitSel.hasClass('select2-hidden-accessible')) {
+				$unitSel.val(null).trigger('change');
+			}
+		}
+	};
+
+	// Manual entry button when Select2 opens
+	$(document).on('select2:open', '[id^="spk_sparepart_"]:not([id$="_manual"])', function() {
+		const $select = $(this);
+		const rc = $select.attr('id').replace('spk_sparepart_', '');
+		const $dropdown = $('.select2-dropdown:last');
+		$dropdown.find('.spk-manual-entry-btn').remove();
+		const btn = $(`<div class="spk-manual-entry-btn" style="padding:10px 15px;cursor:pointer;border-top:1px solid #dee2e6;background:#e3f2fd;text-align:center;font-weight:600;color:#0d47a1;">
+			<i class="fas fa-pencil-alt me-2"></i>📝 Input Manual Sparepart
+		</div>`);
+		btn.on('click', function() {
+			$select.select2('close');
+			const $manual = $(`#spk_sparepart_manual_${rc}`);
+			$select.addClass('d-none').removeAttr('name').removeAttr('required');
+			if ($select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
+			$manual.removeClass('d-none').attr('name', `sp_name_${rc}`).attr('required', 'required').focus();
+		});
+		const $search = $dropdown.find('.select2-search');
+		if ($search.length) $search.after(btn);
+		else $dropdown.find('.select2-results').prepend(btn);
+	});
+
+	document.getElementById('btnSubmitSparepartInput').addEventListener('click', function() {
+		const rows  = document.querySelectorAll('#sparepartInputRows tr');
+		const items = [];
+		let valid   = true;
+
+		rows.forEach((row, i) => {
+			const rowNum  = i + 1;
+			const rc      = row.querySelector('[id^="spk_item_type_"]')?.id.replace('spk_item_type_', '');
+			if (!rc) return;
+
+			const itype   = document.getElementById(`spk_item_type_${rc}`)?.value || 'sparepart';
+			const source  = document.getElementById(`spk_source_${rc}`)?.value || 'WAREHOUSE';
+
+			// Get item name depending on type
+			let name = '';
+			if (itype === 'tool') {
+				name = document.getElementById(`spk_tool_input_${rc}`)?.value.trim() || '';
+			} else {
+				const $sel = $(`#spk_sparepart_${rc}`);
+				const $manual = $(`#spk_sparepart_manual_${rc}`);
+				if ($manual.is(':visible')) {
+					name = $manual.val()?.trim() || '';
+				} else {
+					name = $sel.val()?.trim() || '';
+				}
+			}
+
+			const qty     = parseInt(row.querySelector(`[name="sp_qty_${rc}"]`)?.value) || 0;
+			const satuan  = row.querySelector(`[name="sp_satuan_${rc}"]`)?.value?.trim() || '';
+			const notes   = row.querySelector(`[name="sp_notes_${rc}"]`)?.value?.trim() || '';
+			const $unitSel = $(`#spk_kanibal_unit_${rc}`);
+			const unitNo  = $unitSel.hasClass('select2-hidden-accessible') ? ($unitSel.val() || '') : ($unitSel[0]?.value || '');
+			const reason  = document.getElementById(`spk_kanibal_reason_${rc}`)?.value.trim() || '';
+
+			if (!name)                                          { valid = false; notify(`Item Name kosong (baris ${rowNum})`, 'error'); return; }
+			if (qty < 1)                                        { valid = false; notify(`Qty harus > 0 (baris ${rowNum})`, 'error'); return; }
+			if (!satuan)                                        { valid = false; notify(`Unit kosong (baris ${rowNum})`, 'error'); return; }
+			if (source === 'KANIBAL' && !unitNo)                { valid = false; notify(`No. Unit Kanibal wajib diisi (baris ${rowNum})`, 'error'); return; }
+
+			items.push({
+				sparepart_name   : name,
+				sparepart_code   : '',
+				item_type        : itype,
+				source_type      : source,
+				quantity_brought : qty,
+				satuan           : satuan,
+				source_unit_no   : source === 'KANIBAL' ? unitNo  : '',
+				source_notes     : source === 'KANIBAL' ? reason  : notes,
+				is_from_warehouse: source === 'WAREHOUSE' ? 1 : 0
+			});
+		});
+
+		if (!valid || items.length === 0) return;
+
+		const btn   = this;
+		const spkId = document.getElementById('inputSparepartSpkId').value;
+		const notes = document.getElementById('inputSparepartNotes').value.trim();
+
+		btn.disabled = true;
+		btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
+
+		const fd = new FormData();
+		fd.append(window.csrfTokenName, window.csrfTokenValue);
+		fd.append('notes', notes);
+		items.forEach((item, i) => {
+			Object.keys(item).forEach(key => fd.append(`items[${i}][${key}]`, item[key]));
+		});
+
+		fetch(window.baseUrl + 'service/spk/save-sparepart/' + spkId, {
+			method : 'POST',
+			headers: {'X-Requested-With': 'XMLHttpRequest'},
+			body   : fd
+		}).then(r => r.json()).then(res => {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Sparepart';
+			if (res.success) {
+				notify(res.message || 'Sparepart berhasil disimpan', 'success');
+				bootstrap.Modal.getInstance(document.getElementById('spkInputSparepartModal')).hide();
+				window.reloadSpkTable();
+			} else {
+				notify(res.message || 'Gagal menyimpan sparepart', 'error');
+			}
+		}).catch(err => {
+			btn.disabled = false;
+			btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Sparepart';
+			notify('Error: ' + err.message, 'error');
+		});
+	});
 </script>
 
         </div>

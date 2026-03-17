@@ -275,6 +275,15 @@ class UnitInventoryController extends BaseController
             $spk_history = [];
         }
 
+        // ── Current components (attachment, charger, battery) ─────────────
+        $current_components = ['battery' => null, 'charger' => null, 'attachment' => null];
+        try {
+            $compHelper = new \App\Models\InventoryComponentHelper();
+            $current_components = $compHelper->getUnitComponents((int)$id);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::show current_components: ' . $e->getMessage());
+        }
+
         // Lookup data for inline edit
         $lookup = $this->getLookupData();
 
@@ -285,6 +294,7 @@ class UnitInventoryController extends BaseController
             'sparepart_usages' => $sparepart_usages,
             'rental_history'   => $rental_history,
             'spk_history'      => $spk_history,
+            'current_components' => $current_components,
             // For inline edit
             'tipe_mast'        => $lookup['tipe_mast']      ?? [],
             'mesin'            => $lookup['mesin']           ?? [],
@@ -557,6 +567,37 @@ class UnitInventoryController extends BaseController
     }
 
     // ──────────────────────────────────────────────────────
+    //  ACTIVITY (unified timeline for tab Aktivitas)
+    // ──────────────────────────────────────────────────────
+
+    public function getActivity($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setBody('Bad Request');
+        }
+
+        try {
+            $unitId = (int)$id;
+            $category = $this->request->getGet('category') ?: null;
+            $limit = (int)($this->request->getGet('limit') ?? 100);
+
+            $service = new \App\Services\UnitActivityService();
+            $events = $service->getUnifiedTimeline($unitId, $category, $limit);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'events'  => $events,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[UnitInventoryController::getActivity] ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'error'   => $e->getMessage(),
+                'events'  => [],
+            ]);
+        }
+    }
+
     //  TIMELINE AJAX (sidebar)
     // ──────────────────────────────────────────────────────
 

@@ -136,6 +136,60 @@ class Service extends BaseController
     }
 
     /**
+     * Save sparepart planning request for an SPK
+     */
+    public function saveSparepartRequest($id)
+    {
+        if (!$this->canAccess('service')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $id = (int)$id;
+        $spk = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+
+        if (!$spk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+        }
+
+        $rawItems = $this->request->getPost('items');
+        if (empty($rawItems) || !is_array($rawItems)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data sparepart tidak boleh kosong']);
+        }
+
+        // Process items: resolve KANIBAL source_unit_no to source_unit_id
+        $items = [];
+        foreach ($rawItems as $item) {
+            if (empty($item['sparepart_name'])) {
+                continue;
+            }
+            if (($item['source_type'] ?? '') === 'KANIBAL' && !empty($item['source_unit_no'])) {
+                $unit = $this->db->table('inventory_unit')
+                    ->select('id_inventory_unit')
+                    ->where('no_unit', $item['source_unit_no'])
+                    ->get()->getRowArray();
+                $item['source_unit_id'] = $unit ? $unit['id_inventory_unit'] : null;
+                $item['source_notes']   = 'Kanibal dari unit: ' . $item['source_unit_no'];
+            }
+            unset($item['source_unit_no']);
+            $items[] = $item;
+        }
+
+        if (empty($items)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data sparepart tidak boleh kosong']);
+        }
+
+        $sparepartModel = new \App\Models\SpkSparepartModel();
+        $notes  = $this->request->getPost('notes');
+        $result = $sparepartModel->addSpareparts($id, $items, $notes);
+
+        if ($result) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Sparepart berhasil disimpan']);
+        }
+
+        return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan sparepart, periksa kembali data yang diisi']);
+    }
+
+    /**
      * Update component assignment in new inventory tables (batteries, chargers, attachments)
      */
     private function updateComponentAssignment($unitId, $componentType, $inventoryAttachmentId, $action = 'assign')

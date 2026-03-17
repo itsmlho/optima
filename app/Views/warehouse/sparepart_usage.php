@@ -132,7 +132,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 30px;"></th>
-                                    <th style="width: 120px;">Work Order</th>
+                                    <th style="width: 70px;">Source</th>
+                                    <th style="width: 120px;">Reference</th>
                                     <th style="width: 100px;">Date</th>
                                     <th>Customer</th>
                                     <th>Unit</th>
@@ -341,10 +342,17 @@ $(document).ready(function() {
                 ? '<span class="badge badge-soft-gray">🔧 Tool</span>'
                 : '<span class="badge badge-soft-blue">⚙ Part</span>';
             
-            // Source badge  
-            var sourceBadge = parseInt(item.is_from_warehouse) === 0
-                ? '<span class="badge badge-soft-yellow">♻ Bekas</span>'
-                : '<span class="badge badge-soft-green">🏪 WH</span>';
+            // Source badge — support both is_from_warehouse and source_type
+            var sourceBadge;
+            var srcType = (item.source_type || '').toUpperCase();
+            if (srcType === 'KANIBAL') {
+                var kanibalUnit = item.source_unit_number ? ' (' + item.source_unit_number + ')' : '';
+                sourceBadge = '<span class="badge badge-soft-orange">♻ Kanibal' + kanibalUnit + '</span>';
+            } else if (srcType === 'BEKAS' || parseInt(item.is_from_warehouse) === 0) {
+                sourceBadge = '<span class="badge badge-soft-yellow">♻ Bekas</span>';
+            } else {
+                sourceBadge = '<span class="badge badge-soft-green">🏪 WH</span>';
+            }
             
             html += '<tr>';
             html += '<td>' + typeBadge + '</td>';
@@ -400,9 +408,19 @@ $(document).ready(function() {
                 data: null,
                 defaultContent: '<i class="fas fa-plus-circle text-muted cursor-pointer"></i>'
             },
+            {
+                data: 'record_source',
+                orderable: false,
+                render: function(data) {
+                    if (data === 'SPK') {
+                        return '<span class="badge badge-soft-purple">SPK</span>';
+                    }
+                    return '<span class="badge badge-soft-blue">WO</span>';
+                }
+            },
             { 
-                data: 'work_order_number',
-                name: 'work_order_number',
+                data: 'reference_number',
+                name: 'reference_number',
                 render: function(data) {
                     return `<strong class="text-primary">${data}</strong>`;
                 }
@@ -429,17 +447,19 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     let html = `<strong>${data}</strong> items`;
                     if (row.nonwarehouse_items > 0) {
-                        html += `<br><small class="text-muted">${row.warehouse_items} WH, ${row.nonwarehouse_items} Bekas</small>`;
+                        html += `<br><small class="text-muted">${row.warehouse_items} WH, <span class="text-warning fw-semibold">${row.nonwarehouse_items} Non-WH</span></small>`;
+                    } else {
+                        html += `<br><small class="text-muted">${row.warehouse_items} WH</small>`;
                     }
                     return html;
                 }
             },
             {
-                data: 'work_order_id',
+                data: 'record_id',
                 orderable: false,
                 className: 'text-center',
-                render: function(data) {
-                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewWorkOrderDetail(${data})" title="View Detail">
+                render: function(data, type, row) {
+                    return `<button class="btn btn-sm btn-outline-primary btn-icon-only" onclick="viewUsageDetail(${data})" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
                 }
@@ -469,29 +489,32 @@ $(document).ready(function() {
             var icon = $(this).find('i');
 
             if (row.child.isShown()) {
-                // Collapse
                 row.child.hide();
                 tr.removeClass('shown');
                 icon.removeClass('fa-minus-circle text-primary').addClass('fa-plus-circle text-muted');
             } else {
-                // Expand
                 icon.removeClass('fa-plus-circle text-muted').addClass('fa-spinner fa-spin');
-                
-                // Fetch spareparts for this work order
+
+                var rowData   = row.data();
+                var recordId  = rowData.record_id;
+                var source    = rowData.record_source; // 'WO' or 'SPK'
+
+                var url = source === 'SPK'
+                    ? '<?= base_url('warehouse/sparepart-usage/get-spk-spareparts') ?>/' + recordId
+                    : '<?= base_url('warehouse/sparepart-usage/get-work-order-spareparts') ?>/' + recordId;
+
                 $.ajax({
-                    url: '<?= base_url('warehouse/sparepart-usage/get-work-order-spareparts') ?>/' + row.data().work_order_id,
+                    url: url,
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
-                        // console.log('Spareparts response:', response);
                         row.child(formatSparepartsTable(response)).show();
                         tr.addClass('shown');
                         icon.removeClass('fa-spinner fa-spin').addClass('fa-minus-circle text-primary');
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX Error:', xhr.responseText);
-                        if (window.OptimaNotify) OptimaNotify.error('Failed to load spareparts: ' + error);
-                        else alert('Failed to load spareparts: ' + error);
+                        if (window.alertSwal) alertSwal('error', 'Failed to load spareparts: ' + error);
                         icon.removeClass('fa-spinner fa-spin').addClass('fa-plus-circle text-muted');
                     }
                 });
