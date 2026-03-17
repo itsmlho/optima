@@ -178,6 +178,12 @@ class SiloModel extends Model
             $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
             $builder->join('customers c', 'c.id = cl.customer_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+
+            // Exclude units with status JUAL / SOLD (status_unit_id = 13), but keep NULL/other statuses
+            $builder->groupStart();
+            $builder->where('iu.status_unit_id IS NULL');
+            $builder->orWhere('iu.status_unit_id !=', 13);
+            $builder->groupEnd();
             
             // Check if silo table exists
             if ($this->db->tableExists($this->table)) {
@@ -298,11 +304,9 @@ class SiloModel extends Model
             ];
             $stats['progres'] = $this->whereIn('status', $progresStatuses)->countAllResults();
 
-            // Count units without SILO
-            $unitModel = new \App\Models\UnitAssetModel();
-            $totalUnits = $unitModel->countAllResults();
-            $unitsWithSilo = $this->countAllResults();
-            $stats['belum_ada'] = max(0, $totalUnits - $unitsWithSilo);
+            // Count units without SILO (using same logic as getUnitsWithoutSilo, including filter non-JUAL)
+            $unitsWithoutSilo = $this->getUnitsWithoutSilo('', null);
+            $stats['belum_ada'] = is_array($unitsWithoutSilo) ? count($unitsWithoutSilo) : 0;
 
             // Count expiring soon (30 days)
             $stats['expiring_soon'] = $this->where('status', self::STATUS_SILO_TERBIT)

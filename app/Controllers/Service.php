@@ -100,6 +100,42 @@ class Service extends BaseController
     }
 
     /**
+     * Print Sparepart Request Form for an SPK
+     */
+    public function printSpkSparepartRequest($id)
+    {
+        if (!$this->canAccess('service')) {
+            return redirect()->to('/')->with('error', 'Akses ditolak');
+        }
+
+        $id = (int)$id;
+        $spk = $this->db->table('spk')
+            ->where('id', $id)
+            ->get()->getRowArray();
+
+        if (!$spk) {
+            return redirect()->to(base_url('service/spk_service'))->with('error', 'SPK tidak ditemukan');
+        }
+
+        $sparepartModel = new \App\Models\SpkSparepartModel();
+        $spareparts = $sparepartModel->where('spk_id', $id)->findAll();
+
+        // Enrich with source unit no for KANIBAL type
+        foreach ($spareparts as &$item) {
+            if (!empty($item['source_unit_id'])) {
+                $unit = $this->db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $item['source_unit_id'])->get()->getRowArray();
+                $item['source_unit_no'] = $unit['no_unit'] ?? '';
+            }
+        }
+        unset($item);
+
+        return view('service/print_spk_sparepart_request', [
+            'spk'        => $spk,
+            'spareparts' => $spareparts,
+        ]);
+    }
+
+    /**
      * Update component assignment in new inventory tables (batteries, chargers, attachments)
      */
     private function updateComponentAssignment($unitId, $componentType, $inventoryAttachmentId, $action = 'assign')
@@ -734,6 +770,20 @@ class Service extends BaseController
         $spkRecords = $builder->get()->getResultArray();
 
         // Add stage status to each record (minimal impact - only for displayed records)
+        // Also check if spareparts have been planned for this SPK
+        $spkIds = array_column($spkRecords, 'id');
+        $sparepartCounts = [];
+        if (!empty($spkIds)) {
+            $rows = $db->table('spk_spareparts')
+                ->select('spk_id, COUNT(*) as cnt')
+                ->whereIn('spk_id', $spkIds)
+                ->groupBy('spk_id')
+                ->get()->getResultArray();
+            foreach ($rows as $r) {
+                $sparepartCounts[(int)$r['spk_id']] = (int)$r['cnt'];
+            }
+        }
+
         foreach ($spkRecords as &$spk) {
             try {
                 $stageStatus = $this->getSpkStageStatusData($spk['id']);
@@ -743,6 +793,7 @@ class Service extends BaseController
             } catch (\Exception $e) {
                 log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
             }
+            $spk['has_spareparts'] = isset($sparepartCounts[(int)$spk['id']]) && $sparepartCounts[(int)$spk['id']] > 0;
         }
 
         $paginatedData = $spkRecords;

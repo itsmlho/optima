@@ -228,7 +228,14 @@ class Perizinan extends BaseController
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
-            
+
+            // Exclude units dengan status JUAL / SOLD (status_unit_id = 13),
+            // tapi tetap izinkan NULL / status lain (hanya benar-benar buang 13).
+            $builder->groupStart();
+            $builder->where('iu.status_unit_id IS NULL');
+            $builder->orWhere('iu.status_unit_id !=', 13);
+            $builder->groupEnd();
+
             $units = $builder->get()->getResultArray();
             $availableUnits = [];
 

@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				{ 
 					data: 'nomor_spk',
 					render: function(data, type, row) {
-						return `<a href="#" onclick="openDetail(${row.id});return false;">${data}</a>`;
+						return `<a href="#" onclick="openDetail(${row.id}, ${row.has_spareparts ? 'true' : 'false'});return false;">${data}</a>`;
 					}
 				},
 				{ 
@@ -494,6 +494,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							actions = '<span class="badge badge-soft-blue"><i class="fas fa-flag-checkered me-1"></i>Completed</span>';
 						}
 						
+						// Sparepart indicator: show in action column only if NOT yet planned
+						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
+							actions += ` <a href="#" onclick="openDetail(${row.id}, false);return false;" class="badge badge-soft-orange ms-1" title="Sparepart belum direncanakan"><i class="fas fa-tools me-1"></i>Input Sparepart</a>`;
+						}
+						
 						return actions || '<span class="text-muted">-</span>';
 					}
 				}
@@ -543,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 
 	let currentSpkId = null;
-	window.openDetail = (id) => {
+	window.openDetail = (id, hasSpareparts = false) => {
 		currentSpkId = id;
 		const body = document.getElementById('spkDetailBody');
 		const headerSpan = document.getElementById('spkNumberHeader');
@@ -642,13 +647,14 @@ document.addEventListener('DOMContentLoaded', () => {
 				const showEdit = persiapanDone || fabrikasiDone || paintingDone || pdiDone;
 				
 				actionButtons = `
-					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>
+					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
+					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : '<span class="badge badge-soft-orange ms-1"><i class="fas fa-tools me-1"></i>Sparepart belum direncanakan</span>'}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : '<span class="badge badge-soft-yellow ms-1"><i class="fas fa-tools me-1"></i>Sparepart belum direncanakan</span>'}`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;

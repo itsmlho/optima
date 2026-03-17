@@ -467,6 +467,137 @@ class AttachmentInventoryController extends BaseController
                 ];
             }
 
+            // ===== COMPONENT AUDIT LOG EVENTS (SPK, WO, Unit Audit) =====
+            // Pull events from component_audit_log (logged by ComponentAuditService)
+            if ($db->tableExists('component_audit_log')) {
+                $auditService = new \App\Services\ComponentAuditService($db);
+                $auditTypeMap = [
+                    'attachment' => 'ATTACHMENT',
+                    'battery'    => 'BATTERY',
+                    'charger'    => 'CHARGER',
+                ];
+                $auditComponentType = $auditTypeMap[$componentType] ?? null;
+
+                if ($auditComponentType) {
+                    $auditRows = $auditService->getComponentHistory($auditComponentType, (int)$id, 100);
+
+                    // Collect log IDs already captured from system_activity_logs to avoid duplicates
+                    $loggedAuditIds = [];
+                    foreach ($logRows as $log) {
+                        $ctx = is_string($log['context_data'] ?? null)
+                            ? (json_decode($log['context_data'], true) ?? [])
+                            : ($log['context_data'] ?? []);
+                        if (!empty($ctx['audit_log_id'])) {
+                            $loggedAuditIds[] = (int)$ctx['audit_log_id'];
+                        }
+                    }
+
+                    $eventTypeIconMap = [
+                        'ASSIGNED'      => ['icon' => 'fas fa-link',          'color' => 'primary'],
+                        'REMOVED'       => ['icon' => 'fas fa-unlink',         'color' => 'danger'],
+                        'TRANSFERRED'   => ['icon' => 'fas fa-exchange-alt',   'color' => 'info'],
+                        'REPLACED'      => ['icon' => 'fas fa-sync-alt',       'color' => 'warning'],
+                        'BULK_RELEASED' => ['icon' => 'fas fa-boxes',          'color' => 'secondary'],
+                        'VERIFIED'      => ['icon' => 'fas fa-check-circle',   'color' => 'success'],
+                    ];
+
+                    $triggeredByLabelMap = [
+                        'PERSIAPAN_UNIT'         => 'SPK – Persiapan Unit',
+                        'KANIBAL_PERSIAPAN_UNIT' => 'SPK – Kanibal Persiapan',
+                        'FABRIKASI'              => 'SPK – Fabrikasi',
+                        'KANIBAL_FABRIKASI'      => 'SPK – Kanibal Fabrikasi',
+                        'UNIT_VERIFICATION'      => 'Work Order – Verifikasi Unit',
+                        'UNIT_AUDIT_VERIFICATION'=> 'Unit Audit',
+                        'MANUAL'                 => 'Manual',
+                    ];
+
+                    foreach ($auditRows as $audit) {
+                        if (in_array((int)$audit['id'], $loggedAuditIds)) {
+                            continue;
+                        }
+
+                        $eventType = strtoupper($audit['event_type'] ?? 'ASSIGNED');
+                        $meta      = $eventTypeIconMap[$eventType] ?? ['icon' => 'fas fa-history', 'color' => 'secondary'];
+
+                        $triggeredBy = $audit['triggered_by'] ?? 'MANUAL';
+                        $sourceLabel = $triggeredByLabelMap[$triggeredBy] ?? ucfirst(strtolower(str_replace('_', ' ', $triggeredBy)));
+
+                        // Resolve SPK / Work Order numbers if available
+                        $spkNumber = null;
+                        if (!empty($audit['spk_id'])) {
+                            $spkRow = $db->table('spk')
+                                ->select('nomor_spk')
+                                ->where('id', $audit['spk_id'])
+                                ->get()
+                                ->getRowArray();
+                            $spkNumber = $spkRow['nomor_spk'] ?? null;
+                        }
+
+                        $woNumber = null;
+                        if (!empty($audit['work_order_id'])) {
+                            $woRow = $db->table('work_orders')
+                                ->select('work_order_number')
+                                ->where('id', $audit['work_order_id'])
+                                ->get()
+                                ->getRowArray();
+                            $woNumber = $woRow['work_order_number'] ?? null;
+                        }
+
+                        // Resolve unit numbers for from/to unit
+                        $fromUnitNo = null;
+                        $toUnitNo   = null;
+                        if (!empty($audit['from_unit_id'])) {
+                            $fromUnit = $db->table('inventory_unit')
+                                ->select('no_unit')
+                                ->where('id_inventory_unit', $audit['from_unit_id'])
+                                ->get()->getRowArray();
+                            $fromUnitNo = $fromUnit['no_unit'] ?? "Unit #{$audit['from_unit_id']}";
+                        }
+                        if (!empty($audit['to_unit_id'])) {
+                            $toUnit = $db->table('inventory_unit')
+                                ->select('no_unit')
+                                ->where('id_inventory_unit', $audit['to_unit_id'])
+                                ->get()->getRowArray();
+                            $toUnitNo = $toUnit['no_unit'] ?? "Unit #{$audit['to_unit_id']}";
+                        }
+
+                        $title = $audit['event_title'] ?? match($eventType) {
+                            'ASSIGNED'      => 'Dipasang ke Unit ' . ($toUnitNo ?? '-'),
+                            'REMOVED',
+                            'BULK_RELEASED' => 'Dilepas dari Unit ' . ($fromUnitNo ?? '-'),
+                            'TRANSFERRED'   => 'Dipindah: ' . ($fromUnitNo ?? '-') . ' → ' . ($toUnitNo ?? '-'),
+                            'REPLACED'      => 'Diganti pada Unit ' . ($toUnitNo ?? $fromUnitNo ?? '-'),
+                            'VERIFIED'      => 'Diverifikasi pada Unit ' . ($toUnitNo ?? '-'),
+                            default         => ucfirst(strtolower($eventType)),
+                        };
+
+                        $details = array_filter([
+                            'Dari Unit'   => $fromUnitNo,
+                            'Ke Unit'     => $toUnitNo,
+                            'SPK'         => $spkNumber,
+                            'Work Order'  => $woNumber,
+                            'Sumber'      => $sourceLabel,
+                            'Stage'       => $audit['stage_name'] ?? null,
+                            'Catatan'     => $audit['notes'] ?? null,
+                        ]);
+
+                        $timeline[] = [
+                            'type'         => 'audit_' . strtolower($eventType),
+                            'icon'         => $meta['icon'],
+                            'color'        => $meta['color'],
+                            'date'         => $audit['performed_at'] ?? $audit['created_at'],
+                            'title'        => $title,
+                            'subtitle'     => trim($sourceLabel . ' ' . ($spkNumber ? '(' . $spkNumber . ')' : ($woNumber ? '(' . $woNumber . ')' : ''))),
+                            'description'  => $audit['notes'] ?? null,
+                            'details'      => $details,
+                            'performed_by' => $audit['performed_by'] ?? null,
+                            'source'       => 'audit_log',
+                            'audit_log_id' => (int)$audit['id'],
+                        ];
+                    }
+                }
+            }
+
             // ===== SEED EVENTS =====
             // Untuk data lama (sebelum audit log ada), seed dari data struktural DB
 
@@ -516,6 +647,96 @@ class AttachmentInventoryController extends BaseController
                             ]),
                         ];
                     }
+                }
+            }
+
+            // ===== MOVEMENT EVENTS from unit_movements =====
+            // Map component type to the enum value used in unit_movements.component_type
+            $movementTypeMap = [
+                'attachment' => 'ATTACHMENT',
+                'battery'    => 'BATTERY',
+                'charger'    => 'CHARGER',
+            ];
+            $movementComponentType = $movementTypeMap[$componentType] ?? null;
+
+            if ($movementComponentType && $db->tableExists('unit_movements')) {
+                $movements = $db->table('unit_movements')
+                    ->where('component_id', $id)
+                    ->where('component_type', $movementComponentType)
+                    ->orderBy('created_at', 'DESC')
+                    ->get()
+                    ->getResultArray();
+
+                // Collect movement IDs already represented in system_activity_logs to avoid duplicates
+                $loggedMovementIds = [];
+                foreach ($logRows as $log) {
+                    $ctx = is_string($log['context_data'] ?? null)
+                        ? (json_decode($log['context_data'], true) ?? [])
+                        : ($log['context_data'] ?? []);
+                    if (!empty($ctx['movement_id'])) {
+                        $loggedMovementIds[] = (int)$ctx['movement_id'];
+                    }
+                }
+
+                foreach ($movements as $mv) {
+                    if (in_array((int)$mv['id'], $loggedMovementIds)) {
+                        continue; // already represented via system_activity_log
+                    }
+
+                    $origin      = $mv['origin_location']      ?? $mv['origin_type']      ?? '-';
+                    $destination = $mv['destination_location'] ?? $mv['destination_type'] ?? '-';
+                    $status      = $mv['status'] ?? 'DRAFT';
+
+                    $statusLabel = match($status) {
+                        'DRAFT'      => 'Draft',
+                        'IN_TRANSIT' => 'Dalam Perjalanan',
+                        'ARRIVED'    => 'Tiba',
+                        'CANCELLED'  => 'Dibatalkan',
+                        default      => $status,
+                    };
+
+                    $icon  = match($status) {
+                        'ARRIVED'    => 'fas fa-check-circle',
+                        'IN_TRANSIT' => 'fas fa-truck',
+                        'CANCELLED'  => 'fas fa-times-circle',
+                        default      => 'fas fa-clipboard-list',
+                    };
+                    $color = match($status) {
+                        'ARRIVED'    => 'success',
+                        'IN_TRANSIT' => 'primary',
+                        'CANCELLED'  => 'danger',
+                        default      => 'secondary',
+                    };
+
+                    $sjNumber = $mv['surat_jalan_number'] ?? null;
+                    $mvNumber = $mv['movement_number']    ?? null;
+
+                    $details = array_filter([
+                        'Dari'          => $origin,
+                        'Ke'            => $destination,
+                        'Status'        => $statusLabel,
+                        'Driver'        => $mv['driver_name']     ?? null,
+                        'Kendaraan'     => $mv['vehicle_number']  ?? null,
+                        'No. SJ'        => $sjNumber,
+                        'No. Movement'  => $mvNumber,
+                        'Catatan'       => $mv['notes']           ?? null,
+                    ]);
+
+                    $eventDate = $mv['movement_date'] ?? $mv['updated_at'] ?? $mv['created_at'];
+
+                    $timeline[] = [
+                        'type'         => 'movement_' . strtolower($status),
+                        'icon'         => $icon,
+                        'color'        => $color,
+                        'date'         => $eventDate,
+                        'title'        => "Surat Jalan: {$origin} → {$destination}",
+                        'subtitle'     => $sjNumber ? "SJ: {$sjNumber}" : ($mvNumber ? "MV: {$mvNumber}" : ''),
+                        'description'  => "Status: {$statusLabel}" . ($mv['driver_name'] ? " | Driver: {$mv['driver_name']}" : ''),
+                        'details'      => $details,
+                        'ref_number'   => $sjNumber ?? $mvNumber,
+                        'source'       => 'movement',
+                        'movement_id'  => (int)$mv['id'],
+                    ];
                 }
             }
 

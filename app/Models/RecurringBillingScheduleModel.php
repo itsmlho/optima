@@ -101,7 +101,9 @@ class RecurringBillingScheduleModel extends Model
         
         return $this->select('recurring_billing_schedules.*, '
                            . 'kontrak.no_kontrak, kontrak.nilai_total, kontrak.total_units, '
-                           . 'customers.customer_name')\n                    ->join('kontrak', 'kontrak.id = recurring_billing_schedules.contract_id')\n                    ->join('customers', 'customers.id = kontrak.customer_id')
+                           . 'customers.customer_name')
+                    ->join('kontrak', 'kontrak.id = recurring_billing_schedules.contract_id')
+                    ->join('customers', 'customers.id = kontrak.customer_id')
                     ->where('recurring_billing_schedules.status', 'ACTIVE')
                     ->where('recurring_billing_schedules.auto_generate', 1)
                     ->where('recurring_billing_schedules.next_billing_date >=', $today)

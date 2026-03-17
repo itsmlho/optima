@@ -1142,10 +1142,29 @@
 
     window.viewAttachment = function(id) {
         console.log('viewAttachment called for ID:', id);
-        currentAttachmentId = id; // Store current ID for edit/delete actions
-        attachmentHistoryLoaded = false; // Reset so each attachment loads its own history
-        currentHistoryAttachmentId = id; // Store for history tab click
-        
+        currentAttachmentId = id;
+        attachmentHistoryLoaded = false;
+        currentHistoryAttachmentId = id;
+
+        // Reset tabs: activate Detail tab, clear history pane
+        const detailTabEl = document.getElementById('att-detail-tab');
+        const historyTabEl = document.getElementById('att-history-tab');
+        if (detailTabEl && historyTabEl) {
+            detailTabEl.classList.add('active');
+            historyTabEl.classList.remove('active');
+        }
+        const detailPane = document.getElementById('att-detail-pane');
+        const historyPane = document.getElementById('att-history-pane');
+        if (detailPane) { detailPane.classList.add('show', 'active'); }
+        if (historyPane) { historyPane.classList.remove('show', 'active'); }
+        $('#attachmentHistoryContent').html(`
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-history fa-2x mb-2 d-block"></i>
+                <p class="mb-0">Klik tab ini untuk memuat history.</p>
+            </div>
+        `);
+        $('#attHistoryBadge').hide().text('');
+
         $.ajax({
             url: `<?= base_url('warehouse/inventory/attachments/detail/') ?>${id}`,
             type: 'GET',
@@ -1224,27 +1243,6 @@
         console.log('Creating detail HTML for data:', data);
         
         return `
-
-    <!-- ===== TAB NAVIGATION ===== -->
-    <ul class="nav nav-tabs mb-3" id="attachmentDetailTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="att-detail-tab" data-bs-toggle="tab"
-                data-bs-target="#att-detail-pane" type="button" role="tab">
-                <i class="fas fa-info-circle me-1"></i>Detail
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="att-history-tab" data-bs-toggle="tab"
-                data-bs-target="#att-history-pane" type="button" role="tab"
-                onclick="loadAttachmentHistory(currentHistoryAttachmentId)">
-                <i class="fas fa-history me-1"></i>History
-            </button>
-        </li>
-    </ul>
-
-    <div class="tab-content" id="attachmentDetailTabsContent">
-        <!-- Detail Tab -->
-        <div class="tab-pane fade show active" id="att-detail-pane" role="tabpanel">
             <div class="row">
                 <!-- Basic Attachment Information -->
                 <div class="col-md-6 mb-4">
@@ -1311,19 +1309,7 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- History Tab -->
-        <div class="tab-pane fade" id="att-history-pane" role="tabpanel">
-            <div id="attachmentHistoryContent">
-                <div class="text-center p-4 text-muted">
-                    <i class="fas fa-history fa-2x mb-2"></i>
-                    <p>Click the <strong>History</strong> tab to load the timeline.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    `;
+        `;
     }
 
 
@@ -2023,18 +2009,36 @@
             const hex      = colorHexMap[color] || '#6c757d';
             const icon     = item.icon || 'fas fa-circle';
             const title    = item.title || '';
-            const desc     = item.description || '';
-            const user     = item.user || null;
+            const desc     = item.description || item.subtitle || '';
+            const user     = item.performed_by || item.user || null;
             const ref      = item.ref_number || null;
             const src      = item.source || 'log';
-            const srcBadge = src === 'seed' ? `<span class="chip chip-gray ms-1 text-xs">legacy</span>` : '';
-            const userHtml = user ? `<div class="text-muted text-xxs" style="margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
-            const refHtml  = ref ? `<span class="chip chip-gray ms-1 text-xs"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
+            const srcBadge = src === 'seed'
+                ? `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;">legacy</span>`
+                : (src === 'movement'
+                    ? `<span class="badge badge-soft-blue ms-1" style="font-size:0.65rem;"><i class="fas fa-truck me-1"></i>Surat Jalan</span>`
+                    : (src === 'audit_log'
+                        ? `<span class="badge badge-soft-purple ms-1" style="font-size:0.65rem;"><i class="fas fa-clipboard-check me-1"></i>Audit</span>`
+                        : ''));
+            const userHtml = user ? `<div class="text-muted" style="font-size:0.72rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
+            const refHtml  = ref ? `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
+
+            // Build details rows (key-value pairs from backend)
+            let detailsHtml = '';
+            if (item.details && typeof item.details === 'object' && !Array.isArray(item.details)) {
+                const rows = Object.entries(item.details)
+                    .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                    .map(([k, v]) => `<tr><td class="text-muted pe-2" style="white-space:nowrap;font-size:0.72rem;">${h(k)}</td><td style="font-size:0.72rem;">${h(v)}</td></tr>`)
+                    .join('');
+                if (rows) {
+                    detailsHtml = `<table class="mt-1 w-100">${rows}</table>`;
+                }
+            }
 
             html += `<div class="timeline-item mb-3" style="position:relative;">
                 <div style="position:absolute;left:-2.15rem;top:0.25rem;width:1.25rem;height:1.25rem;border-radius:50%;
                     background:${hex};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 3px #fff;">
-                    <i class="${h(icon)} text-white text-2xs"></i>
+                    <i class="${h(icon)} text-white" style="font-size:0.55rem;"></i>
                 </div>
                 <div class="card border-0 shadow-sm" style="border-left:3px solid ${hex} !important;">
                     <div class="card-body py-2 px-3">
@@ -2043,6 +2047,7 @@
                             <small class="text-muted text-nowrap"><i class="fas fa-calendar-alt me-1"></i>${h(formatDate(item.date))}</small>
                         </div>
                         ${desc ? `<div class="text-muted small mt-1">${h(desc)}</div>` : ''}
+                        ${detailsHtml}
                         ${userHtml}
                     </div>
                 </div>

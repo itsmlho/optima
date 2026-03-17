@@ -592,6 +592,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/list', 'Service::spkList');
     $routes->get('spk/detail/(:num)', 'Service::spkDetail/$1');
     $routes->get('spk/print/(:num)', 'Service::spkPrint/$1');
+    $routes->get('spk/print-sparepart/(:num)', 'Service::printSpkSparepartRequest/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');
     $routes->post('spk/approve-fabrikasi', 'Service::approveFabrikasi');
