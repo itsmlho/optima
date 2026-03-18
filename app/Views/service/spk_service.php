@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						let actions = '';
 						
 						if (row.status === 'SUBMITTED') {
-							actions = `<button class="btn btn-sm btn-success" onclick="prosesSPK(${row.id});return false;"><i class="fas fa-play me-1"></i>Proses SPK</button><br><small class="text-muted">Menunggu diproses</small>`;
+							actions = `<div class="d-flex flex-column align-items-start gap-1"><button class="btn btn-sm btn-success" onclick="prosesSPK(${row.id});return false;"><i class="fas fa-play me-1"></i>Proses SPK</button><small class="text-muted">Menunggu diproses</small></div>`;
 						} else if (row.status === 'IN_PROGRESS') {
 							// Show approval stage buttons
 							const stageStatus = row.stage_status || {};
@@ -600,9 +600,9 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
 							const hasStageBtn = actions.length > 0;
 							if (hasStageBtn) {
-								actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id});return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
+								actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}');return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
 							} else {
-								actions = `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id});return false;"><i class="fas fa-tools me-1"></i>Add Sparepart</button>`;
+								actions = `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}');return false;"><i class="fas fa-tools me-1"></i>Add Sparepart</button>`;
 							}
 						}
 						
@@ -782,13 +782,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				actionButtons = `
 					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
-					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
+					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}'),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}'),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;
@@ -1044,6 +1044,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					<div class="col-12"><hr></div>
 					${itemsHtml}
+
+					<div class="col-12"><hr></div>
+					<div class="col-12">
+						<h6 class="mb-2"><i class="fas fa-toolbox text-primary me-2"></i>Sparepart & Tools</h6>
+						<div id="spkSparepartSection">
+							<p class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Memuat data sparepart...</p>
+						</div>
+					</div>
 				</div>`;
 			// Detail print unit sudah diambil dari marketing/print_spk.php
 			
@@ -1073,6 +1081,85 @@ document.addEventListener('DOMContentLoaded', () => {
 			}, 100);
 			
 			new bootstrap.Modal(document.getElementById('spkDetailModal')).show();
+
+			// Fetch sparepart data for this SPK
+			fetch('<?= base_url('service/spk/get-spareparts/') ?>' + id, {
+				headers: { 'X-Requested-With': 'XMLHttpRequest' }
+			}).then(r => r.json()).then(sp => {
+				const section = document.getElementById('spkSparepartSection');
+				if (!section) return;
+				if (!sp.success || !sp.spareparts || sp.spareparts.length === 0) {
+					section.innerHTML = '<p class="text-muted small">Belum ada sparepart tercatat untuk SPK ini.</p>';
+					return;
+				}
+
+				const items = sp.spareparts;
+				// Summary counts
+				const totalItems  = items.length;
+				const whItems     = items.filter(i => parseInt(i.is_from_warehouse) === 1).length;
+				const nonwhItems  = totalItems - whItems;
+				const validated   = items.filter(i => parseInt(i.sparepart_validated) === 1).length;
+
+				let html = `<div class="d-flex gap-2 mb-2 flex-wrap">
+					<span class="badge badge-soft-blue">${totalItems} Items</span>
+					<span class="badge badge-soft-green">WH: ${whItems}</span>
+					${nonwhItems > 0 ? `<span class="badge badge-soft-yellow">Non-WH: ${nonwhItems}</span>` : ''}
+					${validated > 0 ? `<span class="badge badge-soft-green">Validated: ${validated}/${totalItems}</span>` : `<span class="badge badge-soft-gray">Belum Divalidasi</span>`}
+				</div>`;
+
+				html += `<div class="table-responsive"><table class="table table-sm table-bordered mb-0">
+					<thead class="table-light">
+						<tr>
+							<th style="width:60px">Type</th>
+							<th style="width:70px">Source</th>
+							<th>Item</th>
+							<th style="width:65px" class="text-center">Bawa</th>
+							<th style="width:65px" class="text-center">Pakai</th>
+							<th style="width:65px" class="text-center">Kembali</th>
+							<th style="width:75px" class="text-center">Status</th>
+						</tr>
+					</thead><tbody>`;
+
+				items.forEach(item => {
+					const typeBadge = item.item_type === 'tool'
+						? '<span class="badge badge-soft-gray" style="font-size:10px">🔧 Tool</span>'
+						: '<span class="badge badge-soft-blue" style="font-size:10px">⚙ Part</span>';
+
+					const srcType = (item.source_type || '').toUpperCase();
+					let srcBadge;
+					if (srcType === 'KANIBAL') {
+						const kUnit = item.source_unit_no ? ` (${item.source_unit_no})` : '';
+						srcBadge = `<span class="badge badge-soft-orange" style="font-size:10px">♻ Kanibal${kUnit}</span>`;
+					} else if (parseInt(item.is_from_warehouse) === 0) {
+						srcBadge = '<span class="badge badge-soft-yellow" style="font-size:10px">♻ Bekas</span>';
+					} else {
+						srcBadge = '<span class="badge badge-soft-green" style="font-size:10px">🏪 WH</span>';
+					}
+
+					const qtyUsed   = parseInt(item.quantity_used)   || 0;
+					const qtyBrought = parseInt(item.quantity_brought) || 0;
+					const qtyReturn = Math.max(0, qtyBrought - qtyUsed);
+					const validBadge = parseInt(item.sparepart_validated) === 1
+						? '<span class="badge badge-soft-green" style="font-size:10px">✓</span>'
+						: '<span class="badge badge-soft-gray" style="font-size:10px">-</span>';
+
+					html += `<tr>
+						<td>${typeBadge}</td>
+						<td>${srcBadge}</td>
+						<td><strong style="font-size:12px">${item.sparepart_name}</strong>${item.sparepart_code ? `<br><small class="text-muted">${item.sparepart_code}</small>` : ''}</td>
+						<td class="text-center"><span class="badge badge-soft-cyan" style="font-size:11px">${qtyBrought}</span><br><small class="text-muted" style="font-size:10px">${item.satuan||'PCS'}</small></td>
+						<td class="text-center"><span class="badge badge-soft-green" style="font-size:11px">${qtyUsed}</span></td>
+						<td class="text-center">${qtyReturn > 0 ? `<span class="badge badge-soft-yellow" style="font-size:11px">${qtyReturn}</span>` : '<span class="text-muted">-</span>'}</td>
+						<td class="text-center">${validBadge}</td>
+					</tr>`;
+				});
+
+				html += '</tbody></table></div>';
+				section.innerHTML = html;
+			}).catch(() => {
+				const section = document.getElementById('spkSparepartSection');
+				if (section) section.innerHTML = '<p class="text-muted small">Gagal memuat data sparepart.</p>';
+			});
 		});
 	}
 	// Service cannot change status directly; use assignment modal
@@ -5580,10 +5667,10 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 	// ============================================================
 	let _spkSpRowCount = 0;
 
-	window.openInputSparepart = function(id) {
+	window.openInputSparepart = function(id, nomor_spk) {
 		_spkSpRowCount = 0;
 		document.getElementById('inputSparepartSpkId').value = id;
-		document.getElementById('inputSparepartSpkNumber').textContent = '#' + id;
+		document.getElementById('inputSparepartSpkNumber').textContent = nomor_spk || ('#' + id);
 		document.getElementById('inputSparepartNotes').value = '';
 		document.getElementById('sparepartInputRows').innerHTML = '';
 		_addSpkSparepartRow();
@@ -6083,16 +6170,10 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 				bootstrap.Modal.getInstance(document.getElementById('spkSparepartValidationModal')).hide();
 				if (res.returns_generated > 0) {
 					setTimeout(() => {
-						if (typeof Swal !== 'undefined') {
-							Swal.fire({
-								icon: 'info',
-								title: 'Permintaan Pengembalian Dibuat',
-								text: `${res.returns_generated} permintaan pengembalian sparepart telah dikirim ke Warehouse (status: PENDING).`,
-								confirmButtonText: 'OK'
-							});
-						} else {
-							alert(`${res.returns_generated} permintaan pengembalian sparepart dikirim ke Warehouse.`);
-						}
+						notify(
+							`${res.returns_generated} permintaan pengembalian sparepart telah dikirim ke Warehouse (status: PENDING).`,
+							'info'
+						);
 					}, 500);
 				}
 				window.reloadSpkTable();

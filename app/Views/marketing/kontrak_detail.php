@@ -602,45 +602,26 @@ function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
         '<label class="form-check-label" for="editUnitSpare"><i class="fas fa-shield-alt me-1"></i>Spare Unit (harga = 0)</label>' +
         '</div>';
 
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Edit Unit dalam Kontrak',
         html: htmlContent,
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-save me-1"></i>Simpan',
-        cancelButtonText: window.lang('cancel'),
+        icon: 'question',
+        confirmText: '<i class="fas fa-save me-1"></i>Simpan',
+        cancelText: window.lang('cancel'),
         confirmButtonColor: '#0d6efd',
-        didOpen: function() {
-            // Apply rupiah formatting on input
-            var input = document.getElementById('editUnitHarga');
-            input.addEventListener('input', function(e) {
-                var value = e.target.value.replace(/[^0-9]/g, '');
-                if (value) {
-                    e.target.value = formatRupiahInput(value);
-                }
-            });
-            input.addEventListener('keypress', function(e) {
-                // Only allow numbers
-                if (e.which < 48 || e.which > 57) {
-                    e.preventDefault();
-                }
-            });
-        },
-        preConfirm: function() {
-            var hargaFormatted = document.getElementById('editUnitHarga').value;
-            var harga = hargaFormatted.replace(/[^0-9]/g, ''); // Remove all non-numeric characters
-            var spare = document.getElementById('editUnitSpare').checked;
-            return { harga_sewa: harga !== '' ? parseFloat(harga) : null, is_spare: spare ? 1 : 0 };
-        }
-    }).then(function(result) {
-        if (result.isConfirmed) {
+        onConfirm: function() {
+            var hargaFormatted = (document.getElementById('editUnitHarga') || {}).value || '';
+            var harga = String(hargaFormatted).replace(/[^0-9]/g, ''); // Remove all non-numeric characters
+            var spare = document.getElementById('editUnitSpare') ? document.getElementById('editUnitSpare').checked : false;
+
             $.ajax({
                 url: BASE_URL + 'marketing/kontrak/updateUnit',
                 type: 'POST',
                 data: {
                     kontrak_id: CONTRACT_ID,
                     unit_id: unitId,
-                    harga_sewa: result.value.harga_sewa,
-                    is_spare: result.value.is_spare
+                    harga_sewa: harga !== '' ? parseFloat(harga) : null,
+                    is_spare: spare ? 1 : 0
                 },
                 success: function(res) {
                     if (res.success) {
@@ -665,6 +646,24 @@ function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
             });
         }
     });
+
+    // Apply rupiah formatting on input after modal is shown
+    setTimeout(function() {
+        var input = document.getElementById('editUnitHarga');
+        if (!input || input.dataset.optimaRupiahBound === '1') return;
+        input.dataset.optimaRupiahBound = '1';
+        input.addEventListener('input', function(e) {
+            var value = e.target.value.replace(/[^0-9]/g, '');
+            if (value) {
+                e.target.value = formatRupiahInput(value);
+            }
+        });
+        input.addEventListener('keypress', function(e) {
+            if (e.which < 48 || e.which > 57) {
+                e.preventDefault();
+            }
+        });
+    }, 100);
 }
 
 // Helper function to format rupiah for input field

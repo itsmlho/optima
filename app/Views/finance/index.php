@@ -444,58 +444,58 @@ function submitLinkContract() {
 }
 
 function generateRecurringInvoice(scheduleId) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Generate Invoice?',
         text: 'Invoice akan digenerate untuk jadwal ini.',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Generate!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        const formData = new FormData();
-        formData.append('schedule_id', scheduleId);
-        
-        fetch('<?= base_url('finance/invoices/generate-recurring') ?>', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                OptimaNotify.success(`Invoice generated: ${data.invoice_number}`);
-                location.reload();
-            } else {
-                OptimaNotify.error('Error: ' + data.message);
-            }
-        });
+        confirmText: 'Ya, Generate!',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
+            const formData = new FormData();
+            formData.append('schedule_id', scheduleId);
+            
+            fetch('<?= base_url('finance/invoices/generate-recurring') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    OptimaNotify.success(`Invoice generated: ${data.invoice_number}`);
+                    location.reload();
+                } else {
+                    OptimaNotify.error('Error: ' + data.message);
+                }
+            });
+        }
     });
 }
 
 function batchGenerateInvoices() {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Generate Semua Invoice?',
         text: 'Semua jadwal yang jatuh tempo akan diproses.',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Generate Semua!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        fetch('<?= base_url('finance/invoices/batch-generate') ?>', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                OptimaNotify.success(`Berhasil! ${data.message}`);
-                location.reload();
-            } else {
-                OptimaNotify.error('Error: ' + data.message);
-            }
-        });
+        confirmText: 'Ya, Generate Semua!',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
+            fetch('<?= base_url('finance/invoices/batch-generate') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    OptimaNotify.success(`Berhasil! ${data.message}`);
+                    location.reload();
+                } else {
+                    OptimaNotify.error('Error: ' + data.message);
+                }
+            });
+        }
     });
 }
 </script>

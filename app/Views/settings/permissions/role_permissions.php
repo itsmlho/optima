@@ -198,11 +198,11 @@ function loadRolePermissions(roleId) {
                 $('#permissionGrid').show();
                 updatePermissionCount();
             } else {
-                Swal.fire('Error', response.message || 'Failed to load permissions', 'error');
+                OptimaNotify.error(response.message || 'Failed to load permissions');
             }
         },
         error: function(xhr) {
-            Swal.fire('Error', 'Failed to load permissions', 'error');
+            OptimaNotify.error('Failed to load permissions');
             $('#loadingIndicator').hide();
         }
     });
@@ -277,15 +277,14 @@ function saveRolePermissions() {
         permissionIds.push($(this).val());
     });
 
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Save Permissions?',
         text: `Assign ${permissionIds.length} permissions to this role?`,
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Save',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, Save',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
             $.ajax({
                 url: `${base_url}/permission-management/save-role-permissions`,
                 type: 'POST',
@@ -297,14 +296,14 @@ function saveRolePermissions() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Success', response.message, 'success');
+                        OptimaNotify.success(response.message, 'Success');
                         loadRolePermissions(currentRoleId); // Reload
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaNotify.error(response.message);
                     }
                 },
                 error: function(xhr) {
-                    Swal.fire('Error', 'Failed to save permissions', 'error');
+                    OptimaNotify.error('Failed to save permissions');
                 }
             });
         }

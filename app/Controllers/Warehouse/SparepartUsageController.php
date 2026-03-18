@@ -89,6 +89,7 @@ class SparepartUsageController extends BaseController
         $start   = (int)($request->getPost('start')  ?? 0);
         $length  = (int)($request->getPost('length') ?? 25);
         $search  = $request->getPost('search')['value'] ?? '';
+        $source  = $request->getPost('source') ?? 'ALL'; // 'WO', 'SPK', or 'ALL'
 
         try {
             $db = \Config\Database::connect();
@@ -158,20 +159,26 @@ class SparepartUsageController extends BaseController
                                              AND ku.is_temporary = 0
                 LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit = ku.unit_id
                 LEFT  JOIN model_unit mu      ON mu.id_model_unit = iu.model_unit_id
-                WHERE s.deleted_at IS NULL
+                WHERE 1=1
                 {$spkWhere}
                 GROUP BY s.id
             ";
 
-            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
+            if ($source === 'WO') {
+                $baseSql = $woSql;
+            } elseif ($source === 'SPK') {
+                $baseSql = $spkSql;
+            } else {
+                $baseSql = "({$woSql}) UNION ALL ({$spkSql})";
+            }
 
             // Total count
-            $countResult = $db->query("SELECT COUNT(*) as cnt FROM ({$unionSql}) AS combined")->getRowArray();
+            $countResult = $db->query("SELECT COUNT(*) as cnt FROM ({$baseSql}) AS combined")->getRowArray();
             $totalRecords = (int)($countResult['cnt'] ?? 0);
 
             // Paginated result
             $rows = $db->query(
-                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+                "SELECT * FROM ({$baseSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
             )->getResultArray();
 
             $data = [];
@@ -594,6 +601,7 @@ class SparepartUsageController extends BaseController
         $length     = (int)($request->getPost('length') ?? 25);
         $search     = $request->getPost('search')['value'] ?? '';
         $statusFilter = $request->getPost('status') ?? 'PENDING';
+        $source     = $request->getPost('source') ?? 'ALL'; // 'WO', 'SPK', or 'ALL'
 
         try {
             $db = \Config\Database::connect();
@@ -601,7 +609,7 @@ class SparepartUsageController extends BaseController
             $searchEsc = $db->escapeLikeString($search);
 
             // --- WO returns sub-query ---
-            $woStatusWhere  = $statusFilter !== 'ALL' ? "AND wosr.status = '{$db->escape($statusFilter)}'" : '';
+            $woStatusWhere  = $statusFilter !== 'ALL' ? "AND wosr.status = {$db->escape($statusFilter)}" : '';
             $woSearchWhere  = '';
             if (!empty($search)) {
                 $woSearchWhere = "AND (wo.work_order_number LIKE '%{$searchEsc}%'
@@ -646,7 +654,7 @@ class SparepartUsageController extends BaseController
             ";
 
             // --- SPK returns sub-query ---
-            $spkStatusWhere = $statusFilter !== 'ALL' ? "AND ssr.status = '{$db->escape($statusFilter)}'" : '';
+            $spkStatusWhere = $statusFilter !== 'ALL' ? "AND ssr.status = {$db->escape($statusFilter)}" : '';
             $spkSearchWhere = '';
             if (!empty($search)) {
                 $spkSearchWhere = "AND (s.nomor_spk         LIKE '%{$searchEsc}%'
@@ -687,14 +695,20 @@ class SparepartUsageController extends BaseController
                 WHERE 1=1 {$spkStatusWhere} {$spkSearchWhere}
             ";
 
-            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
+            if ($source === 'WO') {
+                $baseSqlReturns = $woSql;
+            } elseif ($source === 'SPK') {
+                $baseSqlReturns = $spkSql;
+            } else {
+                $baseSqlReturns = "({$woSql}) UNION ALL ({$spkSql})";
+            }
 
             $totalRecords = (int)($db->query(
-                "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS combined"
+                "SELECT COUNT(*) AS cnt FROM ({$baseSqlReturns}) AS combined"
             )->getRowArray()['cnt'] ?? 0);
 
             $rows = $db->query(
-                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+                "SELECT * FROM ({$baseSqlReturns}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
             )->getResultArray();
 
             $data = [];
@@ -1102,6 +1116,7 @@ class SparepartUsageController extends BaseController
         $start      = (int)($request->getPost('start')  ?? 0);
         $length     = (int)($request->getPost('length') ?? 25);
         $search     = $request->getPost('search')['value'] ?? '';
+        $source     = $request->getPost('source') ?? 'ALL'; // 'WO', 'SPK', or 'ALL'
 
         try {
             $db        = \Config\Database::connect();
@@ -1168,14 +1183,20 @@ class SparepartUsageController extends BaseController
                 {$spkSearchWhere}
             ";
 
-            $unionSql = "({$woSql}) UNION ALL ({$spkSql})";
+            if ($source === 'WO') {
+                $baseSqlManual = $woSql;
+            } elseif ($source === 'SPK') {
+                $baseSqlManual = $spkSql;
+            } else {
+                $baseSqlManual = "({$woSql}) UNION ALL ({$spkSql})";
+            }
 
             $totalRecords = (int)($db->query(
-                "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS combined"
+                "SELECT COUNT(*) AS cnt FROM ({$baseSqlManual}) AS combined"
             )->getRowArray()['cnt'] ?? 0);
 
             $rows = $db->query(
-                "SELECT * FROM ({$unionSql}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
+                "SELECT * FROM ({$baseSqlManual}) AS combined ORDER BY created_at DESC LIMIT {$length} OFFSET {$start}"
             )->getResultArray();
 
             $data = [];

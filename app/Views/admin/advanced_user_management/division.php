@@ -150,35 +150,34 @@ function confirmDeleteUser(userId, userName) {
     if (typeof parent !== 'undefined' && parent.confirmDeleteUser) {
         parent.confirmDeleteUser(userId, userName);
     } else {
-        Swal.fire({
+        OptimaConfirm.danger({
             title: 'Hapus User?',
             text: `User "${userName}" akan dihapus. Tindakan ini tidak dapat dibatalkan!`,
+            confirmText: 'Ya, Hapus!',
+            cancelText: window.lang('cancel'),
             icon: 'warning',
-            showCancelButton: true,
             confirmButtonColor: '#dc3545',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (!result.isConfirmed) return;
-            $.ajax({
-                url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
-                method: 'DELETE',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                success: function(response) {
-                    if (response.success) {
-                        OptimaNotify.success('User berhasil dihapus');
-                        location.reload();
-                    } else {
-                        OptimaNotify.error('Error: ' + response.message);
+            onConfirm: function() {
+                $.ajax({
+                    url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
+                    method: 'DELETE',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            OptimaNotify.success('User berhasil dihapus');
+                            location.reload();
+                        } else {
+                            OptimaNotify.error('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        OptimaNotify.error('Terjadi kesalahan saat menghapus user.');
                     }
-                },
-                error: function(xhr) {
-                    OptimaNotify.error('Terjadi kesalahan saat menghapus user.');
-                }
-            });
+                });
+            }
         });
     }
 }

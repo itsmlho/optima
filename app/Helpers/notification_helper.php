@@ -255,14 +255,15 @@ if (!function_exists('notify_spk_created')) {
     function notify_spk_created($spkData)
     {
         return send_notification('spk_created', [
-            'module' => 'spk',
-            'id' => $spkData['id'] ?? null,
-            'nomor_spk' => $spkData['nomor_spk'] ?? '',
-            'pelanggan' => $spkData['pelanggan'] ?? $spkData['nama_customer'] ?? '',
-            'departemen' => $spkData['departemen'] ?? session('division') ?? 'Marketing',
-            'unit_no' => $spkData['unit_no'] ?? $spkData['no_unit'] ?? '',
-            'no_unit' => $spkData['no_unit'] ?? $spkData['unit_no'] ?? '',
-            'url' => $spkData['url'] ?? base_url('/service/spk/detail/' . ($spkData['id'] ?? ''))
+            'module'     => 'spk',
+            'id'         => $spkData['id'] ?? null,
+            'nomor_spk'  => $spkData['nomor_spk'] ?? '',
+            'pelanggan'  => $spkData['pelanggan'] ?? $spkData['nama_customer'] ?? '',
+            'department' => $spkData['department'] ?? $spkData['departemen'] ?? 'Marketing',
+            'unit_no'    => $spkData['unit_no'] ?? $spkData['no_unit'] ?? '',
+            'no_unit'    => $spkData['no_unit'] ?? $spkData['unit_no'] ?? '',
+            'created_by' => $spkData['created_by'] ?? session('username') ?? 'System',
+            'url'        => $spkData['url'] ?? base_url('service/spk/detail/' . ($spkData['id'] ?? '')),
         ]);
     }
 }

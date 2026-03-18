@@ -193,13 +193,13 @@ const QuickAddModal = {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
                 } else {
-                    Swal.fire('Error', response.message, 'error');
+                    OptimaNotify.error(response.message);
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
                 }
             },
             error: (xhr) => {
-                Swal.fire('Error', 'Failed to load form', 'error');
+                OptimaNotify.error('Failed to load form');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
             }
@@ -297,27 +297,21 @@ const QuickAddModal = {
             dataType: 'json',
             success: (response) => {
                 if (response.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: response.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                    OptimaNotify.success(response.message, 'Success!');
                     
                     this.modal.hide();
                     
                     // Refresh dropdown and select new item
                     this.refreshDropdown(response.data, response.id);
                 } else {
-                    Swal.fire('Error', response.message, 'error');
+                    OptimaNotify.error(response.message);
                 }
                 
                 btn.disabled = false;
                 btn.classList.remove('loading');
             },
             error: (xhr) => {
-                Swal.fire('Error', 'An error occurred while saving data', 'error');
+                OptimaNotify.error('An error occurred while saving data');
                 btn.disabled = false;
                 btn.classList.remove('loading');
             }
@@ -475,17 +469,13 @@ function refreshDropdown(selectId) {
     const type = selectElement.getAttribute('data-master-type');
     
     if (!type) {
-        Swal.fire('Error', 'Dropdown type not found', 'error');
+        OptimaNotify.error('Dropdown type not found');
         return;
     }
     
-    Swal.fire({
-        title: 'Refreshing...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showLoading === 'function') {
+        OptimaPro.showLoading('Refreshing...');
+    }
     
     $.ajax({
         url: '<?= base_url('purchasing/refreshDropdownData') ?>',
@@ -493,21 +483,21 @@ function refreshDropdown(selectId) {
         data: { type: type },
         dataType: 'json',
         success: (response) => {
+            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
             if (response.success) {
                 QuickAddModal.updateDropdownOptions(selectElement, response.data);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Data successfully refreshed',
-                    timer: 1000,
-                    showConfirmButton: false
-                });
+                OptimaNotify.success('Data successfully refreshed', 'Success!');
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaNotify.error(response.message);
             }
         },
         error: () => {
-            Swal.fire('Error', 'Failed to refresh data', 'error');
+            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
+            OptimaNotify.error('Failed to refresh data');
         }
     });
 }

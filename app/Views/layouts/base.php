@@ -1480,7 +1480,9 @@ $currentLang = service('request')->getLocale();
             textEl.innerHTML = html || '';
             btnEl.innerHTML = confirmText;
             btnEl.className = 'btn ' + btnClass;
-            el.querySelector('.modal-footer .btn-secondary').textContent = cancelText;
+            // cancelText may contain HTML (e.g. <i class="fas fa-times ..."></i> + label)
+            // so we must use innerHTML instead of textContent.
+            el.querySelector('.modal-footer .btn-secondary').innerHTML = cancelText;
 
             let modalInstance = bootstrap.Modal.getInstance(el);
             if (!modalInstance) modalInstance = new bootstrap.Modal(el);

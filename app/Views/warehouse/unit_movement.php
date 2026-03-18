@@ -698,50 +698,57 @@ function showMovementDetailModal(data) {
 }
 
 function startMovement(id) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Mulai Pengiriman',
+        icon: 'question',
         html:
             '<div class="mb-3 text-start">' +
             '<label class="form-label">Nama Driver <span class="text-danger">*</span></label>' +
-            '<input id="swalDriverName" class="form-control" placeholder="Nama driver">' +
+            '<input id="optimaDriverName" class="form-control" placeholder="Nama driver">' +
             '</div>' +
             '<div class="mb-3 text-start">' +
             '<label class="form-label">No. Kendaraan <span class="text-danger">*</span></label>' +
-            '<input id="swalVehicleNumber" class="form-control" placeholder="Contoh: B 1234 ABC">' +
+            '<input id="optimaVehicleNumber" class="form-control" placeholder="Contoh: B 1234 ABC">' +
             '</div>' +
             '<div class="text-start">' +
             '<label class="form-label">Catatan (opsional)</label>' +
-            '<textarea id="swalNotes" class="form-control" rows="2" placeholder="Catatan pengiriman..."></textarea>' +
+            '<textarea id="optimaNotes" class="form-control" rows="2" placeholder="Catatan pengiriman..."></textarea>' +
             '</div>',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-truck me-1"></i> Mulai Kirim',
-        cancelButtonText: 'Batal',
-        preConfirm: () => {
-            const driverName = document.getElementById('swalDriverName').value.trim();
-            const vehicleNumber = document.getElementById('swalVehicleNumber').value.trim();
+        confirmText: '<i class="fas fa-truck me-1"></i> Mulai Kirim',
+        cancelText: 'Batal',
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
+            var elDriver = document.getElementById('optimaDriverName');
+            var elVehicle = document.getElementById('optimaVehicleNumber');
+            var elNotes = document.getElementById('optimaNotes');
+
+            var driverName = (elDriver && elDriver.value) ? elDriver.value.trim() : '';
+            var vehicleNumber = (elVehicle && elVehicle.value) ? elVehicle.value.trim() : '';
+            var notes = (elNotes && elNotes.value) ? elNotes.value : '';
             if (!driverName || !vehicleNumber) {
-                Swal.showValidationMessage('Nama driver dan no. kendaraan wajib diisi');
-                return false;
+                OptimaNotify.warning('Nama driver dan no. kendaraan wajib diisi', 'Validasi');
+                return;
             }
-            return { driver_name: driverName, vehicle_number: vehicleNumber, notes: document.getElementById('swalNotes').value };
-        }
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $.ajax({
-            url: _movementBaseUrl + 'warehouse/movements/startMovement/' + id,
-            type: 'POST',
-            data: result.value,
-            success: function(res) {
-                if (res.success) {
-                    $('#detailModal').modal('hide');
-                    loadMovements();
-                    OptimaNotify.success('Movement dimulai! Driver: ' + result.value.driver_name);
-                } else {
-                    OptimaNotify.error('Error: ' + res.message);
+
+            $.ajax({
+                url: _movementBaseUrl + 'warehouse/movements/startMovement/' + id,
+                type: 'POST',
+                data: {
+                    driver_name: driverName,
+                    vehicle_number: vehicleNumber,
+                    notes: notes
+                },
+                success: function(res) {
+                    if (res.success) {
+                        $('#detailModal').modal('hide');
+                        loadMovements();
+                        OptimaNotify.success('Movement dimulai! Driver: ' + driverName);
+                    } else {
+                        OptimaNotify.error('Error: ' + res.message);
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 }
 

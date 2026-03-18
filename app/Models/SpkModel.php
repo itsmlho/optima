@@ -31,50 +31,36 @@ class SpkModel extends Model
     /** Generate next SPK number with prefix SPK/YYYYMM/NNN */
     public function generateNextNumber(): string
     {
-        $prefix = 'SPK/'.date('Ym').'/';
+        $prefix = 'SPK/' . date('Ym') . '/';
 
-        // Use SELECT ... FOR UPDATE inside a transaction to serialize concurrent inserts
-        // without blocking reads on the entire table (unlike LOCK TABLES)
-        $this->db->transException(true)->transStart();
+        // Get the latest SPK number for this month
+        // NOTE: Do NOT start a nested transaction here - this method is called from within
+        // an outer transaction in createSPKFromQuotation(). Using transException(true) inside
+        // a nested call permanently pollutes the shared DB connection's transException state,
+        // causing auto-rollback on any subsequent query failure.
+        $row = $this->db->query(
+            "SELECT nomor_spk FROM {$this->table} WHERE nomor_spk LIKE ? ORDER BY id DESC LIMIT 1",
+            [$prefix . '%']
+        )->getRowArray();
 
-        try {
-            $row = $this->db->query(
-                "SELECT nomor_spk FROM {$this->table} WHERE nomor_spk LIKE ? ORDER BY id DESC LIMIT 1 FOR UPDATE",
-                [$prefix . '%']
-            )->getRowArray();
-
-            $seq = 1;
-            if ($row && isset($row['nomor_spk'])) {
-                $parts = explode('/', $row['nomor_spk']);
-                $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
-            }
-
-            $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
-
-            // Double-check that this number doesn't already exist
-            $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
-            if ($exists > 0) {
-                $attempts = 0;
-                while ($exists > 0 && $attempts < 100) {
-                    $seq++;
-                    $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
-                    $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
-                    $attempts++;
-                }
-
-                if ($exists > 0) {
-                    $newNumber = $prefix . date('His') . str_pad((string)$seq, 2, '0', STR_PAD_LEFT);
-                }
-            }
-
-            $this->db->transComplete();
-            return $newNumber;
-
-        } catch (\Throwable $e) {
-            $this->db->transRollback();
-            log_message('error', '[SpkModel] generateNextNumber failed: ' . $e->getMessage());
-            throw $e;
+        $seq = 1;
+        if ($row && isset($row['nomor_spk'])) {
+            $parts = explode('/', $row['nomor_spk']);
+            $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
         }
+
+        // Ensure the generated number is unique (handles concurrent inserts)
+        $attempts = 0;
+        do {
+            $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+            $exists    = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
+            if ($exists > 0) {
+                $seq++;
+            }
+            $attempts++;
+        } while ($exists > 0 && $attempts < 100);
+
+        return $newNumber;
     }
 
     /** Update status and record history (best-effort). Requires SpkStatusHistoryModel table available. */

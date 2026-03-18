@@ -650,38 +650,47 @@ function markAsPaid(id) {
 }
 
 function cancelInvoice(id) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Batalkan Invoice?',
-        input: 'text',
-        inputLabel: 'Alasan pembatalan',
-        inputPlaceholder: 'Masukkan alasan...',
+        html: `
+            <div class="text-start">
+                <label class="form-label" for="optimaCancelInvoiceReason">Alasan pembatalan</label>
+                <input id="optimaCancelInvoiceReason" type="text" class="form-control" placeholder="Masukkan alasan..." autofocus>
+            </div>
+        `,
         icon: 'warning',
-        showCancelButton: true,
+        confirmText: 'Ya, Batalkan!',
+        cancelText: (typeof window.lang === 'function' ? window.lang('back') : 'Back'),
         confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Batalkan!',
-        cancelButtonText: window.lang('back'),
-        inputValidator: (value) => {
-            if (!value) return 'Alasan harus diisi!';
-        }
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        const formData = new FormData();
-        formData.append('reason', result.value);
-        
-        fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                OptimaNotify.success('Invoice berhasil dibatalkan');
-                invoicesTable.ajax.reload();
-            } else {
-                OptimaNotify.error('Error: ' + data.message);
+        onConfirm: function() {
+            var modal = document.getElementById('optimaConfirmModal');
+            var input = modal ? modal.querySelector('#optimaCancelInvoiceReason') : null;
+            if (!input) input = document.getElementById('optimaCancelInvoiceReason');
+            
+            var reason = input && input.value ? input.value.trim() : '';
+            if (!reason) {
+                OptimaNotify.warning('Alasan harus diisi!', 'Validasi');
+                return;
             }
-        });
+            
+            var formData = new FormData();
+            formData.append('reason', reason);
+            
+            fetch(\`<?= base_url('finance/invoices/cancel/') ?>\${id}\`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    OptimaNotify.success('Invoice berhasil dibatalkan');
+                    invoicesTable.ajax.reload();
+                } else {
+                    OptimaNotify.error('Error: ' + data.message);
+                }
+            });
+        }
     });
 }
 </script>

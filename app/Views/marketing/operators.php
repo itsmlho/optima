@@ -661,16 +661,14 @@ function saveOperator() {
 }
 
 function deleteOperator(id) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Delete Operator?',
-        text: "This action cannot be undone!",
+        text: 'This action cannot be undone!',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, delete it!',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: '#dc3545',
+        onConfirm: function() {
             $.ajax({
                 url: `<?= base_url('marketing/operators/delete') ?>/${id}`,
                 type: 'DELETE',
@@ -744,15 +742,6 @@ function showNotification(message, type) {
         OptimaNotify[type](message);
     } else if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
         OptimaPro.showNotification(message, type);
-    } else if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            text: message,
-            icon: type,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
-        });
     } else {
         alert(message);
     }

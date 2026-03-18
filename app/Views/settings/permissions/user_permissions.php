@@ -374,39 +374,48 @@ function getPermissionControls(perm) {
 }
 
 function grantPermission(permissionId, reason = '', expiresAt = null) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Grant Permission?',
-        input: 'textarea',
-        inputPlaceholder: 'Reason for granting (optional)',
-        inputValue: reason,
-        showCancelButton: true,
-        confirmButtonText: 'Grant',
-        confirmButtonColor: '#28a745'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            updateUserPermission(permissionId, 1, result.value, expiresAt);
+        icon: 'question',
+        confirmText: 'Grant',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        confirmButtonColor: '#28a745',
+        html: `
+            <div class="text-start">
+                <label class="form-label">Reason (optional)</label>
+                <textarea id="optimaGrantPermissionReason" class="form-control" rows="3" placeholder="Reason for granting (optional)">${reason ? String(reason).replace(/</g,'&lt;') : ''}</textarea>
+            </div>
+        `,
+        onConfirm: function() {
+            var el = document.getElementById('optimaGrantPermissionReason');
+            var val = el ? (el.value || '').trim() : '';
+            updateUserPermission(permissionId, 1, val, expiresAt);
         }
     });
 }
 
 function denyPermission(permissionId) {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Deny Permission?',
+        icon: 'warning',
         text: 'This will explicitly deny access even if role has permission',
-        input: 'textarea',
-        inputPlaceholder: 'Reason for denial (required)',
-        showCancelButton: true,
-        confirmButtonText: 'Deny',
+        confirmText: 'Deny',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
         confirmButtonColor: '#dc3545',
-        preConfirm: (reason) => {
-            if (!reason) {
-                Swal.showValidationMessage('Reason is required for denial');
+        html: `
+            <div class="text-start">
+                <label class="form-label">Reason (required)</label>
+                <textarea id="optimaDenyPermissionReason" class="form-control" rows="3" placeholder="Reason for denial (required)"></textarea>
+            </div>
+        `,
+        onConfirm: function() {
+            var el = document.getElementById('optimaDenyPermissionReason');
+            var val = el ? (el.value || '').trim() : '';
+            if (!val) {
+                OptimaNotify.warning('Reason is required for denial', 'Validasi');
+                return;
             }
-            return reason;
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            updateUserPermission(permissionId, 0, result.value);
+            updateUserPermission(permissionId, 0, val);
         }
     });
 }

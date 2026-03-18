@@ -231,7 +231,7 @@
         });
         
         if (finalStatus === 'Sesuai' && (!snData['sn_unit'] || !snData['sn_mesin'])) {
-            Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number Unit dan Mesin wajib diisi untuk status Sesuai.'});
+            OptimaNotify.warning('Serial number Unit dan Mesin wajib diisi untuk status Sesuai.', 'SN Wajib');
             return;
         }
         const idUnit = $('#unit_id').val();
@@ -334,28 +334,24 @@
                         unitToast('success', r.message || 'Unit berhasil diverifikasi.');
                     } else {
                         unitToast('error', r.message || 'Verifikasi gagal.');
-                        if(!window.OptimaNotify) { Swal.fire({ icon: 'error', title: 'Error', text: r.message || 'Verifikasi gagal.' }); }
                     }
                 },
                 error: function(xhr, status, error) {
                     window._verifying = false; $('#btn-submit-verification').prop('disabled', false);
-                    Swal.close();
                     const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Terjadi kesalahan tak terduga.';
                     unitToast('error', msg);
-                    if(!window.OptimaNotify) { Swal.fire("Error", msg, "error"); }
                 }
             });
         };
-
-        Swal.fire({
+        
+        OptimaConfirm.generic({
             title: 'Konfirmasi Verifikasi',
             text: confirmText,
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Lanjutkan!',
-            cancelButtonText: window.lang('cancel')
-        }).then((result) => {
-            if (result.isConfirmed) {
+            confirmText: 'Ya, Lanjutkan!',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            onConfirm: function() {
                 action();
             }
         });

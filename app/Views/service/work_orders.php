@@ -1387,26 +1387,30 @@ $(document).ready(function() {
         let id = $(this).data('id');
         let woNumber = $(this).data('wo-number');
         
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Select Pause Type',
             text: woNumber ? `Work Order ${woNumber}` : 'Select pause type for this work order',
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Pending',
-            cancelButtonText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
-            showDenyButton: true,
-            denyButtonText: 'Waiting for Sparepart',
+            confirmText: 'Confirm',
+            cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
             confirmButtonColor: '#ffc107',
-            denyButtonColor: '#17a2b8',
-            cancelButtonColor: '#6c757d',
-            allowOutsideClick: false
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // User chose "Pending" - status ON_HOLD
-                showStatusUpdateModal(id, 'ON_HOLD', 'Pending Work Order', 'Provide reason for pending');
-            } else if (result.isDenied) {
-                // User chose "Menunggu Sparepart" - status WAITING_PARTS
-                showStatusUpdateModal(id, 'WAITING_PARTS', 'Waiting for Sparepart', 'Provide details of the required spare parts');
+            html: `
+                <div class="text-start">
+                    <label class="form-label mb-2">Choose pause type</label>
+                    <select id="optimaPauseTypeSelect" class="form-select">
+                        <option value="ON_HOLD" selected>Pending</option>
+                        <option value="WAITING_PARTS">Waiting for Sparepart</option>
+                    </select>
+                </div>
+            `,
+            onConfirm: function() {
+                var el = document.getElementById('optimaPauseTypeSelect');
+                var val = el ? el.value : 'ON_HOLD';
+                if (val === 'ON_HOLD') {
+                    showStatusUpdateModal(id, 'ON_HOLD', 'Pending Work Order', 'Provide reason for pending');
+                } else {
+                    showStatusUpdateModal(id, 'WAITING_PARTS', 'Waiting for Sparepart', 'Provide details of the required spare parts');
+                }
             }
         });
     });
@@ -1518,27 +1522,35 @@ $(document).ready(function() {
     
     // Function to show status update modal with notes
     function showStatusUpdateModal(id, status, title, placeholder) {
-        Swal.fire({
+        OptimaConfirm.generic({
             title: title,
-            input: 'textarea',
-            inputPlaceholder: placeholder,
-            showCancelButton: true,
-            confirmButtonText: 'Update',
-            cancelButtonText: window.lang('cancel'),
-            inputValidator: (value) => {
-                if (!value && (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS')) {
-                    return 'Notes are required for this status'
+            icon: status === 'CANCELLED' ? 'warning' : 'question',
+            confirmText: 'Update',
+            cancelText: window.lang('cancel'),
+            confirmButtonColor: 'primary',
+            html: `
+                <div class="text-start">
+                    <label class="form-label">Notes</label>
+                    <textarea id="optimaWorkOrderStatusNotes" class="form-control" rows="4" placeholder="${placeholder}"></textarea>
+                </div>
+            `,
+            onConfirm: function() {
+                var el = document.getElementById('optimaWorkOrderStatusNotes');
+                var notes = el ? (el.value || '').trim() : '';
+                var notesRequired = (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS');
+                if (notesRequired && !notes) {
+                    OptimaNotify.warning('Notes are required for this status', 'Validasi');
+                    showStatusUpdateModal(id, status, title, placeholder);
+                    return;
                 }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
+
                 $.ajax({
                     url: '<?= base_url('service/work-orders/update-status') ?>',
                     type: 'POST',
                     data: {
                         id: id,
                         status: status,
-                        notes: result.value || ''
+                        notes: notes || ''
                     },
                     success: function(response) {
                         if (response.success) {

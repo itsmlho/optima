@@ -596,96 +596,83 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Workflow indicator formatter
   // Proses DI function - can be called from table or modal
   window.prosesDI = async function(id) {
-    const { isConfirmed } = await Swal.fire({
+    OptimaConfirm.generic({
       title: 'Proses DI?',
       text: 'Status akan berubah ke SIAP KIRIM dan masuk workflow operasional.',
       icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Proses!',
-      cancelButtonText: window.lang('cancel')
-    });
-    if (!isConfirmed) return;
-    
-    // console.log('🚀 prosesDI called for DI:', id);
-    
-    const formData = new FormData();
-    formData.append('action', 'assign_driver');
-    formData.append('nama_supir', '');
-    formData.append('no_hp_supir', '-');
-    formData.append('no_sim_supir', '-');
-    formData.append('kendaraan', '');
-    formData.append('no_polisi_kendaraan', '-');
-    
-    // console.log('📤 Sending request to:', `<?= base_url('operational/delivery/update-status/') ?>${id}`);
-    
-    fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
-      method: 'POST',
-      headers: {'X-Requested-With': 'XMLHttpRequest'},
-      body: formData
-    })
-    .then(r => {
-      // console.log('📥 Response status:', r.status, r.statusText);
-      if (!r.ok) {
-        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-      }
-      return r.json();
-    })
-    .then(result => {
-      // console.log('✅ Server response:', result);
-      // console.log('🔍 Current filter value:', currentFilter);
-      
-      if (result && result.success) {
-        notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan untuk mengisi detail operasional.', 'success');
-        // console.log('🔄 Reloading table...');
+      confirmText: 'Ya, Proses!',
+      cancelText: window.lang('cancel'),
+      confirmButtonColor: 'primary',
+      onConfirm: function() {
+        // console.log('🚀 prosesDI called for DI:', id);
         
-        // CRITICAL: Switch to INPROGRESS filter so user can see the updated DI
-        // When status changes from DIAJUKAN → SIAP_KIRIM, it no longer matches SUBMITTED filter
-        // console.log('🔍 Checking filter switch condition: currentFilter === "SUBMITTED"?', currentFilter === 'SUBMITTED');
+        const formData = new FormData();
+        formData.append('action', 'assign_driver');
+        formData.append('nama_supir', '');
+        formData.append('no_hp_supir', '-');
+        formData.append('no_sim_supir', '-');
+        formData.append('kendaraan', '');
+        formData.append('no_polisi_kendaraan', '-');
         
-        if (currentFilter === 'SUBMITTED') {
-          // console.log('🔀 Switching from SUBMITTED to INPROGRESS filter');
-          currentFilter = 'INPROGRESS';
-          
-          // Update active tab
-          document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-          const inprogressTab = document.querySelector('.filter-tab[data-filter="INPROGRESS"]');
-          if (inprogressTab) {
-            inprogressTab.classList.add('active');
-            // console.log('✅ INPROGRESS tab activated');
-          } else {
-            console.warn('⚠️ INPROGRESS tab not found');
+        // console.log('📤 Sending request to:', `<?= base_url('operational/delivery/update-status/') ?>${id}`);
+        
+        fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
+          method: 'POST',
+          headers: {'X-Requested-With': 'XMLHttpRequest'},
+          body: formData
+        })
+        .then(r => {
+          // console.log('📥 Response status:', r.status, r.statusText);
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
           }
+          return r.json();
+        })
+        .then(result => {
+          // console.log('✅ Server response:', result);
+          // console.log('🔍 Current filter value:', currentFilter);
           
-          // Update active card
-          document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-          const inprogressCard = document.querySelector('.filter-card[data-filter="INPROGRESS"]');
-          if (inprogressCard) {
-            inprogressCard.classList.add('active');
-            // console.log('✅ INPROGRESS card activated');
+          if (result && result.success) {
+            notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan untuk mengisi detail operasional.', 'success');
+            
+            // CRITICAL: Switch to INPROGRESS filter so user can see the updated DI
+            // When status changes from DIAJUKAN → SIAP_KIRIM, it no longer matches SUBMITTED filter
+            if (currentFilter === 'SUBMITTED') {
+              currentFilter = 'INPROGRESS';
+              
+              // Update active tab
+              document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+              const inprogressTab = document.querySelector('.filter-tab[data-filter="INPROGRESS"]');
+              if (inprogressTab) {
+                inprogressTab.classList.add('active');
+              }
+              
+              // Update active card
+              document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+              const inprogressCard = document.querySelector('.filter-card[data-filter="INPROGRESS"]');
+              if (inprogressCard) {
+                inprogressCard.classList.add('active');
+              }
+            }
+            
+            if (typeof diTable !== 'undefined' && diTable) {
+              diTable.ajax.reload(null, false); // false = stay on current page
+            } else {
+              console.error('❌ diTable is not defined!');
+            }
+            
+            // Reload statistics to update counts
+            loadStatistics();
           } else {
-            console.warn('⚠️ INPROGRESS card not found');
+            console.error('❌ Server returned failure:', result);
+            notify(result.message || 'Gagal memproses DI', 'error');
           }
-        } else {
-          // console.log('⚠️ Filter switch skipped - not on SUBMITTED filter');
-        }
-        
-        if (typeof diTable !== 'undefined' && diTable) {
-          diTable.ajax.reload(null, false); // false = stay on current page
-          // console.log('✅ Table reloaded');
-        } else {
-          console.error('❌ diTable is not defined!');
-        }
-        
-        // Reload statistics to update counts
-        loadStatistics();
-      } else {
-        console.error('❌ Server returned failure:', result);
-        notify(result.message || 'Gagal memproses DI', 'error');
+        })
+        .catch(err => {
+          console.error('❌ Error in prosesDI:', err);
+          notify('Terjadi kesalahan saat memproses DI: ' + err.message, 'error');
+        });
       }
-    })
-    .catch(err => {
-      console.error('❌ Error in prosesDI:', err);
-      notify('Terjadi kesalahan saat memproses DI: ' + err.message, 'error');
     });
   };
   

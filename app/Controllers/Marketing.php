@@ -4985,7 +4985,7 @@ class Marketing extends BaseDataTableController
         }
 
         log_message('info', 'createSPKFromQuotation - Starting transaction');
-        $this->db->transBegin();
+        $this->db->transStart();
 
         try {
             log_message('info', 'createSPKFromQuotation - Getting JSON input');
@@ -5080,6 +5080,7 @@ class Marketing extends BaseDataTableController
             $createdSPKs = [];
             $spkNumbers = [];
             $errorMessages = []; // Track errors
+            $notificationQueue = []; // Collected after transaction commits
 
             // Create SPK for each selected specification
             foreach ($specifications as $specData) {
@@ -5213,19 +5214,19 @@ class Marketing extends BaseDataTableController
                         if ($spkId) {
                             $createdSPKs[] = $spkId;
                             $spkNumbers[] = $nomorSPK;
-                            
-                            // Send notification for each created SPK
-                            $this->sendSpkNotification($spkId);
-                            
-                            // Log SPK creation
-                            $this->logCreate('spk', $spkId, [
-                                'spk_id' => $spkId,
-                                'nomor_spk' => $nomorSPK,
-                                'quotation_id' => $quotationId,
+                            // Queue notification data - will be sent AFTER transaction commits
+                            $notificationQueue[] = [
+                                'spk_id'           => $spkId,
+                                'nomor_spk'        => $nomorSPK,
+                                'quotation_id'     => $quotationId,
                                 'specification_id' => $specId,
-                                'jumlah_unit' => $quantity
-                            ]);
-                            
+                                'jumlah_unit'      => $quantity,
+                                'pelanggan'        => $customerInfo['pelanggan'],
+                                'departemen'       => $spec['nama_departemen'] ?? 'N/A',
+                                'unit_type'        => $spec['nama_tipe_unit'] ?? 'N/A',
+                                'lokasi'           => $customerInfo['lokasi'],
+                                'created_by'       => session('username') ?? 'System',
+                            ];
                             log_message('info', "SPK created from quotation: {$nomorSPK} (ID: {$spkId})");
                         } else {
                             $errorMessages[] = "Specification #{$specId}: Insert succeeded but no ID returned";
@@ -5264,7 +5265,24 @@ class Marketing extends BaseDataTableController
                 log_message('info', "Quotation {$quotationId} marked with spk_created=1 - all specifications have SPKs");
             }
             
-            $this->db->transCommit();
+            $commitOk = $this->db->transComplete();
+
+            if (!$commitOk) {
+                throw new \Exception('Transaction failed to commit. Please try again.');
+            }
+
+            // --- POST-TRANSACTION: notifications & activity logs ---
+            // These run OUTSIDE the transaction so any failure here never rolls back the SPK insert.
+            foreach ($notificationQueue as $n) {
+                $this->sendSpkNotification($n['nomor_spk'], $n);
+                $this->logCreate('spk', $n['spk_id'], [
+                    'spk_id'           => $n['spk_id'],
+                    'nomor_spk'        => $n['nomor_spk'],
+                    'quotation_id'     => $n['quotation_id'],
+                    'specification_id' => $n['specification_id'],
+                    'jumlah_unit'      => $n['jumlah_unit'],
+                ]);
+            }
 
             $message = count($createdSPKs) . ' SPK(s) created successfully! Numbers: ' . implode(', ', $spkNumbers);
             if ($statusUpdated) {
@@ -5283,7 +5301,9 @@ class Marketing extends BaseDataTableController
             ]);
 
         } catch (\Exception $e) {
-            $this->db->transRollback();
+            if ($this->db->transDepth > 0) {
+                $this->db->transRollback();
+            }
             log_message('error', 'createSPKFromQuotation failed: ' . $e->getMessage());
             
             return $this->response->setJSON([
@@ -5351,26 +5371,21 @@ class Marketing extends BaseDataTableController
             
             // Prepare event data for notification
             $eventData = [
-                'nomor_spk' => $nomorSpk,
-                'pelanggan' => $spkData['pelanggan'] ?? 'N/A',
-                'departemen' => $spkData['departemen'] ?? 'N/A',
-                'lokasi' => $spkData['lokasi'] ?? 'N/A',
-                'id' => $spkData['id'] ?? null
+                'nomor_spk'  => $nomorSpk,
+                'id'         => $spkData['spk_id'] ?? $spkData['id'] ?? null,
+                'pelanggan'  => $spkData['pelanggan'] ?? 'N/A',
+                'department' => $spkData['departemen'] ?? 'N/A',
+                'unit_no'    => $spkData['unit_type'] ?? $spkData['unit_no'] ?? 'N/A',
+                'lokasi'     => $spkData['lokasi'] ?? 'N/A',
+                'created_by' => $spkData['created_by'] ?? session('username') ?? 'System',
+                'url'        => base_url('service/spk/detail/' . ($spkData['spk_id'] ?? '')),
             ];
-            
-            // Debug logging
-            log_message('info', "SPK Notification Debug - nomorSpk: {$nomorSpk}");
-            log_message('info', "SPK Notification Debug - spkData: " . json_encode($spkData));
-            log_message('info', "SPK Notification Debug - eventData: " . json_encode($eventData));
             
             // Send notification using helper function
             $result = notify_spk_created($eventData);
             
-            // Log the result
             if ($result && isset($result['notifications_sent'])) {
                 log_message('info', "SPK Notification sent: {$result['notifications_sent']} notifications for SPK {$nomorSpk}");
-            } else {
-                log_message('warning', "SPK Notification failed or returned no result for SPK {$nomorSpk}");
             }
             
         } catch (\Throwable $e) {

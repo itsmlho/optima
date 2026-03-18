@@ -1233,15 +1233,10 @@ function uploadFile(siloId, file, fileType) {
     formData.append('file', file);
     formData.append('file_type', fileType);
 
-    // Show loading
-    Swal.fire({
-        title: 'Uploading...',
-        text: 'Please wait, the file is being uploaded',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    // Show loading (no SweetAlert fallback)
+    if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showLoading === 'function') {
+        OptimaPro.showLoading('Uploading...');
+    }
 
     $.ajax({
         url: '<?= base_url('perizinan/upload-file/') ?>' + siloId,
@@ -1251,7 +1246,9 @@ function uploadFile(siloId, file, fileType) {
         contentType: false,
         dataType: 'json',
         success: function(response) {
-            Swal.close();
+            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
             if (response.success) {
                 OptimaNotify.success(response.message || 'File uploaded successfully');
                 $('#updateModal').modal('hide');
@@ -1269,7 +1266,9 @@ function uploadFile(siloId, file, fileType) {
             }
         },
         error: function(xhr, status, error) {
-            Swal.close();
+            if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
             console.error('Upload error:', error, xhr.responseText);
             let errorMessage = 'Failed to upload file';
             

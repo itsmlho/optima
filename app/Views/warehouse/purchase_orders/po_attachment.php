@@ -206,7 +206,7 @@
         });
         
         if (finalStatus === 'Sesuai' && !snData['serial_number']) {
-            Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number wajib diisi untuk status Sesuai.'});
+        OptimaNotify.warning('Serial number wajib diisi untuk status Sesuai.', 'SN Wajib');
             return;
         }
         const idItem = $('#item_id').val();
@@ -273,42 +273,50 @@
 
                         $('#detail-view-container').html(`<div class="card table-card"><div class="card-body text-center p-5"><i class="fas fa-check-circle fa-3x text-success mb-3"></i><h5 class="text-muted">Verifikasi berhasil! Silakan pilih item lain.</h5></div></div>`);
                     } else {
-                        if (window.OptimaNotify) { OptimaNotify.error(response.message || 'Terjadi kesalahan.'); } else { Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Terjadi kesalahan.' }); }
+                        if (window.OptimaNotify) OptimaNotify.error(response.message || 'Terjadi kesalahan.');
+                        else alert(response.message || 'Terjadi kesalahan.');
                     }
                 },
                 error: (xhr) => {
                     window._verifyingAttachment = false; $('#btn-submit-verification').prop('disabled', false);
-                    if (window.OptimaNotify) { OptimaNotify.error('Terjadi kesalahan tak terduga.'); } else { Swal.fire("Error", "Terjadi kesalahan tak terduga.", "error"); }
+                    if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan tak terduga.');
+                    else alert('Terjadi kesalahan tak terduga.');
                     console.error(xhr.responseText);
                 }
             });
         };
 
         if (status === 'Tidak Sesuai') {
-            Swal.fire({
+            OptimaConfirm.danger({
                 title: 'Verifikasi "Tidak Sesuai"',
-                input: 'textarea',
-                inputLabel: 'Harap berikan alasan atau catatan',
-                inputPlaceholder: 'Contoh: Barang rusak, jumlah kurang, dll...',
-                showCancelButton: true,
-                confirmButtonText: 'Submit',
-                cancelButtonText: window.lang('cancel'),
-                inputValidator: (value) => !value && 'Anda harus mengisi alasan!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    action(result.value);
+                icon: 'warning',
+                html: `
+                    <div class="text-start">
+                        <label class="form-label">Harap berikan alasan atau catatan</label>
+                        <textarea id="optimaAttachmentVerifyReason" class="form-control" rows="4" placeholder="Contoh: Barang rusak, jumlah kurang, dll..."></textarea>
+                    </div>
+                `,
+                confirmText: 'Submit',
+                cancelText: window.lang('cancel'),
+                onConfirm: function() {
+                    var el = document.getElementById('optimaAttachmentVerifyReason');
+                    var val = el ? (el.value || '').trim() : '';
+                    if (!val) {
+                        OptimaNotify.warning('Anda harus mengisi alasan!', 'Validasi');
+                        return;
+                    }
+                    action(val);
                 }
             });
         } else {
-            Swal.fire({
+            OptimaConfirm.generic({
                 title: 'Konfirmasi Verifikasi',
                 text: `Anda akan memverifikasi item ini sebagai "${status}". Lanjutkan?`,
                 icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Lanjutkan!',
-                cancelButtonText: window.lang('cancel')
-            }).then((result) => {
-                if (result.isConfirmed) {
+                confirmText: 'Ya, Lanjutkan!',
+                cancelText: window.lang('cancel'),
+                confirmButtonColor: 'primary',
+                onConfirm: function() {
                     action();
                 }
             });

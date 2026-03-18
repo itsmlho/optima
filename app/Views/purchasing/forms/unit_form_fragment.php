@@ -185,7 +185,7 @@ function addModelForBrand() {
     const selectedOption = brandSelect.options[brandSelect.selectedIndex];
     
     if (!brandSelect.value || !selectedOption) {
-        Swal.fire('Attention', 'Please select a Brand first', 'warning');
+        OptimaNotify.warning('Please select a Brand first', 'Attention');
         return;
     }
     
@@ -198,19 +198,13 @@ function refreshModelDropdown() {
     const selectedOption = brandSelect.options[brandSelect.selectedIndex];
     
     if (!brandSelect.value || !selectedOption) {
-        Swal.fire('Attention', 'Please select a Brand first', 'warning');
+        OptimaNotify.warning('Please select a Brand first', 'Attention');
         return;
     }
     
     const brandName = selectedOption.getAttribute('data-merk');
     
-    Swal.fire({
-        title: 'Refreshing...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Refreshing...');
     
     $.ajax({
         url: '<?= base_url('purchasing/refreshDropdownData') ?>',
@@ -224,19 +218,16 @@ function refreshModelDropdown() {
             if (response.success) {
                 const modelSelect = document.getElementById('unit_model');
                 QuickAddModal.updateDropdownOptions(modelSelect, response.data);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Data successfully refreshed',
-                    timer: 1000,
-                    showConfirmButton: false
-                });
+                OptimaPro.hideLoading();
+                OptimaNotify.success('Data successfully refreshed', 'Success');
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaPro.hideLoading();
+                OptimaNotify.error(response.message);
             }
         },
         error: () => {
-            Swal.fire('Error', 'Failed to refresh data', 'error');
+            OptimaPro.hideLoading();
+            OptimaNotify.error('Failed to refresh data');
         }
     });
 }
@@ -245,7 +236,7 @@ function addJenisUnitForDepartemen() {
     const deptSelect = document.getElementById('unit_departemen');
     
     if (!deptSelect.value) {
-        Swal.fire('Attention', 'Please select a Department first', 'warning');
+        OptimaNotify.warning('Please select a Department first', 'Attention');
         return;
     }
     
@@ -256,17 +247,11 @@ function refreshJenisUnitDropdown() {
     const deptSelect = document.getElementById('unit_departemen');
     
     if (!deptSelect.value) {
-        Swal.fire('Attention', 'Please select a Department first', 'warning');
+        OptimaNotify.warning('Please select a Department first', 'Attention');
         return;
     }
     
-    Swal.fire({
-        title: 'Refreshing...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Refreshing...');
     
     // Use existing endpoint that's already working
     $.ajax({
@@ -298,20 +283,17 @@ function refreshJenisUnitDropdown() {
                     $(jenisSelect).trigger('change.select2');
                 }
                 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Data successfully refreshed',
-                    timer: 1000,
-                    showConfirmButton: false
-                });
+                OptimaPro.hideLoading();
+                OptimaNotify.success('Data successfully refreshed', 'Success');
             } else {
-                Swal.fire('Error', response.message || 'Failed to refresh data', 'error');
+                OptimaPro.hideLoading();
+                OptimaNotify.error(response.message || 'Failed to refresh data');
             }
         },
         error: (xhr) => {
             console.error('Refresh error:', xhr);
-            Swal.fire('Error', 'Failed to refresh data', 'error');
+            OptimaPro.hideLoading();
+            OptimaNotify.error('Failed to refresh data');
         }
     });
 }

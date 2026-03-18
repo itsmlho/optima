@@ -895,12 +895,7 @@
                     console.log('Thrown:', thrown);
                     console.log('Response Text:', xhr.responseText);
                     
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'An error occurred while loading data. Please check the console for details.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
+                    OptimaNotify.error('An error occurred while loading data. Please check the console for details.', 'Error!');
                 }
             },
             columns: getDynamicColumns(currentTypeFilter),
@@ -930,13 +925,13 @@
                     if (response.success) {
                         $('#editAttachmentModal').modal('hide');
                         attachmentTable.ajax.reload(null, false);
-                        Swal.fire('Berhasil!', response.message, 'success');
+                        OptimaNotify.success(response.message, 'Berhasil!');
                     } else {
-                        Swal.fire('Gagal!', response.message, 'error');
+                        OptimaNotify.error(response.message, 'Gagal!');
                     }
                 },
                 error: function() {
-                    Swal.fire('Error!', 'Cannot connect to the server.', 'error');
+                    OptimaNotify.error('Cannot connect to the server.', 'Error!');
                 }
             });
         });
@@ -1017,12 +1012,7 @@
                 },
                 error: function(xhr, error, thrown) {
                     console.log('DataTables Ajax Error:', {xhr, error, thrown});
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'An error occurred while loading data.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
+                    OptimaNotify.error('An error occurred while loading data.', 'Error!');
                 }
             },
             columns: getDynamicColumns(currentTypeFilter),
@@ -1333,7 +1323,7 @@
                     $('#edit_notes').val(data.notes || '');
                     $('#editAttachmentModal').modal('show');
                 } else {
-                    Swal.fire('Error!', response.message, 'error');
+                OptimaNotify.error(response.message, 'Error!');
                 }
             }
         });
@@ -1349,17 +1339,14 @@
 
     window.deleteCurrentAttachment = function() {
         if (currentAttachmentId) {
-            Swal.fire({
+            OptimaConfirm.danger({
                 title: 'Delete Attachment',
                 text: 'Are you sure you want to delete this attachment item?',
                 icon: 'warning',
-                showCancelButton: true,
+                confirmText: 'Yes, Delete',
+                cancelText: window.lang('cancel'),
                 confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Delete',
-                cancelButtonText: window.lang('cancel')
-            }).then((result) => {
-                if (result.isConfirmed) {
+                onConfirm: function() {
                     $.ajax({
                         url: `<?= base_url('warehouse/inventory/attachments/delete/') ?>${currentAttachmentId}`,
                         type: 'DELETE',
@@ -1370,13 +1357,13 @@
                             if (response.success) {
                                 $('#viewAttachmentModal').modal('hide');
                                 attachmentTable.ajax.reload();
-                                Swal.fire('Berhasil!', response.message, 'success');
+                                OptimaNotify.success(response.message, 'Berhasil!');
                             } else {
-                                Swal.fire('Gagal!', response.message, 'error');
+                                OptimaNotify.error(response.message, 'Gagal!');
                             }
                         },
                         error: function() {
-                            Swal.fire('Error!', 'Cannot connect to the server.', 'error');
+                            OptimaNotify.error('Cannot connect to the server.', 'Error!');
                         }
                     });
                 }
@@ -1551,11 +1538,11 @@
                         checkExistingAttachment($(this));
                     });
                 } else {
-                    Swal.fire('Error', 'Failed to load unit list', 'error');
+                    OptimaNotify.error('Failed to load unit list', 'Error');
                 }
             },
             error: function() {
-                Swal.fire('Error', 'Unable to connect to the server', 'error');
+                OptimaNotify.error('Unable to connect to the server', 'Error');
             }
         });
     }
@@ -1644,13 +1631,13 @@
                 if (response.success) {
                     $('#attachToUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
-                    Swal.fire('Successful', response.message, 'success');
+                    OptimaNotify.success(response.message, 'Successful');
                 } else {
-                    Swal.fire('Failed!', response.message, 'error');
+                    OptimaNotify.error(response.message, 'Failed!');
                 }
             },
             error: function() {
-                Swal.fire('Error!', 'Cannot connect to the server', 'error');
+                OptimaNotify.error('Cannot connect to the server', 'Error!');
             }
         });
     });
@@ -1662,7 +1649,7 @@
         const reason = reasonSelect === 'custom' ? $('#swap_custom_reason').val() : reasonSelect;
         
         if (!reason) {
-            Swal.fire('Error', 'Select or enter a reason for swapping units', 'error');
+            OptimaNotify.error('Select or enter a reason for swapping units', 'Error');
             return;
         }
         
@@ -1684,13 +1671,13 @@
                 if (response.success) {
                     $('#swapUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
-                    Swal.fire('Berhasil!', response.message, 'success');
+                    OptimaNotify.success(response.message, 'Berhasil!');
                 } else {
-                    Swal.fire('Gagal!', response.message, 'error');
+                    OptimaNotify.error(response.message, 'Gagal!');
                 }
             },
             error: function() {
-                Swal.fire('Error!', 'Cannot connect to the server', 'error');
+                OptimaNotify.error('Cannot connect to the server', 'Error!');
             }
         });
     });
@@ -1702,7 +1689,7 @@
         const reason = reasonSelect === 'custom' ? $('#detach_custom_reason').val() : reasonSelect;
         
         if (!reason) {
-            Swal.fire('Error', 'Select or enter a reason for detaching from unit', 'error');
+            OptimaNotify.error('Select or enter a reason for detaching from unit', 'Error');
             return;
         }
         
@@ -1723,13 +1710,13 @@
                 if (response.success) {
                     $('#detachFromUnitModal').modal('hide');
                     attachmentTable.ajax.reload();
-                    Swal.fire('Berhasil!', response.message, 'success');
+                    OptimaNotify.success(response.message, 'Berhasil!');
                 } else {
-                    Swal.fire('Gagal!', response.message, 'error');
+                    OptimaNotify.error(response.message, 'Gagal!');
                 }
             },
             error: function() {
-                Swal.fire('Error!', 'Cannot connect to the server', 'error');
+                OptimaNotify.error('Cannot connect to the server', 'Error!');
             }
         });
     });
@@ -1884,7 +1871,7 @@
         }
         
         if (!isValid) {
-            Swal.fire('Validation Error', errorMessage, 'warning');
+            OptimaNotify.warning(errorMessage, 'Validation Error');
             return;
         }
         
@@ -1906,19 +1893,19 @@
                 
                 if (response.success) {
                     $('#addItemModal').modal('hide');
-                    Swal.fire('Success!', response.message || 'Item has been added successfully!', 'success');
+                    OptimaNotify.success(response.message || 'Item has been added successfully!', 'Success!');
                     
                     // Reload the table
                     attachmentTable.ajax.reload();
                     
                 } else {
-                    Swal.fire('Failed!', response.message || 'Failed to add item', 'error');
+                    OptimaNotify.error(response.message || 'Failed to add item', 'Failed!');
                 }
             },
             error: function(xhr, status, error) {
                 $('#btn-save-item').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save Item');
                 console.error('Error adding item:', error);
-                Swal.fire('Error!', 'An error occurred while adding the item', 'error');
+                OptimaNotify.error('An error occurred while adding the item', 'Error!');
             }
         });
     });

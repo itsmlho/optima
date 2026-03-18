@@ -266,49 +266,43 @@ function testNotification() {
 }
 
 function clearCache() {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Clear Cache?',
         text: 'Semua cache akan dihapus.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Clear!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        fetch('<?= base_url('queue/clear-cache') ?>', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showResult(data);
-            refreshStats();
-        });
+        confirmText: 'Ya, Clear!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            fetch('<?= base_url('queue/clear-cache') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult(data);
+                refreshStats();
+            });
+        }
     });
 }
 
 function cleanFailedJobs() {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Clean Failed Jobs?',
         text: 'Semua failed jobs akan dibersihkan.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Clean!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        fetch('<?= base_url('queue/clean-failed') ?>', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showResult(data);
-            refreshStats();
-        });
-    }
+        confirmText: 'Ya, Clean!',
+        cancelText: window.lang('cancel'),
+        onConfirm: function() {
+            fetch('<?= base_url('queue/clean-failed') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult(data);
+                refreshStats();
+            });
+        }
+    });
 }
 
 function showLogs() {

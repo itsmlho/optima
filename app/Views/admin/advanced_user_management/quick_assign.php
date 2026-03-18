@@ -317,23 +317,22 @@ function saveChanges() {
 }
 
 function resetPermissions() {
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Reset Permissions?',
         text: 'Semua permission user ini akan direset.',
         icon: 'warning',
-        showCancelButton: true,
+        confirmText: 'Ya, Reset!',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
         confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Reset!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        $('.permission-toggle input[type="checkbox"]').each(function() {
-            if ($(this).is(':checked')) {
-                $(this).prop('checked', false);
-                var permKey = $(this).attr('id').replace('quick_', '');
-                togglePermission(permKey, false);
-            }
-        });
+        onConfirm: function() {
+            $('.permission-toggle input[type="checkbox"]').each(function() {
+                if ($(this).is(':checked')) {
+                    $(this).prop('checked', false);
+                    var permKey = $(this).attr('id').replace('quick_', '');
+                    togglePermission(permKey, false);
+                }
+            });
+        }
     });
 }
 

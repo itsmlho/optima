@@ -823,29 +823,24 @@ $(document).ready(function() {
                     $('#sparepartValidationModal').modal('hide');
                     
                     // Show success SweetAlert with auto-close
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Work Order Ditutup',
-                        text: `Work Order ${woNumber} berhasil di-Close`,
-                        timer: 1500,
-                        timerProgressBar: true,
-                        showConfirmButton: false,
-                        allowOutsideClick: false
-                    }).then(() => {
-                        // Reload both tables without switching tabs
-                        setTimeout(() => {
-                            // Reload progress table - WO will disappear from here
-                            if (typeof window.progressWorkOrdersTable !== 'undefined' && window.progressWorkOrdersTable) {
-                                window.progressWorkOrdersTable.ajax.reload(null, false);
-                                console.log('✅ Progress table refreshed - WO removed');
-                            }
-                            // Reload closed table - WO will appear here
-                            if (typeof window.closedWorkOrdersTable !== 'undefined' && window.closedWorkOrdersTable) {
-                                window.closedWorkOrdersTable.ajax.reload(null, false);
-                                console.log('✅ Closed table refreshed - WO added');
-                            }
-                        }, 200);
-                    });
+                    OptimaNotify.success(
+                        `Work Order ${woNumber} berhasil di-Close`,
+                        'Work Order Ditutup'
+                    );
+                    
+                    // Reload both tables without switching tabs
+                    setTimeout(() => {
+                        // Reload progress table - WO will disappear from here
+                        if (typeof window.progressWorkOrdersTable !== 'undefined' && window.progressWorkOrdersTable) {
+                            window.progressWorkOrdersTable.ajax.reload(null, false);
+                            console.log('✅ Progress table refreshed - WO removed');
+                        }
+                        // Reload closed table - WO will appear here
+                        if (typeof window.closedWorkOrdersTable !== 'undefined' && window.closedWorkOrdersTable) {
+                            window.closedWorkOrdersTable.ajax.reload(null, false);
+                            console.log('✅ Closed table refreshed - WO added');
+                        }
+                    }, 1700);
                 } else {
                     showSparepartAlert('error', response.message || 'Gagal menyimpan validasi sparepart');
                 }

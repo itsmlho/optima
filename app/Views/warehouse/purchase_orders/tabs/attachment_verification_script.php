@@ -598,7 +598,7 @@
         const lokasiUnit = $('#attachment_lokasi_unit_inline').val();
         
         if (!lokasiUnit) {
-            Swal.fire({icon:'warning', title:'Storage Location Required', text:'Please select a storage location first.'});
+            OptimaNotify.warning('Please select a storage location first.', 'Storage Location Required');
             return;
         }
         
@@ -664,18 +664,17 @@
         }
         
         if (finalStatus === 'Sesuai' && !snData['serial_number']) {
-            Swal.fire({icon:'warning', title:'SN Required', text:'Serial number is required for status Sesuai.'});
+            OptimaNotify.warning('Serial number is required for status Sesuai.', 'SN Required');
             return;
         }
         
         if (finalStatus === 'Tidak Sesuai') {
             const alasanReject = $('#attachment_alasan_reject_inline').val().trim();
             if (!alasanReject) {
-                Swal.fire({
-                    icon: 'warning', 
-                    title: 'Reject Reason Required', 
-                    text: 'Please provide a reason for the reject/discrepancy found.'
-                });
+                OptimaNotify.warning(
+                    'Please provide a reason for the reject/discrepancy found.',
+                    'Reject Reason Required'
+                );
                 $('#attachment_alasan_reject_inline').focus();
                 return;
             }
@@ -717,22 +716,14 @@
         }
         summaryHTML += '</div></div>';
         
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Verification Summary',
             html: summaryHTML,
             icon: finalStatus === 'Sesuai' ? 'question' : 'warning',
-            showCancelButton: true,
+            confirmText: finalStatus === 'Sesuai' ? 'Yes, Confirmed' : 'Yes, Not Confirmed',
+            cancelText: window.lang('cancel'),
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: finalStatus === 'Sesuai' ? '<i class="fas fa-check-circle me-2"></i>Yes, Confirmed' : '<i class="fas fa-exclamation-triangle me-2"></i>Yes, Not Confirmed',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>' + window.lang('cancel'),
-            reverseButtons: true,
-            width: '600px',
-            customClass: {
-                popup: 'text-left'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
+            onConfirm: function() {
                 updateAttachmentStatusVerifikasi(idItem, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies);
             }
         });
@@ -988,7 +979,7 @@
                 OptimaPro.hideLoading();
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
-                    Swal.fire('Success!', 'Verification successful!', 'success');
+                    OptimaNotify.success('Verification successful!', 'Success!');
                     
                     let sisaElem = $(`#lbl-remain-attachment-po-${poId}`);
                     let sisaCount = parseInt(sisaElem.text()) - 1;
@@ -1010,13 +1001,13 @@
                         </div>
                     `);
                 } else {
-                    Swal.fire('Error!', response.message || 'An error occurred.', 'error');
+                    OptimaNotify.error(response.message || 'An error occurred.');
                 }
             },
             error: (xhr) => {
                 window._verifyingAttachment = false;
                 $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
-                Swal.fire("Error", "An unexpected error occurred.", "error");
+                OptimaNotify.error('An unexpected error occurred.');
                 console.error(xhr.responseText);
             }
         });

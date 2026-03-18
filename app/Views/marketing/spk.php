@@ -117,6 +117,9 @@ $can_export = $permissions['export'];
                 </p>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshSPKTable()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
                 <?php if ($can_create): ?>
                 <?= ui_button('add', lang('Marketing.create_spk'), [
                     'data-bs-toggle' => 'modal',
@@ -132,30 +135,32 @@ $can_export = $permissions['export'];
                 <?php endif; ?>
             </div>
         </div>
-        
+
         <!-- Filter Tabs -->
-        <ul class="nav nav-tabs mb-3" id="filterTabs">
-            <li class="nav-item">
-                <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS"><?= lang('Marketing.in_progress') ?></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="READY"><?= lang('Marketing.ready') ?></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED"><?= lang('Marketing.completed') ?></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
-            </li>
-        </ul>
+        <div class="px-3 pt-3 pb-0 border-bottom">
+            <ul class="nav nav-tabs border-0" id="filterTabs">
+                <li class="nav-item">
+                    <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS"><?= lang('Marketing.in_progress') ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link filter-tab" href="#" data-filter="READY"><?= lang('Marketing.ready') ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link filter-tab" href="#" data-filter="COMPLETED"><?= lang('Marketing.completed') ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
+                </li>
+            </ul>
+        </div>
         
-        <div class="card-body p-0">
+        <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-striped table-hover mb-0 table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
                     <thead class="table-light">
@@ -581,6 +586,11 @@ $can_export = $permissions['export'];
     // Global variables for filtering
     let spkTable; // DataTable instance
     let currentFilter = 'all';
+
+    function refreshSPKTable() {
+        if (spkTable && spkTable.ajax) spkTable.ajax.reload(null, false);
+        loadStatistics();
+    }
     
     // Load statistics from server
     function loadStatistics() {

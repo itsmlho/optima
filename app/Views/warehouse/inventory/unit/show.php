@@ -840,7 +840,7 @@ if ($aksesorisRaw) {
                 if (res.csrf_hash) $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content', res.csrf_hash);
 
                 if (res.success) {
-                    Swal.fire({icon: 'success', title: 'Saved', text: res.message, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000});
+                    OptimaNotify.success(res.message, 'Saved');
 
                     // Refresh view spans
                     $('#view-mesin').text($('select[name="model_mesin_id"] option:selected').text().trim() || '-');
@@ -863,12 +863,12 @@ if ($aksesorisRaw) {
 
                     toggleSpecEdit(false);
                 } else {
-                    Swal.fire('Error', res.message, 'error');
+                    OptimaNotify.error(res.message);
                 }
             },
             error: function() {
                 $('#btnSaveSpecs').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
-                Swal.fire('Error', 'Failed to connect to server.', 'error');
+                OptimaNotify.error('Failed to connect to server.');
             }
         });
     }
@@ -909,19 +909,19 @@ if ($aksesorisRaw) {
                 if (res.csrf_hash) $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content', res.csrf_hash);
 
                 if (res.success) {
-                    Swal.fire({icon: 'success', title: 'Saved', text: res.message, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000});
+                    OptimaNotify.success(res.message, 'Saved');
 
                     let viewHtml = catatan ? catatan.replace(/\n/g, "<br>") : '<em class="text-muted">No notes yet.</em>';
                     $('#view-catatan').html(viewHtml);
 
                     toggleCatatanEdit(false);
                 } else {
-                    Swal.fire('Error', res.message, 'error');
+                    OptimaNotify.error(res.message);
                 }
             },
             error: function() {
                 $('#btnSaveCatatan').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
-                Swal.fire('Error', 'Failed to connect to server.', 'error');
+                OptimaNotify.error('Failed to connect to server.');
             }
         });
     }

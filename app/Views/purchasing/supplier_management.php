@@ -328,11 +328,11 @@ function viewSupplierDetail(id) {
                 renderSupplierDetail(supplier);
                 $('#supplierDetailModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
+                OptimaNotify.error(response.message || 'Failed to fetch supplier data');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
+            OptimaNotify.error('An error occurred while fetching supplier data');
         }
     });
 }
@@ -476,11 +476,11 @@ function editSupplierFromModal() {
                 $('#supplierDetailModal').modal('hide');
                 $('#supplierFormModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
+                OptimaNotify.error(response.message || 'Failed to fetch supplier data');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
+            OptimaNotify.error('An error occurred while fetching supplier data');
         }
     });
 }
@@ -501,11 +501,11 @@ function changeSupplierStatus() {
                 $('#status_reason').val('');
                 $('#changeStatusModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
+                OptimaNotify.error(response.message || 'Failed to fetch supplier data');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
+            OptimaNotify.error('An error occurred while fetching supplier data');
         }
     });
 }
@@ -516,7 +516,7 @@ function saveStatusChange() {
     const reason = $('#status_reason').val();
     
     if (!newStatus) {
-        Swal.fire('Error!', 'Select new status', 'error');
+        OptimaNotify.error('Select new status');
         return;
     }
     
@@ -531,7 +531,7 @@ function saveStatusChange() {
         dataType: 'json',
         success: function(response) {
                           if (response.success) {
-                              Swal.fire('Success!', response.message || 'Supplier status successfully updated', 'success');
+                              OptimaNotify.success(response.message || 'Supplier status successfully updated', 'Success!');
                               $('#changeStatusModal').modal('hide');
                               $('#supplierDetailModal').modal('hide');
                               // Refresh data with page reload to ensure latest data
@@ -539,11 +539,11 @@ function saveStatusChange() {
                                   location.reload();
                               }, 1500);
                           } else {
-                Swal.fire('Error!', response.message || 'Failed to update supplier status', 'error');
+                OptimaNotify.error(response.message || 'Failed to update supplier status');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'An error occurred while updating supplier status', 'error');
+            OptimaNotify.error('An error occurred while updating supplier status');
         }
     });
 }
@@ -552,17 +552,14 @@ function saveStatusChange() {
 function deleteSupplierFromModal() {
     if (!currentSupplierId) return;
     
-    Swal.fire({
+    OptimaConfirm.danger({
         title: 'Delete Confirmation',
         text: 'Are you sure you want to delete this supplier?',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, Delete!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        confirmText: 'Yes, Delete!',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: '#dc3545',
+        onConfirm: function() {
             $.ajax({
                 url: '<?= base_url('purchasing/delete-supplier') ?>/' + currentSupplierId,
                 type: 'POST',
@@ -570,20 +567,19 @@ function deleteSupplierFromModal() {
                     '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                 },
                 dataType: 'json',
-                      success: function(response) {
-                          if (response.success) {
-                              Swal.fire('Success!', response.message || 'Supplier successfully deleted', 'success');
-                              $('#supplierDetailModal').modal('hide');
-                              // Refresh data with page reload to ensure latest data
-                              setTimeout(function() {
-                                  location.reload();
-                              }, 1500);
-                          } else {
-                        Swal.fire('Error!', response.message || 'Failed to delete supplier', 'error');
+                success: function(response) {
+                    if (response.success) {
+                        OptimaNotify.success(response.message || 'Supplier successfully deleted', 'Success!');
+                        $('#supplierDetailModal').modal('hide');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        OptimaNotify.error(response.message || 'Failed to delete supplier');
                     }
                 },
                 error: function() {
-                    Swal.fire('Error!', 'An error occurred while deleting supplier', 'error');
+                    OptimaNotify.error('An error occurred while deleting supplier');
                 }
             });
         }
@@ -598,13 +594,7 @@ function saveSupplier() {
     
     if (!kodeSupplier || kodeSupplier.trim() === '') {
         console.log('Supplier code empty, regenerating...');
-        Swal.fire({
-            title: 'Supplier Code Empty',
-            text: 'Supplier code cannot be empty. Regenerating...',
-            icon: 'warning',
-            timer: 2000,
-            showConfirmButton: false
-        });
+        OptimaNotify.warning('Supplier code cannot be empty. Regenerating...', 'Supplier Code Empty');
         // Regenerate kode supplier
         generateSupplierCode();
         return;
@@ -646,12 +636,12 @@ function saveSupplier() {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                Swal.fire('Success!', response.message || 'Supplier successfully saved', 'success');
+                OptimaNotify.success(response.message || 'Supplier successfully saved', 'Success!');
                 $('#supplierFormModal').modal('hide');
                 // Refresh data tanpa reload halaman
                 loadSuppliers();
             } else {
-                Swal.fire('Error!', response.message || 'Failed to save supplier', 'error');
+                OptimaNotify.error(response.message || 'Failed to save supplier');
             }
         },
         error: function(xhr) {
@@ -659,7 +649,7 @@ function saveSupplier() {
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
             }
-            Swal.fire('Error!', errorMessage, 'error');
+            OptimaNotify.error(errorMessage);
         }
     });
 }
@@ -704,12 +694,12 @@ function loadSuppliers(startDate = null, endDate = null) {
                 
             } else {
                 console.error('Failed to load suppliers:', data.message);
-                Swal.fire('Error!', 'Failed to load supplier data', 'error');
+                OptimaNotify.error('Failed to load supplier data');
             }
         })
         .catch(error => {
             console.error('Error loading suppliers:', error);
-            Swal.fire('Error!', 'An error occurred while loading supplier data', 'error');
+            OptimaNotify.error('An error occurred while loading supplier data');
         })
         .finally(() => {
             // Restore button

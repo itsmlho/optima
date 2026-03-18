@@ -258,40 +258,37 @@ async function markAllAsRead() {
 
 // Delete notification
 async function deleteNotification(notificationId) {
-    const result = await Swal.fire({
+    OptimaConfirm.danger({
         title: 'Delete notification?',
-        text: "This action cannot be undone",
+        text: 'This action cannot be undone',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, delete it!'
-    });
-    
-    if (result.isConfirmed) {
-        try {
-            const response = await fetch(`${baseUrl}/notifications/delete/${notificationId}`, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken
+        confirmText: 'Yes, delete it!',
+        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        onConfirm: async function() {
+            try {
+                const response = await fetch(`${baseUrl}/notifications/delete/${notificationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const item = document.querySelector(`[data-id="${notificationId}"]`);
+                    if (item) {
+                        item.remove();
+                    }
+                    updateNotificationCount();
+                    OptimaNotify.success('Notification deleted');
                 }
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                const item = document.querySelector(`[data-id="${notificationId}"]`);
-                if (item) {
-                    item.remove();
-                }
-                updateNotificationCount();
-                OptimaNotify.success('Notification deleted');
+            } catch (error) {
+                console.error('Error deleting notification:', error);
             }
-        } catch (error) {
-            console.error('Error deleting notification:', error);
         }
-    }
+    });
 }
 
 // Filter notifications

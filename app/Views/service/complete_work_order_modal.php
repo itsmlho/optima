@@ -169,13 +169,10 @@ $(document).ready(function() {
         // Validate form
         if (!form.checkValidity()) {
             form.classList.add('was-validated');
-            
-            Swal.fire({
-                icon: 'warning',
-                title: 'Validation Error',
-                text: 'Please fill in all required fields (Analysis & Repair)',
-                confirmButtonColor: '#3085d6'
-            });
+            OptimaNotify.warning(
+                'Please fill in all required fields (Analysis & Repair)',
+                'Validation Error'
+            );
             return;
         }
         
@@ -197,13 +194,10 @@ $(document).ready(function() {
                 
                 if (response.success) {
                     // Show success message
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Data Saved',
-                        text: 'Analysis & Repair data saved. Opening Unit Verification...',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                    OptimaNotify.success(
+                        'Analysis & Repair data saved. Opening Unit Verification...',
+                        'Data Saved'
+                    );
                     
                     // Close Complete modal
                     $('#completeWorkOrderModal').modal('hide');
@@ -227,12 +221,10 @@ $(document).ready(function() {
                         }
                     }, 500);
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: response.message || 'Failed to save data',
-                        confirmButtonColor: '#d33'
-                    });
+                    OptimaNotify.error(
+                        response.message || 'Failed to save data',
+                        'Error'
+                    );
                     
                     // Re-enable button
                     $('#btn-save-complete').prop('disabled', false).html('<i class="fas fa-check me-1"></i>Save & Verify Unit');
@@ -241,12 +233,10 @@ $(document).ready(function() {
             error: function(xhr, status, error) {
                 console.error('❌ Error saving complete data:', error);
                 
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to save data. Please try again.',
-                    confirmButtonColor: '#d33'
-                });
+                OptimaNotify.error(
+                    'Failed to save data. Please try again.',
+                    'Error'
+                );
                 
                 // Re-enable button
                 $('#btn-save-complete').prop('disabled', false).html('<i class="fas fa-check me-1"></i>Save & Verify Unit');

@@ -297,65 +297,75 @@ function approveInvoice(id) {
     });
 }
 
-async function markAsPaid(id) {
-    const { value: paymentDate, isConfirmed } = await Swal.fire({
+function markAsPaid(id) {
+    OptimaConfirm.generic({
         title: 'Tandai Lunas',
-        html: '<label class="form-label">Tanggal Pembayaran</label><input id="swal-payment-date" type="date" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Konfirmasi',
-        cancelButtonText: window.lang('cancel'),
-        preConfirm: () => document.getElementById('swal-payment-date').value
-    });
-    if (!isConfirmed || !paymentDate) return;
+        html: '<label class="form-label">Tanggal Pembayaran</label><input id="optimaPaymentDate" type="date" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">',
+        confirmText: 'Konfirmasi',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: '#0d6efd',
+        onConfirm: function() {
+            var el = document.getElementById('optimaPaymentDate');
+            var paymentDate = el ? (el.value || '').trim() : '';
+            if (!paymentDate) {
+                OptimaNotify.warning('Tanggal pembayaran harus diisi.', 'Validasi');
+                return;
+            }
 
-    const formData = new FormData();
-    formData.append('payment_date', paymentDate);
+            const formData = new FormData();
+            formData.append('payment_date', paymentDate);
 
-    fetch(`<?= base_url('finance/invoices/mark-paid/') ?>${id}`, {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            alertSwal('success', 'Invoice telah ditandai lunas.').then(() => location.reload());
-        } else {
-            alertSwal('error', 'Error: ' + data.message);
+            fetch(`<?= base_url('finance/invoices/mark-paid/') ?>${id}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alertSwal('success', 'Invoice telah ditandai lunas.').then(() => location.reload());
+                } else {
+                    alertSwal('error', 'Error: ' + data.message);
+                }
+            });
         }
     });
 }
 
-async function cancelInvoice(id) {
-    const { value: reason, isConfirmed } = await Swal.fire({
+function cancelInvoice(id) {
+    OptimaConfirm.danger({
         title: 'Batalkan Invoice',
-        input: 'textarea',
-        inputLabel: 'Alasan Pembatalan',
-        inputPlaceholder: 'Masukkan alasan...',
         icon: 'warning',
-        showCancelButton: true,
+        text: 'Pastikan alasan pembatalan sudah ditulis.',
+        confirmText: 'Ya, Batalkan',
+        cancelText: window.lang('back'),
         confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Ya, Batalkan',
-        cancelButtonText: window.lang('back'),
-        inputValidator: v => !v && 'Alasan harus diisi'
-    });
-    if (!isConfirmed) return;
+        html: '<div class="text-start"><label class="form-label">Alasan Pembatalan</label><textarea id="optimaCancelInvoiceReason" class="form-control" rows="4" placeholder="Masukkan alasan..."></textarea></div>',
+        onConfirm: function() {
+            var el = document.getElementById('optimaCancelInvoiceReason');
+            var reason = el ? (el.value || '').trim() : '';
+            if (!reason) {
+                OptimaNotify.warning('Alasan harus diisi.', 'Validasi');
+                return;
+            }
 
-    const formData = new FormData();
-    formData.append('reason', reason);
+            const formData = new FormData();
+            formData.append('reason', reason);
 
-    fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            alertSwal('success', 'Invoice telah dibatalkan.').then(() => location.reload());
-        } else {
-            alertSwal('error', 'Error: ' + data.message);
+            fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alertSwal('success', 'Invoice telah dibatalkan.').then(() => location.reload());
+                } else {
+                    alertSwal('error', 'Error: ' + data.message);
+                }
+            });
         }
     });
 }

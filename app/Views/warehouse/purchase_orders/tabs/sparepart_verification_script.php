@@ -71,7 +71,7 @@
                     window._verifyingSparepart = false;
                     OptimaPro.hideLoading();
                     if (response.success) {
-                        Swal.fire('Berhasil!', 'Verifikasi berhasil disimpan!', 'success');
+                        OptimaNotify.success('Verifikasi berhasil disimpan!', 'Berhasil!');
                         
                         let sisaElem = $(`#lbl-remain-sparepart-po-${poId}`);
                         let sisaCount = parseInt(sisaElem.text()) - 1;
@@ -93,42 +93,48 @@
                             </div>
                         `);
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Terjadi kesalahan.' });
+                        OptimaNotify.error(response.message || 'Terjadi kesalahan.');
                     }
                 },
                 error: (xhr) => {
                     window._verifyingSparepart = false;
-                    Swal.fire("Error", "Terjadi kesalahan tak terduga.", "error");
+                    OptimaNotify.error('Terjadi kesalahan tak terduga.');
                     console.error(xhr.responseText);
                 }
             });
         };
 
         if (status === 'Tidak Sesuai') {
-            Swal.fire({
+            OptimaConfirm.danger({
                 title: 'Verifikasi "Tidak Sesuai"',
-                input: 'textarea',
-                inputLabel: 'Harap berikan alasan atau catatan',
-                inputPlaceholder: 'Contoh: Barang rusak, jumlah kurang, dll...',
-                showCancelButton: true,
-                confirmButtonText: 'Submit',
-                cancelButtonText: window.lang('cancel'),
-                inputValidator: (value) => !value && 'Anda harus mengisi alasan!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    action(result.value);
+                icon: 'warning',
+                confirmText: 'Submit',
+                cancelText: window.lang('cancel'),
+                html: `
+                    <div class="text-start">
+                        <label class="form-label">Harap berikan alasan atau catatan</label>
+                        <textarea id="optimaSparepartVerifyReason" class="form-control" rows="4" placeholder="Contoh: Barang rusak, jumlah kurang, dll..."></textarea>
+                    </div>
+                `,
+                onConfirm: function() {
+                    var el = document.getElementById('optimaSparepartVerifyReason');
+                    var val = el ? (el.value || '').trim() : '';
+                    if (!val) {
+                        OptimaNotify.warning('Anda harus mengisi alasan!', 'Validasi');
+                        return;
+                    }
+                    action(val);
                 }
             });
         } else {
-            Swal.fire({
+            OptimaConfirm.generic({
                 title: 'Konfirmasi Verifikasi',
                 text: `Anda akan mengubah status item menjadi "${status}". Lanjutkan?`,
                 icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Lanjutkan!',
-                cancelButtonText: window.lang('cancel')
-            }).then((result) => {
-                if (result.isConfirmed) {
+                confirmText: 'Ya, Lanjutkan!',
+                cancelText: window.lang('cancel'),
+                confirmButtonColor: 'primary',
+                onConfirm: function() {
                     action();
                 }
             });

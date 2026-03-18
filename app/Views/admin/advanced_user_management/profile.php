@@ -380,16 +380,14 @@ function enableEdit() {
 
 // Cancel Edit Mode
 function cancelEdit() {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Cancel Changes?',
         text: "All unsaved changes will be lost!",
         icon: 'warning',
-        showCancelButton: true,
+        confirmText: 'Yes, cancel it!',
+        cancelText: window.lang ? window.lang('cancel') : 'Cancel',
         confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, cancel it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
+        onConfirm: function() {
             isEditMode = false;
             
             // Restore original data
@@ -481,12 +479,7 @@ $('#new_password').on('input', function() {
 // Save Profile
 function saveProfile() {
     if (!isEditMode) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Not in Edit Mode',
-            text: 'Please click "Update Data" first to edit your profile',
-            confirmButtonColor: '#4e73df'
-        });
+        OptimaNotify.warning('Please click "Update Data" first to edit your profile', 'Not in Edit Mode');
         return;
     }
     
@@ -497,15 +490,7 @@ function saveProfile() {
     }
     
     // Show loading
-    Swal.fire({
-        title: 'Saving...',
-        text: 'Please wait while we update your profile',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Saving...');
     
     const formData = new FormData(form);
     
@@ -517,32 +502,25 @@ function saveProfile() {
         contentType: false,
         success: function(response) {
             console.log('Profile update response:', response);
+            OptimaPro.hideLoading();
             
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: response.message,
-                    confirmButtonColor: '#4e73df',
-                    timer: 2000,
-                    showConfirmButton: true
-                }).then(() => {
-                    isEditMode = false;
-                    
-                    // Disable fields
-                    $('#first_name, #last_name, #phone, #bio').prop('readonly', true).removeClass('form-control-focus');
-                    
-                    // Disable avatar upload
-                    $('#avatarInput').prop('disabled', true);
-                    $('#btnChangePhoto').prop('disabled', true);
-                    
-                    // Toggle buttons
-                    $('#editButtons').addClass('d-none');
-                    $('#actionButtons').removeClass('d-none');
-                    
-                    // Reload to show updated data
-                    location.reload();
-                });
+                OptimaNotify.success(response.message, 'Berhasil!');
+                isEditMode = false;
+                
+                // Disable fields
+                $('#first_name, #last_name, #phone, #bio').prop('readonly', true).removeClass('form-control-focus');
+                
+                // Disable avatar upload
+                $('#avatarInput').prop('disabled', true);
+                $('#btnChangePhoto').prop('disabled', true);
+                
+                // Toggle buttons
+                $('#editButtons').addClass('d-none');
+                $('#actionButtons').removeClass('d-none');
+                
+                // Reload to show updated data
+                location.reload();
             } else {
                 let errorMessage = response.message || 'Failed to update profile';
                 
@@ -555,16 +533,12 @@ function saveProfile() {
                     errorMessage = '<ul style="text-align: left;">' + errorList + '</ul>';
                 }
                 
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Menyimpan!',
-                    html: errorMessage,
-                    confirmButtonColor: '#e74a3b'
-                });
+                OptimaNotify.error(errorMessage, 'Gagal Menyimpan!');
             }
         },
         error: function(xhr, status, error) {
             console.error('Profile update error:', xhr.responseText);
+            OptimaPro.hideLoading();
             
             let errorMessage = 'An error occurred while updating profile';
             
@@ -577,12 +551,7 @@ function saveProfile() {
                 // Use default error message
             }
             
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: errorMessage,
-                confirmButtonColor: '#e74a3b'
-            });
+            OptimaNotify.error(errorMessage);
         }
     });
 }
@@ -595,12 +564,7 @@ $('#passwordForm').on('submit', function(e) {
     const confirmPassword = $('#confirm_password').val();
     
     if (newPassword !== confirmPassword) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: 'New password and confirm password do not match',
-            confirmButtonColor: '#e74a3b'
-        });
+        OptimaNotify.error('New password and confirm password do not match', 'Error!');
         return;
     }
     
@@ -615,31 +579,15 @@ $('#passwordForm').on('submit', function(e) {
         success: function(response) {
             if (response.success) {
                 $('#changePasswordModal').modal('hide');
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: response.message,
-                    confirmButtonColor: '#4e73df'
-                }).then(() => {
-                    $('#passwordForm')[0].reset();
-                    $('#passwordStrength').html('');
-                });
+                OptimaNotify.success(response.message, 'Success!');
+                $('#passwordForm')[0].reset();
+                $('#passwordStrength').html('');
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: response.message,
-                    confirmButtonColor: '#e74a3b'
-                });
+                OptimaNotify.error(response.message, 'Error!');
             }
         },
         error: function(xhr) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: 'An error occurred while changing password',
-                confirmButtonColor: '#e74a3b'
-            });
+            OptimaNotify.error('An error occurred while changing password', 'Error!');
         }
     });
 });
@@ -661,12 +609,7 @@ function showChanges(changesJson) {
 // Avatar Upload Preview
 $('#avatarInput').on('change', function(e) {
     if (!isEditMode) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Not in Edit Mode',
-            text: 'Please click "Update Data" first to change your profile picture',
-            confirmButtonColor: '#4e73df'
-        });
+        OptimaNotify.warning('Please click "Update Data" first to change your profile picture', 'Not in Edit Mode');
         $(this).val(''); // Clear the file input
         return;
     }
@@ -679,24 +622,14 @@ $('#avatarInput').on('change', function(e) {
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(fileExtension)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid File Format',
-                text: 'Please select a valid image file (JPG, PNG, GIF, or WebP). ICO files are not supported.',
-                confirmButtonColor: '#e74a3b'
-            });
+            OptimaNotify.error('Please select a valid image file (JPG, PNG, GIF, or WebP). ICO files are not supported.', 'Invalid File Format');
             $(this).val(''); // Clear the file input
             return;
         }
         
         // Validate file size (max 2MB)
         if (file.size > 2 * 1024 * 1024) {
-            Swal.fire({
-                icon: 'error',
-                title: 'File Too Large',
-                text: 'Image size should not exceed 2MB',
-                confirmButtonColor: '#e74a3b'
-            });
+            OptimaNotify.error('Image size should not exceed 2MB', 'File Too Large');
             return;
         }
         
@@ -738,31 +671,14 @@ $('#avatarInput').on('change', function(e) {
                         console.log('Header avatar element not found or no avatar_url in response');
                     }
                     
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: 'Profile picture updated successfully',
-                        confirmButtonColor: '#4e73df',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                    OptimaNotify.success('Profile picture updated successfully', 'Success!');
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: response.message,
-                        confirmButtonColor: '#e74a3b'
-                    });
+                    OptimaNotify.error(response.message, 'Error!');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('Avatar upload error:', xhr.responseText);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: 'An error occurred while uploading image: ' + error,
-                    confirmButtonColor: '#e74a3b'
-                });
+                OptimaNotify.error('An error occurred while uploading image: ' + error, 'Error!');
             }
         });
     }
@@ -784,17 +700,14 @@ $('#toggleOtpBtn').on('click', function() {
     const currentStatus = btn.data('otp-enabled') == '1';
     const actionText = currentStatus ? 'menonaktifkan' : 'mengaktifkan';
     
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Konfirmasi',
         text: `Apakah Anda yakin ingin ${actionText} OTP?`,
         icon: 'question',
-        showCancelButton: true,
+        confirmText: 'Ya, ' + actionText,
+        cancelText: window.lang('cancel'),
         confirmButtonColor: currentStatus ? '#e74a3b' : '#4e73df',
-        cancelButtonColor: '#858796',
-        confirmButtonText: 'Ya, ' + actionText,
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (result.isConfirmed) {
+        onConfirm: function() {
             // Disable button
             btn.prop('disabled', true);
             const originalHtml = btn.html();
@@ -810,15 +723,12 @@ $('#toggleOtpBtn').on('click', function() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success message
-                        Swal.fire({
-                            icon: response.otp_enabled ? 'success' : 'info',
-                            title: 'Berhasil!',
-                            text: response.message,
-                            confirmButtonColor: '#4e73df',
-                            timer: 3000,
-                            showConfirmButton: true
-                        });
+                        // Show success/info message
+                        if (response.otp_enabled) {
+                            OptimaNotify.success(response.message, 'Berhasil!');
+                        } else {
+                            OptimaNotify.info(response.message, 'Berhasil!');
+                        }
                         
                         // Update UI
                         const isEnabled = response.otp_enabled;
@@ -836,23 +746,13 @@ $('#toggleOtpBtn').on('click', function() {
                               .addClass(isEnabled ? 'bg-success' : 'bg-secondary')
                               .text(isEnabled ? 'Aktif' : 'Tidak Aktif');
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: response.message || 'Gagal mengubah status OTP.',
-                            confirmButtonColor: '#e74a3b'
-                        });
+                        OptimaNotify.error(response.message || 'Gagal mengubah status OTP.', 'Error!');
                     }
                     btn.prop('disabled', false);
                 },
                 error: function(xhr) {
                     const response = xhr.responseJSON || {};
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: response.message || 'Terjadi kesalahan. Silakan coba lagi.',
-                        confirmButtonColor: '#e74a3b'
-                    });
+                    OptimaNotify.error(response.message || 'Terjadi kesalahan. Silakan coba lagi.', 'Error!');
                     btn.prop('disabled', false);
                     btn.html(originalHtml);
                 }

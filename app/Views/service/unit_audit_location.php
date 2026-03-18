@@ -384,27 +384,27 @@ function inputResults(id) {
 }
 
 function submitToMarketing(id) {
-    Swal.fire({
+    OptimaConfirm.generic({
         title: 'Kirim ke Marketing?',
         text: 'Audit ini akan dikirim ke Marketing untuk approval.',
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Kirim!',
-        cancelButtonText: window.lang('cancel')
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${id}`, {
-            method: 'POST'
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success !== false) {
-                OptimaNotify.success(data.message);
-            } else {
-                OptimaNotify.error(data.message);
-            }
-            loadAudits();
-        });
+        confirmText: 'Ya, Kirim!',
+        cancelText: window.lang('cancel'),
+        confirmButtonColor: 'primary',
+        onConfirm: function() {
+            fetch(`<?= base_url('service/unit-audit/submitToMarketing/') ?>${id}`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success !== false) {
+                    OptimaNotify.success(data.message);
+                } else {
+                    OptimaNotify.error(data.message);
+                }
+                loadAudits();
+            });
+        }
     });
 }
 </script>

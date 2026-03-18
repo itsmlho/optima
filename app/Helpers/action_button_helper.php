@@ -100,7 +100,11 @@ if (!function_exists('renderActionButton')) {
             $html .= ' style="cursor: not-allowed;"';
             $html .= ' data-bs-toggle="tooltip"';
             $html .= ' title="' . htmlspecialchars($config['deniedMessage']) . '"';
-            $html .= ' onclick="Swal.fire(\'Akses Ditolak\', \'' . htmlspecialchars($config['deniedMessage']) . '\', \'error\')"';
+            $deniedMsg = isset($config['deniedMessage']) ? $config['deniedMessage'] : 'Akses Ditolak';
+            $deniedMsgJson = json_encode($deniedMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            $titleJson = json_encode('Akses Ditolak', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            $fallbackAlert = json_encode((string)$deniedMsg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+            $html .= ' onclick="(window.OptimaNotify ? OptimaNotify.error(' . $deniedMsgJson . ', ' . $titleJson . ') : alert(' . $fallbackAlert . '))"';
         }
         
         $html .= $dataAttrs;

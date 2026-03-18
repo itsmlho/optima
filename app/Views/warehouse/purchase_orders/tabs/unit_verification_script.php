@@ -703,7 +703,7 @@
         
         // Validasi lokasi unit
         if (!lokasiUnit) {
-            Swal.fire({icon:'warning', title:'Lokasi Wajib', text:'Pilih lokasi unit terlebih dahulu.'});
+            OptimaNotify.warning('Pilih lokasi unit terlebih dahulu.', 'Lokasi Wajib');
             return;
         }
         
@@ -805,7 +805,7 @@
         // Validate required SN fields untuk status "Sesuai"
         if (finalStatus === 'Sesuai' && (!snData['sn_unit'] || !snData['sn_mesin'])) {
             console.log('Validation failed - Missing SN:', {sn_unit: snData['sn_unit'], sn_mesin: snData['sn_mesin']});
-            Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number Unit dan Mesin wajib diisi untuk status Sesuai.'});
+            OptimaNotify.warning('Serial number Unit dan Mesin wajib diisi untuk status Sesuai.', 'SN Wajib');
             return;
         }
         
@@ -813,11 +813,10 @@
         if (finalStatus === 'Tidak Sesuai') {
             const alasanReject = $('#alasan_reject_inline').val().trim();
             if (!alasanReject) {
-                Swal.fire({
-                    icon: 'warning', 
-                    title: 'Alasan Reject Wajib', 
-                    text: 'Mohon isi alasan reject/ketidaksesuaian yang ditemukan. Alasan ini diperlukan untuk ditindaklanjuti oleh tim Purchasing.'
-                });
+                OptimaNotify.warning(
+                    'Mohon isi alasan reject/ketidaksesuaian yang ditemukan. Alasan ini diperlukan untuk ditindaklanjuti oleh tim Purchasing.',
+                    'Alasan Reject Wajib'
+                );
                 $('#alasan_reject_inline').focus();
                 return;
             }
@@ -870,34 +869,16 @@
         summaryHTML += '</div></div>';
         
         // Tampilkan modal konfirmasi
-        Swal.fire({
+        OptimaConfirm.generic({
             title: 'Konfirmasi Verifikasi Unit',
             html: summaryHTML,
             icon: finalStatus === 'Sesuai' ? 'question' : 'warning',
-            showCancelButton: true,
+            confirmText: finalStatus === 'Sesuai' ? 'Ya, Verifikasi Sesuai' : 'Ya, Konfirmasi Tidak Sesuai',
+            cancelText: window.lang('cancel'),
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: finalStatus === 'Sesuai' ? '<i class="fas fa-check-circle me-2"></i>Ya, Verifikasi Sesuai' : '<i class="fas fa-exclamation-triangle me-2"></i>Ya, Konfirmasi Tidak Sesuai',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>' + window.lang('cancel'),
-            reverseButtons: true,
-            width: '600px',
-            customClass: {
-                popup: 'text-left'
-            },
-            didOpen: () => {
-                // Styling untuk summary
-                const popup = Swal.getPopup();
-                if (popup) {
-                    popup.style.textAlign = 'left';
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
+            onConfirm: function() {
                 // Jika user konfirmasi, baru kirim ke database
                 updateUnitStatusVerifikasi(idUnit, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies);
-            } else {
-                // Jika user batal, tidak ada yang dilakukan
-                console.log('Verifikasi dibatalkan oleh user');
             }
         });
     }
@@ -1225,13 +1206,11 @@
                     unitToast('success', r.message || 'Unit berhasil diverifikasi.');
                 } else {
                     unitToast('error', r.message || 'Verifikasi gagal.');
-                    Swal.fire({ icon: 'error', title: 'Error', text: r.message || 'Verifikasi gagal.' });
                 }
             },
             error: function(xhr, status, error) {
                 window._verifyingUnit = false;
                 $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false);
-                Swal.close();
                 
                 // Log error detail untuk debugging
                 console.error('AJAX Error:', {
@@ -1257,12 +1236,6 @@
                 }
                 
                 unitToast('error', errorMessage);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: errorMessage,
-                    footer: 'Status: ' + xhr.status + ' | Error: ' + error
-                });
             }
         });
     }

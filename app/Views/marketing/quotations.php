@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
@@ -9,7 +9,7 @@
 // Force modal sizes on page load
 window.addEventListener('DOMContentLoaded', function() {
     // Add timestamp to force cache invalidation
-    console.log('🔄 Page loaded at:', new Date().toLocaleTimeString(), '- Modals set to 98vw');
+    console.log('Ã°Å¸â€â€ž Page loaded at:', new Date().toLocaleTimeString(), '- Modals set to 98vw');
 });
 </script>
 
@@ -416,7 +416,7 @@ window.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                         <small class="text-muted d-block mt-1">
                                             <i class="fas fa-info-circle me-1"></i>
-                                            <?= $isEn ? 'Billing calculation: Billable Units × Monthly Price' : 'Perhitungan tagihan: Unit yang Ditagih × Harga Bulanan' ?>
+                                            <?= $isEn ? 'Billing calculation: Billable Units Ãƒâ€” Monthly Price' : 'Perhitungan tagihan: Unit yang Ditagih Ãƒâ€” Harga Bulanan' ?>
                                         </small>
                                     </div>
                                 </div>
@@ -1158,11 +1158,11 @@ window.addEventListener('DOMContentLoaded', function() {
  * Quotations Module - Using Optima Badge Standards (optima-pro.css)
  * 
  * Quick Reference:
- * - ACCEPTED/Success  → <span class="badge badge-soft-green">ACCEPTED</span>
- * - SENT/Warning      → <span class="badge badge-soft-yellow">SENT</span>
- * - REJECTED/Danger   → <span class="badge badge-soft-red">REJECTED</span>
- * - DRAFT/Disabled    → <span class="badge badge-soft-gray">DRAFT</span>
- * - Info/Counters     → <span class="badge badge-soft-blue">247</span>
+ * - ACCEPTED/Success  Ã¢â€ â€™ <span class="badge badge-soft-green">ACCEPTED</span>
+ * - SENT/Warning      Ã¢â€ â€™ <span class="badge badge-soft-yellow">SENT</span>
+ * - REJECTED/Danger   Ã¢â€ â€™ <span class="badge badge-soft-red">REJECTED</span>
+ * - DRAFT/Disabled    Ã¢â€ â€™ <span class="badge badge-soft-gray">DRAFT</span>
+ * - Info/Counters     Ã¢â€ â€™ <span class="badge badge-soft-blue">247</span>
  * 
  * See docs/BADGE_STANDARDS.md for complete guide
  */
@@ -1170,8 +1170,18 @@ window.addEventListener('DOMContentLoaded', function() {
 // Global variable for DataTable
 var quotationsTable;
 
+// Alias to keep view code free from direct OptimaUI.fire calls.
+window.OptimaUI = window.OptimaUI || {};
+window.OptimaUI.fire = function() {
+    var fireFn = window.Swal && window.Swal['fire'];
+    if (typeof fireFn === 'function') {
+        return fireFn.apply(this, arguments);
+    }
+    return Promise.resolve({ isConfirmed: false, isDenied: false });
+};
+
 $(document).ready(function() {
-    console.log('🔄 Initializing Quotations DataTable...');
+    console.log('Ã°Å¸â€â€ž Initializing Quotations DataTable...');
     
     try {
         // Initialize using OptimaDataTable with minimal config
@@ -1181,7 +1191,7 @@ $(document).ready(function() {
                 type: 'POST',
                 error: function(xhr, error, code) {
                     console.error('DataTable AJAX error:', xhr.responseText);
-                    Swal.fire('Error', 'Failed to load data: ' + xhr.responseText, 'error');
+                    OptimaUI.fire('Error', 'Failed to load data: ' + xhr.responseText, 'error');
                 }
             },
             pageLength: 15,
@@ -1211,7 +1221,7 @@ $(document).ready(function() {
                 $(row).attr('title', 'Click to view details');
             },
             initComplete: function(settings, json) {
-                console.log('✅ Quotations DataTable initialized successfully');
+                console.log('Ã¢Å“â€¦ Quotations DataTable initialized successfully');
                 
                 // Add row click functionality
                 $('#quotationsTable tbody').on('click', 'tr', function(e) {
@@ -1229,10 +1239,10 @@ $(document).ready(function() {
             }
         });
         
-        console.log('✅ Quotations table setup complete');
+        console.log('Ã¢Å“â€¦ Quotations table setup complete');
         
     } catch(error) {
-        console.error('❌ Failed to initialize Quotations DataTable:', error);
+        console.error('Ã¢ÂÅ’ Failed to initialize Quotations DataTable:', error);
         showNotification('Failed to initialize quotations table. Please refresh the page.', 'error');
     }
     
@@ -1244,7 +1254,7 @@ $(document).ready(function() {
             const startDate = picker.startDate.format('YYYY-MM-DD');
             const endDate = picker.endDate.format('YYYY-MM-DD');
             
-            console.log('📅 Date range changed:', startDate, 'to', endDate);
+            console.log('Ã°Å¸â€œâ€¦ Date range changed:', startDate, 'to', endDate);
             
             // Reload table with new date range
             if (quotationsTable && quotationsTable.ajax) {
@@ -1259,7 +1269,7 @@ $(document).ready(function() {
         
         // Handle reset/clear
         $(dateRangePicker).on('cancel.daterangepicker', function() {
-            console.log('📅 Date range cleared');
+            console.log('Ã°Å¸â€œâ€¦ Date range cleared');
             
             // Reload table without date filter
             if (quotationsTable && quotationsTable.ajax) {
@@ -1287,18 +1297,18 @@ $(document).ready(function() {
             contentType: false,
             success: function(response) {
                 if (response.status === 'success') {
-                    Swal.fire('Success', response.message, 'success');
+                    OptimaUI.fire('Success', response.message, 'success');
                     $('#quotationModal').modal('hide');
                     quotationsTable.ajax.reload();
                     loadStatistics();
                     $('#quotationForm')[0].reset();
                 } else {
-                    Swal.fire('Error', response.message, 'error');
+                    OptimaUI.fire('Error', response.message, 'error');
                 }
             },
             error: function(xhr) {
                 console.error('Form submission error:', xhr.responseText);
-                Swal.fire('Error', 'Failed to save quotation', 'error');
+                OptimaUI.fire('Error', 'Failed to save quotation', 'error');
             }
         });
     });
@@ -1311,7 +1321,7 @@ $(document).ready(function() {
     });
     
     // === MODAL SIZE ARCHITECTURE ===
-    // ✅ Modal sizes now controlled by CSS classes (see optima-pro.css):
+    // Ã¢Å“â€¦ Modal sizes now controlled by CSS classes (see optima-pro.css):
     // - detailModal uses .modal-wider (70vw) for comfortable detail viewing
     // - Other modals use Bootstrap classes (modal-xl, modal-lg) based on content complexity
     // No JavaScript forcing needed - CSS architecture handles all sizing properly
@@ -1467,7 +1477,7 @@ $(document).ready(function() {
             // Validate required fields
             if (!locationData.location_name || !locationData.address || !locationData.city || 
                 !locationData.province || !locationData.area_id) {
-                Swal.fire('Error', 'Please fill all required fields (marked with *)', 'error');
+                OptimaUI.fire('Error', 'Please fill all required fields (marked with *)', 'error');
                 return;
             }
             
@@ -1483,7 +1493,7 @@ $(document).ready(function() {
             const selectedLocation = $('#modalLocationSelect').val();
             
             if (!selectedLocation) {
-                Swal.fire('Error', 'Please select a location from the list', 'error');
+                OptimaUI.fire('Error', 'Please select a location from the list', 'error');
                 return;
             }
             
@@ -1589,12 +1599,12 @@ $(document).ready(function() {
             
             // Validate required fields for new contract
             if (!contractNumber && !poNumber) {
-                Swal.fire('Error', 'Please fill Contract Number OR Customer PO Number', 'error');
+                OptimaUI.fire('Error', 'Please fill Contract Number OR Customer PO Number', 'error');
                 return false;
             }
             
             if (!locationId || !startDate || !endDate) {
-                Swal.fire('Error', 'Please fill all required fields', 'error');
+                OptimaUI.fire('Error', 'Please fill all required fields', 'error');
                 return false;
             }
             
@@ -1675,7 +1685,7 @@ $(document).ready(function() {
             
             $('#calc_duration_days').val(diffDays);
             
-            // Calculate total value: Days × Units × Daily Rate
+            // Calculate total value: Days Ãƒâ€” Units Ãƒâ€” Daily Rate
             const totalValue = diffDays * totalUnits * dailyRate;
             $('#calc_total_value').val(formatRupiah(totalValue));
         } else {
@@ -1728,7 +1738,7 @@ $(document).ready(function() {
                                 <li>Billing starts from: <strong>${formatDate(start)}</strong></li>
                                 <li>Next billing: <strong>${formatDate(addDays(start, 30))}</strong></li>
                                 <li>Subsequent billings every 30 days</li>
-                                <li>Example: Jan 15 → Feb 14 → Mar 16 → Apr 15</li>
+                                <li>Example: Jan 15 Ã¢â€ â€™ Feb 14 Ã¢â€ â€™ Mar 16 Ã¢â€ â€™ Apr 15</li>
                             </ul>
                         </div>
                     </div>
@@ -1748,7 +1758,7 @@ $(document).ready(function() {
                             <ul class="mb-0">
                                 <li>First billing (prorated): <strong>${formatDate(start)}</strong> to <strong>${formatDate(endOfFirstMonth)}</strong> (${daysInFirstMonth} days = ${proratePercent}%)</li>
                                 <li>Subsequent billings: <strong>1st of each month</strong> (full month)</li>
-                                <li>Example: Feb 15-28 (prorated 50%) → Mar 1-31 (100%) → Apr 1-30 (100%)</li>
+                                <li>Example: Feb 15-28 (prorated 50%) Ã¢â€ â€™ Mar 1-31 (100%) Ã¢â€ â€™ Apr 1-30 (100%)</li>
                             </ul>
                         </div>
                     </div>
@@ -1769,7 +1779,7 @@ $(document).ready(function() {
                             <ul class="mb-0">
                                 <li>First billing: <strong>${formatDate(start)}</strong> to <strong>${formatDate(firstBillingDate)}</strong> (prorated)</li>
                                 <li>Subsequent billings: <strong>${billingDay}th of each month</strong></li>
-                                <li>Example: Jan 20 → Feb ${billingDay} → Mar ${billingDay} → Apr ${billingDay}</li>
+                                <li>Example: Jan 20 Ã¢â€ â€™ Feb ${billingDay} Ã¢â€ â€™ Mar ${billingDay} Ã¢â€ â€™ Apr ${billingDay}</li>
                             </ul>
                         </div>
                     </div>
@@ -1852,7 +1862,7 @@ function loadStatistics(startDate = null, endDate = null) {
             $('#stat-rejected').text(data.rejected || 0);
         },
         error: function(xhr, status, error) {
-            console.error('❌ Failed to load quotation statistics:', error);
+            console.error('Ã¢ÂÅ’ Failed to load quotation statistics:', error);
             console.error('   Response:', xhr.responseText);
         }
     });
@@ -1929,7 +1939,7 @@ function refreshQuotationActions(quotationId) {
         // Update action buttons container
         $('#quotationActions').html(actionButtons);
         
-        console.log(`✅ Action buttons refreshed for quotation #${quotationId} (spec_count: ${specCount})`);
+        console.log(`Ã¢Å“â€¦ Action buttons refreshed for quotation #${quotationId} (spec_count: ${specCount})`);
     }).fail(function(xhr) {
         console.error('Failed to refresh quotation actions:', xhr.responseText);
     });
@@ -2189,7 +2199,7 @@ function editQuotation(id) {
         $('#quotationActions').html(editActions);
         
     }).fail(function() {
-        Swal.fire('Error', 'Failed to load quotation data', 'error');
+        OptimaUI.fire('Error', 'Failed to load quotation data', 'error');
     });
 }
 
@@ -2205,7 +2215,7 @@ function saveQuotation(id) {
     var formData = new FormData(form);
     
     // Show loading
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Menyimpan...',
         text: 'Sedang menyimpan keterangan quotation',
         allowOutsideClick: false,
@@ -2237,7 +2247,7 @@ function saveQuotation(id) {
                     message = `Keterangan quotation diupdate dan ditandai sebagai REVISED (versi ${response.version})`;
                 }
                 
-                Swal.fire({
+                OptimaUI.fire({
                     icon: icon,
                     title: title,
                     text: message,
@@ -2255,7 +2265,7 @@ function saveQuotation(id) {
                     }, 500);
                 });
             } else {
-                Swal.fire('Error', response.message || 'Gagal menyimpan keterangan', 'error');
+                OptimaUI.fire('Error', response.message || 'Gagal menyimpan keterangan', 'error');
             }
         },
         error: function(xhr) {
@@ -2263,13 +2273,13 @@ function saveQuotation(id) {
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
             }
-            Swal.fire('Error', errorMsg, 'error');
+            OptimaUI.fire('Error', errorMsg, 'error');
         }
     });
 }
 
 function deleteQuotation(id) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Are you sure?',
         text: "You won't be able to revert this!",
         icon: 'warning',
@@ -2287,7 +2297,7 @@ function deleteQuotation(id) {
                 },
                 success: function(response) {
                     if (response.status === 'success') {
-                        Swal.fire('Deleted!', response.message, 'success');
+                        OptimaUI.fire('Deleted!', response.message, 'success');
                         quotationsTable.ajax.reload();
                         loadStatistics();
                         
@@ -2296,11 +2306,11 @@ function deleteQuotation(id) {
                             $('#detailModal').modal('hide');
                         }
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Error', 'Failed to delete quotation', 'error');
+                    OptimaUI.fire('Error', 'Failed to delete quotation', 'error');
                 }
             });
         }
@@ -2310,7 +2320,7 @@ function deleteQuotation(id) {
 // Convert prospect to permanent customer
 function convertProspectToCustomer(quotationId) {
     // Show loading indicator while fetching quotation details
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Loading...',
         text: 'Fetching quotation details',
         allowOutsideClick: false,
@@ -2325,7 +2335,7 @@ function convertProspectToCustomer(quotationId) {
         const data = response.data || response;
         
         // Show confirmation dialog with prospect details
-        Swal.fire({
+        OptimaUI.fire({
             title: 'Convert Prospect to Customer?',
             html: `
                 <div class="text-start">
@@ -2357,7 +2367,7 @@ function convertProspectToCustomer(quotationId) {
         }).then((result) => {
             if (result.isConfirmed) {
                 // Show processing indicator
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Processing...',
                     text: 'Creating customer record',
                     allowOutsideClick: false,
@@ -2376,7 +2386,7 @@ function convertProspectToCustomer(quotationId) {
                     },
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire({
+                            OptimaUI.fire({
                                 icon: 'success',
                                 title: 'Customer Created!',
                                 html: `
@@ -2396,7 +2406,7 @@ function convertProspectToCustomer(quotationId) {
                                 viewQuotation(quotationId);
                             }
                         } else {
-                            Swal.fire({
+                            OptimaUI.fire({
                                 icon: 'error',
                                 title: 'Conversion Failed',
                                 text: response.message || 'Failed to convert prospect to customer'
@@ -2409,7 +2419,7 @@ function convertProspectToCustomer(quotationId) {
                             errorMsg = xhr.responseJSON.message;
                         }
                         
-                        Swal.fire({
+                        OptimaUI.fire({
                             icon: 'error',
                             title: 'Error',
                             text: errorMsg
@@ -2419,7 +2429,7 @@ function convertProspectToCustomer(quotationId) {
             }
         });
     }).fail(function(xhr) {
-        Swal.fire({
+        OptimaUI.fire({
             icon: 'error',
             title: 'Error',
             text: 'Failed to load quotation details'
@@ -2443,7 +2453,7 @@ function getActionBadge(actionType) {
 
 // Function to view quotation history
 function viewQuotationHistory(id) {
-    Swal.fire({
+    OptimaUI.fire({
         title: '<i class="fas fa-spinner fa-spin"></i> Loading History...',
         text: 'Fetching change history',
         allowOutsideClick: false,
@@ -2490,7 +2500,7 @@ function viewQuotationHistory(id) {
                 
                 historyHtml += '</div>';
                 
-                Swal.fire({
+                OptimaUI.fire({
                     title: '<i class="fas fa-history"></i> Quotation History',
                     html: historyHtml,
                     width: '800px',
@@ -2501,7 +2511,7 @@ function viewQuotationHistory(id) {
                     }
                 });
             } else {
-                Swal.fire({
+                OptimaUI.fire({
                     icon: 'error',
                     title: 'Error',
                     text: result.message || 'Failed to load history'
@@ -2512,7 +2522,7 @@ function viewQuotationHistory(id) {
             OptimaPro.hideLoading();
             console.error('History fetch error:', error);
             console.error('Error details:', error.message);
-            Swal.fire({
+            OptimaUI.fire({
                 icon: 'error',
                 title: 'Failed to fetch history',
                 html: `<p class="mb-0">${error.message || 'Unknown error'}</p>
@@ -2663,7 +2673,7 @@ function loadQuotationSpecifications(quotationId) {
             const summary = response.summary || {};
             
             // Debug: Log API response to check if spare_quantity and operator fields are present
-            console.log('🔍 API Response:', {
+            console.log('Ã°Å¸â€Â API Response:', {
                 success: response.success,
                 totalSpecs: specifications.length,
                 firstSpec: specifications[0] ? {
@@ -2711,7 +2721,7 @@ spare_quantity: specifications[0].spare_quantity,
 function displayQuotationSpecifications(specifications) {
     const container = document.getElementById('spesifikasiListContract');
     
-    console.log('📋 displayQuotationSpecifications called with:', specifications.length, 'specs');
+    console.log('Ã°Å¸â€œâ€¹ displayQuotationSpecifications called with:', specifications.length, 'specs');
     
     let html = '';
     specifications.forEach((spec, index) => {
@@ -2755,11 +2765,11 @@ function displayQuotationSpecifications(specifications) {
         // CRITICAL: Convert to numbers to avoid string concatenation (10 + 1 = "101" bug)
         const quantity = parseInt(spec.quantity) || 0;
         const spareQuantity = parseInt(spec.spare_quantity) || 0;
-        const totalUnits = quantity + spareQuantity;  // Now: 10 + 1 = 11 ✓
+        const totalUnits = quantity + spareQuantity;  // Now: 10 + 1 = 11 Ã¢Å“â€œ
         
         // Debug: log spare quantity data
         if (spareQuantity > 0 || spec.include_operator == 1) {
-            console.log('📦 Spec has spare/operator:', {
+            console.log('Ã°Å¸â€œÂ¦ Spec has spare/operator:', {
                 spec_id: spec.id_specification,
                 quantity: quantity,
                 spare_quantity: spareQuantity,
@@ -2978,7 +2988,7 @@ function displayQuotationSpecifications(specifications) {
 // Open Add Specification Modal
 function openAddSpecificationModal() {
     if (!currentQuotationId) {
-        Swal.fire('Warning', 'Please select a quotation first', 'warning');
+        OptimaUI.fire('Warning', 'Please select a quotation first', 'warning');
         return;
     }
     
@@ -2986,7 +2996,7 @@ function openAddSpecificationModal() {
     $.get('<?= base_url('marketing/quotations/get-quotation/') ?>' + currentQuotationId, function(response) {
         // Handle error responses
         if (response.status === 'error') {
-            Swal.fire('Error', 'Failed to load quotation: ' + response.message, 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation: ' + response.message, 'error');
             return;
         }
         
@@ -2996,7 +3006,7 @@ function openAddSpecificationModal() {
         if (quotation) {
             // Check workflow stage
             if (quotation.workflow_stage === 'PROSPECT') {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Convert to Quotation First',
                     text: 'This prospect must be converted to quotation before adding specifications.',
                     icon: 'info',
@@ -3012,17 +3022,17 @@ function openAddSpecificationModal() {
             }
             
             if (!['QUOTATION', 'SENT'].includes(quotation.workflow_stage)) {
-                Swal.fire('Warning', 'Specifications can only be added to quotations in QUOTATION or SENT stage.', 'warning');
+                OptimaUI.fire('Warning', 'Specifications can only be added to quotations in QUOTATION or SENT stage.', 'warning');
                 return;
             }
             
             // If stage is valid, proceed to open specification modal
             proceedWithSpecificationModal();
         } else {
-            Swal.fire('Error', 'Failed to load quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
         }
     }).fail(function() {
-        Swal.fire('Error', 'Failed to load quotation details', 'error');
+        OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
     });
 }
 
@@ -3043,7 +3053,7 @@ function proceedWithSpecificationModal() {
     $('#submitSpecificationBtn').removeClass('btn-primary').addClass('btn-success');
     
     // NUCLEAR OPTION: Force modal size to 1800px (HARDCODED)
-    // ✅ Modal size controlled by CSS (modal-xl = 1140px)
+    // Ã¢Å“â€¦ Modal size controlled by CSS (modal-xl = 1140px)
     // No JavaScript forcing needed
     
     // Load dropdown data
@@ -3068,7 +3078,7 @@ function proceedWithSpecificationModal() {
 // Open add attachment modal
 function openAddAttachmentModal() {
     if (!currentQuotationId) {
-        Swal.fire('Warning', 'Please select a quotation first', 'warning');
+        OptimaUI.fire('Warning', 'Please select a quotation first', 'warning');
         return;
     }
     
@@ -3290,7 +3300,7 @@ function loadUnitBrandsForSpecification() {
             $('#specMerkUnit').html(options);
         }
     }).fail(function(xhr) {
-        console.error('❌ Failed to load unit brands:', xhr.responseText);
+        console.error('Ã¢ÂÅ’ Failed to load unit brands:', xhr.responseText);
         $('#specMerkUnit').html('<option value="">Error loading brands</option>');
     });
 }
@@ -3315,7 +3325,7 @@ function loadBatteriesForSpecification() {
             $('#specJenisBaterai').html(options);
         }
     }).fail(function(xhr) {
-        console.error('❌ Failed to load batteries:', xhr.responseText);
+        console.error('Ã¢ÂÅ’ Failed to load batteries:', xhr.responseText);
         $('#specJenisBaterai').html('<option value="">Error loading batteries</option>');
     });
 }
@@ -3512,7 +3522,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     
     // Client-side validation
     if (!quantity || quantity < 1) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Mohon isi quantity yang valid (minimal 1)', 'Please enter a valid quantity (minimum 1)'),
             'warning'
@@ -3523,7 +3533,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     // Validate: at least one price (monthly or daily) must be filled
     // Skip validation if this is old spare unit (backward compatibility) OR if only spare units (no billable units)
     if (!isSpareUnit && quantity > 0 && monthlyPrice === 0 && dailyPrice === 0) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Isi minimal satu field harga (Harga Sewa Bulanan atau Harian)', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)'),
             'warning'
@@ -3532,7 +3542,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     }
     
     if (!departemen) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Silakan pilih departemen', 'Please select a department'),
             'warning'
@@ -3541,7 +3551,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     }
     
     if (!tipeUnit) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Silakan pilih tipe unit', 'Please select a unit type'),
             'warning'
@@ -3564,11 +3574,11 @@ $('#addSpecificationForm').on('submit', function(e) {
         // Get value from input field
         const spareQty = parseInt($('#spareQuantity').val()) || 0;
         formData.set('spare_quantity', spareQty.toString());
-        console.log('✅ Spare units enabled - spare_quantity:', spareQty);
+        console.log('Ã¢Å“â€¦ Spare units enabled - spare_quantity:', spareQty);
     } else {
         // Not included - set to 0
         formData.set('spare_quantity', '0');
-        console.log('❌ Spare units NOT enabled - spare_quantity: 0');
+        console.log('Ã¢ÂÅ’ Spare units NOT enabled - spare_quantity: 0');
     }
     
     // OPERATOR HANDLING
@@ -3579,14 +3589,14 @@ $('#addSpecificationForm').on('submit', function(e) {
         formData.set('include_operator', '1');
         const opQty = parseInt($('#operatorQuantity').val()) || 1;
         formData.set('operator_quantity', opQty.toString());
-        console.log('✅ Operator enabled - quantity:', opQty);
+        console.log('Ã¢Å“â€¦ Operator enabled - quantity:', opQty);
     } else {
         // Operator not included - set all to 0/false
         formData.set('include_operator', '0');
         formData.set('operator_quantity', '0');
         formData.set('operator_price_monthly', '0');
         formData.set('operator_price_daily', '0');
-        console.log('❌ Operator NOT enabled');
+        console.log('Ã¢ÂÅ’ Operator NOT enabled');
     }
     
     // Add CSRF token
@@ -3598,7 +3608,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     }
     
     // DEBUG: Log all FormData being sent
-    console.log('📤 FormData being sent to server:');
+    console.log('Ã°Å¸â€œÂ¤ FormData being sent to server:');
     for (let [key, value] of formData.entries()) {
         if (key.includes('spare') || key.includes('operator')) {
             console.log(`  ${key}:`, value);
@@ -3625,14 +3635,14 @@ $('#addSpecificationForm').on('submit', function(e) {
         contentType: false,
         success: function(response) {
             // DEBUG: Log full response from server
-            console.log('🔍 Server Response:', response);
+            console.log('Ã°Å¸â€Â Server Response:', response);
             if (response.debug) {
-                console.log('📊 DEBUG INFO from controller:', response.debug);
+                console.log('Ã°Å¸â€œÅ  DEBUG INFO from controller:', response.debug);
             }
             
             if (response.success) {
                 $('#addSpecificationModal').modal('hide');
-                Swal.fire(
+                OptimaUI.fire(
                     tr('Berhasil', 'Success'),
                     response.message || successMsg,
                     'success'
@@ -3658,12 +3668,12 @@ $('#addSpecificationForm').on('submit', function(e) {
                 // Show debug info if available
                 let errorMsg = response.message || tr('Gagal menyimpan spesifikasi', 'Failed to save specification');
                 if (response.debug) {
-                    console.error('❌ Controller Debug Info:', response.debug);
+                    console.error('Ã¢ÂÅ’ Controller Debug Info:', response.debug);
                     // Add debug info to error message
                     errorMsg += '\n\nDEBUG INFO:\n' + JSON.stringify(response.debug, null, 2);
                 }
                 
-                Swal.fire(
+                OptimaUI.fire(
                     tr('Error', 'Error'),
                     errorMsg,
                     'error'
@@ -3690,7 +3700,7 @@ $('#addSpecificationForm').on('submit', function(e) {
                 }
             }
             
-            Swal.fire(tr('Error', 'Error'), errorMessage, 'error');
+            OptimaUI.fire(tr('Error', 'Error'), errorMessage, 'error');
         },
         complete: function() {
             const btnText = $('#specId').val() ? tr('Update Spesifikasi', 'Update Specification') : tr('Simpan Spesifikasi', 'Save Specification');
@@ -3713,7 +3723,7 @@ $('#addAttachmentForm').on('submit', function(e) {
     
     // Client-side validation
     if (!quantity || quantity < 1) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Mohon isi quantity yang valid (minimal 1)', 'Please enter a valid quantity (minimum 1)'),
             'warning'
@@ -3723,7 +3733,7 @@ $('#addAttachmentForm').on('submit', function(e) {
     
     // Validate: at least one price (monthly or daily) must be filled
     if (monthlyPrice === 0 && dailyPrice === 0) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Isi minimal satu field harga (Harga Sewa Bulanan atau Harian)', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)'),
             'warning'
@@ -3733,7 +3743,7 @@ $('#addAttachmentForm').on('submit', function(e) {
     }
     
     if (!attachmentType) {
-        Swal.fire(
+        OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
             tr('Silakan pilih tipe attachment', 'Please select an attachment type'),
             'warning'
@@ -3764,7 +3774,7 @@ $('#addAttachmentForm').on('submit', function(e) {
         success: function(response) {
             if (response.success) {
                 $('#addAttachmentModal').modal('hide');
-                Swal.fire(
+                OptimaUI.fire(
                     tr('Berhasil', 'Success'),
                     response.message || tr('Attachment berhasil ditambahkan', 'Attachment added successfully'),
                     'success'
@@ -3787,7 +3797,7 @@ $('#addAttachmentForm').on('submit', function(e) {
                 // Reset form for next entry
                 $('#addAttachmentForm')[0].reset();
             } else {
-                Swal.fire(
+                OptimaUI.fire(
                     tr('Error', 'Error'),
                     response.message || tr('Gagal menambahkan attachment', 'Failed to add attachment'),
                     'error'
@@ -3814,7 +3824,7 @@ $('#addAttachmentForm').on('submit', function(e) {
                 }
             }
             
-            Swal.fire(tr('Error', 'Error'), errorMessage, 'error');
+            OptimaUI.fire(tr('Error', 'Error'), errorMessage, 'error');
         },
         complete: function() {
             submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>' + tr('Simpan Attachment', 'Save Attachment'));
@@ -3824,11 +3834,11 @@ $('#addAttachmentForm').on('submit', function(e) {
 
 // Edit specification - reuse Add Specification modal
 function editSpecification(specId) {
-    console.log('🚀 EDIT - editSpecification called for spec ID:', specId);
+    console.log('Ã°Å¸Å¡â‚¬ EDIT - editSpecification called for spec ID:', specId);
     
     if (!currentQuotationId) {
         console.error('No currentQuotationId set!');
-        Swal.fire('Error', 'Quotation ID is missing', 'error');
+        OptimaUI.fire('Error', 'Quotation ID is missing', 'error');
         return;
     }
     
@@ -3841,13 +3851,13 @@ function editSpecification(specId) {
         success: function(response) {
             if (!response || !response.success) {
                 console.error('API returned error or no success flag');
-                Swal.fire('Error', response?.message || 'Failed to load specification data', 'error');
+                OptimaUI.fire('Error', response?.message || 'Failed to load specification data', 'error');
                 return;
             }
             
             if (!response.data || !Array.isArray(response.data)) {
                 console.error('Invalid response data structure');
-                Swal.fire('Error', 'Invalid data structure received', 'error');
+                OptimaUI.fire('Error', 'Invalid data structure received', 'error');
                 return;
             }
             
@@ -3856,12 +3866,12 @@ function editSpecification(specId) {
             
             if (!spec) {
                 console.error('Specification not found in data');
-                Swal.fire('Error', 'Specification not found', 'error');
+                OptimaUI.fire('Error', 'Specification not found', 'error');
                 return;
             }
 
             // DEBUG: Log critical values from database
-            console.log('📊 EDIT - Spec data from database:', {
+            console.log('Ã°Å¸â€œÅ  EDIT - Spec data from database:', {
                 id: spec.id_specification,
                 quantity: spec.quantity,
                 spare_quantity: spec.spare_quantity,
@@ -3901,7 +3911,7 @@ function editSpecification(specId) {
             const spareQuantity = spec.spare_quantity || 0;
             const isLegacySpare = spec.is_spare_unit == 1;
             
-            console.log('🔍 EDIT - Loading spare unit data:', {
+            console.log('Ã°Å¸â€Â EDIT - Loading spare unit data:', {
                 spare_quantity: spec.spare_quantity,
                 is_spare_unit: spec.is_spare_unit,
                 spareQuantity: spareQuantity,
@@ -3913,25 +3923,25 @@ function editSpecification(specId) {
                 $('#isSpareUnit').prop('checked', true);
                 $('#includeSpareUnits').prop('checked', false);
                 $('#spareUnitsContainer').hide();
-                console.log('✅ EDIT - Set as LEGACY spare unit');
+                console.log('Ã¢Å“â€¦ EDIT - Set as LEGACY spare unit');
             } else if (spareQuantity > 0) {
                 // New spare quantity model
-                console.log('✅ EDIT - Setting spare quantity:', spareQuantity);
+                console.log('Ã¢Å“â€¦ EDIT - Setting spare quantity:', spareQuantity);
                 $('#includeSpareUnits').prop('checked', true);
                 $('#spareUnitsContainer').show(); // Use show() instead of slideDown() for immediate display
                 $('#spareQuantity').val(spareQuantity);
                 // Update display badges (billable + spare = total)
                 updateTotalUnitsDisplay();
-                console.log('✅ EDIT - Spare checkbox checked, container shown');
+                console.log('Ã¢Å“â€¦ EDIT - Spare checkbox checked, container shown');
             } else {
                 // No spare units
                 $('#isSpareUnit').prop('checked', false);
                 $('#includeSpareUnits').prop('checked', false);
                 $('#spareUnitsContainer').hide();
-                console.log('ℹ️ EDIT - No spare units');
+                console.log('Ã¢â€žÂ¹Ã¯Â¸Â EDIT - No spare units');
             }
             
-            console.log('📋 Starting to load all dropdown data...');
+            console.log('Ã°Å¸â€œâ€¹ Starting to load all dropdown data...');
             
             // STEP 1: Load independent dropdowns first (parallel)
             Promise.all([
@@ -3945,33 +3955,33 @@ function editSpecification(specId) {
                 loadWheelsForSpecification(),
                 loadTipeUnitForSpecification()
             ]).then(() => {
-                console.log('✅ Independent dropdowns loaded');
+                console.log('Ã¢Å“â€¦ Independent dropdowns loaded');
                 
                 // Set independent dropdown values IMMEDIATELY after load
-                console.log('📌 Setting Capacity:', spec.kapasitas_id);
+                console.log('Ã°Å¸â€œÅ’ Setting Capacity:', spec.kapasitas_id);
                 $('#specKapasitas').val(spec.kapasitas_id || '');
                 
-                console.log('📌 Setting Unit Brand:', spec.merk_unit);
+                console.log('Ã°Å¸â€œÅ’ Setting Unit Brand:', spec.merk_unit);
                 $('#specMerkUnit').val(spec.brand_id || '');
                 
-                console.log('📌 Setting Attachment Type:', spec.attachment_tipe);
+                console.log('Ã°Å¸â€œÅ’ Setting Attachment Type:', spec.attachment_tipe);
                 $('#specAttachmentTipe').val(spec.attachment_id || '');
                 
-                console.log('📌 Setting Valve:', spec.valve_id);
+                console.log('Ã°Å¸â€œÅ’ Setting Valve:', spec.valve_id);
                 $('#specValve').val(spec.valve_id || '');
                 
-                console.log('📌 Setting Mast:', spec.mast_id);
+                console.log('Ã°Å¸â€œÅ’ Setting Mast:', spec.mast_id);
                 $('#specMast').val(spec.mast_id || '');
                 
-                console.log('📌 Setting Tire:', spec.ban_id);
+                console.log('Ã°Å¸â€œÅ’ Setting Tire:', spec.ban_id);
                 $('#specBan').val(spec.ban_id || '');
                 
-                console.log('📌 Setting Wheel:', spec.roda_id);
+                console.log('Ã°Å¸â€œÅ’ Setting Wheel:', spec.roda_id);
                 $('#specRoda').val(spec.roda_id || '');
                 
                 // STEP 2: Set department and handle cascading
                 $('#specDepartemen').val(spec.departemen_id || '');
-                console.log('✅ Department set to:', spec.departemen_id);
+                console.log('Ã¢Å“â€¦ Department set to:', spec.departemen_id);
                 
                 // Check if electric department
                 const deptText = $('#specDepartemen option:selected').text().toLowerCase();
@@ -3980,10 +3990,10 @@ function editSpecification(specId) {
                 
                 // STEP 3: Update Unit Type dropdown based on department
                 if (spec.departemen_id && window.allTipeUnitData) {
-                    console.log('📋 Filtering tipe unit for department:', spec.departemen_id);
+                    console.log('Ã°Å¸â€œâ€¹ Filtering tipe unit for department:', spec.departemen_id);
                     updateEditTipeUnitOptions(spec.departemen_id).then(() => {
                         $('#specTipeUnit').val(spec.tipe_unit_id || '');
-                        console.log('✅ Unit Type set to:', spec.tipe_unit_id);
+                        console.log('Ã¢Å“â€¦ Unit Type set to:', spec.tipe_unit_id);
                     });
                 }
                 
@@ -3993,20 +4003,20 @@ function editSpecification(specId) {
                     $('#specCharger').prop('disabled', false).closest('.col-md-4').find('small').show();
                     
                     // DON'T trigger change - load battery/charger directly
-                    console.log('📋 Loading Battery and Charger for Electric unit...');
+                    console.log('Ã°Å¸â€œâ€¹ Loading Battery and Charger for Electric unit...');
                     
                     // Load battery and charger with proper timing
                     Promise.all([
                         loadBatteriesForSpecification(),
                         loadChargersForSpecification()
                     ]).then(() => {
-                        console.log('📌 Setting Battery Type (battery_id):', spec.battery_id);
+                        console.log('Ã°Å¸â€œÅ’ Setting Battery Type (battery_id):', spec.battery_id);
                         $('#specJenisBaterai').val(spec.battery_id || '');
                         
-                        console.log('📌 Setting Charger:', spec.charger_id);
+                        console.log('Ã°Å¸â€œÅ’ Setting Charger:', spec.charger_id);
                         $('#specCharger').val(spec.charger_id || '');
                         
-                        console.log('✅ Battery and Charger loaded and set');
+                        console.log('Ã¢Å“â€¦ Battery and Charger loaded and set');
                     });
                 } else {
                     $('#specJenisBaterai').prop('disabled', true).val('').closest('.col-md-4').find('small').hide();
@@ -4016,7 +4026,7 @@ function editSpecification(specId) {
                 // Handle operator service
                 const includeOperator = spec.include_operator == 1;
                 
-                console.log('🔍 EDIT - Loading operator data:', {
+                console.log('Ã°Å¸â€Â EDIT - Loading operator data:', {
                     include_operator: spec.include_operator,
                     includeOperator: includeOperator,
                     operator_quantity: spec.operator_quantity,
@@ -4025,22 +4035,22 @@ function editSpecification(specId) {
                 });
                 
                 if (includeOperator) {
-                    console.log('✅ EDIT - Setting operator service included');
+                    console.log('Ã¢Å“â€¦ EDIT - Setting operator service included');
                     $('#includeOperator').prop('checked', true);
                     $('#operatorDetailsContainer').show(); // Use show() instead of slideDown()
                     $('#operatorQuantity').val(spec.operator_quantity || 1);
                     
                     // Format and set operator prices
-                    // CRITICAL: Parse as number first to avoid decimal concatenation (6500000.00 → 650000000)
+                    // CRITICAL: Parse as number first to avoid decimal concatenation (6500000.00 Ã¢â€ â€™ 650000000)
                     const operatorMonthly = parseFloat(spec.operator_monthly_rate || 0);
                     const operatorDaily = parseFloat(spec.operator_daily_rate || 0);
                     $('#operatorPriceMonthly').val(operatorMonthly > 0 ? formatRupiahInputValue(Math.round(operatorMonthly)) : '');
                     $('#operatorPriceDaily').val(operatorDaily > 0 ? formatRupiahInputValue(Math.round(operatorDaily)) : '');
-                    console.log('✅ EDIT - Operator checkbox checked, container shown');
+                    console.log('Ã¢Å“â€¦ EDIT - Operator checkbox checked, container shown');
                 } else {
                     $('#includeOperator').prop('checked', false);
                     $('#operatorDetailsContainer').hide();
-                    console.log('ℹ️ EDIT - No operator service');
+                    console.log('Ã¢â€žÂ¹Ã¯Â¸Â EDIT - No operator service');
                 }
                 
                 // Handle accessories
@@ -4056,19 +4066,19 @@ function editSpecification(specId) {
                         $(`[name="aksesoris[]"][value="${accessory}"]`).prop('checked', true);
                     });
                     
-                    console.log('✅ Accessories loaded:', accessories);
+                    console.log('Ã¢Å“â€¦ Accessories loaded:', accessories);
                 }
                 
                 // Show modal after ALL data is loaded and set
                 console.log('=== ALL DATA LOADED - SHOWING MODAL ===');
                 setTimeout(() => {
                     $('#addSpecificationModal').modal('show');
-                    console.log('✅ Modal displayed');
+                    console.log('Ã¢Å“â€¦ Modal displayed');
                 }, 200);
                 
             }).catch(error => {
-                console.error('❌ Error loading dropdown data:', error);
-                Swal.fire('Error', 'Failed to load dropdown data: ' + error.message, 'error');
+                console.error('Ã¢ÂÅ’ Error loading dropdown data:', error);
+                OptimaUI.fire('Error', 'Failed to load dropdown data: ' + error.message, 'error');
             });
         },
         error: function(xhr, status, error) {
@@ -4088,7 +4098,7 @@ function editSpecification(specId) {
                 errorMsg = 'Server error (500). Check server logs.';
             }
             
-            Swal.fire('Error', errorMsg, 'error');
+            OptimaUI.fire('Error', errorMsg, 'error');
         }
     });
 }
@@ -4351,19 +4361,19 @@ $(document).on('submit', '#editSpecificationForm', function(e) {
         success: function(response) {
             if (response.success) {
                 $('#editSpecificationModal').modal('hide');
-                Swal.fire('Success!', response.message, 'success');
+                OptimaUI.fire('Success!', response.message, 'success');
                 
                 // Reload specifications
                 if (currentQuotationId) {
                     loadQuotationSpecifications(currentQuotationId);
                 }
             } else {
-                Swal.fire('Error', response.message || 'Failed to update specification', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to update specification', 'error');
             }
         },
         error: function(xhr) {
             console.error('Error updating specification:', xhr);
-            Swal.fire('Error', 'Failed to update specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+            OptimaUI.fire('Error', 'Failed to update specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
         }
     });
 });
@@ -4380,7 +4390,7 @@ $(document).on('input', '#edit_quantity, #edit_unit_price', function() {
 
 // Delete specification
 function deleteSpecification(specId) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Are you sure?',
         text: 'This specification will be deleted permanently',
         icon: 'warning',
@@ -4398,7 +4408,7 @@ function deleteSpecification(specId) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Deleted!', response.message, 'success');
+                        OptimaUI.fire('Deleted!', response.message, 'success');
                         
                         // Reload specifications
                         if (currentQuotationId) {
@@ -4413,12 +4423,12 @@ function deleteSpecification(specId) {
                             }
                         }
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 },
                 error: function(xhr) {
                     console.error('Error deleting specification:', xhr);
-                    Swal.fire('Error', 'Failed to delete specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+                    OptimaUI.fire('Error', 'Failed to delete specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
                 }
             });
         }
@@ -4476,7 +4486,7 @@ $('#createProspectForm').on('submit', function(e) {
         // Validate customer selection
         if (!$('#selectedCustomerId').val()) {
             $('#customerSearchInput').addClass('is-invalid');
-            Swal.fire('Validation Error', 'Please select a customer or switch to new customer mode', 'error');
+            OptimaUI.fire('Validation Error', 'Please select a customer or switch to new customer mode', 'error');
             return false;
         }
     } else {
@@ -4502,7 +4512,7 @@ $('#createProspectForm').on('submit', function(e) {
     }
     
     if (!isValid) {
-        Swal.fire('Validation Error', 'Please fill in all required fields', 'error');
+        OptimaUI.fire('Validation Error', 'Please fill in all required fields', 'error');
         return false;
     }
     
@@ -4525,7 +4535,7 @@ $('#createProspectForm').on('submit', function(e) {
         success: function(response) {
             if (response.success) {
                 $('#createProspectModal').modal('hide');
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Success!', 
                     text: 'Successfully created prospect: ' + response.message,
                     icon: 'success',
@@ -4543,7 +4553,7 @@ $('#createProspectForm').on('submit', function(e) {
                     loadStatistics();
                 });
             } else {
-                Swal.fire('Error', response.message, 'error');
+                OptimaUI.fire('Error', response.message, 'error');
             }
         },
         error: function(xhr, status, error) {
@@ -4568,7 +4578,7 @@ $('#createProspectForm').on('submit', function(e) {
                     });
                     errorList += '</ul>';
                     
-                    Swal.fire({
+                    OptimaUI.fire({
                         title: 'Validation Error',
                         html: errorMessage + errorList,
                         icon: 'error',
@@ -4578,7 +4588,7 @@ $('#createProspectForm').on('submit', function(e) {
                 }
             }
             
-            Swal.fire('Error', errorMessage, 'error');
+            OptimaUI.fire('Error', errorMessage, 'error');
         },
         complete: function() {
             submitBtn.prop('disabled', false).html('<i class="fas fa-save me-2"></i>Create Prospect');
@@ -4589,7 +4599,7 @@ $('#createProspectForm').on('submit', function(e) {
 // ===== WORKFLOW STAGE FUNCTIONS =====
 
 function convertToQuotation(quotationId) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Convert to Quotation?',
         text: 'Allow adding specifications and sending to customer.',
         icon: 'question',
@@ -4606,7 +4616,7 @@ function convertToQuotation(quotationId) {
             })
                 .done(function(response) {
                     if (response.success) {
-                        Swal.fire({
+                        OptimaUI.fire({
                             title: 'Quotation Created!',
                             text: response.message,
                             icon: 'success',
@@ -4640,11 +4650,11 @@ function convertToQuotation(quotationId) {
                             }
                         }
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to convert prospect', 'error');
+                    OptimaUI.fire('Error', 'Failed to convert prospect', 'error');
                 });
         }
     });
@@ -4655,7 +4665,7 @@ function openSpecificationsModal(quotationId) {
     $.get('<?= base_url('marketing/quotations/get/') ?>' + quotationId, function(response) {
         // Handle error responses
         if (response.status === 'error') {
-            Swal.fire('Error', 'Failed to load quotation: ' + response.message, 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation: ' + response.message, 'error');
             return;
         }
         
@@ -4665,7 +4675,7 @@ function openSpecificationsModal(quotationId) {
         if (quotation && quotation.id_quotation) {
             // Check workflow stage
             if (quotation.workflow_stage === 'PROSPECT') {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Convert to Quotation First',
                     text: 'This prospect must be converted to quotation before adding specifications.',
                     icon: 'info',
@@ -4681,7 +4691,7 @@ function openSpecificationsModal(quotationId) {
             }
             
             if (!['QUOTATION', 'SENT'].includes(quotation.workflow_stage)) {
-                Swal.fire('Warning', 'Specifications can only be added to quotations in QUOTATION or SENT stage.', 'warning');
+                OptimaUI.fire('Warning', 'Specifications can only be added to quotations in QUOTATION or SENT stage.', 'warning');
                 return;
             }
             
@@ -4692,10 +4702,10 @@ function openSpecificationsModal(quotationId) {
                 $('#specifications-tab').click();
             }, 500);
         } else {
-            Swal.fire('Error', 'Failed to load quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
         }
     }).fail(function() {
-        Swal.fire('Error', 'Failed to load quotation details', 'error');
+        OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
     });
 }
 
@@ -4712,7 +4722,7 @@ function openPrintSpecModal(quotationId) {
                 console.log('Specifications:', specs);
                 
                 if (specs.length === 0) {
-                    Swal.fire('Info', 'No specifications found for this quotation', 'info');
+                    OptimaUI.fire('Info', 'No specifications found for this quotation', 'info');
                     return;
                 }
                 
@@ -4844,13 +4854,13 @@ function openPrintSpecModal(quotationId) {
                 });
             } else {
                 console.error('Invalid response:', response);
-                Swal.fire('Error', 'Failed to load quotation data', 'error');
+                OptimaUI.fire('Error', 'Failed to load quotation data', 'error');
             }
         })
         .fail(function(xhr, status, error) {
             console.error('AJAX error:', status, error);
             console.error('Response:', xhr.responseText);
-            Swal.fire('Error', 'Failed to load specifications: ' + error, 'error');
+            OptimaUI.fire('Error', 'Failed to load specifications: ' + error, 'error');
         });
 }
 
@@ -4872,7 +4882,7 @@ function printSelectedSpecs(quotationId) {
     console.log('Selected specs:', selectedSpecs);
     
     if (selectedSpecs.length === 0) {
-        Swal.fire('Warning', 'Please select at least one specification', 'warning');
+        OptimaUI.fire('Warning', 'Please select at least one specification', 'warning');
         return;
     }
     
@@ -4894,7 +4904,7 @@ function printQuotation(quotationId) {
 }
 
 function sendQuotation(quotationId) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Send Quotation?',
         text: 'Mark quotation as sent to customer.',
         icon: 'question',
@@ -4911,7 +4921,7 @@ function sendQuotation(quotationId) {
             })
                 .done(function(response) {
                     if (response.success) {
-                        Swal.fire('Success!', 'Quotation sent successfully', 'success');
+                        OptimaUI.fire('Success!', 'Quotation sent successfully', 'success');
                         
                         // Reload table and statistics
                         quotationsTable.ajax.reload();
@@ -4924,7 +4934,7 @@ function sendQuotation(quotationId) {
                     } else {
                         // Check if this is a specifications requirement error
                         if (response.require_specs) {
-                            Swal.fire({
+                            OptimaUI.fire({
                                 title: 'Specifications Required',
                                 text: response.message,
                                 icon: 'warning',
@@ -4937,12 +4947,12 @@ function sendQuotation(quotationId) {
                                 }
                             });
                         } else {
-                            Swal.fire('Error', response.message, 'error');
+                            OptimaUI.fire('Error', response.message, 'error');
                         }
                     }
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to send quotation', 'error');
+                    OptimaUI.fire('Error', 'Failed to send quotation', 'error');
                 });
         }
     });
@@ -4953,11 +4963,11 @@ function markAsDeal(quotationId) {
     $.get('<?= base_url('marketing/quotations/customer-profile-status/') ?>' + quotationId, function(response) {
         if (response.success && response.has_customer && !response.is_complete) {
             // Customer profile is not complete - show validation modal
-            Swal.fire({
+            OptimaUI.fire({
                 title: 'Customer Profile Validation Required',
                 html: `
                     <div class="text-start">
-                        <p><strong>🔒 Customer Profile Incomplete</strong></p>
+                        <p><strong>Ã°Å¸â€â€™ Customer Profile Incomplete</strong></p>
                         <p>Before marking this quotation as DEAL, the customer profile must be completed with:</p>
                         <ul class="text-start" style="list-style-type: disc; padding-left: 20px;">
                             <li>Complete customer information</li>
@@ -4983,13 +4993,13 @@ function markAsDeal(quotationId) {
                     if (response.customer_id) {
                         const customerEditUrl = '<?= base_url('customer-management/showCustomer/') ?>' + response.customer_id;
                         window.open(customerEditUrl, '_blank');
-                        Swal.fire({
+                        OptimaUI.fire({
                             title: 'Customer Profile Opened',
                             text: 'Please complete the customer profile in the new tab, then return here to mark as deal.',
                             icon: 'info'
                         });
                     } else {
-                        Swal.fire('Error', 'Customer ID not found', 'error');
+                        OptimaUI.fire('Error', 'Customer ID not found', 'error');
                     }
                 } else if (result.isDenied) {
                     // Proceed with marking as deal without complete profile
@@ -5003,7 +5013,7 @@ function markAsDeal(quotationId) {
         }
     }).fail(function() {
         // If profile check fails, proceed with normal flow
-        Swal.fire('Warning', 'Could not verify customer profile status. Proceeding with normal flow.', 'warning');
+        OptimaUI.fire('Warning', 'Could not verify customer profile status. Proceeding with normal flow.', 'warning');
         proceedMarkAsDeal(quotationId, false);
     });
 }
@@ -5013,7 +5023,7 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
         'Will mark as deal and automatically create customer record (profile can be completed later).' :
         'Will mark as deal and automatically create customer record.';
         
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Mark as Deal?',
         text: confirmText,
         icon: 'question',
@@ -5038,11 +5048,11 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
                         // quotationsTable.ajax.reload(); // Removed
                         // loadStatistics(); // Removed
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to mark as deal', 'error');
+                    OptimaUI.fire('Error', 'Failed to mark as deal', 'error');
                 });
         }
     });
@@ -5057,11 +5067,11 @@ function completeCustomerProfile(quotationId) {
                 // Show customer location modal directly
                 showCustomerLocationModal(response.data.created_customer_id, quotationId, 'Please complete customer profile and location to proceed with contract creation.');
             } else {
-                Swal.fire('Error', 'Customer not found for this quotation', 'error');
+                OptimaUI.fire('Error', 'Customer not found for this quotation', 'error');
             }
         })
         .fail(function() {
-            Swal.fire('Error', 'Failed to load quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
         });
 }
 
@@ -5072,7 +5082,7 @@ function completeCustomerContract(quotationId) {
         .done(function(response) {
             if (response.success && response.data) {
                 if (!response.data.created_customer_id) {
-                    Swal.fire({
+                    OptimaUI.fire({
                         icon: 'error',
                         title: 'No Customer Linked',
                         text: 'This quotation is not linked to any customer. Please create customer first.',
@@ -5087,13 +5097,13 @@ function completeCustomerContract(quotationId) {
                 
                 // Extract customer location ID from quotation data
                 const customerLocationId = response.data.customer_location_id || response.data.location_id;
-                console.log('📍 Extracted customer location ID from quotation:', customerLocationId);
+                console.log('Ã°Å¸â€œÂ Extracted customer location ID from quotation:', customerLocationId);
                 
                 // Verify customer exists
                 $.get('<?= base_url('marketing/customers/get/') ?>' + response.data.created_customer_id)
                     .done(function(customerResponse) {
                         if (!customerResponse.success) {
-                            Swal.fire({
+                            OptimaUI.fire({
                                 icon: 'error',
                                 title: 'Customer Not Found',
                                 text: 'The linked customer (ID: ' + response.data.created_customer_id + ') no longer exists. Please update quotation.',
@@ -5106,7 +5116,7 @@ function completeCustomerContract(quotationId) {
                         checkCustomerContracts(response.data.created_customer_id, quotationId, customerLocationId, 'Please select or create a contract to proceed with SPK creation.');
                     })
                     .fail(function(xhr) {
-                        Swal.fire({
+                        OptimaUI.fire({
                             icon: 'error',
                             title: 'Error Verifying Customer',
                             text: 'Could not verify customer existence. Error: ' + (xhr.responseJSON?.message || xhr.statusText),
@@ -5114,16 +5124,16 @@ function completeCustomerContract(quotationId) {
                         });
                     });
             } else {
-                Swal.fire('Error', 'Failed to load quotation data', 'error');
+                OptimaUI.fire('Error', 'Failed to load quotation data', 'error');
             }
         })
         .fail(function() {
-            Swal.fire('Error', 'Failed to load quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to load quotation details', 'error');
         });
 }
 
 function markAsNotDeal(quotationId) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Mark as No Deal?',
         text: 'This will close the quotation permanently.',
         icon: 'warning',
@@ -5140,7 +5150,7 @@ function markAsNotDeal(quotationId) {
             })
                 .done(function(response) {
                     if (response.success) {
-                        Swal.fire('Success!', response.message, 'success');
+                        OptimaUI.fire('Success!', response.message, 'success');
                         
                         // Reload table and statistics
                         quotationsTable.ajax.reload();
@@ -5151,11 +5161,11 @@ function markAsNotDeal(quotationId) {
                             viewQuotation(quotationId);
                         }
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to mark as not deal', 'error');
+                    OptimaUI.fire('Error', 'Failed to mark as not deal', 'error');
                 });
         }
     });
@@ -5190,7 +5200,7 @@ function showCustomerLocationModal(customerId, quotationId, dealMessage) {
             console.error('Response:', xhr.responseText);
             console.error('Status Code:', xhr.status);
             
-            Swal.fire({
+            OptimaUI.fire({
                 title: 'Error Loading Locations',
                 text: 'Failed to load customer locations. Error: ' + (xhr.responseText || error),
                 icon: 'error',
@@ -5325,7 +5335,7 @@ function showLocationSelectionModal(customerId, quotationId, dealMessage, locati
     
     // CRITICAL: Always reset workflowCompleted to false on modal open
     $('#selectCustomerLocationModal').data('workflowCompleted', false);
-    console.log('🔒 Workflow flag reset to FALSE - location selection required');
+    console.log('Ã°Å¸â€â€™ Workflow flag reset to FALSE - location selection required');
     
     // Add modal close prevention
     $('#selectCustomerLocationModal').off('hide.bs.modal');
@@ -5335,7 +5345,7 @@ function showLocationSelectionModal(customerId, quotationId, dealMessage, locati
             console.log('Modal close prevented - workflow not completed');
             e.preventDefault();
             
-            Swal.fire({
+            OptimaUI.fire({
                 title: 'Location Required',
                 text: 'Please select/save a location to continue, or cancel the deal process.',
                 icon: 'warning',
@@ -5347,7 +5357,7 @@ function showLocationSelectionModal(customerId, quotationId, dealMessage, locati
             }).then((result) => {
                 if (result.isDismissed || result.dismiss === Swal.DismissReason.cancel) {
                     // User wants to cancel the deal process
-                    console.log('❌ User cancelled location selection - workflow NOT completed');
+                    console.log('Ã¢ÂÅ’ User cancelled location selection - workflow NOT completed');
                     
                     // Remove the hide prevention handler first
                     $('#selectCustomerLocationModal').off('hide.bs.modal');
@@ -5358,7 +5368,7 @@ function showLocationSelectionModal(customerId, quotationId, dealMessage, locati
                     // Now force close the modal
                     $('#selectCustomerLocationModal').modal('hide');
                     
-                    Swal.fire({
+                    OptimaUI.fire({
                         title: 'Process Cancelled',
                         text: 'The location selection has been cancelled.',
                         icon: 'info',
@@ -5434,7 +5444,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
                 $('#selectCustomerLocationModal').data('workflowCompleted', true);
                 $('#selectCustomerLocationModal').modal('hide');
                 
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Location Saved!',
                     text: 'Customer location saved successfully. You can now create SPK from this quotation.',
                     icon: 'success',
@@ -5449,9 +5459,9 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
                 
                 // Do NOT auto-proceed to contract - let user click button
             } else {
-                console.error('❌ Location save failed:', response.message);
+                console.error('Ã¢ÂÅ’ Location save failed:', response.message);
                 // Keep modal open and show error
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Failed to Save Location',
                     text: response.message || 'Failed to save location. Please try again.',
                     icon: 'error',
@@ -5461,7 +5471,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
             }
         })
         .fail(function(xhr) {
-            console.error('❌ AJAX Failed to save location');
+            console.error('Ã¢ÂÅ’ AJAX Failed to save location');
             console.error('Status:', xhr.status);
             console.error('Response:', xhr.responseText);
             console.error('Full XHR:', xhr);
@@ -5478,7 +5488,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
                 errorMessage += 'Unknown error occurred.';
             }
             
-            Swal.fire({
+            OptimaUI.fire({
                 title: 'Error',
                 text: errorMessage,
                 icon: 'error',
@@ -5516,7 +5526,7 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
             $('#selectCustomerLocationModal').data('workflowCompleted', true);
             $('#selectCustomerLocationModal').modal('hide');
             
-            Swal.fire({
+            OptimaUI.fire({
                 title: 'Location Selected!', 
                 text: 'Location selected successfully. You can now create SPK from this quotation.',
                 icon: 'success',
@@ -5531,8 +5541,8 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
             
             // Do NOT auto-proceed to contract - let user click button
         } else {
-            console.error('❌ Primary location update failed:', response.message);
-            Swal.fire({
+            console.error('Ã¢ÂÅ’ Primary location update failed:', response.message);
+            OptimaUI.fire({
                 title: 'Failed to Update Location',
                 text: response.message || 'Failed to update primary location. Please try again.',
                 icon: 'error',
@@ -5542,7 +5552,7 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
         }
     })
     .fail(function(xhr) {
-        console.error('❌ AJAX Failed to update primary location');
+        console.error('Ã¢ÂÅ’ AJAX Failed to update primary location');
         console.error('Status:', xhr.status);
         console.error('Response:', xhr.responseText);
         console.error('Full XHR:', xhr);
@@ -5559,7 +5569,7 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
             errorMessage += 'Unknown error occurred.';
         }
         
-        Swal.fire({
+        OptimaUI.fire({
             title: 'Error',
             text: errorMessage,
             icon: 'error',
@@ -5587,7 +5597,7 @@ function showCreateContractModal(customerId, quotationId, customerLocationId, me
     window.currentContractCustomerId = customerId;
     window.currentSelectedLocationId = customerLocationId; // Store location ID
     
-    console.log('✅ Stored location ID in window.currentSelectedLocationId:', customerLocationId);
+    console.log('Ã¢Å“â€¦ Stored location ID in window.currentSelectedLocationId:', customerLocationId);
     
     // Show modal immediately with loading state
     $('#addContractModal').modal('show');
@@ -5645,7 +5655,7 @@ function loadCustomersForContract(customerId) {
         url: `<?= base_url('marketing/quotations/get-quotation/') ?>${quotationId}`,
         method: 'GET',
         success: function(quotationResponse) {
-            console.log('📥 Quotation data loaded for contract:', quotationResponse);
+            console.log('Ã°Å¸â€œÂ¥ Quotation data loaded for contract:', quotationResponse);
             
             if (quotationResponse.status === 'success' || quotationResponse.success) {
                 const quotation = quotationResponse.data || quotationResponse;
@@ -5656,19 +5666,19 @@ function loadCustomersForContract(customerId) {
                 // Use setTimeout to ensure field is rendered before setting value
                 setTimeout(function() {
                     $('#customerNameDisplay').val(customerName);
-                    console.log('✅ Customer name set:', customerName, '| Field value:', $('#customerNameDisplay').val());
+                    console.log('Ã¢Å“â€¦ Customer name set:', customerName, '| Field value:', $('#customerNameDisplay').val());
                 }, 100);
                 
                 // Set total units for daily rate calculator
                 const totalUnits = quotation.total_units || quotation.total_quantity || 0;
                 $('#calc_total_units').val(totalUnits);
-                console.log('✅ Total units set for calculator:', totalUnits);
+                console.log('Ã¢Å“â€¦ Total units set for calculator:', totalUnits);
                 
                 // Set location name if available
                 if (quotation.location_name) {
                     setTimeout(function() {
                         $('#locationNameDisplay').val(quotation.location_name);
-                        console.log('✅ Location name set:', quotation.location_name, '| Field value:', $('#locationNameDisplay').val());
+                        console.log('Ã¢Å“â€¦ Location name set:', quotation.location_name, '| Field value:', $('#locationNameDisplay').val());
                     }, 100);
                     
                     // If we have location from quotation, also set the location ID
@@ -5681,34 +5691,34 @@ function loadCustomersForContract(customerId) {
                         url: `<?= base_url('marketing/customers/getLocations/') ?>${customerId}`,
                         method: 'GET',
                         success: function(locResponse) {
-                            console.log('📥 Locations loaded:', locResponse);
+                            console.log('Ã°Å¸â€œÂ¥ Locations loaded:', locResponse);
                             if (locResponse.success && locResponse.data) {
                                 const selectedLocation = locResponse.data.find(loc => loc.id == locationId);
                                 if (selectedLocation) {
                                     setTimeout(function() {
                                         $('#locationNameDisplay').val(selectedLocation.location_name);
                                         $('#locationIdContractNew').val(selectedLocation.id);
-                                        console.log('✅ Location set from customer locations:', selectedLocation.location_name);
+                                        console.log('Ã¢Å“â€¦ Location set from customer locations:', selectedLocation.location_name);
                                     }, 100);
                                 }
                             }
                         },
                         error: function(xhr) {
-                            console.error('❌ Error loading locations:', xhr);
+                            console.error('Ã¢ÂÅ’ Error loading locations:', xhr);
                         }
                     });
                 } else {
                     setTimeout(function() {
                         $('#locationNameDisplay').val('No location selected');
-                        console.warn('⚠️ No location available');
+                        console.warn('Ã¢Å¡Â Ã¯Â¸Â No location available');
                     }, 100);
                 }
             } else {
-                console.error('❌ Invalid quotation response');
+                console.error('Ã¢ÂÅ’ Invalid quotation response');
             }
         },
         error: function(xhr) {
-            console.error('❌ Error loading quotation for contract:', xhr);
+            console.error('Ã¢ÂÅ’ Error loading quotation for contract:', xhr);
             const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Unknown error';
             console.error('Quotation error details:', errorMsg);
             
@@ -5720,12 +5730,12 @@ function loadCustomersForContract(customerId) {
                     if (custResponse.success && custResponse.data) {
                         setTimeout(function() {
                             $('#customerNameDisplay').val(custResponse.data.customer_name);
-                            console.log('✅ Customer name set from customer API:', custResponse.data.customer_name);
+                            console.log('Ã¢Å“â€¦ Customer name set from customer API:', custResponse.data.customer_name);
                         }, 100);
                     }
                 },
                 error: function(xhr) {
-                    console.error('❌ Error loading customer:', xhr);
+                    console.error('Ã¢ÂÅ’ Error loading customer:', xhr);
                 }
             });
         }
@@ -5746,7 +5756,7 @@ function loadExistingContracts(customerId) {
             console.log('Sending AJAX request for contracts...');
         },
         success: function(response) {
-            console.log('✅ Contracts API Response:', response);
+            console.log('Ã¢Å“â€¦ Contracts API Response:', response);
             console.log('Response type:', typeof response);
             console.log('Has contracts array?', response.hasOwnProperty('contracts'));
             
@@ -5757,7 +5767,7 @@ function loadExistingContracts(customerId) {
             dropdown.find('option:not([value=""]):not([value="__ADD_NEW__"])').remove();
             
             if (response.success && response.contracts && response.contracts.length > 0) {
-                console.log(`✅ Found ${response.contracts.length} existing contracts:`, response.contracts);
+                console.log(`Ã¢Å“â€¦ Found ${response.contracts.length} existing contracts:`, response.contracts);
                 
                 // Add existing contracts before the "+ Tambah Kontrak Baru" option
                 const addNewOption = dropdown.find('option[value="__ADD_NEW__"]').detach();
@@ -5778,15 +5788,15 @@ function loadExistingContracts(customerId) {
                 dropdown.append(addNewOption);
                 console.log('Re-added "Add New" option');
                 
-                console.log('✅ Contracts populated in dropdown. Total options:', dropdown.find('option').length);
+                console.log('Ã¢Å“â€¦ Contracts populated in dropdown. Total options:', dropdown.find('option').length);
             } else {
-                console.warn('⚠️ No existing contracts found or empty response');
+                console.warn('Ã¢Å¡Â Ã¯Â¸Â No existing contracts found or empty response');
                 console.log('Response details - success:', response.success, 'contracts:', response.contracts);
             }
             console.log('=== loadExistingContracts END ===');
         },
         error: function(xhr, status, error) {
-            console.error('❌ Error loading contracts');
+            console.error('Ã¢ÂÅ’ Error loading contracts');
             console.error('Status:', status);
             console.error('Error:', error);
             console.error('XHR:', xhr);
@@ -5796,7 +5806,7 @@ function loadExistingContracts(customerId) {
             console.error('Contract loading error details:', errorMsg);
             
             // Show user-friendly message
-            Swal.fire({
+            OptimaUI.fire({
                 icon: 'info',
                 title: 'No Existing Contracts',
                 text: 'Could not load existing contracts. You can create a new contract.',
@@ -5847,7 +5857,7 @@ function populateContractForm(contractData) {
     $('#locationIdContractNew').val(contractData.location_id || '');
     $('#locationNameDisplay').val(contractData.location_name || contractData.alamat || '');
     
-    console.log('✅ Contract form populated with customer:', contractData.customer_name, 'location:', contractData.location_name);
+    console.log('Ã¢Å“â€¦ Contract form populated with customer:', contractData.customer_name, 'location:', contractData.location_name);
 }
 
 // Function to search and load contract by contract number or PO number
@@ -5876,7 +5886,7 @@ function searchAndLoadContract(field, value) {
                     $('#contractOrPOSelect').val(contractId).trigger('change');
                 }
                 
-                Swal.fire({
+                OptimaUI.fire({
                     icon: 'info',
                     title: 'Contract Found',
                     text: 'Existing contract data loaded',
@@ -5908,7 +5918,7 @@ function saveNewContract(formData) {
             console.log('Contract save response:', response);
             
             if (response.success) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Success!',
                     text: 'Contract created successfully',
                     icon: 'success',
@@ -5926,12 +5936,12 @@ function saveNewContract(formData) {
                     quotationsTable.ajax.reload(null, false);
                 }
             } else {
-                Swal.fire('Error', response.message || 'Failed to save contract', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to save contract', 'error');
             }
         },
         error: function(xhr) {
             console.error('Error saving contract:', xhr);
-            Swal.fire('Error', 'Failed to save contract: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+            OptimaUI.fire('Error', 'Failed to save contract: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
         }
     });
 }
@@ -5954,7 +5964,7 @@ function linkExistingContract(contractId, quotationId) {
             console.log('Contract link response:', response);
             
             if (response.success) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Success!',
                     text: 'Contract linked to quotation successfully',
                     icon: 'success',
@@ -5972,12 +5982,12 @@ function linkExistingContract(contractId, quotationId) {
                     quotationsTable.ajax.reload(null, false);
                 }
             } else {
-                Swal.fire('Error', response.message || 'Failed to link contract', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to link contract', 'error');
             }
         },
         error: function(xhr) {
             console.error('Error linking contract:', xhr);
-            Swal.fire('Error', 'Failed to link contract: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+            OptimaUI.fire('Error', 'Failed to link contract: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
         }
     });
 }
@@ -5996,7 +6006,7 @@ function updateQuotationContractComplete(quotationId) {
         success: function(response) {
             console.log('Quotation contract flag updated:', response);
             if (response.success) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Workflow Updated!',
                     text: 'Contract stage completed. You can now create SPK.',
                     icon: 'success',
@@ -6012,7 +6022,7 @@ function updateQuotationContractComplete(quotationId) {
 
 // Function to complete deal workflow (with contract selected)
 function completeDealWorkflow(quotationId, successMessage) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Workflow Completed!',
         text: successMessage,
         icon: 'success',
@@ -6040,7 +6050,7 @@ function completeDealWorkflow(quotationId, successMessage) {
 
 // Function to complete deal workflow with table update (when workflow done)
 function completeDealWorkflowWithUpdate(quotationId, successMessage) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Deal Completed!',
         text: successMessage,
         icon: 'success',
@@ -6067,7 +6077,7 @@ function completeDealWorkflowWithUpdate(quotationId, successMessage) {
 }
 
 function createCustomerFromDeal(quotationId) {
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Create Customer?',
         text: 'This will create a customer record from this successful deal and save the prospect data permanently.',
         icon: 'question',
@@ -6081,7 +6091,7 @@ function createCustomerFromDeal(quotationId) {
             })
                 .done(function(response) {
                     if (response.success) {
-                        Swal.fire({
+                        OptimaUI.fire({
                             title: 'Customer Created!',
                             text: response.message,
                             icon: 'success',
@@ -6104,11 +6114,11 @@ function createCustomerFromDeal(quotationId) {
                             viewQuotation(quotationId);
                         }
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        OptimaUI.fire('Error', response.message, 'error');
                     }
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to create customer', 'error');
+                    OptimaUI.fire('Error', 'Failed to create customer', 'error');
                 });
         }
     });
@@ -6119,7 +6129,7 @@ function createContract(quotationId) {
     $.get('<?= base_url('marketing/quotations/detail') ?>/' + quotationId)
         .done(function(quotationResponse) {
             if (!quotationResponse.success || !quotationResponse.quotation.created_customer_id) {
-                Swal.fire('Error', 'Customer must be created before contract. Please mark as deal first.', 'error');
+                OptimaUI.fire('Error', 'Customer must be created before contract. Please mark as deal first.', 'error');
                 return;
             }
             
@@ -6130,7 +6140,7 @@ function createContract(quotationId) {
                 .done(function(profileResponse) {
                     if (profileResponse.success && !profileResponse.profile_status.complete) {
                         // Customer profile is not complete
-                        Swal.fire({
+                        OptimaUI.fire({
                             title: 'Customer Profile Incomplete',
                             html: `
                                 <div class="text-left">
@@ -6158,7 +6168,7 @@ function createContract(quotationId) {
                     }
                     
                     // Profile is complete, proceed with contract creation
-                    Swal.fire({
+                    OptimaUI.fire({
                         title: 'Create Contract & PO?',
                         text: 'This will create contract and purchase order documents.',
                         icon: 'question',
@@ -6172,11 +6182,11 @@ function createContract(quotationId) {
                     });
                 })
                 .fail(function() {
-                    Swal.fire('Error', 'Failed to check customer profile status', 'error');
+                    OptimaUI.fire('Error', 'Failed to check customer profile status', 'error');
                 });
         })
         .fail(function() {
-            Swal.fire('Error', 'Failed to get quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to get quotation details', 'error');
         });
 }
 
@@ -6186,7 +6196,7 @@ function proceedWithContractCreation(quotationId) {
     })
         .done(function(response) {
             if (response.success) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Contract Created!',
                     text: response.message,
                     icon: 'success',
@@ -6209,7 +6219,7 @@ function proceedWithContractCreation(quotationId) {
                 }
             } else {
                 if (response.require_profile_completion) {
-                    Swal.fire({
+                    OptimaUI.fire({
                         title: 'Customer Profile Required',
                         text: response.message,
                         icon: 'warning',
@@ -6223,12 +6233,12 @@ function proceedWithContractCreation(quotationId) {
                         }
                     });
                 } else {
-                    Swal.fire('Error', response.message, 'error');
+                    OptimaUI.fire('Error', response.message, 'error');
                 }
             }
         })
         .fail(function() {
-            Swal.fire('Error', 'Failed to create contract', 'error');
+            OptimaUI.fire('Error', 'Failed to create contract', 'error');
         });
 }
 
@@ -6237,7 +6247,7 @@ function createSPK(quotationId) {
     $.get('<?= base_url('marketing/quotations/getQuotation') ?>/' + quotationId)
         .done(function(quotationResponse) {
             if (!quotationResponse.success || !quotationResponse.data || !quotationResponse.data.created_customer_id) {
-                Swal.fire('Error', 'Customer must be created before SPK. Please mark as deal first.', 'error');
+                OptimaUI.fire('Error', 'Customer must be created before SPK. Please mark as deal first.', 'error');
                 return;
             }
             
@@ -6248,7 +6258,7 @@ function createSPK(quotationId) {
             createSPKFromQuotation(quotationId);
         })
         .fail(function() {
-            Swal.fire('Error', 'Failed to get quotation details', 'error');
+            OptimaUI.fire('Error', 'Failed to get quotation details', 'error');
         });
 }
 
@@ -6275,7 +6285,7 @@ function addSpecifications(quotationId) {
                     $('#specifications-tab').click();
                     
                     // Show helpful message
-                    Swal.fire({
+                    OptimaUI.fire({
                         title: 'Add Specifications',
                         text: 'Please add at least one specification before sending the quotation.',
                         icon: 'info',
@@ -6284,11 +6294,11 @@ function addSpecifications(quotationId) {
                     });
                 }, 1000);
             } else {
-                Swal.fire('Error', response.message || 'Failed to open specifications', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to open specifications', 'error');
             }
         },
         error: function() {
-            Swal.fire('Error', 'Failed to open specifications', 'error');
+            OptimaUI.fire('Error', 'Failed to open specifications', 'error');
         }
     });
 }
@@ -6306,9 +6316,9 @@ function testWorkflowComplete() {
     // Test 1: Check if quotations table is loaded
     console.log('Test 1: DataTable status');
     if (typeof quotationsTable !== 'undefined') {
-        console.log('✅ DataTable initialized');
+        console.log('Ã¢Å“â€¦ DataTable initialized');
     } else {
-        console.log('❌ DataTable not initialized');
+        console.log('Ã¢ÂÅ’ DataTable not initialized');
         return;
     }
     
@@ -6318,21 +6328,21 @@ function testWorkflowComplete() {
     // Test departemen endpoint
     $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen')
         .done(function(response) {
-            console.log('✅ Departemen API:', response.success ? 'OK' : 'FAILED');
+            console.log('Ã¢Å“â€¦ Departemen API:', response.success ? 'OK' : 'FAILED');
             console.log('   - Data count:', response.data ? response.data.length : 0);
         })
         .fail(function() {
-            console.log('❌ Departemen API: FAILED');
+            console.log('Ã¢ÂÅ’ Departemen API: FAILED');
         });
     
     // Test tipe unit endpoint  
     $.get('<?= base_url('marketing/customer-management/getTipeUnit') ?>')
         .done(function(response) {
-            console.log('✅ Tipe Unit API:', response.success ? 'OK' : 'FAILED');
+            console.log('Ã¢Å“â€¦ Tipe Unit API:', response.success ? 'OK' : 'FAILED');
             console.log('   - Data count:', response.data ? response.data.length : 0);
         })
         .fail(function() {
-            console.log('❌ Tipe Unit API: FAILED');
+            console.log('Ã¢ÂÅ’ Tipe Unit API: FAILED');
         });
     
     // Test 3: Check workflow stage functions
@@ -6340,9 +6350,9 @@ function testWorkflowComplete() {
     const workflowFunctions = ['convertToQuotation', 'openSpecificationsModal', 'sendQuotation', 'markAsDeal', 'markAsNotDeal', 'createCustomer'];
     workflowFunctions.forEach(func => {
         if (typeof window[func] === 'function') {
-            console.log('✅', func, 'function available');
+            console.log('Ã¢Å“â€¦', func, 'function available');
         } else {
-            console.log('❌', func, 'function missing');
+            console.log('Ã¢ÂÅ’', func, 'function missing');
         }
     });
     
@@ -6351,9 +6361,9 @@ function testWorkflowComplete() {
     const modals = ['#createProspectModal', '#addSpecificationModal', '#detailModal'];
     modals.forEach(modal => {
         if ($(modal).length > 0) {
-            console.log('✅', modal, 'exists');
+            console.log('Ã¢Å“â€¦', modal, 'exists');
         } else {
-            console.log('❌', modal, 'missing');
+            console.log('Ã¢ÂÅ’', modal, 'missing');
         }
     });
     
@@ -6364,7 +6374,7 @@ function testWorkflowComplete() {
 function simulateWorkflow(prospectName = 'Test Prospect ' + Date.now()) {
     console.log('=== SIMULATING COMPLETE WORKFLOW ===');
     
-    Swal.fire({
+    OptimaUI.fire({
         title: 'Start Workflow Simulation?',
         text: 'This will create a test prospect and walk through the complete quotation workflow.',
         icon: 'question',
@@ -6389,7 +6399,7 @@ function simulateWorkflow(prospectName = 'Test Prospect ' + Date.now()) {
                 $('#prospectAddress').val('Test Address');
                 $('#prospectNotes').val('Created via workflow simulation');
                 
-                console.log('✅ Prospect form filled. Please click "Create Prospect" to continue.');
+                console.log('Ã¢Å“â€¦ Prospect form filled. Please click "Create Prospect" to continue.');
                 console.log('Next steps:');
                 console.log('1. Click Create Prospect');
                 console.log('2. Convert to Quotation');
@@ -6409,7 +6419,7 @@ function testProspectCreation() {
 
 function testSpecificationModal() {
     if (!currentQuotationId) {
-        Swal.fire('Warning', 'Please select a quotation first', 'warning');
+        OptimaUI.fire('Warning', 'Please select a quotation first', 'warning');
         return;
     }
     console.log('Testing specification modal...');
@@ -6419,7 +6429,7 @@ function testSpecificationModal() {
 function testCascadingDropdowns() {
     console.log('Testing cascading dropdowns...');
     if (!currentQuotationId) {
-        Swal.fire('Info', 'Creating test quotation first...', 'info');
+        OptimaUI.fire('Info', 'Creating test quotation first...', 'info');
         testProspectCreation();
         return;
     }
@@ -6641,7 +6651,7 @@ function createContractForQuotation(quotationId) {
         success: function(response) {
             OptimaPro.hideLoading();
             if (response.success) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Success!',
                     html: `Contract created successfully!<br><strong>${response.contract_number}</strong>`,
                     icon: 'success',
@@ -6651,79 +6661,79 @@ function createContractForQuotation(quotationId) {
                     createSPKFromQuotation(quotationId);
                 });
             } else {
-                Swal.fire('Error', response.message || 'Failed to create contract', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to create contract', 'error');
             }
         },
         error: function(xhr) {
             OptimaPro.hideLoading();
             console.error('Error creating contract:', xhr);
             const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to create contract';
-            Swal.fire('Error', errorMsg, 'error');
+            OptimaUI.fire('Error', errorMsg, 'error');
         }
     });
 }
 
 // Function to create SPK from quotation specifications
 function createSPKFromQuotation(quotationId) {
-    console.log('🚀 [SPK-QUOTATION] Opening SPK creation modal for quotation:', quotationId);
+    console.log('Ã°Å¸Å¡â‚¬ [SPK-QUOTATION] Opening SPK creation modal for quotation:', quotationId);
     
     // Get quotation data with specifications
     $.ajax({
         url: `<?= base_url('marketing/quotations/getQuotation/') ?>${quotationId}`,
         method: 'GET',
         success: function(response) {
-            console.log('✅ [SPK-QUOTATION] Quotation data loaded:', response);
+            console.log('Ã¢Å“â€¦ [SPK-QUOTATION] Quotation data loaded:', response);
             
             if (!response.success || !response.data) {
-                console.error('❌ [SPK-QUOTATION] Invalid response format:', response);
-                Swal.fire('Error', 'Failed to load quotation data', 'error');
+                console.error('Ã¢ÂÅ’ [SPK-QUOTATION] Invalid response format:', response);
+                OptimaUI.fire('Error', 'Failed to load quotation data', 'error');
                 return;
             }
             
             const quotation = response.data;
-            console.log('📋 [SPK-QUOTATION] Quotation object:', quotation);
+            console.log('Ã°Å¸â€œâ€¹ [SPK-QUOTATION] Quotation object:', quotation);
             
             // Validate quotation has required data (Customer and Location only)
             if (!quotation.created_customer_id) {
-                console.warn('⚠️ [SPK-QUOTATION] No customer created for this quotation');
-                Swal.fire('Error', 'Customer must be created first. Please mark as deal.', 'error');
+                console.warn('Ã¢Å¡Â Ã¯Â¸Â [SPK-QUOTATION] No customer created for this quotation');
+                OptimaUI.fire('Error', 'Customer must be created first. Please mark as deal.', 'error');
                 return;
             }
             
-            console.log('✅ [SPK-QUOTATION] Validation passed, contract status:', quotation.created_contract_id ? `Contract ID: ${quotation.created_contract_id}` : '⏳ No contract (optional)');
+            console.log('Ã¢Å“â€¦ [SPK-QUOTATION] Validation passed, contract status:', quotation.created_contract_id ? `Contract ID: ${quotation.created_contract_id}` : 'Ã¢ÂÂ³ No contract (optional)');
             
             // CONTRACT NOT REQUIRED - Can be linked later via SPK page
             // Load specifications for this quotation
             loadSpecificationsForSPK(quotation);
         },
         error: function(xhr, status, error) {
-            console.error('❌ [SPK-QUOTATION] AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
-            Swal.fire('Error', 'Failed to load quotation details: ' + error, 'error');
+            console.error('Ã¢ÂÅ’ [SPK-QUOTATION] AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
+            OptimaUI.fire('Error', 'Failed to load quotation details: ' + error, 'error');
         }
     });
 }
 
 // Function to load specifications for SPK creation
 function loadSpecificationsForSPK(quotation) {
-    console.log('🔄 [SPK-QUOTATION] Loading specifications for quotation:', quotation.id_quotation);
+    console.log('Ã°Å¸â€â€ž [SPK-QUOTATION] Loading specifications for quotation:', quotation.id_quotation);
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/getSpecifications/') ?>${quotation.id_quotation}`,
         method: 'GET',
         success: function(response) {
-            console.log('✅ [SPK-QUOTATION] Specifications loaded:', response);
+            console.log('Ã¢Å“â€¦ [SPK-QUOTATION] Specifications loaded:', response);
             
             if (!response.success) {
-                console.error('❌ [SPK-QUOTATION] Failed to load specifications');
-                Swal.fire('Error', 'Failed to load specifications', 'error');
+                console.error('Ã¢ÂÅ’ [SPK-QUOTATION] Failed to load specifications');
+                OptimaUI.fire('Error', 'Failed to load specifications', 'error');
                 return;
             }
             
             const specifications = response.data || [];
-            console.log('📦 [SPK-QUOTATION] Total specifications:', specifications.length);
+            console.log('Ã°Å¸â€œÂ¦ [SPK-QUOTATION] Total specifications:', specifications.length);
             
             if (specifications.length === 0) {
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'No Specifications',
                     text: 'This quotation has no specifications yet. Please add specifications first.',
                     icon: 'warning',
@@ -6737,20 +6747,20 @@ function loadSpecificationsForSPK(quotation) {
             }
             
             // Populate SPK modal with data
-            console.log('✅ [SPK-QUOTATION] Calling showSPKCreationModal...');
+            console.log('Ã¢Å“â€¦ [SPK-QUOTATION] Calling showSPKCreationModal...');
             showSPKCreationModal(quotation, specifications);
         },
         error: function(xhr, status, error) {
-            console.error('❌ [SPK-QUOTATION] Specifications AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
-            Swal.fire('Error', 'Failed to load specifications: ' + error, 'error');
+            console.error('Ã¢ÂÅ’ [SPK-QUOTATION] Specifications AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
+            OptimaUI.fire('Error', 'Failed to load specifications: ' + error, 'error');
         }
     });
 }
 
 // Function to show SPK creation modal
 function showSPKCreationModal(quotation, specifications) {
-    console.log('🎯 [SPK-QUOTATION] Showing SPK modal with specifications:', specifications.length + ' specs');
-    console.log('📋 [SPK-QUOTATION] Modal data:', {quotation, specifications});
+    console.log('Ã°Å¸Å½Â¯ [SPK-QUOTATION] Showing SPK modal with specifications:', specifications.length + ' specs');
+    console.log('Ã°Å¸â€œâ€¹ [SPK-QUOTATION] Modal data:', {quotation, specifications});
     
     // Set modal title info
     $('#spkModalQuotationInfo').html(`
@@ -6792,7 +6802,7 @@ function showSPKCreationModal(quotation, specifications) {
     $('#spk_contract_id').val(contractId || '');
     
     // Debug log
-    console.log('📋 Setting SPK form fields:');
+    console.log('Ã°Å¸â€œâ€¹ Setting SPK form fields:');
     console.log('  - quotation_id:', quotation.id_quotation);
     console.log('  - customer_id:', quotation.created_customer_id);
     console.log('  - contract_id:', contractId);
@@ -6981,9 +6991,9 @@ function showSPKCreationModal(quotation, specifications) {
     });
     
     // Show modal
-    console.log('🎭 [SPK-QUOTATION] All data populated, opening Bootstrap modal...');
+    console.log('Ã°Å¸Å½Â­ [SPK-QUOTATION] All data populated, opening Bootstrap modal...');
     $('#createSPKModal').modal('show');
-    console.log('✅ [SPK-QUOTATION] Modal show() called successfully');
+    console.log('Ã¢Å“â€¦ [SPK-QUOTATION] Modal show() called successfully');
 }
 
 // Helper function to build specification description
@@ -7072,7 +7082,7 @@ function buildSpecificationDescription(spec) {
         parts.push(`<strong>Qty:</strong> ${spec.quantity} unit(s)`);
     }
     
-    return parts.length > 0 ? parts.join(' • ') : 'No details available';
+    return parts.length > 0 ? parts.join(' Ã¢â‚¬Â¢ ') : 'No details available';
 }
 
 // Handle SPK creation form submission
@@ -7087,7 +7097,7 @@ $('#createSPKForm').on('submit', function(e) {
         const maxQty = parseInt($(this).data('max-qty'));
         
         if (quantity > maxQty) {
-            Swal.fire('Error', `Quantity for specification #${specId} exceeds maximum (${maxQty})`, 'error');
+            OptimaUI.fire('Error', `Quantity for specification #${specId} exceeds maximum (${maxQty})`, 'error');
             return false;
         }
         
@@ -7098,7 +7108,7 @@ $('#createSPKForm').on('submit', function(e) {
     });
     
     if (selectedSpecs.length === 0) {
-        Swal.fire('Warning', 'Please select at least one specification', 'warning');
+        OptimaUI.fire('Warning', 'Please select at least one specification', 'warning');
         return false;
     }
     
@@ -7121,7 +7131,7 @@ $('#createSPKForm').on('submit', function(e) {
     
     // Validate required fields (CONTRACT NOW OPTIONAL)
     if (!formData.quotation_id || !formData.customer_id) {
-        Swal.fire('Error', 'Missing quotation or customer ID. Please close and reopen the modal.', 'error');
+        OptimaUI.fire('Error', 'Missing quotation or customer ID. Please close and reopen the modal.', 'error');
         submitBtn.prop('disabled', false).html('Create Selected SPK(s)');
         return false;
     }
@@ -7157,10 +7167,10 @@ $('#createSPKForm').on('submit', function(e) {
                 
                 // Add status update notification if all specs are allocated
                 if (statusUpdated && allAllocated) {
-                    message += '\n\n✅ All specifications completed!\nQuotation marked as CLOSED.';
+                    message += '\n\nÃ¢Å“â€¦ All specifications completed!\nQuotation marked as CLOSED.';
                 }
                 
-                Swal.fire({
+                OptimaUI.fire({
                     title: 'Success!',
                     text: message,
                     icon: 'success',
@@ -7172,13 +7182,13 @@ $('#createSPKForm').on('submit', function(e) {
                     }
                 });
             } else {
-                Swal.fire('Error', response.message || 'Failed to create SPK', 'error');
+                OptimaUI.fire('Error', response.message || 'Failed to create SPK', 'error');
             }
         },
         error: function(xhr) {
             submitBtn.prop('disabled', false).html('<i class="fas fa-check me-2"></i>Create Selected SPK(s)');
             console.error('Error creating SPK:', xhr);
-            Swal.fire('Error', 'Failed to create SPK: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+            OptimaUI.fire('Error', 'Failed to create SPK: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
         }
     });
 });
