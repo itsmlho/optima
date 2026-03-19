@@ -23,23 +23,28 @@ class LanguageFilter implements FilterInterface
      */
     public function before(RequestInterface $request, $arguments = null)
     {
+        $appConfig = config('App');
+        $defaultLocale = $appConfig->defaultLocale ?? 'en';
+        $supportedLocales = $appConfig->supportedLocales ?? ['en', 'id'];
+
         // Get language preference from session
         $userLanguage = session()->get('user_language');
-        
-        // If user has language preference in session, use it
-        if ($userLanguage) {
-            // Validate language is supported
-            $supportedLanguages = ['id', 'en'];
-            if (in_array($userLanguage, $supportedLanguages)) {
-                // Set locale using the proper CI4 method
-                service('request')->setLocale($userLanguage);
-                
-                // Set locale in language service for lang() helper
-                \Config\Services::language()->setLocale($userLanguage);
-            }
+
+        // If no session preference, use app default (English) and persist to session
+        if (!$userLanguage) {
+            $userLanguage = $defaultLocale;
+            session()->set('user_language', $userLanguage);
         }
-        
-        // No need to return modified request
+
+        // Validate language is supported; fallback to default locale
+        if (!in_array($userLanguage, $supportedLocales)) {
+            $userLanguage = $defaultLocale;
+            session()->set('user_language', $userLanguage);
+        }
+
+        // Set locale for current request and for lang() helper
+        service('request')->setLocale($userLanguage);
+        \Config\Services::language()->setLocale($userLanguage);
     }
 
     /**

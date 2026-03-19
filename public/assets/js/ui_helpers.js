@@ -292,21 +292,36 @@ function confirmAction(options = {}) {
     
     const config = {...defaults, ...options};
     
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
+    if (window.OptimaConfirm && typeof window.OptimaConfirm.generic === 'function') {
+        const modalEl = document.getElementById('optimaConfirmModal');
+        let confirmed = false;
+
+        // Support onCancel by detecting when the modal is closed without confirming.
+        // (OptimaConfirm modal currently only exposes onConfirm, not onCancel.)
+        if (modalEl) {
+            const onHidden = function() {
+                modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                if (!confirmed && typeof config.onCancel === 'function') config.onCancel();
+            };
+            modalEl.addEventListener('hidden.bs.modal', onHidden);
+        }
+
+        const icon =
+            config.type === 'error' ? 'warning' :
+            config.type === 'info' ? 'info' :
+            config.type === 'success' ? 'success' :
+            config.type;
+
+        window.OptimaConfirm.generic({
             title: config.title,
-            text: config.text,
-            icon: config.type,
-            showCancelButton: true,
+            messageHtml: config.text,
+            icon: icon,
+            confirmText: config.confirmText,
+            cancelText: config.cancelText,
             confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: config.confirmText,
-            cancelButtonText: config.cancelText
-        }).then((result) => {
-            if (result.isConfirmed && config.onConfirm) {
-                config.onConfirm();
-            } else if (result.isDismissed && config.onCancel) {
-                config.onCancel();
+            onConfirm: function() {
+                confirmed = true;
+                if (typeof config.onConfirm === 'function') config.onConfirm();
             }
         });
     } else {

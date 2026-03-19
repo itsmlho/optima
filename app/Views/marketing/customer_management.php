@@ -104,19 +104,19 @@ $can_export = $permissions['export'];
         <ul class="nav nav-tabs customer-status-tabs" id="customerStatusTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active tab-all" id="tab-all" data-status="all" type="button" role="tab">
-                    <i class="bi bi-list-ul me-2"></i>All Customers
+                    <i class="bi bi-list-ul me-2"></i><?= lang('Marketing.all_customers') ?? lang('Common.all') ?> <?= lang('Marketing.customers') ?>
                     <span class="badge badge-tab-all ms-2" id="count-all">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link tab-active" id="tab-active" data-status="active" type="button" role="tab">
-                    <i class="bi bi-check-circle me-2"></i>Active
+                    <i class="bi bi-check-circle me-2"></i><?= lang('Common.active') ?>
                     <span class="badge badge-tab-active ms-2" id="count-active">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link tab-inactive" id="tab-inactive" data-status="inactive" type="button" role="tab">
-                    <i class="bi bi-x-circle me-2"></i>Inactive
+                    <i class="bi bi-x-circle me-2"></i><?= lang('Common.inactive') ?>
                     <span class="badge badge-tab-inactive ms-2" id="count-inactive">0</span>
                 </button>
             </li>

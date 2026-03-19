@@ -946,14 +946,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       let actionButtons = '';
       
       // Debug: Log the actual status and raw data
-      // console.log('🔍 DI Modal Status Debug:', { 
-        status, 
-        status_di: d.status_di, 
-        status_eksekusi: d.status_eksekusi,
-        status_field: d.status,
-        spk: spk?.id,
-        raw_d: d 
-      });
+      // console.log('🔍 DI Modal Status Debug:', { status, status_di: d.status_di, status_eksekusi: d.status_eksekusi, status_field: d.status, spk: spk?.id, raw_d: d });
       
       // Determine action buttons based on status
       if (status === 'SUBMITTED' || status === 'DIAJUKAN') {

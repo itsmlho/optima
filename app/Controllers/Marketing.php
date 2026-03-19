@@ -6104,6 +6104,27 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Tujuan Perintah Kerja harus dipilih']);
         }
 
+        // Resolve pelanggan_id for customer tracking
+        $pelangganId = (int)($this->request->getPost('pelanggan_id') ?? 0) ?: null;
+        if (!$pelangganId && $spkId > 0 && !empty($spk['kontrak_id'])) {
+            $kontrakRow = $this->db->table('kontrak')->select('customer_id')->where('id', (int)$spk['kontrak_id'])->get()->getRowArray();
+            if ($kontrakRow && !empty($kontrakRow['customer_id'])) {
+                $pelangganId = (int)$kontrakRow['customer_id'];
+            }
+        }
+        if (!$pelangganId && !empty($pelanggan)) {
+            $customerRow = $this->db->table('customers')->select('id')->where('customer_name', $pelanggan)->where('deleted_at IS NULL', null, false)->limit(1)->get()->getRowArray();
+            if ($customerRow) {
+                $pelangganId = (int)$customerRow['id'];
+            }
+        }
+        if (!$pelangganId && !empty($poNo)) {
+            $kontrakByNo = $this->db->table('kontrak')->select('customer_id')->where('no_kontrak', $poNo)->limit(1)->get()->getRowArray();
+            if ($kontrakByNo && !empty($kontrakByNo['customer_id'])) {
+                $pelangganId = (int)$kontrakByNo['customer_id'];
+            }
+        }
+
         // Determine initial status based on SPK contract linkage
         // DIAJUKAN if SPK has no contract, DISETUJUI if SPK has contract
         $initialStatus = 'DIAJUKAN'; // Default for backward compatibility
@@ -6120,6 +6141,7 @@ class Marketing extends BaseDataTableController
             'jenis_spk' => isset($spk['jenis_spk']) ? $spk['jenis_spk'] : 'UNIT', // Copy jenis_spk from SPK
             'po_kontrak_nomor' => $poNo,
             'pelanggan' => $pelanggan,
+            'pelanggan_id' => $pelangganId,
             'lokasi' => $lokasi,
             'status_di' => $initialStatus,  // Auto-determined based on SPK contract status
             'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
@@ -8868,6 +8890,7 @@ class Marketing extends BaseDataTableController
             }
 
             // Update DI with contract linkage
+            $poNumber = trim($this->request->getPost('po_number') ?? '');
             $updateData = [
                 'contract_id'        => $contractId,
                 'pelanggan_id'       => $contract['customer_id'] ?? null,
@@ -8876,6 +8899,11 @@ class Marketing extends BaseDataTableController
                 'status_di'          => 'SUBMITTED',
                 'diperbarui_pada'    => date('Y-m-d H:i:s'),
             ];
+
+            // If a specific PO Bulanan number is provided, save it
+            if (!empty($poNumber)) {
+                $updateData['po_kontrak_nomor'] = $poNumber;
+            }
 
             // If BAST date provided, set billing start date
             if (!empty($bastDate)) {
@@ -8961,10 +8989,11 @@ class Marketing extends BaseDataTableController
             $db = \Config\Database::connect();
             
             // Query contracts for this customer (table is 'kontrak')
-            $query = $db->table('kontrak')
-                ->select('kontrak.id, kontrak.no_kontrak, kontrak.no_kontrak as nomor_kontrak, kontrak.pelanggan as customer_name, kontrak.tanggal_mulai, kontrak.tanggal_mulai as tanggal_kontrak, kontrak.tanggal_selesai, kontrak.status, kontrak.status as status_kontrak')
-                ->where('kontrak.customer_id', $customerId)
-                ->orderBy('kontrak.tanggal_mulai', 'DESC')
+            $query = $db->table('kontrak k')
+                ->select('k.id, k.no_kontrak, k.no_kontrak as nomor_kontrak, c.customer_name, k.rental_type, k.tanggal_mulai, k.tanggal_mulai as tanggal_kontrak, k.tanggal_berakhir as tanggal_selesai, k.status, k.status as status_kontrak')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
+                ->where('k.customer_id', $customerId)
+                ->orderBy('k.tanggal_mulai', 'DESC')
                 ->get();
             
             $contracts = $query->getResultArray();
@@ -8980,6 +9009,98 @@ class Marketing extends BaseDataTableController
                 'success' => false,
                 'message' => 'Failed to get contracts: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get linkable contracts and PO Bulanan for a DI.
+     * Resolves customer from pelanggan_id → spk.kontrak → customer name lookup.
+     * Returns contracts (all rental_type) and active PO Bulanan (contract_po_history).
+     */
+    public function getLinkableContractsForDI($diId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        if (!$diId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'DI ID diperlukan']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            $di = $db->table('delivery_instructions')
+                ->select('id, nomor_di, pelanggan, pelanggan_id, spk_id, contract_id')
+                ->where('id', (int)$diId)
+                ->get()->getRowArray();
+
+            if (!$di) {
+                return $this->response->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
+            }
+
+            $customerId = $di['pelanggan_id'] ? (int)$di['pelanggan_id'] : null;
+
+            // Try via SPK → kontrak
+            if (!$customerId && !empty($di['spk_id'])) {
+                $spk = $db->table('spk')->select('kontrak_id')->where('id', (int)$di['spk_id'])->get()->getRowArray();
+                if ($spk && !empty($spk['kontrak_id'])) {
+                    $k = $db->table('kontrak')->select('customer_id')->where('id', (int)$spk['kontrak_id'])->get()->getRowArray();
+                    if ($k && !empty($k['customer_id'])) {
+                        $customerId = (int)$k['customer_id'];
+                    }
+                }
+            }
+
+            // Try by pelanggan name
+            if (!$customerId && !empty($di['pelanggan'])) {
+                $cust = $db->table('customers')->select('id')->where('customer_name', $di['pelanggan'])->where('deleted_at IS NULL', null, false)->limit(1)->get()->getRowArray();
+                if ($cust) $customerId = (int)$cust['id'];
+            }
+
+            $customerName = $di['pelanggan'];
+            if ($customerId) {
+                $c = $db->table('customers')->select('customer_name')->where('id', $customerId)->get()->getRowArray();
+                if ($c) $customerName = $c['customer_name'];
+            }
+
+            // Get contracts for this customer
+            $contracts = [];
+            if ($customerId) {
+                $contracts = $db->table('kontrak k')
+                    ->select('k.id, k.no_kontrak, k.rental_type, k.status, k.tanggal_mulai, k.tanggal_berakhir, c.customer_name')
+                    ->join('customers c', 'c.id = k.customer_id', 'left')
+                    ->where('k.customer_id', $customerId)
+                    ->orderBy('k.status = "ACTIVE"', 'DESC', false)
+                    ->orderBy('k.tanggal_mulai', 'DESC')
+                    ->get()->getResultArray();
+            }
+
+            // Get active PO Bulanan entries
+            $poBulanan = [];
+            if (!empty($contracts)) {
+                $contractIds = array_column($contracts, 'id');
+                $poBulanan = $db->table('contract_po_history cph')
+                    ->select('cph.id, cph.po_number, cph.contract_id, cph.effective_from, cph.effective_to, cph.status, k.no_kontrak as contract_no')
+                    ->join('kontrak k', 'k.id = cph.contract_id', 'left')
+                    ->whereIn('cph.contract_id', $contractIds)
+                    ->where('cph.status', 'ACTIVE')
+                    ->orderBy('cph.effective_from', 'DESC')
+                    ->get()->getResultArray();
+            }
+
+            return $this->response->setJSON([
+                'success'        => true,
+                'customer_id'    => $customerId,
+                'customer_name'  => $customerName,
+                'contracts'      => $contracts,
+                'po_bulanan'     => $poBulanan,
+                'already_linked' => !empty($di['contract_id']),
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getLinkableContractsForDI - Error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 

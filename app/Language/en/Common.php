@@ -136,6 +136,9 @@ return [
     'no_data' => 'No Data',
     'no_results' => 'No Results',
     'data_not_found' => 'Data Not Found',
+    'error_load' => 'Failed to load',
+    'error_server' => 'Server error',
+    'saved' => 'Saved',
     
     // Permissions & Access
     'access_denied' => 'Access Denied',

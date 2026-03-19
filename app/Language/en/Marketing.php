@@ -210,6 +210,12 @@ return [
     'report_customer' => 'Customer Report',
     'report_revenue' => 'Revenue Report',
 
+    // Marketing Dashboard
+    'marketing_dashboard' => 'Marketing Division Dashboard',
+    'overview_quotations' => 'Overview quotations, contracts, and marketing performance',
+    'tip_quick_access' => 'Tip: Use Quick Access or links below to open modules',
+    'all_customers' => 'All Customers',
+
     // SPK Page
     'total_spk' => 'Total SPK',
     'in_progress' => 'In Progress',

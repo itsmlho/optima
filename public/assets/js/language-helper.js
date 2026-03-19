@@ -8,16 +8,17 @@
 
 const LanguageHelper = {
     /**
-     * Current active language (id or en)
+     * Current active language (id or en). Default English to match app default.
      */
-    currentLang: 'id',
+    currentLang: 'en',
 
     /**
      * Initialize language helper
      */
     init: function() {
-        // Get current language from session or localStorage
-        this.currentLang = localStorage.getItem('user_language') || 'id';
+        // Prefer server-set value; then localStorage; then app default (en)
+        const stored = localStorage.getItem('user_language');
+        this.currentLang = stored || 'en';
     },
 
     /**
@@ -120,6 +121,32 @@ const LanguageHelper = {
             'invalid_phone': 'Format telepon tidak valid',
             'min_length': 'Minimal {count} karakter',
             'max_length': 'Maksimal {count} karakter',
+
+            // Work Orders
+            'select_unit': 'Pilih Unit',
+            'select_admin': 'Pilih Admin',
+            'select_foreman': 'Pilih Foreman',
+            'select_mechanic_1': 'Pilih Mekanik 1',
+            'select_mechanic_2_optional': 'Pilih Mekanik 2 (Opsional)',
+            'select_helper_1': 'Pilih Helper 1',
+            'select_helper_2_optional': 'Pilih Helper 2 (Opsional)',
+            'add_item': 'Tambah Item',
+            'not_completed': 'Belum selesai',
+            'no_items_brought': 'Tidak ada item yang dibawa',
+            'work_details_notes': 'Detail Kerja & Catatan',
+            'additional_notes': 'Catatan Tambahan',
+            'edit_work_order': 'Edit Perintah Kerja',
+            'delete_work_order': 'Hapus Perintah Kerja',
+            'select_pause_type': 'Pilih Tipe Jeda',
+            'cancel_work_order': 'Batalkan Perintah Kerja',
+            'provide_reason_cancellation': 'Berikan alasan pembatalan',
+            'reassign_work_order': 'Tugaskan Ulang Perintah Kerja',
+            'select_new_technician': 'Pilih teknisi baru',
+            'yes_start': 'Ya, Mulai',
+            'delete_confirmation': 'Konfirmasi Hapus',
+            'complaint_required_min': 'Deskripsi Komplain wajib diisi minimal 3 karakter',
+            'access_denied_view': 'Akses Ditolak: Anda tidak memiliki izin untuk melihat detail perintah kerja.',
+            'select_unit_area': 'Pilih unit untuk melihat informasi area',
         };
 
         const en = {
@@ -202,6 +229,32 @@ const LanguageHelper = {
             'invalid_phone': 'Invalid phone format',
             'min_length': 'Minimum {count} characters',
             'max_length': 'Maximum {count} characters',
+
+            // Work Orders
+            'select_unit': 'Select Unit',
+            'select_admin': 'Select Admin',
+            'select_foreman': 'Select Foreman',
+            'select_mechanic_1': 'Select Mechanic 1',
+            'select_mechanic_2_optional': 'Select Mechanic 2 (Optional)',
+            'select_helper_1': 'Select Helper 1',
+            'select_helper_2_optional': 'Select Helper 2 (Optional)',
+            'add_item': 'Add Item',
+            'not_completed': 'Not completed',
+            'no_items_brought': 'No items brought',
+            'work_details_notes': 'Work Details & Notes',
+            'additional_notes': 'Additional Notes',
+            'edit_work_order': 'Edit Work Order',
+            'delete_work_order': 'Delete Work Order',
+            'select_pause_type': 'Select Pause Type',
+            'cancel_work_order': 'Cancel Work Order',
+            'provide_reason_cancellation': 'Provide reason for cancellation',
+            'reassign_work_order': 'Reassign Work Order',
+            'select_new_technician': 'Select new technician',
+            'yes_start': 'Yes, Start',
+            'delete_confirmation': 'Delete Confirmation',
+            'complaint_required_min': 'Complaint Description must be at least 3 characters',
+            'access_denied_view': 'Access Denied: You do not have permission to view work order details.',
+            'select_unit_area': 'Select a unit to see area information',
         };
 
         return this.currentLang === 'en' ? en : id;
@@ -231,55 +284,41 @@ const LanguageHelper = {
     },
 
     /**
-     * Show success alert with SweetAlert2
+     * Show success toast/notification (Optima)
      */
     showSuccess: function(message) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'success',
-                title: this.trans('success'),
-                text: message,
-                confirmButtonText: this.trans('ok')
-            });
-        } else {
-            alert(message);
+        if (window.OptimaNotify && typeof window.OptimaNotify.success === 'function') {
+            window.OptimaNotify.success(message, this.trans('success'));
+            return;
         }
+        alert(message);
     },
 
     /**
-     * Show error alert with SweetAlert2
+     * Show error toast/notification (Optima)
      */
     showError: function(message) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'error',
-                title: this.trans('error'),
-                text: message,
-                confirmButtonText: this.trans('ok')
-            });
-        } else {
-            alert(message);
+        if (window.OptimaNotify && typeof window.OptimaNotify.error === 'function') {
+            window.OptimaNotify.error(message, this.trans('error'));
+            return;
         }
+        alert(message);
     },
 
     /**
-     * Show confirmation dialog with SweetAlert2
+     * Show confirmation dialog (OptimaConfirm)
      */
     confirmDelete: function(callback) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
+        if (window.OptimaConfirm && typeof window.OptimaConfirm.danger === 'function') {
+            window.OptimaConfirm.danger({
                 title: this.trans('confirm'),
-                text: this.trans('confirm_delete'),
+                messageHtml: this.trans('confirm_delete') + '<br><small class="text-muted">' + this.trans('cannot_undo') + '</small>',
                 icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: this.trans('yes'),
-                cancelButtonText: this.trans('cancel'),
-                footer: '<small>' + this.trans('cannot_undo') + '</small>'
-            }).then((result) => {
-                if (result.isConfirmed && typeof callback === 'function') {
-                    callback();
+                confirmText: this.trans('yes'),
+                cancelText: this.trans('cancel'),
+                confirmButtonColor: '#dc3545',
+                onConfirm: function() {
+                    if (typeof callback === 'function') callback();
                 }
             });
         } else {
@@ -295,16 +334,26 @@ const LanguageHelper = {
      * Show loading overlay
      */
     showLoading: function() {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: this.trans('please_wait'),
-                text: this.trans('processing'),
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+        const id = 'languageHelperLoadingOverlay';
+        let el = document.getElementById(id);
+        if (!el) {
+            el = document.createElement('div');
+            el.id = id;
+            el.className = 'loading-overlay';
+            el.style.display = 'flex';
+            el.style.zIndex = '1055';
+            el.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-logo">
+                        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                    </div>
+                    <div class="loading-text">OPTIMA</div>
+                    <div class="loading-subtitle">${this.trans('processing')}</div>
+                </div>
+            `;
+            document.body.appendChild(el);
+        } else {
+            el.style.display = 'flex';
         }
     },
 
@@ -312,9 +361,9 @@ const LanguageHelper = {
      * Hide loading overlay
      */
     hideLoading: function() {
-        if (typeof Swal !== 'undefined') {
-            Swal.close();
-        }
+        const id = 'languageHelperLoadingOverlay';
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
     }
 };
 

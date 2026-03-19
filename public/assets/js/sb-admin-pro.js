@@ -303,58 +303,49 @@
     }
   };
 
-  // Enhanced confirmation dialogs using SweetAlert2
-  window.OptimaConfirm = {
-    delete: function(callback, title = 'Are you sure?', text = 'This action cannot be undone.') {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: title,
-          text: text,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#e81500',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: 'Yes, delete it!',
-          cancelButtonText: 'Cancel'
-        }).then((result) => {
-          if (result.isConfirmed && typeof callback === 'function') {
-            callback();
-          }
-        });
-      } else {
-        // Fallback to native confirm
-        if (confirm(`${title}\n\n${text}`)) {
-          if (typeof callback === 'function') {
-            callback();
-          }
+  // Confirmation helpers (OptimaConfirm) - avoid overriding base implementation
+  window.OptimaConfirm = window.OptimaConfirm || {};
+  window.OptimaConfirm.delete = window.OptimaConfirm.delete || function(callback, title = 'Are you sure?', text = 'This action cannot be undone.') {
+    if (typeof window.OptimaConfirm.danger === 'function') {
+      window.OptimaConfirm.danger({
+        title: title,
+        messageHtml: text,
+        icon: 'warning',
+        confirmText: 'Yes, delete it!',
+        cancelText: 'Cancel',
+        confirmButtonColor: '#dc3545',
+        onConfirm: function() {
+          if (typeof callback === 'function') callback();
         }
-      }
-    },
-    
-    action: function(callback, title = 'Confirm Action', text = 'Are you sure you want to continue?', confirmText = 'Yes') {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          title: title,
-          text: text,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#0061f2',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: confirmText,
-          cancelButtonText: 'Cancel'
-        }).then((result) => {
-          if (result.isConfirmed && typeof callback === 'function') {
-            callback();
-          }
-        });
-      } else {
-        // Fallback to native confirm
-        if (confirm(`${title}\n\n${text}`)) {
-          if (typeof callback === 'function') {
-            callback();
-          }
+      });
+      return;
+    }
+
+    // Fallback to native confirm
+    if (confirm(`${title}\n\n${text}`)) {
+      if (typeof callback === 'function') callback();
+    }
+  };
+  
+  window.OptimaConfirm.action = window.OptimaConfirm.action || function(callback, title = 'Confirm Action', text = 'Are you sure you want to continue?', confirmText = 'Yes') {
+    if (typeof window.OptimaConfirm.generic === 'function') {
+      window.OptimaConfirm.generic({
+        title: title,
+        messageHtml: text,
+        icon: 'question',
+        confirmText: confirmText,
+        cancelText: 'Cancel',
+        confirmButtonColor: '#0d6efd',
+        onConfirm: function() {
+          if (typeof callback === 'function') callback();
         }
-      }
+      });
+      return;
+    }
+
+    // Fallback to native confirm
+    if (confirm(`${title}\n\n${text}`)) {
+      if (typeof callback === 'function') callback();
     }
   };
 

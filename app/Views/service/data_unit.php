@@ -6,9 +6,9 @@
 <div class="mb-3">
     <h4 class="fw-bold mb-1">
         <i class="bi bi-box-seam me-2 text-primary"></i>
-        Service Units Database
+        <?= lang('Service.service_units_database') ?>
     </h4>
-    <p class="text-muted mb-0">Complete list of units available for service operations and maintenance</p>
+    <p class="text-muted mb-0"><?= lang('Service.service_units_description') ?></p>
 </div>
 
 <!-- Header & Status Tabs / Controls -->
@@ -17,23 +17,23 @@
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
                         <div class="flex-grow-1">
                                 <ul class="nav nav-tabs" id="svcStatusTabs">
-                                        <li class="nav-item"><button class="nav-link active" data-status="" type="button">Semua <span class="badge badge-soft-gray ms-1" id="svc-count-all">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="7" type="button">Stock Aset <span class="badge badge-soft-green ms-1" id="svc-count-7">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="8" type="button">Non Aset <span class="badge badge-soft-green ms-1" id="svc-count-8">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="3" type="button">Rental <span class="badge badge-soft-yellow ms-1" id="svc-count-3">0</span></button></li>
-                                        <li class="nav-item"><button class="nav-link" data-status="2" type="button">Workshop <span class="badge badge-soft-red ms-1" id="svc-count-2">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link active" data-status="" type="button"><?= lang('Common.all') ?> <span class="badge badge-soft-gray ms-1" id="svc-count-all">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="7" type="button"><?= lang('Service.stock_aset') ?> <span class="badge badge-soft-green ms-1" id="svc-count-7">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="8" type="button"><?= lang('Service.non_aset') ?> <span class="badge badge-soft-green ms-1" id="svc-count-8">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="3" type="button"><?= lang('Service.rental') ?> <span class="badge badge-soft-yellow ms-1" id="svc-count-3">0</span></button></li>
+                                        <li class="nav-item"><button class="nav-link" data-status="2" type="button"><?= lang('Service.workshop') ?> <span class="badge badge-soft-red ms-1" id="svc-count-2">0</span></button></li>
                                 </ul>
                         </div>
                         <div class="d-flex flex-wrap gap-2 align-items-center">
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#svcFilterCollapse" title="Tampilkan / Sembunyikan Filter"><i class="fas fa-filter me-1"></i>Filter</button>
-                            <button class="btn btn-sm btn-success" id="svcExport" title="Export CSV"><i class="fas fa-file-export me-1"></i>Export</button>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#svcFilterCollapse" title="<?= lang('App.show_hide_filter') ?>"><i class="fas fa-filter me-1"></i><?= lang('Common.filter') ?></button>
+                            <button class="btn btn-sm btn-success" id="svcExport" title="<?= lang('Service.export_csv') ?>"><i class="fas fa-file-export me-1"></i><?= lang('Common.export') ?></button>
                         </div>
                 </div>
                 <div class="mt-3">
                 <div class="input-group input-group-sm shadow-sm" style="max-width:320px;">
                     <span class="input-group-text border-end-0"><i class="fas fa-search text-secondary"></i></span>
-                    <input type="text" id="svcSearch" class="form-control border-start-0" placeholder="Cari Unit / Serial / Merk / Model / Lokasi" aria-label="Pencarian">
-                    <button class="btn btn-outline-secondary" id="svcClear" title="Clear"><i class="fas fa-times"></i></button>
+                    <input type="text" id="svcSearch" class="form-control border-start-0" placeholder="<?= lang('Service.search_unit_placeholder') ?>" aria-label="<?= lang('Common.search') ?>">
+                    <button class="btn btn-outline-secondary" id="svcClear" title="<?= lang('Common.clear') ?>"><i class="fas fa-times"></i></button>
                 </div>
         </div>
 </div>
@@ -42,26 +42,26 @@
         <div class="card border-0 bg-light p-3 shadow-sm">
                 <form id="svcFilterForm" class="row gx-3 gy-2 align-items-end">
                         <div class="col-md-4 col-sm-6">
-                                <label class="form-label small mb-1 text-uppercase fw-semibold">Departemen</label>
+                                <label class="form-label small mb-1 text-uppercase fw-semibold"><?= lang('Service.departemen') ?></label>
                                 <select id="svcDept" class="form-select form-select-sm">
-                                        <option value="" selected>Semua Departemen</option>
+                                        <option value="" selected><?= lang('Service.all_departemen') ?></option>
                                         <?php if(!empty($departemen_options)): foreach($departemen_options as $d): ?>
                                                 <option value="<?= esc($d['id_departemen']) ?>"><?= esc($d['nama_departemen']) ?></option>
                                         <?php endforeach; endif; ?>
                                 </select>
                         </div>
                         <div class="col-md-4 col-sm-6">
-                                <label class="form-label small mb-1 text-uppercase fw-semibold">Lokasi</label>
+                                <label class="form-label small mb-1 text-uppercase fw-semibold"><?= lang('Common.location') ?></label>
                                 <select id="svcLokasi" class="form-select form-select-sm">
-                                        <option value="" selected>Semua Lokasi</option>
+                                        <option value="" selected><?= lang('Service.all_location') ?></option>
                                         <?php if(!empty($lokasi_options)): foreach($lokasi_options as $l): ?>
                                                 <option value="<?= esc($l) ?>"><?= esc($l) ?></option>
                                         <?php endforeach; endif; ?>
                                 </select>
                         </div>
                         <div class="col-12 d-flex flex-wrap gap-2 mt-2">
-                                <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Terapkan</button>
-                                <button type="button" id="svcReset" class="btn btn-sm btn-outline-secondary"><i class="fas fa-undo me-1"></i>Reset</button>
+                                <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i><?= lang('Common.apply') ?></button>
+                                <button type="button" id="svcReset" class="btn btn-sm btn-outline-secondary"><i class="fas fa-undo me-1"></i><?= lang('Common.reset') ?></button>
                         </div>
                 </form>
         </div>
@@ -73,15 +73,15 @@
                         <table id="service-units-table" class="table table-sm table-hover align-middle mb-0 w-100">
                                 <thead>
                                         <tr class="small text-uppercase">
-                                                <th>No Unit</th>
-                                                <th>Serial</th>
-                                                <th>Merk / Model</th>
-                                                <th>Tipe</th>
-                                                <th>Kapasitas</th>
-                                                <th>Status</th>
-                                                <th>Lokasi</th>
-                                                <th>Jenis Unit</th>
-                                                <th class="text-center">Aksi</th>
+                                                <th><?= lang('Service.unit_code') ?></th>
+                                                <th><?= lang('Service.serial') ?></th>
+                                                <th><?= lang('Service.brand_model') ?></th>
+                                                <th><?= lang('Common.type') ?></th>
+                                                <th><?= lang('Service.capacity') ?></th>
+                                                <th><?= lang('Common.status') ?></th>
+                                                <th><?= lang('Common.location') ?></th>
+                                                <th><?= lang('Service.unit_type') ?></th>
+                                                <th class="text-center"><?= lang('Common.action') ?></th>
                                         </tr>
                                 </thead>
                         </table>
@@ -95,15 +95,15 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">Detail Unit</h6>
+                <h6 class="modal-title"><?= lang('Service.unit_detail') ?></h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="svcDetailBody"><div class="text-center text-muted py-5">Memuat...</div></div>
+            <div class="modal-body" id="svcDetailBody"><div class="text-center text-muted py-5"><?= lang('Common.loading') ?>...</div></div>
                         <div class="modal-footer justify-content-between">
                                 <div class="small text-muted" id="svcDetailMeta"></div>
                                 <div class="d-flex gap-2">
-                                        <button class="btn btn-outline-primary btn-sm" type="button" id="svcEditFromDetail"><i class="fas fa-edit me-1"></i>Edit</button>
-                                        <a id="svcWorkOrderBtn" class="btn btn-sm btn-warning" href="#"><i class="fas fa-wrench me-1"></i>Work Order</a>
+                                        <button class="btn btn-outline-primary btn-sm" type="button" id="svcEditFromDetail"><i class="fas fa-edit me-1"></i><?= lang('Common.edit') ?></button>
+                                        <a id="svcWorkOrderBtn" class="btn btn-sm btn-warning" href="#"><i class="fas fa-wrench me-1"></i><?= lang('Service.work_order') ?></a>
                                         <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                                 </div>
                         </div>
@@ -116,7 +116,7 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="svcEditModalLabel">Edit Detail Unit</h5>
+                <h5 class="modal-title" id="svcEditModalLabel"><?= lang('Service.edit_unit_detail') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
@@ -124,44 +124,44 @@
                 <div class="modal-body bg-light">
                     <input type="hidden" name="id" id="svcEditId">
 
-                    <h6 class="text-muted">Informasi Dasar & Status</h6>
+                    <h6 class="text-muted"><?= lang('Service.basic_info_status') ?></h6>
                     <div class="row g-3 mb-3">
                         <div class="col-md-4">
-                            <label for="svcEditNoUnit" class="form-label">No. Unit</label>
+                            <label for="svcEditNoUnit" class="form-label"><?= lang('Service.unit_code') ?></label>
                             <input type="text" class="form-control form-control-sm" id="svcEditNoUnit" disabled readonly>
                         </div>
                         <div class="col-md-4">
-                            <label for="svcEditStatus" class="form-label">Status Unit <span class="text-danger">*</span></label>
+                            <label for="svcEditStatus" class="form-label"><?= lang('Service.unit_status') ?> <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm" name="status_unit_id" id="svcEditStatus" required>
-                                <option value="" selected disabled>Pilih Status...</option>
+                                <option value="" selected disabled><?= lang('Service.select_status') ?></option>
                                 <?php if(!empty($status_options)): foreach($status_options as $s): ?>
                                     <option value="<?= esc($s['id']) ?>"><?= esc(strtoupper($s['name'])) ?></option>
                                 <?php endforeach; endif; ?>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="svcEditArea" class="form-label">Area <span class="text-danger">*</span></label>
+                            <label for="svcEditArea" class="form-label"><?= lang('Service.area') ?> <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm" name="area_id" id="svcEditArea" required>
-                                <option value="" selected disabled>Pilih Area...</option>
+                                <option value="" selected disabled><?= lang('Service.select_area') ?></option>
                             </select>
-                            <div class="form-text">Area menentukan penugasan staff untuk work order</div>
+                            <div class="form-text"><?= lang('Service.area_description') ?></div>
                         </div>
                         <div class="col-md-4">
-                            <label for="svcEditTahun" class="form-label">Tahun Pembuatan</label>
-                            <input type="number" class="form-control form-control-sm" name="tahun_unit" id="svcEditTahun" placeholder="Contoh: 2023">
+                            <label for="svcEditTahun" class="form-label"><?= lang('Service.year') ?></label>
+                            <input type="number" class="form-control form-control-sm" name="tahun_unit" id="svcEditTahun" placeholder="<?= lang('Service.year_placeholder') ?>">
                         </div>
                         <div class="col-md-6">
-                            <label for="svcEditDept" class="form-label">Departemen</label>
+                            <label for="svcEditDept" class="form-label"><?= lang('Service.departemen') ?></label>
                             <select class="form-select form-select-sm" name="departemen_id" id="svcEditDept">
-                                <option value="" selected disabled>Pilih Departemen...</option>
+                                <option value="" selected disabled><?= lang('Service.select_departemen') ?></option>
                                 <?php if(!empty($departemen_options)): foreach($departemen_options as $d): ?>
                                     <option value="<?= esc($d['id_departemen']) ?>"><?= esc($d['nama_departemen']) ?></option>
                                 <?php endforeach; endif; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label for="svcEditLokasi" class="form-label">Lokasi Unit</label>
-                            <input type="text" class="form-control form-control-sm" name="lokasi_unit" id="svcEditLokasi" placeholder="Lokasi terkini unit">
+                            <label for="svcEditLokasi" class="form-label"><?= lang('Service.unit_location') ?></label>
+                            <input type="text" class="form-control form-control-sm" name="lokasi_unit" id="svcEditLokasi" placeholder="<?= lang('Service.unit_location_placeholder') ?>">
                         </div>
                     </div>
 
@@ -175,31 +175,31 @@
                         <div class="card-body py-3">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label for="svcEditModel" class="form-label fw-semibold">Model Unit</label>
+                                    <label for="svcEditModel" class="form-label fw-semibold"><?= lang('Service.model_unit') ?></label>
                                     <select class="form-select form-select-sm" name="model_unit_id" id="svcEditModel">
-                                        <option value="" selected disabled>Pilih Model...</option>
+                                        <option value="" selected disabled><?= lang('Service.select_model') ?></option>
                                         <?php if(!empty($model_unit_options)): foreach($model_unit_options as $m): ?>
                                             <option value="<?= esc($m['id']) ?>"><?= esc($m['name']) ?></option>
                                         <?php endforeach; endif; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="svcEditSerial" class="form-label fw-semibold">Serial Number Unit</label>
+                                    <label for="svcEditSerial" class="form-label fw-semibold"><?= lang('Service.serial_number') ?> <?= lang('Service.unit') ?></label>
                                     <input type="text" class="form-control form-control-sm" name="serial_number" id="svcEditSerial" placeholder="S/N Unit">
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="svcEditTipe" class="form-label fw-semibold">Tipe/Jenis</label>
+                                    <label for="svcEditTipe" class="form-label fw-semibold"><?= lang('Common.type') ?>/<?= lang('Service.unit_type') ?></label>
                                     <select class="form-select form-select-sm" name="tipe_unit_id" id="svcEditTipe">
-                                        <option value="" selected disabled>Pilih Tipe...</option>
+                                        <option value="" selected disabled><?= lang('Service.select_type') ?></option>
                                         <?php if(!empty($tipe_unit_options)): foreach($tipe_unit_options as $t): ?>
                                             <option value="<?= esc($t['id']) ?>"><?= esc($t['name']) ?></option>
                                         <?php endforeach; endif; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="svcEditKapasitas" class="form-label fw-semibold">Kapasitas</label>
+                                    <label for="svcEditKapasitas" class="form-label fw-semibold"><?= lang('Service.capacity') ?></label>
                                     <select class="form-select form-select-sm" name="kapasitas_unit_id" id="svcEditKapasitas">
-                                        <option value="" selected disabled>Pilih Kapasitas...</option>
+                                        <option value="" selected disabled><?= lang('Service.select_capacity') ?></option>
                                         <?php if(!empty($kapasitas_options)): foreach($kapasitas_options as $k): ?>
                                             <option value="<?= esc($k['id']) ?>"><?= esc($k['name']) ?></option>
                                         <?php endforeach; endif; ?>
@@ -217,23 +217,23 @@
                         <div class="card-body py-3">
                             <!-- Mast -->
                             <div class="border rounded p-3 mb-3 ">
-                                <h6 class="text-primary mb-2">Mast</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Service.mast') ?></h6>
                                 <div class="row g-2">
                                     <div class="col-md-4">
-                                        <label for="svcEditMast" class="form-label small">Model Mast</label>
+                                        <label for="svcEditMast" class="form-label small"><?= lang('Service.model_mast') ?></label>
                                         <select class="form-select form-select-sm" name="model_mast_id" id="svcEditMast">
-                                            <option value="" selected disabled>Pilih Mast...</option>
+                                            <option value="" selected disabled><?= lang('Service.select_mast') ?></option>
                                             <?php if(!empty($mast_options)): foreach($mast_options as $mm): ?>
                                                 <option value="<?= esc($mm['id']) ?>"><?= esc($mm['name']) ?></option>
                                             <?php endforeach; endif; ?>
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label for="svcEditSnMast" class="form-label small">Serial Number</label>
+                                        <label for="svcEditSnMast" class="form-label small"><?= lang('Service.serial_number') ?></label>
                                         <input type="text" class="form-control form-control-sm" name="sn_mast" id="svcEditSnMast" placeholder="S/N Mast">
                                     </div>
                                     <div class="col-md-4">
-                                        <label for="svcEditTinggiMast" class="form-label small">Tinggi Mast</label>
+                                        <label for="svcEditTinggiMast" class="form-label small"><?= lang('Service.mast_height') ?></label>
                                         <input type="text" class="form-control form-control-sm" name="tinggi_mast" id="svcEditTinggiMast" placeholder="ex: 4500mm">
                                     </div>
                                 </div>
@@ -241,12 +241,12 @@
 
                             <!-- Mesin -->
                             <div class="border rounded p-3 mb-3 ">
-                                <h6 class="text-primary mb-2">Mesin</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Service.engine') ?></h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <label for="svcEditMesin" class="form-label small">Model Mesin</label>
+                                        <label for="svcEditMesin" class="form-label small"><?= lang('Service.model_engine') ?></label>
                                         <select class="form-select form-select-sm" name="model_mesin_id" id="svcEditMesin">
-                                            <option value="" selected disabled>Pilih Mesin...</option>
+                                            <option value="" selected disabled><?= lang('Service.select_engine') ?></option>
                                             <?php if(!empty($mesin_options)): foreach($mesin_options as $ms): ?>
                                                 <option value="<?= esc($ms['id']) ?>"><?= esc($ms['name']) ?></option>
                                             <?php endforeach; endif; ?>
@@ -261,12 +261,12 @@
 
                             <!-- Baterai -->
                             <div class="border rounded p-3 mb-3 ">
-                                <h6 class="text-primary mb-2">Baterai</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Service.battery') ?></h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <label for="svcEditBaterai" class="form-label small">Model Baterai</label>
+                                        <label for="svcEditBaterai" class="form-label small"><?= lang('Service.model_battery') ?></label>
                                         <select class="form-select form-select-sm" name="model_baterai_id" id="svcEditBaterai">
-                                            <option value="" selected disabled>Pilih Baterai...</option>
+                                            <option value="" selected disabled><?= lang('Service.select_battery') ?></option>
                                             <?php if(!empty($baterai_options)): foreach($baterai_options as $bt): ?>
                                                 <option value="<?= esc($bt['id']) ?>"><?= esc($bt['name']) ?></option>
                                             <?php endforeach; endif; ?>
@@ -289,12 +289,12 @@
                         <div class="card-body py-3">
                             <!-- Attachment -->
                             <div class="border rounded p-3 mb-3 ">
-                                <h6 class="text-primary mb-2">Attachment</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Common.attachment') ?></h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <label for="svcEditAttachment" class="form-label small">Model Attachment</label>
+                                        <label for="svcEditAttachment" class="form-label small"><?= lang('Service.model_attachment') ?></label>
                                         <select class="form-select form-select-sm" name="model_attachment_id" id="svcEditAttachment">
-                                            <option value="" selected disabled>Pilih Attachment...</option>
+                                            <option value="" selected disabled><?= lang('Service.select_attachment') ?></option>
                                             <?php if(!empty($attachment_options)): foreach($attachment_options as $at): ?>
                                                 <option value="<?= esc($at['id']) ?>"><?= esc($at['name']) ?></option>
                                             <?php endforeach; endif; ?>
@@ -309,12 +309,12 @@
 
                             <!-- Charger -->
                             <div class="border rounded p-3 mb-3 ">
-                                <h6 class="text-primary mb-2">Charger</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Service.charger') ?></h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <label for="svcEditCharger" class="form-label small">Model Charger</label>
+                                        <label for="svcEditCharger" class="form-label small"><?= lang('Service.model_charger') ?></label>
                                         <select class="form-select form-select-sm" name="model_charger_id" id="svcEditCharger">
-                                            <option value="" selected disabled>Pilih Charger...</option>
+                                            <option value="" selected disabled><?= lang('Service.select_charger') ?></option>
                                             <?php if(!empty($charger_options)): foreach($charger_options as $cg): ?>
                                                 <option value="<?= esc($cg['id']) ?>"><?= esc($cg['name']) ?></option>
                                             <?php endforeach; endif; ?>
@@ -329,11 +329,11 @@
 
                             <!-- Valve -->
                             <div class="border rounded p-3 ">
-                                <h6 class="text-primary mb-2">Valve</h6>
+                                <h6 class="text-primary mb-2"><?= lang('Service.valve') ?></h6>
                                 <div class="col-md-6">
-                                    <label for="svcEditValve" class="form-label small">Tipe Valve</label>
+                                    <label for="svcEditValve" class="form-label small"><?= lang('Service.valve_type') ?></label>
                                     <select class="form-select form-select-sm" name="valve_id" id="svcEditValve">
-                                        <option value="" selected disabled>Pilih Valve...</option>
+                                        <option value="" selected disabled><?= lang('Service.select_valve') ?></option>
                                         <?php if(!empty($valve_options)): foreach($valve_options as $vl): ?>
                                             <option value="<?= esc($vl['id']) ?>"><?= esc($vl['name']) ?></option>
                                         <?php endforeach; endif; ?>
@@ -349,8 +349,8 @@
                             <h6 class="mb-0">Catatan</h6>
                         </div> -->
                         <div class="card-body py-3">
-                            <label for="svcEditKet" class="form-label fw-semibold">Keterangan</label>
-                            <textarea class="form-control form-control-sm" rows="3" name="keterangan" id="svcEditKet" placeholder="Tambahkan catatan atau keterangan lain jika perlu..."></textarea>
+                            <label for="svcEditKet" class="form-label fw-semibold"><?= lang('Common.notes') ?></label>
+                            <textarea class="form-control form-control-sm" rows="3" name="keterangan" id="svcEditKet" placeholder="<?= lang('Service.notes_placeholder') ?>"></textarea>
                         </div>
                     </div>
 
@@ -371,6 +371,32 @@
 <?= $this->endSection() ?>
 <?= $this->section('javascript') ?>
 <script>
+const SVC_LANG = <?= json_encode([
+    'view' => lang('Common.view'),
+    'edit' => lang('Common.edit'),
+    'work_order' => lang('Service.work_order'),
+    'select_area' => lang('Service.select_area'),
+    'loading' => lang('Common.loading'),
+    'error_load' => lang('Common.error_load'),
+    'unit_info' => lang('Service.unit_info'),
+    'unit_code' => lang('Service.unit_code'),
+    'serial_purchasing' => lang('Service.serial_purchasing'),
+    'brand_model' => lang('Service.brand_model'),
+    'technical_specs' => lang('Service.technical_specs'),
+    'maintenance_history' => lang('Service.maintenance_history'),
+    'loading_history' => lang('Service.loading_history'),
+    'error_load_history' => lang('Service.error_load_history'),
+    'no_data' => lang('Common.no_data'),
+    'date' => lang('Common.date'),
+    'type' => lang('Common.type'),
+    'notes' => lang('Common.notes'),
+    'downtime_hours' => lang('Service.downtime_hours'),
+    'error' => lang('Common.error'),
+    'error_server' => lang('Common.error_server'),
+    'saved' => lang('Common.saved'),
+    'error_save' => lang('App.error_save'),
+    'all_units' => lang('Service.all_units'),
+]) ?>;
 let svcTable;
 let currentTabStatus = '';
 let lastSearchValue='';
@@ -388,9 +414,9 @@ function svcActions(id){
         return `<div class="dropdown">`
                 + `<button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class='fas fa-ellipsis-h'></i></button>`
                 + `<ul class='dropdown-menu'>`
-                + `<li><a class='dropdown-item' href='#' onclick='svcView(${id})'><i class="fas fa-eye me-2 text-info"></i>Lihat</a></li>`
-                + `<li><a class='dropdown-item' href='#' onclick='svcEdit(${id})'><i class="fas fa-edit me-2 text-primary"></i>Edit</a></li>`
-                + `<li><a class='dropdown-item' href='<?= base_url('service/work-orders') ?>?unit=${id}'><i class="fas fa-wrench me-2 text-warning"></i>Work Order</a></li>`
+                + `<li><a class='dropdown-item' href='#' onclick='svcView(${id})'><i class="fas fa-eye me-2 text-info"></i>${SVC_LANG.view}</a></li>`
+                + `<li><a class='dropdown-item' href='#' onclick='svcEdit(${id})'><i class="fas fa-edit me-2 text-primary"></i>${SVC_LANG.edit}</a></li>`
+                + `<li><a class='dropdown-item' href='<?= base_url('service/work-orders') ?>?unit=${id}'><i class="fas fa-wrench me-2 text-warning"></i>${SVC_LANG.work_order}</a></li>`
                 + `</ul></div>`;
 }
 // Load area options for edit form
@@ -401,7 +427,7 @@ function loadAreaOptions() {
             if (data.success && data.data) {
                 const areaSelect = document.getElementById('svcEditArea');
                 if (areaSelect) {
-                    areaSelect.innerHTML = '<option value="">Pilih Area...</option>';
+                    areaSelect.innerHTML = '<option value="">' + SVC_LANG.select_area + '</option>';
                     data.data.forEach(area => {
                         const option = document.createElement('option');
                         option.value = area.id;
@@ -490,22 +516,22 @@ function initSvc(){
 }
 let svcLastDetail = null;
 function svcView(id){
-        $('#svcDetailBody').html('<div class="text-center text-muted py-5">Memuat...</div>');
+        $('#svcDetailBody').html('<div class="text-center text-muted py-5">' + SVC_LANG.loading + '...</div>');
         $('#svcDetailModal').modal('show');
         fetch('<?= base_url('service/data-unit/detail') ?>/'+id)
             .then(r=>r.json())
             .then(j=>{
-                if(!j.success){ $('#svcDetailBody').html('<div class="text-danger">Gagal memuat</div>'); return; }
+                if(!j.success){ $('#svcDetailBody').html('<div class="text-danger">' + SVC_LANG.error_load + '</div>'); return; }
                 const d=j.data; svcLastDetail=d;
                 $('#svcWorkOrderBtn').attr('href','<?= base_url('service/work-orders') ?>?unit='+d.id_inventory_unit);
                                 $('#svcDetailBody').html(`
                                         <div class='row g-3'>
                         <div class='col-md-6'>
-                            <h6 class='fw-bold mb-2'>Informasi Unit</h6>
+                            <h6 class='fw-bold mb-2'>' + SVC_LANG.unit_info + '</h6>
                             <table class='table table-sm mb-0'>
-                                <tr><td class='small text-muted'>No Unit</td><td><strong>${d.no_unit||'-'}</strong></td></tr>
-                                <tr><td class='small text-muted'>Serial Purchasing</td><td>${d.serial_number_po||'-'}</td></tr>
-                                <tr><td class='small text-muted'>Merk / Model</td><td>${d.merk_unit||'-'} ${d.model_unit||''}</td></tr>
+                                <tr><td class='small text-muted'>' + SVC_LANG.unit_code + '</td><td><strong>${d.no_unit||'-'}</strong></td></tr>
+                                <tr><td class='small text-muted'>' + SVC_LANG.serial_purchasing + '</td><td>${d.serial_number_po||'-'}</td></tr>
+                                <tr><td class='small text-muted'>' + SVC_LANG.brand_model + '</td><td>${d.merk_unit||'-'} ${d.model_unit||''}</td></tr>
                                 <tr><td class='small text-muted'>Tipe / Jenis</td><td>${d.nama_tipe_unit||'-'}</td></tr>
                                 <tr><td class='small text-muted'>Kapasitas</td><td>${d.kapasitas_unit||'-'}</td></tr>
                                 <tr><td class='small text-muted'>Tahun</td><td>${d.tahun_po||'-'}</td></tr>
@@ -513,7 +539,7 @@ function svcView(id){
                             </table>
                         </div>
                         <div class='col-md-6'>
-                            <h6 class='fw-bold mb-2'>Spesifikasi Teknis</h6>
+                            <h6 class='fw-bold mb-2'>' + SVC_LANG.technical_specs + '</h6>
                             <table class='table table-sm mb-0'>
                                 <tr><td class='small text-muted'>Mast</td><td>${d.tipe_mast||'-'} (${d.sn_mast_po||'-'})</td></tr>
                                 <tr><td class='small text-muted'>Mesin</td><td>${(d.merk_mesin||'-')} ${(d.model_mesin||'')} SN: ${(d.sn_mesin_po||'-')}</td></tr>
@@ -533,8 +559,8 @@ function svcView(id){
                                                         <div class='small text-muted mt-2'>Verifikasi: ${d.status_verifikasi||'-'} • ${d.catatan_verifikasi||''}</div>
                                                 </div>
                                                 <div class='col-12 mt-3'>
-                                                        <h6 class='fw-bold mb-2'>Riwayat Maintenance (Ringkas)</h6>
-                                                        <div id='svcMaintHistory' class='small text-muted'>Memuat riwayat...</div>
+                                                        <h6 class='fw-bold mb-2'>' + SVC_LANG.maintenance_history + '</h6>
+                                                        <div id='svcMaintHistory' class='small text-muted'>' + SVC_LANG.loading_history + '</div>
                                                 </div>
                     </div>`);
                                 $('#svcDetailMeta').text('ID#'+d.id_inventory_unit+' • Dept '+(d.nama_departemen||'-'));
@@ -543,16 +569,16 @@ function svcView(id){
                                 fetch('<?= base_url('service/data-unit/maintenance-history') ?>/'+id)
                                    .then(r=>r.json())
                                    .then(h=>{
-                                           if(!h.success){ $('#svcMaintHistory').html('<span class="text-danger">Gagal memuat riwayat</span>'); return; }
-                                           if(!h.data || !h.data.length){ $('#svcMaintHistory').html('<em>Tidak ada data</em>'); return; }
-                                           let html='<table class="table table-sm mb-0"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Catatan</th><th>DT(h)</th></tr></thead><tbody>';
+                                           if(!h.success){ $('#svcMaintHistory').html('<span class="text-danger">' + SVC_LANG.error_load_history + '</span>'); return; }
+                                           if(!h.data || !h.data.length){ $('#svcMaintHistory').html('<em>' + SVC_LANG.no_data + '</em>'); return; }
+                                           let html='<table class="table table-sm mb-0"><thead><tr><th>' + SVC_LANG.date + '</th><th>' + SVC_LANG.type + '</th><th>' + SVC_LANG.notes + '</th><th>' + SVC_LANG.downtime_hours + '</th></tr></thead><tbody>';
                                            h.data.forEach(r=>{ html+=`<tr><td>${r.date}</td><td>${r.type}</td><td>${r.notes}</td><td>${r.downtime_hours}</td></tr>`; });
                                            html+='</tbody></table>';
                                            $('#svcMaintHistory').html(html);
                                    })
-                                   .catch(()=> $('#svcMaintHistory').html('<span class="text-danger">Error</span>'));
+                                   .catch(()=> $('#svcMaintHistory').html('<span class="text-danger">' + SVC_LANG.error + '</span>'));
             })
-            .catch(()=> $('#svcDetailBody').html('<div class="text-danger">Error server</div>'));
+            .catch(()=> $('#svcDetailBody').html('<div class="text-danger">' + SVC_LANG.error_server + '</div>'));
 }
 function svcEdit(id){
         // If we already loaded detail, reuse some fields when IDs match
@@ -568,7 +594,7 @@ function svcEdit(id){
                         fetch('<?= base_url('service/data-unit/detail') ?>/'+id)
                         .then(r=>r.json())
                         .then(j=>{
-                                if(!j.success){ $('#svcEditErr').removeClass('d-none').text(j.message||'Gagal memuat'); return; }
+                                if(!j.success){ $('#svcEditErr').removeClass('d-none').text(j.message||SVC_LANG.error_load); return; }
                                 const d=j.data;
                                 $('#svcEditNoUnit').val(d.no_unit||'');
                                             $('#svcEditStatus').val(d.status_unit||'');
@@ -596,7 +622,7 @@ function svcEdit(id){
                                             $('#svcEditTinggiMast').val(d.tinggi_mast||'');
                                         $('#svcEditKet').val(d.keterangan||'');
                         })
-                        .catch(()=> $('#svcEditErr').removeClass('d-none').text('Error server'));
+                        .catch(()=> $('#svcEditErr').removeClass('d-none').text(SVC_LANG.error_server));
         };
         load();
 }
@@ -611,12 +637,12 @@ $('#svcEditForm').on('submit', function(e){
                 body:fd
         }).then(r=>r.json())
         .then(j=>{
-                if(!j.success){ $('#svcEditErr').removeClass('d-none').text(j.message||'Gagal menyimpan'); return; }
-                $('#svcEditOk').removeClass('d-none').text(j.message||'Tersimpan');
+                if(!j.success){ $('#svcEditErr').removeClass('d-none').text(j.message||SVC_LANG.error_save); return; }
+                $('#svcEditOk').removeClass('d-none').text(j.message||SVC_LANG.saved);
                 svcTable.ajax.reload(null,false);
                 setTimeout(()=>{ $('#svcEditModal').modal('hide'); if(svcLastDetail && svcLastDetail.id_inventory_unit==id){ svcView(id); } },700);
         })
-        .catch(()=> $('#svcEditErr').removeClass('d-none').text('Error server'));
+        .catch(()=> $('#svcEditErr').removeClass('d-none').text(SVC_LANG.error_server));
 });
 
 $(function(){ 
@@ -649,7 +675,7 @@ function updateActiveFilterInfo(){
                 chips.push(`<span class="badge rounded-pill text-bg-dark"><i class="fas fa-search me-1"></i>${lastSearchValue}</span>`);
         }
         if(!chips.length){
-                $('#svcActiveFilterInfo').html('Semua Unit');
+                $('#svcActiveFilterInfo').html(SVC_LANG.all_units);
                 $('#svcQuickReset').hide();
         } else {
                 $('#svcActiveFilterInfo').html(chips.join(' '));

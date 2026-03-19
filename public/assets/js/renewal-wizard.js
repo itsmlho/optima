@@ -453,20 +453,19 @@ class RenewalWizard {
     }
     
     showSuccess(message) {
-        // Use your existing toast/alert system
-        if (typeof Swal !== 'undefined') {
-            Swal.fire('Success', message, 'success');
-        } else {
-            alert(message);
+        if (window.OptimaNotify && typeof window.OptimaNotify.success === 'function') {
+            window.OptimaNotify.success(message, 'Success');
+            return;
         }
+        alert(message);
     }
     
     showError(message) {
-        if (typeof Swal !== 'undefined') {
-            Swal.fire('Error', message, 'error');
-        } else {
-            alert(message);
+        if (window.OptimaNotify && typeof window.OptimaNotify.error === 'function') {
+            window.OptimaNotify.error(message, 'Error');
+            return;
         }
+        alert(message);
     }
 }
 

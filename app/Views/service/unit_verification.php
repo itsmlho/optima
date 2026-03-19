@@ -4,35 +4,35 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-check-circle me-2"></i>Unit Verification - <span id="unit-verification-title"></span>
+                    <i class="fas fa-check-circle me-2"></i><?= lang('Service.unit_verification') ?> - <span id="unit-verification-title"></span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="alert alert-info">
-                    <h6 class="alert-heading mb-2">📋 Instruksi Verifikasi Data Unit</h6>
-                    <p class="mb-2">Tujuan verifikasi adalah <strong>memperbaiki data yang tidak sesuai</strong> dan <strong>melengkapi data yang kosong</strong> untuk mendapatkan data yang akurat.</p>
+                    <h6 class="alert-heading mb-2">📋 <?= lang('Service.verification_instructions') ?></h6>
+                    <p class="mb-2"><?= lang('Service.verification_purpose') ?></p>
                     <div class="row">
                         <div class="col-md-4">
-                            <small><strong>📊 Kolom 1:</strong> Item Verifikasi</small>
+                            <small><strong>📊 <?= lang('Service.item') ?> 1:</strong> <?= lang('Service.col_verification_item') ?></small>
                         </div>
                         <div class="col-md-4">
-                            <small><strong>💾 Kolom 2:</strong> Data Database (readonly)</small>
+                            <small><strong>💾 <?= lang('Service.item') ?> 2:</strong> <?= lang('Service.col_database') ?></small>
                         </div>
                         <div class="col-md-4">
-                            <small><strong>👁️ Kolom 3:</strong> Data Real Lapangan</small>
+                            <small><strong>👁️ <?= lang('Service.item') ?> 3:</strong> <?= lang('Service.col_real_field') ?></small>
                         </div>
                     </div>
                     <div class="mt-2">
-                        <small><strong>🎯 Cara Kerja:</strong> Jika SAMA → Centang "Sesuai" | Jika BERBEDA/KOSONG → Isi data real di kolom 3</small>
+                        <small><strong>🎯 <?= lang('Service.how_it_works') ?></strong></small>
                     </div>
-                    <small class="text-danger fw-bold">⚠️ Field bertanda * wajib diisi</small>
+                    <small class="text-danger fw-bold">⚠️ <?= lang('Service.required_fields_note') ?></small>
                 </div>
                 
                 <!-- Verification History Banner -->
                 <div class="alert alert-warning d-none" id="verification-history-banner">
-                    <h6 class="alert-heading mb-2">📜 Riwayat Verifikasi</h6>
-                    <p class="mb-0" id="verification-history-text">Loading...</p>
+                    <h6 class="alert-heading mb-2">📜 <?= lang('Service.verification_history') ?></h6>
+                    <p class="mb-0" id="verification-history-text"><?= lang('Common.loading') ?>...</p>
                 </div>
                 
                 <form id="unitVerificationForm">
@@ -42,7 +42,7 @@
                     <!-- Verifikasi Data Unit -->
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-truck me-2"></i>Verifikasi Data Unit - WO: <span id="wo-number-display">Loading...</span></h6>
+                            <h6 class="mb-0"><i class="fas fa-truck me-2"></i><?= lang('Service.verification_data_unit') ?> - WO: <span id="wo-number-display"><?= lang('Common.loading') ?>...</span></h6>
                         </div>
                         <div class="card-body p-0">
                             <table class="table table-sm table-bordered mb-0">
@@ -56,62 +56,62 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>No Unit <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.no_unit') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-no-unit" readonly></td>
                                         <td><input type="text" class="form-control form-control-sm" id="verify-no-unit" name="no_unit" placeholder="No unit real" readonly></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-no-unit" checked disabled></td>
                                     </tr>
                                     <tr>
-                                        <td>Pelanggan <span class="text-danger">*</span></td>
+                                        <td><?= lang('App.customer') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-pelanggan" readonly></td>
                                         <td><input type="text" class="form-control form-control-sm bg-light" id="verify-pelanggan" name="pelanggan" readonly required></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-pelanggan" checked disabled></td>
                                     </tr>
                                     <tr>
-                                        <td>Lokasi <span class="text-danger">*</span></td>
+                                        <td><?= lang('Common.location') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-lokasi" readonly></td>
                                         <td>
                                             <select class="form-select form-select-sm" id="verify-lokasi" name="lokasi" required>
-                                                <option value="">Pilih Lokasi</option>
+                                                <option value=""><?= lang('Service.select_location') ?></option>
                                             </select>
                                             <input type="text" class="form-control form-control-sm d-none" id="verify-lokasi-manual" name="lokasi_manual" placeholder="Ketik lokasi manual (double-click untuk kembali ke dropdown)">
                                         </td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-lokasi"></td>
                                     </tr>
                                     <tr>
-                                        <td>Serial Number <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.serial_number') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-serial-number" readonly></td>
                                         <td><input type="text" class="form-control form-control-sm" id="verify-serial-number" name="serial_number" placeholder="Serial number real"></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-serial-number"></td>
                                     </tr>
                                     <tr>
-                                        <td>Tahun Unit <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.year') ?> <?= lang('Service.unit') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-tahun-unit" readonly></td>
                                         <td><input type="number" class="form-control form-control-sm" id="verify-tahun-unit" name="tahun_unit" placeholder="Tahun real" min="1990" max="2030"></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-tahun-unit"></td>
                                     </tr>
                                     <tr>
-                                        <td>Departemen <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.departemen') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-departemen" readonly></td>
-                                        <td><select class="form-select form-select-sm" id="verify-departemen" name="departemen_id" required><option value="">Pilih Departemen</option></select></td>
+                                        <td><select class="form-select form-select-sm" id="verify-departemen" name="departemen_id" required><option value=""><?= lang('Service.select_departemen') ?></option></select></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-departemen"></td>
                                     </tr>
                                     <tr>
-                                        <td>Tipe Unit <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.unit_type') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-tipe-unit" readonly></td>
-                                        <td><select class="form-select form-select-sm" id="verify-tipe-unit" name="tipe_unit_id" required><option value="">Pilih Tipe Unit</option></select></td>
+                                        <td><select class="form-select form-select-sm" id="verify-tipe-unit" name="tipe_unit_id" required><option value=""><?= lang('Service.select_tipe_unit') ?></option></select></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-tipe-unit"></td>
                                     </tr>
                                     <tr>
-                                        <td>Kapasitas Unit <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.capacity') ?> <?= lang('Service.unit') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-kapasitas-unit" readonly></td>
-                                        <td><select class="form-select form-select-sm" id="verify-kapasitas-unit" name="kapasitas_unit_id" required><option value="">Pilih Kapasitas</option></select></td>
+                                        <td><select class="form-select form-select-sm" id="verify-kapasitas-unit" name="kapasitas_unit_id" required><option value=""><?= lang('Service.select_kapasitas') ?></option></select></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-kapasitas-unit"></td>
                                     </tr>
                                     <tr>
-                                        <td>Model Unit <span class="text-danger">*</span></td>
+                                        <td><?= lang('Service.model_unit') ?> <span class="text-danger">*</span></td>
                                         <td><input type="text" class="form-control form-control-sm" id="db-model-unit" readonly></td>
-                                        <td><select class="form-select form-select-sm" id="verify-model-unit" name="model_unit_id" required><option value="">Pilih Model</option></select></td>
+                                        <td><select class="form-select form-select-sm" id="verify-model-unit" name="model_unit_id" required><option value=""><?= lang('Service.select_model') ?></option></select></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-model-unit"></td>
                                     </tr>
                                     <tr>

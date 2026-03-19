@@ -18,11 +18,11 @@
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-bullhorn me-2 text-primary"></i>Marketing Division Dashboard
+                    <i class="fas fa-bullhorn me-2 text-primary"></i><?= lang('Marketing.marketing_dashboard') ?? 'Marketing Division Dashboard' ?>
                 </h5>
                 <p class="text-muted small mb-0">
-                    Overview quotations, contracts, and marketing performance
-                    <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small>Tip: Use Quick Access or links below to open modules</small></span>
+                    <?= lang('Marketing.overview_quotations') ?? 'Overview quotations, contracts, and marketing performance' ?>
+                    <span class="ms-2 text-info"><i class="bi bi-info-circle me-1"></i><small><?= lang('Marketing.tip_quick_access') ?? 'Tip: Use Quick Access or links below to open modules' ?></small></span>
                 </p>
             </div>
             <div class="d-flex gap-2">
@@ -73,7 +73,7 @@
                     <div class="row g-0 align-items-center">
                         <div class="col me-2">
                             <div class="small fw-bold text-warning text-uppercase mb-1">
-                                Pending Quotations</div>
+                                <?= lang('Marketing.pending') ?> <?= lang('Marketing.quotations') ?></div>
                             <div class="h5 mb-0 fw-bold text-dark">
                                 <?= $marketing_stats['pending_quotations'] ?>
                             </div>

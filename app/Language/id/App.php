@@ -307,6 +307,14 @@ return [
     'enable_email_notifications' => 'Aktifkan Notifikasi Email',
     'sms_notifications' => 'Notifikasi SMS',
     'enable_sms_notifications' => 'Aktifkan Notifikasi SMS',
+    'notifications' => 'Notifikasi',
+    'notification' => 'Notifikasi',
+    'mark_all_read' => 'Tandai Semua Dibaca',
+    'loading_notifications' => 'Memuat notifikasi...',
+    'view_all_notifications' => 'Lihat Semua Notifikasi',
+    'search_placeholder' => 'Cari...',
+    'quick_search' => 'Pencarian Cepat',
+    'quick_search_title' => 'Pencarian Cepat — Ctrl+K',
     
     // DataTables Language
     'user' => 'Pengguna',

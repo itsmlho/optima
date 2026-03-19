@@ -324,6 +324,32 @@ class Service extends BaseController
                 }
             }
 
+            // Handle additional spareparts added during validation (validated immediately, fully used)
+            $additionalRaw = $this->request->getPost('additional_spareparts');
+            $additionalSpareparts = is_string($additionalRaw) ? json_decode($additionalRaw, true) : $additionalRaw;
+            if (!empty($additionalSpareparts) && is_array($additionalSpareparts)) {
+                foreach ($additionalSpareparts as $addSp) {
+                    $name = trim($addSp['sparepart_name'] ?? '');
+                    if (empty($name)) continue;
+                    $qty = max(1, (int)($addSp['quantity'] ?? 1));
+                    $db->table('spk_spareparts')->insert([
+                        'spk_id'              => $spkId,
+                        'sparepart_name'      => $name,
+                        'item_type'           => $addSp['item_type'] ?? 'sparepart',
+                        'quantity_brought'    => $qty,
+                        'quantity_used'       => $qty,
+                        'satuan'              => $addSp['satuan'] ?? 'PCS',
+                        'notes'               => $notes ?: ($addSp['notes'] ?? null),
+                        'is_from_warehouse'   => (int)($addSp['is_from_warehouse'] ?? 1),
+                        'source_type'         => 'WAREHOUSE',
+                        'is_additional'       => 1,
+                        'sparepart_validated' => 1,
+                        'created_at'          => date('Y-m-d H:i:s'),
+                        'updated_at'          => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+
             $db->transComplete();
 
             if (!$db->transStatus()) {
@@ -983,6 +1009,7 @@ class Service extends BaseController
         // Also check if spareparts have been planned for this SPK
         $spkIds = array_column($spkRecords, 'id');
         $sparepartCounts = [];
+        $unvalidatedCounts = [];
         if (!empty($spkIds)) {
             $rows = $db->table('spk_spareparts')
                 ->select('spk_id, COUNT(*) as cnt')
@@ -991,6 +1018,15 @@ class Service extends BaseController
                 ->get()->getResultArray();
             foreach ($rows as $r) {
                 $sparepartCounts[(int)$r['spk_id']] = (int)$r['cnt'];
+            }
+            $uvRows = $db->table('spk_spareparts')
+                ->select('spk_id, COUNT(*) as cnt')
+                ->whereIn('spk_id', $spkIds)
+                ->where('sparepart_validated', 0)
+                ->groupBy('spk_id')
+                ->get()->getResultArray();
+            foreach ($uvRows as $r) {
+                $unvalidatedCounts[(int)$r['spk_id']] = (int)$r['cnt'];
             }
         }
 
@@ -1004,6 +1040,7 @@ class Service extends BaseController
                 log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
             }
             $spk['has_spareparts'] = isset($sparepartCounts[(int)$spk['id']]) && $sparepartCounts[(int)$spk['id']] > 0;
+            $spk['has_unvalidated_spareparts'] = isset($unvalidatedCounts[(int)$spk['id']]) && $unvalidatedCounts[(int)$spk['id']] > 0;
         }
 
         $paginatedData = $spkRecords;
@@ -2423,6 +2460,10 @@ class Service extends BaseController
             }
             
             $this->db->transComplete();
+
+            if ($this->db->transStatus() === false) {
+                throw new \Exception('Transaction failed: ' . ($this->db->error()['message'] ?? 'unknown DB error'));
+            }
             
             // Handle attachment updates for fabrikasi stage
             if ($approvalData['stage'] === 'fabrikasi' && $approvalData['attachment_id']) {
@@ -3317,25 +3358,32 @@ EOF;
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
         }
         
-        // Get department filter (NEW: filter by department instead of role)
-        $departmentId = $this->request->getGet('department_id');
+        // Get role and department filters
+        $rolesParam      = $this->request->getGet('roles');
+        $departmentParam = $this->request->getGet('department_id');
         
         try {
             $builder = $this->db->table('employees')
                 ->select('id, staff_name, staff_role, job_description, departemen_id')
                 ->where('is_active', 1);
             
-            // Filter by department if provided
-            if (!empty($departmentId)) {
-                // Convert to array if comma-separated
-                $departments = is_array($departmentId) ? $departmentId : explode(',', $departmentId);
-                $builder->whereIn('departemen_id', $departments);
-                log_message('info', 'Filtering employees by department(s): ' . implode(', ', $departments));
+            $allWorkshopRoles = ['MECHANIC', 'MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'FOREMAN', 'SUPERVISOR', 'HELPER'];
+            
+            // Apply role filter
+            if (!empty($rolesParam)) {
+                $requestedRoles = array_filter(array_map('trim', explode(',', $rolesParam)));
+                $validRoles = array_intersect($requestedRoles, $allWorkshopRoles);
+                $builder->whereIn('staff_role', !empty($validRoles) ? array_values($validRoles) : $allWorkshopRoles);
+            } else {
+                $builder->whereIn('staff_role', $allWorkshopRoles);
             }
             
-            // Exclude non-mechanic roles (admin, marketing, etc) - only get workshop staff
-            $workshopRoles = ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'FOREMAN', 'SUPERVISOR', 'HELPER'];
-            $builder->whereIn('staff_role', $workshopRoles);
+            // Apply department filter (from unit's departemen_id)
+            if (!empty($departmentParam)) {
+                $deptIds = array_filter(array_map('trim', explode(',', $departmentParam)));
+                $builder->whereIn('departemen_id', $deptIds);
+                log_message('info', 'Filtering mechanics by departemen_id: ' . implode(', ', $deptIds));
+            }
             
             $employees = $builder
                 ->orderBy('departemen_id ASC, staff_role ASC, staff_name ASC')

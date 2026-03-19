@@ -35,13 +35,8 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     }
     
     getDefaultRoles(stage) {
-        const roleMap = {
-            'persiapan_unit': ['MECHANIC_UNIT_PREP', 'HELPER'],
-            'fabrikasi': ['MECHANIC_FABRICATION', 'HELPER'],  
-            'painting': ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'HELPER'],
-            'pdi': ['FOREMAN', 'SUPERVISOR']
-        };
-        return roleMap[stage] || [];
+        if (stage === 'pdi') return ['FOREMAN', 'SUPERVISOR'];
+        return ['MECHANIC', 'HELPER'];
     }
     
     async init() {
@@ -54,13 +49,15 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     async loadEmployees() {
         try {
-            // NEW: Build URL with department filter instead of role filter
-            let apiUrl = `/optima/public/service/employees/by-roles`;
+            // Build URL: filter by stage roles, optionally by unit's departemen_id
+            const baseUrl = (window.BASE_URL || window.base_url || '/').replace(/\/$/, '');
+            const stageRoles = this.getDefaultRoles(this.options.stage);
+            let apiUrl = `${baseUrl}/service/employees/by-roles?roles=${stageRoles.join(',')}`;
             if (this.options.departmentId) {
-                apiUrl += `?department_id=${this.options.departmentId}`;
-                console.log(`🔍 Loading employees for department: ${this.options.departmentId}`);
+                apiUrl += `&department_id=${this.options.departmentId}`;
+                console.log(`🔍 Loading ${stageRoles} for department: ${this.options.departmentId}`);
             } else {
-                console.log('🔍 Loading all workshop employees (no department filter)');
+                console.log(`🔍 Loading all ${stageRoles} (no department filter)`);
             }
             
             const response = await fetch(apiUrl, {
@@ -105,6 +102,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     getRoleLabel(role) {
         const labels = {
+            'MECHANIC': 'Mekanik',
             'MECHANIC_UNIT_PREP': 'Unit Prep',
             'MECHANIC_FABRICATION': 'Fabrication', 
             'MECHANIC_SERVICE_AREA': 'Service Area',
@@ -117,12 +115,13 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     getRoleColor(role) {
         const colors = {
-            'MECHANIC_UNIT_PREP': 'primary',      // Blue
-            'MECHANIC_FABRICATION': 'purple',     // Purple
-            'MECHANIC_SERVICE_AREA': 'warning',   // Orange
-            'FOREMAN': 'success',                 // Green
-            'SUPERVISOR': 'cyan',                 // Cyan/Tosca
-            'HELPER': 'info'                      // Light Blue (lebih terlihat dari secondary)
+            'MECHANIC': 'primary',
+            'MECHANIC_UNIT_PREP': 'primary',
+            'MECHANIC_FABRICATION': 'purple',
+            'MECHANIC_SERVICE_AREA': 'warning',
+            'FOREMAN': 'success',
+            'SUPERVISOR': 'cyan',
+            'HELPER': 'info'
         };
         return colors[role] || 'light';
     }
@@ -536,6 +535,17 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         this.updateSelectedDisplay();
         this.updateDropdownOptions();
         this.clearValidationError();
+    }
+
+    // Reload employee list with new department filter, preserving existing selection
+    async reloadEmployees(departmentId) {
+        this.options.departmentId = departmentId;
+        // Preserve ALL current selections — department filter only restricts new choices
+        const previousSelection = new Map(this.selectedItems);
+        await this.loadEmployees();
+        this.selectedItems = previousSelection;
+        this.updateSelectedDisplay();
+        this.updateDropdownOptions();
     }
 }
 

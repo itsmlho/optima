@@ -24,7 +24,7 @@
                                 </div>
                                 <div>
                                     <div class="stat-value"><?= $warehouse_stats['total_units'] ?? 0 ?></div>
-                                    <div class="text-muted">Total Units</div>
+                                    <div class="text-muted"><?= lang('Warehouse.total_units') ?? 'Total Units' ?></div>
                                 </div>
                             </div>
                         </div>
@@ -40,7 +40,7 @@
                                 </div>
                                 <div>
                                     <div class="stat-value"><?= $warehouse_stats['total_attachments'] ?? 0 ?></div>
-                                    <div class="text-muted">Total Attachments</div>
+                                    <div class="text-muted"><?= lang('Warehouse.total_attachments') ?? 'Total Attachments' ?></div>
                                 </div>
                             </div>
                         </div>
@@ -56,7 +56,7 @@
                                 </div>
                                 <div>
                                     <div class="stat-value"><?= $warehouse_stats['total_spareparts'] ?? 0 ?></div>
-                                    <div class="text-muted">Total Spareparts</div>
+                                    <div class="text-muted"><?= lang('Service.spareparts') ?> <?= lang('App.total') ?? 'Total' ?></div>
                                 </div>
                             </div>
                         </div>
@@ -72,7 +72,7 @@
                                 </div>
                                 <div>
                                     <div class="stat-value"><?= count($low_stock_alerts ?? []) ?></div>
-                                    <div class="text-muted">Low Stock Items</div>
+                                    <div class="text-muted"><?= lang('Warehouse.low_stock_items') ?? 'Low Stock Items' ?></div>
                                 </div>
                             </div>
                         </div>

@@ -1777,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (j && j.success) {
         loadDI();
         if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil dihapus', 'success');
-        else alertSwal('success', 'DI berhasil dihapus');
+        else notify('DI berhasil dihapus', 'success');
       } else {
         alertSwal('error', j.message || 'Gagal menghapus DI', 'Error');
       }
@@ -1785,8 +1785,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.error('Delete DI Error:', error);
       alertSwal('error', 'Network error: ' + error.message);
     });
+        }
+    });
   };
-  
+
+  // Helper: reload DI DataTable (used in create/edit/delete callbacks)
+  function loadDI() {
+    if (diTable && diTable.ajax) diTable.ajax.reload();
+  }
+
   // Edit DI from detail modal
   window.editDiFromDetail = function() {
     if (!currentDiId) {
@@ -1854,77 +1861,106 @@ document.addEventListener('DOMContentLoaded', ()=>{
    */
   window.openLinkDIContractModal = async function(diId, diNumber) {
     const modal = new bootstrap.Modal(document.getElementById('linkDIContractModal'));
-    
+
     // Set DI info
     document.getElementById('linkDiId').value = diId;
     document.getElementById('linkDiNumber').textContent = diNumber;
-    
+
     // Reset form
     document.getElementById('linkDIContractForm').reset();
     document.getElementById('linkDiId').value = diId; // Restore after reset
-    
-    // Load available contracts for this DI's customer
+
     const contractSelect = document.getElementById('linkContractId');
-    contractSelect.innerHTML = '<option value="">Loading contracts...</option>';
-    
+    contractSelect.innerHTML = '<option value="">Memuat data...</option>';
+
     try {
-      // Get DI details to find customer
-      const diRes = await fetch(`<?= base_url('marketing/di/detail/') ?>${diId}`);
-      const diData = await diRes.json();
-      
-      if (!diData.success || !diData.data) {
-        throw new Error('Failed to load DI details');
+      // Single endpoint resolves customer server-side (handles NULL pelanggan_id gracefully)
+      const res = await fetch(`<?= base_url('marketing/di/linkable-contracts/') ?>${diId}`, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Gagal memuat data kontrak');
       }
-      
-      const customerId = diData.data.pelanggan_id;
-      
-      if (!customerId) {
-        throw new Error('Customer ID tidak ditemukan pada DI ini. Pastikan DI/SPK terhubung ke master customer.');
+
+      if (data.already_linked) {
+        contractSelect.innerHTML = '<option value="">DI ini sudah terhubung ke kontrak</option>';
+        modal.show();
+        return;
       }
-      
-      // Load contracts for this customer
-      const contractRes = await fetch(`<?= base_url('marketing/contracts/by-customer/') ?>${customerId}`);
-      const contractData = await contractRes.json();
-      
-      if (!contractData.success) {
-        throw new Error('Failed to load contracts');
-      }
-      
-      const contracts = contractData.data || [];
-      
-      // Populate dropdown with ACTIVE contracts
-      contractSelect.innerHTML = '<option value="">- Pilih Kontrak -</option>';
-      
-      const activeContracts = contracts.filter(c => !c.status_kontrak || c.status_kontrak === 'ACTIVE' || c.status_kontrak === 'DEAL');
-      
-      if (activeContracts.length === 0 && contracts.length === 0) {
-        contractSelect.innerHTML = '<option value="">Tidak ada kontrak untuk customer ini</option>';
+
+      const contracts = data.contracts || [];
+      const poBulanan = data.po_bulanan || [];
+      const customerLabel = data.customer_name ? ` (${data.customer_name})` : '';
+
+      contractSelect.innerHTML = '';
+
+      if (contracts.length === 0 && poBulanan.length === 0) {
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = `Tidak ada kontrak/PO tersedia${customerLabel}`;
+        contractSelect.appendChild(emptyOpt);
       } else {
-        const displayContracts = activeContracts.length > 0 ? activeContracts : contracts;
-        displayContracts.forEach(contract => {
-          const option = document.createElement('option');
-          option.value = contract.id;
-          option.textContent = `${contract.nomor_kontrak || contract.no_kontrak} - ${contract.customer_name || ''} (${contract.tanggal_kontrak || contract.tanggal_mulai || ''})`;
-          contractSelect.appendChild(option);
-        });
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = `- Pilih Kontrak / PO${customerLabel} -`;
+        contractSelect.appendChild(placeholder);
+
+        // Group 1: Contracts (all types)
+        if (contracts.length > 0) {
+          const grp = document.createElement('optgroup');
+          grp.label = '— Kontrak & PO —';
+          contracts.forEach(c => {
+            const typeMap = { CONTRACT: '[Kontrak]', PO_ONLY: '[PO Bulanan]', DAILY_SPOT: '[Spot]' };
+            const typeLabel = typeMap[c.rental_type] || `[${c.rental_type}]`;
+            const statusNote = c.status !== 'ACTIVE' ? ` ⚠ ${c.status}` : '';
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${typeLabel} ${c.no_kontrak}${statusNote} — mulai: ${c.tanggal_mulai || '-'}`;
+            if (c.status !== 'ACTIVE') opt.style.color = '#999';
+            grp.appendChild(opt);
+          });
+          contractSelect.appendChild(grp);
+        }
+
+        // Group 2: active PO Bulanan entries (contract_po_history)
+        if (poBulanan.length > 0) {
+          const grp2 = document.createElement('optgroup');
+          grp2.label = '— PO Bulanan Aktif —';
+          poBulanan.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.contract_id; // links to parent kontrak
+            opt.dataset.poNumber = p.po_number;
+            opt.textContent = `${p.po_number} (${p.contract_no}) ${p.effective_from || ''} s/d ${p.effective_to || ''}`;
+            grp2.appendChild(opt);
+          });
+          contractSelect.appendChild(grp2);
+        }
       }
-      
+
     } catch (error) {
       console.error('Error loading contracts:', error);
-      contractSelect.innerHTML = '<option value="">Error loading contracts</option>';
+      contractSelect.innerHTML = '<option value="">Gagal memuat data</option>';
       OptimaNotify.error('Gagal memuat kontrak: ' + error.message);
     }
-    
+
     modal.show();
   };
-  
+
   /**
    * Handle Link DI to Contract form submission
    */
   document.getElementById('linkDIContractForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
+    // If user selected a PO Bulanan option, attach the po_number as well
+    const selectedOpt = document.getElementById('linkContractId').selectedOptions[0];
+    if (selectedOpt && selectedOpt.dataset.poNumber) {
+      formData.append('po_number', selectedOpt.dataset.poNumber);
+    }
+
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     
@@ -2050,25 +2086,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title">Link DI to Contract</h6>
+        <h6 class="modal-title">Link DI ke Kontrak / PO</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="linkDIContractForm">
         <input type="hidden" id="linkDiId" name="di_id">
         <div class="modal-body">
           <div class="alert alert-info small mb-3">
-            <i class="fas fa-info-circle"></i> 
-            Link <strong id="linkDiNumber"></strong> to a Contract. 
-            This will enable invoice generation for this DI.
+            <i class="fas fa-info-circle"></i>
+            Link <strong id="linkDiNumber"></strong> ke Kontrak atau PO Bulanan.
+            Ini mengaktifkan pembuatan invoice untuk DI ini.
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Select Contract <span class="text-danger">*</span></label>
+            <label class="form-label">Pilih Kontrak / PO <span class="text-danger">*</span></label>
             <select class="form-select" id="linkContractId" name="contract_id" required>
-              <option value="">- Select Contract -</option>
-              <!-- Dynamic options loaded via JS -->
+              <option value="">- Pilih Kontrak / PO -</option>
             </select>
-            <small class="text-muted">Only DEAL contracts from the same customer will be shown.</small>
+            <small class="text-muted">Menampilkan semua kontrak dan PO Bulanan aktif untuk customer terkait.</small>
           </div>
 
           <div class="mb-3">
@@ -2086,7 +2121,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         </div>
         <div class="modal-footer">
           <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
-          <?= ui_button('submit', 'Link Contract', ['type' => 'submit', 'color' => 'warning', 'icon' => 'fas fa-link']) ?>
+          <?= ui_button('submit', 'Link Kontrak / PO', ['type' => 'submit', 'color' => 'warning', 'icon' => 'fas fa-link']) ?>
         </div>
       </form>
     </div>

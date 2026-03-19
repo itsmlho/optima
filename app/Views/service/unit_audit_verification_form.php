@@ -89,7 +89,7 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
 <!-- Loading state while AJAX fetches master data -->
 <div id="vfPageLoader" class="text-center py-5">
     <div class="spinner-border text-primary mb-2"></div>
-    <div class="text-muted small">Memuat data unit dari database…</div>
+    <div class="text-muted small"><?= lang('Service.loading_unit_data') ?></div>
 </div>
 
 <!-- ─── Main Form (hidden until data loads) ─── -->
@@ -112,17 +112,17 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
         <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
             <div class="vf-panel-title">
                 <i class="fas fa-forklift text-primary me-2"></i>
-                <h6 class="mb-0 fw-semibold">Verifikasi Data Unit</h6>
+                <h6 class="mb-0 fw-semibold"><?= lang('Service.verification_data_unit') ?></h6>
                 <?php
                 $resultMap = [
                     'MATCH'              => ['badge-soft-green', 'Match'],
-                    'MISMATCH_NO_UNIT'   => ['badge-soft-red',   'No Unit Beda'],
+                    'MISMATCH_NO_UNIT'   => ['badge-soft-red',   lang('Service.no_unit_diff')],
                     'MISMATCH_SERIAL'    => ['badge-soft-red',   'Serial Beda'],
                     'MISMATCH_SPEC'      => ['badge-soft-orange', 'Spek Beda'],
                     'MISMATCH_SPARE'     => ['badge-soft-orange', 'Spare Beda'],
                     'NO_UNIT_IN_KONTRAK' => ['badge-soft-red',   'Tidak di Kontrak'],
                     'EXTRA_UNIT'         => ['badge-soft-cyan',   'Extra Unit'],
-                    'ADD_UNIT'           => ['badge-soft-cyan',   'Tambah Unit'],
+                    'ADD_UNIT'           => ['badge-soft-cyan',   lang('Service.add_unit')],
                 ];
                 [$rbg, $rlbl] = $resultMap[$result] ?? ['badge-soft-gray', $result];
                 ?>
@@ -156,7 +156,7 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
 
                         <!-- No Unit (readonly) -->
                         <tr data-field="no_unit">
-                            <td>No Unit <span class="text-danger">*</span></td>
+                            <td><?= lang('Service.no_unit') ?> <span class="text-danger">*</span></td>
                             <td id="db-no-unit" class="font-monospace">-</td>
                             <td>
                                 <input type="text" class="form-control form-control-sm bg-light"
@@ -373,7 +373,7 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
         <div class="card-header bg-light py-2">
             <div class="vf-panel-title">
                 <i class="fas fa-user-check text-warning me-2"></i>
-                <h6 class="mb-0 fw-semibold">Verifikasi Tambahan</h6>
+                <h6 class="mb-0 fw-semibold"><?= lang('Service.additional_verification') ?></h6>
             </div>
         </div>
         <div class="card-body p-0">
@@ -524,7 +524,7 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
         </div>
         <div class="card-body">
             <div class="small text-muted mb-3">
-                Klik item untuk toggle sesuai / tidak. Perubahan akan tersimpan saat klik "Simpan".
+                <?= lang('Service.click_toggle_save') ?>
             </div>
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-2" id="accessoryGrid">
                 <?php foreach ($allAccessories as $key => $label):
@@ -573,6 +573,13 @@ $dbAccessories = $unitDetail['aksesoris_list'] ?? [];
 
 <?= $this->section('javascript') ?>
 <script>
+const VF_LANG = <?= json_encode([
+    'failed_load_unit' => lang('Service.failed_load_unit'),
+    'failed_save' => lang('Service.failed_save'),
+    'saving' => lang('Common.saving'),
+    'saved' => lang('Common.saved'),
+    'error_connection' => lang('App.error_connection'),
+]) ?>;
 const UNIT_ID    = <?= $unitId ?>;
 const MASTER_URL = '<?= base_url('service/unit-audit/unit-master-data/') ?>' + UNIT_ID;
 const SAVE_URL   = '<?= base_url('service/unit-audit/save-unit-verification') ?>';
@@ -806,7 +813,7 @@ async function loadMasterData() {
 
     } catch (e) {
         document.getElementById('vfPageLoader').innerHTML =
-            `<div class="alert alert-warning d-inline-block">Gagal memuat data unit: ${e.message}</div>`;
+            `<div class="alert alert-warning d-inline-block">${VF_LANG.failed_load_unit}: ${e.message}</div>`;
         // Show form anyway so user can still save audit result
         document.getElementById('unitVerifyForm').classList.remove('d-none');
     }
@@ -816,7 +823,7 @@ async function loadMasterData() {
 async function saveUnitVerification() {
     const btn = document.getElementById('btnSaveVf');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan…';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + VF_LANG.saving + '…';
 
     const form = document.getElementById('unitVerifyForm');
     const fd   = new FormData(form);
@@ -841,17 +848,17 @@ async function saveUnitVerification() {
 
         if (json.success) {
             btn.classList.replace('btn-primary', 'btn-success');
-            btn.innerHTML = '<i class="fas fa-check me-1"></i>Tersimpan';
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>' + VF_LANG.saved;
             setTimeout(() => window.location.reload(), 900);
         } else {
-            if (window.OptimaNotify) OptimaNotify.error('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
-            else alert('Gagal menyimpan: ' + (json.message || 'Error tidak diketahui'));
+            if (window.OptimaNotify) OptimaNotify.error(VF_LANG.failed_save + ': ' + (json.message || ''));
+            else alert(VF_LANG.failed_save + ': ' + (json.message || ''));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save me-1"></i><?= lang('Common.save_changes') ?>';
         }
     } catch (e) {
-        if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan jaringan');
-        else alert('Terjadi kesalahan jaringan');
+        if (window.OptimaNotify) OptimaNotify.error(VF_LANG.error_connection);
+        else alert(VF_LANG.error_connection);
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save me-1"></i><?= lang('Common.save_changes') ?>';
     }

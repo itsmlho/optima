@@ -620,16 +620,22 @@ if (!function_exists('notify_delivery_assigned')) {
      */
     function notify_delivery_assigned($deliveryData)
     {
+        // Template uses {{delivery_number}} and {{assigned_to}} — provide both canonical and alias keys
+        $deliveryNumber = $deliveryData['delivery_number'] ?? $deliveryData['nomor_delivery'] ?? '';
+        $assignedTo     = $deliveryData['assigned_to'] ?? $deliveryData['driver_name'] ?? '';
+
         return send_notification('delivery_assigned', [
-            'module' => 'operational',
-            'id' => $deliveryData['id'] ?? null,
-            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
-            'driver_name' => $deliveryData['driver_name'] ?? '',
-            'vehicle' => $deliveryData['vehicle'] ?? $deliveryData['no_unit'] ?? '',
-            'customer_name' => $deliveryData['customer_name'] ?? '',
-            'destination' => $deliveryData['destination'] ?? '',
-            'assigned_by' => $deliveryData['assigned_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
+            'module'          => 'operational',
+            'id'              => $deliveryData['id'] ?? null,
+            'delivery_number' => $deliveryNumber,   // matches {{delivery_number}} in template
+            'nomor_delivery'  => $deliveryNumber,   // alias
+            'assigned_to'     => $assignedTo,       // matches {{assigned_to}} in template
+            'driver_name'     => $assignedTo,       // alias
+            'vehicle'         => $deliveryData['vehicle'] ?? $deliveryData['no_unit'] ?? '',
+            'customer_name'   => $deliveryData['customer_name'] ?? '',
+            'destination'     => $deliveryData['destination'] ?? '',
+            'assigned_by'     => $deliveryData['assigned_by'] ?? '',
+            'url'             => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -2961,6 +2967,8 @@ if (!function_exists('notify_spk_unit_prep_completed')) {
             'module' => 'service',
             'spk_id' => $spkData['spk_id'] ?? null,
             'spk_number' => $spkData['spk_number'] ?? '',
+            // Some templates use {{nomor_spk}}, so provide alias too.
+            'nomor_spk' => $spkData['nomor_spk'] ?? $spkData['spk_number'] ?? '',
             'stage' => 'persiapan_unit',
             'pelanggan' => $spkData['pelanggan'] ?? '',
             'lokasi' => $spkData['lokasi'] ?? '',
@@ -2987,6 +2995,8 @@ if (!function_exists('notify_spk_fabrication_completed')) {
             'module' => 'service',
             'spk_id' => $spkData['spk_id'] ?? null,
             'spk_number' => $spkData['spk_number'] ?? '',
+            // Some templates use {{nomor_spk}}, so provide alias too.
+            'nomor_spk' => $spkData['nomor_spk'] ?? $spkData['spk_number'] ?? '',
             'stage' => 'fabrikasi',
             'pelanggan' => $spkData['pelanggan'] ?? '',
             'lokasi' => $spkData['lokasi'] ?? '',
@@ -3013,6 +3023,8 @@ if (!function_exists('notify_spk_pdi_completed')) {
             'module' => 'service',
             'spk_id' => $spkData['spk_id'] ?? null,
             'spk_number' => $spkData['spk_number'] ?? '',
+            // Some templates use {{nomor_spk}}, so provide alias too.
+            'nomor_spk' => $spkData['nomor_spk'] ?? $spkData['spk_number'] ?? '',
             'stage' => 'pdi',
             'pelanggan' => $spkData['pelanggan'] ?? '',
             'lokasi' => $spkData['lokasi'] ?? '',

@@ -680,10 +680,10 @@ $currentLang = service('request')->getLocale();
                 <!-- Ctrl+K Search Trigger (Command Palette) -->
                 <button type="button" id="header-search-btn"
                     onclick="window.openCommandPalette ? window.openCommandPalette() : null"
-                    aria-label="Buka pencarian cepat (Ctrl+K)"
-                    title="Pencarian Cepat — Ctrl+K">
+                    aria-label="<?= lang('App.quick_search_title') ?>"
+                    title="<?= lang('App.quick_search_title') ?>">
                     <i class="fas fa-search" aria-hidden="true"></i>
-                    <span class="header-search-label">Cari...</span>
+                    <span class="header-search-label"><?= lang('App.search_placeholder') ?></span>
                     <span class="header-search-kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
                 </button>
 
@@ -722,29 +722,29 @@ $currentLang = service('request')->getLocale();
                 
                 <!-- Notifications -->
                 <div class="dropdown">
-                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="Notifikasi">
+                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="<?= lang('App.notifications') ?>">
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                     </button>
                     <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end notification-dropdown" style="min-width: 380px !important; max-width: 380px !important; width: 380px !important; overflow-x: hidden !important;">
                         <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
-                            <span>Notifikasi</span>
+                            <span><?= lang('App.notifications') ?></span>
                             <button class="btn btn-sm btn-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
-                                <i class="fas fa-check-double me-1"></i>Mark All
+                                <i class="fas fa-check-double me-1"></i><?= lang('App.mark_all_read') ?>
                             </button>
                         </h6></li>
                         <li><hr class="dropdown-divider"></li>
                         <li class="notification-item">
                             <div class="text-center py-3">
                                 <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
+                                    <span class="visually-hidden"><?= lang('App.loading') ?></span>
                                 </div>
-                                <p class="text-muted mb-0 small mt-2">Memuat notifikasi...</p>
+                                <p class="text-muted mb-0 small mt-2"><?= lang('App.loading_notifications') ?></p>
                             </div>
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-center" href="<?= base_url('/notifications') ?>">
-                            <i class="fas fa-bell me-2"></i>Lihat Semua Notifikasi
+                            <i class="fas fa-bell me-2"></i><?= lang('App.view_all_notifications') ?>
                         </a></li>
                     </ul>
                 </div>
@@ -2157,8 +2157,8 @@ $currentLang = service('request')->getLocale();
                 const triggerBtn = document.createElement('button');
                 triggerBtn.id = 'optima-cp-trigger';
                 triggerBtn.type = 'button';
-                triggerBtn.setAttribute('aria-label', 'Buka pencarian (Ctrl+K)');
-                triggerBtn.innerHTML = '<i class="fas fa-search" aria-hidden="true"></i><span class="cp-trigger-text">Cari...</span><kbd>Ctrl K</kbd>';
+                triggerBtn.setAttribute('aria-label', <?= json_encode(lang('App.quick_search_title')) ?>);
+                triggerBtn.innerHTML = '<i class="fas fa-search" aria-hidden="true"></i><span class="cp-trigger-text">' + <?= json_encode(lang('App.search_placeholder')) ?> + '</span><kbd>Ctrl K</kbd>';
                 triggerBtn.addEventListener('click', open);
                 navbar.prepend(triggerBtn);
             }

@@ -313,6 +313,14 @@ return [
     'enable_email_notifications' => 'Enable Email Notifications',
     'sms_notifications' => 'SMS Notifications',
     'enable_sms_notifications' => 'Enable SMS Notifications',
+    'notifications' => 'Notifications',
+    'notification' => 'Notification',
+    'mark_all_read' => 'Mark All Read',
+    'loading_notifications' => 'Loading notifications...',
+    'view_all_notifications' => 'View All Notifications',
+    'search_placeholder' => 'Search...',
+    'quick_search' => 'Quick Search',
+    'quick_search_title' => 'Quick Search — Ctrl+K',
     
     // DataTables Language
     'user' => 'User',

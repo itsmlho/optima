@@ -395,7 +395,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     <!-- Area Indicator Alert -->
                     <div id="areaIndicator" class="alert d-none mb-3" role="alert">
                         <i class="fas fa-map-marker-alt me-2"></i>
-                        <strong id="areaIndicatorText">Select a unit to see area information</strong>
+                        <strong id="areaIndicatorText"><?= lang('Service.select_unit_see_area') ?></strong>
                     </div>
                     
                     <div class="card shadow-sm mb-4">
@@ -408,14 +408,14 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <div class="col-md-6 mb-3">
                                     <label for="admin_id" class="form-label">Admin <small class="text-muted">(Optional)</small></label>
                                     <select class="form-select" id="admin_id" name="admin_id">
-                                        <option value="" selected>-- Select Admin --</option>
+                                        <option value="" selected>-- <?= lang('Common.choose') ?> <?= lang('App.admin') ?> --</option>
                                     </select>
                                     <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="foreman_id" class="form-label">Foreman <small class="text-muted">(Optional)</small></label>
                                     <select class="form-select" id="foreman_id" name="foreman_id">
-                                        <option value="" selected>-- Select Foreman --</option>
+                                        <option value="" selected>-- <?= lang('Common.choose') ?> <?= lang('App.foreman') ?> --</option>
                                     </select>
                                     <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
@@ -429,12 +429,12 @@ $assetService = new \App\Services\AssetMinificationService();
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="mechanic_1" name="mechanic_id[]">
-                                                    <option value="" selected disabled>-- Select Mechanic 1 --</option>
+                                                    <option value="" selected disabled>-- <?= lang('Service.mechanic') ?> 1 --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="mechanic_2" name="mechanic_id[]">
-                                                    <option value="" selected disabled>-- Select Mechanic 2 (Optional) --</option>
+                                                    <option value="" selected disabled>-- <?= lang('Service.mechanic') ?> 2 (<?= lang('Common.optional') ?>) --</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -449,12 +449,12 @@ $assetService = new \App\Services\AssetMinificationService();
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="helper_1" name="helper_id[]">
-                                                    <option value="" selected disabled>-- Select Helper 1 --</option>
+                                                    <option value="" selected disabled>-- <?= lang('App.helper') ?> 1 --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="helper_2" name="helper_id[]">
-                                                    <option value="" selected disabled>-- Select Helper 2 (Optional) --</option>
+                                                    <option value="" selected disabled>-- <?= lang('App.helper') ?> 2 (<?= lang('Common.optional') ?>) --</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -490,7 +490,7 @@ $assetService = new \App\Services\AssetMinificationService();
                             </div>
                             <div class="mt-3">
                                 <button type="button" class="btn btn-success btn-sm" id="addSparepartRow">
-                                    <i class="fas fa-plus"></i> Add Item
+                                    <i class="fas fa-plus"></i> <?= lang('Common.add') ?> <?= lang('Service.item') ?>
                                 </button>
                             </div>
                         </div>
@@ -693,7 +693,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                     <dd class="col-sm-7 fw-bold text-primary" id="viewWoTTR">-</dd>
                                     
                                     <dt class="col-sm-5 text-muted">Completion Date</dt>
-                                    <dd class="col-sm-7" id="viewWoCompletionDate">Not completed</dd>
+                                    <dd class="col-sm-7" id="viewWoCompletionDate"><?= lang('Service.not_completed') ?? 'Not completed' ?></dd>
                                 </dl>
                             </div>
                         </div>
@@ -723,7 +723,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                 </thead>
                                 <tbody id="viewSparepartBroughtList">
                                     <tr>
-                                        <td colspan="8" class="text-center text-muted">No items brought</td>
+                                        <td colspan="8" class="text-center text-muted"><?= lang('Service.no_items_brought') ?? 'No items brought' ?></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -746,7 +746,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <div class="p-3 rounded bg-light" style="min-height: 120px;" id="viewWoRepair"></div>
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label text-muted">Additional Notes</label>
+                                <label class="form-label text-muted"><?= lang('Service.additional_notes') ?? 'Additional Notes' ?></label>
                                 <div class="p-3 rounded bg-light" style="min-height: 80px;" id="viewWoNotes"></div>
                             </div>
                         </div>
@@ -758,10 +758,10 @@ $assetService = new \App\Services\AssetMinificationService();
                     <i class="fas fa-print me-1"></i>Print Work Order
                 </button>
                 <button type="button" class="btn btn-primary btn-edit-from-view" data-id="" id="btnEditFromView">
-                    <i class="fas fa-edit me-1"></i>Edit Work Order
+                    <i class="fas fa-edit me-1"></i><?= lang('Common.edit') ?> <?= lang('Service.work_order') ?>
                 </button>
                 <button type="button" class="btn btn-danger btn-delete-from-view" data-id="" data-wo-number="">
-                    <i class="fas fa-trash me-1"></i>Delete Work Order
+                    <i class="fas fa-trash me-1"></i><?= lang('Common.delete') ?> <?= lang('Service.work_order') ?>
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
             </div>
@@ -1243,7 +1243,7 @@ $(document).ready(function() {
         // Frontend validation - Complaint Description
         const complaintDesc = $('#complaint_description').val();
         if (!complaintDesc || complaintDesc.trim().length < 3) {
-            OptimaNotify.error('Complaint Description wajib diisi minimal 3 karakter');
+            OptimaNotify.error(typeof window.lang === 'function' ? window.lang('complaint_required_min') : 'Complaint Description must be at least 3 characters');
             $('#complaint_description').addClass('is-invalid').focus();
             return false;
         }

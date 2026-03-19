@@ -136,6 +136,9 @@ return [
     'no_data' => 'Tidak Ada Data',
     'no_results' => 'Tidak Ada Hasil',
     'data_not_found' => 'Data Tidak Ditemukan',
+    'error_load' => 'Gagal memuat',
+    'error_server' => 'Error server',
+    'saved' => 'Tersimpan',
     
     // Permissions & Access
     'access_denied' => 'Akses Ditolak',

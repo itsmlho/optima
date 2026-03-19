@@ -210,6 +210,12 @@ return [
     'report_customer' => 'Laporan Pelanggan',
     'report_revenue' => 'Laporan Pendapatan',
 
+    // Marketing Dashboard
+    'marketing_dashboard' => 'Dashboard Divisi Marketing',
+    'overview_quotations' => 'Ringkasan penawaran, kontrak, dan performa marketing',
+    'tip_quick_access' => 'Tip: Gunakan Akses Cepat atau link di bawah untuk membuka modul',
+    'all_customers' => 'Semua Pelanggan',
+
     // SPK Page
     'total_spk' => 'Total SPK',
     'in_progress' => 'Dalam Proses',

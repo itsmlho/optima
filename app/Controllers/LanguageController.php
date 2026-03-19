@@ -68,7 +68,7 @@ class LanguageController extends BaseController
     public function getCurrent()
     {
         $appConfig = config('App');
-        $currentLang = session()->get('user_language') ?? $appConfig->defaultLocale ?? 'id';
+        $currentLang = session()->get('user_language') ?? $appConfig->defaultLocale ?? 'en';
         
         return $this->response->setJSON([
             'status' => 'success',

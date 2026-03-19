@@ -116,10 +116,11 @@ abstract class BaseController extends Controller
             session()->set('user_language', $userLanguage);
         }
         
-        // Validate language is supported
-        $supportedLocales = config('App')->supportedLocales ?? ['id', 'en'];
+        // Validate language is supported; fallback to app default (English)
+        $supportedLocales = config('App')->supportedLocales ?? ['en', 'id'];
+        $defaultLocale = config('App')->defaultLocale ?? 'en';
         if (!in_array($userLanguage, $supportedLocales)) {
-            $userLanguage = 'id'; // Fallback to Indonesian
+            $userLanguage = $defaultLocale;
             session()->set('user_language', $userLanguage);
         }
         

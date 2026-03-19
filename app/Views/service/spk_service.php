@@ -91,10 +91,10 @@ $can_export = true;
                     <?= lang('App.work_orders_spk') ?>
                 </h5>
                 <p class="text-muted small mb-0">
-                    Create, track, and manage work order letters for service operations
+                    <?= lang('Service.create_track_manage') ?>
                     <span class="ms-2 text-info">
                         <i class="bi bi-info-circle me-1"></i>
-                        <small>Tip: Click row or stat card to filter by status</small>
+                        <small><?= lang('Service.tip_click_filter') ?></small>
                     </span>
                 </p>
             </div>
@@ -103,22 +103,22 @@ $can_export = true;
         <!-- Filter Tabs -->
         <ul class="nav nav-tabs mb-3" id="filterTabs">
             <li class="nav-item">
-                <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+                <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Common.all') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Service.submitted') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS">In Progress</a>
+                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS"><?= lang('Service.in_progress') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="READY">Ready</a>
+                <a class="nav-link filter-tab" href="#" data-filter="READY"><?= lang('Service.ready') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED">Completed</a>
+                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED"><?= lang('Service.completed') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Service.cancelled') ?></a>
             </li>
         </ul>
         
@@ -128,14 +128,14 @@ $can_export = true;
                     <thead class="table-light">
                         <tr>
                             <th>SPK No.</th>
-                            <th>Type</th>
+                            <th><?= lang('Common.type') ?></th>
                             <th>Source</th>
-                            <th>Company Name</th>
-                            <th>PIC</th>
-                            <th>Contact</th>
-                            <th>Status</th>
-                            <th>Total Units</th>
-                            <th data-no-sort>Action</th>
+                            <th><?= lang('Service.company_name') ?></th>
+                            <th><?= lang('App.pic') ?></th>
+                            <th><?= lang('App.contact') ?></th>
+                            <th><?= lang('Common.status') ?></th>
+                            <th><?= lang('Service.total_units') ?></th>
+                            <th data-no-sort><?= lang('Common.action') ?></th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -149,24 +149,24 @@ $can_export = true;
 	<div class="modal fade" id="assignItemsModal" tabindex="-1">
 		<div class="modal-dialog modal-lg modal-dialog-centered">
 			<div class="modal-content">
-				<div class="modal-header"><h6 class="modal-title">Select Unit & Attachment</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+				<div class="modal-header"><h6 class="modal-title"><?= lang('Service.select_unit_attachment') ?></h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
 				<form id="assignItemsForm">
 					<div class="modal-body">
 						<input type="hidden" name="spk_id" id="assignSpkId">
 						<div class="mb-2">
-							<label class="form-label">Select Unit (Asset/Non-Asset Stock)</label>
-							<input type="text" class="form-control" id="unitSearch" placeholder="Search unit no / serial / brand / model" autocomplete="off">
+							<label class="form-label"><?= lang('Service.select_unit_asset') ?></label>
+							<input type="text" class="form-control" id="unitSearch" placeholder="<?= lang('Service.search_unit_serial') ?>" autocomplete="off">
 							<select class="form-select mt-2" id="unitPick" name="unit_id"></select>
 							<div class="form-text">Type to search, then select from list.</div>
 						</div>
 						<div class="mb-2">
-							<label class="form-label">Select Attachment (optional)</label>
-							<input type="text" class="form-control" id="attSearch" placeholder="Search type/brand/model/SN/location" autocomplete="off">
+							<label class="form-label"><?= lang('Service.select_attachment_optional') ?></label>
+							<input type="text" class="form-control" id="attSearch" placeholder="<?= lang('Service.search_attachment') ?>" autocomplete="off">
 							<select class="form-select mt-2" id="attPick" name="inventory_attachment_id"></select>
 							<div class="form-text">Data from inventory_attachment (status 7/8).</div>
 						</div>
 					</div>
-					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button><button class="btn btn-primary" type="submit">Save & Mark READY</button></div>
+					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button><button class="btn btn-primary" type="submit"><?= lang('Service.save_mark_ready') ?></button></div>
 				</form>
 			</div>
 		</div>
@@ -185,15 +185,15 @@ $can_export = true;
 						<!-- Multi-mechanic selection -->
 						<div id="mechanicSelectionContainer" class="mb-3">
 							<!-- Multi-select dropdown will be initialized here -->
-							<div class="text-muted">Loading mechanic selection...</div>
+							<div class="text-muted"><?= lang('Service.loading_mechanic') ?></div>
 						</div>
 						<div class="row">
 							<div class="col-6">
-								<label class="form-label">Estimated Start <span class="text-danger">*</span></label>
+								<label class="form-label"><?= lang('Service.estimated_start') ?> <span class="text-danger">*</span></label>
 								<input type="date" class="form-control" id="approvalEstimasiMulai" name="estimasi_mulai" required>
 							</div>
 							<div class="col-6">
-								<label class="form-label">Estimated Completion <span class="text-danger">*</span></label>
+								<label class="form-label"><?= lang('Service.estimated_completion') ?> <span class="text-danger">*</span></label>
 								<input type="date" class="form-control" id="approvalEstimasiSelesai" name="estimasi_selesai" required>
 							</div>
 						</div>
@@ -208,7 +208,7 @@ $can_export = true;
 				</div>
 				<div class="modal-footer">
 					<button class="btn btn-secondary" type="button" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
-					<button class="btn btn-success" type="submit" form="approvalStageForm">Approve & Save</button>
+					<button class="btn btn-success" type="submit" form="approvalStageForm"><?= lang('Service.approve_save') ?></button>
 				</div>
 			</div>
 		</div>
@@ -219,12 +219,12 @@ $can_export = true;
 		<div class="modal-dialog modal-lg modal-dialog-scrollable">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h6 class="modal-title">Detail SPK <span id="spkNumberHeader" class="text-primary"></span></h6>
+					<h6 class="modal-title"><?= lang('Service.detail_spk') ?> <span id="spkNumberHeader" class="text-primary"></span></h6>
 					<button class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
 				<div class="modal-body">
 					<div id="spkDetailBody">
-						<p class="text-muted">Memuat...</p>
+						<p class="text-muted"><?= lang('Service.detail_spk_loading') ?></p>
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -243,7 +243,7 @@ $can_export = true;
 			<div class="modal-content">
 				<div class="modal-header bg-primary text-white">
 					<h6 class="modal-title">
-						<i class="fas fa-edit me-2"></i>Edit Stage - <span id="rollbackStageTitle"></span>
+						<i class="fas fa-edit me-2"></i><?= lang('Service.edit_stage') ?> - <span id="rollbackStageTitle"></span>
 					</h6>
 					<button class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
@@ -362,24 +362,72 @@ $can_export = true;
 						<label class="form-label fw-semibold">Catatan Validasi</label>
 						<textarea class="form-control form-control-sm" id="validationNotes" rows="2" placeholder="Catatan pengembalian (opsional)..."></textarea>
 					</div>
-					<div class="table-responsive">
-						<table class="table table-sm table-bordered" id="sparepartValidationTable">
-							<thead class="table-light">
-								<tr>
-									<th style="width: 40px;">No</th>
-									<th>Type</th>
-									<th>Item</th>
-									<th style="width: 90px;" class="text-center">Dibawa</th>
-									<th style="width: 110px;" class="text-center">Digunakan</th>
-									<th style="width: 90px;" class="text-center">Kembali</th>
-									<th style="width: 80px;">Satuan</th>
-									<th style="width: 110px;">Status</th>
-								</tr>
-							</thead>
-							<tbody id="sparepartValidationRows">
-								<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>
-							</tbody>
-						</table>
+
+					<!-- Sparepart Dibawa (validation table) -->
+					<div class="card mb-3">
+						<div class="card-header py-2">
+							<h6 class="mb-0"><i class="fas fa-list-check me-2"></i>Validasi Sparepart yang Dibawa</h6>
+						</div>
+						<div class="card-body p-0">
+							<div class="table-responsive">
+								<table class="table table-sm table-bordered mb-0" id="sparepartValidationTable">
+									<thead class="table-light">
+										<tr>
+											<th style="width: 40px;">No</th>
+											<th>Type</th>
+											<th>Item</th>
+											<th style="width: 90px;" class="text-center">Dibawa</th>
+											<th style="width: 110px;" class="text-center">Digunakan</th>
+											<th style="width: 90px;" class="text-center">Kembali</th>
+											<th style="width: 80px;">Satuan</th>
+											<th style="width: 110px;">Status</th>
+										</tr>
+									</thead>
+									<tbody id="sparepartValidationRows">
+										<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+
+					<!-- Sparepart Tambahan -->
+					<div class="card">
+						<div class="card-header py-2 d-flex justify-content-between align-items-center">
+							<h6 class="mb-0"><i class="fas fa-plus-square me-2 text-success"></i>Sparepart Tambahan <small class="text-muted fw-normal">(tidak direncanakan)</small></h6>
+							<button type="button" class="btn btn-sm btn-success" id="btnAddAdditionalSparepartSpk">
+								<i class="fas fa-plus me-1"></i>Tambah Baris
+							</button>
+						</div>
+						<div class="card-body p-0">
+							<table class="table table-sm table-bordered mb-0" style="table-layout:fixed;width:100%;">
+								<colgroup>
+									<col style="width:88px;">
+									<col>
+									<col style="width:56px;">
+									<col style="width:76px;">
+									<col style="width:92px;">
+									<col style="width:125px;">
+									<col style="width:46px;">
+								</colgroup>
+								<thead class="table-light">
+									<tr>
+										<th class="text-center">Tipe</th>
+										<th>Nama Item</th>
+										<th class="text-center">Qty</th>
+										<th>Satuan</th>
+										<th class="text-center">Source</th>
+										<th>Catatan / Kanibal</th>
+										<th class="text-center">Aksi</th>
+									</tr>
+								</thead>
+								<tbody id="additionalSparepartRowsSpk">
+									<tr id="noAdditionalSpkRow">
+										<td colspan="7" class="text-center text-muted py-2"><small>Belum ada sparepart tambahan. Klik "Tambah Baris" untuk menambah.</small></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
 					</div>
 				</div>
 				<div class="modal-footer d-flex justify-content-between">
@@ -596,6 +644,17 @@ document.addEventListener('DOMContentLoaded', () => {
 							actions = '<span class="badge badge-soft-blue"><i class="fas fa-flag-checkered me-1"></i>Completed</span>';
 						}
 						
+						// Verifikasi Sparepart button: only after PDI done (READY status or all stages complete)
+						const isPdiDone = (typeof pdiDone !== 'undefined') ? pdiDone : false;
+						if (row.has_unvalidated_spareparts && (row.status === 'READY' || (row.status === 'IN_PROGRESS' && isPdiDone))) {
+							const hasOtherBtn = actions.length > 0;
+							if (hasOtherBtn) {
+								actions += `<button class="btn btn-sm btn-outline-success" onclick="window.showSparepartValidationModal(${row.id},'${row.nomor_spk || ''}');return false;" title="Verifikasi Sparepart"><i class="fas fa-clipboard-check"></i></button>`;
+							} else {
+								actions += `<button class="btn btn-sm btn-outline-success" onclick="window.showSparepartValidationModal(${row.id},'${row.nomor_spk || ''}');return false;"><i class="fas fa-clipboard-check me-1"></i>Verifikasi Sparepart</button>`;
+							}
+						}
+
 						// Sparepart indicator: icon-only when alongside stage button, full text when alone
 						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
 							const hasStageBtn = actions.length > 0;
@@ -1957,8 +2016,12 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 				// Re-initialize mechanic selector with unit's department
 				if (departemenId && currentApprovalStage) {
-					console.log(`🔄 Re-initializing mechanic selector for department ${departemenId} (${departemenName})`);
-					initializeMechanicSelection(currentApprovalStage, departemenId);
+					console.log(`🔄 Reloading mechanic list for department ${departemenId} (${departemenName})`);
+					if (currentMechanicSelector) {
+						currentMechanicSelector.reloadEmployees(departemenId);
+					} else {
+						initializeMechanicSelection(currentApprovalStage, departemenId);
+					}
 				}
 				
 					const isNonElectric = isGasoline || isDiesel;
@@ -6032,13 +6095,15 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		.catch(err => console.error('checkSpkSpareparts error:', err));
 	};
 
-	function showSparepartValidationModal(spkId, spkNumber) {
+	window.showSparepartValidationModal = function(spkId, spkNumber) {
 		document.getElementById('validationSpkId').value   = spkId;
 		document.getElementById('validationSpkNumber').textContent = spkNumber;
 		document.getElementById('validationNotes').value   = '';
+		document.getElementById('additionalSparepartRowsSpk').innerHTML = '<tr id="noAdditionalSpkRow"><td colspan="7" class="text-center text-muted py-2"><small>Belum ada sparepart tambahan. Klik "Tambah Baris" untuk menambah.</small></td></tr>';
+		_vldSpRowCount = 0;
 		loadSparepartsForValidation(spkId);
 		bootstrap.Modal.getOrCreateInstance(document.getElementById('spkSparepartValidationModal')).show();
-	}
+	};
 
 	function loadSparepartsForValidation(spkId) {
 		const tbody = document.getElementById('sparepartValidationRows');
@@ -6112,6 +6177,218 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		returnCell.style.fontWeight = returnQty > 0 ? 'bold' : '';
 	};
 
+	// Additional sparepart rows counter (validation modal)
+	let _vldSpRowCount = 0;
+
+	function _addValidationAdditionalRow() {
+		_vldSpRowCount++;
+		const rc = _vldSpRowCount;
+		document.getElementById('noAdditionalSpkRow')?.remove();
+
+		const row = `
+			<tr id="vld_row_${rc}">
+				<td>
+					<select class="form-select form-select-sm" name="vld_item_type_${rc}"
+							id="vld_item_type_${rc}"
+							onchange="switchVldItemInput(${rc})" required>
+						<option value="sparepart" selected>Sparepart</option>
+						<option value="tool">Tool</option>
+					</select>
+				</td>
+				<td>
+					<div id="vld_item_input_${rc}">
+						<select class="form-select form-select-sm"
+								name="vld_name_${rc}"
+								id="vld_sparepart_${rc}"
+								required>
+							<option value="">-- Select Sparepart --</option>
+						</select>
+						<input type="text" class="form-control form-control-sm d-none"
+							   id="vld_sparepart_manual_${rc}" placeholder="Ketik nama sparepart manual" maxlength="255">
+						<input type="text" class="form-control form-control-sm d-none"
+							   id="vld_tool_input_${rc}" placeholder="e.g., Kunci Inggris 12mm" maxlength="255">
+					</div>
+				</td>
+				<td>
+					<input type="number" class="form-control form-control-sm"
+						   name="vld_qty_${rc}" value="1" min="1" required>
+				</td>
+				<td>
+					<select class="form-select form-select-sm" name="vld_satuan_${rc}" required>
+						<option value="PCS" selected>PCS</option>
+						<option value="UNIT">UNIT</option>
+						<option value="SET">SET</option>
+						<option value="PASANG">PASANG</option>
+						<option value="KG">KG</option>
+						<option value="GRAM">GRAM</option>
+						<option value="METER">METER</option>
+						<option value="CM">CM</option>
+						<option value="LITER">LITER</option>
+						<option value="ML">ML</option>
+					</select>
+				</td>
+				<td>
+					<select class="form-select form-select-sm"
+							name="vld_source_${rc}"
+							id="vld_source_${rc}"
+							onchange="toggleVldKanibalFields(${rc})" required>
+						<option value="WAREHOUSE" selected>Warehouse</option>
+						<option value="BEKAS">Bekas</option>
+						<option value="KANIBAL">Kanibal</option>
+					</select>
+				</td>
+				<td>
+					<div class="d-none" id="vld_kanibal_fields_${rc}">
+						<select class="form-select form-select-sm mb-1"
+								id="vld_kanibal_unit_${rc}" style="width:100%">
+							<option value="">-- Pilih Unit Sumber --</option>
+						</select>
+						<textarea class="form-control form-control-sm"
+								  id="vld_kanibal_reason_${rc}" rows="1"
+								  placeholder="Alasan kanibal *" maxlength="255"></textarea>
+					</div>
+					<div id="vld_notes_${rc}">
+						<input type="text" class="form-control form-control-sm"
+							   name="vld_notes_${rc}" placeholder="Optional notes..." maxlength="255">
+					</div>
+				</td>
+				<td>
+					<button type="button" class="btn btn-danger btn-sm vld-remove-sp-row">
+						<i class="fas fa-times"></i>
+					</button>
+				</td>
+			</tr>`;
+
+		$('#additionalSparepartRowsSpk').append(row);
+
+		setTimeout(function() {
+			const $sel = $(`#vld_sparepart_${rc}`);
+			if ($sel.length && !$sel.hasClass('select2-hidden-accessible')) {
+				$sel.select2({
+					placeholder: '-- Ketik untuk cari sparepart --',
+					allowClear: true,
+					width: '100%',
+					dropdownParent: $('#spkSparepartValidationModal'),
+					minimumInputLength: 2,
+					ajax: {
+						url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+						dataType: 'json',
+						delay: 250,
+						data: function(params) { return { q: params.term, page: params.page || 1 }; },
+						processResults: function(data, params) {
+							params.page = params.page || 1;
+							return { results: data.results, pagination: { more: data.pagination.more } };
+						},
+						cache: true
+					},
+					language: {
+						inputTooShort: function() { return 'Ketik minimal 2 karakter...'; },
+						searching:     function() { return 'Mencari sparepart...'; },
+						noResults:     function() { return 'Tidak ada sparepart ditemukan'; },
+						loadingMore:   function() { return 'Memuat lebih banyak...'; }
+					}
+				});
+			}
+		}, 150);
+	}
+
+	window.switchVldItemInput = function(rc) {
+		const type    = $(`#vld_item_type_${rc}`).val();
+		const $drop   = $(`#vld_sparepart_${rc}`);
+		const $manual = $(`#vld_sparepart_manual_${rc}`);
+		const $tool   = $(`#vld_tool_input_${rc}`);
+		if (type === 'tool') {
+			$drop.addClass('d-none').removeAttr('required').removeAttr('name');
+			$manual.addClass('d-none').removeAttr('required').removeAttr('name');
+			$tool.removeClass('d-none').attr('required','required').attr('name',`vld_name_${rc}`);
+			if ($drop.hasClass('select2-hidden-accessible')) $drop.select2('destroy');
+		} else {
+			$tool.addClass('d-none').removeAttr('required').removeAttr('name');
+			$manual.addClass('d-none').removeAttr('required').removeAttr('name');
+			$drop.removeClass('d-none').attr('required','required').attr('name',`vld_name_${rc}`);
+		}
+	};
+
+	window.toggleVldKanibalFields = function(rc) {
+		const val      = $(`#vld_source_${rc}`).val();
+		const $kanibal = $(`#vld_kanibal_fields_${rc}`);
+		const $notes   = $(`#vld_notes_${rc}`);
+		const $unitSel = $(`#vld_kanibal_unit_${rc}`);
+		if (val === 'KANIBAL') {
+			$kanibal.removeClass('d-none');
+			$notes.addClass('d-none');
+			if (!$unitSel.hasClass('select2-hidden-accessible')) {
+				$unitSel.select2({
+					placeholder: '-- Cari No. Unit --',
+					allowClear: true,
+					width: '100%',
+					dropdownParent: $('#spkSparepartValidationModal'),
+					minimumInputLength: 1,
+					ajax: {
+						url: '<?= base_url('service/work-orders/search-units') ?>',
+						type: 'POST',
+						dataType: 'json',
+						delay: 300,
+						data: function(params) {
+							return { [window.csrfTokenName]: window.csrfTokenValue, query: params.term };
+						},
+						processResults: function(data) {
+							if (!data.success) return { results: [] };
+							return {
+								results: data.data.map(u => ({
+									id: u.no_unit,
+									text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '') + (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+								}))
+							};
+						},
+						cache: true
+					},
+					language: {
+						inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+						searching:     function() { return 'Mencari unit...'; },
+						noResults:     function() { return 'Unit tidak ditemukan'; }
+					}
+				});
+			}
+		} else {
+			$kanibal.addClass('d-none');
+			$notes.removeClass('d-none');
+			if ($unitSel.hasClass('select2-hidden-accessible')) $unitSel.val(null).trigger('change');
+		}
+	};
+
+	document.getElementById('btnAddAdditionalSparepartSpk').addEventListener('click', function() {
+		_addValidationAdditionalRow();
+	});
+
+	$(document).on('click', '.vld-remove-sp-row', function() {
+		$(this).closest('tr').remove();
+		if ($('#additionalSparepartRowsSpk tr').length === 0) {
+			$('#additionalSparepartRowsSpk').html(`<tr id="noAdditionalSpkRow"><td colspan="7" class="text-center text-muted py-2"><small>Belum ada sparepart tambahan. Klik "Tambah Baris" untuk menambah.</small></td></tr>`);
+		}
+	});
+
+	// Manual entry button for validation modal sparepart selects
+	$(document).on('select2:open', '[id^="vld_sparepart_"]:not([id$="_manual"])', function() {
+		const $select = $(this);
+		const rc = $select.attr('id').replace('vld_sparepart_', '');
+		const $dropdown = $('.select2-dropdown:last');
+		$dropdown.find('.vld-manual-entry-btn').remove();
+		const btn = $(`<div class="vld-manual-entry-btn" style="padding:10px 15px;cursor:pointer;border-top:1px solid #dee2e6;background:#e3f2fd;text-align:center;font-weight:600;color:#0d47a1;">
+			<i class="fas fa-pencil-alt me-2"></i>📝 Input Manual Sparepart
+		</div>`);
+		btn.on('click', function() {
+			$select.select2('close');
+			const $manual = $(`#vld_sparepart_manual_${rc}`);
+			$select.addClass('d-none').removeAttr('name').removeAttr('required');
+			if ($select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
+			$manual.removeClass('d-none').attr('name', `vld_name_${rc}`).attr('required','required').focus();
+		});
+		const $search = $dropdown.find('.select2-search');
+		if ($search.length) $search.after(btn);
+		else $dropdown.find('.select2-results').prepend(btn);
+	});
+
 	document.getElementById('saveSparepartValidationBtn').addEventListener('click', function() {
 		const spkId = document.getElementById('validationSpkId').value;
 		const notes = document.getElementById('validationNotes').value.trim();
@@ -6140,55 +6417,116 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			notify('Jumlah digunakan tidak valid (harus 0 – Dibawa)', 'error');
 			return;
 		}
-		if (validationData.length === 0) {
+
+		// Collect additional spareparts (same logic as input sparepart modal)
+		const additionalSpareparts = [];
+		let addValid = true;
+		$('#additionalSparepartRowsSpk tr[id^="vld_row_"]').each(function(i) {
+			const rc     = $(this).attr('id').replace('vld_row_', '');
+			const itype  = $(`#vld_item_type_${rc}`).val() || 'sparepart';
+			const source = $(`#vld_source_${rc}`).val() || 'WAREHOUSE';
+			const rowNum = i + 1;
+			let name = '', sparepartCode = '';
+			if (itype === 'tool') {
+				name = $(`#vld_tool_input_${rc}`).val()?.trim() || '';
+			} else {
+				const $sel    = $(`#vld_sparepart_${rc}`);
+				const $manual = $(`#vld_sparepart_manual_${rc}`);
+				if ($manual.is(':visible')) {
+					name = $manual.val()?.trim() || '';
+				} else if ($sel.hasClass('select2-hidden-accessible')) {
+					const selData = $sel.select2('data');
+					if (selData && selData[0] && selData[0].kode) {
+						sparepartCode = selData[0].kode;
+						name = selData[0].desc || selData[0].text?.trim() || '';
+					} else {
+						const rawVal = $sel.val()?.trim() || '';
+						const dashIdx = rawVal.indexOf(' - ');
+						if (dashIdx > -1) { sparepartCode = rawVal.substring(0, dashIdx); name = rawVal.substring(dashIdx + 3); }
+						else { name = rawVal; }
+					}
+				}
+			}
+			const qty    = parseInt($(`[name="vld_qty_${rc}"]`).val()) || 0;
+			const satuan = $(`[name="vld_satuan_${rc}"]`).val()?.trim() || '';
+			const notesVal = $(`[name="vld_notes_${rc}"]`).val()?.trim() || '';
+			const $unitSel = $(`#vld_kanibal_unit_${rc}`);
+			const unitNo   = $unitSel.hasClass('select2-hidden-accessible') ? ($unitSel.val() || '') : ($unitSel[0]?.value || '');
+			const reason   = $(`#vld_kanibal_reason_${rc}`).val()?.trim() || '';
+			if (!name)                               { addValid = false; notify(`Tambahan baris ${rowNum}: Item Name kosong`, 'error'); return false; }
+			if (qty < 1)                             { addValid = false; notify(`Tambahan baris ${rowNum}: Qty harus > 0`, 'error'); return false; }
+			if (source === 'KANIBAL' && !unitNo)     { addValid = false; notify(`Tambahan baris ${rowNum}: No. Unit Kanibal wajib diisi`, 'error'); return false; }
+			additionalSpareparts.push({
+				sparepart_name   : name,
+				sparepart_code   : sparepartCode,
+				item_type        : itype,
+				source_type      : source,
+				quantity         : qty,
+				satuan           : satuan,
+				source_unit_no   : source === 'KANIBAL' ? unitNo  : '',
+				notes            : source === 'KANIBAL' ? reason  : notesVal,
+				is_from_warehouse: source === 'WAREHOUSE' ? 1 : 0
+			});
+		});
+		if (!addValid) return;
+
+		if (validationData.length === 0 && additionalSpareparts.length === 0) {
 			notify('Tidak ada item yang perlu divalidasi', 'warning');
 			return;
 		}
 
-		if (!confirm('Simpan validasi sparepart? Aksi ini tidak dapat dibatalkan.')) return;
-
 		const btn = this;
-		btn.disabled = true;
-		btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
+		confirmSwal({
+			title: 'Konfirmasi Validasi',
+			text: 'Simpan validasi sparepart? Aksi ini tidak dapat dibatalkan.',
+			type: 'success',
+			confirmText: '<i class="fas fa-check me-1"></i>Ya, Simpan'
+		}).then(confirmed => {
+			if (!confirmed) return;
 
-		const fd = new FormData();
-		fd.append(window.csrfTokenName, window.csrfTokenValue);
-		fd.append('validation_data', JSON.stringify(validationData));
-		fd.append('notes', notes);
+			btn.disabled = true;
+			btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
 
-		fetch(window.baseUrl + 'service/spk/validate-spareparts/' + spkId, {
-			method:  'POST',
-			headers: {'X-Requested-With': 'XMLHttpRequest'},
-			body:    fd
-		})
-		.then(r => r.json())
-		.then(res => {
-			btn.disabled = false;
-			btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
-			if (res.success) {
-				notify(res.message || 'Validasi berhasil disimpan', 'success');
-				bootstrap.Modal.getInstance(document.getElementById('spkSparepartValidationModal')).hide();
-				if (res.returns_generated > 0) {
-					setTimeout(() => {
-						notify(
-							`${res.returns_generated} permintaan pengembalian sparepart telah dikirim ke Warehouse (status: PENDING).`,
-							'info'
-						);
-					}, 500);
+			const fd = new FormData();
+			fd.append(window.csrfTokenName, window.csrfTokenValue);
+			fd.append('validation_data', JSON.stringify(validationData));
+			fd.append('additional_spareparts', JSON.stringify(additionalSpareparts));
+			fd.append('notes', notes);
+
+			fetch(window.baseUrl + 'service/spk/validate-spareparts/' + spkId, {
+				method:  'POST',
+				headers: {'X-Requested-With': 'XMLHttpRequest'},
+				body:    fd
+			})
+			.then(r => r.json())
+			.then(res => {
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
+				if (res.success) {
+					notify(res.message || 'Validasi berhasil disimpan', 'success');
+					bootstrap.Modal.getInstance(document.getElementById('spkSparepartValidationModal')).hide();
+					if (res.returns_generated > 0) {
+						setTimeout(() => {
+							notify(
+								`${res.returns_generated} permintaan pengembalian sparepart telah dikirim ke Warehouse (status: PENDING).`,
+								'info'
+							);
+						}, 500);
+					}
+					window.reloadSpkTable();
+					// Update CSRF token if returned
+					if (res.csrf_hash && window.csrfTokenName) {
+						window.csrfTokenValue = res.csrf_hash;
+					}
+				} else {
+					notify(res.message || 'Gagal menyimpan validasi', 'error');
 				}
-				window.reloadSpkTable();
-				// Update CSRF token if returned
-				if (res.csrf_hash && window.csrfTokenName) {
-					window.csrfTokenValue = res.csrf_hash;
-				}
-			} else {
-				notify(res.message || 'Gagal menyimpan validasi', 'error');
-			}
-		})
-		.catch(err => {
-			btn.disabled = false;
-			btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
-			notify('Error: ' + err.message, 'error');
+			})
+			.catch(err => {
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fas fa-check me-1"></i>Validasi & Simpan';
+				notify('Error: ' + err.message, 'error');
+			});
 		});
 	});
 </script>

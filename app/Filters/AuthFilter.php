@@ -29,6 +29,7 @@ class AuthFilter implements FilterInterface
         $publicPaths = [
             '',  // Root path (empty string)
             'demo',  // Demo pages (sidebar demos, etc.) - no auth required
+            'language',  // Language switch (ID/EN) - allow without login so login page can switch
             'auth',
             'auth/login',
             'auth/attempt-login',
