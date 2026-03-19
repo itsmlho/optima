@@ -4863,6 +4863,39 @@ class Marketing extends BaseDataTableController
                 // Verify the data was actually inserted
                 $insertedSpk = $this->spkModel->find($spkId);
                 log_message('info', 'Marketing::spkCreate - Verification - Inserted SPK data: ' . json_encode($insertedSpk));
+
+                // Build notification-friendly departemen + unit string from stored `spesifikasi`
+                $insertedSpkArray = is_object($insertedSpk) ? get_object_vars($insertedSpk) : (array)($insertedSpk ?? []);
+                $specJson = $insertedSpkArray['spesifikasi'] ?? null;
+                $specDecoded = [];
+                if (is_string($specJson) && $specJson !== '') {
+                    $decoded = json_decode($specJson, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $specDecoded = $decoded;
+                    }
+                } elseif (is_array($specJson)) {
+                    $specDecoded = $specJson;
+                }
+
+                $departemenName = 'N/A';
+                if (!empty($specDecoded['departemen_id'])) {
+                    $departemenRow = $this->db->table('departemen')
+                        ->select('nama_departemen')
+                        ->where('id_departemen', $specDecoded['departemen_id'])
+                        ->get()
+                        ->getRowArray();
+                    $departemenName = $departemenRow['nama_departemen'] ?? $departemenName;
+                }
+
+                $unitName = 'N/A';
+                if (!empty($specDecoded['tipe_unit_id'])) {
+                    $tipeUnitRow = $this->db->table('tipe_unit')
+                        ->select('tipe, jenis')
+                        ->where('id_tipe_unit', $specDecoded['tipe_unit_id'])
+                        ->get()
+                        ->getRowArray();
+                    $unitName = $tipeUnitRow['tipe'] ?? $tipeUnitRow['jenis'] ?? $unitName;
+                }
                 
                 // Log SPK creation using trait
                 $this->logCreate('spk', $spkId, [
@@ -4878,7 +4911,8 @@ class Marketing extends BaseDataTableController
                 $this->sendSpkNotification($payload['nomor_spk'], [
                     'id' => $spkId,
                     'pelanggan' => $payload['pelanggan'],
-                    'departemen' => $payload['departemen'] ?? 'N/A',
+                    'departemen' => $departemenName,
+                    'unit_no' => $unitName,
                     'lokasi' => $payload['lokasi'] ?? 'N/A'
                 ]);
 
@@ -5369,16 +5403,23 @@ class Marketing extends BaseDataTableController
             // Load notification helper
             helper('notification');
             
+            $spkId = $spkData['spk_id'] ?? $spkData['id'] ?? null;
+            $createdBy = $spkData['created_by']
+                ?? session()->get('user_name')
+                ?? session('username')
+                ?? 'System';
+
             // Prepare event data for notification
             $eventData = [
                 'nomor_spk'  => $nomorSpk,
-                'id'         => $spkData['spk_id'] ?? $spkData['id'] ?? null,
+                'id'         => $spkId,
                 'pelanggan'  => $spkData['pelanggan'] ?? 'N/A',
-                'department' => $spkData['departemen'] ?? 'N/A',
-                'unit_no'    => $spkData['unit_type'] ?? $spkData['unit_no'] ?? 'N/A',
+                'departemen' => $spkData['departemen'] ?? $spkData['department'] ?? 'N/A',
+                'unit_no'    => $spkData['unit_no'] ?? $spkData['unit_type'] ?? $spkData['no_unit'] ?? 'N/A',
+                'no_unit'    => $spkData['no_unit'] ?? $spkData['unit_no'] ?? $spkData['unit_type'] ?? 'N/A',
                 'lokasi'     => $spkData['lokasi'] ?? 'N/A',
-                'created_by' => $spkData['created_by'] ?? session('username') ?? 'System',
-                'url'        => base_url('service/spk/detail/' . ($spkData['spk_id'] ?? '')),
+                'created_by' => $createdBy,
+                'url'        => $spkData['url'] ?? base_url('service/spk/detail/' . ($spkId ?? '')),
             ];
             
             // Send notification using helper function
