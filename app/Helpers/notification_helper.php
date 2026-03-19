@@ -254,16 +254,26 @@ if (!function_exists('notify_spk_created')) {
      */
     function notify_spk_created($spkData)
     {
+        $departemen = $spkData['departemen'] ?? $spkData['department'] ?? 'Marketing';
+        $unitNo = $spkData['unit_no'] ?? $spkData['no_unit'] ?? '';
+        $noUnit = $spkData['no_unit'] ?? $spkData['unit_no'] ?? '';
+        $createdBy = $spkData['created_by']
+            ?? session()->get('user_name')
+            ?? session('username')
+            ?? 'System';
+
         return send_notification('spk_created', [
             'module'     => 'spk',
-            'id'         => $spkData['id'] ?? null,
-            'nomor_spk'  => $spkData['nomor_spk'] ?? '',
+            'id'         => $spkData['id'] ?? $spkData['spk_id'] ?? null,
+            'nomor_spk'  => $spkData['nomor_spk'] ?? $spkData['spk_number'] ?? '',
             'pelanggan'  => $spkData['pelanggan'] ?? $spkData['nama_customer'] ?? '',
-            'department' => $spkData['department'] ?? $spkData['departemen'] ?? 'Marketing',
-            'unit_no'    => $spkData['unit_no'] ?? $spkData['no_unit'] ?? '',
-            'no_unit'    => $spkData['no_unit'] ?? $spkData['unit_no'] ?? '',
-            'created_by' => $spkData['created_by'] ?? session('username') ?? 'System',
-            'url'        => $spkData['url'] ?? base_url('service/spk/detail/' . ($spkData['id'] ?? '')),
+            // Template DB saat ini memakai `{{departemen}}`, tapi kita juga sediakan alias `{{department}}`
+            'departemen' => $departemen,
+            'department' => $departemen,
+            'unit_no'    => $unitNo,
+            'no_unit'    => $noUnit,
+            'created_by' => $createdBy,
+            'url'        => $spkData['url'] ?? base_url('service/spk/detail/' . ($spkData['id'] ?? $spkData['spk_id'] ?? '')),
         ]);
     }
 }
@@ -301,11 +311,12 @@ if (!function_exists('notify_po_created')) {
     {
         return send_notification('po_created', [
             'module' => 'po',
-            'id' => $poData['id'] ?? null,
-            'nomor_po' => $poData['nomor_po'] ?? '',
-            'supplier' => $poData['supplier'] ?? '',
-            'total_items' => $poData['total_items'] ?? 0,
-            'url' => base_url('/purchasing/detail/' . ($poData['id'] ?? ''))
+            'id' => $poData['id'] ?? $poData['id_po'] ?? null,
+            // Support berbagai key variasi dari call-site
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier' => $poData['supplier'] ?? $poData['supplier_name'] ?? '',
+            'total_items' => $poData['total_items'] ?? $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
+            'url' => $poData['url'] ?? base_url('/purchasing/po-detail/' . ($poData['id'] ?? $poData['id_po'] ?? ''))
         ]);
     }
 }

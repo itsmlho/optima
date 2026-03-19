@@ -620,7 +620,7 @@ $(document).ready(function() {
         const target = $(e.target).data('bs-target');
         setTimeout(function() {
             if (target === '#source-wo') {
-                if ($('#wo-usage').hasClass('active'))   { <?php if (isset($usage_table_exists) && $usage_table_exists): ?> initUsageTable('WO'); <?php endif; ?> }
+                if ($('#wo-usage').hasClass('active'))   { initUsageTable('WO'); }
                 else if ($('#wo-returns').hasClass('active')) { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('WO'); <?php endif; ?> }
                 else if ($('#wo-nonwh').hasClass('active'))   initNonwhTable('WO');
             } else if (target === '#source-spk') {
@@ -635,7 +635,7 @@ $(document).ready(function() {
     $('#woSubTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
         const target = $(e.target).data('bs-target');
         setTimeout(function() {
-            if (target === '#wo-usage')   { <?php if (isset($usage_table_exists) && $usage_table_exists): ?> initUsageTable('WO'); <?php endif; ?> }
+            if (target === '#wo-usage')   { initUsageTable('WO'); }
             else if (target === '#wo-returns') { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('WO'); <?php endif; ?> }
             else if (target === '#wo-nonwh')   initNonwhTable('WO');
         }, 150);
@@ -651,11 +651,12 @@ $(document).ready(function() {
         }, 150);
     });
 
-    // Initialize default: WO Usage on page load
+    // Initialize default: activate WO source tab on page load
     setTimeout(function() {
-        <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
-        initUsageTable('WO');
-        <?php endif; ?>
+        var woSourceTab = document.getElementById('wo-source-tab');
+        if (woSourceTab) {
+            bootstrap.Tab.getOrCreateInstance(woSourceTab).show();
+        }
     }, 300);
 });
 

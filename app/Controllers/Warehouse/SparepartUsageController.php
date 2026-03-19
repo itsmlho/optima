@@ -105,18 +105,18 @@ class SparepartUsageController extends BaseController
             }
             $woSql = "
                 SELECT
-                    'WO'                               AS record_source,
-                    wo.id                              AS record_id,
-                    wo.work_order_number               AS reference_number,
-                    wo.report_date                     AS record_date,
-                    wo.created_at                      AS created_at,
-                    COALESCE(c.customer_name, '-')     AS customer_name,
-                    COALESCE(iu.no_unit, '-')          AS unit_number,
-                    COALESCE(mu.merk_unit, '')         AS merk_unit,
-                    COALESCE(mu.model_unit, '')        AS model_unit,
-                    COUNT(DISTINCT wosp.id)            AS total_items,
-                    SUM(wosp.is_from_warehouse = 1)    AS warehouse_items,
-                    SUM(wosp.is_from_warehouse = 0)    AS nonwarehouse_items
+                    'WO'                                        AS record_source,
+                    wo.id                                       AS record_id,
+                    wo.work_order_number                        AS reference_number,
+                    wo.report_date                              AS record_date,
+                    wo.created_at                               AS created_at,
+                    COALESCE(MAX(c.customer_name), '-')         AS customer_name,
+                    COALESCE(MAX(iu.no_unit), '-')              AS unit_number,
+                    COALESCE(MAX(mu.merk_unit), '')             AS merk_unit,
+                    COALESCE(MAX(mu.model_unit), '')            AS model_unit,
+                    COUNT(DISTINCT wosp.id)                     AS total_items,
+                    SUM(wosp.is_from_warehouse = 1)             AS warehouse_items,
+                    SUM(wosp.is_from_warehouse = 0)             AS nonwarehouse_items
                 FROM work_orders wo
                 INNER JOIN work_order_spareparts wosp ON wosp.work_order_id = wo.id
                 LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit  = wo.unit_id
@@ -128,7 +128,7 @@ class SparepartUsageController extends BaseController
                 LEFT  JOIN customers c        ON c.id  = k.customer_id
                 WHERE wo.deleted_at IS NULL
                 {$woWhere}
-                GROUP BY wo.id
+                GROUP BY wo.id, wo.work_order_number, wo.report_date, wo.created_at
             ";
 
             // --- SPK sub-query ---
@@ -139,18 +139,18 @@ class SparepartUsageController extends BaseController
             }
             $spkSql = "
                 SELECT
-                    'SPK'                              AS record_source,
-                    s.id                               AS record_id,
-                    s.nomor_spk                        AS reference_number,
-                    DATE(s.dibuat_pada)                AS record_date,
-                    s.dibuat_pada                      AS created_at,
-                    COALESCE(s.pelanggan, '-')         AS customer_name,
-                    COALESCE(iu.no_unit, '-')          AS unit_number,
-                    COALESCE(mu.merk_unit, '')         AS merk_unit,
-                    COALESCE(mu.model_unit, '')        AS model_unit,
-                    COUNT(DISTINCT ssp.id)             AS total_items,
-                    SUM(ssp.is_from_warehouse = 1)     AS warehouse_items,
-                    SUM(ssp.is_from_warehouse = 0)     AS nonwarehouse_items
+                    'SPK'                                       AS record_source,
+                    s.id                                        AS record_id,
+                    s.nomor_spk                                 AS reference_number,
+                    DATE(s.dibuat_pada)                         AS record_date,
+                    s.dibuat_pada                               AS created_at,
+                    COALESCE(s.pelanggan, '-')                  AS customer_name,
+                    COALESCE(MAX(iu.no_unit), '-')              AS unit_number,
+                    COALESCE(MAX(mu.merk_unit), '')             AS merk_unit,
+                    COALESCE(MAX(mu.model_unit), '')            AS model_unit,
+                    COUNT(DISTINCT ssp.id)                      AS total_items,
+                    SUM(ssp.is_from_warehouse = 1)              AS warehouse_items,
+                    SUM(ssp.is_from_warehouse = 0)              AS nonwarehouse_items
                 FROM spk s
                 INNER JOIN spk_spareparts ssp ON ssp.spk_id = s.id
                 LEFT  JOIN kontrak k          ON k.id = s.kontrak_id
@@ -161,7 +161,7 @@ class SparepartUsageController extends BaseController
                 LEFT  JOIN model_unit mu      ON mu.id_model_unit = iu.model_unit_id
                 WHERE 1=1
                 {$spkWhere}
-                GROUP BY s.id
+                GROUP BY s.id, s.nomor_spk, s.pelanggan, s.dibuat_pada
             ";
 
             if ($source === 'WO') {
