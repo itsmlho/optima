@@ -55,10 +55,10 @@ $can_export = $permissions['export'];
                 <i class="fas fa-shopping-cart me-2 text-primary"></i><?= lang('App.purchase_orders') ?>
             </h5>
             <p class="text-muted small mb-0">
-                Create and track purchase orders for units and spare parts from suppliers
+                <?= lang('Purchasing.purchase_orders_description') ?>
                 <span class="ms-2 text-info">
                     <i class="bi bi-info-circle me-1"></i>
-                    <small>Tip: Gunakan tab Progress / Delivery / Completed untuk filter status PO</small>
+                    <small><?= lang('Purchasing.purchase_orders_tip_tabs') ?></small>
                 </span>
             </p>
         </div>

@@ -33,7 +33,7 @@ class Kontrak extends BaseController
         helper('simple_rbac');
         
         $data = [
-            'title' => 'Manajemen Kontrak Rental',
+            'title' => 'Manajemen Rental',
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => can_create('marketing'),
             'can_export_marketing' => can_export('marketing'),
@@ -231,14 +231,20 @@ class Kontrak extends BaseController
                     $row['days_until_expiry'] = 999; // No expiry date
                 }
                 
-                // Rental Type Badge
-                $rentalType = $contract['rental_type'] ?? 'CONTRACT';
-                $typeBadgeMap = [
-                    'CONTRACT' => '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
-                    'PO_ONLY' => '<span class="badge bg-info"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
-                    'DAILY_SPOT' => '<span class="badge bg-warning"><i class="fas fa-calendar-day me-1"></i>Daily/Spot</span>'
+                // Rental Type Badge — using badge-soft-* per Optima standards
+                $rentalType  = $contract['rental_type'] ?? 'CONTRACT';
+                $typeLabels  = [
+                    'CONTRACT'   => 'Contract',
+                    'PO_ONLY'    => 'PO Bulanan',
+                    'DAILY_SPOT' => 'Harian',
                 ];
-                $row['rental_type']     = $typeBadgeMap[$rentalType] ?? '<span class="badge bg-secondary">Unknown</span>';
+                $typeBadgeMap = [
+                    'CONTRACT'   => '<span class="badge badge-soft-blue">'   . lang('Marketing.rental_type_contract') . '</span>',
+                    'PO_ONLY'    => '<span class="badge badge-soft-cyan">'   . lang('Marketing.rental_type_po')       . '</span>',
+                    'DAILY_SPOT' => '<span class="badge badge-soft-yellow">' . lang('Marketing.rental_type_harian')   . '</span>',
+                ];
+                $row['rental_type'] = $typeBadgeMap[$rentalType] ?? '<span class="badge badge-soft-gray">Unknown</span>';
+                $row['rental_type_raw'] = $rentalType;
                 
                 $row['client_name']     = esc($contract['pelanggan']);
                 $row['jenis_sewa']      = ucfirst($contract['jenis_sewa'] ?? 'BULANAN');
@@ -247,29 +253,49 @@ class Kontrak extends BaseController
                 $row['end_date']        = (!empty($contract['tanggal_berakhir']) && date('Y', strtotime($contract['tanggal_berakhir'])) > 0)
                                             ? $contract['tanggal_berakhir']
                                             : null;
-                $row['period']          = ($row['start_date'] ? date('d M Y', strtotime($row['start_date'])) : '-') .
-                                          ' - ' .
-                                          ($row['end_date'] ? date('d M Y', strtotime($row['end_date'])) : 'Open-ended');
+
+                // Type-specific period column rendering
+                $startFmt = $row['start_date'] ? date('d M Y', strtotime($row['start_date'])) : '-';
+                $openEndedLabel = lang('Marketing.open_ended');
+                $hariLabel      = lang('Marketing.rental_type_harian');
+                $expiredLabel   = lang('Marketing.contract_expired');
+                if ($rentalType === 'PO_ONLY') {
+                    // Open-ended: show start + badge
+                    $row['period'] = $startFmt . ' <span class="badge badge-soft-cyan ms-1">' . $openEndedLabel . '</span>';
+                } elseif ($row['end_date']) {
+                    $endFmt        = date('d M Y', strtotime($row['end_date']));
+                    $daysRemaining = $row['days_until_expiry'];
+                    if ($rentalType === 'DAILY_SPOT') {
+                        $totalDays = max(1, (int)((strtotime($row['end_date']) - strtotime($row['start_date'])) / 86400));
+                        $row['period'] = $startFmt . ' – ' . $endFmt . ' <span class="badge badge-soft-yellow ms-1">' . $totalDays . ' ' . $hariLabel . '</span>';
+                    } else {
+                        // CONTRACT: show days remaining badge
+                        if ($daysRemaining < 0) {
+                            $daysBadge = '<span class="badge badge-soft-red ms-1">' . $expiredLabel . '</span>';
+                        } elseif ($daysRemaining <= 30) {
+                            $daysBadge = '<span class="badge badge-soft-orange ms-1">' . $daysRemaining . ' ' . $hariLabel . '</span>';
+                        } elseif ($daysRemaining <= 90) {
+                            $daysBadge = '<span class="badge badge-soft-cyan ms-1">' . $daysRemaining . ' ' . $hariLabel . '</span>';
+                        } else {
+                            $daysBadge = '<span class="badge badge-soft-blue ms-1">' . $daysRemaining . ' ' . $hariLabel . '</span>';
+                        }
+                        $row['period'] = $startFmt . ' – ' . $endFmt . $daysBadge;
+                    }
+                } else {
+                    $row['period'] = $startFmt . ' <span class="badge badge-soft-gray ms-1">' . lang('Marketing.end_date_optional') . '</span>';
+                }
                 $row['total_units']     = intval($contract['total_units'] ?? 0);
                 $row['value']           = 'Rp ' . number_format($contract['nilai_total'] ?? 0, 0, ',', '.');
                 
-                // Status badge with proper color
-                $statusClass = 'bg-secondary';
-                switch($contract['status']) {
-                    case 'ACTIVE':
-                        $statusClass = 'bg-success';
-                        break;
-                    case 'PENDING':
-                        $statusClass = 'bg-warning';
-                        break;
-                    case 'EXPIRED':
-                        $statusClass = 'bg-danger';
-                        break;
-                    case 'CANCELLED':
-                        $statusClass = 'bg-secondary';
-                        break;
-                }
-                $row['status'] = '<span class="badge ' . $statusClass . '">' . esc($contract['status']) . '</span>';
+                // Status badge with badge-soft-* colors per Optima standards
+                $statusBadgeMap = [
+                    'ACTIVE'    => 'badge-soft-green',
+                    'PENDING'   => 'badge-soft-yellow',
+                    'EXPIRED'   => 'badge-soft-red',
+                    'CANCELLED' => 'badge-soft-gray',
+                ];
+                $statusBadgeClass = $statusBadgeMap[$contract['status'] ?? ''] ?? 'badge-soft-gray';
+                $row['status'] = '<span class="badge ' . $statusBadgeClass . '">' . esc($contract['status']) . '</span>';
                 
                 $row['actions'] = '
                     <div class="btn-group btn-group-sm">
@@ -315,37 +341,43 @@ class Kontrak extends BaseController
     public function generateNumber()
     {
         try {
-            // Get the latest contract number for current year
+            // Determine prefix based on rental_type: CONTRACT=KTR, PO_ONLY=PO, DAILY_SPOT=SPT
+            $rentalType = $this->request->getGet('rental_type') ?: 'CONTRACT';
+            $prefixMap = [
+                'CONTRACT'   => 'KTR',
+                'PO_ONLY'    => 'PO',
+                'DAILY_SPOT' => 'SPT',
+            ];
+            $prefixCode = $prefixMap[$rentalType] ?? 'KTR';
             $currentYear = date('Y');
-            $prefix = 'KTR/' . $currentYear . '/';
-            
+            $prefix = $prefixCode . '/' . $currentYear . '/';
+
             $latest = $this->kontrakModel
                 ->like('no_kontrak', $prefix, 'after')
                 ->orderBy('id', 'DESC')
                 ->first();
-            
+
             $sequence = 1;
             if ($latest && isset($latest['no_kontrak'])) {
-                // Extract sequence number from the latest contract
                 $parts = explode('/', $latest['no_kontrak']);
                 if (count($parts) >= 3) {
                     $sequence = (int)$parts[2] + 1;
                 }
             }
-            
+
             $newNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-            
+
             return $this->response->setJSON([
                 'success' => true,
                 'data' => ['contract_number' => $newNumber],
                 'csrf_hash' => csrf_hash()
             ]);
-            
+
         } catch (\Exception $e) {
-            log_message('error', 'Error generating contract number: ' . $e->getMessage());
+            log_message('error', 'Error generating rental number: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal generate nomor kontrak',
+                'message' => 'Gagal generate nomor rental',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -424,16 +456,55 @@ class Kontrak extends BaseController
         
         // Validasi input menggunakan model validation dengan struktur database baru
         // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
+        $rentalType = $this->request->getPost('rental_type') ?: 'CONTRACT';
+        $endDate    = $this->request->getPost('end_date') ?: null;
+        $startDate  = $this->request->getPost('start_date');
+        $jenisSewa  = strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN');
+
+        // --- Type-specific business rules ---
+        if ($rentalType === 'PO_ONLY') {
+            // PO Bulanan: open-ended — no fixed end date, force monthly billing
+            $endDate   = null;
+            $jenisSewa = 'BULANAN';
+        } elseif ($rentalType === 'DAILY_SPOT') {
+            // Harian: end date required, max 30 days, force daily billing
+            if (empty($endDate)) {
+                return $this->response->setJSON([
+                    'success'    => false,
+                    'message'    => lang('Marketing.end_date_required'),
+                    'csrf_hash'  => csrf_hash(),
+                ]);
+            }
+            $durationDays = (int)((strtotime($endDate) - strtotime($startDate)) / 86400);
+            if ($durationDays > 30) {
+                return $this->response->setJSON([
+                    'success'    => false,
+                    'message'    => str_replace('{days}', '30', lang('Marketing.daily_max_duration_exceeded')) . " ({$durationDays} " . lang('Marketing.rental_type_harian') . ").",
+                    'csrf_hash'  => csrf_hash(),
+                ]);
+            }
+            $jenisSewa = 'HARIAN';
+        } else {
+            // Contract: end date required
+            if (empty($endDate)) {
+                return $this->response->setJSON([
+                    'success'    => false,
+                    'message'    => lang('Marketing.end_date_required'),
+                    'csrf_hash'  => csrf_hash(),
+                ]);
+            }
+        }
+
         $data = [
             'no_kontrak'           => trim((string)$this->request->getPost('contract_number')),
             'customer_po_number'   => $this->request->getPost('po_number'),
-            'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
+            'rental_type'          => $rentalType,
             'customer_id'          => $customerId,  // Use customer_id instead of customer_location_id
             'nilai_total'          => 0, // Akan dihitung otomatis dari spesifikasi
             'total_units'          => 0, // Akan dihitung otomatis dari spesifikasi
-            'jenis_sewa'           => strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN'),
-            'tanggal_mulai'        => $this->request->getPost('start_date'),
-            'tanggal_berakhir'     => $this->request->getPost('end_date'),
+            'jenis_sewa'           => $jenisSewa,
+            'tanggal_mulai'        => $startDate,
+            'tanggal_berakhir'     => $endDate,
             'status'               => 'PENDING', // Set otomatis ke PENDING untuk kontrak baru
             'dibuat_oleh'          => session()->get('user_id') ?? 1, // Default user ID jika session kosong
         ];
@@ -596,12 +667,12 @@ class Kontrak extends BaseController
         log_message('debug', "Contract ID from URL: $id");
         log_message('debug', "POST data: " . json_encode($this->request->getPost()));
         
-        // Get customer_location_id from form to lookup customer_id  
+        // Get customer_id: prefer direct POST value (edit form), fallback to location lookup
+        $customerId = (int)$this->request->getPost('customer_id') ?: null;
+
+        // Legacy: if customer_location_id is sent, resolve customer_id from it
         $customerLocationId = (int)$this->request->getPost('customer_location_id');
-        $customerId = null;
-        
-        // Query customer_id from customer_location
-        if ($customerLocationId > 0) {
+        if (!$customerId && $customerLocationId > 0) {
             $location = $this->db->table('customer_locations')
                 ->select('customer_id')
                 ->where('id', $customerLocationId)
@@ -613,9 +684,8 @@ class Kontrak extends BaseController
         // Validate required fields first with new database structure
         // Note: customer_location_id validation REMOVED (March 5, 2026 - moved to kontrak_unit)
         $rules = [
-            'start_date'      => 'required|valid_date',
-            'end_date'        => 'required|valid_date',
-            'status'          => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]'
+            'start_date' => 'required|valid_date',
+            'status'     => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]'
         ];
 
         if (!$this->validate($rules)) {
@@ -706,17 +776,40 @@ class Kontrak extends BaseController
 
         // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
         // Location tracking is now in kontrak_unit table for multi-location support
+        $rentalTypeUpd = $this->request->getPost('rental_type') ?: 'CONTRACT';
+        $endDateUpd    = $this->request->getPost('end_date') ?: null;
+        $startDateUpd  = $this->request->getPost('start_date');
+        $jenisSewa     = strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN');
+
+        // Type-specific business rules for update
+        if ($rentalTypeUpd === 'PO_ONLY') {
+            $endDateUpd = null; // PO Bulanan: open-ended
+            $jenisSewa  = 'BULANAN';
+        } elseif ($rentalTypeUpd === 'DAILY_SPOT') {
+            if (!empty($endDateUpd)) {
+                $durationDays = (int)((strtotime($endDateUpd) - strtotime($startDateUpd)) / 86400);
+                if ($durationDays > 30) {
+                    return $this->response->setJSON([
+                        'success'   => false,
+                        'message'   => str_replace('{days}', '30', lang('Marketing.daily_max_duration_exceeded')) . " ({$durationDays}).",
+                        'csrf_hash' => csrf_hash(),
+                    ]);
+                }
+            }
+            $jenisSewa = 'HARIAN';
+        }
+
         $data = [
             'no_kontrak'           => $contractNumber,
             'customer_po_number'   => $this->request->getPost('po_number'),
-            'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
+            'rental_type'          => $rentalTypeUpd,
             'customer_id'          => $customerId,  // Use customer_id instead of customer_location_id
             // nilai_total dihitung dari kontrak_unit (jika field ada di form, gunakan; sinon biarkan)
             // total_units TIDAK disimpan dari form — dihitung live dari kontrak_unit
-            'tanggal_mulai'        => $this->request->getPost('start_date'),
-            'tanggal_berakhir'     => $this->request->getPost('end_date'),
+            'tanggal_mulai'        => $startDateUpd,
+            'tanggal_berakhir'     => $endDateUpd,
             'status'               => $this->request->getPost('status'),
-            'jenis_sewa'           => $this->request->getPost('jenis_sewa') ?: 'BULANAN',
+            'jenis_sewa'           => $jenisSewa,
             'catatan'              => $this->request->getPost('catatan'),
         ];
 

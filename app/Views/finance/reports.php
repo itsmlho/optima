@@ -6,18 +6,18 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-chart-bar me-2"></i>Financial Reports
+            <i class="fas fa-chart-bar me-2"></i><?= lang('Finance.financial_reports') ?>
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="btn-group" role="group">
                 <button class="btn btn-outline-info btn-sm" onclick="refreshReports()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                    <i class="fas fa-sync-alt me-1"></i><?= lang('Finance.refresh') ?>
                 </button>
                 <button class="btn btn-outline-success btn-sm" onclick="exportAllReports()">
-                    <i class="fas fa-file-excel me-1"></i>Export All
+                    <i class="fas fa-file-excel me-1"></i><?= lang('Finance.export_all') ?>
                 </button>
                 <button class="btn btn-primary btn-sm" onclick="generateCustomReport()">
-                    <i class="fas fa-plus me-1"></i>Custom Report
+                    <i class="fas fa-plus me-1"></i><?= lang('Finance.custom_report') ?>
                 </button>
             </div>
         </div>
@@ -31,9 +31,9 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
-                                Profit & Loss</div>
+                                <?= lang('Finance.report_profit_loss_short') ?></div>
                             <div class="h5 mb-0 font-weight-bold text-white">
-                                Generate P&L Report
+                                <?= lang('Finance.report_generate_pl') ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -42,7 +42,7 @@
                     </div>
                     <div class="mt-3">
                         <button class="btn btn-light btn-sm" onclick="generateReport('profit_loss')">
-                            <i class="fas fa-download me-1"></i>Generate
+                            <i class="fas fa-download me-1"></i><?= lang('Finance.generate') ?>
                         </button>
                     </div>
                 </div>
@@ -55,9 +55,9 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
-                                Cash Flow</div>
+                                <?= lang('Finance.report_cash_flow') ?></div>
                             <div class="h5 mb-0 font-weight-bold text-white">
-                                Cash Flow Statement
+                                <?= lang('Finance.report_cash_flow_statement') ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -66,7 +66,7 @@
                     </div>
                     <div class="mt-3">
                         <button class="btn btn-light btn-sm" onclick="generateReport('cash_flow')">
-                            <i class="fas fa-download me-1"></i>Generate
+                            <i class="fas fa-download me-1"></i><?= lang('Finance.generate') ?>
                         </button>
                     </div>
                 </div>
@@ -79,9 +79,9 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
-                                Balance Sheet</div>
+                                <?= lang('Finance.report_balance_sheet') ?></div>
                             <div class="h5 mb-0 font-weight-bold text-white">
-                                Assets & Liabilities
+                                <?= lang('Finance.report_assets_liabilities') ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -90,7 +90,7 @@
                     </div>
                     <div class="mt-3">
                         <button class="btn btn-light btn-sm" onclick="generateReport('balance_sheet')">
-                            <i class="fas fa-download me-1"></i>Generate
+                            <i class="fas fa-download me-1"></i><?= lang('Finance.generate') ?>
                         </button>
                     </div>
                 </div>
@@ -103,9 +103,9 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-white-50 text-uppercase mb-1">
-                                Budget Analysis</div>
+                                <?= lang('Finance.report_budget_analysis') ?></div>
                             <div class="h5 mb-0 font-weight-bold text-white">
-                                Budget vs Actual
+                                <?= lang('Finance.report_budget_vs_actual') ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -114,7 +114,7 @@
                     </div>
                     <div class="mt-3">
                         <button class="btn btn-light btn-sm" onclick="generateReport('budget_analysis')">
-                            <i class="fas fa-download me-1"></i>Generate
+                            <i class="fas fa-download me-1"></i><?= lang('Finance.generate') ?>
                         </button>
                     </div>
                 </div>
@@ -127,7 +127,7 @@
         <div class="col-xl-8 col-lg-7">
             <div class="card shadow">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Revenue vs Expenses Trend</h6>
+                    <h6 class="m-0 font-weight-bold text-primary"><?= lang('Finance.chart_revenue_vs_expenses') ?></h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-area">
@@ -140,7 +140,7 @@
         <div class="col-xl-4 col-lg-5">
             <div class="card shadow">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Expense Breakdown</h6>
+                    <h6 class="m-0 font-weight-bold text-primary"><?= lang('Finance.chart_expense_breakdown') ?></h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-pie pt-4 pb-2">
@@ -148,13 +148,13 @@
                     </div>
                     <div class="mt-4 text-center small">
                         <span class="mr-2">
-                            <i class="fas fa-circle text-primary"></i> Operational
+                            <i class="fas fa-circle text-primary"></i> <?= lang('Finance.expense_cat_operational') ?>
                         </span>
                         <span class="mr-2">
-                            <i class="fas fa-circle text-success"></i> Maintenance
+                            <i class="fas fa-circle text-success"></i> <?= lang('Finance.expense_cat_maintenance') ?>
                         </span>
                         <span class="mr-2">
-                            <i class="fas fa-circle text-info"></i> Administrative
+                            <i class="fas fa-circle text-info"></i> <?= lang('Finance.expense_cat_administrative') ?>
                         </span>
                     </div>
                 </div>
@@ -169,7 +169,7 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-arrow-up me-2"></i>Income Reports
+                        <i class="fas fa-arrow-up me-2"></i><?= lang('Finance.reports_income_section') ?>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -185,8 +185,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Customer Revenue Analysis</h6>
-                                <p class="mb-1 text-muted">Revenue by customer and contract type</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_customer_revenue') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_customer_revenue_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-success" onclick="generateReport('customer_revenue')">
                                 <i class="fas fa-download"></i>
@@ -194,8 +194,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Service Revenue Report</h6>
-                                <p class="mb-1 text-muted">Revenue from rental and service operations</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_service_revenue') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_service_revenue_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-success" onclick="generateReport('service_revenue')">
                                 <i class="fas fa-download"></i>
@@ -211,15 +211,15 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-danger">
-                        <i class="fas fa-arrow-down me-2"></i>Expense Reports
+                        <i class="fas fa-arrow-down me-2"></i><?= lang('Finance.reports_expense_section') ?>
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Operational Expenses</h6>
-                                <p class="mb-1 text-muted">Daily operational costs and expenses</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_operational_expenses') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_operational_expenses_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-danger" onclick="generateReport('operational_expenses')">
                                 <i class="fas fa-download"></i>
@@ -227,8 +227,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Maintenance Costs</h6>
-                                <p class="mb-1 text-muted">Equipment maintenance and repair costs</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_maintenance_costs') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_maintenance_costs_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-danger" onclick="generateReport('maintenance_costs')">
                                 <i class="fas fa-download"></i>
@@ -236,8 +236,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Administrative Expenses</h6>
-                                <p class="mb-1 text-muted">Office and administrative costs</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_admin_expenses') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_admin_expenses_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-danger" onclick="generateReport('admin_expenses')">
                                 <i class="fas fa-download"></i>
@@ -253,15 +253,15 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-chart-line me-2"></i>Analysis Reports
+                        <i class="fas fa-chart-line me-2"></i><?= lang('Finance.reports_analysis_section') ?>
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Profitability Analysis</h6>
-                                <p class="mb-1 text-muted">Profit margins and ROI analysis</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_profitability') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_profitability_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-info" onclick="generateReport('profitability')">
                                 <i class="fas fa-download"></i>
@@ -269,8 +269,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Cost Center Analysis</h6>
-                                <p class="mb-1 text-muted">Cost allocation by department</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_cost_center') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_cost_center_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-info" onclick="generateReport('cost_center')">
                                 <i class="fas fa-download"></i>
@@ -278,8 +278,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Trend Analysis</h6>
-                                <p class="mb-1 text-muted">Financial trends and forecasting</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_trend_analysis') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_trend_analysis_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-info" onclick="generateReport('trend_analysis')">
                                 <i class="fas fa-download"></i>
@@ -295,15 +295,15 @@
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-file-alt me-2"></i>Tax & Compliance
+                        <i class="fas fa-file-alt me-2"></i><?= lang('Finance.reports_tax_section') ?>
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">VAT Report</h6>
-                                <p class="mb-1 text-muted">Value Added Tax calculations</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_vat') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_vat_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-warning" onclick="generateReport('vat_report')">
                                 <i class="fas fa-download"></i>
@@ -311,8 +311,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Tax Summary</h6>
-                                <p class="mb-1 text-muted">Annual tax summary and obligations</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_tax_summary') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_tax_summary_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-warning" onclick="generateReport('tax_summary')">
                                 <i class="fas fa-download"></i>
@@ -320,8 +320,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Audit Trail</h6>
-                                <p class="mb-1 text-muted">Financial transaction audit log</p>
+                                <h6 class="mb-1"><?= lang('Finance.report_audit_trail') ?></h6>
+                                <p class="mb-1 text-muted"><?= lang('Finance.report_audit_trail_desc') ?></p>
                             </div>
                             <button class="btn btn-sm btn-outline-warning" onclick="generateReport('audit_trail')">
                                 <i class="fas fa-download"></i>
@@ -349,30 +349,30 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="reportType" class="form-label">Report Type *</label>
+                                <label for="reportType" class="form-label"><?= lang('Finance.report_type_label') ?></label>
                                 <select class="form-select" id="reportType" required>
-                                    <option value="">Select Report Type</option>
-                                    <option value="profit_loss">Profit & Loss</option>
-                                    <option value="cash_flow">Cash Flow</option>
-                                    <option value="balance_sheet">Balance Sheet</option>
-                                    <option value="budget_analysis">Budget Analysis</option>
-                                    <option value="revenue_analysis">Revenue Analysis</option>
-                                    <option value="expense_analysis">Expense Analysis</option>
+                                    <option value=""><?= lang('Finance.select_report_type') ?></option>
+                                    <option value="profit_loss"><?= lang('Finance.report_profit_loss_short') ?></option>
+                                    <option value="cash_flow"><?= lang('Finance.report_cash_flow') ?></option>
+                                    <option value="balance_sheet"><?= lang('Finance.report_balance_sheet') ?></option>
+                                    <option value="budget_analysis"><?= lang('Finance.report_budget_analysis') ?></option>
+                                    <option value="revenue_analysis"><?= lang('Finance.report_revenue_analysis') ?></option>
+                                    <option value="expense_analysis"><?= lang('Finance.report_expense_analysis') ?></option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="reportPeriod" class="form-label">Period *</label>
+                                <label for="reportPeriod" class="form-label"><?= lang('Finance.period_label') ?></label>
                                 <select class="form-select" id="reportPeriod" required>
-                                    <option value="">Select Period</option>
-                                    <option value="current_month">Current Month</option>
-                                    <option value="last_month">Last Month</option>
-                                    <option value="current_quarter">Current Quarter</option>
-                                    <option value="last_quarter">Last Quarter</option>
-                                    <option value="current_year">Current Year</option>
-                                    <option value="last_year">Last Year</option>
-                                    <option value="custom">Custom Date Range</option>
+                                    <option value=""><?= lang('Finance.select_period') ?></option>
+                                    <option value="current_month"><?= lang('Finance.period_current_month') ?></option>
+                                    <option value="last_month"><?= lang('Finance.period_last_month') ?></option>
+                                    <option value="current_quarter"><?= lang('Finance.period_current_quarter') ?></option>
+                                    <option value="last_quarter"><?= lang('Finance.period_last_quarter') ?></option>
+                                    <option value="current_year"><?= lang('Finance.period_current_year') ?></option>
+                                    <option value="last_year"><?= lang('Finance.period_last_year') ?></option>
+                                    <option value="custom"><?= lang('Finance.period_custom_range') ?></option>
                                 </select>
                             </div>
                         </div>
@@ -380,13 +380,13 @@
                     <div class="row" id="customDateRange" style="display: none;">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="startDate" class="form-label">Start Date</label>
+                                <label for="startDate" class="form-label"><?= lang('Common.start_date') ?></label>
                                 <input type="date" class="form-control" id="startDate">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="endDate" class="form-label">End Date</label>
+                                <label for="endDate" class="form-label"><?= lang('Common.end_date') ?></label>
                                 <input type="date" class="form-control" id="endDate">
                             </div>
                         </div>
@@ -394,22 +394,22 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="reportFormat" class="form-label">Format *</label>
+                                <label for="reportFormat" class="form-label"><?= lang('Finance.format_label') ?></label>
                                 <select class="form-select" id="reportFormat" required>
-                                    <option value="">Select Format</option>
-                                    <option value="pdf">PDF Document</option>
-                                    <option value="excel">Excel Spreadsheet</option>
-                                    <option value="csv">CSV File</option>
+                                    <option value=""><?= lang('Finance.select_format') ?></option>
+                                    <option value="pdf"><?= lang('Finance.format_pdf') ?></option>
+                                    <option value="excel"><?= lang('Finance.format_excel') ?></option>
+                                    <option value="csv"><?= lang('Finance.format_csv') ?></option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="reportDetail" class="form-label">Detail Level</label>
+                                <label for="reportDetail" class="form-label"><?= lang('Finance.detail_level') ?></label>
                                 <select class="form-select" id="reportDetail">
-                                    <option value="summary">Summary</option>
-                                    <option value="detailed">Detailed</option>
-                                    <option value="comprehensive">Comprehensive</option>
+                                    <option value="summary"><?= lang('Finance.detail_summary') ?></option>
+                                    <option value="detailed"><?= lang('Finance.detail_detailed') ?></option>
+                                    <option value="comprehensive"><?= lang('Finance.detail_comprehensive') ?></option>
                                 </select>
                             </div>
                         </div>
@@ -417,9 +417,9 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                 <button type="button" class="btn btn-primary" onclick="generateCustomReportNow()">
-                    <i class="fas fa-cog me-2"></i>Generate Report
+                    <i class="fas fa-cog me-2"></i><?= lang('Finance.generate_report') ?>
                 </button>
             </div>
         </div>
@@ -428,9 +428,31 @@
 
 <?= $this->endSection() ?>
 
+<?php
+$reportsJsI18n = [
+    'revenue' => lang('Finance.chart_label_revenue'),
+    'expenses' => lang('Finance.chart_label_expenses'),
+    'op' => lang('Finance.expense_cat_operational'),
+    'maint' => lang('Finance.expense_cat_maintenance'),
+    'admin' => lang('Finance.expense_cat_administrative'),
+    'chartMonths' => explode(',', lang('Finance.report_demo_month_labels')),
+    'notifGenerating' => lang('Finance.notif_generating_report'),
+    'notifReady' => lang('Finance.notif_report_ready'),
+    'notifCustomGen' => lang('Finance.notif_custom_report_generating'),
+    'notifCustomReady' => lang('Finance.notif_custom_report_ready'),
+    'notifRefresh' => lang('Finance.notif_refreshing_reports'),
+    'notifExport' => lang('Finance.notif_exporting_reports'),
+    'typeInfo' => lang('Finance.notif_type_info'),
+    'typeSuccess' => lang('Finance.notif_type_success'),
+    'typeWarning' => lang('Finance.notif_type_warning'),
+    'typeError' => lang('Finance.notif_type_error'),
+];
+?>
 <?= $this->section('javascript') ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const reportsI18n = <?= json_encode($reportsJsI18n, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
 $(document).ready(function() {
     initializeCharts();
     
@@ -450,16 +472,16 @@ function initializeCharts() {
     new Chart(revenueExpenseCtx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            labels: reportsI18n.chartMonths,
             datasets: [{
-                label: 'Revenue',
+                label: reportsI18n.revenue,
                 data: [250, 280, 320, 290, 310, 340, 360, 380, 350, 390, 410, 450],
                 borderColor: '#1cc88a',
                 backgroundColor: 'rgba(28, 200, 138, 0.1)',
                 borderWidth: 2,
                 fill: true
             }, {
-                label: 'Expenses',
+                label: reportsI18n.expenses,
                 data: [120, 140, 160, 130, 150, 170, 180, 190, 175, 195, 205, 225],
                 borderColor: '#e74a3b',
                 backgroundColor: 'rgba(231, 74, 59, 0.1)',
@@ -498,7 +520,7 @@ function initializeCharts() {
     new Chart(expenseBreakdownCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Operational', 'Maintenance', 'Administrative'],
+            labels: [reportsI18n.op, reportsI18n.maint, reportsI18n.admin],
             datasets: [{
                 data: [60, 25, 15],
                 backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc'],
@@ -527,11 +549,11 @@ function initializeCharts() {
 }
 
 function generateReport(reportType) {
-    showNotification('Generating ' + reportType.replace('_', ' ') + ' report...', 'info');
+    showNotification(reportsI18n.notifGenerating, 'info');
     
     // Simulate report generation
     setTimeout(() => {
-        showNotification('Report generated successfully!', 'success');
+        showNotification(reportsI18n.notifReady, 'success');
     }, 2000);
 }
 
@@ -555,33 +577,36 @@ function generateCustomReportNow() {
     };
 
     $('#customReportModal').modal('hide');
-    showNotification('Generating custom financial report...', 'info');
+    showNotification(reportsI18n.notifCustomGen, 'info');
     
     // Simulate custom report generation
     setTimeout(() => {
-        showNotification('Custom report generated successfully!', 'success');
+        showNotification(reportsI18n.notifCustomReady, 'success');
     }, 3000);
 }
 
 function refreshReports() {
-    showNotification('Refreshing financial reports...', 'info');
+    showNotification(reportsI18n.notifRefresh, 'info');
     setTimeout(() => {
         location.reload();
     }, 1000);
 }
 
 function exportAllReports() {
-    showNotification('Exporting all financial reports...', 'info');
+    showNotification(reportsI18n.notifExport, 'info');
 }
 
 function showNotification(message, type) {
     const alertClass = type === 'success' ? 'alert-success' : 
                       type === 'error' ? 'alert-danger' : 
                       type === 'warning' ? 'alert-warning' : 'alert-info';
+    const typeLabel = type === 'success' ? reportsI18n.typeSuccess :
+        type === 'error' ? reportsI18n.typeError :
+        type === 'warning' ? reportsI18n.typeWarning : reportsI18n.typeInfo;
     
     const notification = `
         <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-            <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
+            <strong>${typeLabel}!</strong> ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;

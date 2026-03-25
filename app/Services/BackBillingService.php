@@ -53,7 +53,11 @@ class BackBillingService
             ubs.last_billed_date,
             ubs.monthly_rate,
             k.no_kontrak,
-            k.end_date as contract_end_date,
+            k.rental_type,
+            k.tanggal_berakhir as contract_end_date,
+            k.actual_return_date,
+            k.estimated_duration_days,
+            k.payment_due_day,
             c.customer_name,
             u.nomor_unit
         ');
@@ -66,6 +70,9 @@ class BackBillingService
         
         // Next billing date is in the past (overdue)
         $builder->where('ubs.next_billing_date <', date('Y-m-d'));
+        
+        // DAILY_SPOT: one-time billing handled separately, skip from cycle detection
+        $builder->where('k.rental_type !=', 'DAILY_SPOT');
         
         // Optional: filter by contract
         if ($contractId) {
@@ -84,17 +91,18 @@ class BackBillingService
             
             foreach ($missingPeriods as $period) {
                 $missingInvoices[] = [
-                    'schedule_id' => $schedule['schedule_id'],
-                    'contract_id' => $schedule['contract_id'],
+                    'schedule_id'     => $schedule['schedule_id'],
+                    'contract_id'     => $schedule['contract_id'],
                     'contract_number' => $schedule['no_kontrak'],
-                    'customer_name' => $schedule['customer_name'],
-                    'unit_id' => $schedule['unit_id'],
-                    'unit_number' => $schedule['nomor_unit'],
-                    'billing_method' => $schedule['billing_method'],
-                    'period_start' => $period['period_start'],
-                    'period_end' => $period['period_end'],
-                    'monthly_rate' => $schedule['monthly_rate'],
-                    'days_overdue' => $this->calculateDaysOverdue($period['period_end']),
+                    'rental_type'     => $schedule['rental_type'],
+                    'customer_name'   => $schedule['customer_name'],
+                    'unit_id'         => $schedule['unit_id'],
+                    'unit_number'     => $schedule['nomor_unit'],
+                    'billing_method'  => $schedule['billing_method'],
+                    'period_start'    => $period['period_start'],
+                    'period_end'      => $period['period_end'],
+                    'monthly_rate'    => $schedule['monthly_rate'],
+                    'days_overdue'    => $this->calculateDaysOverdue($period['period_end']),
                     'estimated_amount' => $period['estimated_amount']
                 ];
             }
@@ -126,9 +134,13 @@ class BackBillingService
             // Calculate period end based on billing method
             $periodEnd = $this->calculatePeriodEnd($currentStart, $schedule['billing_method']);
             
-            // Don't exceed contract end date
-            if ($schedule['contract_end_date'] && $periodEnd > $schedule['contract_end_date']) {
-                $periodEnd = $schedule['contract_end_date'];
+            // PO_ONLY: no fixed end date — cap only at today, not contract_end_date
+            $rentalType = $schedule['rental_type'] ?? 'CONTRACT';
+            if ($rentalType !== 'PO_ONLY') {
+                // Don't exceed contract end date for CONTRACT and DAILY_SPOT
+                if ($schedule['contract_end_date'] && $periodEnd > $schedule['contract_end_date']) {
+                    $periodEnd = $schedule['contract_end_date'];
+                }
             }
             
             // Calculate billing amount using BillingCalculator
@@ -248,6 +260,19 @@ class BackBillingService
                 // Generate invoice number
                 $invoiceNumber = $this->invoiceModel->generateInvoiceNumber();
                 
+                // Rental type determines invoice type and description label
+                $rentalType  = $group['units'][0]['rental_type'] ?? 'CONTRACT';
+                $invoiceType = match($rentalType) {
+                    'PO_ONLY'    => 'PO_BILLING',
+                    'DAILY_SPOT' => 'SPOT_BILLING',
+                    default      => 'BACK_BILLING',
+                };
+                $periodLabel = match($rentalType) {
+                    'PO_ONLY'    => 'PO Billing for period',
+                    'DAILY_SPOT' => 'Spot Rental Billing',
+                    default      => 'Back-billing for period',
+                };
+                
                 // Calculate totals
                 $subtotal = array_sum(array_column($group['units'], 'estimated_amount'));
                 $taxPercent = $options['tax_percent'] ?? 11.00;
@@ -260,7 +285,7 @@ class BackBillingService
                     'contract_id' => $contractId,
                     'di_id' => null,
                     'customer_id' => $group['customer_id'],
-                    'invoice_type' => 'BACK_BILLING',
+                    'invoice_type'           => $invoiceType,
                     'billing_period_start' => $group['period_start'],
                     'billing_period_end' => $group['period_end'],
                     'issue_date' => date('Y-m-d'),
@@ -271,7 +296,7 @@ class BackBillingService
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
                     'status' => $options['auto_approve'] ?? false ? 'APPROVED' : 'DRAFT',
-                    'notes' => "Back-billing for period {$group['period_start']} to {$group['period_end']}. Created via auto-detection.",
+                    'notes' => "{$periodLabel} {$group['period_start']} to {$group['period_end']}. Created via auto-detection.",
                     'created_by' => $userId
                 ];
                 
@@ -327,9 +352,10 @@ class BackBillingService
             if (!isset($groups[$key])) {
                 $groups[$key] = [
                     'period_start' => $invoice['period_start'],
-                    'period_end' => $invoice['period_end'],
-                    'customer_id' => $invoice['contract_id'], // Will be fetched from contract
-                    'units' => []
+                    'period_end'   => $invoice['period_end'],
+                    'customer_id'  => $invoice['contract_id'], // Will be fetched from contract
+                    'rental_type'  => $invoice['rental_type'] ?? 'CONTRACT',
+                    'units'        => []
                 ];
             }
             
@@ -351,11 +377,12 @@ class BackBillingService
         $invoiceItemModel = new \App\Models\InvoiceItemModel();
         
         foreach ($units as $unit) {
+            $rentalType = $unit['rental_type'] ?? 'CONTRACT';
             $invoiceItemModel->insert([
                 'invoice_id' => $invoiceId,
                 'item_type' => 'RENTAL',
                 'unit_id' => $unit['unit_id'],
-                'description' => "Rental - {$unit['unit_number']} ({$unit['billing_method']})",
+                'description' => "Rental ({$rentalType}) - {$unit['unit_number']} ({$unit['billing_method']})",
                 'quantity' => 1,
                 'unit_price' => $unit['estimated_amount'],
                 'subtotal' => $unit['estimated_amount'],

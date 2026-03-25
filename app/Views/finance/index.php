@@ -72,13 +72,13 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-1 text-gray-800">
-                <i class="fas fa-chart-line text-primary me-2"></i>Finance Dashboard
+                <i class="fas fa-chart-line text-primary me-2"></i><?= lang('Finance.finance_dashboard') ?>
             </h1>
-            <p class="text-muted mb-0">Monitor invoice, billing schedules, dan contract linkage</p>
+            <p class="text-muted mb-0"><?= lang('Finance.finance_monitor_subtitle') ?></p>
         </div>
         <div>
             <button class="btn btn-primary" onclick="window.location.href='<?= base_url('finance/invoices') ?>'">
-                <i class="fas fa-file-invoice me-2"></i>Invoice Management
+                <i class="fas fa-file-invoice me-2"></i><?= lang('Finance.invoice_management') ?>
             </button>
         </div>
     </div>
@@ -90,14 +90,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="text-muted mb-1 small">Unlinked DIs</p>
+                            <p class="text-muted mb-1 small"><?= lang('Finance.unlinked_dis') ?></p>
                             <h3 class="mb-0 fw-bold text-warning"><?= count($unlinked_deliveries ?? []) ?></h3>
                         </div>
                         <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
                             <i class="fas fa-file-circle-exclamation"></i>
                         </div>
                     </div>
-                    <small class="text-muted">Menunggu contract linking</small>
+                    <small class="text-muted"><?= lang('Finance.waiting_contract_linking') ?></small>
                 </div>
             </div>
         </div>
@@ -107,14 +107,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="text-muted mb-1 small">Upcoming Invoices</p>
+                            <p class="text-muted mb-1 small"><?= lang('Finance.upcoming_invoices') ?></p>
                             <h3 class="mb-0 fw-bold text-info"><?= count($upcoming_invoices ?? []) ?></h3>
                         </div>
                         <div class="kpi-icon bg-info bg-opacity-10 text-info">
                             <i class="fas fa-calendar-days"></i>
                         </div>
                     </div>
-                    <small class="text-muted">7 hari ke depan</small>
+                    <small class="text-muted"><?= lang('Finance.next_7_days') ?></small>
                 </div>
             </div>
         </div>
@@ -124,14 +124,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="text-muted mb-1 small">Overdue Invoices</p>
+                            <p class="text-muted mb-1 small"><?= lang('Finance.overdue_invoices') ?></p>
                             <h3 class="mb-0 fw-bold text-danger"><?= count($overdue_invoices ?? []) ?></h3>
                         </div>
                         <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
                             <i class="fas fa-clock"></i>
                         </div>
                     </div>
-                    <small class="text-muted">Lewat jatuh tempo</small>
+                    <small class="text-muted"><?= lang('Finance.past_due') ?></small>
                 </div>
             </div>
         </div>
@@ -141,14 +141,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="text-muted mb-1 small">Draft Invoices</p>
+                            <p class="text-muted mb-1 small"><?= lang('Finance.draft_invoices') ?></p>
                             <h3 class="mb-0 fw-bold text-secondary"><?= count($draft_invoices ?? []) ?></h3>
                         </div>
                         <div class="kpi-icon bg-secondary bg-opacity-10 text-secondary">
                             <i class="fas fa-file-lines"></i>
                         </div>
                     </div>
-                    <small class="text-muted">Perlu approval</small>
+                    <small class="text-muted"><?= lang('Finance.needs_approval') ?></small>
                 </div>
             </div>
         </div>
@@ -162,30 +162,30 @@
                 <div class="card-header bg-transparent border-bottom">
                     <h5 class="mb-0">
                         <i class="fas fa-triangle-exclamation text-warning me-2"></i>
-                        DI Menunggu Contract Linking
+                        <?= lang('Finance.di_waiting_contract_link') ?>
                     </h5>
                 </div>
                 <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                     <?php if (empty($unlinked_deliveries)): ?>
                         <div class="text-center py-5">
                             <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
-                            <p class="text-muted mb-0">Semua DI sudah ter-link ke kontrak</p>
+                            <p class="text-muted mb-0"><?= lang('Finance.all_dis_linked') ?></p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($unlinked_deliveries as $di): 
                             $daysPending = $di['days_pending'];
                             $urgencyClass = 'alert-widget-info';
                             $urgencyBadge = 'urgency-medium';
-                            $urgencyText = 'Normal';
+                            $urgencyText = lang('Finance.urgency_normal');
                             
                             if ($daysPending > 14) {
                                 $urgencyClass = 'alert-widget-danger';
                                 $urgencyBadge = 'urgency-critical';
-                                $urgencyText = 'Critical';
+                                $urgencyText = lang('Finance.urgency_critical');
                             } elseif ($daysPending > 7) {
                                 $urgencyClass = 'alert-widget-warning';
                                 $urgencyBadge = 'urgency-high';
-                                $urgencyText = 'High Priority';
+                                $urgencyText = lang('Finance.urgency_high');
                             }
                         ?>
                             <div class="alert-widget <?= $urgencyClass ?> p-3 mb-3 rounded">
@@ -196,26 +196,26 @@
                                                 <?= esc($di['nomor_di']) ?>
                                             </a>
                                         </h6>
-                                        <small class="text-muted">SPK: <?= esc($di['nomor_spk'] ?? '-') ?></small>
+                                        <small class="text-muted"><?= lang('Finance.spk_label') ?>: <?= esc($di['nomor_spk'] ?? '-') ?></small>
                                     </div>
                                     <span class="badge days-badge <?= $urgencyBadge ?>">
-                                        <?= $daysPending ?> hari
+                                        <?= str_replace('{count}', (string) $daysPending, lang('Finance.days_pending')) ?>
                                     </span>
                                 </div>
                                 <p class="mb-2 small">
                                     <i class="fas fa-building me-1"></i>
-                                    <strong>Customer:</strong> <?= esc($di['pelanggan']) ?>
+                                    <strong><?= lang('Finance.customer_label') ?>:</strong> <?= esc($di['pelanggan']) ?>
                                 </p>
                                 <p class="mb-2 small">
                                     <i class="fas fa-calendar me-1"></i>
-                                    <strong>Created:</strong> <?= date('d M Y', strtotime($di['dibuat_pada'])) ?>
+                                    <strong><?= lang('Finance.created_label') ?>:</strong> <?= date('d M Y', strtotime($di['dibuat_pada'])) ?>
                                 </p>
                                 <div class="d-flex gap-2 mt-2">
                                     <button class="btn btn-sm btn-primary" onclick="showLinkModal(<?= $di['spk_id'] ?>, <?= $di['id'] ?>)">
-                                        <i class="fas fa-link me-1"></i>Link to Contract
+                                        <i class="fas fa-link me-1"></i><?= lang('Finance.link_to_contract') ?>
                                     </button>
                                     <a href="<?= base_url('marketing/di/detail/' . $di['id']) ?>" class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-eye me-1"></i>View
+                                        <i class="fas fa-eye me-1"></i><?= lang('Common.view') ?>
                                     </a>
                                 </div>
                             </div>
@@ -231,26 +231,26 @@
                 <div class="card-header bg-transparent border-bottom">
                     <h5 class="mb-0">
                         <i class="fas fa-calendar-check text-info me-2"></i>
-                        Upcoming Recurring Invoices
+                        <?= lang('Finance.upcoming_recurring_invoices') ?>
                     </h5>
                 </div>
                 <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                     <?php if (empty($upcoming_invoices)): ?>
                         <div class="text-center py-5">
                             <i class="fas fa-calendar text-muted fa-3x mb-3"></i>
-                            <p class="text-muted mb-0">Tidak ada invoice yang akan jatuh tempo dalam 7 hari</p>
+                            <p class="text-muted mb-0"><?= lang('Finance.no_upcoming_invoices_7d') ?></p>
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
                             <table class="table table-compact table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Contract</th>
-                                        <th>Customer</th>
-                                        <th>Due Date</th>
-                                        <th>Days</th>
-                                        <th>Frequency</th>
-                                        <th>Action</th>
+                                        <th><?= lang('Finance.contract') ?></th>
+                                        <th><?= lang('Finance.customer_label') ?></th>
+                                        <th><?= lang('Finance.due_date') ?></th>
+                                        <th><?= lang('Finance.days') ?></th>
+                                        <th><?= lang('Finance.frequency') ?></th>
+                                        <th><?= lang('Common.action') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -267,7 +267,7 @@
                                                 <small><?= date('d M Y', strtotime($invoice['next_billing_date'])) ?></small>
                                             </td>
                                             <td>
-                                                <span class="badge <?= $badgeClass ?>"><?= $daysUntil ?>d</span>
+                                                <span class="badge <?= $badgeClass ?>"><?= str_replace('{n}', (string) $daysUntil, lang('Finance.days_abbr')) ?></span>
                                             </td>
                                             <td>
                                                 <small class="text-muted"><?= esc($invoice['frequency']) ?></small>
@@ -295,7 +295,7 @@
                 <div class="card-header bg-transparent border-bottom">
                     <h5 class="mb-0">
                         <i class="fas fa-clock-rotate-left text-secondary me-2"></i>
-                        Quick Actions
+                        <?= lang('Finance.quick_actions') ?>
                     </h5>
                 </div>
                 <div class="card-body">
@@ -304,8 +304,8 @@
                             <a href="<?= base_url('finance/invoices') ?>" class="text-decoration-none">
                                 <div class="p-3 border rounded hover-shadow">
                                     <i class="fas fa-file-invoice text-primary fa-2x mb-2"></i>
-                                    <h6>Manage Invoices</h6>
-                                    <small class="text-muted">View all invoices</small>
+                                    <h6><?= lang('Finance.manage_invoices_card') ?></h6>
+                                    <small class="text-muted"><?= lang('Finance.manage_invoices_desc') ?></small>
                                 </div>
                             </a>
                         </div>
@@ -313,8 +313,8 @@
                             <a href="javascript:void(0)" onclick="batchGenerateInvoices()" class="text-decoration-none">
                                 <div class="p-3 border rounded hover-shadow">
                                     <i class="fas fa-gears text-success fa-2x mb-2"></i>
-                                    <h6>Batch Generate</h6>
-                                    <small class="text-muted">Generate due invoices</small>
+                                    <h6><?= lang('Finance.batch_generate_card') ?></h6>
+                                    <small class="text-muted"><?= lang('Finance.batch_generate_desc') ?></small>
                                 </div>
                             </a>
                         </div>
@@ -322,8 +322,8 @@
                             <a href="<?= base_url('marketing/spk') ?>" class="text-decoration-none">
                                 <div class="p-3 border rounded hover-shadow">
                                     <i class="fas fa-link text-warning fa-2x mb-2"></i>
-                                    <h6>SPK Linking</h6>
-                                    <small class="text-muted">Link SPK to contracts</small>
+                                    <h6><?= lang('Finance.spk_linking_card') ?></h6>
+                                    <small class="text-muted"><?= lang('Finance.spk_linking_desc') ?></small>
                                 </div>
                             </a>
                         </div>
@@ -331,8 +331,8 @@
                             <a href="<?= base_url('finance/reports') ?>" class="text-decoration-none">
                                 <div class="p-3 border rounded hover-shadow">
                                     <i class="fas fa-chart-bar text-info fa-2x mb-2"></i>
-                                    <h6>Reports</h6>
-                                    <small class="text-muted">Financial reports</small>
+                                    <h6><?= lang('Finance.reports_card') ?></h6>
+                                    <small class="text-muted"><?= lang('Finance.reports_card_desc') ?></small>
                                 </div>
                             </a>
                         </div>
@@ -349,7 +349,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-link me-2"></i>Link SPK to Contract
+                    <i class="fas fa-link me-2"></i><?= lang('Finance.link_spk_to_contract') ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -359,28 +359,28 @@
                     <input type="hidden" id="link_di_id" name="di_id">
                     
                     <div class="mb-3">
-                        <label class="form-label">Select Contract</label>
+                        <label class="form-label"><?= lang('Finance.select_contract_label') ?></label>
                         <select class="form-select" id="link_contract_id" name="contract_id" required>
-                            <option value="">-- Select Contract --</option>
+                            <option value=""><?= lang('Finance.select_contract_placeholder') ?></option>
                         </select>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">BAST Date (Optional)</label>
+                        <label class="form-label"><?= lang('Finance.bast_date_optional') ?></label>
                         <input type="date" class="form-control" id="link_bast_date" name="bast_date">
-                        <small class="text-muted">Berita Acara Serah Terima date</small>
+                        <small class="text-muted"><?= lang('Finance.bast_date_hint') ?></small>
                     </div>
                     
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Linking SPK to contract will unlock invoice generation for all related DIs.
+                        <?= lang('Finance.link_spk_unlock_info') ?>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                 <button type="button" class="btn btn-primary" onclick="submitLinkContract()">
-                    <i class="fas fa-link me-2"></i>Link Contract
+                    <i class="fas fa-link me-2"></i><?= lang('Finance.link_contract') ?>
                 </button>
             </div>
         </div>
@@ -389,8 +389,26 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?php
+$financeDashJs = [
+    'selectContractPh' => lang('Finance.select_contract_placeholder'),
+    'disUpdated' => lang('Finance.dis_updated_unlock'),
+    'errorPrefix' => lang('Finance.error_prefix_plain'),
+    'linkFailed' => lang('Finance.link_contract_failed'),
+    'genInvoiceTitle' => lang('Finance.generate_invoice_confirm'),
+    'genInvoiceText' => lang('Finance.generate_invoice_for_schedule'),
+    'yesGenerate' => lang('Finance.yes_generate'),
+    'cancel' => lang('Common.cancel'),
+    'invoiceGenerated' => lang('Finance.invoice_generated_number'),
+    'batchTitle' => lang('Finance.generate_all_invoices_confirm'),
+    'batchText' => lang('Finance.all_due_schedules_processed'),
+    'yesGenerateAll' => lang('Finance.yes_generate_all'),
+];
+?>
+<?= $this->section('javascript') ?>
 <script>
+const financeDashI18n = <?= json_encode($financeDashJs, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
 // Show link modal
 function showLinkModal(spkId, diId) {
     document.getElementById('link_spk_id').value = spkId;
@@ -401,7 +419,7 @@ function showLinkModal(spkId, diId) {
         .then(response => response.json())
         .then(data => {
             const select = document.getElementById('link_contract_id');
-            select.innerHTML = '<option value="">-- Select Contract --</option>';
+            select.innerHTML = '<option value="">' + financeDashI18n.selectContractPh + '</option>';
             
             if (data.success && data.data) {
                 data.data.forEach(contract => {
@@ -445,11 +463,11 @@ function submitLinkContract() {
 
 function generateRecurringInvoice(scheduleId) {
     OptimaConfirm.generic({
-        title: 'Generate Invoice?',
-        text: 'Invoice akan digenerate untuk jadwal ini.',
+        title: financeDashI18n.genInvoiceTitle,
+        text: financeDashI18n.genInvoiceText,
         icon: 'question',
-        confirmText: 'Ya, Generate!',
-        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        confirmText: financeDashI18n.yesGenerate,
+        cancelText: financeDashI18n.cancel,
         confirmButtonColor: 'primary',
         onConfirm: function() {
             const formData = new FormData();
@@ -463,10 +481,10 @@ function generateRecurringInvoice(scheduleId) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    OptimaNotify.success(`Invoice generated: ${data.invoice_number}`);
+                    OptimaNotify.success(financeDashI18n.invoiceGenerated.replace('{number}', data.invoice_number));
                     location.reload();
                 } else {
-                    OptimaNotify.error('Error: ' + data.message);
+                    OptimaNotify.error(financeDashI18n.errorPrefix + ' ' + (data.message || ''));
                 }
             });
         }
@@ -475,11 +493,11 @@ function generateRecurringInvoice(scheduleId) {
 
 function batchGenerateInvoices() {
     OptimaConfirm.generic({
-        title: 'Generate Semua Invoice?',
-        text: 'Semua jadwal yang jatuh tempo akan diproses.',
+        title: financeDashI18n.batchTitle,
+        text: financeDashI18n.batchText,
         icon: 'question',
-        confirmText: 'Ya, Generate Semua!',
-        cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Cancel'),
+        confirmText: financeDashI18n.yesGenerateAll,
+        cancelText: financeDashI18n.cancel,
         confirmButtonColor: 'primary',
         onConfirm: function() {
             fetch('<?= base_url('finance/invoices/batch-generate') ?>', {
@@ -489,10 +507,10 @@ function batchGenerateInvoices() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    OptimaNotify.success(`Berhasil! ${data.message}`);
+                    OptimaNotify.success(data.message || '');
                     location.reload();
                 } else {
-                    OptimaNotify.error('Error: ' + data.message);
+                    OptimaNotify.error(financeDashI18n.errorPrefix + ' ' + (data.message || ''));
                 }
             });
         }

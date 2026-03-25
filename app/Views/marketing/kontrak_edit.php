@@ -39,7 +39,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 
                 <form id="editContractForm">
                     <input type="hidden" id="contractId" value="<?= (int)$contract['id'] ?>">
-                    <input type="hidden" name="customer_id" value="<?= (int)$contract['customer_id'] ?>">
+                    <input type="hidden" name="customer_id" id="hiddenCustomerId" value="<?= (int)$contract['customer_id'] ?>">
                     <?= csrf_field() ?>
 
                     <!-- ROW 1 – Contract No / PO Number -->
@@ -61,10 +61,15 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editCustomerSelect" disabled>
+                            <?php $hasCustomer = !empty($contract['customer_id']); ?>
+                            <select class="form-select" id="editCustomerSelect" <?= $hasCustomer ? 'disabled' : '' ?>>
                                 <option value="">Loading customers…</option>
                             </select>
+                            <?php if ($hasCustomer): ?>
                             <small class="text-muted">Customer cannot be changed after contract creation. Location is now tracked per unit.</small>
+                            <?php else: ?>
+                            <small class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Customer belum diisi. Silakan pilih customer untuk kontrak ini.</small>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -188,6 +193,10 @@ function loadCustomers() {
         if (contractCustomerId) {
             $('#editCustomerSelect').val(contractCustomerId);
         }
+        // Sync hidden input when user changes customer
+        $('#editCustomerSelect').on('change', function() {
+            $('#hiddenCustomerId').val($(this).val());
+        });
     }).fail(function() {
         $('#editCustomerSelect').html('<option value="">Error loading customers</option>');
     });

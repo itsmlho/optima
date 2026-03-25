@@ -249,6 +249,55 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('get-active-quotations-for-spk', 'Kontrak::getActiveQuotationsForSPK');
         $routes->get('get-quotation-specifications-for-spk/(:num)', 'Kontrak::getQuotationSpecificationsForSPK/$1');
     });
+
+    // RENTAL — alias routes for /marketing/rental/* (mirrors kontrak group)
+    // Old /marketing/kontrak/* URLs kept for backward compat; primary URL is now /marketing/rental/*
+    $routes->addRedirect('marketing/kontrak', 'marketing/rental', 302);
+    $routes->group('rental', static function ($routes) {
+        $routes->get('/', 'Kontrak::index');
+        $routes->post('getDataTable', 'Kontrak::getDataTable');
+        $routes->get('getGrouped', 'Kontrak::getGrouped');
+        $routes->get('generate-number', 'Kontrak::generateNumber');
+        $routes->post('check-duplicate', 'Kontrak::checkDuplicate');
+        $routes->post('store', 'Kontrak::store');
+        $routes->get('edit/(:num)', 'Kontrak::edit/$1');
+        $routes->post('update/(:num)', 'Kontrak::update/$1');
+        $routes->post('delete/(:num)', 'Kontrak::delete/$1');
+        $routes->get('detail/(:num)', 'Kontrak::detail/$1');
+        $routes->get('get/(:num)', 'Kontrak::get/$1');
+        $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
+        $routes->get('customers', 'Kontrak::getCustomers');
+        $routes->get('customers-dropdown', 'Kontrak::getCustomersDropdown');
+        $routes->get('locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
+        $routes->get('stats', 'Kontrak::getStats');
+        $routes->get('export', 'Kontrak::export');
+        $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
+        $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
+        $routes->get('spesifikasi-detail/(:num)', 'Kontrak::spesifikasiDetail/$1');
+        $routes->post('update-spesifikasi/(:num)', 'Kontrak::updateSpesifikasi/$1');
+        $routes->post('delete-spesifikasi/(:num)', 'Kontrak::deleteSpesifikasi/$1');
+        $routes->get('available-units/(:num)', 'Kontrak::getAvailableUnits/$1');
+        $routes->post('assign-units', 'Kontrak::assignUnitsToSpesifikasi');
+        $routes->get('inventory-status/(:num)', 'Kontrak::getInventoryStatus/$1');
+        $routes->get('getContractHistory/(:num)', 'Kontrak::getContractHistory/$1');
+        $routes->get('getRateHistory/(:num)', 'Kontrak::getRateHistory/$1');
+        $routes->get('getRateHistory', 'Kontrak::getRateHistory');
+        $routes->post('bulk-fix-inventory-status', 'Kontrak::bulkFixInventoryStatus');
+        $routes->post('trigger-status-update/(:num)', 'Kontrak::triggerStatusUpdateAfterWorkflow/$1');
+        $routes->post('link-fabrication-attachments/(:num)', 'Kontrak::linkFabricationAttachments/$1');
+        $routes->get('documents/(:num)', 'Kontrak::documents/$1');
+        $routes->post('deleteDocument/(:num)', 'Kontrak::deleteDocument/$1');
+        $routes->get('getExpiringContracts', 'Kontrak::getExpiringContracts');
+        $routes->get('getAllContracts', 'Kontrak::getAllContracts');
+        $routes->get('getAllUnits', 'Kontrak::getAllUnits');
+        $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
+        $routes->get('get-contracts-for-tarik', 'Marketing::getContractsForTarik');
+        $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
+        $routes->get('find-by-spesifikasi/(:num)', 'Marketing::findBySpesifikasi/$1');
+        $routes->get('get-active-quotations-for-spk', 'Kontrak::getActiveQuotationsForSPK');
+        $routes->get('get-quotation-specifications-for-spk/(:num)', 'Kontrak::getQuotationSpecificationsForSPK/$1');
+    });
+
     // SPK Marketing
     $routes->get('spk', 'Marketing::spk');
     $routes->match(['get', 'post'], 'spk/list', 'Marketing::spkList'); // Support both GET and POST for date filtering

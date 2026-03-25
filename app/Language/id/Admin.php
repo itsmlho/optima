@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * Indonesian — Admin module UI
+ */
+
+return [
+    'system_administration' => 'Administrasi Sistem',
+    'manage_system_settings' => 'Kelola pengaturan dan konfigurasi sistem',
+    'online' => 'ONLINE',
+    'offline' => 'OFFLINE',
+    'system_status' => 'Status Sistem',
+    'total_users' => 'Total Pengguna',
+    'database_size' => 'Ukuran Database',
+    'system_load' => 'Beban Sistem',
+    'performance_metrics' => 'Metrik Performa',
+    'average_query_time' => 'Rata-rata Waktu Query',
+    'page_load_time' => 'Waktu Muat Halaman',
+    'memory_peak' => 'Puncak Memori',
+    'slow_queries' => 'Query Lambat',
+    'cache_statistics' => 'Statistik Cache',
+    'hit_rate' => 'Tingkat Hit',
+    'total_keys' => 'Total Key',
+    'miss_rate' => 'Tingkat Miss',
+    'memory_usage' => 'Penggunaan Memori',
+    'queue_status' => 'Status Antrian',
+    'unknown' => 'Tidak diketahui',
+    'failed' => 'Gagal',
+    'today' => 'Hari ini',
+    'system_resources' => 'Sumber Daya Sistem',
+    'storage_usage' => 'Penggunaan Penyimpanan',
+    'system_uptime' => 'Uptime Sistem',
+    'user_management' => 'Manajemen Pengguna',
+    'manage_users_roles' => 'Kelola pengguna, peran, dan izin',
+    'role_management' => 'Manajemen Peran',
+    'permission_management' => 'Manajemen Izin',
+    'system_monitoring' => 'Monitoring Sistem',
+    'monitor_activities' => 'Pantau aktivitas dan performa sistem',
+    'activity_log' => 'Log Aktivitas',
+    'notification_center' => 'Pusat Notifikasi',
+    'notification_rules' => 'Aturan Notifikasi',
+    'recent_activities' => 'Aktivitas Terbaru',
+    'time' => 'Waktu',
+    'description' => 'Deskripsi',
+    'no_description' => 'Tidak ada deskripsi',
+    'unknown_user' => 'Pengguna tidak diketahui',
+];

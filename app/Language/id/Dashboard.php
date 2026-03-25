@@ -118,4 +118,15 @@ return [
     'refresh_data' => 'Muat Ulang Data',
     'export_data' => 'Ekspor Data',
     'filter_by' => 'Filter Berdasarkan',
+
+    // Service dashboard
+    'completed_services' => 'Layanan Selesai',
+    'maintenance_alerts' => 'Peringatan Maintenance',
+    'work_orders_trend' => 'Tren Work Order',
+    'service_status' => 'Status Service',
+    'recent_work_orders' => 'Work Order Terbaru',
+    'upcoming_pmps' => 'PMPS Mendatang',
+    'chart_work_orders' => 'Work Order',
+    'chart_completed' => 'Selesai',
+    'chart_pending' => 'Tertunda',
 ];

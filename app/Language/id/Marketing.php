@@ -445,4 +445,89 @@ return [
     'di_retrieval_min_unit' => 'Pilih minimal satu unit untuk ditarik',
     'contract_expired_no_di_alert' => 'Kontrak telah berakhir. Buat DI Penarikan untuk menarik unit.',
     'contract_expired_create_di' => 'Buat DI Penarikan',
+
+    'days_ago'                 => 'hari lalu',
+    'days_left'                => 'hari lagi',
+
+    // Manajemen Rental — Tab & Filter
+    'tab_all_rental'           => 'Semua Rental',
+    'tab_expiring_soon'        => 'Akan Expired',
+    'select_all'               => 'Semua Tipe',
+    'period_filter'            => 'Periode:',
+    'one_month'                => '1 Bulan',
+    'three_months'             => '3 Bulan',
+    'six_months'               => '6 Bulan',
+    'flat_view'                => 'Flat',
+    'by_customer_view'         => 'Per Pelanggan',
+    'loading_data'             => 'Memuat data...',
+    'no_contract_data'         => 'Tidak ada data kontrak',
+    'search_contracts_ph'      => 'Cari nama customer atau nomor kontrak...',
+
+    // Manajemen Rental — Header Tabel
+    'th_contract_po'           => 'Kontrak / PO',
+    'th_type'                  => 'Tipe',
+    'th_billing'               => 'Billing',
+    'th_period_days'           => 'Periode & Sisa Hari',
+    'th_value'                 => 'Nilai',
+
+    // Manajemen Rental — Label Aksi (digunakan di JS bridge)
+    'view_detail'              => 'Lihat Detail',
+    'edit_contract'            => 'Edit Kontrak',
+    'delete_contract'          => 'Hapus Kontrak',
+    'change_rate'              => 'Ubah Tarif',
+    'renewal'                  => 'Perpanjangan',
+    'customers_count'          => 'pelanggan',
+
+    // Manajemen Rental — Deskripsi Invoice (per tipe)
+    'invoice_back_billing'     => 'Back-Billing',
+    'invoice_po_billing'       => 'Tagihan PO',
+    'invoice_spot_billing'     => 'Tagihan Sewa Harian',
+    'invoice_period'           => 'Periode tagihan',
+
+    // Manajemen Rental (menggantikan "Kontrak / PO" — mencakup Contract, PO Bulanan, Harian)
+    'rental_management'        => 'Manajemen Rental',
+    'rental_list'              => 'Daftar Rental',
+    'add_rental'               => 'Tambah Rental',
+    'edit_rental'              => 'Edit Rental',
+    'detail_rental'            => 'Detail Rental',
+    'rental_created'           => 'Rental berhasil ditambahkan',
+    'rental_updated'           => 'Rental berhasil diperbarui',
+    'rental_deleted'           => 'Rental berhasil dihapus',
+
+    // Label Jenis Rental
+    'rental_type_contract'     => 'Contract',
+    'rental_type_po'           => 'PO Bulanan',
+    'rental_type_harian'       => 'Harian',
+
+    // Jenis Rental — Nomor Dokumen
+    'generate_rental_number'   => 'Generate Nomor',
+    'rental_number_label'      => 'Nomor Rental',
+
+    // Jenis Rental — Contract (jangka waktu tetap)
+    'end_date_required'        => 'Tanggal Berakhir wajib diisi untuk jenis sewa ini',
+
+    // Jenis Rental — PO Bulanan (open-ended)
+    'open_ended'               => 'Open-ended',
+    'open_ended_notice'        => 'PO Bulanan tidak memiliki tanggal berakhir tetap. Rental aktif selama PO masih berjalan.',
+    'end_date_optional'        => 'Tanggal Berakhir (Opsional)',
+    'payment_due_day'          => 'Tanggal Jatuh Tempo',
+    'payment_due_day_help'     => 'Tanggal pembayaran tiap bulan (1–31)',
+    'po_history'               => 'Riwayat PO',
+    'next_payment_due'         => 'Jatuh Tempo Berikutnya',
+    'payment_due_day_invalid'  => 'Tanggal jatuh tempo harus antara 1 dan 31',
+
+    // Jenis Rental — Harian (sewa harian singkat, maks. 30 hari)
+    'spot_rental_number'          => 'Nomor Sewa Harian',
+    'estimated_duration_days'     => 'Estimasi Durasi (hari)',
+    'fast_track'                  => 'Fast Track',
+    'actual_return_date'          => 'Tanggal Pengembalian Aktual',
+    'max_duration_notice'         => 'Sewa Harian maksimal {days} hari',
+    'daily_max_duration_exceeded' => 'Durasi tidak boleh melebihi {days} hari untuk sewa Harian',
+    'spot_duration_label'         => '{days} hari',
+    'return_date_recorded'        => 'Tanggal pengembalian tercatat',
+
+    // Jatuh Tempo / Status (sadar tipe)
+    'expiring_soon_excludes_po'   => 'Catatan: Rental PO Bulanan tidak ditampilkan di sini (open-ended)',
+    'contract_end_date_required'  => 'Tanggal berakhir wajib diisi untuk jenis Kontrak dan Harian',
+    'contract_type_notice'        => 'Perjanjian jangka waktu tetap dengan tanggal mulai dan berakhir yang ditentukan',
 ];

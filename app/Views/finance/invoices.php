@@ -37,21 +37,21 @@
                 <div class="col-md-8">
                     <h5 class="card-title text-warning mb-2">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <span id="backBillingCount">0</span> Missing Invoices Detected
+                        <span id="backBillingCount">0</span> <?= lang('Finance.missing_invoices_label') ?>
                     </h5>
                     <p class="card-text mb-0">
-                        <strong id="backBillingContracts">0</strong> contracts have overdue billing periods. 
-                        Total estimated amount: <strong class="text-success">Rp <span id="backBillingAmount">0</span></strong>
+                        <strong id="backBillingContracts">0</strong> <?= lang('Finance.contracts_overdue_suffix') ?>
+                        <?= lang('Finance.total_estimated_amount') ?> <strong class="text-success">Rp <span id="backBillingAmount">0</span></strong>
                         <br>
-                        <small class="text-muted">Oldest overdue: <span id="backBillingOldest">0</span> days</small>
+                        <small class="text-muted"><?= lang('Finance.oldest_overdue_prefix') ?> <span id="backBillingOldest">0</span> <?= lang('Finance.days_suffix') ?></small>
                     </p>
                 </div>
                 <div class="col-md-4 text-end">
                     <button class="btn btn-warning" onclick="showBackBillingModal()">
-                        <i class="fas fa-eye me-2"></i>View Details
+                        <i class="fas fa-eye me-2"></i><?= lang('Finance.view_details') ?>
                     </button>
                     <button class="btn btn-primary" onclick="autoGenerateBackBilling()">
-                        <i class="fas fa-magic me-2"></i>Auto-Generate
+                        <i class="fas fa-magic me-2"></i><?= lang('Finance.auto_generate') ?>
                     </button>
                 </div>
             </div>
@@ -63,32 +63,32 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label fw-semibold small"><i class="fas fa-filter text-primary me-1"></i>Status</label>
+                    <label class="form-label fw-semibold small"><i class="fas fa-filter text-primary me-1"></i><?= lang('Common.status') ?></label>
                     <select class="form-select form-select-sm" id="filter_status">
-                        <option value="">All Status</option>
-                        <option value="DRAFT">Draft</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="SENT">Sent</option>
-                        <option value="PAID">Paid</option>
-                        <option value="OVERDUE">Overdue</option>
-                        <option value="CANCELLED">Cancelled</option>
+                        <option value=""><?= lang('App.all_status') ?></option>
+                        <option value="DRAFT"><?= lang('Finance.draft') ?></option>
+                        <option value="APPROVED"><?= lang('Common.approved') ?></option>
+                        <option value="SENT"><?= lang('Finance.sent') ?></option>
+                        <option value="PAID"><?= lang('Finance.paid') ?></option>
+                        <option value="OVERDUE"><?= lang('Finance.overdue') ?></option>
+                        <option value="CANCELLED"><?= lang('Finance.cancelled') ?></option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-semibold small"><i class="fas fa-tag text-info me-1"></i>Type</label>
+                    <label class="form-label fw-semibold small"><i class="fas fa-tag text-info me-1"></i><?= lang('Common.type') ?></label>
                     <select class="form-select form-select-sm" id="filter_type">
-                        <option value="">All Types</option>
-                        <option value="ONE_TIME">One-Time</option>
-                        <option value="RECURRING">Recurring</option>
+                        <option value=""><?= lang('App.all_types') ?></option>
+                        <option value="ONE_TIME"><?= lang('Finance.invoice_type_one_time') ?></option>
+                        <option value="RECURRING"><?= lang('Finance.invoice_type_recurring') ?></option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold small"><i class="fas fa-calendar text-success me-1"></i>Date Range</label>
-                    <input type="text" class="form-control form-control-sm" id="filter_daterange" placeholder="Select date range">
+                    <label class="form-label fw-semibold small"><i class="fas fa-calendar text-success me-1"></i><?= lang('Finance.date_range') ?></label>
+                    <input type="text" class="form-control form-control-sm" id="filter_daterange" placeholder="<?= lang('Finance.select_date_range') ?>">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary btn-sm w-100" onclick="reloadTable()">
-                        <i class="fas fa-filter me-1"></i>Apply
+                        <i class="fas fa-filter me-1"></i><?= lang('Common.apply') ?>
                     </button>
                 </div>
             </div>
@@ -100,22 +100,22 @@
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-file-invoice me-2 text-primary"></i>Invoice Management
+                    <i class="fas fa-file-invoice me-2 text-primary"></i><?= lang('Finance.invoice_management') ?>
                 </h5>
                 <p class="text-muted small mb-0">
-                    Manage invoices, approvals, dan payment tracking
+                    <?= lang('Finance.invoice_management_subtitle') ?>
                     <span class="ms-2 text-info">
                         <i class="bi bi-info-circle me-1"></i>
-                        <small>Tip: Gunakan filter Status dan Date Range untuk mempersempit daftar</small>
+                        <small><?= lang('Finance.invoices_tip_filter') ?></small>
                     </span>
                 </p>
             </div>
             <div class="d-flex gap-2">
                 <a href="<?= base_url('finance') ?>" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-arrow-left me-1"></i>Dashboard
+                    <i class="fas fa-arrow-left me-1"></i><?= lang('Finance.finance_dashboard_short') ?>
                 </a>
                 <button class="btn btn-success btn-sm" onclick="showGenerateModal()">
-                    <i class="fas fa-plus me-1"></i>Generate Invoice
+                    <i class="fas fa-plus me-1"></i><?= lang('Finance.generate_invoice') ?>
                 </button>
             </div>
         </div>
@@ -124,15 +124,15 @@
                 <table id="invoicesTable" class="table table-hover table-striped mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Invoice No</th>
-                            <th>Customer</th>
-                            <th>Contract</th>
-                            <th>Amount</th>
-                            <th>Issue Date</th>
-                            <th>Due Date</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th class="text-center">Actions</th>
+                            <th><?= lang('Finance.invoice_no') ?></th>
+                            <th><?= lang('Finance.customer_label') ?></th>
+                            <th><?= lang('Finance.contract') ?></th>
+                            <th><?= lang('Common.amount') ?></th>
+                            <th><?= lang('Finance.issue_date') ?></th>
+                            <th><?= lang('Finance.due_date') ?></th>
+                            <th><?= lang('Common.type') ?></th>
+                            <th><?= lang('Common.status') ?></th>
+                            <th class="text-center"><?= lang('Common.actions') ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -149,7 +149,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-file-invoice me-2"></i>Generate Invoice
+                    <i class="fas fa-file-invoice me-2"></i><?= lang('Finance.generate_invoice') ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -157,12 +157,12 @@
                 <ul class="nav nav-tabs mb-3" id="invoiceTypeTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="one-time-tab" data-bs-toggle="tab" data-bs-target="#one-time" type="button">
-                            <i class="fas fa-file me-2"></i>One-Time (from DI)
+                            <i class="fas fa-file me-2"></i><?= lang('Finance.one_time_from_di') ?>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="recurring-tab" data-bs-toggle="tab" data-bs-target="#recurring" type="button">
-                            <i class="fas fa-repeat me-2"></i>Recurring (from Schedule)
+                            <i class="fas fa-repeat me-2"></i><?= lang('Finance.recurring_from_schedule') ?>
                         </button>
                     </li>
                 </ul>
@@ -172,31 +172,31 @@
                     <div class="tab-pane fade show active" id="one-time">
                         <form id="generateOneTimeForm">
                             <div class="mb-3">
-                                <label class="form-label">Select DI <span class="text-danger">*</span></label>
+                                <label class="form-label"><?= lang('Finance.select_di') ?> <span class="text-danger">*</span></label>
                                 <select class="form-select" id="di_id" name="di_id" required>
-                                    <option value="">-- Select Delivery Instruction --</option>
+                                    <option value=""><?= lang('Finance.select_delivery_instruction') ?></option>
                                 </select>
-                                <small class="text-muted">Only completed DIs with contracts</small>
+                                <small class="text-muted"><?= lang('Finance.only_completed_di_contracts') ?></small>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Due Days <span class="text-danger">*</span></label>
+                                <label class="form-label"><?= lang('Finance.due_days') ?> <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" name="due_days" value="30" min="1" max="90" required>
-                                <small class="text-muted">Days until payment due</small>
+                                <small class="text-muted"><?= lang('Finance.days_until_payment_due') ?></small>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Notes (Optional)</label>
+                                <label class="form-label"><?= lang('Finance.notes_optional') ?></label>
                                 <textarea class="form-control" name="notes" rows="2"></textarea>
                             </div>
                             
                             <div id="lockedWarning" class="alert alert-warning d-none">
-                                <i class="fas fa-lock me-2"></i><strong>Invoice Locked:</strong>
+                                <i class="fas fa-lock me-2"></i><strong><?= lang('Finance.invoice_locked') ?></strong>
                                 <div id="lockReasons" class="mt-2"></div>
                             </div>
                             
                             <div id="diPreview" class="alert alert-info d-none">
-                                <h6 class="mb-2">DI Preview:</h6>
+                                <h6 class="mb-2"><?= lang('Finance.di_preview') ?></h6>
                                 <div id="diPreviewContent"></div>
                             </div>
                         </form>
@@ -206,20 +206,20 @@
                     <div class="tab-pane fade" id="recurring">
                         <form id="generateRecurringForm">
                             <div class="mb-3">
-                                <label class="form-label">Select Schedule <span class="text-danger">*</span></label>
+                                <label class="form-label"><?= lang('Finance.select_schedule') ?> <span class="text-danger">*</span></label>
                                 <select class="form-select" id="schedule_id" name="schedule_id" required>
-                                    <option value="">-- Select Billing Schedule --</option>
+                                    <option value=""><?= lang('Finance.select_billing_schedule') ?></option>
                                 </select>
-                                <small class="text-muted">Active recurring billing schedules</small>
+                                <small class="text-muted"><?= lang('Finance.active_recurring_schedules') ?></small>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Notes (Optional)</label>
+                                <label class="form-label"><?= lang('Finance.notes_optional') ?></label>
                                 <textarea class="form-control" name="notes" rows="2"></textarea>
                             </div>
                             
                             <div id="schedulePreview" class="alert alert-info d-none">
-                                <h6 class="mb-2">Schedule Preview:</h6>
+                                <h6 class="mb-2"><?= lang('Finance.schedule_preview') ?></h6>
                                 <div id="schedulePreviewContent"></div>
                             </div>
                         </form>
@@ -227,9 +227,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
                 <button type="button" class="btn btn-primary" onclick="submitGenerateInvoice()">
-                    <i class="fas fa-check me-2"></i>Generate Invoice
+                    <i class="fas fa-check me-2"></i><?= lang('Finance.generate_invoice') ?>
                 </button>
             </div>
         </div>
@@ -244,7 +244,72 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
+<?php
+$invoicesPageI18n = [
+    'oneTime' => lang('Finance.invoice_type_one_time'),
+    'recurring' => lang('Finance.invoice_type_recurring'),
+    'statusLabels' => [
+        'DRAFT' => lang('Finance.draft'),
+        'APPROVED' => lang('Common.approved'),
+        'SENT' => lang('Finance.sent'),
+        'PAID' => lang('Finance.paid'),
+        'OVERDUE' => lang('Finance.overdue'),
+        'CANCELLED' => lang('Finance.cancelled'),
+    ],
+    'view' => lang('Common.view'),
+    'approve' => lang('Common.approve'),
+    'cancel' => lang('Common.cancel'),
+    'markAsPaid' => lang('Finance.mark_as_paid'),
+    'clear' => lang('Common.clear'),
+    'close' => lang('Common.close'),
+    'back' => lang('Common.back'),
+    'contract' => lang('Finance.contract'),
+    'unit' => lang('Finance.unit'),
+    'period' => lang('Finance.period'),
+    'daysOverdueTh' => lang('Finance.days_overdue_th'),
+    'amount' => lang('Common.amount'),
+    'action' => lang('Common.action'),
+    'scheduleNextPrefix' => lang('Finance.schedule_next_prefix'),
+    'selectDiPlaceholder' => lang('Finance.select_delivery_instruction'),
+    'selectSchedulePlaceholder' => lang('Finance.select_billing_schedule'),
+    'diColon' => lang('Finance.di_colon'),
+    'customerColon' => lang('Finance.customer_colon'),
+    'contractColon' => lang('Finance.contract_colon'),
+    'estimatedAmountColon' => lang('Finance.estimated_amount_colon'),
+    'periodRangeTo' => lang('Finance.period_range_to'),
+    'daysCount' => lang('Finance.days_count'),
+    'missingInvoicesModalTitle' => lang('Finance.missing_invoices_modal_title'),
+    'generate' => lang('Finance.generate'),
+    'generateAll' => lang('Finance.generate_all'),
+    'generatingBackBilling' => lang('Finance.generating_back_billing'),
+    'backBillingComplete' => lang('Finance.back_billing_complete'),
+    'backBillingConfirmTitle' => lang('Finance.back_billing_confirm_title'),
+    'backBillingConfirmText' => lang('Finance.back_billing_confirm_text'),
+    'backBillingConfirmYes' => lang('Finance.back_billing_confirm_yes'),
+    'approveInvoiceTitle' => lang('Finance.approve_invoice_title'),
+    'approveInvoiceConfirm' => lang('Finance.approve_invoice_confirm'),
+    'yesApprove' => lang('Finance.yes_approve'),
+    'invoiceApprovedSuccess' => lang('Finance.invoice_approved_success'),
+    'approveInvoiceFailed' => lang('Finance.approve_invoice_failed'),
+    'paymentDatePrompt' => lang('Finance.payment_date_prompt'),
+    'invoiceMarkedPaid' => lang('Finance.invoice_marked_paid'),
+    'errorWithMessage' => lang('Finance.error_with_message'),
+    'failedGenerateBackBilling' => lang('Finance.failed_generate_back_billing'),
+    'cancelInvoiceTitle' => lang('Finance.cancel_invoice_title'),
+    'cancelReasonLabel' => lang('Finance.cancel_reason_label'),
+    'cancelReasonPlaceholder' => lang('Finance.cancel_reason_placeholder'),
+    'yesCancelInvoice' => lang('Finance.yes_cancel_invoice'),
+    'cancelReasonRequired' => lang('Finance.cancel_reason_required'),
+    'validation' => lang('Finance.validation'),
+    'invoiceCancelledSuccess' => lang('Finance.invoice_cancelled_success'),
+    'invoiceCreatedWithNumber' => lang('Finance.invoice_created_with_number'),
+    'generateInvoiceFailed' => lang('Finance.generate_invoice_failed'),
+    'generatedInvoiceCount' => lang('Finance.generated_invoice_count'),
+];
+?>
 <script>
+const invI18n = <?= json_encode($invoicesPageI18n, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
 let invoicesTable;
 
 $(document).ready(function() {
@@ -286,13 +351,14 @@ $(document).ready(function() {
             { 
                 data: 'invoice_type',
                 render: function(data) {
-                    return data === 'ONE_TIME' ? '<span class="badge badge-soft-blue">One-Time</span>' : '<span class="badge badge-soft-cyan">Recurring</span>';
+                    return data === 'ONE_TIME' ? '<span class="badge badge-soft-blue">' + invI18n.oneTime + '</span>' : '<span class="badge badge-soft-cyan">' + invI18n.recurring + '</span>';
                 }
             },
             { 
                 data: 'status',
                 render: function(data) {
-                    return `<span class="status-badge status-${data.toLowerCase()}">${data}</span>`;
+                    const label = invI18n.statusLabels[data] || data;
+                    return `<span class="status-badge status-${data.toLowerCase()}">${label}</span>`;
                 }
             },
             { 
@@ -301,17 +367,17 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     let actions = `
                         <div class="action-buttons btn-group btn-group-sm">
-                            <a href="<?= base_url('finance/invoices/view/') ?>${row.id}" class="btn btn-sm btn-outline-primary btn-icon-only" title="View">
+                            <a href="<?= base_url('finance/invoices/view/') ?>${row.id}" class="btn btn-sm btn-outline-primary btn-icon-only" title="${invI18n.view}">
                                 <i class="fas fa-eye"></i>
                             </a>
                     `;
                     
                     if (row.status === 'DRAFT') {
                         actions += `
-                            <button onclick="approveInvoice(${row.id})" class="btn btn-sm btn-success" title="Approve">
+                            <button onclick="approveInvoice(${row.id})" class="btn btn-sm btn-success" title="${invI18n.approve}">
                                 <i class="fas fa-check"></i>
                             </button>
-                            <button onclick="cancelInvoice(${row.id})" class="btn btn-sm btn-danger" title="Cancel">
+                            <button onclick="cancelInvoice(${row.id})" class="btn btn-sm btn-danger" title="${invI18n.cancel}">
                                 <i class="fas fa-times"></i>
                             </button>
                         `;
@@ -319,7 +385,7 @@ $(document).ready(function() {
                     
                     if (row.status === 'APPROVED' || row.status === 'SENT' || row.status === 'OVERDUE') {
                         actions += `
-                            <button onclick="markAsPaid(${row.id})" class="btn btn-sm btn-primary" title="Mark as Paid">
+                            <button onclick="markAsPaid(${row.id})" class="btn btn-sm btn-primary" title="${invI18n.markAsPaid}">
                                 <i class="fas fa-money-bill"></i>
                             </button>
                         `;
@@ -338,7 +404,7 @@ $(document).ready(function() {
     // Date range picker
     $('#filter_daterange').daterangepicker({
         autoUpdateInput: false,
-        locale: { cancelLabel: 'Clear', format: 'DD/MM/YYYY' }
+        locale: { cancelLabel: invI18n.clear, format: 'DD/MM/YYYY' }
     });
     
     $('#filter_daterange').on('apply.daterangepicker', function(ev, picker) {
@@ -369,10 +435,10 @@ $(document).ready(function() {
                     $('#lockedWarning').addClass('d-none');
                     $('#diPreview').removeClass('d-none');
                     $('#diPreviewContent').html(`
-                        <p><strong>DI:</strong> ${data.di.nomor_di}</p>
-                        <p><strong>Customer:</strong> ${data.di.customer_name}</p>
-                        <p><strong>Contract:</strong> ${data.di.contract_number}</p>
-                        <p><strong>Estimated Amount:</strong> Rp ${new Intl.NumberFormat('id-ID').format(data.di.estimated_amount || 0)}</p>
+                        <p><strong>${invI18n.diColon}</strong> ${data.di.nomor_di}</p>
+                        <p><strong>${invI18n.customerColon}</strong> ${data.di.customer_name}</p>
+                        <p><strong>${invI18n.contractColon}</strong> ${data.di.contract_number}</p>
+                        <p><strong>${invI18n.estimatedAmountColon}</strong> Rp ${new Intl.NumberFormat('id-ID').format(data.di.estimated_amount || 0)}</p>
                     `);
                 }
             });
@@ -422,16 +488,17 @@ function showBackBillingModal() {
     .then(data => {
         if (data.success && data.data) {
             let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
-            html += '<thead><tr><th>Contract</th><th>Unit</th><th>Period</th><th>Days Overdue</th><th>Amount</th><th>Action</th></tr></thead><tbody>';
+            html += '<thead><tr><th>' + invI18n.contract + '</th><th>' + invI18n.unit + '</th><th>' + invI18n.period + '</th><th>' + invI18n.daysOverdueTh + '</th><th>' + invI18n.amount + '</th><th>' + invI18n.action + '</th></tr></thead><tbody>';
             
             data.data.forEach(invoice => {
+                const daysLabel = invI18n.daysCount.replace('{count}', String(invoice.days_overdue));
                 html += `<tr>
                     <td>${invoice.contract_number}<br><small class="text-muted">${invoice.customer_name}</small></td>
                     <td>${invoice.unit_number}</td>
-                    <td>${invoice.period_start} to ${invoice.period_end}</td>
-                    <td><span class="badge badge-soft-red">${invoice.days_overdue} days</span></td>
+                    <td>${invoice.period_start} ${invI18n.periodRangeTo} ${invoice.period_end}</td>
+                    <td><span class="badge badge-soft-red">${daysLabel}</span></td>
                     <td>Rp ${new Intl.NumberFormat('id-ID').format(invoice.estimated_amount)}</td>
-                    <td><button class="btn btn-sm btn-primary" onclick="generateSingleBackBilling(${invoice.contract_id})">Generate</button></td>
+                    <td><button class="btn btn-sm btn-primary" onclick="generateSingleBackBilling(${invoice.contract_id})">${invI18n.generate}</button></td>
                 </tr>`;
             });
             
@@ -444,7 +511,7 @@ function showBackBillingModal() {
                         <div class="modal-content">
                             <div class="modal-header bg-light">
                                 <h5 class="modal-title">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Missing Invoices Details
+                                    <i class="fas fa-exclamation-triangle me-2"></i>${invI18n.missingInvoicesModalTitle}
                                 </h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
@@ -452,9 +519,9 @@ function showBackBillingModal() {
                                 ${html}
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${invI18n.close}</button>
                                <button type="button" class="btn btn-primary" onclick="autoGenerateBackBilling()">
-                                    <i class="fas fa-magic me-2"></i>Generate All
+                                    <i class="fas fa-magic me-2"></i>${invI18n.generateAll}
                                 </button>
                             </div>
                         </div>
@@ -474,10 +541,10 @@ function showBackBillingModal() {
 
 function autoGenerateBackBilling() {
     OptimaConfirm.generic({
-        title: 'Generate Semua Back-Billing',
-        text: 'Ini akan men-generate SEMUA invoice yang belum terbuat. Lanjutkan?',
+        title: invI18n.backBillingConfirmTitle,
+        text: invI18n.backBillingConfirmText,
         icon: 'info',
-        confirmText: '<i class="fas fa-magic me-1"></i>Ya, Generate Semua',
+        confirmText: '<i class="fas fa-magic me-1"></i>' + invI18n.backBillingConfirmYes,
         confirmButtonColor: '#0d6efd',
         onConfirm: function() {
             // Get all unique contract IDs from missing invoices
@@ -492,7 +559,7 @@ function autoGenerateBackBilling() {
             // Show loading
             const loadingAlert = `
                 <div class="alert alert-info" id="backBillingProgress">
-                    <i class="fas fa-spinner fa-spin me-2"></i>Generating back-billing invoices... <span id="progressText">0/${contractIds.length}</span>
+                    <i class="fas fa-spinner fa-spin me-2"></i>${invI18n.generatingBackBilling} <span id="progressText">0/${contractIds.length}</span>
                 </div>
             `;
             $('body').append(loadingAlert);
@@ -509,7 +576,7 @@ function autoGenerateBackBilling() {
             
             Promise.all(promises).then(() => {
                 $('#backBillingProgress').remove();
-                alertSwal('success', 'Back-billing generation selesai!');
+                alertSwal('success', invI18n.backBillingComplete);
                 loadBackBillingStats();
                 invoicesTable.ajax.reload();
                 $('#backBillingModal').modal('hide');
@@ -534,19 +601,15 @@ function generateSingleBackBilling(contractId, showAlert = true) {
     .then(data => {
         if (showAlert) {
             if (data.success) {
-                OptimaNotify.success(`Generated ${data.count} invoice(s) for total Rp ${new Intl.NumberFormat('id-ID').format(data.total_amount)}`);
+                OptimaNotify.success(invI18n.generatedInvoiceCount.replace('{count}', String(data.count)).replace('{amount}', new Intl.NumberFormat('id-ID').format(data.total_amount)));
                 loadBackBillingStats();
                 invoicesTable.ajax.reload();
             } else {
-                OptimaNotify.error('Error: ' + (data.message || 'Failed to generate back-billing'));
+                OptimaNotify.error(invI18n.errorWithMessage.replace('{message}', data.message || invI18n.failedGenerateBackBilling));
 }
         }
         return data;
     });
-}
-
-function reloadTable() {
-    invoicesTable.ajax.reload();
 }
 
 function showGenerateModal() {
@@ -555,7 +618,7 @@ function showGenerateModal() {
         .then(r => r.json())
         .then(data => {
             const select = $('#di_id');
-            select.html('<option value="">-- Select Delivery Instruction --</option>');
+            select.html('<option value="">' + invI18n.selectDiPlaceholder + '</option>');
             if (data.success && data.data) {
                 data.data.forEach(di => {
                     select.append(`<option value="${di.id}">${di.nomor_di} - ${di.customer_name} (${di.contract_number})</option>`);
@@ -568,10 +631,10 @@ function showGenerateModal() {
         .then(r => r.json())
         .then(data => {
             const select = $('#schedule_id');
-            select.html('<option value="">-- Select Billing Schedule --</option>');
+            select.html('<option value="">' + invI18n.selectSchedulePlaceholder + '</option>');
             if (data.success && data.data) {
                 data.data.forEach(s => {
-                    select.append(`<option value="${s.id}">${s.contract_number} - ${s.frequency} (Next: ${s.next_billing_date})</option>`);
+                    select.append(`<option value="${s.id}">${s.contract_number} - ${s.frequency} (${invI18n.scheduleNextPrefix} ${s.next_billing_date})</option>`);
                 });
             }
         });
@@ -594,20 +657,20 @@ function submitGenerateInvoice() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alertSwal('success', `Invoice berhasil dibuat: ${data.invoice_number}`);
+            alertSwal('success', invI18n.invoiceCreatedWithNumber.replace('{number}', data.invoice_number));
             bootstrap.Modal.getInstance(document.getElementById('generateInvoiceModal')).hide();
             invoicesTable.ajax.reload();
         } else {
-            alertSwal('error', data.message, 'Gagal Generate Invoice');
+            alertSwal('error', data.message, invI18n.generateInvoiceFailed);
         }
     });
 }
 
 function approveInvoice(id) {
     OptimaConfirm.approve({
-        title: 'Setujui Invoice',
-        text: 'Apakah Anda yakin ingin menyetujui invoice ini?',
-        confirmText: '<i class="fas fa-check me-1"></i>Ya, Setujui',
+        title: invI18n.approveInvoiceTitle,
+        text: invI18n.approveInvoiceConfirm,
+        confirmText: '<i class="fas fa-check me-1"></i>' + invI18n.yesApprove,
         onConfirm: function() {
             fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
         method: 'POST',
@@ -616,10 +679,10 @@ function approveInvoice(id) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alertSwal('success', 'Invoice berhasil disetujui');
+            alertSwal('success', invI18n.invoiceApprovedSuccess);
             invoicesTable.ajax.reload();
         } else {
-            alertSwal('error', data.message, 'Gagal Menyetujui');
+            alertSwal('error', data.message, invI18n.approveInvoiceFailed);
         }
     });
         }
@@ -627,7 +690,7 @@ function approveInvoice(id) {
 }
 
 function markAsPaid(id) {
-    const paymentDate = prompt('Enter payment date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    const paymentDate = prompt(invI18n.paymentDatePrompt, new Date().toISOString().split('T')[0]);
     if (!paymentDate) return;
     
     const formData = new FormData();
@@ -641,26 +704,26 @@ function markAsPaid(id) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            OptimaNotify.success('Invoice marked as paid');
+            OptimaNotify.success(invI18n.invoiceMarkedPaid);
             invoicesTable.ajax.reload();
         } else {
-            OptimaNotify.error('Error: ' + data.message);
+            OptimaNotify.error(invI18n.errorWithMessage.replace('{message}', data.message || ''));
         }
     });
 }
 
 function cancelInvoice(id) {
     OptimaConfirm.generic({
-        title: 'Batalkan Invoice?',
+        title: invI18n.cancelInvoiceTitle,
         html: `
             <div class="text-start">
-                <label class="form-label" for="optimaCancelInvoiceReason">Alasan pembatalan</label>
-                <input id="optimaCancelInvoiceReason" type="text" class="form-control" placeholder="Masukkan alasan..." autofocus>
+                <label class="form-label" for="optimaCancelInvoiceReason">${invI18n.cancelReasonLabel}</label>
+                <input id="optimaCancelInvoiceReason" type="text" class="form-control" placeholder="${invI18n.cancelReasonPlaceholder}" autofocus>
             </div>
         `,
         icon: 'warning',
-        confirmText: 'Ya, Batalkan!',
-        cancelText: (typeof window.lang === 'function' ? window.lang('back') : 'Back'),
+        confirmText: invI18n.yesCancelInvoice,
+        cancelText: invI18n.back,
         confirmButtonColor: '#dc3545',
         onConfirm: function() {
             var modal = document.getElementById('optimaConfirmModal');
@@ -669,7 +732,7 @@ function cancelInvoice(id) {
             
             var reason = input && input.value ? input.value.trim() : '';
             if (!reason) {
-                OptimaNotify.warning('Alasan harus diisi!', 'Validasi');
+                OptimaNotify.warning(invI18n.cancelReasonRequired, invI18n.validation);
                 return;
             }
             
@@ -684,10 +747,10 @@ function cancelInvoice(id) {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    OptimaNotify.success('Invoice berhasil dibatalkan');
+                    OptimaNotify.success(invI18n.invoiceCancelledSuccess);
                     invoicesTable.ajax.reload();
                 } else {
-                    OptimaNotify.error('Error: ' + data.message);
+                    OptimaNotify.error(invI18n.errorWithMessage.replace('{message}', data.message || ''));
                 }
             });
         }

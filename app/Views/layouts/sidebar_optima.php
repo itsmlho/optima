@@ -38,7 +38,7 @@ helper('permission_helper');
                 $isMarketingSection = (strpos($cur, 'marketing/') !== false);
                 $isMarketingQuotations = (strpos($cur, 'marketing/quotations') !== false);
                 $isMarketingCustomer = (strpos($cur, 'marketing/customer-management') !== false);
-                $isMarketingKontrak = (strpos($cur, 'marketing/kontrak') !== false);
+                $isMarketingKontrak = (strpos($cur, 'marketing/kontrak') !== false || strpos($cur, 'marketing/rental') !== false);
                 $isMarketingSpk = (strpos($cur, 'marketing/spk') !== false);
                 $isMarketingDi = (strpos($cur, 'marketing/di') !== false);
                 $isMarketingAudit = (strpos($cur, 'marketing/audit-approval') !== false);
@@ -63,7 +63,7 @@ helper('permission_helper');
                     <li class="nav-item"><a href="<?= base_url('/marketing/customer-management') ?>" class="nav-link dropdown-link<?= $isMarketingCustomer ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">group</span><span class="drop-label">Customer Management</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'quotation')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/marketing/kontrak') ?>" class="nav-link dropdown-link<?= $isMarketingKontrak ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">contract</span><span class="drop-label">Contracts & PO</span></a></li>
+                    <li class="nav-item"><a href="<?= base_url('/marketing/rental') ?>" class="nav-link dropdown-link<?= $isMarketingKontrak ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">contract</span><span class="drop-label">Rental</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'spk')): ?>
                     <li class="nav-item"><a href="<?= base_url('/marketing/spk') ?>" class="nav-link dropdown-link<?= $isMarketingSpk ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">assignment</span><span class="drop-label">SPK Marketing</span></a></li>

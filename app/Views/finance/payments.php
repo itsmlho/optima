@@ -25,38 +25,37 @@
         </div>
         
         <!-- Title -->
-        <h1 class="coming-soon-title">Payment Validation</h1>
+        <h1 class="coming-soon-title"><?= lang('Finance.payment_validation') ?></h1>
         
         <div class="coming-soon-divider"></div>
         
         <!-- Subtitle -->
-        <p class="coming-soon-subtitle">Sistem Validasi Pembayaran</p>
+        <p class="coming-soon-subtitle"><?= lang('Finance.payment_validation_subtitle') ?></p>
         
         <!-- Description -->
         <p class="coming-soon-description">
-            Modul Payment Validation sedang dalam pengembangan untuk memvalidasi dan melacak pembayaran. 
-            Fitur ini akan membantu tim accounting dalam memverifikasi status pembayaran invoice.
+            <?= lang('Finance.payment_validation_description') ?>
         </p>
         
         <!-- Features Coming -->
         <div class="coming-soon-features">
             <div class="feature-item">
                 <i class="fas fa-check-double"></i>
-                <span>Validate Payment</span>
+                <span><?= lang('Finance.feature_validate_payment') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-clock"></i>
-                <span>Track Status</span>
+                <span><?= lang('Finance.feature_track_payment_status') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-bell"></i>
-                <span>Payment Alerts</span>
+                <span><?= lang('Finance.feature_payment_alerts') ?></span>
             </div>
         </div>
         
         <!-- Back Button -->
         <a href="<?= base_url('/') ?>" class="back-btn">
-            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+            <i class="fas fa-arrow-left me-2"></i><?= lang('Finance.back_to_dashboard') ?>
         </a>
     </div>
 </div>

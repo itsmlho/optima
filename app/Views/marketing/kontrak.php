@@ -52,7 +52,7 @@ $can_export = can_export('marketing');
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-contracts">0</div>
-                    <div class="text-muted small">Total Contracts & PO</div>
+                    <div class="text-muted small">Total Rental</div>
                 </div>
             </div>
         </div>
@@ -65,7 +65,7 @@ $can_export = can_export('marketing');
                 </div>
                 <div>
                     <div class="stat-value" id="stat-active">0</div>
-                    <div class="text-muted small">Active Contracts</div>
+                    <div class="text-muted small">Rental Aktif</div>
                 </div>
             </div>
         </div>
@@ -104,7 +104,7 @@ $can_export = can_export('marketing');
         <ul class="nav nav-tabs" id="contractStatusTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="tab-all" data-tab="all" type="button" role="tab">
-                    <i class="fas fa-list me-2"></i>Semua Kontrak
+                    <i class="fas fa-list me-2"></i><?= lang('Marketing.tab_all_rental') ?>
                     <span class="badge badge-soft-blue ms-2" id="count-all">0</span>
                 </button>
             </li>
@@ -116,7 +116,7 @@ $can_export = can_export('marketing');
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="tab-expiring" data-tab="expiring" type="button" role="tab">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Akan Expired
+                    <i class="fas fa-exclamation-triangle me-2"></i><?= lang('Marketing.tab_expiring_soon') ?>
                     <span class="badge badge-soft-orange ms-2" id="count-expiring">0</span>
                 </button>
             </li>
@@ -135,20 +135,20 @@ $can_export = can_export('marketing');
                 <div class="col-md-6">
                     <div class="d-flex align-items-center gap-2">
                         <small class="text-muted fw-semibold me-2">
-                            <i class="fas fa-file-contract me-1"></i>Tipe:
+                            <i class="fas fa-file-contract me-1"></i><?= lang('Marketing.rental_type') ?>:
                         </small>
                         <div class="btn-group btn-group-sm" role="group" id="rentalTypeFilter">
                             <button type="button" class="btn btn-outline-secondary active" data-type="">
-                                All Types
+                                <?= lang('Marketing.select_all') ?>
                             </button>
                             <button type="button" class="btn btn-outline-primary" data-type="CONTRACT">
-                                Contract
+                                <?= lang('Marketing.rental_type_contract') ?>
                             </button>
                             <button type="button" class="btn btn-outline-info" data-type="PO_ONLY">
-                                PO Only
+                                <?= lang('Marketing.rental_type_po') ?>
                             </button>
                             <button type="button" class="btn btn-outline-warning" data-type="DAILY_SPOT">
-                                Daily/Spot
+                                <?= lang('Marketing.rental_type_harian') ?>
                             </button>
                         </div>
                     </div>
@@ -158,17 +158,17 @@ $can_export = can_export('marketing');
                 <div class="col-md-6" id="expiringSubTabs" style="display:none;">
                     <div class="d-flex align-items-center gap-2 justify-content-end">
                         <small class="text-muted fw-semibold me-2">
-                            <i class="fas fa-clock me-1"></i>Periode:
+                            <i class="fas fa-clock me-1"></i><?= lang('Marketing.period_filter') ?>
                         </small>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-danger active" data-days="30">
-                                1 Bulan <span class="badge badge-soft-red ms-1" id="count-expiring-30">0</span>
+                                <?= lang('Marketing.one_month') ?> <span class="badge badge-soft-red ms-1" id="count-expiring-30">0</span>
                             </button>
                             <button type="button" class="btn btn-outline-warning" data-days="90">
-                                3 Bulan <span class="badge badge-soft-yellow ms-1" id="count-expiring-90">0</span>
+                                <?= lang('Marketing.three_months') ?> <span class="badge badge-soft-yellow ms-1" id="count-expiring-90">0</span>
                             </button>
                             <button type="button" class="btn btn-outline-info" data-days="180">
-                                6 Bulan <span class="badge badge-soft-cyan ms-1" id="count-expiring-180">0</span>
+                                <?= lang('Marketing.six_months') ?> <span class="badge badge-soft-cyan ms-1" id="count-expiring-180">0</span>
                             </button>
                         </div>
                     </div>
@@ -184,28 +184,27 @@ $can_export = can_export('marketing');
         <div>
             <h5 class="card-title mb-0">
                 <i class="bi bi-file-earmark-text me-2 text-primary"></i>
-                Contracts & Purchase Orders Management
+                <?= lang('Marketing.rental_management') ?>
             </h5>
             <p class="text-muted small mb-0">
-                Manage formal rental contracts, PO-only agreements, and track contract renewals
-                
+                <?= lang('Marketing.rental_list') ?>
             </p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <!-- View Mode Toggle -->
             <div class="btn-group btn-group-sm" role="group" id="viewModeToggle">
                 <button type="button" class="btn btn-secondary active" id="btnFlatView" onclick="switchViewMode('flat')">
-                    <i class="fas fa-list me-1"></i>Flat
+                    <i class="fas fa-list me-1"></i><?= lang('Marketing.flat_view') ?>
                 </button>
                 <button type="button" class="btn btn-outline-secondary" id="btnGroupedView" onclick="switchViewMode('grouped')">
-                    <i class="fas fa-layer-group me-1"></i>By Customer
+                    <i class="fas fa-layer-group me-1"></i><?= lang('Marketing.by_customer_view') ?>
                 </button>
             </div>
         <div class="d-flex gap-2">
             <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary btn-sm" onclick="openAddContractModal()">
-                    <i class="fas fa-plus me-1"></i>Create Contract
-                </button>
+                        <i class="fas fa-plus me-1"></i><?= lang('Marketing.add_rental') ?>
+                    </button>
             <?php endif; ?>
             <?php if ($can_export): ?>
                 <button type="button" class="btn btn-success btn-sm" onclick="exportContracts()">
@@ -223,14 +222,14 @@ $can_export = can_export('marketing');
             <table class="table table-striped table-hover mb-0" id="contractsTable">
                 <thead class="bg-light">
                     <tr>
-                        <th>Kontrak / PO</th>
-                        <th>Tipe</th>
-                        <th>Billing</th>
-                        <th>Periode &amp; Sisa Hari</th>
-                        <th>Unit</th>
-                        <th>Nilai</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
+                        <th><?= lang('Marketing.th_contract_po') ?></th>
+                        <th><?= lang('Marketing.th_type') ?></th>
+                        <th><?= lang('Marketing.th_billing') ?></th>
+                        <th><?= lang('Marketing.th_period_days') ?></th>
+                        <th><?= lang('Marketing.total_units') ?></th>
+                        <th><?= lang('Marketing.th_value') ?></th>
+                        <th><?= lang('App.status') ?? 'Status' ?></th>
+                        <th><?= lang('Marketing.actions') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -243,7 +242,7 @@ $can_export = can_export('marketing');
     <div id="groupedViewBody" class="card-body" style="display:none">
         <div class="text-center py-5">
             <div class="spinner-border text-primary mb-3" role="status"></div>
-            <p class="text-muted">Memuat data...</p>
+            <p class="text-muted"><?= lang('Marketing.loading_data') ?></p>
         </div>
     </div>
 </div>
@@ -264,101 +263,103 @@ $can_export = can_export('marketing');
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title">Create New Contract</h5>
-                    <small class="text-muted">Direct Contract Creation - No Quotation Required</small>
+                    <h5 class="modal-title"><?= lang('Marketing.add_rental') ?></h5>
+                    <small class="text-muted"><?= lang('Marketing.additional_notes_optional') ?></small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addContractForm">
                 <div class="modal-body">
-                    <div class="alert alert-info mb-4">
-                        <h6 class="alert-heading">
-                            <i class="fas fa-info-circle me-2"></i>Contract Creation Workflow
-                        </h6>
-                        <ol class="mb-0 ps-3">
-                            <li><strong>Step 1:</strong> Enter basic contract information (this form)</li>
-                            <li><strong>Step 2:</strong> Add unit specifications as needed</li>
-                            <li><strong>Step 3:</strong> Create SPK to allocate units from inventory</li>
-                        </ol>
-                        <hr>
-                        <small class="text-muted">
-                            <i class="fas fa-lightbulb me-1"></i>
-                            <strong>Tip:</strong> Contract value and total units will be calculated automatically based on specifications added.
-                        </small>
-                    </div>
-                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Contract Number*</label>
+                            <label class="form-label"><?= lang('Marketing.rental_number_label') ?> *</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" name="contract_number" required>
-                                <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="Generate Contract Number">
+                                <input type="text" class="form-control" name="contract_number" id="modalContractNumber" required>
+                                <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="<?= lang('Marketing.generate_rental_number') ?>">
                                     <i class="fas fa-magic"></i>
                                 </button>
                             </div>
+                            <small class="text-muted" id="contractNumberHint"><?= lang('Marketing.select_customer_first') ?></small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Client PO Number</label>
-                            <input type="text" class="form-control" name="po_number" placeholder="Customer PO Number (if any)">
+                            <label class="form-label"><?= lang('Marketing.client_po_number') ?></label>
+                            <input type="text" class="form-control" name="po_number" placeholder="<?= lang('Marketing.client_po_number') ?>">
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Customer*</label>
+                            <label class="form-label"><?= lang('Marketing.customer') ?> *</label>
                             <select class="form-select" name="customer_id" id="contractCustomerSelect" required>
-                                <option value="">-- Select Customer --</option>
+                                <option value="">-- <?= lang('Marketing.customer') ?> --</option>
                             </select>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Location*</label>
+                            <label class="form-label"><?= lang('Marketing.location') ?> *</label>
                             <select class="form-select" name="customer_location_id" id="contractLocationSelect" required disabled>
-                                <option value="">-- Select Customer First --</option>
+                                <option value=""><?= lang('Marketing.select_customer_first') ?></option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><?= lang('Marketing.rental_type') ?> *</label>
+                            <select class="form-select" name="rental_type" id="modalRentalType" required>
+                                <option value="CONTRACT" selected><?= lang('Marketing.rental_type_contract') ?></option>
+                                <option value="PO_ONLY"><?= lang('Marketing.rental_type_po') ?></option>
+                                <option value="DAILY_SPOT"><?= lang('Marketing.rental_type_harian') ?></option>
+                            </select>
+                            <small class="text-muted" id="rentalTypeDesc"></small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3" id="billingPeriodSection">
+                            <label class="form-label"><?= lang('Marketing.monthly') ?> / <?= lang('Marketing.daily') ?> *</label>
+                            <select class="form-select" name="jenis_sewa" id="modalJenisSewa" required>
+                                <option value="BULANAN" selected><?= lang('Marketing.monthly') ?></option>
+                                <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
                             </select>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Start Date*</label>
-                            <input type="date" class="form-control" name="start_date" required>
+                            <label class="form-label"><?= lang('Marketing.start_date') ?> *</label>
+                            <input type="date" class="form-control" name="start_date" id="modalStartDate" required>
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">End Date*</label>
-                            <input type="date" class="form-control" name="end_date" required>
+
+                        <!-- End date: hidden for PO_ONLY -->
+                        <div class="col-md-6 mb-3" id="endDateSection">
+                            <label class="form-label" id="endDateLabel"><?= lang('Marketing.end_date') ?> *</label>
+                            <input type="date" class="form-control" name="end_date" id="modalEndDate">
+                            <small class="text-muted" id="endDateHint"><?= lang('Marketing.contract_end_date_required') ?></small>
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Rental Classification*</label>
-                            <select class="form-select" name="rental_type" required>
-                                <option value="CONTRACT" selected>Formal Contract</option>
-                                <option value="PO_ONLY">PO-Based Only</option>
-                                <option value="DAILY_SPOT">Daily/Spot Rental</option>
-                            </select>
-                            <small class="text-muted">How is this rental documented?</small>
+
+                        <!-- PO_ONLY: open-ended notice -->
+                        <div class="col-md-6 mb-3" id="openEndedSection" style="display:none;">
+                            <label class="form-label"><?= lang('Marketing.end_date_optional') ?></label>
+                            <div class="form-control bg-light text-muted" style="cursor:default;">
+                                <i class="fas fa-infinity me-1"></i><?= lang('Marketing.open_ended') ?>
+                            </div>
+                            <small class="text-muted"><?= lang('Marketing.open_ended_notice') ?></small>
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Billing Period*</label>
-                            <select class="form-select" name="jenis_sewa" required>
-                                <option value="BULANAN" selected>Monthly</option>
-                                <option value="HARIAN">Daily</option>
-                            </select>
-                            <small class="text-muted">Rental billing period</small>
+
+                        <!-- payment_due_day: for PO_ONLY only -->
+                        <div class="col-md-6 mb-3" id="paymentDueSection" style="display:none;">
+                            <label class="form-label"><?= lang('Marketing.payment_due_day') ?></label>
+                            <input type="number" class="form-control" name="payment_due_day" min="1" max="31" placeholder="15">
+                            <small class="text-muted"><?= lang('Marketing.payment_due_day_help') ?></small>
                         </div>
                         
                         <div class="col-12 mb-3">
-                            <label class="form-label">Notes</label>
-                            <textarea class="form-control" name="catatan" rows="3" placeholder="Additional notes (optional)"></textarea>
+                            <label class="form-label"><?= lang('Marketing.notes') ?></label>
+                            <textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_optional') ?>"></textarea>
                         </div>
                     </div>
                 </div>
                 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
+                        <i class="fas fa-times me-1"></i><?= lang('App.cancel') ?? 'Batal' ?>
                     </button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i>Save Contract
+                        <i class="fas fa-save me-1"></i><?= lang('Marketing.add_rental') ?>
                     </button>
                 </div>
             </form>
@@ -373,6 +374,29 @@ $can_export = can_export('marketing');
 const LANG_MARKETING_DI = <?= json_encode([
     'create_di_retrieval' => lang('Marketing.create_di_retrieval'),
     'create_di_retrieval_short' => lang('Marketing.create_di_retrieval_short'),
+]) ?>;
+const LANG_RENTAL = <?= json_encode([
+    'type_contract'       => lang('Marketing.rental_type_contract'),
+    'type_po'             => lang('Marketing.rental_type_po'),
+    'type_harian'         => lang('Marketing.rental_type_harian'),
+    'view_detail'         => lang('Marketing.view_detail'),
+    'edit_contract'       => lang('Marketing.edit_contract'),
+    'delete_contract'     => lang('Marketing.delete_contract'),
+    'change_rate'         => lang('Marketing.change_rate'),
+    'renewal'             => lang('Marketing.renewal'),
+    'no_data'             => lang('Marketing.no_contract_data'),
+    'loading'             => lang('Marketing.loading_data'),
+    'search_ph'           => lang('Marketing.search_contracts_ph'),
+    'customers_count'     => lang('Marketing.customers_count'),
+    'th_contract_po'      => lang('Marketing.th_contract_po'),
+    'th_type'             => lang('Marketing.th_type'),
+    'th_billing'          => lang('Marketing.th_billing'),
+    'th_period'           => lang('Marketing.th_period_days'),
+    'th_units'            => lang('Marketing.total_units'),
+    'th_value'            => lang('Marketing.th_value'),
+    'th_actions'          => lang('Marketing.actions'),
+    'days_ago'            => lang('Marketing.days_ago') ?? 'days ago',
+    'days_left'           => lang('Marketing.days_left') ?? 'days left',
 ]) ?>;
 /**
  * Contract & PO Management Module - Using Optima Badge Standards (optima-pro.css)
@@ -689,9 +713,9 @@ function initializeContractsTable() {
         stateSave: true,
         stateDuration: 60 * 60,
         language: {
-            processing: '<i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...',
-            emptyTable: 'No contracts found',
-            zeroRecords: 'No matching contracts found'
+            processing: '<i class="fas fa-spinner fa-spin fa-2x"></i><br><?= lang('Marketing.loading_data') ?>',
+            emptyTable: '<?= lang('Marketing.no_contract_data') ?>',
+            zeroRecords: '<?= lang('Marketing.no_contract_data') ?>'
         },
         drawCallback: function() {
             // Re-initialize Bootstrap tooltips safely for action buttons in this table
@@ -758,27 +782,27 @@ function buildActionButtons(id, status, days) {
     const canCreateDI = (status === 'ACTIVE' || status === 'EXPIRED');
     const diUrl = '<?= base_url('marketing/di') ?>?create_tarik=1&kontrak_id=';
 
-    let renewItem = canRenew ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openRenewalWizard(${id})"><i class="fas fa-sync-alt text-success me-2"></i>Renewal</a></li>` : '';
-    let amendItem = canAmend ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openAmendmentModal(${id})"><i class="fas fa-calculator text-warning me-2"></i>Change Rate</a></li>` : '';
+    let renewItem = canRenew ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openRenewalWizard(${id})"><i class="fas fa-sync-alt text-success me-2"></i>${LANG_RENTAL.renewal}</a></li>` : '';
+    let amendItem = canAmend ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openAmendmentModal(${id})"><i class="fas fa-calculator text-warning me-2"></i>${LANG_RENTAL.change_rate}</a></li>` : '';
     let diItem = canCreateDI ? `<li><a class="dropdown-item" href="${diUrl}${id}"><i class="fas fa-truck-loading text-danger me-2"></i>${LANG_MARKETING_DI.create_di_retrieval_short}</a></li>` : '';
     let divider = (canRenew || canAmend || canCreateDI) ? '<li><hr class="dropdown-divider"></li>' : '';
 
     return `
         <div class="btn-group">
-            <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}" class="btn btn-sm btn-outline-primary" title="View Detail">
+            <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}" class="btn btn-sm btn-outline-primary" title="${LANG_RENTAL.view_detail}">
                 <i class="fas fa-eye"></i>
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="visually-hidden">Toggle Dropdown</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/detail') ?>/${id}"><i class="fas fa-eye text-primary me-2"></i>View Detail</a></li>
-                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>Edit Kontrak</a></li>
+                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/detail') ?>/${id}"><i class="fas fa-eye text-primary me-2"></i>${LANG_RENTAL.view_detail}</a></li>
+                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>${LANG_RENTAL.edit_contract}</a></li>
                 ${renewItem}
                 ${amendItem}
                 ${diItem}
                 ${divider}
-                <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); deleteContract(${id})"><i class="fas fa-trash me-2"></i>Hapus Kontrak</a></li>
+                <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); deleteContract(${id})"><i class="fas fa-trash me-2"></i>${LANG_RENTAL.delete_contract}</a></li>
             </ul>
         </div>`;
 }
@@ -1522,9 +1546,6 @@ function openAddContractModal() {
     // Reset form
     $('#addContractForm')[0].reset();
     
-    // Reset form
-    $('#addContractForm')[0].reset();
-    
     // Destroy existing Select2 instances
     if ($('#contractCustomerSelect').data('select2')) {
         $('#contractCustomerSelect').select2('destroy');
@@ -1541,6 +1562,9 @@ function openAddContractModal() {
     // Load customers for dropdown
     loadCustomersForContract();
     
+    // Apply default rental type state (CONTRACT selected by default)
+    onRentalTypeChange('CONTRACT');
+
     // Show modal
     $('#addContractModal').modal('show');
 }
@@ -1668,17 +1692,83 @@ $(document).on('change', '#contractCustomerSelect', function() {
     }
 });
 
+// Rental type descriptions (rendered server-side for multi-language support)
+const RENTAL_TYPE_DESC = {
+    'CONTRACT':   '<?= esc(lang('Marketing.contract_type_notice'),  'js') ?>',
+    'PO_ONLY':    '<?= esc(lang('Marketing.open_ended_notice'),     'js') ?>',
+    'DAILY_SPOT': '<?= esc(str_replace('{days}', '30', lang('Marketing.max_duration_notice')), 'js') ?>'
+};
+
 /**
- * Generate contract number
+ * Rental type change — show/hide date sections & update description
+ */
+function onRentalTypeChange(type) {
+    const isPO    = type === 'PO_ONLY';
+    const isSpot  = type === 'DAILY_SPOT';
+
+    // End-date section: hidden for PO_ONLY
+    $('#endDateSection').toggle(!isPO);
+    $('#endDateLabel').text(
+        isSpot ? '<?= esc(lang('Marketing.end_date'), 'js') ?> *'
+               : '<?= esc(lang('Marketing.end_date'), 'js') ?> *'
+    );
+
+    // Open-ended notice: only PO_ONLY
+    $('#openEndedSection').toggle(isPO);
+
+    // Payment due day: only PO_ONLY
+    $('#paymentDueSection').toggle(isPO);
+
+    // Billing period (jenis_sewa): auto-set & hide for PO/Harian
+    if (isPO) {
+        $('#modalJenisSewa').val('BULANAN');
+        $('#billingPeriodSection').hide();
+    } else if (isSpot) {
+        $('#modalJenisSewa').val('HARIAN');
+        $('#billingPeriodSection').hide();
+    } else {
+        $('#billingPeriodSection').show();
+    }
+
+    // Description text
+    $('#rentalTypeDesc').text(RENTAL_TYPE_DESC[type] || '');
+
+    // Re-generate number for new type
+    generateContractNumberByType(type);
+}
+
+$(document).on('change', '#modalRentalType', function() {
+    onRentalTypeChange($(this).val());
+});
+
+/**
+ * Generate rental number via backend (type-aware prefix)
+ */
+function generateContractNumberByType(rentalType) {
+    rentalType = rentalType || $('#modalRentalType').val() || 'CONTRACT';
+    $.ajax({
+        url: '<?= base_url('marketing/kontrak/generate-number') ?>',
+        method: 'GET',
+        data: { rental_type: rentalType },
+        success: function(response) {
+            if (response.success && response.data) {
+                $('#modalContractNumber').val(response.data.contract_number);
+                if (window.csrfTokenName && response.csrf_hash) {
+                    window.csrfToken = response.csrf_hash;
+                }
+            }
+        },
+        error: function() {
+            showNotification('<?= esc(lang('Marketing.generate_rental_number'), 'js') ?> failed', 'error');
+        }
+    });
+}
+
+/**
+ * Generate contract number (button click)
  */
 $(document).on('click', '#generateContractNumber', function() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const random = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-    const contractNumber = `CTR-${year}${month}${day}-${random}`;
-    $('input[name="contract_number"]').val(contractNumber);
+    generateContractNumberByType($('#modalRentalType').val() || 'CONTRACT');
 });
 
 /**
@@ -1692,7 +1782,7 @@ $(document).on('submit', '#addContractForm', function(e) {
     $.ajax({
         url: '<?= base_url('marketing/kontrak/store') ?>',
         method: 'POST',
-        data: $(this).serialize(),
+        data: $(this).serialize() + '&' + encodeURIComponent(window.csrfTokenName) + '=' + encodeURIComponent(window.csrfToken || ''),
         success: function(response) {
             OptimaPro.hideLoading();
             
@@ -1822,7 +1912,7 @@ function loadGroupedView(forceReload) {
     body.innerHTML = `
         <div class="text-center py-5">
             <div class="spinner-border text-primary mb-3" role="status"></div>
-            <p class="text-muted">Memuat data grouped...</p>
+            <p class="text-muted">${LANG_RENTAL.loading}...</p>
         </div>`;
 
     // Use current tab-based filters
@@ -1855,7 +1945,7 @@ function loadGroupedView(forceReload) {
 function renderGroupedView(customers) {
     const body = document.getElementById('groupedViewBody');
     if (!customers || customers.length === 0) {
-        body.innerHTML = `<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>Tidak ada data kontrak</p></div>`;
+        body.innerHTML = `<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>${LANG_RENTAL.no_data}</p></div>`;
         return;
     }
 
@@ -1863,8 +1953,8 @@ function renderGroupedView(customers) {
     let html = `
         <div class="gv-search-wrap d-flex align-items-center gap-2">
             <i class="fas fa-search text-muted"></i>
-            <input type="text" id="gvSearch" class="form-control form-control-sm" placeholder="Cari nama customer atau nomor kontrak..." oninput="filterGroupedView(this.value)">
-            <span class="text-muted text-nowrap small" id="gvCount">${customers.length} customer</span>
+            <input type="text" id="gvSearch" class="form-control form-control-sm" placeholder="${LANG_RENTAL.search_ph}" oninput="filterGroupedView(this.value)">
+            <span class="text-muted text-nowrap small" id="gvCount">${customers.length} ${LANG_RENTAL.customers_count}</span>
         </div>
         <div class="p-3" id="gvAccordion">`;
 
@@ -1886,9 +1976,9 @@ function renderGroupedView(customers) {
                     <strong class="text-dark">${escHtml(cust.customer_name)}</strong>
                 </div>
                 <div class="gv-summary-badges d-flex gap-2 flex-wrap">
-                    <span class="badge badge-soft-blue">${cust.total_contracts} kontrak</span>
-                    <span class="badge badge-soft-cyan">${cust.total_units} unit</span>
-                    ${cust.monthly_value > 0 ? `<span class="badge badge-soft-green">${monthlyFmt}/bln</span>` : ''}
+                    <span class="badge badge-soft-blue">${cust.total_contracts} ${LANG_RENTAL.th_contract_po.split('/')[0].trim()}</span>
+                    <span class="badge badge-soft-cyan">${cust.total_units} ${LANG_RENTAL.th_units}</span>
+                    ${cust.monthly_value > 0 ? `<span class="badge badge-soft-green">${monthlyFmt}/mo</span>` : ''}
                 </div>
             </div>
             <!-- Contract Sub-table -->
@@ -1897,14 +1987,14 @@ function renderGroupedView(customers) {
                     <table class="table table-sm table-hover mb-0 gv-child-table">
                         <thead class="bg-light">
                             <tr>
-                                <th style="width:30%">No. Kontrak / PO</th>
-                                <th>Tipe</th>
-                                <th>Billing</th>
-                                <th>Periode &amp; Sisa Hari</th>
-                                <th class="text-center">Unit</th>
-                                <th class="text-end">Nilai</th>
+                                <th style="width:30%">${LANG_RENTAL.th_contract_po}</th>
+                                <th>${LANG_RENTAL.th_type}</th>
+                                <th>${LANG_RENTAL.th_billing}</th>
+                                <th>${LANG_RENTAL.th_period}</th>
+                                <th class="text-center">${LANG_RENTAL.th_units}</th>
+                                <th class="text-end">${LANG_RENTAL.th_value}</th>
                                 <th>Status</th>
-                                <th class="text-center">Aksi</th>
+                                <th class="text-center">${LANG_RENTAL.th_actions}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1929,26 +2019,27 @@ function renderGroupedView(customers) {
 }
 
 function buildContractRow(k) {
-    // Type badge
+    // Type badge — use LANG_RENTAL for multi-language labels
     const typeBadge = {
-        'CONTRACT':   '<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>Contract</span>',
-        'PO_ONLY':    '<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
-        'DAILY_SPOT': '<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>Daily</span>',
+        'CONTRACT':   `<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>${LANG_RENTAL.type_contract}</span>`,
+        'PO_ONLY':    `<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>${LANG_RENTAL.type_po}</span>`,
+        'DAILY_SPOT': `<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>${LANG_RENTAL.type_harian}</span>`,
     }[k.rental_type] || `<span class="badge badge-soft-gray">${escHtml(k.rental_type||'—')}</span>`;
 
     // Billing
-    const billingMap = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
-    const billing = billingMap[k.jenis_sewa?.toUpperCase()] || k.jenis_sewa || '—';
+    const billingMap = { 'BULANAN': LANG_RENTAL.th_billing + ' – Monthly', 'HARIAN': LANG_RENTAL.type_harian };
+    const billing = k.jenis_sewa?.toUpperCase() === 'BULANAN' ? 'Monthly' : (k.jenis_sewa?.toUpperCase() === 'HARIAN' ? LANG_RENTAL.type_harian : k.jenis_sewa || '—');
 
     // Period
-    const startLbl = k.start_date ? new Date(k.start_date).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const endLbl   = k.end_date   ? new Date(k.end_date).toLocaleDateString('id-ID',   {day:'2-digit',month:'short',year:'numeric'}) : 'Open-ended';
+    const locale = document.documentElement.lang === 'id' ? 'id-ID' : 'en-GB';
+    const startLbl = k.start_date ? new Date(k.start_date).toLocaleDateString(locale, {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const endLbl   = k.end_date   ? new Date(k.end_date).toLocaleDateString(locale,   {day:'2-digit',month:'short',year:'numeric'}) : LANG_RENTAL.open_ended || 'Open-ended';
 
     let daysBadge = '';
     if (k.days_remaining !== null && k.status === 'ACTIVE') {
-        if (k.days_remaining < 0)      daysBadge = `<br><span class="badge badge-soft-red">Expired ${Math.abs(k.days_remaining)}h lalu</span>`;
-        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge badge-soft-orange">${k.days_remaining}h lagi</span>`;
-        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge badge-soft-cyan">${k.days_remaining}h lagi</span>`;
+        if (k.days_remaining < 0)        daysBadge = `<br><span class="badge badge-soft-red">Expired ${Math.abs(k.days_remaining)}d ${LANG_RENTAL.days_ago}</span>`;
+        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge badge-soft-orange">${k.days_remaining}d ${LANG_RENTAL.days_left}</span>`;
+        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge badge-soft-cyan">${k.days_remaining}d ${LANG_RENTAL.days_left}</span>`;
     }
 
     // Status badge

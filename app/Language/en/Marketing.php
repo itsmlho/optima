@@ -444,4 +444,89 @@ return [
     'di_retrieval_min_unit' => 'Select at least one unit to retrieve',
     'contract_expired_no_di_alert' => 'Contract has expired. Create Retrieval DI to pull units.',
     'contract_expired_create_di' => 'Create Retrieval DI',
+
+    'days_ago'                 => 'days ago',
+    'days_left'                => 'days left',
+
+    // Rental Management — Tabs & Filters
+    'tab_all_rental'           => 'All Rentals',
+    'tab_expiring_soon'        => 'Expiring Soon',
+    'select_all'               => 'All Types',
+    'period_filter'            => 'Period:',
+    'one_month'                => '1 Month',
+    'three_months'             => '3 Months',
+    'six_months'               => '6 Months',
+    'flat_view'                => 'Flat',
+    'by_customer_view'         => 'By Customer',
+    'loading_data'             => 'Loading data...',
+    'no_contract_data'         => 'No contract data',
+    'search_contracts_ph'      => 'Search by customer name or contract number...',
+
+    // Rental Management — Table Headers
+    'th_contract_po'           => 'Contract / PO',
+    'th_type'                  => 'Type',
+    'th_billing'               => 'Billing',
+    'th_period_days'           => 'Period & Days Left',
+    'th_value'                 => 'Value',
+
+    // Rental Management — Action Labels (used in JS bridge)
+    'view_detail'              => 'View Detail',
+    'edit_contract'            => 'Edit Contract',
+    'delete_contract'          => 'Delete Contract',
+    'change_rate'              => 'Change Rate',
+    'renewal'                  => 'Renewal',
+    'customers_count'          => 'customers',
+
+    // Rental Management — Invoice Descriptions (per type)
+    'invoice_back_billing'     => 'Back-Billing',
+    'invoice_po_billing'       => 'PO Billing',
+    'invoice_spot_billing'     => 'Spot Rental Billing',
+    'invoice_period'           => 'Billing period',
+
+    // Rental Management (replaces "Contracts & PO" — covers CONTRACT, PO Bulanan, Harian)
+    'rental_management'        => 'Rental Management',
+    'rental_list'              => 'Rental List',
+    'add_rental'               => 'Add Rental',
+    'edit_rental'              => 'Edit Rental',
+    'detail_rental'            => 'Rental Detail',
+    'rental_created'           => 'Rental added successfully',
+    'rental_updated'           => 'Rental updated successfully',
+    'rental_deleted'           => 'Rental deleted successfully',
+
+    // Rental Type Labels
+    'rental_type_contract'     => 'Contract',
+    'rental_type_po'           => 'PO Bulanan',
+    'rental_type_harian'       => 'Harian',
+
+    // Rental Type — Document Number
+    'generate_rental_number'   => 'Generate Number',
+    'rental_number_label'      => 'Rental Number',
+
+    // Rental Type — Contract (fixed-term)
+    'end_date_required'        => 'End Date is required for this rental type',
+
+    // Rental Type — PO Bulanan (open-ended)
+    'open_ended'               => 'Open-ended',
+    'open_ended_notice'        => 'PO Bulanan has no fixed end date. Rental is active as long as PO is ongoing.',
+    'end_date_optional'        => 'End Date (Optional)',
+    'payment_due_day'          => 'Payment Due Day',
+    'payment_due_day_help'     => 'Day of month when payment is due (1–31)',
+    'po_history'               => 'PO History',
+    'next_payment_due'         => 'Next Payment Due',
+    'payment_due_day_invalid'  => 'Payment due day must be between 1 and 31',
+
+    // Rental Type — Harian (short-term spot, max 30 days)
+    'spot_rental_number'          => 'Spot Rental Number',
+    'estimated_duration_days'     => 'Estimated Duration (days)',
+    'fast_track'                  => 'Fast Track',
+    'actual_return_date'          => 'Actual Return Date',
+    'max_duration_notice'         => 'Harian rental maximum duration: {days} days',
+    'daily_max_duration_exceeded' => 'Duration cannot exceed {days} days for Harian rental',
+    'spot_duration_label'         => '{days} days',
+    'return_date_recorded'        => 'Return date recorded',
+
+    // Expiry / Status (type-aware)
+    'expiring_soon_excludes_po'   => 'Note: PO Bulanan rentals are not shown here (open-ended)',
+    'contract_end_date_required'  => 'End date is required for Contract and Harian rental types',
+    'contract_type_notice'        => 'Fixed-term agreement with defined start and end date',
 ];

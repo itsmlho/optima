@@ -321,6 +321,18 @@ return [
     'search_placeholder' => 'Search...',
     'quick_search' => 'Quick Search',
     'quick_search_title' => 'Quick Search — Ctrl+K',
+
+    'system_settings' => 'System Settings',
+    'system_info' => 'System Info',
+    'clear_cache' => 'Clear Cache',
+    'backup' => 'Backup',
+    'save_settings' => 'Save Settings',
+    'settings_tab_general' => 'General',
+    'settings_tab_company' => 'Company',
+    'settings_tab_localization' => 'Localization',
+    'settings_tab_security' => 'Security',
+    'settings_tab_notifications' => 'Notifications',
+    'settings_tab_backup' => 'Backup',
     
     // DataTables Language
     'user' => 'User',

@@ -225,38 +225,37 @@
         </div>
         
         <!-- Title -->
-        <h1 class="coming-soon-title">Expense Management</h1>
+        <h1 class="coming-soon-title"><?= lang('Finance.expense_management') ?></h1>
         
         <div class="coming-soon-divider"></div>
         
         <!-- Subtitle -->
-        <p class="coming-soon-subtitle">Sistem Manajemen Pengeluaran</p>
+        <p class="coming-soon-subtitle"><?= lang('Finance.expense_management_subtitle') ?></p>
         
         <!-- Description -->
         <p class="coming-soon-description">
-            Modul Expense Management sedang dalam pengembangan untuk mengelola pengeluaran perusahaan. 
-            Fitur ini akan membantu tim accounting dalam mencatat, mengkategorikan, dan melacak expenses.
+            <?= lang('Finance.expense_management_description') ?>
         </p>
         
         <!-- Features Coming -->
         <div class="coming-soon-features">
             <div class="feature-item">
                 <i class="fas fa-plus"></i>
-                <span>Record Expenses</span>
+                <span><?= lang('Finance.feature_record_expenses') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-tags"></i>
-                <span>Category Management</span>
+                <span><?= lang('Finance.feature_category_management') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-chart-bar"></i>
-                <span>Expense Reports</span>
+                <span><?= lang('Finance.feature_expense_reports') ?></span>
             </div>
         </div>
         
         <!-- Back Button -->
         <a href="<?= base_url('/') ?>" class="back-btn">
-            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+            <i class="fas fa-arrow-left me-2"></i><?= lang('Finance.back_to_dashboard') ?>
         </a>
     </div>
 </div>

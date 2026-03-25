@@ -315,6 +315,18 @@ return [
     'search_placeholder' => 'Cari...',
     'quick_search' => 'Pencarian Cepat',
     'quick_search_title' => 'Pencarian Cepat — Ctrl+K',
+
+    'system_settings' => 'Pengaturan Sistem',
+    'system_info' => 'Info Sistem',
+    'clear_cache' => 'Bersihkan Cache',
+    'backup' => 'Cadangan',
+    'save_settings' => 'Simpan Pengaturan',
+    'settings_tab_general' => 'Umum',
+    'settings_tab_company' => 'Perusahaan',
+    'settings_tab_localization' => 'Lokalisasi',
+    'settings_tab_security' => 'Keamanan',
+    'settings_tab_notifications' => 'Notifikasi',
+    'settings_tab_backup' => 'Cadangan',
     
     // DataTables Language
     'user' => 'Pengguna',

@@ -5,21 +5,21 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-cog me-2"></i>System Settings
+            <i class="fas fa-cog me-2"></i><?= lang('App.system_settings') ?>
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="btn-group" role="group">
                 <button class="btn btn-outline-info btn-sm" onclick="getSystemInfo()">
-                    <i class="fas fa-info-circle me-1"></i>System Info
+                    <i class="fas fa-info-circle me-1"></i><?= lang('App.system_info') ?>
                 </button>
                 <button class="btn btn-outline-warning btn-sm" onclick="clearCache()">
-                    <i class="fas fa-broom me-1"></i>Clear Cache
+                    <i class="fas fa-broom me-1"></i><?= lang('App.clear_cache') ?>
                 </button>
                 <button class="btn btn-outline-success btn-sm" onclick="createBackup()">
-                    <i class="fas fa-download me-1"></i>Backup
+                    <i class="fas fa-download me-1"></i><?= lang('App.backup') ?>
                 </button>
                 <button class="btn btn-primary btn-sm" onclick="saveSettings()">
-                    <i class="fas fa-save me-1"></i>Save Settings
+                    <i class="fas fa-save me-1"></i><?= lang('App.save_settings') ?>
                 </button>
             </div>
         </div>
@@ -33,32 +33,32 @@
             <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
-                        <i class="fas fa-cog me-2"></i>General
+                        <i class="fas fa-cog me-2"></i><?= lang('App.settings_tab_general') ?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="company-tab" data-bs-toggle="tab" data-bs-target="#company" type="button" role="tab">
-                        <i class="fas fa-building me-2"></i>Company
+                        <i class="fas fa-building me-2"></i><?= lang('App.settings_tab_company') ?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="localization-tab" data-bs-toggle="tab" data-bs-target="#localization" type="button" role="tab">
-                        <i class="fas fa-globe me-2"></i>Localization
+                        <i class="fas fa-globe me-2"></i><?= lang('App.settings_tab_localization') ?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">
-                        <i class="fas fa-shield-alt me-2"></i>Security
+                        <i class="fas fa-shield-alt me-2"></i><?= lang('App.settings_tab_security') ?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
-                        <i class="fas fa-bell me-2"></i>Notifications
+                        <i class="fas fa-bell me-2"></i><?= lang('App.settings_tab_notifications') ?>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="backup-tab" data-bs-toggle="tab" data-bs-target="#backup" type="button" role="tab">
-                        <i class="fas fa-database me-2"></i>Backup
+                        <i class="fas fa-database me-2"></i><?= lang('App.settings_tab_backup') ?>
                     </button>
                 </li>
             </ul>

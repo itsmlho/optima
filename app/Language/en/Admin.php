@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * English — Admin module UI
+ */
+
+return [
+    'system_administration' => 'System Administration',
+    'manage_system_settings' => 'Manage system settings and configurations',
+    'online' => 'ONLINE',
+    'offline' => 'OFFLINE',
+    'system_status' => 'System Status',
+    'total_users' => 'Total Users',
+    'database_size' => 'Database Size',
+    'system_load' => 'System Load',
+    'performance_metrics' => 'Performance Metrics',
+    'average_query_time' => 'Average Query Time',
+    'page_load_time' => 'Page Load Time',
+    'memory_peak' => 'Memory Peak',
+    'slow_queries' => 'Slow Queries',
+    'cache_statistics' => 'Cache Statistics',
+    'hit_rate' => 'Hit Rate',
+    'total_keys' => 'Total Keys',
+    'miss_rate' => 'Miss Rate',
+    'memory_usage' => 'Memory Usage',
+    'queue_status' => 'Queue Status',
+    'unknown' => 'Unknown',
+    'failed' => 'Failed',
+    'today' => 'Today',
+    'system_resources' => 'System Resources',
+    'storage_usage' => 'Storage Usage',
+    'system_uptime' => 'System Uptime',
+    'user_management' => 'User Management',
+    'manage_users_roles' => 'Manage users, roles, and permissions',
+    'role_management' => 'Role Management',
+    'permission_management' => 'Permission Management',
+    'system_monitoring' => 'System Monitoring',
+    'monitor_activities' => 'Monitor system activities and performance',
+    'activity_log' => 'Activity Log',
+    'notification_center' => 'Notification Center',
+    'notification_rules' => 'Notification Rules',
+    'recent_activities' => 'Recent Activities',
+    'time' => 'Time',
+    'description' => 'Description',
+    'no_description' => 'No description',
+    'unknown_user' => 'Unknown User',
+];

@@ -55,7 +55,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-completed-services"><?= $service_stats['completed_services'] ?></div>
-                        <div class="text-muted">Completed Services</div>
+                        <div class="text-muted"><?= lang('Dashboard.completed_services') ?></div>
                     </div>
                 </div>
             </div>
@@ -69,7 +69,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-maintenance-alerts"><?= $service_stats['maintenance_alerts'] ?></div>
-                        <div class="text-muted">Maintenance Alerts</div>
+                        <div class="text-muted"><?= lang('Dashboard.maintenance_alerts') ?></div>
                     </div>
                 </div>
             </div>
@@ -98,7 +98,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-pie me-2"></i>Service Status
+                        <i class="fas fa-chart-pie me-2"></i><?= lang('Dashboard.service_status') ?>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -116,7 +116,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-list me-2"></i>Recent Work Orders
+                        <i class="fas fa-list me-2"></i><?= lang('Dashboard.recent_work_orders') ?>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -151,7 +151,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-calendar-alt me-2"></i>Upcoming PMPS
+                        <i class="fas fa-calendar-alt me-2"></i><?= lang('Dashboard.upcoming_pmps') ?>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -176,6 +176,12 @@
 
 <?= $this->section('javascript') ?>
 <script>
+const DASH_SVC_CHART = <?= json_encode([
+    'work_orders' => lang('Dashboard.chart_work_orders'),
+    'completed' => lang('Dashboard.chart_completed'),
+    'in_progress' => lang('Service.in_progress'),
+    'pending' => lang('Dashboard.chart_pending'),
+]) ?>;
 // Work Orders Chart
 const workOrdersCtx = document.getElementById('workOrdersChart').getContext('2d');
 const workOrdersChart = new Chart(workOrdersCtx, {
@@ -183,7 +189,7 @@ const workOrdersChart = new Chart(workOrdersCtx, {
     data: {
         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
         datasets: [{
-            label: 'Work Orders',
+            label: DASH_SVC_CHART.work_orders,
             data: [12, 19, 3, 5, 2, 3],
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
@@ -206,7 +212,7 @@ const serviceStatusCtx = document.getElementById('serviceStatusChart').getContex
 const serviceStatusChart = new Chart(serviceStatusCtx, {
     type: 'doughnut',
     data: {
-        labels: ['Completed', 'In Progress', 'Pending'],
+        labels: [DASH_SVC_CHART.completed, DASH_SVC_CHART.in_progress, DASH_SVC_CHART.pending],
         datasets: [{
             data: [65, 25, 10],
             backgroundColor: [

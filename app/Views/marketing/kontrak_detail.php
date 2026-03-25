@@ -157,9 +157,122 @@ $canAmend  = ($status === 'ACTIVE');
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div><!-- /row customer+financial -->
 
-                    <!-- ── Units & Locations ── -->
+                    <?php $rentalType = $contract['rental_type'] ?? 'CONTRACT'; ?>
+
+                    <?php if ($rentalType === 'PO_ONLY'): ?>
+                    <!-- PO Bulanan: Payment Due & PO Info -->
+                    <div class="card mt-3 border-cyan">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2 text-info"></i>
+                                <strong><?= lang('Marketing.po_history') ?></strong>
+                                <span class="badge badge-soft-cyan ms-2"><?= lang('Marketing.rental_type_po') ?></span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.payment_due_day') ?></label>
+                                    <?php $dueDay = $contract['payment_due_day'] ?? null; ?>
+                                    <?php if ($dueDay): ?>
+                                        <h4 class="mb-0 text-primary">
+                                            <?= esc($dueDay) ?> <small class="text-muted fs-6"><?= lang('Marketing.payment_due_day_help') ?></small>
+                                        </h4>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.next_payment_due') ?></label>
+                                    <?php
+                                    if ($dueDay && !empty($contract['tanggal_mulai'])) {
+                                        $today   = new \DateTime();
+                                        $nextDue = new \DateTime(date('Y-m-') . str_pad($dueDay, 2, '0', STR_PAD_LEFT));
+                                        if ($nextDue <= $today) {
+                                            $nextDue->modify('+1 month');
+                                        }
+                                        echo '<span class="fw-semibold text-warning">' . $nextDue->format('d M Y') . '</span>';
+                                    } else {
+                                        echo '<span class="text-muted">—</span>';
+                                    }
+                                    ?>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.end_date_optional') ?></label>
+                                    <span class="badge badge-soft-cyan"><i class="fas fa-infinity me-1"></i><?= lang('Marketing.open_ended') ?></span>
+                                    <small class="d-block text-muted mt-1"><?= lang('Marketing.open_ended_notice') ?></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($rentalType === 'DAILY_SPOT'): ?>
+                    <!-- Harian: Spot Rental Details -->
+                    <div class="card mt-3 border-warning">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-calendar-day me-2 text-warning"></i>
+                                <strong><?= lang('Marketing.spot_rental_number') ?></strong>
+                                <span class="badge badge-soft-yellow ms-2"><?= lang('Marketing.rental_type_harian') ?></span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.spot_rental_number') ?></label>
+                                    <span class="badge badge-soft-blue font-monospace">
+                                        <?= esc($contract['spot_rental_number'] ?? '—') ?>
+                                    </span>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.estimated_duration_days') ?></label>
+                                    <strong><?= esc($contract['estimated_duration_days'] ?? '—') ?> days</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.actual_return_date') ?></label>
+                                    <?php $retDate = $contract['actual_return_date'] ?? null; ?>
+                                    <?php if ($retDate && date('Y', strtotime($retDate)) > 1): ?>
+                                        <span class="fw-semibold text-success"><?= date('d M Y', strtotime($retDate)) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="text-muted small d-block"><?= lang('Marketing.fast_track') ?></label>
+                                    <?php if (!empty($contract['fast_track'])): ?>
+                                        <span class="badge badge-soft-orange"><i class="fas fa-bolt me-1"></i><?= lang('Marketing.fast_track') ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php
+                            $durEst = (int)($contract['estimated_duration_days'] ?? 0);
+                            $startD = $contract['tanggal_mulai'] ?? null;
+                            if ($durEst > 0 && $startD) {
+                                $actualDays = $retDate && date('Y', strtotime($retDate)) > 1
+                                    ? (int)ceil((strtotime($retDate) - strtotime($startD)) / 86400)
+                                    : $durEst;
+                                if ($actualDays > $durEst): ?>
+                            <div class="alert alert-warning mt-3 mb-0 small">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Actual duration (<?= $actualDays ?> days) exceeds estimated (<?= $durEst ?> days).
+                            </div>
+                            <?php   elseif ($actualDays > 0):  ?>
+                            <div class="alert alert-info mt-3 mb-0 small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Duration: <?= $actualDays ?> / <?= $durEst ?> days
+                                <?= str_replace('{days}', '30', lang('Marketing.max_duration_notice')) ?>
+                            </div>
+                            <?php   endif;
+                            }
+                            ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    </div><!-- /pane-overview -->
                     <div class="tab-pane fade" id="pane-units" role="tabpanel">
                         <div class="card">
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -396,11 +509,11 @@ $canAmend  = ($status === 'ACTIVE');
 <?= $this->section('javascript') ?>
 <script>
 const CONTRACT_ID = <?= (int)$id ?>;
-<?php if (in_array($status, ['ACTIVE', 'EXPIRED']) && isset($diRetrievalLang)): ?>
-const LANG_TARIK = <?= json_encode($diRetrievalLang) ?>;
-<?php else: ?>
-const LANG_TARIK = {};
-<?php endif; ?>
+const LANG_TARIK = <?= json_encode(
+    (in_array($status, ['ACTIVE', 'EXPIRED']) && isset($diRetrievalLang))
+        ? $diRetrievalLang
+        : (object)[]
+) ?>;
 // BASE_URL is already defined globally in base.php
 
 // ── Helper: format rupiah ────────────────────────────────

@@ -118,4 +118,15 @@ return [
     'refresh_data' => 'Refresh Data',
     'export_data' => 'Export Data',
     'filter_by' => 'Filter By',
+
+    // Service dashboard
+    'completed_services' => 'Completed Services',
+    'maintenance_alerts' => 'Maintenance Alerts',
+    'work_orders_trend' => 'Work Orders Trend',
+    'service_status' => 'Service Status',
+    'recent_work_orders' => 'Recent Work Orders',
+    'upcoming_pmps' => 'Upcoming PMPS',
+    'chart_work_orders' => 'Work Orders',
+    'chart_completed' => 'Completed',
+    'chart_pending' => 'Pending',
 ];

@@ -29,7 +29,7 @@
 
 - **Tambah key baru:** selalu di **en** dan **id** dengan key yang **persis sama**, nilai terjemahan sesuai bahasa.
 
-**Modules updated (multi-language scan):** Service (data_unit, spk_service, work_orders, unit_verification, unit_audit_verification_form), Marketing (customer_management, index), Warehouse (index). Keys added to Service.php, Common.php, Marketing.php, Warehouse.php, language-helper.js.
+**Modules updated (multi-language scan):** Service, Marketing, Warehouse (index + quick access), **Admin** (`admin/index.php`), **Purchasing** (`purchasing.php` intro), **Finance** (`finance/index.php` dashboard), **Dashboard** (`dashboard/service.php`), **Settings** (`settings/index.php` header/tabs). New files: `Admin.php`, `Purchasing.php` (en/id). Keys also in `App.php`, `Finance.php`, `Dashboard.php`, `language-helper.js`.
 
 ---
 

@@ -224,6 +224,7 @@ class KontrakModel extends Model
                     break;
                 case 'expiring':
                     $builder->where('k.status', 'ACTIVE');
+                    $builder->where('k.rental_type !=', 'PO_ONLY'); // PO Bulanan: open-ended, never expires
                     if (!empty($filters['expiring_days'])) {
                         // Future expiring dates only
                         $expiringDate = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
