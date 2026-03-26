@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Reset Password - OPTIMA | PT Sarana Mitra Luas Tbk">
+    <meta name="description" content="Reset your OPTIMA account password - Forklift Rental Management System by PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
     
-    <title>Lupa Password - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Forgot Password | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -134,7 +134,7 @@
                     <i class="fas fa-key"></i>
                 </div>
                 
-                <h1 class="auth-title">Lupa Password?</h1>
+                <h1 class="auth-title">Forgot Password?</h1>
             </div>
             
             <?php if (session()->getFlashdata('error')): ?>
@@ -154,7 +154,7 @@
             <div class="info-box">
                 <i class="fas fa-info-circle"></i>
                 <p>
-                    Link reset password akan dikirim ke email Anda. Pastikan email yang Anda masukkan sudah terdaftar di sistem.
+                    A password reset link will be sent to your email. Make sure the address is registered in the system.
                 </p>
             </div>
             
@@ -170,25 +170,25 @@
                         class="form-control" 
                         id="email" 
                         name="email" 
-                        placeholder="nama@email.com"
+                        placeholder="name@company.com"
                         required
                         value="<?= old('email') ?>"
                     >
                 </div>
                 
                 <button type="submit" class="btn btn-primary" id="submitBtn">
-                    <i class="fas fa-paper-plane me-2"></i> Kirim Link Reset
+                    <i class="fas fa-paper-plane me-2"></i> Send Reset Link
                 </button>
                 
                 <a href="<?= base_url('auth/login') ?>" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i> Kembali ke Login
+                    <i class="fas fa-arrow-left me-2"></i> Back to Login
                 </a>
             </form>
             
             <div class="auth-links">
-                Belum punya akun? 
+                Don't have an account? 
                 <a href="<?= base_url('auth/register') ?>">
-                    <i class="fas fa-user-plus me-1"></i> Daftar di sini
+                    <i class="fas fa-user-plus me-1"></i> Register here
                 </a>
             </div>
         </div>
@@ -202,7 +202,7 @@
         document.getElementById('forgotPasswordForm').addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Mengirim...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending…';
         });
     </script>
 </body>

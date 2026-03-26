@@ -27,7 +27,7 @@ class Warehouse extends BaseController
     {
         // Check permission for accessing warehouse dashboard
         if (!$this->hasPermission('warehouse.access')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to access warehouse dashboard');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         // Extract attachment/unit ID from URL for auto-opening modal (from notification deep linking)
@@ -130,10 +130,10 @@ class Warehouse extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to view sparepart inventory'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view sparepart inventory');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         $inventoryModel = new InventorySparepartModel();
@@ -177,7 +177,7 @@ class Warehouse extends BaseController
         if ($data) {
             return $this->response->setJSON(['success' => true, 'data' => $data]);
         }
-        return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Item not found']);
+        return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Item tidak ditemukan']);
     }
 
     public function updateInventorySparepart($id)
@@ -249,7 +249,7 @@ class Warehouse extends BaseController
             
             return $this->response->setJSON(['success' => true, 'message' => 'Stok berhasil diperbarui.']);
         } else {
-            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui stok.', 'errors' => $inventoryModel->errors()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui stok. Periksa kembali data yang diisi.', 'errors' => $inventoryModel->errors()]);
         }
     }
 
@@ -426,10 +426,10 @@ class Warehouse extends BaseController
             }
             
             // Check if it's non-asset
-            if ($unit['status_unit_id'] != 8) {
+            if ($unit['status_unit_id'] != 2) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Unit bukan Non-Asset (status_unit_id harus 8). Hanya unit Non-Asset yang bisa diberi nomor NA-xxx.'
+                    'message' => 'Unit bukan Non-Asset (status_unit_id harus 2). Hanya unit Non-Asset yang bisa diberi nomor NA-xxx.'
                 ]);
             }
             
@@ -465,7 +465,7 @@ class Warehouse extends BaseController
             log_message('error', '[Warehouse::assignNonAssetNumber] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -524,7 +524,7 @@ class Warehouse extends BaseController
             log_message('error', '[Warehouse::getUnitDetail] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -542,7 +542,7 @@ class Warehouse extends BaseController
             if ($unitStatusId === 7) { // RENTAL_ACTIVE
                 $customerInfo = $unitData['customer_name'] ? ' (' . $unitData['customer_name'] . ')' : '';
                 return ($unitData['customer_location_name'] ?? 'Lokasi Customer') . $customerInfo;
-            } elseif (in_array($unitStatusId, [1, 2, 3, 8, 9])) { // Stock/Maintenance/etc
+            } elseif (in_array($unitStatusId, [1, 2, 3, 11, 12])) { // Stock/Maintenance/Returned
                 return $unitData['lokasi_unit'] ?? 'Gudang';
             } elseif (in_array($unitStatusId, [4, 5, 6])) { // Progress stages
                 return 'Dalam Proses Pengiriman';
@@ -868,7 +868,7 @@ class Warehouse extends BaseController
             
         } catch (\Exception $e) {
             log_message('error', 'getUnitFullDetail error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
@@ -1122,7 +1122,7 @@ class Warehouse extends BaseController
             log_message('error', $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memuat history: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat memuat history. Silakan coba lagi.',
             ])->setStatusCode(500);
         }
     }
@@ -1143,7 +1143,7 @@ class Warehouse extends BaseController
         if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to update inventory'
+                'message' => 'Akses ditolak: Anda tidak memiliki izin'
             ])->setStatusCode(403);
         }
         
@@ -1199,7 +1199,7 @@ class Warehouse extends BaseController
             
             return $this->response->setJSON(['success' => true, 'message' => 'Data unit berhasil diperbarui.']);
         }
-        return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui data.']);
+        return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui data. Periksa kembali data yang diisi.']);
     }
 
     /**
@@ -1250,7 +1250,7 @@ class Warehouse extends BaseController
             // Kemungkinan kegagalan karena constraint (FK). Beri pesan ramah.
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Tidak dapat menghapus unit. Pastikan tidak ada relasi aktif. Detail: ' . $e->getMessage(),
+                'message' => 'Tidak dapat menghapus unit. Pastikan tidak ada relasi aktif.',
                 'csrf_hash' => csrf_hash()
             ]);
         }

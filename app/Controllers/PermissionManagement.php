@@ -222,8 +222,8 @@ class PermissionManagement extends BaseController
                 'message' => count($permissionIds) . ' permissions assigned to role'
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Failed to save role permissions: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -379,8 +379,8 @@ class PermissionManagement extends BaseController
                 'message' => $message
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Failed to grant user permission: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -411,8 +411,8 @@ class PermissionManagement extends BaseController
                 'message' => 'Permission override removed (fallback to role permissions)'
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Failed to revoke user permission: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -482,8 +482,8 @@ class PermissionManagement extends BaseController
                 'message' => "{$updated} permissions updated"
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Failed to bulk update user permissions: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 

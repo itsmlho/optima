@@ -235,7 +235,7 @@ class ActivityLogViewer extends BaseController
             }
         } catch (Exception $e) {
             // If error, return original description
-            log_message('error', 'Error generating detailed description: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         return $description;

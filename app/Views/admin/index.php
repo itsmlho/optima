@@ -13,6 +13,11 @@
                     </h1>
                     <p class="text-muted mb-0"><?= lang('Admin.manage_system_settings') ?></p>
                 </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="window.location.reload()">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -45,7 +50,7 @@
                         <i class="bi bi-people stat-icon text-primary"></i>
                     </div>
                     <div>
-                        <div class="stat-value" id="stat-total-users"><?= $system_status['active_users'] ?? 0 ?></div>
+                        <div class="stat-value" id="stat-total-users"><?= $total_users ?? 0 ?></div>
                         <div class="text-muted"><?= lang('Admin.total_users') ?></div>
                     </div>
                 </div>

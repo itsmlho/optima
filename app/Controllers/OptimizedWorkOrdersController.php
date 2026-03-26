@@ -76,7 +76,7 @@ class OptimizedWorkOrdersController extends BaseDataTableController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => ENVIRONMENT === 'production' ? 'Internal server error' : $e->getMessage()
+                'error' => ENVIRONMENT === 'production' ? 'Terjadi kesalahan pada server' : $e->getMessage()
             ], 500);
         }
     }
@@ -389,13 +389,16 @@ class OptimizedWorkOrdersController extends BaseDataTableController
                 return $this->respond(['success' => true, 'message' => 'Work order deleted successfully']);
             }
 
-            return $this->respond(['success' => false, 'message' => 'Failed to delete work order'], 500);
+            return $this->respond([
+                'success' => false,
+                'message' => 'Failed to delete work order'
+            ], 500);
 
         } catch (\Exception $e) {
-            log_message('error', 'Delete work order error: ' . $e->getMessage());
+            log_message('error', 'Work Order delete error: ' . $e->getMessage());
             return $this->respond([
-                'success' => false, 
-                'message' => ENVIRONMENT === 'production' ? 'Internal server error' : $e->getMessage()
+                'success' => false,
+                'message' => ENVIRONMENT === 'production' ? 'Terjadi kesalahan pada server' : $e->getMessage()
             ], 500);
         }
     }
@@ -422,7 +425,7 @@ class OptimizedWorkOrdersController extends BaseDataTableController
             log_message('error', 'Build assets error: ' . $e->getMessage());
             return $this->respond([
                 'success' => false,
-                'message' => 'Failed to build assets: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ], 500);
         }
     }

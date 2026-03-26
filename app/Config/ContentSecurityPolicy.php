@@ -56,7 +56,12 @@ class ContentSecurityPolicy extends BaseConfig
      */
     public $scriptSrc = [
         'self',
-        // transitional: remove 'unsafe-inline' after moving inline scripts to separate files or adding nonce
+        // MIGRATION PLAN (unsafe-inline removal):
+        // Step 1 (current): keep 'unsafe-inline' while auditing inline <script> blocks across views.
+        // Step 2: move large inline JS blocks in spk_service.php, spk.php, etc. to public/assets/js/.
+        // Step 3: for remaining small inline blocks, add csp_script_nonce() on the <script> tag.
+        // Step 4: remove 'unsafe-inline' and verify with browser devtools / CSP report-uri.
+        // Note: $autoNonce = true below means CI4 already injects nonces via {csp-script-nonce} tokens.
         'unsafe-inline',
         'https://code.jquery.com',
         'https://cdn.jsdelivr.net',
@@ -72,7 +77,13 @@ class ContentSecurityPolicy extends BaseConfig
      */
     public $styleSrc = [
         'self',
-        'unsafe-inline', // TODO: replace with nonces or hashes once inline <style> moved
+        // MIGRATION PLAN (unsafe-inline removal):
+        // Inline styles come from Bootstrap, SweetAlert2, DataTables, and component JS.
+        // Step 1: audit which inline <style> blocks can move to CSS files.
+        // Step 2: add csp_style_nonce() on remaining <style> tags.
+        // Step 3: library-injected styles (e.g. SweetAlert2) need 'unsafe-inline' or a hash;
+        //         check if the library version supports nonce-based injection before removing.
+        'unsafe-inline',
         'https://fonts.googleapis.com',
         'https://cdn.datatables.net',
         'https://cdn.jsdelivr.net',

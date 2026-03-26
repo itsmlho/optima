@@ -22,7 +22,7 @@ class ApiController extends BaseController
     public function getMerk()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Metode request tidak valid.']);
         }
 
         try {
@@ -36,7 +36,7 @@ class ApiController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to retrieve merk: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -47,7 +47,7 @@ class ApiController extends BaseController
     public function getModelsByMerk($merk = null)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Metode request tidak valid.']);
         }
 
         if (!$merk) {
@@ -72,7 +72,7 @@ class ApiController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to retrieve models: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -83,7 +83,7 @@ class ApiController extends BaseController
     public function getFormData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Metode request tidak valid.']);
         }
 
         try {
@@ -97,7 +97,7 @@ class ApiController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to retrieve form data: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -108,7 +108,7 @@ class ApiController extends BaseController
     public function getDropdownData($type = null)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Metode request tidak valid.']);
         }
 
         if (!$type) {
@@ -180,7 +180,7 @@ class ApiController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to retrieve ' . $type . ' data: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }

@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="<?= lang('Auth.otp_title') ?> - OPTIMA">
+    <meta name="description" content="OTP Verification - OPTIMA">
     <meta name="robots" content="noindex, nofollow">
     
     <!-- Title -->
-    <title><?= lang('Auth.otp_title') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>OTP Verification | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -23,7 +23,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\" rel=\"stylesheet\">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <!-- Custom Styles for OTP Verification -->
     <!-- Custom Styles -->
@@ -252,8 +252,8 @@
                 <div class="otp-icon">
                     <i class="fas fa-shield-alt"></i>
                 </div>
-                <h1 class="otp-title"><?= lang('Auth.verify_otp') ?></h1>
-                <p class="otp-subtitle"><?= lang('Auth.otp_subtitle_email') ?></p>
+                <h1 class="otp-title">Verify OTP</h1>
+                <p class="otp-subtitle">Enter the OTP code that has been sent to your email</p>
             </div>
         </div>
         
@@ -279,8 +279,8 @@
             <!-- OTP Info -->
             <div class="otp-info">
                 <i class="fas fa-envelope me-2"></i>
-                <strong><?= lang('Auth.email') ?>:</strong> <?= esc($email ?? 'N/A') ?><br>
-                <small class="text-muted"><?= lang('Auth.otp_sent_validity') ?></small>
+                <strong>Email:</strong> <?= esc($email ?? 'N/A') ?><br>
+                <small class="text-muted">OTP code has been sent to the email above. Code is valid for 5 minutes.</small>
             </div>
             
             <!-- OTP Form -->
@@ -296,16 +296,16 @@
                 
                 <button type="submit" class="btn btn-verify" id="verifyBtn">
                     <div class="spinner-border spinner-border-sm me-2 d-none" id="verifySpinner" role="status"></div>
-                    <span id="verifyText"><?= lang('Auth.verify') ?></span>
+                    <span id="verifyText">Verify</span>
                 </button>
             </form>
             
             <!-- Resend Section -->
             <div class="resend-section">
-                <p class="text-muted mb-2"><?= lang('Auth.didnt_receive_otp') ?>?</p>
+                <p class="text-muted mb-2">Didn't receive OTP code?</p>
                 <button type="button" class="btn-resend" id="resendBtn" disabled>
                     <i class="fas fa-redo me-1"></i>
-                    <span id="resendText"><?= lang('Auth.resend_otp') ?></span>
+                    <span id="resendText">Resend OTP</span>
                 </button>
                 <div id="resendCountdown" class="mt-2"></div>
             </div>
@@ -313,7 +313,7 @@
             <!-- Back Link -->
             <div class="back-link">
                 <a href="<?= base_url('auth/login') ?>">
-                    <i class="fas fa-arrow-left me-1"></i>Kembali ke Login
+                    <i class="fas fa-arrow-left me-1"></i>Back to Login
                 </a>
             </div>
         </div>
@@ -380,8 +380,8 @@
             
             if (otpValue.length !== 6) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.warning('Silakan masukkan 6 digit kode OTP');
-                else alert('Silakan masukkan 6 digit kode OTP');
+                if (window.OptimaNotify) OptimaNotify.warning('Please enter the 6-digit OTP code');
+                else alert('Please enter the 6-digit OTP code');
                 return;
             }
             
@@ -413,23 +413,23 @@
             .then(data => {
                 if (data.success) {
                     // Show success message
-                    resendText.textContent = 'OTP Terkirim!';
+                    resendText.textContent = 'OTP sent!';
                     
                     // Reset countdown
                     resendCooldown = data.remaining_seconds || 60;
                     startCountdown();
                     
                     // Show success toast
-                    if (window.OptimaNotify) OptimaNotify.success('OTP baru telah dikirim ke email Anda.');
-                    else alert('OTP baru telah dikirim ke email Anda.');
+                    if (window.OptimaNotify) OptimaNotify.success('A new OTP has been sent to your email.');
+                    else alert('A new OTP has been sent to your email.');
                     
                     // Reset after 2 seconds
                     setTimeout(() => {
-                        resendText.textContent = 'Kirim Ulang OTP';
+                        resendText.textContent = 'Resend OTP';
                     }, 2000);
                 } else {
-                    if (window.OptimaNotify) OptimaNotify.error(data.message || 'Gagal mengirim OTP. Silakan coba lagi.');
-                    else alert(data.message || 'Gagal mengirim OTP. Silakan coba lagi.');
+                    if (window.OptimaNotify) OptimaNotify.error(data.message || 'Failed to send OTP. Please try again.');
+                    else alert(data.message || 'Failed to send OTP. Please try again.');
                     
                     if (data.remaining_seconds) {
                         resendCooldown = data.remaining_seconds;
@@ -441,8 +441,8 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan. Silakan coba lagi.');
-                else alert('Terjadi kesalahan. Silakan coba lagi.');
+                if (window.OptimaNotify) OptimaNotify.error('Something went wrong. Please try again.');
+                else alert('Something went wrong. Please try again.');
                 this.disabled = false;
             });
         });
@@ -453,13 +453,13 @@
                 clearInterval(countdownInterval);
             }
             
-            resendCountdown.innerHTML = `<small class="text-muted">Kirim ulang dalam <span class="countdown">${resendCooldown}</span> detik</small>`;
+            resendCountdown.innerHTML = `<small class="text-muted">Resend in <span class="countdown">${resendCooldown}</span> seconds</small>`;
             
             countdownInterval = setInterval(() => {
                 resendCooldown--;
                 
                 if (resendCooldown > 0) {
-                    resendCountdown.innerHTML = `<small class="text-muted">Kirim ulang dalam <span class="countdown">${resendCooldown}</span> detik</small>`;
+                    resendCountdown.innerHTML = `<small class="text-muted">Resend in <span class="countdown">${resendCooldown}</span> seconds</small>`;
                 } else {
                     resendBtn.disabled = false;
                     resendCountdown.innerHTML = '';

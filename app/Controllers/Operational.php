@@ -45,12 +45,12 @@ class Operational extends BaseController
     {
         // Check permission for tracking search
         if (!$this->hasPermission('operational.tracking.view')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to search tracking'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin'])->setStatusCode(403);
         }
         
         // Allow both AJAX and regular POST requests for testing
         if (!$this->request->isAJAX() && !$this->request->is('post')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $searchType = $this->request->getJSON(true)['search_type'] ?? '';
@@ -81,7 +81,7 @@ class Operational extends BaseController
             }
         } catch (\Exception $e) {
             log_message('error', 'Tracking search error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Search failed: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal melakukan pencarian. Silakan coba lagi.']);
         }
     }
 
@@ -116,7 +116,7 @@ class Operational extends BaseController
         if (!$this->canAccess('marketing') && !$this->canViewResource('marketing', 'kontrak')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to view kontrak'
+                'message' => 'Akses ditolak: Anda tidak memiliki izin'
             ])->setStatusCode(403);
         }
         
@@ -144,7 +144,7 @@ class Operational extends BaseController
         
         if (!$kontrak) {
             log_message('info', 'Kontrak not found: ' . $kontrakNo);
-            return $this->response->setJSON(['success' => false, 'message' => 'Kontrak not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Kontrak tidak ditemukan']);
         }
 
         log_message('info', 'Kontrak found: ' . json_encode($kontrak));
@@ -207,7 +207,7 @@ class Operational extends BaseController
 
         if (!$spk) {
             log_message('info', 'SPK not found: ' . $spkNo);
-            return $this->response->setJSON(['success' => false, 'message' => 'SPK not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
         }
 
         log_message('info', 'SPK found: ' . json_encode($spk));
@@ -266,7 +266,7 @@ class Operational extends BaseController
 
         if (!$di) {
             log_message('info', 'DI not found: ' . $diNo);
-            return $this->response->setJSON(['success' => false, 'message' => 'DI not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data DI tidak ditemukan']);
         }
 
         log_message('info', 'DI found: ' . json_encode($di));
@@ -549,7 +549,7 @@ class Operational extends BaseController
         // Check permission for updating DI status
         if (!$this->hasPermission('operational.delivery_instructions.edit')) {
             log_message('warning', "Permission denied for user attempting to update DI {$id}");
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to update DI status'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin'])->setStatusCode(403);
         }
         
         if (!$this->request->isAJAX()) {
@@ -675,8 +675,8 @@ class Operational extends BaseController
             }
             
         } catch (\Exception $e) {
-            log_message('error', 'Error updating DI status: ' . $e->getMessage());
-            return $this->response->setJSON(['success'=>false,'message'=>'Terjadi kesalahan: ' . $e->getMessage()]);
+            log_message('error', 'Error updating DI status. Silakan coba lagi.');
+            return $this->response->setJSON(['success'=>false,'message'=>'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
     
@@ -758,7 +758,7 @@ class Operational extends BaseController
                         ->where('s.id', (int)$di['spk_id'])
                         ->get()->getRowArray();
                 } catch (\Exception $e) {
-                    log_message('error', 'Error loading SPK for DI detail: ' . $e->getMessage());
+                    log_message('error', 'Gagal memuat data. Silakan coba lagi.');
                     $spk = null;
                 }
             }
@@ -969,10 +969,10 @@ class Operational extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in diDetail: ' . $e->getMessage() . ' at line ' . $e->getLine());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.' . ' at line ' . $e->getLine());
             return $this->response->setStatusCode(500)->setJSON([
                 'success'=>false,
-                'message'=>'Terjadi kesalahan saat memuat detail DI: ' . $e->getMessage()
+                'message'=>'Terjadi kesalahan saat memuat detail DI. Silakan coba lagi.'
             ]);
         }
     }
@@ -1118,7 +1118,7 @@ class Operational extends BaseController
                     log_message('info', "Updated " . count($deliveryItems) . " units to RENTAL_ACTIVE for DI {$id}");
                 }
             } catch (\Exception $e) {
-                log_message('error', 'Failed to update unit statuses for DI ' . $id . ': ' . $e->getMessage());
+                log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
                 // Don't fail the entire approval if unit update fails
             }
             
@@ -1226,16 +1226,16 @@ class Operational extends BaseController
                     }
                     
                 } catch (\Exception $e) {
-                    log_message('error', 'Failed to send delivery arrival email for DI ' . $id . ': ' . $e->getMessage());
+                    log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
                     // Don't fail the entire approval if email sending fails
                 }
             }
             
         } catch (\Exception $e) {
-            log_message('error', 'Failed to update DI ' . $id . ': ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Gagal menyimpan data: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan data. Silakan coba lagi.'
             ]);
         }
 
@@ -1282,11 +1282,11 @@ class Operational extends BaseController
                             'created_at' => date('Y-m-d H:i:s')
                         ]);
                     } catch (\Exception $e) {
-                        log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+                        log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
                     }
                 }
             } catch (\Exception $e) {
-                log_message('error', 'Failed to check/update SPK completion for DI ' . $id . ': ' . $e->getMessage());
+                log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
                 // Continue execution - not critical
             }
         }
@@ -1303,7 +1303,7 @@ class Operational extends BaseController
                     
                 log_message('info', 'Activated kontrak for DI ' . $id);
             } catch (\Exception $e) {
-                log_message('error', 'Failed to activate kontrak for DI ' . $id . ': ' . $e->getMessage());
+                log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
                 // Continue execution - not critical
             }
         }
@@ -1821,7 +1821,7 @@ class Operational extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -1922,45 +1922,7 @@ class Operational extends BaseController
             log_message('error', 'getJenisPerintahKerja error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to load jenis perintah kerja'
-            ]);
-        }
-    }
-
-    /**
-     * Get tujuan perintah kerja based on jenis
-     */
-    public function getTujuanPerintahKerja($jenisId = null)
-    {
-        try {
-            if (!$jenisId) {
-                $jenisId = $this->request->getGet('jenis_id');
-            }
-
-            if (!$jenisId) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Jenis ID required'
-                ]);
-            }
-
-            $tujuanPerintah = $this->db->table('tujuan_perintah_kerja')
-                ->select('id, kode, nama, deskripsi')
-                ->where('jenis_perintah_id', $jenisId)
-                ->where('aktif', 1)
-                ->orderBy('kode')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $tujuanPerintah
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', 'getTujuanPerintahKerja error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Failed to load tujuan perintah kerja'
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -2017,7 +1979,7 @@ class Operational extends BaseController
             log_message('error', 'getAvailableSpkWithUnits error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to load available SPK: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2031,7 +1993,7 @@ class Operational extends BaseController
         if (!$this->canAccess('marketing') && !$this->canViewResource('marketing', 'kontrak')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to view kontrak'
+                'message' => 'Akses ditolak: Anda tidak memiliki izin'
             ])->setStatusCode(403);
         }
         
@@ -2086,7 +2048,7 @@ class Operational extends BaseController
             log_message('error', 'getContractUnits error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to load contract units: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2154,7 +2116,7 @@ class Operational extends BaseController
             log_message('error', 'processWorkflowApproval error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to process workflow approval: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2211,7 +2173,7 @@ class Operational extends BaseController
             log_message('error', 'getAvailableUnits error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to load available units: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2242,16 +2204,16 @@ class Operational extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $errors
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'validateDiData error: ' . $e->getMessage());
+            log_message('error', 'validateDiData error. Silakan coba lagi.');
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Validation error: ' . $e->getMessage()
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.'
             ]);
         }
     }
@@ -2310,7 +2272,7 @@ class Operational extends BaseController
             log_message('error', 'getWorkflowInfo error: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Failed to load workflow info: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2435,7 +2397,7 @@ class Operational extends BaseController
                 'unit_stages' => $unitStages
             ];
         } catch (\Exception $e) {
-            log_message('error', 'SPK Stage Status Error: ' . $e->getMessage());
+            log_message('error', 'SPK Stage Status Error. Silakan coba lagi.');
             return [];
         }
     }
@@ -2627,7 +2589,7 @@ class Operational extends BaseController
     public function getTemporaryUnits()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $draw = $this->request->getPost('draw') ?? 1;
@@ -2696,7 +2658,7 @@ class Operational extends BaseController
             log_message('error', 'getTemporaryUnits error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load temporary units: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2761,7 +2723,7 @@ class Operational extends BaseController
             log_message('error', 'getTemporaryUnitsStats error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load stats: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2788,10 +2750,10 @@ class Operational extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'getCustomersWithTemporaryUnits error: ' . $e->getMessage());
+            log_message('error', 'getCustomersWithTemporaryUnits error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load customers: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2802,7 +2764,7 @@ class Operational extends BaseController
     public function processTemporaryUnitReturn()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $kontrakUnitId = $this->request->getPost('kontrak_unit_id');
@@ -2919,7 +2881,7 @@ class Operational extends BaseController
             log_message('error', 'processTemporaryUnitReturn error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to process return: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -3058,7 +3020,7 @@ class Operational extends BaseController
         helper('simple_rbac');
         
         if (!can_view('operational')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak');
         }
 
         $data = [

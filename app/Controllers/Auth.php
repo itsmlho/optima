@@ -139,7 +139,7 @@ class Auth extends BaseController
         // Check if user exists but is not active
         if ($user && $user['is_active'] == 0) {
             return redirect()->to('/auth/waiting-approval')
-                ->with('info', 'Akun Anda belum diaktifkan. Silakan tunggu persetujuan admin atau hubungi IT Support.');
+                ->with('info', 'Your account has not been activated yet. Please wait for admin approval or contact IT Support.');
         }
         
         // Only proceed if user is active
@@ -162,7 +162,7 @@ class Auth extends BaseController
                 // After failed attempt, check if we need to lock
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', $rateLimit['message'] ?? 'Username/Email atau password salah.')
+                    ->with('error', $rateLimit['message'] ?? 'Username/Email or password is incorrect.')
                     ->with('rate_limit', [
                         'remaining_attempts' => $rateLimit['remaining_attempts'],
                         'locked_until' => $rateLimit['locked_until'] ?? null,
@@ -173,7 +173,7 @@ class Auth extends BaseController
             // Still have attempts remaining
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Username/Email atau password salah.');
+                ->with('error', 'Username/Email or password is incorrect.');
         }
 
         // Check if OTP is enabled for this user
@@ -185,7 +185,7 @@ class Auth extends BaseController
             $otpResult = $this->otpService->generateOtp($user['id'], $user['email'], 'Kode OTP untuk Login Sistem OPTIMA');
 
             if (!$otpResult || isset($otpResult['error'])) {
-                $errorMessage = $otpResult['message'] ?? 'Gagal mengirim OTP. Silakan coba lagi.';
+                $errorMessage = $otpResult['message'] ?? 'Failed to send OTP. Please try again.';
                 return redirect()->back()
                     ->withInput()
                     ->with('error', $errorMessage);
@@ -201,7 +201,7 @@ class Auth extends BaseController
 
             // Redirect to OTP verification page
             return redirect()->to('/auth/verify-otp')
-                ->with('info', 'Kode OTP telah dikirim ke email Anda. Silakan cek email dan masukkan kode OTP.');
+                ->with('info', 'An OTP code has been sent to your email. Please check your inbox and enter the code.');
         }
 
         // OTP not enabled - proceed with normal login
@@ -262,7 +262,7 @@ class Auth extends BaseController
         // Redirect based on user role
         $redirectUrl = $this->getRedirectUrl($sessionData['role']);
         
-        return redirect()->to($redirectUrl)->with('success', 'Login berhasil! Selamat datang, ' . $user['username']);
+        return redirect()->to($redirectUrl)->with('success', 'Login successful! Welcome, ' . $user['username']);
     }
 
     /**
@@ -273,7 +273,7 @@ class Auth extends BaseController
         // Check if user is in OTP verification flow
         if (!$this->session->get('otp_required') || !$this->session->get('temp_user_id')) {
             return redirect()->to('/auth/login')
-                ->with('error', 'Sesi verifikasi OTP tidak valid. Silakan login kembali.');
+                ->with('error', 'OTP verification session is invalid. Please log in again.');
         }
 
         $data = [
@@ -294,7 +294,7 @@ class Auth extends BaseController
         // Check if user is in OTP verification flow
         if (!$this->session->get('otp_required') || !$this->session->get('temp_user_id')) {
             return redirect()->to('/auth/login')
-                ->with('error', 'Sesi verifikasi OTP tidak valid. Silakan login kembali.');
+                ->with('error', 'OTP verification session is invalid. Please log in again.');
         }
 
         $rules = [
@@ -325,7 +325,7 @@ class Auth extends BaseController
         if (!$user) {
             $this->session->remove(['temp_user_id', 'otp_required', 'otp_email', 'remember_login']);
             return redirect()->to('/auth/login')
-                ->with('error', 'User tidak ditemukan. Silakan login kembali.');
+                ->with('error', 'User not found. Please log in again.');
         }
 
         // Get login data from session
@@ -395,7 +395,7 @@ class Auth extends BaseController
         // Redirect based on user role
         $redirectUrl = $this->getRedirectUrl($sessionData['role']);
         
-        return redirect()->to($redirectUrl)->with('success', 'Login berhasil! Selamat datang, ' . $user['username']);
+        return redirect()->to($redirectUrl)->with('success', 'Login successful! Welcome, ' . $user['username']);
     }
 
     /**
@@ -407,7 +407,7 @@ class Auth extends BaseController
         if (!$this->session->get('otp_required') || !$this->session->get('temp_user_id')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Sesi verifikasi OTP tidak valid.'
+                'message' => 'OTP verification session is invalid.'
             ]);
         }
 
@@ -420,7 +420,7 @@ class Auth extends BaseController
         if (!$canRequest['allowed']) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => "Silakan tunggu {$canRequest['remaining_seconds']} detik sebelum request OTP baru.",
+                'message' => "Please wait {$canRequest['remaining_seconds']} seconds before requesting a new OTP.",
                 'remaining_seconds' => $canRequest['remaining_seconds'],
             ]);
         }
@@ -431,13 +431,13 @@ class Auth extends BaseController
         if (!$otpResult || isset($otpResult['error'])) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $otpResult['message'] ?? 'Gagal mengirim OTP. Silakan coba lagi.',
+                'message' => $otpResult['message'] ?? 'Failed to send OTP. Please try again.',
             ]);
         }
 
         return $this->response->setJSON([
             'success' => true,
-            'message' => 'OTP baru telah dikirim ke email Anda.',
+            'message' => 'A new OTP has been sent to your email.',
             'remaining_seconds' => config('AuthSecurity')->otpResendCooldownSeconds ?? 300,
         ]);
     }
@@ -532,7 +532,7 @@ class Auth extends BaseController
                 }
             }
         } catch (\Exception $e) {
-            log_message('debug', 'Error loading divisions for register: ' . $e->getMessage());
+            log_message('debug', 'Gagal memuat data. Silakan coba lagi.');
         }
 
         $data = [
@@ -550,7 +550,7 @@ class Auth extends BaseController
     public function getPositionsByDivision()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $divisionId = $this->request->getPost('division_id');
@@ -590,10 +590,10 @@ class Auth extends BaseController
                 'positions' => $roles
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error loading roles by division: ' . $e->getMessage());
+            log_message('error', 'Gagal memuat data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading roles: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -615,48 +615,48 @@ class Auth extends BaseController
         
         $customMessages = [
             'first_name' => [
-                'required' => 'Nama depan wajib diisi',
-                'min_length' => 'Nama depan minimal 2 karakter',
-                'max_length' => 'Nama depan maksimal 50 karakter'
+                'required' => 'First name is required',
+                'min_length' => 'First name must be at least 2 characters',
+                'max_length' => 'First name cannot exceed 50 characters'
             ],
             'last_name' => [
-                'required' => 'Nama belakang wajib diisi',
-                'min_length' => 'Nama belakang minimal 2 karakter',
-                'max_length' => 'Nama belakang maksimal 50 karakter'
+                'required' => 'Last name is required',
+                'min_length' => 'Last name must be at least 2 characters',
+                'max_length' => 'Last name cannot exceed 50 characters'
             ],
             'username' => [
-                'required' => 'Username wajib diisi',
-                'min_length' => 'Username minimal 3 karakter',
-                'max_length' => 'Username maksimal 20 karakter',
-                'is_unique' => 'Username sudah terdaftar! Silakan gunakan username lain.'
+                'required' => 'Username is required',
+                'min_length' => 'Username must be at least 3 characters',
+                'max_length' => 'Username cannot exceed 20 characters',
+                'is_unique' => 'Username is already taken. Please choose a different one.'
             ],
             'email' => [
-                'required' => 'Email wajib diisi',
-                'valid_email' => 'Format email tidak valid',
-                'is_unique' => 'Email sudah terdaftar! Silakan gunakan email lain atau login jika Anda sudah memiliki akun.'
+                'required' => 'Email is required',
+                'valid_email' => 'Please enter a valid email address',
+                'is_unique' => 'Email is already registered. Please use a different email or log in if you already have an account.'
             ],
             'phone' => [
-                'max_length' => 'Nomor telepon maksimal 20 karakter'
+                'max_length' => 'Phone number cannot exceed 20 characters'
             ],
             'password' => [
-                'required' => 'Password wajib diisi',
-                'min_length' => 'Password minimal 8 karakter'
+                'required' => 'Password is required',
+                'min_length' => 'Password must be at least 8 characters'
             ],
             'password_confirm' => [
-                'required' => 'Konfirmasi password wajib diisi',
-                'matches' => 'Password dan konfirmasi password tidak cocok'
+                'required' => 'Password confirmation is required',
+                'matches' => 'Password and confirmation do not match'
             ],
             'division_id' => [
-                'required' => 'Divisi wajib dipilih',
-                'integer' => 'Divisi tidak valid'
+                'required' => 'Division is required',
+                'integer' => 'Invalid division'
             ],
             'position' => [
-                'required' => 'Role/Position wajib dipilih',
-                'max_length' => 'Role maksimal 100 karakter'
+                'required' => 'Role/Position is required',
+                'max_length' => 'Role cannot exceed 100 characters'
             ],
             'terms' => [
-                'required' => 'Anda harus menyetujui Syarat dan Ketentuan',
-                'in_list' => 'Anda harus menyetujui Syarat dan Ketentuan'
+                'required' => 'You must agree to the Terms and Conditions',
+                'in_list' => 'You must agree to the Terms and Conditions'
             ]
         ];
 
@@ -670,7 +670,7 @@ class Auth extends BaseController
             
             // If multiple errors, add count
             if (count($errors) > 1) {
-                $errorMsg .= ' (dan ' . (count($errors) - 1) . ' error lainnya)';
+                $errorMsg .= ' (and ' . (count($errors) - 1) . ' more error(s))';
             }
             
             log_message('error', 'Registration validation failed: ' . implode(', ', $errors));
@@ -773,13 +773,13 @@ class Auth extends BaseController
             // Redirect to verify email page instead of login
             return redirect()->to('/auth/verify-email')
                 ->with('email', $userData['email'])
-                ->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi.');
+                ->with('success', 'Registration successful! Please check your email for verification.');
         } catch (\Exception $e) {
             $db->transRollback();
             log_message('error', 'Registration error: ' . $e->getMessage());
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Registrasi gagal: ' . $e->getMessage());
+                ->with('error', 'Registration failed: ' . $e->getMessage());
         }
     }
 
@@ -805,7 +805,7 @@ class Auth extends BaseController
         
         if (!$email) {
             return redirect()->to('/auth/login')
-                ->with('error', 'Email tidak ditemukan. Silakan registrasi ulang.');
+                ->with('error', 'Email not found. Please register again.');
         }
         
         try {
@@ -817,7 +817,7 @@ class Auth extends BaseController
             
             if (!$user) {
                 return redirect()->to('/auth/login')
-                    ->with('error', 'User tidak ditemukan.');
+                    ->with('error', 'User not found.');
             }
             
             // Check if already verified
@@ -830,7 +830,7 @@ class Auth extends BaseController
             
             if ($isVerified) {
                 return redirect()->to('/auth/waiting-approval')
-                    ->with('info', 'Email Anda sudah terverifikasi. Menunggu persetujuan admin.');
+                    ->with('info', 'Your email is already verified. Waiting for admin approval.');
             }
             
             // Generate new token
@@ -881,18 +881,18 @@ class Auth extends BaseController
             }
             
             // Send email
-            $this->sendVerificationEmail($email, $user['first_name'], $verificationToken, $user['id'], 'Kirim Ulang: Verifikasi Akun OPTIMA Anda');
+            $this->sendVerificationEmail($email, $user['first_name'], $verificationToken, $user['id'], 'Resend: OPTIMA Account Verification');
             
             // Store email in session for redirect
             session()->set('temp_email', $email);
             
             return redirect()->to('/auth/verify-email')
                 ->with('email', $email)
-                ->with('success', 'Email verifikasi telah dikirim ulang. Silakan cek inbox Anda.');
+                ->with('success', 'Verification email has been resent. Please check your inbox.');
         } catch (\Exception $e) {
             log_message('error', 'Resend verification error: ' . $e->getMessage());
             return redirect()->back()
-                ->with('error', 'Gagal mengirim email verifikasi: ' . $e->getMessage());
+                ->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
     
@@ -925,7 +925,7 @@ class Auth extends BaseController
             
             return $emailService->send();
         } catch (\Exception $e) {
-            log_message('error', 'Failed to send verification email: ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
             return false;
         }
     }
@@ -937,7 +937,7 @@ class Auth extends BaseController
     {
         if (empty($token)) {
             return redirect()->to('/auth/login')
-                ->with('error', 'Token verifikasi tidak valid.');
+                ->with('error', 'Verification token is invalid.');
         }
         
         try {
@@ -988,7 +988,7 @@ class Auth extends BaseController
             
             if (!$user) {
                 return redirect()->to('/auth/login')
-                    ->with('error', 'Token verifikasi tidak valid atau sudah kadaluarsa.');
+                    ->with('error', 'Verification token is invalid or has expired.');
             }
             
             // Update user - mark email as verified
@@ -1028,11 +1028,11 @@ class Auth extends BaseController
             
             // Redirect to waiting page (user still needs admin approval)
             return redirect()->to('/auth/waiting-approval')
-                ->with('success', 'Email berhasil diverifikasi! Akun Anda sedang menunggu persetujuan admin.');
+                ->with('success', 'Email verified successfully! Your account is awaiting admin approval.');
         } catch (\Exception $e) {
             log_message('error', 'Email verification error: ' . $e->getMessage());
             return redirect()->to('/auth/login')
-                ->with('error', 'Terjadi kesalahan saat verifikasi email.');
+                ->with('error', 'An error occurred during email verification.');
         }
     }
     
@@ -1065,7 +1065,7 @@ class Auth extends BaseController
                     $email = $lastUser['email'];
                 }
             } catch (\Exception $e) {
-                log_message('error', 'Error getting last user: ' . $e->getMessage());
+                log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             }
         }
         
@@ -1089,7 +1089,7 @@ class Auth extends BaseController
                     }
                 }
             } catch (\Exception $e) {
-                log_message('error', 'Error checking email verification status: ' . $e->getMessage());
+                log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             }
         }
         
@@ -1134,7 +1134,7 @@ class Auth extends BaseController
 
         if (!$user) {
             // Don't reveal if email exists or not (security best practice)
-            return redirect()->back()->with('success', 'Jika email terdaftar, link reset password telah dikirim ke email Anda.');
+            return redirect()->back()->with('success', 'If your email is registered, a password reset link has been sent to your inbox.');
         }
 
         // Generate reset token dan kirim email menggunakan PasswordResetService
@@ -1143,11 +1143,11 @@ class Auth extends BaseController
             $email,
             $ipAddress,
             $userAgent,
-            'Permintaan Reset Password Akun OPTIMA Anda'
+            'OPTIMA Account Password Reset Request'
         );
 
         if (!$result['success']) {
-            $errorMessage = $result['message'] ?? 'Gagal mengirim email reset password. Silakan coba lagi.';
+            $errorMessage = $result['message'] ?? 'Failed to send password reset email. Please try again.';
             
             // Check if rate limited
             if (isset($result['error']) && $result['error'] === 'rate_limit') {
@@ -1173,14 +1173,14 @@ class Auth extends BaseController
         ]);
 
         // Don't reveal if email exists or not (security best practice)
-        return redirect()->back()->with('success', 'Jika email terdaftar, link reset password telah dikirim ke email Anda. Silakan cek inbox dan folder spam.');
+        return redirect()->back()->with('success', 'If your email is registered, a password reset link has been sent. Please check your inbox and spam folder.');
     }
 
     public function resetPassword($token = null)
     {
         if (!$token) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'Token reset password tidak valid.');
+                ->with('error', 'Password reset token is invalid.');
         }
 
         // Validate token menggunakan PasswordResetService
@@ -1188,7 +1188,7 @@ class Auth extends BaseController
 
         if (!$resetRecord) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'Token reset password tidak valid atau sudah expired. Silakan request reset password baru.');
+                ->with('error', 'Password reset token is invalid or has expired. Please request a new one.');
         }
 
         // Get user
@@ -1196,7 +1196,7 @@ class Auth extends BaseController
 
         if (!$user) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'User tidak ditemukan.');
+                ->with('error', 'User not found.');
         }
 
         $data = [
@@ -1231,7 +1231,7 @@ class Auth extends BaseController
 
         if (!$resetRecord) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'Token reset password tidak valid atau sudah expired. Silakan request reset password baru.');
+                ->with('error', 'Password reset token is invalid or has expired. Please request a new one.');
         }
 
         // Get user
@@ -1239,14 +1239,14 @@ class Auth extends BaseController
 
         if (!$user) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'User tidak ditemukan.');
+                ->with('error', 'User not found.');
         }
 
         // Check if token is single use and already used
         $authSecurityConfig = config('AuthSecurity');
         if (($authSecurityConfig->resetTokenSingleUse ?? true) && $resetRecord['is_used'] == 1) {
             return redirect()->to('/auth/forgot-password')
-                ->with('error', 'Token reset password sudah digunakan. Silakan request reset password baru.');
+                ->with('error', 'Password reset token has already been used. Please request a new one.');
         }
 
         // Update password
@@ -1277,10 +1277,10 @@ class Auth extends BaseController
             ]);
 
             return redirect()->to('/auth/login')
-                ->with('success', 'Password berhasil direset! Silakan login dengan password baru Anda.');
+                ->with('success', 'Password reset successfully! Please log in with your new password.');
         } else {
             return redirect()->back()
-                ->with('error', 'Gagal mereset password. Silakan coba lagi.');
+                ->with('error', 'Failed to reset password. Please try again.');
         }
     }
 
@@ -1331,7 +1331,7 @@ class Auth extends BaseController
         if (!$this->session->get('isLoggedIn')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Anda harus login terlebih dahulu.'
+                'message' => 'You must be logged in to perform this action.'
             ]);
         }
 
@@ -1343,7 +1343,7 @@ class Auth extends BaseController
             // Use regular logout instead
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Untuk logout session saat ini, gunakan tombol logout di menu.'
+                'message' => 'To log out of the current session, use the logout button in the menu.'
             ]);
         }
 
@@ -1370,7 +1370,7 @@ class Auth extends BaseController
         if (!$this->session->get('isLoggedIn')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Anda harus login terlebih dahulu.'
+                'message' => 'You must be logged in to perform this action.'
             ]);
         }
 
@@ -1504,31 +1504,7 @@ class Auth extends BaseController
         if ($this->userModel->update($userId, $updateData)) {
             return redirect()->back()->with('success', 'Password changed successfully!');
         } else {
-            return redirect()->back()->with('error', 'Failed to change password. Please try again.');
-        }
-    }
-    
-    /**
-     * Get active users for dropdown/select options
-     */
-    public function getActiveUsers()
-    {
-        try {
-            $users = $this->userModel->select('id, first_name, last_name, email, username')
-                                    ->where('status', 'active')
-                                    ->orderBy('first_name', 'ASC')
-                                    ->findAll();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $users
-            ]);
-            
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to get users: ' . $e->getMessage()
-            ])->setStatusCode(500);
+            return redirect()->back()->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
 } 

@@ -73,7 +73,7 @@ class Profile extends BaseController
             log_message('info', "Profile Controller - Role info: " . json_encode($roleInfo));
             
         } catch (\Exception $e) {
-            return redirect()->to('/login')->with('error', 'Database error: ' . $e->getMessage());
+            return redirect()->to('/login')->with('error', 'Terjadi kesalahan pada database. Silakan coba lagi.');
         }
 
         $data = [

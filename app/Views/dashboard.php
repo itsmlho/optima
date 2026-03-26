@@ -313,10 +313,10 @@
                         </div>
                     </div>
 
-                    <!-- Branch -->
+                    <!-- Mill -->
                     <div>
                         <h6 class="text-success fw-bold mb-3">
-                            <i class="fas fa-map-marker-alt me-2"></i>BRANCH Areas
+                            <i class="fas fa-map-marker-alt me-2"></i>MILL Areas
                         </h6>
                         <div class="table-scroll-wrapper">
                             <table class="table table-mobile-card modern-table table-sm">

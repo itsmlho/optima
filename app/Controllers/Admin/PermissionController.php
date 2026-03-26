@@ -27,7 +27,7 @@ class PermissionController extends BaseController
     public function index()
     {
         if (!$this->hasPermission('admin.permission_management')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak.');
         }
 
         try {
@@ -51,7 +51,7 @@ class PermissionController extends BaseController
 
             $data = [
                 'title' => 'Permission Management - Error',
-                'error_message' => 'Error loading permissions: ' . $e->getMessage(),
+                'error_message' => 'Gagal memuat data permission. Silakan coba lagi.',
                 'permissions' => [],
                 'stats' => [
                     'total' => 0,
@@ -70,7 +70,7 @@ class PermissionController extends BaseController
     public function store()
     {
         if (!$this->hasPermission('admin.permission_create')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         $validation = $this->validate([
@@ -80,13 +80,35 @@ class PermissionController extends BaseController
             'module' => 'required|max_length[50]',
             'page' => 'required|max_length[50]',
             'action' => 'required|max_length[50]'
+        ], [
+            'key_name' => [
+                'required' => 'Key name harus diisi.',
+                'min_length' => 'Key name minimal 3 karakter.',
+                'max_length' => 'Key name maksimal 100 karakter.',
+                'is_unique' => 'Key name sudah digunakan. Silakan gunakan nama yang berbeda.'
+            ],
+            'display_name' => [
+                'required' => 'Nama tampilan harus diisi.',
+                'max_length' => 'Nama tampilan maksimal 100 karakter.'
+            ],
+            'module' => [
+                'required' => 'Module harus diisi.'
+            ],
+            'page' => [
+                'required' => 'Page harus diisi.'
+            ],
+            'action' => [
+                'required' => 'Action harus diisi.'
+            ]
         ]);
 
         if (!$validation) {
+            $errors = $this->validator->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $this->validator->getErrors()
+                'message' => $firstError,
+                'errors' => $errors
             ])->setStatusCode(400);
         }
 
@@ -105,7 +127,7 @@ class PermissionController extends BaseController
             $permissionId = $this->permissionModel->insert($permissionData);
 
             if (!$permissionId) {
-                throw new \Exception('Failed to create permission');
+                throw new \Exception('Gagal membuat permission');
             }
 
             // Log permission creation using trait
@@ -134,15 +156,15 @@ class PermissionController extends BaseController
             
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Permission created successfully',
+                'message' => 'Permission berhasil dibuat',
                 'permission_id' => $permissionId
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Create Permission Error: ' . $e->getMessage());
+            log_message('error', 'Create Permission Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat membuat permission. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -153,12 +175,12 @@ class PermissionController extends BaseController
     public function update($permissionId)
     {
         if (!$this->hasPermission('admin.permission_edit')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         $permission = $this->permissionModel->find($permissionId);
         if (!$permission) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Permission not found'])->setStatusCode(404);
+            return $this->response->setJSON(['success' => false, 'message' => 'Permission tidak ditemukan'])->setStatusCode(404);
         }
 
         // Manual validation untuk update
@@ -170,13 +192,33 @@ class PermissionController extends BaseController
             'module' => 'required|max_length[50]',
             'page' => 'required|max_length[50]',
             'action' => 'required|max_length[50]'
+        ], [
+            'key_name' => [
+                'required' => 'Key name harus diisi.',
+                'min_length' => 'Key name minimal 3 karakter.',
+                'is_unique' => 'Key name sudah digunakan. Silakan gunakan nama yang berbeda.'
+            ],
+            'display_name' => [
+                'required' => 'Nama tampilan harus diisi.'
+            ],
+            'module' => [
+                'required' => 'Module harus diisi.'
+            ],
+            'page' => [
+                'required' => 'Page harus diisi.'
+            ],
+            'action' => [
+                'required' => 'Action harus diisi.'
+            ]
         ]);
 
         if (!$validation->run($this->request->getPost())) {
+            $errors = $validation->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validation->getErrors()
+                'message' => $firstError,
+                'errors' => $errors
             ]);
         }
 
@@ -194,7 +236,7 @@ class PermissionController extends BaseController
             $result = $this->permissionModel->update($permissionId, $permissionData);
 
             if ($result === false) {
-                throw new \Exception('Failed to update permission in database');
+                throw new \Exception('Gagal memperbarui permission');
             }
 
             // Log permission update using trait
@@ -218,14 +260,14 @@ class PermissionController extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Permission updated successfully'
+                'message' => 'Permission berhasil diperbarui'
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Update Permission Error: ' . $e->getMessage());
+            log_message('error', 'Update Permission Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat memperbarui permission. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -236,12 +278,12 @@ class PermissionController extends BaseController
     public function delete($permissionId)
     {
         if (!$this->hasPermission('admin.permission_delete')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         $permission = $this->permissionModel->find($permissionId);
         if (!$permission) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Permission not found'])->setStatusCode(404);
+            return $this->response->setJSON(['success' => false, 'message' => 'Permission tidak ditemukan'])->setStatusCode(404);
         }
 
         // Check if permission is assigned to roles
@@ -253,7 +295,7 @@ class PermissionController extends BaseController
         if ($roleCount > 0 || $userCount > 0) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => "Cannot delete permission. It is assigned to {$roleCount} role(s) and {$userCount} user(s)."
+                'message' => "Tidak dapat menghapus permission. Permission ini digunakan oleh {$roleCount} role dan {$userCount} user."
             ])->setStatusCode(400);
         }
 
@@ -262,7 +304,7 @@ class PermissionController extends BaseController
 
             if (!$result) {
                 log_message('error', 'PermissionModel delete failed for ID: ' . $permissionId);
-                throw new \Exception('Failed to delete permission from database');
+                throw new \Exception('Gagal menghapus permission');
             }
 
             // Log permission deletion using trait
@@ -279,14 +321,14 @@ class PermissionController extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Permission deleted successfully'
+                'message' => 'Permission berhasil dihapus'
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Delete Permission Error: ' . $e->getMessage());
+            log_message('error', 'Delete Permission Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menghapus permission. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -303,7 +345,7 @@ class PermissionController extends BaseController
         try {
             $permission = $this->permissionModel->find($permissionId);
             if (!$permission) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Permission not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Permission tidak ditemukan']);
             }
 
             return $this->response->setJSON([
@@ -314,7 +356,7 @@ class PermissionController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Gagal memuat detail permission.'
             ]);
         }
     }
@@ -330,7 +372,7 @@ class PermissionController extends BaseController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Not an AJAX request'
+                'error' => 'Bukan request AJAX'
             ])->setStatusCode(400);
         }
 
@@ -480,7 +522,7 @@ class PermissionController extends BaseController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Server error: ' . $e->getMessage()
+                'error' => 'Gagal memuat data permission. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -529,7 +571,7 @@ class PermissionController extends BaseController
         try {
             $permission = $this->permissionModel->find($permissionId);
             if (!$permission) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Permission not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Permission tidak ditemukan']);
             }
 
             // Get roles using this permission
@@ -556,7 +598,7 @@ class PermissionController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Gagal memuat data penggunaan permission.'
             ]);
         }
     }
@@ -637,7 +679,7 @@ class PermissionController extends BaseController
                 'pages' => $pages
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Permission Stats Error: ' . $e->getMessage());
+            log_message('error', 'Permission Stats Error. Silakan coba lagi.');
             return [
                 'total' => 0,
                 'system' => 0,

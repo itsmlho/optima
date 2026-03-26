@@ -44,7 +44,7 @@ class UnitInventoryController extends BaseController
     public function datatable()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setBody('Access Denied');
+            return $this->response->setStatusCode(403)->setBody('Akses ditolak');
         }
 
         try {
@@ -55,11 +55,14 @@ class UnitInventoryController extends BaseController
             $departemenFilter = $this->request->getPost('departemen_id')  ?: null;
             $category         = $this->request->getPost('category')       ?: null;
 
-            // Map broad categories to status ID groups
+            // Map broad categories to status ID groups (based on actual status_unit table):
+            // 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED, 4=PREPARATION, 5=READY_TO_DELIVER
+            // 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=UNDER_REPAIR
+            // 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE
             $categoryMap = [
-                'stock'    => '1,2,3,9',
-                'rental'   => '7,11',
-                'progress' => '4,5,6,8',
+                'stock'    => '1,2,3,9,12,15',   // AVAILABLE_STOCK, NON_ASSET, BOOKED, TRIAL, RETURNED, SPARE
+                'rental'   => '7,8,14',           // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
+                'progress' => '4,5,6,11',         // PREPARATION, READY_TO_DELIVER, IN_DELIVERY, MAINTENANCE
             ];
             // Sub-filter (statusFilter) takes priority over category
             if (!empty($category) && isset($categoryMap[$category]) && empty($statusFilter)) {
@@ -102,7 +105,7 @@ class UnitInventoryController extends BaseController
                 'recordsTotal'    => 0,
                 'recordsFiltered' => 0,
                 'data'            => [],
-                'error'           => 'Server error: ' . $e->getMessage(),
+                'error'           => 'Terjadi kesalahan pada server. Silakan coba lagi.',
                 'csrf_hash'       => csrf_hash(),
             ]);
         }
@@ -310,7 +313,7 @@ class UnitInventoryController extends BaseController
     public function inlineUpdate($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         $unitId = (int)$id;
@@ -349,8 +352,8 @@ class UnitInventoryController extends BaseController
             }
             return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan perubahan.', 'csrf_hash' => csrf_hash()]);
         } catch (\Throwable $e) {
-            log_message('error', 'inlineUpdate unit #' . $unitId . ': ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Server error: ' . $e->getMessage(), 'csrf_hash' => csrf_hash()]);
+            log_message('error', 'inlineUpdate unit #' . $unitId . '. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.', 'csrf_hash' => csrf_hash()]);
         }
     }
 
@@ -755,7 +758,7 @@ class UnitInventoryController extends BaseController
                     $na = $this->inventoryUnitModel->generateNonAssetNumber();
                     $this->inventoryUnitModel->update($id, ['no_unit_na' => $na]);
                 } catch (\Throwable $e) {
-                    log_message('warning', 'Auto-assign NA number failed: ' . $e->getMessage());
+                    log_message('warning', 'Auto-assign NA number failed. Silakan coba lagi.');
                 }
             }
             
@@ -770,7 +773,7 @@ class UnitInventoryController extends BaseController
             return redirect()->to("warehouse/inventory/unit/{$id}")->with('success', 'Unit berhasil ditambahkan.');
         } catch (\Throwable $e) {
             log_message('error', 'UnitInventoryController::store: ' . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Server error: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan pada server. Silakan coba lagi.');
         }
     }
 
@@ -887,7 +890,7 @@ class UnitInventoryController extends BaseController
             return $this->response->setJSON(['success' => true, 'message' => 'Unit berhasil di-nonaktifkan.']);
         } catch (\Throwable $e) {
             log_message('error', 'UnitInventoryController::destroy: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -948,10 +951,14 @@ class UnitInventoryController extends BaseController
             'ready_to_deliver' => $counts[5]  ?? 0,
             'in_delivery'      => $counts[6]  ?? 0,
             'rental_active'    => $counts[7]  ?? 0,
-            'maintenance'      => $counts[8]  ?? 0,
-            'returned'         => $counts[9]  ?? 0,
-            'sold'             => $counts[13] ?? 0, // Fixed: SOLD is status_unit_id 13, not 10
-            'rental_inactive'  => $counts[11] ?? 0,
+            'rental_daily'     => $counts[8]  ?? 0,   // RENTAL_DAILY
+            'trial'            => $counts[9]  ?? 0,   // TRIAL
+            'under_repair'     => $counts[10] ?? 0,
+            'maintenance'      => $counts[11] ?? 0,   // MAINTENANCE (was wrongly 8)
+            'returned'         => $counts[12] ?? 0,   // RETURNED (was wrongly 9)
+            'sold'             => $counts[13] ?? 0,
+            'rental_inactive'  => $counts[14] ?? 0,   // RENTAL_INACTIVE (was wrongly 11)
+            'spare'            => $counts[15] ?? 0,
         ];
     }
 

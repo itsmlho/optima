@@ -341,8 +341,6 @@ $assetService = new \App\Services\AssetMinificationService();
                                         <option value="" selected disabled>-- <?= lang('Service.select_order_type') ?> --</option>
                                         <option value="COMPLAINT"><?= lang('Service.complaint') ?></option>
                                         <option value="PMPS"><?= lang('Service.pmps') ?></option>
-                                        <option value="FABRIKASI"><?= lang('Service.fabrication') ?></option>
-                                        <option value="PERSIAPAN"><?= lang('Service.preparation') ?></option>
                                     </select>
                                 </div>
                                 <div class="col-md-12 mb-3">
@@ -3045,18 +3043,18 @@ $(document).ready(function() {
                 // Show area info indicator
                 showAreaIndicator(unit.area_name, true);
                 
-                // Load area-specific staff
-                loadAreaStaff(unit.area_id);
+                // Load staff based on user login scope (not unit area)
+                loadAreaStaff();
             } else {
-                // CASE 2: Unit has NO area - show all available staff (fallback)
+                // CASE 2: Unit has NO area
                 $('#area').val('N/A');
                 $('#area_id').val('');
                 
                 // Show fallback indicator
                 showAreaIndicator(null, false);
                 
-                // Load ALL available staff (not filtered by area)
-                loadAreaStaff(null); // Will fallback to all staff
+                // Load staff based on user login scope
+                loadAreaStaff();
             }
         } else {
             // Clear area and staff fields if no unit selected
@@ -3400,26 +3398,17 @@ $(document).ready(function() {
         loadStaffDropdown('HELPER', 'helper_2');
     }
 
-    // Load admin and foreman dropdowns based on area
-    function loadAreaStaff(areaId) {
-        // console.log('🔄 Loading area staff for area ID:', areaId);
-        
+    // Load admin and foreman dropdowns based on user login scope
+    function loadAreaStaff() {
         // Clear dropdowns
         $('#admin_id').html('<option value="">-- Select Admin --</option>');
         $('#foreman_id').html('<option value="">-- Select Foreman --</option>');
         $('#pic_name').val('');
         
-        if (!areaId) {
-            // FALLBACK: Load ALL available staff when no area specified
-            // console.log('⚠️ No area specified - loading ALL available staff');
-            loadAllStaffFallback();
-            return;
-        }
-        
         $.ajax({
             url: '<?= base_url('service/work-orders/get-area-staff') ?>',
             type: 'POST',
-            data: { area_id: areaId },
+            data: {},
             success: function(response) {
                 // console.log('📦 Area staff response:', response);
                 
@@ -3477,11 +3466,11 @@ $(document).ready(function() {
                         $('#foreman_id').trigger('change.select2');
                     }
                     
-                    // Load mechanic and helper dropdowns for this area
-                    loadStaffDropdownByArea('MECHANIC', 'mechanic_1', areaId);
-                    loadStaffDropdownByArea('MECHANIC', 'mechanic_2', areaId);
-                    loadStaffDropdownByArea('HELPER', 'helper_1', areaId);
-                    loadStaffDropdownByArea('HELPER', 'helper_2', areaId);
+                    // Load mechanic and helper dropdowns via user scope
+                    loadStaffDropdown('MECHANIC', 'mechanic_1');
+                    loadStaffDropdown('MECHANIC', 'mechanic_2');
+                    loadStaffDropdown('HELPER', 'helper_1');
+                    loadStaffDropdown('HELPER', 'helper_2');
                     
                     // console.log('✅ Area staff loaded successfully');
                 } else {

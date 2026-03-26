@@ -51,7 +51,7 @@ class WorkOrderController extends Controller
         $session = session();
         $userRole = $session->get('role');
         if (empty($userRole)) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view work orders');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         // Get user's department scope using proper RBAC infrastructure
@@ -133,7 +133,7 @@ class WorkOrderController extends Controller
             
             return $formatted;
         } catch (\Exception $e) {
-            log_message('error', 'Error getting spareparts dropdown: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return [];
         }
     }
@@ -199,7 +199,7 @@ class WorkOrderController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in searchSpareparts: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'results' => [],
                 'pagination' => ['more' => false]
@@ -260,7 +260,7 @@ class WorkOrderController extends Controller
             if (!$unit) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Unit not found'
+                    'message' => 'Unit tidak ditemukan'
                 ]);
             }
             
@@ -323,7 +323,7 @@ class WorkOrderController extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving area information: ' . $e->getMessage()
+                'message' => 'Gagal memuat informasi area'
             ]);
         }
     }
@@ -356,7 +356,7 @@ class WorkOrderController extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving spareparts: ' . $e->getMessage()
+                'message' => 'Gagal memuat data sparepart'
             ]);
         }
     }
@@ -371,11 +371,17 @@ class WorkOrderController extends Controller
         // Support multiple department IDs (e.g. from scope)
         $departemenIds = $this->request->getPost('departemen_ids');
         
-        // Auto-apply user's department scope if no explicit filter sent
+        // Auto-apply user's scope if no explicit filter sent
+        $scopeAreaIds = null; // for MILL users (area-based scope)
         if (empty($departemenId) && empty($departemenIds) && empty($areaId)) {
             $scope = get_user_area_department_scope();
-            if ($scope !== null && !empty($scope['departments'])) {
-                $departemenIds = $scope['departments'];
+            if ($scope !== null) {
+                if (!empty($scope['departments'])) {
+                    $departemenIds = $scope['departments'];
+                } elseif (!empty($scope['areas'])) {
+                    // MILL user: scope by area assignments
+                    $scopeAreaIds = $scope['areas'];
+                }
             }
         }
         
@@ -412,7 +418,7 @@ class WorkOrderController extends Controller
                 }
                 $builder->orderBy('e.staff_name', 'ASC');
                 
-            } elseif ($areaId) {
+            } elseif ($areaId || !empty($scopeAreaIds)) {
                 // Use area_employee_assignments table with employees for area-based filtering
                 $builder = $db->table('employees e');
                 $builder->select('e.id, e.staff_name, e.staff_role');
@@ -428,7 +434,11 @@ class WorkOrderController extends Controller
                 }
                 
                 $builder->where('e.is_active', 1);
-                $builder->where('aea.area_id', $areaId);
+                if (!empty($scopeAreaIds)) {
+                    $builder->whereIn('aea.area_id', array_map('intval', $scopeAreaIds));
+                } else {
+                    $builder->where('aea.area_id', $areaId);
+                }
                 $builder->where('aea.is_active', 1);
             } else {
                 // Use employees table for general staff (fallback - not area-specific)
@@ -459,7 +469,7 @@ class WorkOrderController extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving staff: ' . $e->getMessage()
+                'message' => 'Gagal memuat data staff'
             ]);
         }
     }
@@ -471,16 +481,62 @@ class WorkOrderController extends Controller
     {
         $areaId = $this->request->getPost('area_id');
         
+        // When no explicit area_id, fall back to the user's scope areas
+        $scopeAreaIds = null;
+        $loadAll = false;
         if (!$areaId) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Area ID required'
-            ]);
+            $scope = get_user_area_department_scope();
+            if ($scope !== null && !empty($scope['areas'])) {
+                // MILL user: restrict to their assigned areas
+                $scopeAreaIds = array_map('intval', $scope['areas']);
+            } else {
+                // Department-based or full-access user: load all admins/foremans
+                $loadAll = true;
+            }
         }
         
         try {
             $db = \Config\Database::connect();
             
+            if ($loadAll) {
+                // Full-access or department-based user: load all admins/foremans
+                // Query employees directly (no area_employee_assignments join needed)
+                $admins = $db->table('employees')
+                    ->select('id, staff_name, staff_role')
+                    ->like('staff_role', 'ADMIN', 'both')
+                    ->where('is_active', 1)
+                    ->orderBy('staff_name', 'ASC')
+                    ->get()->getResultArray();
+                
+                $foremans = $db->table('employees')
+                    ->select('id, staff_name, staff_role')
+                    ->where('staff_role', 'FOREMAN')
+                    ->where('is_active', 1)
+                    ->orderBy('staff_name', 'ASC')
+                    ->get()->getResultArray();
+            } elseif ($scopeAreaIds !== null) {
+                $areaPlaceholders = implode(',', $scopeAreaIds);
+                
+                $admins = $db->query("
+                    SELECT e.id, e.staff_name, aea.assignment_type, aea.start_date
+                    FROM area_employee_assignments aea
+                    JOIN employees e ON aea.employee_id = e.id
+                    WHERE aea.area_id IN ($areaPlaceholders) AND aea.is_active = 1
+                    AND e.staff_role LIKE '%ADMIN%' AND e.is_active = 1
+                    ORDER BY CASE aea.assignment_type WHEN 'PRIMARY' THEN 0 ELSE 1 END,
+                        aea.start_date ASC, e.id ASC
+                ")->getResultArray();
+                
+                $foremans = $db->query("
+                    SELECT e.id, e.staff_name, aea.assignment_type, aea.start_date
+                    FROM area_employee_assignments aea
+                    JOIN employees e ON aea.employee_id = e.id
+                    WHERE aea.area_id IN ($areaPlaceholders) AND aea.is_active = 1
+                    AND e.staff_role = 'FOREMAN' AND e.is_active = 1
+                    ORDER BY CASE aea.assignment_type WHEN 'PRIMARY' THEN 0 ELSE 1 END,
+                        aea.start_date ASC, e.id ASC
+                ")->getResultArray();
+            } else {
             // Get ALL admins for this area with priority sorting
             $admins = $db->query("
                 SELECT e.id, e.staff_name, aea.assignment_type, aea.start_date
@@ -506,6 +562,7 @@ class WorkOrderController extends Controller
                     aea.start_date ASC,
                     e.id ASC
             ", [$areaId])->getResultArray();
+            }
             
             return $this->response->setJSON([
                 'success' => true,
@@ -518,7 +575,7 @@ class WorkOrderController extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving area staff: ' . $e->getMessage()
+                'message' => 'Gagal memuat data staff area'
             ]);
         }
     }
@@ -580,8 +637,17 @@ class WorkOrderController extends Controller
                 }
             }
             
-            // Get user's division departments for filtering
-            $allowedDepartments = get_user_division_departments();
+            // Get user's scope: departments (CENTRAL) or areas (MILL)
+            $woScope = get_user_area_department_scope();
+            $allowedDepartments = null;
+            $allowedAreas = null;
+            if ($woScope !== null) {
+                if (!empty($woScope['departments'])) {
+                    $allowedDepartments = $woScope['departments'];
+                } elseif (!empty($woScope['areas'])) {
+                    $allowedAreas = $woScope['areas'];
+                }
+            }
             
             // Build filters array for optimized model
             $filters = [
@@ -591,7 +657,8 @@ class WorkOrderController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'month' => $month,
-                'department_ids' => $allowedDepartments
+                'department_ids' => $allowedDepartments,
+                'area_ids' => $allowedAreas
             ];
 
             // Get data from optimized model - FIXED: Use correct method name
@@ -657,11 +724,20 @@ class WorkOrderController extends Controller
             $month,
             isset($excludeStatus) ? $excludeStatus : null
         );
-        // Apply division-based department filter using global helper
-        $allowedDepartments = get_user_division_departments();
+        // Apply unified scope filter (replaces deprecated get_user_division_departments)
+        $woScope = get_user_area_department_scope();
+        $allowedDepartments = null;
+        $allowedAreaIds = null;
+        if ($woScope !== null) {
+            if (!empty($woScope['departments'])) {
+                $allowedDepartments = $woScope['departments'];
+            } elseif (!empty($woScope['areas'])) {
+                $allowedAreaIds = $woScope['areas'];
+            }
+        }
 
-        if ($allowedDepartments !== null && is_array($allowedDepartments)) {
-            // Batch load all unit department IDs at once (instead of 1 query per work order)
+        if ($allowedDepartments !== null) {
+            // CENTRAL/ELECTRIC users: filter by unit's department
             $db = \Config\Database::connect();
             $unitIds = array_filter(array_column($workOrders, 'unit_id'));
 
@@ -673,12 +749,31 @@ class WorkOrderController extends Controller
                 $unitsById = array_column($unitsResult, 'departemen_id', 'id_inventory_unit');
             }
 
-            // Filter work orders using pre-loaded department data
             $workOrders = array_filter($workOrders, function($wo) use ($allowedDepartments, $unitsById) {
                 $unitDeptId = $unitsById[$wo['unit_id']] ?? null;
                 return $unitDeptId && in_array($unitDeptId, $allowedDepartments);
             });
             $workOrders = array_values($workOrders);
+        } elseif ($allowedAreaIds !== null) {
+            // MILL users: filter by admin/foreman employee assigned to user's areas
+            $db = \Config\Database::connect();
+            $areaEmpResult = $db->table('area_employee_assignments')
+                ->select('employee_id')
+                ->whereIn('area_id', $allowedAreaIds)
+                ->where('is_active', 1)
+                ->get()->getResultArray();
+            $areaEmpIds = array_column($areaEmpResult, 'employee_id');
+
+            if (!empty($areaEmpIds)) {
+                $workOrders = array_filter($workOrders, function($wo) use ($areaEmpIds) {
+                    return in_array($wo['admin_id'], $areaEmpIds)
+                        || in_array($wo['foreman_id'], $areaEmpIds)
+                        || in_array($wo['mechanic_id'], $areaEmpIds);
+                });
+                $workOrders = array_values($workOrders);
+            } else {
+                $workOrders = [];
+            }
         }
 
         // Total records untuk pagination
@@ -815,7 +910,7 @@ class WorkOrderController extends Controller
     public function updateStatus()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
         
         $id = $this->request->getPost('id');
@@ -823,7 +918,7 @@ class WorkOrderController extends Controller
         $notes = $this->request->getPost('notes');
         
         if (!$id || !$status) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak lengkap']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak lengkap. Harap isi semua field yang wajib.']);
         }
         
         try {
@@ -841,7 +936,28 @@ class WorkOrderController extends Controller
             if (!$statusData) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Status tidak valid']);
             }
-            
+
+            // Block COMPLETED/CLOSED if spareparts exist but not validated
+            if (in_array($status, ['COMPLETED', 'CLOSED'])) {
+                $dbCheck = \Config\Database::connect();
+                $sparepartCount = $dbCheck->table('work_order_spareparts')
+                    ->where('work_order_id', $id)
+                    ->countAllResults();
+                if ($sparepartCount > 0) {
+                    $woData = $dbCheck->table('work_orders')
+                        ->select('sparepart_validated')
+                        ->where('id', $id)
+                        ->get()
+                        ->getRowArray();
+                    if (!($woData['sparepart_validated'] ?? 0)) {
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
+                        ]);
+                    }
+                }
+            }
+
             // Update work order status
             $updateData = [
                 'status_id' => $statusData['id'],
@@ -861,6 +977,13 @@ class WorkOrderController extends Controller
                     break;
                 case 'CLOSED':
                     $updateData['closed_date'] = date('Y-m-d H:i:s');
+                    // Revert unit workflow_status when WO is fully closed
+                    if ($currentWorkOrder) {
+                        $unitId = is_array($currentWorkOrder) ? ($currentWorkOrder['unit_id'] ?? null) : ($currentWorkOrder->unit_id ?? null);
+                        if ($unitId) {
+                            $this->revertUnitWorkflowStatus((int)$unitId);
+                        }
+                    }
                     break;
                 case 'WAITING_PARTS':
                     // Waiting for spare parts - add hold date if needed
@@ -928,7 +1051,7 @@ class WorkOrderController extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1186,7 +1309,7 @@ class WorkOrderController extends Controller
                 log_message('debug', 'Manual validation failed with errors: ' . print_r($errors, true));
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation error',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $errors
                 ]);
             }
@@ -1548,6 +1671,12 @@ class WorkOrderController extends Controller
                     }
                 }
                 
+                // Update unit workflow_status to MAINTENANCE_IN_PROGRESS
+                $db->table('inventory_unit')
+                    ->where('id_inventory_unit', (int)$input['unit_id'])
+                    ->update(['workflow_status' => 'MAINTENANCE_IN_PROGRESS']);
+                log_message('info', 'Unit ' . $input['unit_id'] . ' workflow_status set to MAINTENANCE_IN_PROGRESS');
+
                 $db->transComplete();
                 
                 if ($db->transStatus() === false) {
@@ -1621,7 +1750,7 @@ class WorkOrderController extends Controller
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1642,7 +1771,7 @@ class WorkOrderController extends Controller
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $this->validator->getErrors()
             ]);
         }
@@ -1672,8 +1801,25 @@ class WorkOrderController extends Controller
             'area' => $this->request->getPost('area')
         ];
         
-        // Jika status berubah menjadi completed, set completion_date
+        // Jika status berubah menjadi completed, validasi sparepart dulu
         if ($oldStatusId != $newStatusId && $newStatusId == 6) {
+            $db = \Config\Database::connect();
+            $sparepartCount = $db->table('work_order_spareparts')
+                ->where('work_order_id', $id)
+                ->countAllResults();
+            if ($sparepartCount > 0) {
+                $woData = $db->table('work_orders')
+                    ->select('sparepart_validated')
+                    ->where('id', $id)
+                    ->get()
+                    ->getRowArray();
+                if (!($woData['sparepart_validated'] ?? 0)) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
+                    ]);
+                }
+            }
             $data['completion_date'] = date('Y-m-d H:i:s');
         }
         
@@ -1766,7 +1912,7 @@ class WorkOrderController extends Controller
             log_message('error', 'Error in WorkOrderController::delete - ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1802,11 +1948,11 @@ class WorkOrderController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting subcategories: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'status' => false,
-                'message' => 'Error getting subcategories'
+                'message' => 'Gagal memuat subkategori'
             ]);
         }
     }
@@ -1943,7 +2089,7 @@ class WorkOrderController extends Controller
             log_message('error', 'Error in WorkOrderController::edit - ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1993,7 +2139,7 @@ class WorkOrderController extends Controller
             return $query->getRowArray();
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting unit area info: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
     }
@@ -2001,6 +2147,26 @@ class WorkOrderController extends Controller
     /**
      * Get area staff information for work order assignment
      */
+    /**
+     * Revert unit workflow_status after Work Order is CLOSED.
+     * Sets to DISEWA if unit has active contract, otherwise TERSEDIA.
+     */
+    private function revertUnitWorkflowStatus(int $unitId): void
+    {
+        $db = \Config\Database::connect();
+        $hasActiveContract = $db->table('kontrak_unit')
+            ->where('unit_id', $unitId)
+            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+            ->where('is_temporary', 0)
+            ->countAllResults() > 0;
+
+        $revertStatus = $hasActiveContract ? 'DISEWA' : 'TERSEDIA';
+        $db->table('inventory_unit')
+            ->where('id_inventory_unit', $unitId)
+            ->update(['workflow_status' => $revertStatus]);
+        log_message('info', "Unit {$unitId} workflow_status reverted to {$revertStatus} after WO CLOSED");
+    }
+
     private function getAreaStaffInfo($unitId)
     {
         try {
@@ -2041,7 +2207,7 @@ class WorkOrderController extends Controller
             return $query->getResultArray();
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting area staff info: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
     }
@@ -2064,7 +2230,7 @@ class WorkOrderController extends Controller
             return (string)$nextNumber;
             
         } catch (\Exception $e) {
-            log_message('error', 'Error generating work order number: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return (string)time(); // Fallback to timestamp
         }
     }
@@ -2090,7 +2256,7 @@ class WorkOrderController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error generating work order number: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error generating work order number'
@@ -2141,7 +2307,7 @@ class WorkOrderController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error searching units: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error searching units'
@@ -2177,12 +2343,12 @@ class WorkOrderController extends Controller
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Priority not found'
+                    'message' => 'Prioritas tidak ditemukan'
                 ]);
             }
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting priority: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error getting priority'
@@ -2219,12 +2385,12 @@ class WorkOrderController extends Controller
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Subcategory not found'
+                    'message' => 'Subkategori tidak ditemukan'
                 ]);
             }
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting subcategory priority: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error getting subcategory priority'
@@ -2264,7 +2430,7 @@ class WorkOrderController extends Controller
             return round($hours, 2);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error calculating TTR: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
     }
@@ -2298,7 +2464,7 @@ class WorkOrderController extends Controller
             return $this->workOrderModel->update($workOrderId, $data);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error updating work order with TTR: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return false;
         }
     }
@@ -2383,6 +2549,18 @@ class WorkOrderController extends Controller
                 }
             }
             
+            // Exclude SOLD (13), UNDER_REPAIR (10), MAINTENANCE (11) units
+            $sql .= " AND iu.status_unit_id NOT IN (10, 11, 13)";
+            
+            // Exclude units that already have an active (non-CLOSED/COMPLETED) work order
+            $sql .= " AND NOT EXISTS (
+                SELECT 1 FROM work_orders wo_check
+                JOIN work_order_statuses wos_check ON wo_check.status_id = wos_check.id
+                WHERE wo_check.unit_id = iu.id_inventory_unit
+                AND wo_check.deleted_at IS NULL
+                AND wos_check.status_code NOT IN ('CLOSED','COMPLETED')
+            )";
+            
             $sql .= " ORDER BY iu.no_unit ASC";
             
             $result = $db->query($sql, $bindings);
@@ -2406,11 +2584,11 @@ class WorkOrderController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting units dropdown: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             $errorMsg = $this->getMySQLError($db ?? null);
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error getting units data: ' . ($errorMsg ?: $e->getMessage())
+                'message' => 'Gagal memuat data unit'
             ]);
         }
     }
@@ -2557,7 +2735,7 @@ class WorkOrderController extends Controller
                     $this->workOrderAssignmentModel->assignEmployees($workOrderId, $assignments, $assignedBy);
                     log_message('info', 'Multiple assignments created successfully');
                 } catch (\Exception $e) {
-                    log_message('warning', 'Failed to create assignment records: ' . $e->getMessage());
+                    log_message('warning', 'Gagal memproses permintaan. Silakan coba lagi.');
                     // Continue anyway as main work order update succeeded
                 }
                 
@@ -2565,29 +2743,26 @@ class WorkOrderController extends Controller
                 $statusHistoryAdded = $this->workOrderModel->addStatusHistory($workOrderId, 2, 'Work order assigned to mechanic and helper', $fromStatusId);
                 
                 if (!$statusHistoryAdded) {
-                    log_message('warning', 'Failed to add status history, but continuing...');
+                    log_message('warning', 'Gagal memproses permintaan. Silakan coba lagi.');
                 }
-                
+
                 $db->transCommit();
-                
-                log_message('info', 'Assignment completed successfully');
-                
+
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Berhasil memilih ' . count($mechanicIds) . ' mekanik dan ' . count($helperIds) . ' helper'
+                    'message' => 'Karyawan berhasil ditugaskan ke Work Order'
                 ]);
-                
+
             } catch (\Exception $e) {
                 $db->transRollback();
-                log_message('error', 'Transaction failed: ' . $e->getMessage());
                 throw $e;
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error assigning employees: ' . $e->getMessage());
+            log_message('error', 'Error assigning employees. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -2606,10 +2781,10 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting work order spareparts: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -2620,7 +2795,7 @@ class WorkOrderController extends Controller
     public function closeWorkOrder()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         try {
@@ -2636,6 +2811,25 @@ class WorkOrderController extends Controller
             }
 
             $db = \Config\Database::connect();
+
+            // Block if spareparts exist but not validated
+            $sparepartCount = $db->table('work_order_spareparts')
+                ->where('work_order_id', $woId)
+                ->countAllResults();
+            if ($sparepartCount > 0) {
+                $woData = $db->table('work_orders')
+                    ->select('sparepart_validated')
+                    ->where('id', $woId)
+                    ->get()
+                    ->getRowArray();
+                if (!($woData['sparepart_validated'] ?? 0)) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
+                    ]);
+                }
+            }
+
             $db->transStart();
 
             try {
@@ -2688,10 +2882,10 @@ class WorkOrderController extends Controller
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error closing work order: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -2722,7 +2916,7 @@ class WorkOrderController extends Controller
     public function getCompleteData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -2763,10 +2957,10 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting complete data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -2778,7 +2972,7 @@ class WorkOrderController extends Controller
     public function saveCompleteWorkOrder()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -2844,10 +3038,10 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error saving complete data: ' . $e->getMessage());
+            log_message('error', 'Gagal menyimpan data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -2858,7 +3052,7 @@ class WorkOrderController extends Controller
     public function getUnitVerificationData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -2926,7 +3120,7 @@ class WorkOrderController extends Controller
             ", [$workOrder['unit_id']])->getRowArray();
 
             if (!$unit) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Unit not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan']);
             }
 
             // Get customer data from unit's contract
@@ -3289,10 +3483,10 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting unit verification data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -3325,7 +3519,7 @@ class WorkOrderController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error getting MySQL error: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         // If we got MySQL error, return it
@@ -3371,7 +3565,7 @@ class WorkOrderController extends Controller
     public function getMastHeights()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         try {
@@ -3404,10 +3598,10 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting mast heights: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengambil data tinggi mast: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat mengambil data tinggi mast. Silakan coba lagi.'
             ]);
         }
     }
@@ -3419,7 +3613,7 @@ class WorkOrderController extends Controller
     public function getUnitVerificationHistory()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         try {
@@ -3477,10 +3671,10 @@ class WorkOrderController extends Controller
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting unit verification history: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengambil riwayat verifikasi: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat mengambil riwayat verifikasi. Silakan coba lagi.'
             ]);
         }
     }
@@ -3491,7 +3685,7 @@ class WorkOrderController extends Controller
     public function saveUnitVerification()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -3583,10 +3777,10 @@ class WorkOrderController extends Controller
                 }
                 
             } catch (\Exception $e) {
-                log_message('error', 'Error retrieving unit data: ' . $e->getMessage());
+                log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Error retrieving unit data from database: ' . $e->getMessage()
+                    'message' => 'Gagal memuat data unit dari database'
                 ]);
             }
 
@@ -4451,7 +4645,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
     public function getSparepartValidationData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getGet('work_order_id');
@@ -4491,10 +4685,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting sparepart validation data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -4505,7 +4699,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
     public function getSparepartMaster()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         try {
@@ -4523,10 +4717,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting sparepart master data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -4537,7 +4731,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
     public function saveSparepartValidation()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -4636,45 +4830,73 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             // Save additional spareparts
             $additionalSpareparts = $this->request->getPost('additional_spareparts') ?: [];
             foreach ($additionalSpareparts as $sparepart) {
-                if (!empty($sparepart['sparepart_id']) && !empty($sparepart['quantity'])) {
-                    // Get sparepart details from master
-                    $sparepartData = $db->table('sparepart')
-                        ->where('id_sparepart', $sparepart['sparepart_id'])
-                        ->get()
-                        ->getRowArray();
-                    
-                    $additionalData = [
-                        'work_order_id' => $workOrderId,
-                        'sparepart_code' => $sparepartData['kode'] ?? '',
-                        'sparepart_name' => $sparepartData['desc_sparepart'] ?? '',
-                        'quantity_brought' => $sparepart['quantity'],
-                        'quantity_used' => $sparepart['quantity'], // For additional, used = planned
-                        'satuan' => $sparepart['satuan'] ?? 'PCS',
-                        'notes' => $sparepart['notes'] ?? '',
-                        'is_additional' => 1, // Mark as additional sparepart
-                        'created_at' => date('Y-m-d H:i:s'),
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ];
-                    
-                    $db->table('work_order_spareparts')->insert($additionalData);
-                    $additionalSparepartId = $db->insertID();
-                    
-                    // ✅ Insert into work_order_sparepart_usage table for additional spareparts
-                    if ($additionalSparepartId && $sparepart['quantity'] > 0) {
-                        $usageData = [
-                            'work_order_sparepart_id' => $additionalSparepartId,
-                            'work_order_id' => $workOrderId,
-                            'quantity_used' => $sparepart['quantity'],
-                            'quantity_returned' => 0,
-                            'usage_notes' => $sparepart['notes'] ?? null,
-                            'used_at' => date('Y-m-d H:i:s'),
-                            'created_at' => date('Y-m-d H:i:s'),
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ];
-                        
-                        $db->table('work_order_sparepart_usage')->insert($usageData);
-                        log_message('info', "Created usage record for additional sparepart - WO {$workOrderId}, Sparepart: {$sparepartData['desc_sparepart']}");
+                $qty = (int)($sparepart['quantity'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $itemType = $sparepart['item_type'] ?? 'sparepart';
+
+                // Resolve sparepart name and code
+                // Select2 AJAX returns id = "KODE - DESC"; manual entry returns plain text; tool uses item_name_manual
+                $sparepartCode = '';
+                $sparepartName = '';
+                if ($itemType === 'tool') {
+                    $sparepartName = trim($sparepart['item_name_manual'] ?? '');
+                } else {
+                    $sparepartId = trim($sparepart['sparepart_id'] ?? '');
+                    if (!empty($sparepartId)) {
+                        if (str_contains($sparepartId, ' - ')) {
+                            // "KODE - NAME" format from Select2
+                            [$sparepartCode, $sparepartName] = array_map('trim', explode(' - ', $sparepartId, 2));
+                        } else {
+                            // Manual plain-text entry
+                            $sparepartName = $sparepartId;
+                        }
                     }
+                }
+
+                if (empty($sparepartName)) {
+                    log_message('info', "Skipped additional sparepart with empty name for WO {$workOrderId}");
+                    continue;
+                }
+
+                $sourceType  = $sparepart['source'] ?? 'WAREHOUSE';
+                $sourceUnitId = !empty($sparepart['source_unit_id']) ? (int)$sparepart['source_unit_id'] : null;
+                $sourceNotes  = !empty($sparepart['source_notes']) ? $sparepart['source_notes'] : null;
+
+                $additionalData = [
+                    'work_order_id'   => $workOrderId,
+                    'sparepart_code'  => $sparepartCode,
+                    'sparepart_name'  => $sparepartName,
+                    'item_type'       => $itemType,
+                    'quantity_brought' => $qty,
+                    'quantity_used'   => $qty, // For additional, used = brought
+                    'satuan'          => $sparepart['satuan'] ?? 'PCS',
+                    'source_type'     => $sourceType,
+                    'source_unit_id'  => $sourceUnitId,
+                    'source_notes'    => $sourceNotes,
+                    'notes'           => $sparepart['notes'] ?? '',
+                    'is_additional'   => 1,
+                    'is_from_warehouse' => ($sourceType === 'WAREHOUSE') ? 1 : 0,
+                    'created_at'      => date('Y-m-d H:i:s'),
+                    'updated_at'      => date('Y-m-d H:i:s'),
+                ];
+
+                $db->table('work_order_spareparts')->insert($additionalData);
+                $additionalSparepartId = $db->insertID();
+
+                if ($additionalSparepartId && $qty > 0) {
+                    $usageData = [
+                        'work_order_sparepart_id' => $additionalSparepartId,
+                        'work_order_id'           => $workOrderId,
+                        'quantity_used'           => $qty,
+                        'quantity_returned'       => 0,
+                        'usage_notes'             => $sparepart['notes'] ?? null,
+                        'used_at'                 => date('Y-m-d H:i:s'),
+                        'created_at'              => date('Y-m-d H:i:s'),
+                        'updated_at'              => date('Y-m-d H:i:s'),
+                    ];
+                    $db->table('work_order_sparepart_usage')->insert($usageData);
+                    log_message('info', "Created usage record for additional sparepart - WO {$workOrderId}, Item: {$sparepartName}");
                 }
             }
 
@@ -4684,20 +4906,19 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 throw new \Exception('CLOSED status not found');
             }
 
-            $woUpdateData = [
-                'status_id' => $statusData['id'],
-                'closed_date' => date('Y-m-d H:i:s'),
-                'sparepart_validated' => 1,
-                'sparepart_validated_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-
-            $this->workOrderModel->skipValidation(true);
-            $woUpdated = $this->workOrderModel->update($workOrderId, $woUpdateData);
-            $this->workOrderModel->skipValidation(false);
+            // Use DB builder directly to bypass model $allowedFields (completion_date, sparepart_validated, etc.)
+            $woUpdated = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->update([
+                    'status_id'              => $statusData['id'],
+                    'completion_date'        => date('Y-m-d H:i:s'),
+                    'sparepart_validated'    => 1,
+                    'sparepart_validated_at' => date('Y-m-d H:i:s'),
+                    'updated_at'             => date('Y-m-d H:i:s'),
+                ]);
 
             if (!$woUpdated) {
-                throw new \Exception('Failed to update work order status');
+                throw new \Exception('Failed to update work order status to CLOSED');
             }
 
             // Add status history
@@ -4733,10 +4954,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error saving sparepart validation: ' . $e->getMessage());
+            log_message('error', 'saveSparepartValidation error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -4747,7 +4968,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
     public function getSparepartUsageData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -4780,10 +5001,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting sparepart usage data: ' . $e->getMessage());
+            log_message('error', 'Error getting sparepart usage data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -4794,7 +5015,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
     public function saveSparepartUsage()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
@@ -4944,10 +5165,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error saving sparepart usage: ' . $e->getMessage());
+            log_message('error', 'Gagal menyimpan data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -4987,7 +5208,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error generating gap alert: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
     }
 }

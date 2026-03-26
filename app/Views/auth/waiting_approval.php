@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Waiting for Admin Approval - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Waiting for Admin Approval | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -122,7 +122,7 @@
                     <?php if (isset($email_verified) && $email_verified): ?>
                         <i class="fas fa-check-circle alert-icon" style="color: #28a745;"></i>
                         <div class="alert-content">
-                            <span class="alert-title">✅ Email Verified</span>
+                            <span class="alert-title">Email verified</span>
                             <div class="alert-text">
                                 <strong><?= esc($email) ?></strong><br>
                                 Your email has been verified successfully. Waiting for admin approval.
@@ -131,14 +131,14 @@
                     <?php else: ?>
                         <i class="fas fa-exclamation-triangle alert-icon" style="color: #ffc107;"></i>
                         <div class="alert-content">
-                            <span class="alert-title">⚠️ Email Not Verified</span>
+                            <span class="alert-title">Email not verified</span>
                             <div class="alert-text mb-2">
                                 <strong><?= esc($email) ?></strong><br>
-                                Please verify your email first by clicking the link sent to your inbox.
+                                Please verify your email first using the link sent to your inbox.
                             </div>
                             <a href="<?= base_url('auth/resend-verification?email=' . urlencode($email)) ?>" 
                                class="btn btn-warning btn-sm">
-                                <i class="fas fa-paper-plane me-1"></i> Resend Verification
+                                <i class="fas fa-paper-plane me-1"></i> Resend Verification Email
                             </a>
                         </div>
                     <?php endif; ?>
@@ -149,9 +149,9 @@
                 <div class="d-flex align-items-start gap-3">
                     <i class="fas fa-times-circle alert-icon" style="color: #dc3545;"></i>
                     <div class="alert-content">
-                        <span class="alert-title">❌ User Not Found</span>
+                        <span class="alert-title">User not found</span>
                         <div class="alert-text">
-                            The email <strong><?= esc($email) ?></strong> was not found in our system.
+                            <strong><?= esc($email) ?></strong> — This email was not found in our system.
                         </div>
                     </div>
                 </div>
@@ -163,7 +163,7 @@
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>
                 <?= session()->getFlashdata('success') ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
         
@@ -171,7 +171,7 @@
             <div class="alert alert-info alert-dismissible fade show" role="alert">
                 <i class="fas fa-info-circle me-2"></i>
                 <?= session()->getFlashdata('info') ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
         
@@ -204,6 +204,7 @@
         <a href="<?= base_url('auth/login') ?>" class="btn btn-primary btn-block btn-back">
             <i class="fas fa-arrow-left me-2"></i> Back to Login Page
         </a>
+    </div>
     </div>
     
     <!-- Bootstrap JS -->

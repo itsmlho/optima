@@ -15,6 +15,7 @@ class SpkSparepartModel extends Model
     
     protected $allowedFields = [
         'spk_id',
+        'unit_id',
         'sparepart_code',
         'sparepart_name',
         'item_type',
@@ -124,19 +125,20 @@ class SpkSparepartModel extends Model
                 }
 
                 $data = [
-                    'spk_id' => $spkId,
-                    'sparepart_code' => !empty($sparepart['sparepart_code']) ? $sparepart['sparepart_code'] : null,
-                    'sparepart_name' => $sparepart['sparepart_name'] ?? '',
-                    'item_type' => $sparepart['item_type'] ?? 'sparepart',
-                    'quantity_brought' => (int)($sparepart['quantity_brought'] ?? 1),
-                    'satuan' => $sparepart['satuan'] ?? 'PCS',
-                    'notes' => $notes ?? ($sparepart['notes'] ?? null),
-                    'is_from_warehouse' => isset($sparepart['is_from_warehouse']) ? (int)$sparepart['is_from_warehouse'] : 1,
-                    'source_type' => $sparepart['source_type'] ?? 'WAREHOUSE',
-                    'source_unit_id' => !empty($sparepart['source_unit_id']) ? (int)$sparepart['source_unit_id'] : null,
-                    'source_notes' => $sparepart['source_notes'] ?? null,
-                    'is_additional' => (int)($sparepart['is_additional'] ?? 0),
-                    'sparepart_validated' => 0
+                    'spk_id'             => $spkId,
+                    'unit_id'            => !empty($sparepart['unit_id']) ? (int)$sparepart['unit_id'] : null,
+                    'sparepart_code'     => !empty($sparepart['sparepart_code']) ? $sparepart['sparepart_code'] : null,
+                    'sparepart_name'     => $sparepart['sparepart_name'] ?? '',
+                    'item_type'          => $sparepart['item_type'] ?? 'sparepart',
+                    'quantity_brought'   => (int)($sparepart['quantity_brought'] ?? 1),
+                    'satuan'             => $sparepart['satuan'] ?? 'PCS',
+                    'notes'              => $notes ?? ($sparepart['notes'] ?? null),
+                    'is_from_warehouse'  => isset($sparepart['is_from_warehouse']) ? (int)$sparepart['is_from_warehouse'] : 1,
+                    'source_type'        => $sparepart['source_type'] ?? 'WAREHOUSE',
+                    'source_unit_id'     => !empty($sparepart['source_unit_id']) ? (int)$sparepart['source_unit_id'] : null,
+                    'source_notes'       => $sparepart['source_notes'] ?? null,
+                    'is_additional'      => (int)($sparepart['is_additional'] ?? 0),
+                    'sparepart_validated' => 0,
                 ];
 
                 $insertResult = $this->insert($data);

@@ -252,9 +252,9 @@ if (!function_exists('get_user_area_department_scope')) {
                 return getUserServiceAccess($userId, 'ALL');
             }
             
-            // 5. ADMIN SERVICE AREA - Branch Areas Only  
+            // 5. ADMIN SERVICE AREA - Mill Areas Only  
             if ($normalizedRole === 'admin service area') {
-                return getUserServiceAccess($userId, 'BRANCH');
+                return getUserServiceAccess($userId, 'MILL');
             }
             
             // 6. SUPERVISOR/STAFF SERVICE - Based on assignments
@@ -361,10 +361,10 @@ if (!function_exists('getServiceAreaScope')) {
                     'scope_type' => 'service_area'
                 ];
             } else {
-                // Fallback: Branch areas only
+                // Fallback: Mill areas only
                 $branchAreas = $db->table('areas')
                     ->select('id')
-                    ->where('area_type', 'BRANCH')
+                    ->where('area_type', 'MILL')
                     ->where('is_active', 1)
                     ->get()
                     ->getResultArray();
@@ -689,24 +689,24 @@ if (!function_exists('getUserServiceAccess')) {
                 
                 if ($accessType === 'CENTRAL') {
                     $areaTypeFilter = 'CENTRAL';
-                } elseif ($accessType === 'BRANCH') {
-                    $areaTypeFilter = 'BRANCH';
+                } elseif ($accessType === 'MILL') {
+                    $areaTypeFilter = 'MILL';
                     
-                    // Apply branch filtering if exists
+                    // Apply mill filtering if exists
                     if ($branchAccess) {
                         if ($branchAccess['access_type'] === 'SPECIFIC_BRANCHES' && $branchAccess['branch_ids']) {
                             $specificAreaIds = json_decode($branchAccess['branch_ids'], true) ?: [];
                         } elseif ($branchAccess['access_type'] === 'NO_BRANCHES') {
-                            $specificAreaIds = []; // No branch access
+                            $specificAreaIds = []; // No mill access
                         }
                         // For 'ALL_BRANCHES', no additional filtering needed
                     }
                 } elseif ($accessType === 'ALL') {
-                    // Admin Service Pusat can see all areas, but still apply branch filtering for BRANCH areas
+                    // Admin Service Pusat can see all areas, but still apply mill filtering for MILL areas
                     $areaTypeFilter = null;
                     
                     if ($branchAccess && $branchAccess['access_type'] === 'SPECIFIC_BRANCHES' && $branchAccess['branch_ids']) {
-                        // For ALL access with branch restriction, get all CENTRAL + specific BRANCH areas
+                        // For ALL access with mill restriction, get all CENTRAL + specific MILL areas
                         $centralQuery = $db->table('areas')
                             ->select('id as area_id')
                             ->where('area_type', 'CENTRAL');
@@ -794,17 +794,17 @@ if (!function_exists('getDefaultServiceAccess')) {
                 
             if ($accessType === 'CENTRAL') {
                 $areaQuery->where('area_type', 'CENTRAL');
-            } elseif ($accessType === 'BRANCH') {
-                $areaQuery->where('area_type', 'BRANCH');
+            } elseif ($accessType === 'MILL') {
+                $areaQuery->where('area_type', 'MILL');
                 
-                // Apply branch filtering for BRANCH access
+                // Apply mill filtering for MILL access
                 if ($branchAccess && $branchAccess['access_type'] === 'SPECIFIC_BRANCHES' && $branchAccess['branch_ids']) {
                     $branchAreaIds = json_decode($branchAccess['branch_ids'], true) ?: [];
                     if (!empty($branchAreaIds)) {
                         $areaQuery->whereIn('id', $branchAreaIds);
                     }
                 } elseif ($branchAccess && $branchAccess['access_type'] === 'NO_BRANCHES') {
-                    // No branch access
+                    // No mill access
                     $scope['areas'] = [];
                     return $scope;
                 }
@@ -845,15 +845,15 @@ if (!function_exists('getDefaultAccessByType')) {
                         'scope_type' => 'default_central'
                     ];
                     
-                case 'BRANCH':
-                    // Admin Service Area - Branch areas only
-                    $areas = safe_get_result($db->table('areas')->select('id')->where('area_type', 'BRANCH')->where('is_active', 1));
+                case 'MILL':
+                    // Admin Service Area - Mill areas only
+                    $areas = safe_get_result($db->table('areas')->select('id')->where('area_type', 'MILL')->where('is_active', 1));
                     $areaIds = array_column($areas, 'id');
                     return [
                         'areas' => $areaIds,
                         'departments' => [1, 2, 3], // All departments by default
                         'has_full_access' => false,
-                        'scope_type' => 'default_branch'
+                        'scope_type' => 'default_mill'
                     ];
                     
                 case 'ASSIGNED':

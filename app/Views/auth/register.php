@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Register to OPTIMA - PT Sarana Mitra Luas Tbk">
+    <meta name="description" content="Create new account at OPTIMA - Forklift Rental Management System by PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
     
-    <title>Daftar Akun - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Create New Account | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -229,8 +229,8 @@
                     <div class="logo-divider"></div>
                     <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo">
                 </div>
-                <h1 class="auth-title">Daftar Akun Baru</h1>
-                <p class="auth-subtitle">Buat akun OPTIMA untuk bergabung dengan tim</p>
+                <h1 class="auth-title">Create New Account</h1>
+                <p class="auth-subtitle">Create your OPTIMA account to join the team</p>
             </div>
             
             <?php if (session()->getFlashdata('error')): ?>
@@ -238,7 +238,7 @@
                     <div class="d-flex align-items-start gap-2">
                         <i class="fas fa-exclamation-circle" style="font-size: 1.25rem; margin-top: 2px;"></i>
                         <div class="flex-grow-1">
-                            <strong>Registrasi Gagal!</strong><br>
+                            <strong>Registration failed!</strong><br>
                             <?= session()->getFlashdata('error') ?>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -252,7 +252,7 @@
                     <div class="d-flex align-items-start gap-2">
                         <i class="fas fa-exclamation-triangle" style="font-size: 1.25rem; margin-top: 2px;"></i>
                         <div class="flex-grow-1">
-                            <strong>Perhatian!</strong>
+                            <strong>Attention!</strong>
                             <ul class="mb-0 mt-2" style="padding-left: 1.25rem;">
                                 <?php foreach ($validation->getErrors() as $error): ?>
                                     <li><?= esc($error) ?></li>
@@ -272,7 +272,7 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="first_name" class="form-label">
-                                <i class="fas fa-user me-1"></i> Nama Depan <span class="required">*</span>
+                                <i class="fas fa-user me-1"></i> First Name <span class="required">*</span>
                             </label>
                             <input 
                                 type="text" 
@@ -288,7 +288,7 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="last_name" class="form-label">
-                                Nama Belakang <span class="required">*</span>
+                                Last Name <span class="required">*</span>
                             </label>
                             <input 
                                 type="text" 
@@ -324,7 +324,7 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="phone" class="form-label">
-                                <i class="fas fa-phone me-1"></i> No. Telepon
+                                <i class="fas fa-phone me-1"></i> Phone Number
                             </label>
                             <input 
                                 type="tel" 
@@ -352,7 +352,7 @@
                         required
                         value="<?= old('username') ?>"
                     >
-                    <small class="form-text">Username hanya boleh huruf, angka, dan underscore (_)</small>
+                    <small class="form-text">Minimum 3 characters, only letters, numbers, and underscores</small>
                 </div>
                 
                 <!-- Password -->
@@ -368,7 +368,7 @@
                                     class="form-control" 
                                     id="password" 
                                     name="password" 
-                                    placeholder="Minimal 8 karakter"
+                                    placeholder="At least 8 characters"
                                     required
                                     onkeyup="checkPasswordStrength()"
                                 >
@@ -385,7 +385,7 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="password_confirm" class="form-label">
-                                Konfirmasi Password <span class="required">*</span>
+                                Confirm Password <span class="required">*</span>
                             </label>
                             <div class="input-group">
                                 <input 
@@ -393,7 +393,7 @@
                                     class="form-control" 
                                     id="password_confirm" 
                                     name="password_confirm" 
-                                    placeholder="Ulangi password"
+                                    placeholder="Repeat password"
                                     required
                                     onkeyup="checkPasswordMatch()"
                                 >
@@ -411,10 +411,10 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="division" class="form-label">
-                                <i class="fas fa-building me-1"></i> Divisi <span class="required">*</span>
+                                <i class="fas fa-building me-1"></i> Division <span class="required">*</span>
                             </label>
                             <select class="form-select" id="division" name="division_id" required>
-                                <option value="">Pilih Divisi</option>
+                                <option value="">Select Division</option>
                                 <?php if (isset($divisions) && !empty($divisions)): ?>
                                     <?php foreach ($divisions as $divisionId => $divisionName): ?>
                                         <option value="<?= $divisionId ?>" <?= old('division') == $divisionId ? 'selected' : '' ?>>
@@ -431,7 +431,7 @@
                                 <i class="fas fa-user-tag me-1"></i> Role <span class="required">*</span>
                             </label>
                             <select class="form-select" id="role" name="position" required disabled>
-                                <option value="">Pilih Divisi Dahulu</option>
+                                <option value="">Select division first</option>
                             </select>
                         </div>
                     </div>
@@ -449,20 +449,20 @@
                             required
                         >
                         <label class="form-check-label" for="terms">
-                            Saya menyetujui <a href="#" onclick="if(window.OptimaNotify) OptimaNotify.info('Terms & Conditions content'); return false;">Syarat dan Ketentuan</a> yang berlaku <span class="required">*</span>
+                            I agree to the <a href="#" onclick="if(window.OptimaNotify) OptimaNotify.info(registerI18n.termsNotice); return false;">Terms &amp; Conditions</a> <span class="required">*</span>
                         </label>
                     </div>
                 </div>
                 
                 <button type="submit" class="btn btn-primary" id="submitBtn">
-                    <i class="fas fa-user-plus me-2"></i> Daftar Sekarang
+                    <i class="fas fa-user-plus me-2"></i> Register Now
                 </button>
             </form>
             
             <div class="auth-links">
-                Sudah punya akun? 
+                Already have an account? 
                 <a href="<?= base_url('auth/login') ?>">
-                    <i class="fas fa-sign-in-alt me-1"></i> Masuk di sini
+                    <i class="fas fa-sign-in-alt me-1"></i> Login here
                 </a>
             </div>
         </div>
@@ -472,6 +472,28 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+const registerI18n = {
+    termsNotice: 'Terms & Conditions',
+    loadingRoles: 'Loading roles…',
+    selectRole: 'Select role',
+    noRolesForDivision: 'No roles available for this division',
+    rolesLoadError: 'Failed to load roles — try again',
+    selectDivisionFirst: 'Select division first',
+    strengthWeak: 'Weak',
+    strengthFair: 'Fair',
+    strengthGood: 'Good',
+    strengthStrong: 'Strong',
+    matchOk: '✓ Passwords match',
+    matchBad: '✗ Passwords do not match',
+    errMismatch: 'Password and confirmation do not match.',
+    errShort: 'Password must be at least 8 characters.',
+    errDivision: 'Please select a division.',
+    errRole: 'Please select a role.',
+    errTerms: 'You must agree to the terms and conditions',
+    processingBtn: 'Submitting registration…',
+    pleaseWait: 'Submitting your registration, please wait…',
+};
+
         // Toggle password visibility
         function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -507,26 +529,26 @@
                 case 1:
                     strengthBar.style.width = '25%';
                     strengthBar.className = 'password-strength-bar strength-weak';
-                    strengthText.textContent = 'Lemah';
+                    strengthText.textContent = registerI18n.strengthWeak;
                     strengthText.style.color = '#dc3545';
                     break;
                 case 2:
                 case 3:
                     strengthBar.style.width = '50%';
                     strengthBar.className = 'password-strength-bar strength-fair';
-                    strengthText.textContent = 'Cukup';
+                    strengthText.textContent = registerI18n.strengthFair;
                     strengthText.style.color = '#ffc107';
                     break;
                 case 4:
                     strengthBar.style.width = '75%';
                     strengthBar.className = 'password-strength-bar strength-good';
-                    strengthText.textContent = 'Baik';
+                    strengthText.textContent = registerI18n.strengthGood;
                     strengthText.style.color = '#17a2b8';
                     break;
                 case 5:
                     strengthBar.style.width = '100%';
                     strengthBar.className = 'password-strength-bar strength-strong';
-                    strengthText.textContent = 'Kuat';
+                    strengthText.textContent = registerI18n.strengthStrong;
                     strengthText.style.color = '#28a745';
                     break;
             }
@@ -542,10 +564,10 @@
             
             if (confirmPassword.length > 0) {
                 if (password === confirmPassword) {
-                    matchText.textContent = '✓ Password cocok';
+                    matchText.textContent = registerI18n.matchOk;
                     matchText.style.color = '#28a745';
                 } else {
-                    matchText.textContent = '✗ Password tidak cocok';
+                    matchText.textContent = registerI18n.matchBad;
                     matchText.style.color = '#dc3545';
                 }
             } else {
@@ -563,7 +585,7 @@
             const csrfName  = '<?= csrf_token() ?>';
             
             if (divisionId) {
-                roleSelect.innerHTML = '<option value="">Memuat role...</option>';
+                roleSelect.innerHTML = '<option value="">' + registerI18n.loadingRoles + '</option>';
                 roleSelect.disabled = true;
 
                 fetch('<?= base_url('auth/get-positions-by-division') ?>', {
@@ -579,7 +601,7 @@
                     return response.json();
                 })
                 .then(function(data) {
-                    roleSelect.innerHTML = '<option value="">Pilih Role</option>';
+                    roleSelect.innerHTML = '<option value="">' + registerI18n.selectRole + '</option>';
                     if (data.success && data.positions && data.positions.length > 0) {
                         data.positions.forEach(function(position) {
                             const opt = document.createElement('option');
@@ -589,17 +611,17 @@
                         });
                         roleSelect.disabled = false;
                     } else {
-                        roleSelect.innerHTML = '<option value="">Tidak ada role tersedia untuk divisi ini</option>';
+                        roleSelect.innerHTML = '<option value="">' + registerI18n.noRolesForDivision + '</option>';
                         roleSelect.disabled = true;
                     }
                 })
                 .catch(function(error) {
                     console.error('Error loading positions:', error);
-                    roleSelect.innerHTML = '<option value="">Gagal memuat role — coba lagi</option>';
+                    roleSelect.innerHTML = '<option value="">' + registerI18n.rolesLoadError + '</option>';
                     roleSelect.disabled = false;
                 });
             } else {
-                roleSelect.innerHTML = '<option value="">Pilih Divisi Dahulu</option>';
+                roleSelect.innerHTML = '<option value="">' + registerI18n.selectDivisionFirst + '</option>';
                 roleSelect.disabled = true;
             }
         });
@@ -616,51 +638,51 @@
             // Validate password match
             if (password !== confirmPassword) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.error('Password dan konfirmasi password tidak cocok!');
-                else alert('❌ Password dan konfirmasi password tidak cocok!');
+                if (window.OptimaNotify) OptimaNotify.error(registerI18n.errMismatch);
+                else alert(registerI18n.errMismatch);
                 return false;
             }
             
             // Validate password strength
             if (password.length < 8) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.error('Password minimal 8 karakter!');
-                else alert('❌ Password minimal 8 karakter!');
+                if (window.OptimaNotify) OptimaNotify.error(registerI18n.errShort);
+                else alert(registerI18n.errShort);
                 return false;
             }
             
             // Validate division
             if (!division) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.warning('Silakan pilih divisi!');
-                else alert('❌ Silakan pilih divisi!');
+                if (window.OptimaNotify) OptimaNotify.warning(registerI18n.errDivision);
+                else alert(registerI18n.errDivision);
                 return false;
             }
             
             // Validate role
             if (!role) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.warning('Silakan pilih role!');
-                else alert('❌ Silakan pilih role!');
+                if (window.OptimaNotify) OptimaNotify.warning(registerI18n.errRole);
+                else alert(registerI18n.errRole);
                 return false;
             }
             
             // Validate terms
             if (!terms) {
                 e.preventDefault();
-                if (window.OptimaNotify) OptimaNotify.warning('Anda harus menyetujui Syarat dan Ketentuan!');
-                else alert('❌ Anda harus menyetujui Syarat dan Ketentuan!');
+                if (window.OptimaNotify) OptimaNotify.warning(registerI18n.errTerms);
+                else alert(registerI18n.errTerms);
                 return false;
             }
             
             // Prevent double submission
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses Pendaftaran...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ' + registerI18n.processingBtn;
             
             // Show loading indicator
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'alert alert-info mt-3';
-            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sedang memproses registrasi Anda, mohon tunggu...';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ' + registerI18n.pleaseWait;
             this.insertBefore(loadingDiv, submitBtn);
         });
     </script>

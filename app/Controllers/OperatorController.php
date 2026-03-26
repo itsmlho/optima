@@ -218,7 +218,7 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getOperators: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'draw' => 1,
                 'recordsTotal' => 0,
@@ -247,7 +247,7 @@ class OperatorController extends BaseController
             if (!$operator) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Operator not found'
+                    'message' => 'Operator tidak ditemukan'
                 ])->setStatusCode(404);
             }
             
@@ -257,10 +257,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getOperator: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving operator: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -291,7 +291,7 @@ class OperatorController extends BaseController
             if (!$this->validate($rules)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $this->validator->getErrors()
                 ])->setStatusCode(400);
             }
@@ -342,10 +342,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in create operator: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error creating operator: ' . $e->getMessage()
+                'message' => 'Gagal membuat data. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -367,7 +367,7 @@ class OperatorController extends BaseController
             if (!$operator) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Operator not found'
+                    'message' => 'Operator tidak ditemukan'
                 ])->setStatusCode(404);
             }
             
@@ -385,7 +385,7 @@ class OperatorController extends BaseController
             if (!$this->validate($rules)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $this->validator->getErrors()
                 ])->setStatusCode(400);
             }
@@ -431,10 +431,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in update operator: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating operator: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -456,7 +456,7 @@ class OperatorController extends BaseController
             if (!$operator) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Operator not found'
+                    'message' => 'Operator tidak ditemukan'
                 ])->setStatusCode(404);
             }
             
@@ -489,10 +489,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in delete operator: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error deleting operator: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -529,10 +529,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getAvailableOperators: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving available operators: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -560,10 +560,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getExpiringCertifications: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving expiring certifications: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -602,10 +602,10 @@ class OperatorController extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getStats: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving statistics: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }

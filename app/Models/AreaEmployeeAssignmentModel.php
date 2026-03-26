@@ -21,7 +21,7 @@ class AreaEmployeeAssignmentModel extends Model
         'end_date',
         'is_active',
         'notes',
-        'department_scope'  // NEW: ALL, ELECTRIC, DIESEL, DIESEL,GASOLINE, etc.
+        'department_scope',  // NEW: ALL, ELECTRIC, DIESEL, DIESEL,GASOLINE, etc.
     ];
 
     protected $useTimestamps = true;

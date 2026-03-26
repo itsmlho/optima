@@ -123,10 +123,10 @@ class Marketing extends BaseDataTableController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to view inventory'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
-            return redirect()->to('/dashboard')->with('error', 'Access denied: You do not have permission to view inventory');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         return view('marketing/unit_tersedia');
@@ -330,7 +330,7 @@ class Marketing extends BaseDataTableController
         if (!$this->canAccess('warehouse') && !$this->canViewResource('warehouse', 'inventory')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to view unit details'
+                'message' => 'Akses ditolak: Anda tidak memiliki izin'
             ])->setStatusCode(403);
         }
         
@@ -514,7 +514,7 @@ class Marketing extends BaseDataTableController
             
         } catch (\Exception $e) {
             log_message('error', 'Marketing::unitDetail Error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error retrieving unit detail: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan. Silakan coba lagi.']);
         }
     }
 
@@ -821,7 +821,7 @@ class Marketing extends BaseDataTableController
     {
         // Check permission for viewing booking
         if (!$this->hasPermission('marketing.booking.view')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view booking');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         return view('marketing/booking');
@@ -833,7 +833,7 @@ class Marketing extends BaseDataTableController
     public function createQuotation()
     {
         if (!$this->canManage('marketing')) {
-            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+            return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
         
         if ($this->request->getMethod() === 'POST') {
@@ -859,7 +859,7 @@ class Marketing extends BaseDataTableController
     public function storeQuotation()
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
         $validation = \Config\Services::validation();
@@ -874,7 +874,7 @@ class Marketing extends BaseDataTableController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $validation->getErrors()
                 ]);
             }
@@ -981,12 +981,12 @@ class Marketing extends BaseDataTableController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to create quotation: ' . $e->getMessage()
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
             
             return redirect()->back()->withInput()
-                ->with('error', 'Failed to create quotation: ' . $e->getMessage());
+                ->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
     
@@ -996,7 +996,7 @@ class Marketing extends BaseDataTableController
     public function createProspect()
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
         // Check if linking to existing customer
@@ -1020,7 +1020,7 @@ class Marketing extends BaseDataTableController
         if (!$validation->withRequest($this->request)->run()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $validation->getErrors()
             ]);
         }
@@ -1109,11 +1109,11 @@ class Marketing extends BaseDataTableController
             
         } catch (\Exception $e) {
             $db->transRollback();
-            log_message('error', 'Error creating prospect: ' . $e->getMessage());
+            log_message('error', 'Gagal membuat data. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create prospect: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1124,14 +1124,14 @@ class Marketing extends BaseDataTableController
     public function convertToQuotation($quotationId)
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
         try {
             $quotation = $this->quotationModel->find($quotationId);
             
             if (!$quotation) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Quotation tidak ditemukan']);
             }
             
             if ($quotation['workflow_stage'] !== 'PROSPECT') {
@@ -1155,11 +1155,11 @@ class Marketing extends BaseDataTableController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error converting prospect: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to convert prospect: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1170,13 +1170,13 @@ class Marketing extends BaseDataTableController
     public function viewQuotation($quotationId)
     {
         if (!$this->canAccess('marketing')) {
-            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+            return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
         
         $quotation = $this->quotationModel->find($quotationId);
         
         if (!$quotation) {
-            return redirect()->to('/marketing/quotations')->with('error', 'Quotation not found');
+            return redirect()->to('/marketing/quotations')->with('error', 'Quotation tidak ditemukan');
         }
         
         // Get specifications
@@ -1206,13 +1206,13 @@ class Marketing extends BaseDataTableController
     public function convertToContract($quotationId)
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
         $quotation = $this->quotationModel->find($quotationId);
         
         if (!$quotation) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Quotation tidak ditemukan']);
         }
         
         if ($quotation['stage'] !== 'ACCEPTED') {
@@ -1301,7 +1301,7 @@ class Marketing extends BaseDataTableController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to convert quotation: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1505,7 +1505,7 @@ class Marketing extends BaseDataTableController
         if (!$quotation) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Quotation not found'
+                'message' => 'Quotation tidak ditemukan'
             ]);
         }
 
@@ -1537,7 +1537,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ])->setStatusCode(404);
             }
 
@@ -1646,7 +1646,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::updateQuotation - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'status' => 'error',
-                'message' => 'Failed to update quotation: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -1726,7 +1726,7 @@ class Marketing extends BaseDataTableController
             
         } catch (\Exception $e) {
             // Log error but don't fail the main operation
-            log_message('error', 'Failed to log quotation change: ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             
             // Force write error to custom log
@@ -1759,7 +1759,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ])->setStatusCode(404);
             }
 
@@ -1802,7 +1802,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::deleteQuotation - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'status' => 'error',
-                'message' => 'Failed to delete quotation: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -1834,7 +1834,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::getQuotationHistory - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching history: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -1952,7 +1952,7 @@ class Marketing extends BaseDataTableController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load specifications: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2072,7 +2072,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::linkContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -2083,7 +2083,7 @@ class Marketing extends BaseDataTableController
     public function exportQuotations()
     {
         if (!$this->canExport('marketing')) {
-            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+            return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
 
         // Get filter parameters
@@ -2135,13 +2135,13 @@ class Marketing extends BaseDataTableController
     public function convertToDeal($quotationId)
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $quotation = $this->quotationModel->find($quotationId);
 
         if (!$quotation) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Quotation tidak ditemukan']);
         }
 
         if ($quotation['stage'] !== 'ACCEPTED') {
@@ -2169,7 +2169,7 @@ class Marketing extends BaseDataTableController
     public function updateQuotationStage($quotationId)
     {
         if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $validation = \Config\Services::validation();
@@ -2181,7 +2181,7 @@ class Marketing extends BaseDataTableController
         if (!$validation->withRequest($this->request)->run()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $validation->getErrors()
             ]);
         }
@@ -3634,12 +3634,11 @@ class Marketing extends BaseDataTableController
             'kontrak_spec' => $kontrak_spec,
             'stage_status' => $stageStatus, // Include stage status data
             'csrf_hash' => csrf_hash(),
-            // Debug info
-            'debug' => [
+            'debug' => ENVIRONMENT === 'development' ? [
                 'stageStatus_count' => count($stageStatus['unit_stages'] ?? []),
                 'preparedUnitsFromStages_count' => count($preparedUnitsFromStages),
                 'enriched_prepared_units_detail_count' => count($enriched['prepared_units_detail'] ?? [])
-            ]
+            ] : null
         ]);
     }
 
@@ -3703,12 +3702,12 @@ class Marketing extends BaseDataTableController
                 'csrf_hash' => csrf_hash()
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error in kontrakUnits: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving contract units: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -3733,7 +3732,7 @@ class Marketing extends BaseDataTableController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -3787,7 +3786,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'kontrakOptions Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading contract options: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -3834,10 +3833,10 @@ class Marketing extends BaseDataTableController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getActiveContracts Error: ' . $e->getMessage());
+            log_message('error', 'getActiveContracts Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading contracts: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -3898,7 +3897,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'getContractsForTarik error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading contracts: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -3920,7 +3919,7 @@ class Marketing extends BaseDataTableController
             if (!$row) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Contract not found'
+                    'message' => 'Kontrak tidak ditemukan'
                 ]);
             }
             
@@ -3940,7 +3939,7 @@ class Marketing extends BaseDataTableController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading contract: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -4642,7 +4641,7 @@ class Marketing extends BaseDataTableController
                             }
                         }
                     } catch (\Exception $e) {
-                        throw new \Exception('Error: ' . $e->getMessage());
+                        throw new \Exception('Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.');
                     }
                     
                     $spec['target_unit_id'] = $targetUnitId;
@@ -4992,7 +4991,7 @@ class Marketing extends BaseDataTableController
             $this->db->transRollback();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -5067,7 +5066,7 @@ class Marketing extends BaseDataTableController
             // Get quotation with customer location data
             $quotation = $this->quotationModel->find($quotationId);
             if (!$quotation) {
-                throw new \Exception('Quotation not found');
+                throw new \Exception('Quotation tidak ditemukan');
             }
 
             // Get customer and location data for fallback
@@ -5342,7 +5341,7 @@ class Marketing extends BaseDataTableController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -5739,7 +5738,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'SPK Creation from Quotation failed: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -6216,11 +6215,11 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(500)->setJSON([
                 'success'=>false,
                 'message'=>'Gagal membuat DI: ' . ($e->getMessage() ?: (!empty($dbError['message']) ? $dbError['message'] : 'Unknown error')),
-                'debug' => [
+                'debug' => ENVIRONMENT === 'development' ? [
                     'db_error' => $dbError,
                     'last_query' => $lastQuery,
                     'payload' => $payload,
-                ],
+                ] : null,
                 'csrf_hash'=>csrf_hash()
             ]);
         }
@@ -6449,10 +6448,10 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(500)->setJSON([
                 'success'=>false,
                 'message'=>'Gagal membuat items DI: ' . ($e->getMessage() ?: (!empty($dbError['message']) ? $dbError['message'] : 'Unknown error')),
-                'debug' => [
+                'debug' => ENVIRONMENT === 'development' ? [
                     'db_error' => $dbError,
                     'last_query' => $lastQuery,
-                ],
+                ] : null,
                 'csrf_hash'=>csrf_hash()
             ]);
         }
@@ -6519,7 +6518,7 @@ class Marketing extends BaseDataTableController
             $diItemColumns = $this->db->getFieldNames($diItemsTable);
             error_log('DI Items Table: ' . $diItemsTable . ', Columns: ' . implode(', ', $diItemColumns));
         } catch (\Exception $e) {
-            error_log('Error getting table info: ' . $e->getMessage());
+            error_log('Terjadi kesalahan. Silakan coba lagi.');
         }
         
         // Check transaction status and commit or rollback
@@ -6540,11 +6539,11 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(500)->setJSON([
                 'success'=>false,
                 'message'=>'Gagal membuat DI: Transaction failed',
-                'debug' => [
+                'debug' => ENVIRONMENT === 'development' ? [
                     'db_error' => $dbError,
                     'last_query' => $lastQuery,
                     'payload' => $payload,
-                ],
+                ] : null,
                 'csrf_hash'=>csrf_hash()
             ]);
         } else {
@@ -6779,7 +6778,7 @@ class Marketing extends BaseDataTableController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Server error: ' . $e->getMessage(),
+                'error' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -6850,7 +6849,7 @@ class Marketing extends BaseDataTableController
         } catch (\Throwable $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Error checking contract number: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -6877,7 +6876,7 @@ class Marketing extends BaseDataTableController
         } catch (\Throwable $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Gagal generate nomor kontrak: ' . $e->getMessage(),
+                'message' => 'Gagal generate nomor kontrak. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -6917,10 +6916,10 @@ class Marketing extends BaseDataTableController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in Marketing::getData(): ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengambil data kontrak: ' . $e->getMessage()
+                'message' => 'Gagal mengambil data kontrak. Silakan coba lagi.'
             ]);
         }
     }
@@ -6961,10 +6960,10 @@ class Marketing extends BaseDataTableController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in Marketing::getDIData(): ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengambil data DI: ' . $e->getMessage()
+                'message' => 'Gagal mengambil data DI. Silakan coba lagi.'
             ]);
         }
     }
@@ -7012,7 +7011,7 @@ class Marketing extends BaseDataTableController
         } catch (\Throwable $e) {
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat data kontrak: ' . $e->getMessage()
+                'message' => 'Gagal memuat data kontrak. Silakan coba lagi.'
             ]);
         }
     }
@@ -7363,7 +7362,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::cleanupSpkZero - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error during cleanup: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -7401,7 +7400,7 @@ class Marketing extends BaseDataTableController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -7435,7 +7434,7 @@ class Marketing extends BaseDataTableController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -7520,7 +7519,7 @@ class Marketing extends BaseDataTableController
             }
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -7605,7 +7604,7 @@ class Marketing extends BaseDataTableController
             }
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -7646,7 +7645,7 @@ class Marketing extends BaseDataTableController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading customer locations: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -7689,7 +7688,7 @@ class Marketing extends BaseDataTableController
             if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
             
@@ -7759,7 +7758,7 @@ class Marketing extends BaseDataTableController
                 log_message('error', 'Marketing::getCustomerDetail - Customer not found for ID: ' . $customerId);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
             
@@ -7827,7 +7826,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -7888,7 +7887,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::sendQuotation - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to send quotation: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -7912,7 +7911,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8021,7 +8020,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::createCustomer - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create customer: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8045,7 +8044,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8222,7 +8221,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::markAsDeal - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to mark as deal: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8249,7 +8248,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::getCustomerProfileStatus - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get customer profile status: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8270,7 +8269,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8309,7 +8308,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::markAsNotDeal - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to mark as not deal: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8380,7 +8379,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8496,7 +8495,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::createContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create contract: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8517,7 +8516,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8554,7 +8553,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::createPurchaseOrder - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create purchase order: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8575,7 +8574,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8613,7 +8612,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::createSPK - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create SPK: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8710,7 +8709,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -8725,7 +8724,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::addSpecifications - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to open specifications: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8832,7 +8831,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::linkSPKToContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to link SPK to contract: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8885,7 +8884,7 @@ class Marketing extends BaseDataTableController
             if (!$contract) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Contract not found'
+                    'message' => 'Kontrak tidak ditemukan'
                 ]);
             }
 
@@ -8934,7 +8933,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::linkDIToContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to link DI to contract: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -8964,7 +8963,7 @@ class Marketing extends BaseDataTableController
                 );
             }
         } catch (\Exception $e) {
-            log_message('error', 'Failed to send DI linking notification: ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
 
@@ -9007,7 +9006,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::getContractsByCustomer - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -9100,7 +9099,7 @@ class Marketing extends BaseDataTableController
 
         } catch (\Exception $e) {
             log_message('error', 'Marketing::getLinkableContractsForDI - Error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -9127,7 +9126,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::getSPKsForContractLinking - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get unlinked SPKs: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -9154,7 +9153,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::checkSPKHasContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -9276,7 +9275,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::renewContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to renew contract: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -9332,7 +9331,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::createAmendment - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create amendment: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -9447,7 +9446,7 @@ class Marketing extends BaseDataTableController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
             
@@ -9551,7 +9550,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::convertProspectToCustomer - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to convert prospect: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -9606,7 +9605,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::getContractsForSPKLinking - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat kontrak: ' . $e->getMessage()
+                'message' => 'Gagal memuat kontrak. Silakan coba lagi.'
             ]);
         }
     }
@@ -9644,7 +9643,7 @@ class Marketing extends BaseDataTableController
             log_message('error', 'Marketing::diUpdate - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }

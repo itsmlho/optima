@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Login to OPTIMA - PT Sarana Mitra Luas Tbk">
+    <meta name="description" content="Login to OPTIMA - Forklift Rental Management System by PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
     
-    <title>Login - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Login to OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -496,7 +496,7 @@
                     <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo">
                 </div>
                 <h1 class="auth-title">Login</h1>
-                <p class="auth-subtitle">Masuk ke akun OPTIMA Anda</p>
+                <p class="auth-subtitle">Sign in to your OPTIMA account</p>
             </div>
             
             <?php if (session()->getFlashdata('error')): ?>
@@ -518,14 +518,14 @@
                 
                 <div class="form-group">
                     <label for="username" class="form-label">
-                        <i class="fas fa-user me-1"></i> Username atau Email
+                        <i class="fas fa-user me-1"></i> Username or Email
                     </label>
                     <input 
                         type="text" 
                         class="form-control" 
                         id="username" 
                         name="username" 
-                        placeholder="Masukkan username atau email"
+                        placeholder="Enter username or email"
                         required 
                         autofocus
                         value="<?= old('username') ?>"
@@ -542,7 +542,7 @@
                             class="form-control" 
                             id="password" 
                             name="password" 
-                            placeholder="Masukkan password"
+                            placeholder="Enter password"
                             required
                         >
                         <button type="button" class="password-toggle" onclick="togglePassword()">
@@ -554,21 +554,21 @@
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="remember" name="remember">
                     <label class="form-check-label" for="remember">
-                        Ingat saya
+                        Remember me
                     </label>
                 </div>
                 
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt me-2"></i> Masuk
+                    <i class="fas fa-sign-in-alt me-2"></i> Sign In
                 </button>
             </form>
             
             <div class="auth-links">
                 <a href="<?= base_url('auth/forgot-password') ?>">
-                    <i class="fas fa-key me-1"></i> Lupa Password?
+                    <i class="fas fa-key me-1"></i> Forgot Password?
                 </a>
                 <a href="<?= base_url('auth/register') ?>">
-                    <i class="fas fa-user-plus me-1"></i> Daftar Akun
+                    <i class="fas fa-user-plus me-1"></i> Create New Account
                 </a>
             </div>
         </div>
@@ -580,8 +580,8 @@
             <div class="login-loading-logo">
                 <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA">
             </div>
-            <div class="login-loading-text">Sedang Login...</div>
-            <div class="login-loading-subtitle">Memeriksa akun Anda.</div>
+            <div class="login-loading-text">Signing in…</div>
+            <div class="login-loading-subtitle">Verifying your account.</div>
             <div class="login-loading-bars">
                 <span class="login-loading-bar"></span>
                 <span class="login-loading-bar"></span>
@@ -617,7 +617,7 @@
             const loadingModal = document.getElementById('loginLoadingModal');
             
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing…';
             
             // Show loading modal after short delay
             setTimeout(() => {

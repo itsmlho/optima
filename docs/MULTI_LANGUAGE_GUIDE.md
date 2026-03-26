@@ -100,3 +100,31 @@ triggerBtn.innerHTML = '<span>' + searchLabel + '</span>';
   - Pencarian cepat (Ctrl+K): label dan aria-label → `lang('App.search_placeholder')`, `lang('App.quick_search_title')`.
 
 Semua key di atas ada di `App.php` (en + id). Untuk halaman lain, gunakan pola yang sama: tambah key di file bahasa yang sesuai, lalu ganti teks hardcode dengan `lang(...)`.
+
+---
+
+## 8. Catatan Developer
+
+### Halaman pra-login (auth public)
+Halaman auth yang diakses sebelum login (`login.php`, `register.php`, `forgot_password.php`, `verify_otp.php`, `verify_email.php`, `waiting_approval.php`) menggunakan **teks Inggris hardcode** di view — bukan `lang()`. Ini keputusan sadar: tidak perlu logika locale untuk halaman publik yang dikunjungi sekali. Jangan menambahkan `lang()` ke halaman-halaman tersebut.
+
+### Debug Toolbar
+File `writable/debugbar/` diabaikan oleh `.gitignore` (`writable/*`) — jangan pernah di-commit. Untuk membersihkan file debug saat direktori penuh:
+
+```bash
+php spark debugbar:clear
+```
+
+Jalankan secara berkala di lingkungan dev agar tidak memenuhi disk.
+
+### Keamanan: field `debug` di respons JSON
+Field `debug` pada respons JSON controller harus selalu di-gate dengan `ENVIRONMENT === 'development'`:
+
+```php
+'debug' => ENVIRONMENT === 'development' ? [
+    'db_error' => $dbError,
+    'last_query' => $lastQuery,
+] : null,
+```
+
+Jangan pernah mengirim `db_error`, `last_query`, atau `payload` mentah ke klien di production.

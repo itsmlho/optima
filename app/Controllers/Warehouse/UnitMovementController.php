@@ -99,7 +99,7 @@ class UnitMovementController extends BaseController
         if (!$validation->withRequest($this->request)->run()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $validation->getErrors(),
             ]);
         }
@@ -129,7 +129,7 @@ class UnitMovementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
     }
@@ -145,11 +145,11 @@ class UnitMovementController extends BaseController
 
         $movement = $this->movementModel->find($id);
         if (!$movement) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data perpindahan tidak ditemukan']);
         }
 
         if ($movement['status'] !== 'DRAFT') {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement already started or completed']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Perpindahan sudah dimulai atau selesai']);
         }
 
         try {
@@ -167,7 +167,7 @@ class UnitMovementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
     }
@@ -183,11 +183,11 @@ class UnitMovementController extends BaseController
 
         $movement = $this->movementModel->find($id);
         if (!$movement) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data perpindahan tidak ditemukan']);
         }
 
         if ($movement['status'] !== 'IN_TRANSIT') {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement not in transit']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Perpindahan tidak dalam status transit']);
         }
 
         try {
@@ -201,7 +201,7 @@ class UnitMovementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
     }
@@ -217,7 +217,7 @@ class UnitMovementController extends BaseController
 
         $movement = $this->movementModel->find($id);
         if (!$movement) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data perpindahan tidak ditemukan']);
         }
 
         if ($movement['status'] === 'ARRIVED') {
@@ -234,7 +234,7 @@ class UnitMovementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
     }
@@ -250,7 +250,7 @@ class UnitMovementController extends BaseController
 
         $movement = $this->movementModel->find($id);
         if (!$movement) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Movement not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Data perpindahan tidak ditemukan']);
         }
 
         // Get unit info if exists
@@ -351,7 +351,7 @@ class UnitMovementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
     }

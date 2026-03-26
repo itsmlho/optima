@@ -187,7 +187,7 @@ class Dashboard extends BaseController
             log_message('error', '[Dashboard] getExpiringContracts error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching expiring contracts: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -281,7 +281,7 @@ class Dashboard extends BaseController
             log_message('error', '[Dashboard] getRentalTypeAnalytics error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching rental type analytics: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -367,7 +367,7 @@ class Dashboard extends BaseController
             log_message('error', '[Dashboard] getKpiData error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'error' => 'Failed to load KPI data: ' . $e->getMessage()
+                'error' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -439,10 +439,10 @@ class Dashboard extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error in getReportDelivery: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching delivery report: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -544,18 +544,18 @@ class Dashboard extends BaseController
                     'central' => array_slice($central, 0, 5),
                     'branch' => array_slice($branch, 0, 5)
                 ],
-                'debug' => [
+                'debug' => ENVIRONMENT === 'development' ? [
                     'total_found' => count($mechanics),
                     'central_count' => count($central),
                     'branch_count' => count($branch)
-                ]
+                ] : null
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error in getTeamPerformance: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching team performance: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -599,10 +599,10 @@ class Dashboard extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error in getQuotationsPerformance: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching quotations performance: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -651,10 +651,10 @@ class Dashboard extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error in getTopSpareParts: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error fetching top spare parts: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -899,7 +899,7 @@ class Dashboard extends BaseController
                 'di_count' => $diThisMonth
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting summary metrics: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             // Debug: write to file
             file_put_contents(WRITEPATH . 'debug_dashboard.txt', 
                 date('Y-m-d H:i:s') . " - getSummaryMetrics ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", 
@@ -1000,7 +1000,7 @@ class Dashboard extends BaseController
                 ]
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting assets data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return [
                 'units' => ['available' => 0, 'rented' => 0, 'maintenance' => 0, 'out_of_service' => 0, 'total' => 0],
                 'attachments' => ['total' => 0, 'active' => 0, 'utilization' => 0],
@@ -1054,7 +1054,7 @@ class Dashboard extends BaseController
                 'by_area' => $woByArea
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting work orders data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return [
                 'by_category' => [],
                 'by_area' => []
@@ -1102,7 +1102,7 @@ class Dashboard extends BaseController
                 'next_30_days' => $next30Days
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting PMPS data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return ['overdue' => 0, 'next_7_days' => 0, 'next_30_days' => 0];
         }
     }
@@ -1139,7 +1139,7 @@ class Dashboard extends BaseController
                 'by_status' => $spkByStatus
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting SPK data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return ['by_jenis_perintah' => [], 'by_status' => []];
         }
     }
@@ -1180,7 +1180,7 @@ class Dashboard extends BaseController
                 'top_locations' => $topLocations
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting DI data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return ['total' => 0, 'pending' => 0, 'completed' => 0, 'top_locations' => []];
         }
     }
@@ -1226,7 +1226,7 @@ class Dashboard extends BaseController
                 'expiring_contracts' => $expiringContracts
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting customers data: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return ['total' => 0, 'growth' => 0, 'active_contracts' => 0, 'expiring_contracts' => 0];
         }
     }

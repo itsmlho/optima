@@ -104,7 +104,7 @@ $can_export = $permissions['export'];
                         <input type="radio" class="btn-check" name="subFilter" id="sub-booked" data-sub-status="3">
                         <label class="btn btn-sm btn-outline-primary" for="sub-booked">Booked</label>
                         
-                        <input type="radio" class="btn-check" name="subFilter" id="sub-returned" data-sub-status="9">
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-returned" data-sub-status="12">
                         <label class="btn btn-sm btn-outline-secondary" for="sub-returned">Returned</label>
                     </div>
                 </div>
@@ -117,7 +117,7 @@ $can_export = $permissions['export'];
                         <input type="radio" class="btn-check" name="subFilter" id="sub-rental-active" data-sub-status="7">
                         <label class="btn btn-sm btn-outline-success" for="sub-rental-active">Active</label>
                         
-                        <input type="radio" class="btn-check" name="subFilter" id="sub-rental-inactive" data-sub-status="11">
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-rental-inactive" data-sub-status="14">
                         <label class="btn btn-sm btn-outline-secondary" for="sub-rental-inactive">Inactive</label>
                     </div>
                 </div>
@@ -136,7 +136,7 @@ $can_export = $permissions['export'];
                         <input type="radio" class="btn-check" name="subFilter" id="sub-in-deliv" data-sub-status="6">
                         <label class="btn btn-sm btn-outline-primary" for="sub-in-deliv">In Delivery</label>
 
-                        <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="8">
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="11">
                         <label class="btn btn-sm btn-outline-danger" for="sub-maintenance">Maintenance</label>
                     </div>
                 </div>
@@ -254,20 +254,25 @@ $(document).ready(function() {
                 render: function(data, type, row) {
                     const label = data ? data : 'Unknown';
                     const id    = parseInt(row.status_unit_id, 10) || 0;
-                    // Map by status_unit_id: 1=avail, 2=non-aset, 3=booked, 4-6=progress, 7=rental, 8=maint, 9=returned, 10=repair, 11=inactive, 13=sold
+                    // status_unit_id DB mapping: 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED,
+                    // 4=PREPARATION, 5=READY_TO_DELIVER, 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY,
+                    // 9=TRIAL, 10=UNDER_REPAIR, 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE
                     const badgeMap = {
                         1:  'badge-soft-green',   // AVAILABLE_STOCK
-                        2:  'badge-soft-yellow',  // STOCK_NON_ASET
+                        2:  'badge-soft-yellow',  // NON_ASSET_STOCK
                         3:  'badge-soft-blue',    // BOOKED
-                        4:  'badge-soft-cyan',    // IN_PREPARATION
+                        4:  'badge-soft-cyan',    // PREPARATION
                         5:  'badge-soft-cyan',    // READY_TO_DELIVER
                         6:  'badge-soft-cyan',    // IN_DELIVERY
                         7:  'badge-soft-yellow',  // RENTAL_ACTIVE
-                        8:  'badge-soft-red',     // MAINTENANCE
-                        9:  'badge-soft-gray',    // RETURNED
+                        8:  'badge-soft-yellow',  // RENTAL_DAILY
+                        9:  'badge-soft-gray',    // TRIAL
                         10: 'badge-soft-red',     // UNDER_REPAIR
-                        11: 'badge-soft-gray',    // RENTAL_INACTIVE
-                        13: 'badge-soft-dark',    // SOLD (fixed from wrong ID 10)
+                        11: 'badge-soft-red',     // MAINTENANCE
+                        12: 'badge-soft-gray',    // RETURNED
+                        13: 'badge-soft-dark',    // SOLD
+                        14: 'badge-soft-gray',    // RENTAL_INACTIVE
+                        15: 'badge-soft-blue',    // SPARE
                     };
                     const cls = badgeMap[id] || 'badge-soft-gray';
                     return `<span class="badge ${cls} rounded-pill px-3 py-1 fw-medium shadow-sm">${label}</span>`;
@@ -354,10 +359,10 @@ $(document).ready(function() {
         if(!stats) return;
         $('#count-all').text(stats.total || 0);
         
-        const stockCount = (stats.available_stock||0) + (stats.stock_non_aset||0) + (stats.returned||0);
+        const stockCount = (stats.available_stock||0) + (stats.stock_non_aset||0) + (stats.returned||0) + (stats.trial||0) + (stats.spare||0);
         $('#count-stock').text(stockCount);
 
-        const rentalCount = (stats.rental_active||0) + (stats.rental_inactive||0);
+        const rentalCount = (stats.rental_active||0) + (stats.rental_inactive||0) + (stats.rental_daily||0);
         $('#count-rental').text(rentalCount);
 
         const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0) + (stats.maintenance||0);

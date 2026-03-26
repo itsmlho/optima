@@ -1123,6 +1123,8 @@ $routes->group('reports', ['namespace' => 'App\Controllers'], function($routes) 
     $routes->get('download/(:num)', 'Reports::download/$1');
     $routes->get('view/(:num)', 'Reports::view/$1');
     $routes->delete('delete/(:num)', 'Reports::delete/$1');
+    $routes->post('delete/(:num)', 'Reports::delete/$1'); // POST fallback for hosts without DELETE support
+    $routes->post('clear-old', 'Reports::clearOldReports');
 });
 
 // Administration Routes

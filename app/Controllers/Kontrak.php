@@ -200,7 +200,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getGrouped error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
             ]);
         }
     }
@@ -324,9 +324,9 @@ class Kontrak extends BaseController
             return $this->response->setJSON($response);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in Kontrak::getDataTable: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
-                'error' => 'Server error: ' . $e->getMessage(),
+                'error' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
                 'draw' => intval($this->request->getPost('draw') ?? 1),
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
@@ -374,7 +374,7 @@ class Kontrak extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error generating rental number: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal generate nomor rental',
@@ -426,7 +426,7 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error checking duplicate contract: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memeriksa duplikasi nomor kontrak',
@@ -719,7 +719,7 @@ class Kontrak extends BaseController
         if (!$currentContract) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Contract not found',
+                'message' => 'Kontrak tidak ditemukan',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1034,7 +1034,7 @@ class Kontrak extends BaseController
             log_message('debug', '=== Kontrak::delete END (exception) ===');
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1131,7 +1131,7 @@ class Kontrak extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1273,7 +1273,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getContractUnits Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving contract units: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1399,7 +1399,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::addUnit Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1459,7 +1459,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::removeUnit Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1530,7 +1530,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::updateUnit Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1678,7 +1678,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getAvailableUnits Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1697,7 +1697,7 @@ class Kontrak extends BaseController
                 log_message('debug', 'Kontrak not found for ID: ' . $kontrakId);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Contract not found'
+                    'message' => 'Kontrak tidak ditemukan'
                 ]);
             }
 
@@ -1754,7 +1754,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getKontrakSpesifikasi Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving contract specifications: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1810,7 +1810,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::triggerStatusUpdateAfterWorkflow Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error triggering status update: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1833,7 +1833,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::linkFabricationAttachments Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error linking attachments: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1855,7 +1855,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getInventoryStatus Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error getting inventory status: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1968,7 +1968,7 @@ class Kontrak extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Kontrak::export - Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to export: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
 
@@ -1994,110 +1994,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::getCustomersDropdown - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load customers'
-            ]);
-        }
-    }
-
-    /**
-     * Get customers list for dropdown (legacy compatibility)
-     */
-    public function getCustomers()
-    {
-        try {
-            $builder = $this->db->table('customers');
-            $builder->select('id, customer_code, customer_name');
-            $builder->where('is_active', 1);
-            $builder->orderBy('customer_name', 'ASC');
-            
-            $customers = $builder->get()->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $customers,
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Error loading customers: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
-    
-    /**
-     * Get customer locations by customer ID
-     */
-    public function getLocationsByCustomer($customerId)
-    {
-        try {
-            $builder = $this->db->table('customer_locations');
-            $builder->select('id, location_name, address, city, contact_person, phone, is_primary');
-            $builder->where('customer_id', (int)$customerId);
-            $builder->where('is_active', 1);
-            $builder->orderBy('is_primary', 'DESC');
-            $builder->orderBy('location_name', 'ASC');
-            
-            $locations = $builder->get()->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $locations,
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Error loading locations: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
-    
-    /**
-     * Get expiring contracts (for renewal wizard)
-     * Returns contracts expiring within 90 days
-     */
-    public function getExpiringContracts()
-    {
-        if (!$this->request->isAJAX()) {
-            return redirect()->back();
-        }
-        
-        try {
-            $builder = $this->db->table('kontrak k');
-            $builder->select('k.*, c.customer_name, c.customer_code');
-            $builder->join('customers c', 'c.id = k.customer_id', 'left');
-            $builder->where('k.status', 'ACTIVE');
-            $builder->where('k.end_date <=', date('Y-m-d', strtotime('+90 days')));
-            $builder->where('k.end_date >=', date('Y-m-d'));
-            $builder->orderBy('k.end_date', 'ASC');
-            
-            $contracts = $builder->get()->getResultArray();
-            
-            // Add unit counts and values
-            foreach ($contracts as &$contract) {
-                $unitsBuilder = $this->db->table('contract_units');
-                $unitsBuilder->where('contract_id', $contract['id']);
-                $contract['total_units'] = $unitsBuilder->countAllResults();
-                
-                $unitsBuilder = $this->db->table('contract_units');
-                $unitsBuilder->selectSum('monthly_rate', 'total_value');
-                $unitsBuilder->where('contract_id', $contract['id']);
-                $result = $unitsBuilder->get()->getRowArray();
-                $contract['contract_value'] = $result['total_value'] ?? 0;
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $contracts
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', 'getExpiringContracts error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load expiring contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2244,7 +2141,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create renewal: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2322,7 +2219,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load quotations: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2350,7 +2247,7 @@ class Kontrak extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
             
@@ -2401,7 +2298,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load specifications: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2409,6 +2306,8 @@ class Kontrak extends BaseController
     /**
      * OLD METHOD - Keep for backward compatibility with contracts
      * Get DEAL quotations for SPK creation (with or without contract)
+     */
+    private function getActiveContractsLegacy()
     {
         if (!$this->request->isAJAX()) {
             return redirect()->back();
@@ -2449,7 +2348,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2515,7 +2414,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load specifications: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2545,7 +2444,7 @@ class Kontrak extends BaseController
             // Validate contract exists
             $contract = $this->kontrakModel->find($contractId);
             if (!$contract) {
-                throw new \Exception('Contract not found');
+                throw new \Exception('Kontrak tidak ditemukan');
             }
             
             // Parse unit rates
@@ -2670,7 +2569,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create amendment: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2701,11 +2600,11 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getAllContracts error: ' . $e->getMessage());
+            log_message('error', 'getAllContracts error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2807,11 +2706,11 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getContractHistory error: ' . $e->getMessage());
+            log_message('error', 'getContractHistory error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load contract history: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2843,11 +2742,11 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getRenewalChain error: ' . $e->getMessage());
+            log_message('error', 'getRenewalChain error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load renewal chain: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2860,7 +2759,7 @@ class Kontrak extends BaseController
         $contract = $this->kontrakModel->find($contractId);
         
         if (!$contract) {
-            throw new \Exception('Contract not found');
+            throw new \Exception('Kontrak tidak ditemukan');
         }
         
         // If has parent, recursively find root
@@ -3016,7 +2915,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load rate history: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -3061,11 +2960,11 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getUnitJourney error: ' . $e->getMessage());
+            log_message('error', 'getUnitJourney error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load unit journey: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -3093,11 +2992,11 @@ class Kontrak extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'getAllUnits error: ' . $e->getMessage());
+            log_message('error', 'getAllUnits error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load units: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -3133,7 +3032,7 @@ class Kontrak extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $formatted]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
@@ -3153,7 +3052,7 @@ class Kontrak extends BaseController
 
             $doc = $this->db->table('contract_documents')->where('id', (int)$docId)->get()->getRowArray();
             if (!$doc) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Document not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Dokumen tidak ditemukan']);
             }
 
             // Delete physical file if exists
@@ -3166,7 +3065,7 @@ class Kontrak extends BaseController
 
             return $this->response->setJSON(['success' => true, 'message' => 'Document deleted']);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 }

@@ -127,7 +127,7 @@ class Finance extends Controller
             log_message('error', 'Finance::getInvoiceDataTable - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -207,7 +207,7 @@ class Finance extends Controller
             log_message('error', 'Finance::generateInvoiceFromDI - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to generate invoice: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -253,7 +253,7 @@ class Finance extends Controller
             log_message('error', 'Finance::generateRecurringInvoice - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to generate recurring invoice: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -283,7 +283,7 @@ class Finance extends Controller
             log_message('error', 'Finance::batchGenerateRecurringInvoices - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to batch generate invoices: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -304,7 +304,7 @@ class Finance extends Controller
             if (!$invoice) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Invoice not found'
+                    'message' => 'Invoice tidak ditemukan'
                 ]);
             }
 
@@ -333,7 +333,7 @@ class Finance extends Controller
             log_message('error', 'Finance::approveInvoice - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to approve invoice: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -356,7 +356,7 @@ class Finance extends Controller
             if (!$invoice) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Invoice not found'
+                    'message' => 'Invoice tidak ditemukan'
                 ]);
             }
 
@@ -386,7 +386,7 @@ class Finance extends Controller
             log_message('error', 'Finance::markAsPaid - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to mark invoice as paid: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -400,7 +400,7 @@ class Finance extends Controller
             $invoice = $this->invoiceModel->getInvoiceDetails($invoiceId);
             
             if (!$invoice) {
-                return redirect()->back()->with('error', 'Invoice not found');
+                return redirect()->back()->with('error', 'Invoice tidak ditemukan');
             }
 
             $items = $this->invoiceItemModel->getItemsByInvoice($invoiceId);
@@ -423,7 +423,7 @@ class Finance extends Controller
 
         } catch (\Exception $e) {
             log_message('error', 'Finance::viewInvoice - Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to load invoice: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
         }
     }
 
@@ -448,7 +448,7 @@ class Finance extends Controller
             log_message('error', 'Finance::getInvoicesByContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -470,7 +470,7 @@ class Finance extends Controller
             if (!$invoice) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Invoice not found'
+                    'message' => 'Invoice tidak ditemukan'
                 ]);
             }
 
@@ -504,7 +504,7 @@ class Finance extends Controller
             log_message('error', 'Finance::cancelInvoice - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to cancel invoice: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -534,7 +534,7 @@ class Finance extends Controller
             if ($existing) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Billing schedule already exists for this contract'
+                    'message' => 'Jadwal billing sudah ada untuk kontrak ini'
                 ]);
             }
 
@@ -557,7 +557,7 @@ class Finance extends Controller
             log_message('error', 'Finance::createBillingSchedule - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create billing schedule: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -591,7 +591,7 @@ class Finance extends Controller
             log_message('error', 'Finance::pauseBillingSchedule - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to pause billing schedule: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -624,7 +624,7 @@ class Finance extends Controller
             log_message('error', 'Finance::resumeBillingSchedule - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to resume billing schedule: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -682,7 +682,7 @@ class Finance extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -707,7 +707,7 @@ class Finance extends Controller
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -738,7 +738,7 @@ class Finance extends Controller
             log_message('error', 'Finance::detectBackBilling - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to detect back-billing: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -791,7 +791,7 @@ class Finance extends Controller
             log_message('error', 'Finance::generateBackBilling - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to generate back-billing: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -818,7 +818,7 @@ class Finance extends Controller
             log_message('error', 'Finance::getBackBillingStats - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get back-billing statistics: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }

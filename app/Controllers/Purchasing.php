@@ -1277,7 +1277,7 @@ class Purchasing extends BaseController
             log_message('error', 'Print Packing List Stack Trace: ' . $e->getTraceAsString());
             
             // Return error page instead of JSON for better debugging
-            $errorMessage = 'Gagal mencetak Packing List: ' . $e->getMessage();
+            $errorMessage = 'Gagal mencetak Packing List. Silakan coba lagi.';
             if (ENVIRONMENT === 'development') {
                 $errorMessage .= '<br><br>Stack Trace:<br><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
             }
@@ -1458,7 +1458,7 @@ class Purchasing extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Print PO Error: ' . $e->getMessage());
-            return $this->failServerError('Gagal mencetak Purchase Order: ' . $e->getMessage());
+            return $this->failServerError('Gagal mencetak Purchase Order. Silakan coba lagi.');
         }
     }
 
@@ -1602,7 +1602,7 @@ class Purchasing extends BaseController
         if (!$this->hasPermission('purchasing.po_unit_attachment.create')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to create Purchase Orders'
+                'message' => 'Akses ditolak: Anda tidak memiliki izin'
             ])->setStatusCode(403);
         }
         
@@ -1819,7 +1819,7 @@ class Purchasing extends BaseController
             log_message('error', '[storeUnifiedPO] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal menyimpan Purchase Order: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan Purchase Order. Silakan coba lagi.'
             ]);
         }
     }
@@ -2126,7 +2126,7 @@ class Purchasing extends BaseController
     {
         $po = $this->purchaseModel->find($poId);
         if (!$po) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('PO not found');
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('PO tidak ditemukan');
         }
         
         $supplier = $this->supplierModel->find($po['supplier_id']);
@@ -2390,7 +2390,7 @@ class Purchasing extends BaseController
             $tipeUnits = $this->tipeUnitModel->where('id_departemen', $departemenId)->findAll();
             return $this->respond(['success' => true, 'data' => $tipeUnits]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2410,7 +2410,7 @@ class Purchasing extends BaseController
                 ['id_tipe_unit' => $tipeUnit['id_tipe_unit'], 'jenis' => $tipeUnit['jenis']]
             ]]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2442,7 +2442,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $merks]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2461,7 +2461,7 @@ class Purchasing extends BaseController
                 // Old method: using merk_id
             $attachment = $this->attachmentModel->find($merkId);
             if (!$attachment) {
-                return $this->respond(['success' => false, 'message' => 'Attachment not found'], 404);
+                return $this->respond(['success' => false, 'message' => 'Attachment tidak ditemukan'], 404);
             }
             $models = $this->attachmentModel->where('merk', $attachment['merk'])->findAll();
             } else if ($tipe && $merk) {
@@ -2476,7 +2476,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $models]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2509,7 +2509,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $merks]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2527,7 +2527,7 @@ class Purchasing extends BaseController
         try {
             $baterai = $this->bateraiModel->find($merkId);
             if (!$baterai) {
-                return $this->respond(['success' => false, 'message' => 'Battery not found'], 404);
+                return $this->respond(['success' => false, 'message' => 'Baterai tidak ditemukan'], 404);
             }
             
             // Get all jenis for this merk
@@ -2535,7 +2535,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $baterais]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2567,7 +2567,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $merks]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2585,7 +2585,7 @@ class Purchasing extends BaseController
                 // Old method: using merk_id
             $charger = $this->chargerModel->find($merkId);
             if (!$charger) {
-                return $this->respond(['success' => false, 'message' => 'Charger not found'], 404);
+                return $this->respond(['success' => false, 'message' => 'Charger tidak ditemukan'], 404);
             }
             $chargers = $this->chargerModel->where('merk_charger', $charger['merk_charger'])->findAll();
             } else if ($merk) {
@@ -2606,7 +2606,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $models]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2630,7 +2630,7 @@ class Purchasing extends BaseController
             
             return $this->respond(['success' => true, 'data' => $batteries]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2651,7 +2651,7 @@ class Purchasing extends BaseController
                 ->getRowArray();
                 
             if (!$po) {
-                return $this->respond(['success' => false, 'message' => 'PO not found'], 404);
+                return $this->respond(['success' => false, 'message' => 'PO tidak ditemukan'], 404);
             }
             
             // Get items from all tables (units, attachments, batteries, chargers)
@@ -2862,7 +2862,7 @@ class Purchasing extends BaseController
             ]);
         } catch (\Exception $e) {
             log_message('error', '[getPODetail] Error: ' . $e->getMessage());
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2894,7 +2894,7 @@ class Purchasing extends BaseController
             }
         } catch (\Exception $e) {
             $db->transRollback();
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2928,7 +2928,7 @@ class Purchasing extends BaseController
                 return $this->respond(['success' => false, 'message' => 'Gagal membatalkan PO'], 500);
             }
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2959,7 +2959,7 @@ class Purchasing extends BaseController
             }
         } catch (\Exception $e) {
             $db->transRollback();
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -2977,7 +2977,7 @@ class Purchasing extends BaseController
                 return $this->respond(['success' => false, 'message' => 'Gagal complete PO'], 500);
             }
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }
 
@@ -3195,7 +3195,7 @@ class Purchasing extends BaseController
             return redirect()
                 ->to('/purchasing/po-unit')
                 ->withInput()
-                ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan pada sistem. Silakan coba lagi.');
         }
     }
 
@@ -3537,7 +3537,7 @@ class Purchasing extends BaseController
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus data.']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus data. Silakan coba lagi.']);
             }
             
             // Log PO Attachment deletion using trait
@@ -3561,7 +3561,7 @@ class Purchasing extends BaseController
                 if ($this->purchaseModel->update($id, ['status' => 'completed'])) {
                     return $this->response->setJSON(['success' => true]);
                 }
-                return $this->response->setJSON(['success' => false, 'message' => 'Gagal update database.']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui data. Silakan coba lagi.']);
             }
             return $this->response->setJSON(['success' => false, 'message' => 'Status PO tidak valid untuk diselesaikan.']);
         }
@@ -3777,7 +3777,7 @@ class Purchasing extends BaseController
     {
         // Check permission for updating PO
         if (!$this->hasPermission('purchasing.po_sparepart.edit')) {
-            return redirect()->to('/purchasing/po-sparepart')->with('error', 'Access denied: You do not have permission to update Purchase Orders');
+            return redirect()->to('/purchasing/po-sparepart')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         return redirect()->to('/purchasing/po-sparepart')->with('success', 'PO Sparepart berhasil diupdate.');
@@ -3790,10 +3790,10 @@ class Purchasing extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to delete Purchase Orders'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
-            return redirect()->to('/purchasing/po-sparepart')->with('error', 'Access denied: You do not have permission to delete Purchase Orders');
+            return redirect()->to('/purchasing/po-sparepart')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         if ($this->request->isAJAX()) {
@@ -3804,7 +3804,7 @@ class Purchasing extends BaseController
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus data.']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus data. Silakan coba lagi.']);
             }
             return $this->response->setJSON(['success' => true]);
         }
@@ -3820,7 +3820,7 @@ class Purchasing extends BaseController
                 if ($this->purchaseModel->update($id, ['status' => 'completed'])) {
                     return $this->response->setJSON(['success' => true]);
                 }
-                return $this->response->setJSON(['success' => false, 'message' => 'Gagal update database.']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui data. Silakan coba lagi.']);
             }
             return $this->response->setJSON(['success' => false, 'message' => 'Status PO tidak valid untuk diselesaikan.']);
         }
@@ -4128,7 +4128,7 @@ class Purchasing extends BaseController
     public function getAttachmentMerkAPI()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
         
         $tipe = $this->request->getGet('tipe');
@@ -4147,14 +4147,14 @@ class Purchasing extends BaseController
             $merkList = array_column($merks, 'merk');
             return $this->respond(['data' => $merkList]);
         } catch (\Exception $e) {
-            return $this->fail('Error: ' . $e->getMessage(), 500);
+            return $this->fail('Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.', 500);
         }
     }
 
     public function getAttachmentModelAPI()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
         
         $tipe = $this->request->getGet('tipe');
@@ -4174,13 +4174,13 @@ class Purchasing extends BaseController
             
             return $this->respond(['data' => $models]);
         } catch (\Exception $e) {
-            return $this->fail('Error: ' . $e->getMessage(), 500);
+            return $this->fail('Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.', 500);
         }
     }
 
     public function apiGetTipeUnits()
     {
-        if(!$this->request->isAJAX()) return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Invalid request']);
+        if(!$this->request->isAJAX()) return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Request tidak valid. Harap kirim data melalui form yang benar.']);
         $dept = $this->request->getGet('departemen');
         $tipe = $this->request->getGet('tipe');
         $builder = $this->tipeUnitModel->asArray();
@@ -4393,14 +4393,14 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getDeliveryData: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'draw' => intval($this->request->getPost('draw') ?? 1),
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Failed to load delivery data: ' . $e->getMessage()
+                'error' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -4647,7 +4647,7 @@ class Purchasing extends BaseController
                         $db->transRollback();
                         return $this->respond([
                             'success' => false,
-                            'message' => 'Gagal menyimpan item "' . $itemData['item_name'] . '": ' . $e->getMessage()
+                            'message' => 'Gagal menyimpan item "' . $itemData['item_name'] . '". Silakan coba lagi.'
                         ]);
                     }
                 }
@@ -4748,11 +4748,11 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in createDelivery: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat membuat delivery: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat membuat delivery. Silakan coba lagi.'
             ]);
         }
     }
@@ -4985,11 +4985,11 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getDeliveryItems: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'success' => false,
-                'message' => 'Gagal memuat data items: ' . $e->getMessage()
+                'message' => 'Gagal memuat data items. Silakan coba lagi.'
             ]);
         }
     }
@@ -5107,11 +5107,11 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in getDeliveryItemsForSN: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'success' => false,
-                'message' => 'Gagal memuat items untuk SN assignment: ' . $e->getMessage()
+                'message' => 'Gagal memuat items untuk SN assignment. Silakan coba lagi.'
             ]);
         }
     }
@@ -5241,11 +5241,11 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in assignSerialNumbers: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat menyimpan serial numbers: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menyimpan serial numbers. Silakan coba lagi.'
             ]);
         }
     }
@@ -5344,10 +5344,10 @@ class Purchasing extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in updateDeliveryStatus: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->respond([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengupdate status: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat mengupdate status. Silakan coba lagi.'
             ]);
         }
     }
@@ -5408,7 +5408,7 @@ class Purchasing extends BaseController
             return true;
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in triggerWarehouseVerification: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return false;
         }
     }
@@ -5482,7 +5482,7 @@ class Purchasing extends BaseController
             return true;
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in syncSerialNumbersToMasterTables: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return false;
         }
     }
@@ -5507,7 +5507,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal generate kode supplier: ' . $e->getMessage()
+                'message' => 'Gagal generate kode supplier. Silakan coba lagi.'
             ]);
         }
     }
@@ -5581,7 +5581,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -5660,7 +5660,7 @@ class Purchasing extends BaseController
             return $newCode;
             
         } catch (\Exception $e) {
-            log_message('error', 'Error generating supplier code: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             // Simple sequential fallback without timestamp
             $year = date('Y');
             $fallbackCode = 'SUP-' . $year . '-001';
@@ -5735,7 +5735,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengambil data supplier: ' . $e->getMessage()
+                'message' => 'Gagal mengambil data supplier. Silakan coba lagi.'
             ]);
         }
     }
@@ -5761,7 +5761,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -5773,7 +5773,7 @@ class Purchasing extends BaseController
     {
         // Check permission for updating supplier
         if (!$this->hasPermission('purchasing.supplier_management.edit')) {
-            return redirect()->to('/purchasing/supplier-management')->with('error', 'Access denied: You do not have permission to update suppliers');
+            return redirect()->to('/purchasing/supplier-management')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         try {
@@ -5815,7 +5815,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -5863,7 +5863,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -5903,7 +5903,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -5960,7 +5960,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -6154,7 +6154,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -6229,7 +6229,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -6286,7 +6286,7 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }

@@ -93,7 +93,7 @@ class System extends BaseController
     public function updateProfile()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Metode request tidak valid.']);
         }
         
         // Debug: Log all received data
@@ -114,7 +114,7 @@ class System extends BaseController
             log_message('error', 'Profile validation failed: ' . json_encode($errors));
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $errors
             ]);
         }
@@ -122,7 +122,7 @@ class System extends BaseController
         try {
             $userId = session()->get('user_id');
             if (!$userId) {
-                return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+                return $this->response->setJSON(['success' => false, 'message' => 'User belum terautentikasi. Silakan login kembali.']);
             }
             
             $userModel = new \App\Models\UserModel();
@@ -159,7 +159,7 @@ class System extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -167,7 +167,7 @@ class System extends BaseController
     public function uploadAvatar()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Metode request tidak valid.']);
         }
         
         // Debug: Log avatar upload attempt
@@ -209,7 +209,7 @@ class System extends BaseController
         try {
             $userId = session()->get('user_id');
             if (!$userId) {
-                return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+                return $this->response->setJSON(['success' => false, 'message' => 'User belum terautentikasi. Silakan login kembali.']);
             }
 
             $file = $this->request->getFile('avatar');
@@ -260,7 +260,7 @@ class System extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -738,17 +738,17 @@ class System extends BaseController
     public function toggleOtp()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $userId = session()->get('user_id');
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User belum terautentikasi. Silakan login kembali.']);
         }
 
         $user = $this->userModel->find($userId);
         if (!$user) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan.']);
         }
 
         $currentOtpStatus = !empty($user['otp_enabled']) && $user['otp_enabled'] == 1;

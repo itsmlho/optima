@@ -60,7 +60,7 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.access')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -168,7 +168,7 @@ class Perizinan extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading data: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'data' => []
             ])->setStatusCode(500);
         }
@@ -182,7 +182,7 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.access')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -196,7 +196,7 @@ class Perizinan extends BaseController
             log_message('error', 'Perizinan::getSiloStats Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading statistics: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -209,7 +209,7 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -268,7 +268,7 @@ class Perizinan extends BaseController
             log_message('error', 'Perizinan::getAvailableUnits Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading units: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'data' => []
             ])->setStatusCode(500);
         }
@@ -282,14 +282,14 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid request'
+                'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'
             ])->setStatusCode(400);
         }
 
@@ -386,7 +386,7 @@ class Perizinan extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -399,7 +399,7 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.access')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -429,14 +429,14 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid request'
+                'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'
             ])->setStatusCode(400);
         }
 
@@ -515,7 +515,7 @@ class Perizinan extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -528,14 +528,14 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid request'
+                'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'
             ])->setStatusCode(400);
         }
 
@@ -706,7 +706,7 @@ class Perizinan extends BaseController
             log_message('error', 'Upload File Exception: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -717,7 +717,7 @@ class Perizinan extends BaseController
     public function previewFile($id, $type)
     {
         if (!$this->hasPermission('perizinan.access')) {
-            return $this->response->setStatusCode(403)->setBody('Access denied');
+            return $this->response->setStatusCode(403)->setBody('Akses ditolak');
         }
 
         $silo = $this->siloModel->find($id);

@@ -300,6 +300,7 @@ $can_export = true;
 				</div>
 				<div class="modal-body">
 					<input type="hidden" id="inputSparepartSpkId" value="">
+					<input type="hidden" id="inputSparepartUnitId" value="">
 					<div class="mb-3">
 						<label class="form-label fw-semibold">Catatan Umum</label>
 						<textarea class="form-control form-control-sm" id="inputSparepartNotes" rows="2" placeholder="Catatan opsional untuk seluruh daftar..."></textarea>
@@ -659,9 +660,9 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
 							const hasStageBtn = actions.length > 0;
 							if (hasStageBtn) {
-								actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}');return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
-							} else {
-								actions = `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}');return false;"><i class="fas fa-tools me-1"></i>Add Sparepart</button>`;
+							actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}',${row.persiapan_unit_id || ''});return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
+						} else {
+							actions = `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}',${row.persiapan_unit_id || ''});return false;"><i class="fas fa-tools me-1"></i>Add Sparepart</button>`;
 							}
 						}
 						
@@ -841,13 +842,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				actionButtons = `
 					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
-					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}'),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
+					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}'),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;
@@ -1648,15 +1649,15 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		areaSelect.innerHTML = '<option value="">- Select Area -</option>';
 		
-		// Group areas by area_type (CENTRAL vs BRANCH)
+		// Group areas by area_type (CENTRAL vs MILL)
 		const centralAreas = [];
-		const branchAreas = [];
+		const millAreas = [];
 		
 		areas.forEach(area => {
 			if (area.area_type === 'CENTRAL') {
 				centralAreas.push(area);
 			} else {
-				branchAreas.push(area);
+				millAreas.push(area);
 			}
 		});
 		
@@ -1679,17 +1680,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		}
 		
-		// Add Branch section
-		if (branchAreas.length > 0) {
-			const branchHeader = document.createElement('option');
-			branchHeader.disabled = true;
-			branchHeader.textContent = '─── BRANCH AREAS ───';
-			branchHeader.style.fontWeight = 'bold';
-			branchHeader.style.backgroundColor = '#f8f9fa';
-			branchHeader.style.color = '#495057';
-			areaSelect.appendChild(branchHeader);
+		// Add Mill section
+		if (millAreas.length > 0) {
+			const millHeader = document.createElement('option');
+			millHeader.disabled = true;
+			millHeader.textContent = '─── MILL AREAS ───';
+			millHeader.style.fontWeight = 'bold';
+			millHeader.style.backgroundColor = '#f8f9fa';
+			millHeader.style.color = '#495057';
+			areaSelect.appendChild(millHeader);
 			
-			branchAreas.forEach(area => {
+			millAreas.forEach(area => {
 				const option = document.createElement('option');
 				option.value = area.id;
 				option.textContent = `${area.area_code} - ${area.area_name}`;
@@ -4600,17 +4601,20 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 	
 	// Function to check rollback availability
+	// TODO(rollback): Implement rollback logic for spk_unit_stages.
+	// Required steps:
+	//   1. Add route: POST service/spk/rollback-stage/:id  → Service::rollbackStage($id)
+	//   2. Controller: validate permission, find the latest spk_unit_stages row for
+	//      the given spk_id + stage, set its status back to the previous state, log reason.
+	//   3. Return JSON {success, message} and refresh the SPK detail panel.
+	//   4. Show rollbackBtn only if the logged-in user has the 'approve_service' permission
+	//      and the stage is not the first one (nothing to roll back to).
 	function checkRollbackAvailability(spkId, stage) {
-		console.log('Checking rollback availability for SPK:', spkId, 'Stage:', stage);
-		
-		// For now, just hide rollback button since we're using new structure
+		// Rollback button hidden until backend route + logic is implemented (see TODO above).
 		const rollbackBtn = document.getElementById('rollbackStageBtn');
 		if (rollbackBtn) {
 			rollbackBtn.style.display = 'none';
 		}
-		
-		// TODO: Implement rollback logic for new spk_unit_stages structure
-		console.log('Rollback availability checked - using new structure');
 	}
 
 	// Function to load existing unit data for editing
@@ -5730,9 +5734,10 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 	// ============================================================
 	let _spkSpRowCount = 0;
 
-	window.openInputSparepart = function(id, nomor_spk) {
+	window.openInputSparepart = function(id, nomor_spk, unit_id) {
 		_spkSpRowCount = 0;
 		document.getElementById('inputSparepartSpkId').value = id;
+		document.getElementById('inputSparepartUnitId').value = unit_id || '';
 		document.getElementById('inputSparepartSpkNumber').textContent = nomor_spk || ('#' + id);
 		document.getElementById('inputSparepartNotes').value = '';
 		document.getElementById('sparepartInputRows').innerHTML = '';
@@ -6039,9 +6044,14 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 
 		if (!valid || items.length === 0) return;
 
-		const btn   = this;
-		const spkId = document.getElementById('inputSparepartSpkId').value;
-		const notes = document.getElementById('inputSparepartNotes').value.trim();
+		const btn    = this;
+		const spkId  = document.getElementById('inputSparepartSpkId').value;
+		const unitId = document.getElementById('inputSparepartUnitId').value;
+		const notes  = document.getElementById('inputSparepartNotes').value.trim();
+		// Attach recipient unit_id to every item for kanibal dual-history tracking
+		if (unitId) {
+			items.forEach(item => { item.unit_id = unitId; });
+		}
 
 		btn.disabled = true;
 		btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';

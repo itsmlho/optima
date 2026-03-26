@@ -263,7 +263,7 @@ return [
     'login_history' => 'Riwayat Login',
     'failed_attempts' => 'Percobaan Gagal',
     'account_locked' => 'Akun terkunci karena terlalu banyak percobaan login gagal',
-    
+
     // Help Text
     'password_requirements' => 'Minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka',
     'username_help' => 'Username hanya boleh huruf, angka, dan underscore',

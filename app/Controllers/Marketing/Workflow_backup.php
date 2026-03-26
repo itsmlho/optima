@@ -74,7 +74,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -105,7 +105,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -136,7 +136,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }

@@ -66,7 +66,7 @@ class HealthController extends BaseController
         if (!$this->hasPermission('admin.access')) {
             return $this->response
                 ->setStatusCode(403)
-                ->setJSON(['error' => 'Access denied']);
+                ->setJSON(['error' => 'Akses ditolak']);
         }
 
         $memory = $this->performanceService->checkMemoryUsage();
@@ -92,7 +92,7 @@ class HealthController extends BaseController
         if (!$this->hasPermission('admin.access')) {
             return $this->response
                 ->setStatusCode(403)
-                ->setJSON(['error' => 'Access denied']);
+                ->setJSON(['error' => 'Akses ditolak']);
         }
 
         // Ambil statistik performa dari log files atau database

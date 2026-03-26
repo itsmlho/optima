@@ -157,7 +157,7 @@ class InventoryApi extends BaseController
             $db->transRollback();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengganti ' . $componentType . ': ' . $e->getMessage(),
+                'message' => 'Gagal mengganti komponen. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }

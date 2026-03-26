@@ -27,7 +27,7 @@ class SparepartUsageController extends BaseController
     {
         // Check permission
         if (!$this->canAccess('warehouse')) {
-            return redirect()->to('/')->with('error', 'Access Denied');
+            return redirect()->to('/')->with('error', 'Akses ditolak');
         }
 
         // Check if tables exist
@@ -77,11 +77,11 @@ class SparepartUsageController extends BaseController
     public function getUsageGrouped()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $request = $this->request;
@@ -100,8 +100,9 @@ class SparepartUsageController extends BaseController
             $woWhere = '';
             if (!empty($search)) {
                 $woWhere = "AND (wo.work_order_number LIKE '%{$searchEsc}%'
-                              OR c.customer_name LIKE '%{$searchEsc}%'
-                              OR iu.no_unit      LIKE '%{$searchEsc}%')";
+                              OR c.customer_name    LIKE '%{$searchEsc}%'
+                              OR iu.no_unit         LIKE '%{$searchEsc}%'
+                              OR iu_src_wo.no_unit  LIKE '%{$searchEsc}%')";
             }
             $woSql = "
                 SELECT
@@ -119,14 +120,16 @@ class SparepartUsageController extends BaseController
                     SUM(wosp.is_from_warehouse = 0)             AS nonwarehouse_items
                 FROM work_orders wo
                 INNER JOIN work_order_spareparts wosp ON wosp.work_order_id = wo.id
-                LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit  = wo.unit_id
-                LEFT  JOIN model_unit mu      ON mu.id_model_unit       = iu.model_unit_id
-                LEFT  JOIN kontrak_unit ku    ON ku.unit_id = iu.id_inventory_unit
-                                             AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
-                                             AND ku.is_temporary = 0
-                LEFT  JOIN kontrak k          ON k.id  = ku.kontrak_id
-                LEFT  JOIN customers c        ON c.id  = k.customer_id
+                LEFT  JOIN inventory_unit iu      ON iu.id_inventory_unit      = wo.unit_id
+                LEFT  JOIN model_unit mu          ON mu.id_model_unit           = iu.model_unit_id
+                LEFT  JOIN kontrak_unit ku        ON ku.unit_id = iu.id_inventory_unit
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT  JOIN kontrak k              ON k.id  = ku.kontrak_id
+                LEFT  JOIN customers c            ON c.id  = k.customer_id
+                LEFT  JOIN inventory_unit iu_src_wo ON iu_src_wo.id_inventory_unit = wosp.source_unit_id
                 WHERE wo.deleted_at IS NULL
+                AND wo.sparepart_validated = 1
                 {$woWhere}
                 GROUP BY wo.id, wo.work_order_number, wo.report_date, wo.created_at
             ";
@@ -134,8 +137,10 @@ class SparepartUsageController extends BaseController
             // --- SPK sub-query ---
             $spkWhere = '';
             if (!empty($search)) {
-                $spkWhere = "AND (s.nomor_spk  LIKE '%{$searchEsc}%'
-                              OR s.pelanggan  LIKE '%{$searchEsc}%')";
+                $spkWhere = "AND (s.nomor_spk        LIKE '%{$searchEsc}%'
+                              OR s.pelanggan        LIKE '%{$searchEsc}%'
+                              OR iu.no_unit         LIKE '%{$searchEsc}%'
+                              OR iu_src_spk.no_unit LIKE '%{$searchEsc}%')";
             }
             $spkSql = "
                 SELECT
@@ -153,12 +158,13 @@ class SparepartUsageController extends BaseController
                     SUM(ssp.is_from_warehouse = 0)              AS nonwarehouse_items
                 FROM spk s
                 INNER JOIN spk_spareparts ssp ON ssp.spk_id = s.id
-                LEFT  JOIN kontrak k          ON k.id = s.kontrak_id
-                LEFT  JOIN kontrak_unit ku    ON ku.kontrak_id = k.id
-                                             AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
-                                             AND ku.is_temporary = 0
-                LEFT  JOIN inventory_unit iu  ON iu.id_inventory_unit = ku.unit_id
-                LEFT  JOIN model_unit mu      ON mu.id_model_unit = iu.model_unit_id
+                LEFT  JOIN kontrak k              ON k.id = s.kontrak_id
+                LEFT  JOIN kontrak_unit ku        ON ku.kontrak_id = k.id
+                                                 AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                                                 AND ku.is_temporary = 0
+                LEFT  JOIN inventory_unit iu      ON iu.id_inventory_unit = ku.unit_id
+                LEFT  JOIN model_unit mu          ON mu.id_model_unit = iu.model_unit_id
+                LEFT  JOIN inventory_unit iu_src_spk ON iu_src_spk.id_inventory_unit = ssp.source_unit_id
                 WHERE 1=1
                 {$spkWhere}
                 GROUP BY s.id, s.nomor_spk, s.pelanggan, s.dibuat_pada
@@ -294,9 +300,11 @@ class SparepartUsageController extends BaseController
             
             log_message('info', 'Fetching spareparts for WO ID: ' . $workOrderId);
             
-            // Get all spareparts for this work order (remove quantity_used filter)
-            $query = $db->table('work_order_spareparts')
-                ->where('work_order_id', $workOrderId)
+            // Get all spareparts for this work order, join source unit for KANIBAL display
+            $query = $db->table('work_order_spareparts wosp')
+                ->select('wosp.*, iu_src.no_unit as source_unit_number')
+                ->join('inventory_unit iu_src', 'iu_src.id_inventory_unit = wosp.source_unit_id', 'left')
+                ->where('wosp.work_order_id', $workOrderId)
                 ->get();
             
             $spareparts = $query->getResultArray();
@@ -349,6 +357,9 @@ class SparepartUsageController extends BaseController
                     'sparepart_name' => $item['sparepart_name'],
                     'item_type' => $item['item_type'] ?? 'sparepart',
                     'is_from_warehouse' => $item['is_from_warehouse'] ?? 1,
+                    'source_type' => $item['source_type'] ?? 'WAREHOUSE',
+                    'source_unit_id' => $item['source_unit_id'] ?? null,
+                    'source_unit_number' => $item['source_unit_number'] ?? null,
                     'quantity_brought' => $item['quantity_brought'],
                     'quantity_used' => $item['quantity_used'] ?? 0,
                     'quantity_return' => $returnMap[$item['id']] ?? 0,
@@ -367,7 +378,7 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON($result);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting WO spareparts: ' . $e->getMessage() . ' at line ' . $e->getLine());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.' . ' at line ' . $e->getLine());
             return $this->response->setJSON([]);
         }
     }
@@ -378,11 +389,11 @@ class SparepartUsageController extends BaseController
     public function getUsage()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $request = $this->request;
@@ -571,7 +582,7 @@ class SparepartUsageController extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting sparepart usage: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'draw' => intval($draw),
                 'recordsTotal' => 0,
@@ -588,11 +599,11 @@ class SparepartUsageController extends BaseController
     public function getReturns()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $request    = $this->request;
@@ -622,11 +633,11 @@ class SparepartUsageController extends BaseController
                 SELECT
                     'WO'                                        AS source_type,
                     wosr.id,
-                    wo.work_order_number                        AS reference_number,
+                    COALESCE(wo.work_order_number, '-')         AS reference_number,
                     wosr.sparepart_code,
                     wosr.sparepart_name,
-                    wosr.item_type,
-                    wosr.is_from_warehouse,
+                    COALESCE(wosp.item_type, 'sparepart')        AS item_type,
+                    COALESCE(wosp.is_from_warehouse, 1)          AS is_from_warehouse,
                     wosr.quantity_brought,
                     wosr.quantity_used,
                     wosr.quantity_return,
@@ -641,6 +652,7 @@ class SparepartUsageController extends BaseController
                     COALESCE(u.username, '-')       AS confirmed_by_name,
                     wo.report_date
                 FROM work_order_sparepart_returns wosr
+                LEFT JOIN work_order_spareparts wosp ON wosp.id = wosr.work_order_sparepart_id
                 LEFT JOIN work_orders wo          ON wo.id = wosr.work_order_id
                 LEFT JOIN employees e             ON e.id  = wo.mechanic_id
                 LEFT JOIN inventory_unit iu       ON iu.id_inventory_unit = wo.unit_id
@@ -745,7 +757,7 @@ class SparepartUsageController extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting sparepart returns: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'draw'            => intval($draw),
                 'recordsTotal'    => 0,
@@ -762,11 +774,11 @@ class SparepartUsageController extends BaseController
     public function getReturnDetail($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $source = $this->request->getGet('source') ?? 'WO';
@@ -792,7 +804,29 @@ class SparepartUsageController extends BaseController
                     ->where('ssr.id', $id)
                     ->get()->getRowArray();
             } else {
-                $return = $this->returnModel->getReturnDetail($id);
+                $db = \Config\Database::connect();
+                $return = $db->table('work_order_sparepart_returns wosr')
+                    ->select('
+                        wosr.*,
+                        COALESCE(wo.work_order_number, \'-\') AS work_order_number,
+                        DATE(wo.report_date)                  AS report_date,
+                        COALESCE(wosp.item_type, \'sparepart\') AS item_type,
+                        COALESCE(wosp.is_from_warehouse, 1)   AS is_from_warehouse,
+                        COALESCE(e.staff_name, \'-\')          AS mechanic_name,
+                        COALESCE(c.customer_name, \'-\')       AS customer_name,
+                        COALESCE(iu.no_unit, \'-\')            AS unit_number,
+                        COALESCE(u.username, \'-\')            AS confirmed_by_name
+                    ')
+                    ->join('work_order_spareparts wosp', 'wosp.id = wosr.work_order_sparepart_id', 'left')
+                    ->join('work_orders wo',              'wo.id  = wosr.work_order_id',           'left')
+                    ->join('employees e',                 'e.id   = wo.mechanic_id',               'left')
+                    ->join('inventory_unit iu',           'iu.id_inventory_unit = wo.unit_id',     'left')
+                    ->join('kontrak_unit ku',             'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                    ->join('kontrak k',                   'k.id  = ku.kontrak_id',                 'left')
+                    ->join('customers c',                 'c.id  = k.customer_id',                 'left')
+                    ->join('users u',                     'u.id  = wosr.confirmed_by',             'left')
+                    ->where('wosr.id', $id)
+                    ->get()->getRowArray();
             }
 
             if (!$return) {
@@ -812,8 +846,8 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON(['success' => true, 'data' => $return]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting return detail: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
@@ -823,11 +857,11 @@ class SparepartUsageController extends BaseController
     public function getUsageDetail($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         try {
@@ -941,10 +975,10 @@ class SparepartUsageController extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting usage detail: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -955,23 +989,26 @@ class SparepartUsageController extends BaseController
     public function confirmReturn($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $userId = session()->get('user_id');
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not logged in']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User belum login. Silakan login terlebih dahulu.']);
         }
 
         $notes = $this->request->getPost('notes') ?? null;
 
         try {
-            $return = $this->returnModel->find($id);
-            
+            $db = \Config\Database::connect();
+            $return = $db->table('work_order_sparepart_returns')
+                ->where('id', $id)
+                ->get()->getRowArray();
+
             if (!$return) {
                 return $this->response->setJSON([
                     'success' => false,
@@ -979,44 +1016,21 @@ class SparepartUsageController extends BaseController
                 ]);
             }
 
-            // Check if status exists and is PENDING
-            if (isset($return['status']) && $return['status'] !== 'PENDING') {
+            if (($return['status'] ?? '') !== 'PENDING') {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Return sudah dikonfirmasi atau dibatalkan'
+                    'message' => 'Return sudah dikonfirmasi atau tidak dalam status Pending'
                 ]);
             }
-            
-            // If status column doesn't exist, skip status check
-            if (!isset($return['status'])) {
-                log_message('warning', 'Status column does not exist in work_order_sparepart_returns table');
-            }
 
-            $confirmed = $this->returnModel->confirmReturn($id, $userId, $notes);
+            $updated = $db->table('work_order_sparepart_returns')->update([
+                'status'       => 'CONFIRMED',
+                'confirmed_by' => $userId,
+                'confirmed_at' => date('Y-m-d H:i:s'),
+                'return_notes' => $notes ?? $return['return_notes'],
+            ], ['id' => $id]);
 
-            if ($confirmed) {
-                // Send cross-division notification to Service
-                helper('notification');
-                if (function_exists('notify_sparepart_returned')) {
-                    $returnDetails = $this->returnModel->find($id);
-                    $db = \Config\Database::connect();
-                    $sparepart = $db->table('sparepart')->where('id', $returnDetails['sparepart_id'] ?? 0)->get()->getRowArray();
-                    
-                    notify_sparepart_returned([
-                        'return_id' => $id,
-                        'sparepart_id' => $returnDetails['sparepart_id'] ?? null,
-                        'sparepart_name' => $sparepart['name'] ?? 'Unknown',
-                        'quantity' => $returnDetails['quantity'] ?? 0,
-                        'condition' => $returnDetails['condition'] ?? 'Baik',
-                        'returned_by' => $returnDetails['returned_by_name'] ?? '',
-                        'returned_from' => $returnDetails['work_order_number'] ?? '',
-                        'confirmed_by' => session('username') ?? 'System',
-                        'confirmed_at' => date('Y-m-d H:i:s'),
-                        'notes' => $notes ?? '',
-                        'url' => base_url('/warehouse/sparepart-usage/return-detail/' . $id)
-                    ]);
-                }
-                
+            if ($updated) {
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Pengembalian sparepart berhasil dikonfirmasi'
@@ -1029,10 +1043,10 @@ class SparepartUsageController extends BaseController
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error confirming return: ' . $e->getMessage());
+            log_message('error', '[confirmReturn] ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1043,16 +1057,16 @@ class SparepartUsageController extends BaseController
     public function confirmSpkReturn($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $userId = session()->get('user_id');
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not logged in']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User belum login. Silakan login terlebih dahulu.']);
         }
 
         $notes = $this->request->getPost('notes') ?? null;
@@ -1092,8 +1106,8 @@ class SparepartUsageController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengonfirmasi pengembalian']);
 
         } catch (\Exception $e) {
-            log_message('error', 'confirmSpkReturn error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            log_message('error', 'confirmSpkReturn error. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
@@ -1104,11 +1118,11 @@ class SparepartUsageController extends BaseController
     public function getManualEntries()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         if (!$this->canAccess('warehouse')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $request    = $this->request;

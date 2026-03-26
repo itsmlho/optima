@@ -51,7 +51,7 @@ class Customers extends BaseController
             if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
 
@@ -64,7 +64,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::get - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get customer: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -93,7 +93,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::getLocations - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get customer locations: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -194,7 +194,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::saveLocation - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to save customer location: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -225,7 +225,7 @@ class Customers extends BaseController
             if (!$location) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Location not found'
+                    'message' => 'Lokasi tidak ditemukan'
                 ]);
             }
             
@@ -280,7 +280,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::setPrimaryLocation - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to set primary location: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -368,7 +368,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::getContracts - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to get customer contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -415,7 +415,7 @@ class Customers extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Contract not found'
+                    'message' => 'Kontrak tidak ditemukan'
                 ]);
             }
 
@@ -423,7 +423,7 @@ class Customers extends BaseController
             log_message('error', 'Customers::searchContract - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to search contract: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }

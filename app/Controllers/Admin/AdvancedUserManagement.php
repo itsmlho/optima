@@ -300,9 +300,9 @@ class AdvancedUserManagement extends BaseController
             log_message('error', 'Create User Error: ' . $e->getMessage() . ' | Data: ' . json_encode($this->request->getPost()));
             
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()])->setStatusCode(500);
+                return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan saat membuat user. Silakan coba lagi.'])->setStatusCode(500);
             }
-            return redirect()->back()->withInput()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat membuat user. Silakan coba lagi.');
         }
     }
 
@@ -456,7 +456,7 @@ class AdvancedUserManagement extends BaseController
             log_message('debug', 'Loaded service access for user ' . $userId . ': ' . json_encode($userServiceAccess));
             
         } catch (\Exception $e) {
-            log_message('error', 'Error loading service access for user ' . $userId . ': ' . $e->getMessage());
+            log_message('error', 'Gagal memuat data. Silakan coba lagi.');
             $userServiceAccess = [];
         }
 
@@ -536,13 +536,41 @@ class AdvancedUserManagement extends BaseController
             'password' => 'permit_empty|min_length[6]',
             'confirm_password' => 'permit_empty|matches[password]',
             'phone' => 'permit_empty|max_length[20]'
+        ], [
+            'username' => [
+                'required' => 'Username harus diisi.',
+                'min_length' => 'Username minimal 3 karakter.',
+                'max_length' => 'Username maksimal 20 karakter.',
+                'is_unique' => 'Username sudah digunakan. Silakan gunakan username yang berbeda.'
+            ],
+            'email' => [
+                'required' => 'Email harus diisi.',
+                'valid_email' => 'Format email tidak valid.',
+                'is_unique' => 'Email sudah terdaftar. Silakan gunakan email yang berbeda.'
+            ],
+            'first_name' => [
+                'required' => 'Nama depan harus diisi.',
+                'min_length' => 'Nama depan minimal 2 karakter.'
+            ],
+            'last_name' => [
+                'required' => 'Nama belakang harus diisi.',
+                'min_length' => 'Nama belakang minimal 2 karakter.'
+            ],
+            'password' => [
+                'min_length' => 'Password minimal 6 karakter.'
+            ],
+            'confirm_password' => [
+                'matches' => 'Konfirmasi password tidak sama dengan password.'
+            ]
         ]);
 
         if (!$validation) {
+            $errors = $this->validator->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()])->setStatusCode(400);
+                return $this->response->setJSON(['success' => false, 'message' => $firstError, 'errors' => $errors])->setStatusCode(400);
             }
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            return redirect()->back()->withInput()->with('errors', $errors);
         }
 
         $this->db->transStart();
@@ -742,9 +770,9 @@ class AdvancedUserManagement extends BaseController
             log_message('error', 'Update User Error: ' . $e->getMessage());
             
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()])->setStatusCode(500);
+                return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan saat memperbarui user. Silakan coba lagi.'])->setStatusCode(500);
             }
-            return redirect()->back()->withInput()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui user. Silakan coba lagi.');
         }
     }
 
@@ -786,7 +814,7 @@ class AdvancedUserManagement extends BaseController
                 $this->db->table('user_permissions')->where('user_id', $userId)->delete();
             } catch (\Exception $e) {
                 // Tables might not exist, continue with user deletion
-                log_message('info', 'Some related tables do not exist: ' . $e->getMessage());
+                log_message('info', 'Some related tables do not exist. Silakan coba lagi.');
             }
             
             // Delete user
@@ -801,7 +829,7 @@ class AdvancedUserManagement extends BaseController
             if ($this->db->transStatus()) {
                 // Log user deletion using trait
                 $this->logDelete('users', $userId, $userDataForLogging);
-                
+
                 return $this->response->setJSON(['success' => true, 'message' => 'User berhasil dihapus']);
             } else {
                 throw new \Exception('Transaction failed');
@@ -810,7 +838,7 @@ class AdvancedUserManagement extends BaseController
         } catch (\Exception $e) {
             $this->db->transRollback();
             log_message('error', 'Delete User Error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()])->setStatusCode(500);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan saat menghapus user. Silakan coba lagi.'])->setStatusCode(500);
         }
     }
 
@@ -875,7 +903,7 @@ class AdvancedUserManagement extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -977,10 +1005,10 @@ class AdvancedUserManagement extends BaseController
                 ])->setStatusCode(500);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Quick Assign Permission Error: ' . $e->getMessage());
+            log_message('error', 'Quick Assign Permission Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -993,7 +1021,7 @@ class AdvancedUserManagement extends BaseController
         try {
             $user = $this->userModel->find($userId);
             if (!$user) {
-                return $this->response->setJSON(['success' => false, 'message' => 'User not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan.']);
             }
 
             // Roles
@@ -1028,7 +1056,7 @@ class AdvancedUserManagement extends BaseController
                 ]
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1120,7 +1148,7 @@ class AdvancedUserManagement extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Division Users Error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setBody('Error loading division users: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setBody('Gagal memuat data. Silakan coba lagi.');
         }
     }
 
@@ -1170,15 +1198,15 @@ class AdvancedUserManagement extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to remove user from division'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Remove from Division Error: ' . $e->getMessage());
+            log_message('error', 'removeUserFromDivision error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1259,10 +1287,10 @@ class AdvancedUserManagement extends BaseController
 
         } catch (\Exception $e) {
             $this->db->transRollback();
-            log_message('error', 'Bulk Assign Permissions Error: ' . $e->getMessage());
+            log_message('error', 'Bulk Assign Permissions Error. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -1524,7 +1552,7 @@ class AdvancedUserManagement extends BaseController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Not an AJAX request'
+                'error' => 'Bukan request AJAX'
             ])->setStatusCode(400);
         }
 
@@ -1670,7 +1698,7 @@ class AdvancedUserManagement extends BaseController
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
                 'data' => [],
-                'error' => 'Server error: ' . $e->getMessage()
+                'error' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -1789,20 +1817,19 @@ class AdvancedUserManagement extends BaseController
                 }
                 return redirect()->to('/admin/advanced-users')->with('success', 'Password berhasil diubah.');
             } else {
-                throw new \Exception('Failed to update password');
+                throw new \Exception('Gagal memproses permintaan. Silakan coba lagi.');
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Change Password Error: ' . $e->getMessage());
             log_message('error', 'Change Password Stack: ' . $e->getTraceAsString());
             
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false, 
-                    'message' => 'Error: ' . $e->getMessage()
+                    'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
                 ])->setStatusCode(500);
             }
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.');
         }
     }
 
@@ -1850,7 +1877,7 @@ class AdvancedUserManagement extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading users: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1903,7 +1930,7 @@ class AdvancedUserManagement extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading users by divisions: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1956,7 +1983,7 @@ class AdvancedUserManagement extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading users by roles: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1967,7 +1994,7 @@ class AdvancedUserManagement extends BaseController
     public function getUserForApproval($userId)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         if (!$this->hasPermission('admin.manage')) {
@@ -2016,7 +2043,7 @@ class AdvancedUserManagement extends BaseController
     public function approveUser($userId)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         if (!$this->hasPermission('admin.manage')) {
@@ -2102,7 +2129,7 @@ class AdvancedUserManagement extends BaseController
             log_message('error', 'Approve User Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengaktifkan user: ' . $e->getMessage()
+                'message' => 'Gagal mengaktifkan user. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -2113,7 +2140,7 @@ class AdvancedUserManagement extends BaseController
     public function deactivateUser($userId)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         if (!$this->hasPermission('admin.manage')) {
@@ -2146,7 +2173,7 @@ class AdvancedUserManagement extends BaseController
         if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -2154,7 +2181,7 @@ class AdvancedUserManagement extends BaseController
         if (!$user) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User tidak ditemukan.'
             ])->setStatusCode(404);
         }
 
@@ -2238,7 +2265,7 @@ class AdvancedUserManagement extends BaseController
                 ]
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error loading enhanced permissions: ' . $e->getMessage());
+            log_message('error', 'Gagal memuat data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to load enhanced permissions'
@@ -2252,7 +2279,7 @@ class AdvancedUserManagement extends BaseController
         // if (!$this->hasPermission('admin.manage')) {
         //     return $this->response->setJSON([
         //         'success' => false,
-        //         'message' => 'Access denied'
+        //         'message' => 'Akses ditolak'
         //     ])->setStatusCode(403);
         // }
 
@@ -2286,7 +2313,7 @@ class AdvancedUserManagement extends BaseController
                 'data' => $permissions
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error getting role permissions: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to load role permissions'
@@ -2302,7 +2329,7 @@ class AdvancedUserManagement extends BaseController
         if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -2310,7 +2337,7 @@ class AdvancedUserManagement extends BaseController
         if (!$user) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User tidak ditemukan.'
             ])->setStatusCode(404);
         }
 
@@ -2395,7 +2422,7 @@ class AdvancedUserManagement extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -2408,7 +2435,7 @@ class AdvancedUserManagement extends BaseController
         if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied'
+                'message' => 'Akses ditolak'
             ])->setStatusCode(403);
         }
 
@@ -2416,7 +2443,7 @@ class AdvancedUserManagement extends BaseController
         if (!$user) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'User tidak ditemukan.'
             ])->setStatusCode(404);
         }
 
@@ -2451,7 +2478,7 @@ class AdvancedUserManagement extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Permission not found or already removed'
+                    'message' => 'Permission tidak ditemukan atau sudah dihapus'
                 ])->setStatusCode(404);
             }
 
@@ -2460,7 +2487,7 @@ class AdvancedUserManagement extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -2630,7 +2657,7 @@ class AdvancedUserManagement extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ])->setStatusCode(500);
         }
     }
@@ -2667,7 +2694,7 @@ class AdvancedUserManagement extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to update service access: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -2691,11 +2718,11 @@ class AdvancedUserManagement extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Get service areas error: ' . $e->getMessage());
+            log_message('error', 'Get service areas error. Silakan coba lagi.');
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load service areas: ' . $e->getMessage(),
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
                 'data' => []
             ]);
         }

@@ -34,7 +34,7 @@ class ServiceAreaManagementController extends BaseController
     {
         // Check permission for viewing area management
         if (!$this->hasPermission('service.area_management.view')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view area management');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         // Data for dashboard stats
@@ -83,7 +83,7 @@ class ServiceAreaManagementController extends BaseController
             $areaBuilder->orderBy('areas.area_name', 'ASC');
             $areas = $areaBuilder->get()->getResultArray();
         } catch (\Exception $e) {
-            log_message('error', 'Error getting areas: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         // Get employees data by role for stats
@@ -99,7 +99,7 @@ class ServiceAreaManagementController extends BaseController
                 $roleStats[$stat['staff_role']] = $stat['total'];
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error getting employee stats: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         // Prepare data for charts
@@ -135,7 +135,7 @@ class ServiceAreaManagementController extends BaseController
                 $assignmentsByArea = $assignmentsQuery->getResultArray();
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error getting assignments by area: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         $data = [
@@ -150,6 +150,7 @@ class ServiceAreaManagementController extends BaseController
             'assignmentsByArea' => $assignmentsByArea,
             'loadCharts' => true, // Enable Chart.js loading
             'loadDataTables' => true, // Enable DataTables loading
+            'departemen' => $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray(),
         ];
         
         return view('service/area_employee_management', $data);
@@ -220,8 +221,11 @@ class ServiceAreaManagementController extends BaseController
             $filteredResult = $this->db->query($filteredSql, $params);
             $filteredRecords = $filteredResult->getRow()->total;
             
-            // Get actual data
-            $dataSql = "SELECT * FROM areas" . $whereClause . " ORDER BY area_name ASC LIMIT ? OFFSET ?";
+            // Get actual data (join departemen for department name)
+            $dataSql = "SELECT areas.*, d.nama_departemen as departemen_name
+                        FROM areas
+                        LEFT JOIN departemen d ON d.id_departemen = areas.departemen_id"
+                        . $whereClause . " ORDER BY areas.area_name ASC LIMIT ? OFFSET ?";
             $dataParams = array_merge($params, [$length, $start]);
             $dataResult = $this->db->query($dataSql, $dataParams);
             $areas = $dataResult->getResultArray();
@@ -243,21 +247,22 @@ class ServiceAreaManagementController extends BaseController
                 
                 try {
                     if ($this->db->tableExists('area_employee_assignments')) {
-                        // First, let's just count total assignments for this area
-                        $empSql = "SELECT COUNT(*) as count FROM area_employee_assignments WHERE area_id = ? AND is_active = 1";
-                        $empResult = $this->db->query($empSql, [$area['id']]);
-                        $totalAssignments = $empResult->getRow()->count ?? 0;
-                        
-                        // For now, distribute assignments as mechanics since we don't have employee roles
-                        if ($totalAssignments > 0) {
-                            $employeeBreakdown['mechanic'] = (int) $totalAssignments;
-                        }
-                        
-                        log_message('debug', "Area {$area['area_name']} (ID: {$area['id']}) has {$totalAssignments} assignments");
+                        $empSql = "SELECT
+                            SUM(CASE WHEN e.staff_role = 'FOREMAN' THEN 1 ELSE 0 END) as foreman,
+                            SUM(CASE WHEN e.staff_role LIKE '%MECHANIC%' THEN 1 ELSE 0 END) as mechanic,
+                            SUM(CASE WHEN e.staff_role LIKE '%HELPER%' THEN 1 ELSE 0 END) as helper
+                        FROM area_employee_assignments aea
+                        JOIN employees e ON e.id = aea.employee_id
+                        WHERE aea.area_id = ? AND aea.is_active = 1 AND e.is_active = 1";
+                        $empRow = $this->db->query($empSql, [$area['id']])->getRow();
+                        $employeeBreakdown = [
+                            'foreman'  => (int)($empRow->foreman  ?? 0),
+                            'mechanic' => (int)($empRow->mechanic ?? 0),
+                            'helper'   => (int)($empRow->helper   ?? 0),
+                        ];
                     }
                 } catch (\Exception $e) {
                     log_message('error', 'Employee count error for area ' . $area['id'] . ': ' . $e->getMessage());
-                    log_message('debug', 'SQL Error details: ' . $e->getMessage());
                 }
                 
                 $totalEmployees = $employeeBreakdown['foreman'] + $employeeBreakdown['mechanic'] + $employeeBreakdown['helper'];
@@ -266,7 +271,9 @@ class ServiceAreaManagementController extends BaseController
                     'id' => $area['id'],
                     'area_code' => $area['area_code'],
                     'area_name' => $area['area_name'],
-                    'area_type' => $area['area_type'] ?? 'BRANCH',
+                    'area_type' => $area['area_type'] ?? 'MILL',
+                    'departemen_id' => $area['departemen_id'] ?? null,
+                    'departemen_name' => $area['departemen_name'] ?? null,
                     'description' => $area['area_description'] ?? '',
                     'customers_count' => (int) $customerCount,
                     'employees_count' => $totalEmployees,
@@ -295,7 +302,7 @@ class ServiceAreaManagementController extends BaseController
                 'recordsFiltered' => 0,
                 'data' => [],
                 'error' => true,
-                'message' => 'Error loading areas: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'debug_info' => [
                     'error_message' => $e->getMessage(),
                     'error_line' => $e->getLine(),
@@ -346,6 +353,72 @@ class ServiceAreaManagementController extends BaseController
     }
 
     /**
+     * Show single area data (for edit modal)
+     */
+    public function showArea($id = null)
+    {
+        if (!$id) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID area tidak valid'
+            ]);
+        }
+
+        $db = \Config\Database::connect();
+        $area = $db->table('areas')
+            ->select('id, area_code, area_name, area_type, area_description as description, departemen_id, is_active')
+            ->where('id', $id)
+            ->where('deleted_at IS NULL')
+            ->get()
+            ->getRowArray();
+
+        if (!$area) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Area tidak ditemukan'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => ['area' => $area]
+        ]);
+    }
+
+    /**
+     * Show single employee data (for edit modal)
+     */
+    public function showEmployee($id = null)
+    {
+        if (!$id) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID karyawan tidak valid'
+            ]);
+        }
+
+        $db = \Config\Database::connect();
+        $employee = $db->table('employees')
+            ->select('id, staff_code, staff_name, staff_role, staff_role as role, job_description as description, departemen_id, work_location, phone, email, address, is_active')
+            ->where('id', $id)
+            ->where('deleted_at IS NULL')
+            ->get()
+            ->getRowArray();
+
+        if (!$employee) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Karyawan tidak ditemukan'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => ['employee' => $employee]
+        ]);
+    }
+
+    /**
      * Save new area
      */
     public function saveArea()
@@ -359,21 +432,36 @@ class ServiceAreaManagementController extends BaseController
             'area_description' => 'permit_empty'
         ];
         
-        if (!$this->validateData($input, $validationRules)) {
+        $validationMessages = [
+            'area_code' => [
+                'required' => 'Kode area harus diisi.',
+                'max_length' => 'Kode area maksimal 20 karakter.',
+                'is_unique' => 'Kode area sudah digunakan. Silakan gunakan kode yang berbeda.'
+            ],
+            'area_name' => [
+                'required' => 'Nama area harus diisi.',
+                'max_length' => 'Nama area maksimal 100 karakter.'
+            ]
+        ];
+        
+        if (!$this->validateData($input, $validationRules, $validationMessages)) {
+            $errors = $this->validator->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => $firstError,
+                'errors' => $errors
             ]);
         }
         
+        $areaType = !empty($input['area_type']) ? $input['area_type'] : 'MILL';
         $data = [
             'area_code' => $input['area_code'],
             'area_name' => $input['area_name'],
             'area_description' => !empty($input['area_description']) ? $input['area_description'] : null,
-            'area_type' => !empty($input['area_type']) ? $input['area_type'] : 'BRANCH',
+            'area_type' => $areaType,
+            'departemen_id' => ($areaType === 'CENTRAL' && !empty($input['departemen_id'])) ? (int)$input['departemen_id'] : null,
             'is_active' => 1,
-            'created_by' => session()->get('user_id')
         ];
         
         try {
@@ -389,13 +477,14 @@ class ServiceAreaManagementController extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal menyimpan area'
+                    'message' => 'Gagal menyimpan area. Periksa kembali data yang diisi.'
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Area save exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menyimpan area. Silakan coba lagi.'
             ]);
         }
     }
@@ -429,19 +518,34 @@ class ServiceAreaManagementController extends BaseController
             'area_description' => 'permit_empty'
         ];
         
-        if (!$this->validateData($input, $validationRules)) {
+        $validationMessages = [
+            'area_code' => [
+                'required' => 'Kode area harus diisi.',
+                'max_length' => 'Kode area maksimal 20 karakter.',
+                'is_unique' => 'Kode area sudah digunakan. Silakan gunakan kode yang berbeda.'
+            ],
+            'area_name' => [
+                'required' => 'Nama area harus diisi.',
+                'max_length' => 'Nama area maksimal 100 karakter.'
+            ]
+        ];
+        
+        if (!$this->validateData($input, $validationRules, $validationMessages)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
+        $areaType = !empty($input['area_type']) ? $input['area_type'] : 'MILL';
         $data = [
             'area_code' => $input['area_code'],
             'area_name' => $input['area_name'],
             'area_description' => !empty($input['area_description']) ? $input['area_description'] : null,
-            'area_type' => !empty($input['area_type']) ? $input['area_type'] : 'BRANCH',
+            'area_type' => $areaType,
+            'departemen_id' => ($areaType === 'CENTRAL' && !empty($input['departemen_id'])) ? (int)$input['departemen_id'] : null,
             'updated_at' => date('Y-m-d H:i:s') // Force update
         ];
         
@@ -458,7 +562,7 @@ class ServiceAreaManagementController extends BaseController
             if (!$existingArea) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Area not found with ID: ' . $id
+                    'message' => 'Area tidak ditemukan'
                 ]);
             }
             
@@ -483,14 +587,14 @@ class ServiceAreaManagementController extends BaseController
                 log_message('error', 'Area update failed for ID: ' . $id);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal mengupdate area - No rows affected'
+                    'message' => 'Gagal mengupdate area. Data tidak berubah atau area tidak ditemukan.'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Area update exception: ' . $e->getMessage());
+            log_message('error', 'Area update exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat mengupdate area. Silakan coba lagi.'
             ]);
         }
     }
@@ -531,9 +635,10 @@ class ServiceAreaManagementController extends BaseController
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Area delete exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menghapus area. Silakan coba lagi.'
             ]);
         }
     }
@@ -690,11 +795,11 @@ class ServiceAreaManagementController extends BaseController
                 'data' => $data
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error in getEmployees: ' . $e->getMessage());
+             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setStatusCode(500)->setJSON([
                 'error' => true,
-                'message' => 'Error loading employees: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'trace' => ENVIRONMENT === 'development' ? $e->getTraceAsString() : null
             ]);
         }
@@ -708,7 +813,7 @@ class ServiceAreaManagementController extends BaseController
         if (!$id) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Employee ID is required'
+                'message' => 'ID karyawan harus diisi'
             ]);
         }
 
@@ -727,7 +832,7 @@ class ServiceAreaManagementController extends BaseController
             if (!$employee) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Employee not found'
+                    'message' => 'Karyawan tidak ditemukan'
                 ]);
             }
 
@@ -748,10 +853,10 @@ class ServiceAreaManagementController extends BaseController
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error getting employee detail: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving employee details'
+                'message' => 'Gagal memuat detail karyawan. Silakan coba lagi.'
             ]);
         }
     }
@@ -794,7 +899,7 @@ class ServiceAreaManagementController extends BaseController
             'staff_code' => 'required|max_length[20]|is_unique[employees.staff_code]',
             'staff_name' => 'required|max_length[100]',
             'staff_role' => 'required|in_list[ADMIN,SUPERVISOR,FOREMAN,MECHANIC,MECHANIC_SERVICE_AREA,MECHANIC_UNIT_PREP,MECHANIC_FABRICATION,HELPER]',
-            'work_location' => 'required|in_list[CENTRAL,BRANCH,BOTH]',
+            'work_location' => 'required|in_list[CENTRAL,MILL,BOTH]',
             'job_description' => 'required',
             'departemen_id' => 'permit_empty|integer',
             'phone' => 'permit_empty|max_length[20]',
@@ -803,11 +908,38 @@ class ServiceAreaManagementController extends BaseController
             'hire_date' => 'permit_empty|valid_date'
         ];
         
-        if (!$this->validateData($input, $validationRules)) {
+        $validationMessages = [
+            'staff_code' => [
+                'required' => 'Kode karyawan harus diisi.',
+                'max_length' => 'Kode karyawan maksimal 20 karakter.',
+                'is_unique' => 'Kode karyawan sudah digunakan. Silakan gunakan kode yang berbeda.'
+            ],
+            'staff_name' => [
+                'required' => 'Nama karyawan harus diisi.',
+                'max_length' => 'Nama karyawan maksimal 100 karakter.'
+            ],
+            'staff_role' => [
+                'required' => 'Role karyawan harus dipilih.',
+                'in_list' => 'Role karyawan tidak valid.'
+            ],
+            'work_location' => [
+                'required' => 'Lokasi kerja harus dipilih.',
+                'in_list' => 'Lokasi kerja tidak valid.'
+            ],
+            'job_description' => [
+                'required' => 'Deskripsi pekerjaan harus diisi.'
+            ],
+            'email' => [
+                'valid_email' => 'Format email tidak valid.'
+            ]
+        ];
+        
+        if (!$this->validateData($input, $validationRules, $validationMessages)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
@@ -822,12 +954,10 @@ class ServiceAreaManagementController extends BaseController
             'email' => $input['email'] ?? null,
             'address' => $input['address'] ?? null,
             'hire_date' => !empty($input['hire_date']) ? $input['hire_date'] : null,
-            'is_active' => 1,
-            'created_by' => session()->get('user_id')
+            'is_active' => 1
         ];
-        
+
         try {
-            // Insert data
             $employeeId = $this->employeeModel->insert($data);
             
             if ($employeeId) {
@@ -839,13 +969,14 @@ class ServiceAreaManagementController extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal menyimpan karyawan'
+                    'message' => 'Gagal menyimpan data karyawan. Periksa kembali data yang diisi.'
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Employee save exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menyimpan karyawan. Silakan coba lagi.'
             ]);
         }
     }
@@ -876,7 +1007,8 @@ class ServiceAreaManagementController extends BaseController
         $validationRules = [
             'staff_code' => "required|max_length[20]|is_unique[employees.staff_code,id,{$id}]",
             'staff_name' => 'required|max_length[100]',
-            'staff_role' => 'required|in_list[ADMIN,FOREMAN,MECHANIC,HELPER,SUPERVISOR]',
+            'staff_role' => 'required|in_list[ADMIN,SUPERVISOR,FOREMAN,MECHANIC,MECHANIC_SERVICE_AREA,MECHANIC_UNIT_PREP,MECHANIC_FABRICATION,HELPER]',
+            'work_location' => 'permit_empty|in_list[CENTRAL,MILL,BOTH]',
             'departemen_id' => 'permit_empty|integer',
             'phone' => 'permit_empty|max_length[20]',
             'email' => 'permit_empty|valid_email|max_length[100]',
@@ -884,11 +1016,31 @@ class ServiceAreaManagementController extends BaseController
             'hire_date' => 'permit_empty|valid_date'
         ];
         
-        if (!$this->validateData($input, $validationRules)) {
+        $validationMessages = [
+            'staff_code' => [
+                'required' => 'Kode karyawan harus diisi.',
+                'max_length' => 'Kode karyawan maksimal 20 karakter.',
+                'is_unique' => 'Kode karyawan sudah digunakan. Silakan gunakan kode yang berbeda.'
+            ],
+            'staff_name' => [
+                'required' => 'Nama karyawan harus diisi.',
+                'max_length' => 'Nama karyawan maksimal 100 karakter.'
+            ],
+            'staff_role' => [
+                'required' => 'Role karyawan harus dipilih.',
+                'in_list' => 'Role karyawan tidak valid.'
+            ],
+            'email' => [
+                'valid_email' => 'Format email tidak valid.'
+            ]
+        ];
+        
+        if (!$this->validateData($input, $validationRules, $validationMessages)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
@@ -897,6 +1049,8 @@ class ServiceAreaManagementController extends BaseController
             'staff_name' => $input['staff_name'],
             'staff_role' => $input['staff_role'],
             'departemen_id' => !empty($input['departemen_id']) ? $input['departemen_id'] : null,
+            'work_location' => !empty($input['work_location']) ? $input['work_location'] : null,
+            'job_description' => $input['job_description'] ?? null,
             'phone' => $input['phone'] ?? null,
             'email' => $input['email'] ?? null,
             'address' => $input['address'] ?? null,
@@ -917,7 +1071,7 @@ class ServiceAreaManagementController extends BaseController
             if (!$existingEmployee) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Employee not found with ID: ' . $id
+                    'message' => 'Karyawan tidak ditemukan'
                 ]);
             }
             
@@ -942,14 +1096,14 @@ class ServiceAreaManagementController extends BaseController
                 log_message('error', 'Employee update failed for ID: ' . $id);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal mengupdate karyawan - No rows affected'
+                    'message' => 'Gagal mengupdate karyawan. Data tidak berubah atau karyawan tidak ditemukan.'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Employee update exception: ' . $e->getMessage());
+            log_message('error', 'Employee update exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat mengupdate karyawan. Silakan coba lagi.'
             ]);
         }
     }
@@ -990,9 +1144,10 @@ class ServiceAreaManagementController extends BaseController
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Employee delete exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menghapus karyawan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1150,10 +1305,11 @@ class ServiceAreaManagementController extends BaseController
         ];
         
         if (!$this->validateData($input, $validationRules)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
@@ -1201,8 +1357,7 @@ class ServiceAreaManagementController extends BaseController
             'start_date' => $input['start_date'],
             'end_date' => !empty($input['end_date']) ? $input['end_date'] : null,
             'notes' => $input['notes'] ?? null,
-            'is_active' => 1,
-            'created_by' => session()->get('user_id')
+            'is_active' => 1
         ];
         
         try {
@@ -1212,19 +1367,20 @@ class ServiceAreaManagementController extends BaseController
             if ($assignmentId) {
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Assignment berhasil disimpan',
+                    'message' => 'Penugasan berhasil disimpan',
                     'id' => $assignmentId
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal menyimpan assignment'
+                    'message' => 'Gagal menyimpan penugasan. Periksa kembali data yang diisi.'
                 ]);
             }
         } catch (\Exception $e) {
+            log_message('error', 'Assignment save exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menyimpan penugasan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1405,16 +1561,18 @@ class ServiceAreaManagementController extends BaseController
             'area_id' => 'required|integer',
             'staff_id' => 'required|integer',
             'assignment_type' => 'required|in_list[PRIMARY,BACKUP,TEMPORARY]',
+            'department_scope' => 'permit_empty|string|max_length[100]',
             'start_date' => 'required|valid_date',
             'end_date' => 'permit_empty|valid_date',
             'notes' => 'permit_empty'
         ];
         
         if (!$this->validateData($input, $validationRules)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
@@ -1422,11 +1580,11 @@ class ServiceAreaManagementController extends BaseController
             'area_id' => $input['area_id'],
             'employee_id' => $input['staff_id'], // Map staff_id to employee_id
             'assignment_type' => $input['assignment_type'],
+            'department_scope' => !empty($input['department_scope']) ? $input['department_scope'] : 'ALL',
             'start_date' => $input['start_date'],
             'end_date' => !empty($input['end_date']) ? $input['end_date'] : null,
             'notes' => $input['notes'] ?? null,
-            'is_active' => 1,
-            'created_by' => session()->get('user_id')
+            'is_active' => 1
         ];
         
         try {
@@ -1459,20 +1617,20 @@ class ServiceAreaManagementController extends BaseController
                 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Assignment created successfully',
+                    'message' => 'Penugasan berhasil dibuat',
                     'id' => $assignmentId
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to create assignment'
+                    'message' => 'Gagal membuat penugasan. Periksa kembali data yang diisi.'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error creating assignment: ' . $e->getMessage());
+            log_message('error', 'Gagal membuat data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat membuat penugasan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1485,7 +1643,7 @@ class ServiceAreaManagementController extends BaseController
         if (!$id) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid assignment ID'
+                'message' => 'ID penugasan tidak valid'
             ]);
         }
         
@@ -1493,7 +1651,7 @@ class ServiceAreaManagementController extends BaseController
         if (!$assignment) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Assignment not found'
+                'message' => 'Penugasan tidak ditemukan'
             ]);
         }
         
@@ -1509,10 +1667,11 @@ class ServiceAreaManagementController extends BaseController
         ];
         
         if (!$this->validateData($input, $validationRules)) {
+            $errors = $this->validator->getErrors();
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation error',
-                'errors' => $this->validator->getErrors()
+                'message' => !empty($errors) ? reset($errors) : 'Validasi gagal',
+                'errors' => $errors
             ]);
         }
         
@@ -1554,19 +1713,19 @@ class ServiceAreaManagementController extends BaseController
                 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Assignment updated successfully'
+                    'message' => 'Penugasan berhasil diperbarui'
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update assignment'
+                    'message' => 'Gagal memperbarui penugasan. Data tidak berubah.'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error updating assignment: ' . $e->getMessage());
+            log_message('error', 'Error updating assignment. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat memperbarui penugasan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1582,7 +1741,7 @@ class ServiceAreaManagementController extends BaseController
             log_message('error', 'Delete assignment: Invalid ID provided');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid assignment ID'
+                'message' => 'ID penugasan tidak valid'
             ]);
         }
         
@@ -1591,7 +1750,7 @@ class ServiceAreaManagementController extends BaseController
             log_message('error', 'Delete assignment: Assignment not found for ID: ' . $id);
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Assignment not found'
+                'message' => 'Penugasan tidak ditemukan'
             ]);
         }
         
@@ -1627,19 +1786,19 @@ class ServiceAreaManagementController extends BaseController
                 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Assignment removed successfully'
+                    'message' => 'Penugasan berhasil dihapus'
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to remove assignment'
+                    'message' => 'Gagal menghapus penugasan. Silakan coba lagi.'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error deleting assignment: ' . $e->getMessage());
+            log_message('error', 'Error deleting assignment. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menghapus penugasan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1652,7 +1811,7 @@ class ServiceAreaManagementController extends BaseController
         if (!$id) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid assignment ID'
+                'message' => 'ID penugasan tidak valid'
             ]);
         }
         
@@ -1673,7 +1832,7 @@ class ServiceAreaManagementController extends BaseController
             if (!$assignment) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Assignment not found'
+                    'message' => 'Penugasan tidak ditemukan'
                 ]);
             }
             
@@ -1682,10 +1841,10 @@ class ServiceAreaManagementController extends BaseController
                 'data' => $assignment
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error getting assignment: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error retrieving assignment'
+                'message' => 'Gagal memuat detail penugasan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1698,7 +1857,7 @@ class ServiceAreaManagementController extends BaseController
         if (!$id) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid assignment ID'
+                'message' => 'ID penugasan tidak valid'
             ]);
         }
 
@@ -1706,7 +1865,7 @@ class ServiceAreaManagementController extends BaseController
         if ($isActive === null) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Status not provided'
+                'message' => 'Status harus diisi'
             ]);
         }
 
@@ -1715,7 +1874,7 @@ class ServiceAreaManagementController extends BaseController
             if (!$assignment) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Assignment not found'
+                    'message' => 'Penugasan tidak ditemukan'
                 ]);
             }
 
@@ -1724,22 +1883,22 @@ class ServiceAreaManagementController extends BaseController
             ]);
 
             if ($updated) {
-                $statusText = $isActive == 1 ? 'activated' : 'deactivated';
+                $statusText = $isActive == 1 ? 'diaktifkan' : 'dinonaktifkan';
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => "Assignment {$statusText} successfully"
+                    'message' => "Penugasan berhasil {$statusText}"
                 ]);
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update assignment status'
+                    'message' => 'Gagal mengubah status penugasan'
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error toggling assignment status: ' . $e->getMessage());
+            log_message('error', 'Error toggling assignment status. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating assignment status'
+                'message' => 'Terjadi kesalahan saat mengubah status penugasan. Silakan coba lagi.'
             ]);
         }
     }

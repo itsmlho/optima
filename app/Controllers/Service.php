@@ -52,7 +52,7 @@ class Service extends BaseController
     {
         // Check permission for viewing service verification
         if (!$this->hasPermission('service.work_orders.view')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view service verification');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         $data = [];
@@ -93,7 +93,7 @@ class Service extends BaseController
     {
         // Check permission for printing SPK
         if (!$this->hasPermission('service.spk_service.view')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to print SPK');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         return redirect()->to(base_url('marketing/spk/print/' . $id));
@@ -367,7 +367,7 @@ class Service extends BaseController
         } catch (\Exception $e) {
             $db->transRollback();
             log_message('error', 'validateSpareparts error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memproses permintaan. Silakan coba lagi.']);
         }
     }
 
@@ -740,11 +740,11 @@ class Service extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error loading areas: ' . $e->getMessage());
+            log_message('error', 'Gagal memuat data. Silakan coba lagi.');
             log_message('error', 'Areas error trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading areas: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -773,7 +773,7 @@ class Service extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -804,7 +804,7 @@ class Service extends BaseController
             if (empty($spk)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'SPK not found'
+                    'message' => 'SPK tidak ditemukan'
                 ]);
             }
                 
@@ -816,7 +816,7 @@ class Service extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting SPK department: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error getting SPK department'
@@ -931,7 +931,7 @@ class Service extends BaseController
             log_message('error', 'SPK List Trace: ' . $e->getTraceAsString());
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
-                'message' => 'Error loading SPK list: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data. Silakan coba lagi.',
                 'data' => []
             ]);
         }
@@ -1125,7 +1125,7 @@ class Service extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to view SPK details'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
@@ -1641,7 +1641,7 @@ class Service extends BaseController
             log_message('error', 'SPK Approval Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1727,7 +1727,7 @@ class Service extends BaseController
             log_message('error', 'SPK Approval Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1779,7 +1779,7 @@ class Service extends BaseController
             log_message('error', 'Fabrikasi Approval Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1841,7 +1841,7 @@ class Service extends BaseController
             log_message('error', 'Assign Items Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -1880,7 +1880,7 @@ class Service extends BaseController
             log_message('error', 'Change SPK Unit Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -2106,7 +2106,7 @@ class Service extends BaseController
         // Check permission: Service perlu manage inventory (cross-division)
         // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
         if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
-            throw new \Exception('Access denied: You do not have permission to update inventory');
+            throw new \Exception('Akses ditolak: Anda tidak memiliki izin');
         }
         
         $this->db->table('inventory_unit')
@@ -2127,7 +2127,7 @@ class Service extends BaseController
         // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
         if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
             log_message('error', 'Service::updateInventoryUnit - Access denied for user: ' . session()->get('user_id'));
-            throw new \Exception('Access denied: You do not have permission to update inventory');
+            throw new \Exception('Akses ditolak: Anda tidak memiliki izin');
         }
         $updateData = [
             'area_id' => $area_id, 
@@ -3355,7 +3355,7 @@ EOF;
     public function employeesByRoles()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
         
         // Get role and department filters
@@ -3398,7 +3398,7 @@ EOF;
                 'csrf_hash' => csrf_hash()
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error fetching employees by department: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false, 
                 'message' => 'Error fetching employees'
@@ -3445,7 +3445,7 @@ EOF;
     public function addInventoryAttachment()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $type = $this->request->getPost('tipe_item');
@@ -3535,7 +3535,7 @@ EOF;
             if ($existing) {
                 return $this->response->setJSON([
                     'success' => false, 
-                    'message' => 'Serial number already exists for this type'
+                    'message' => 'Serial number sudah digunakan untuk tipe ini'
                 ]);
             }
 
@@ -3572,15 +3572,14 @@ EOF;
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to add attachment'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
-
         } catch (\Exception $e) {
-            log_message('error', 'Error adding inventory attachment: ' . $e->getMessage());
+            log_message('error', 'addAttachment error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'An error occurred while adding attachment'
+                'message' => 'Terjadi kesalahan saat menambahkan attachment'
             ]);
         }
     }
@@ -3691,7 +3690,7 @@ EOF;
     public function saveUnitVerification()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
         $db = \Config\Database::connect();
@@ -3932,10 +3931,10 @@ EOF;
 
         } catch (\Exception $e) {
             $db->transRollback();
-            log_message('error', 'Error saving unit verification: ' . $e->getMessage());
+            log_message('error', 'Gagal menyimpan data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ]);
         }

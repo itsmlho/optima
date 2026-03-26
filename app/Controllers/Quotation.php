@@ -95,9 +95,9 @@ class Quotation extends BaseController
             return $this->response->setJSON($response);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error in Quotation::getDataTable: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
-                'error' => 'Server error: ' . $e->getMessage(),
+                'error' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
                 'draw' => intval($this->request->getPost('draw') ?? 1),
                 'recordsTotal' => 0,
                 'recordsFiltered' => 0,
@@ -118,30 +118,10 @@ class Quotation extends BaseController
                 'data' => $stats
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error in Quotation::getStats: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading statistics'
-            ]);
-        }
-    }
-
-    /**
-     * Generate new quotation number
-     */
-    public function generateNumber()
-    {
-        try {
-            $number = $this->quotationModel->generateQuotationNumber();
-            return $this->response->setJSON([
-                'success' => true,
-                'number' => $number
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', 'Error generating quotation number: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error generating quotation number'
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -171,7 +151,7 @@ class Quotation extends BaseController
             if (!$this->validate($validationRules)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $this->validator->getErrors()
                 ]);
             }
@@ -203,41 +183,12 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to create quotation'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error creating quotation: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get quotation details
-     */
-    public function get($id)
-    {
-        try {
-            $quotation = $this->quotationModel->getQuotationWithSpecs($id);
-            
-            if (!$quotation) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Quotation not found'
-                ]);
-            }
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $quotation
-            ]);
-
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting quotation: ' . $e->getMessage());
+            log_message('error', 'Quotation store error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error loading quotation'
@@ -262,7 +213,7 @@ class Quotation extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -278,7 +229,7 @@ class Quotation extends BaseController
             if (!$this->validate($validationRules)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Validation failed',
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                     'errors' => $this->validator->getErrors()
                 ]);
             }
@@ -307,15 +258,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update quotation'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error updating quotation: ' . $e->getMessage());
+            log_message('error', 'Quotation update error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ]);
         }
     }
@@ -337,7 +288,7 @@ class Quotation extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -362,15 +313,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to delete quotation'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error deleting quotation: ' . $e->getMessage());
+            log_message('error', 'Quotation delete error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ]);
         }
     }
@@ -394,15 +345,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update quotation stage'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error updating quotation stage: ' . $e->getMessage());
+            log_message('error', 'Quotation updateStage error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ]);
         }
     }
@@ -431,15 +382,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to mark quotation as deal'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Error marking quotation as deal: ' . $e->getMessage());
+            log_message('error', 'Quotation markAsDeal error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ]);
         }
     }
@@ -478,7 +429,7 @@ class Quotation extends BaseController
             return $this->response->setJSON($stats);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting quotation statistics: ' . $e->getMessage());
+            log_message('error', 'Error getting quotation statistics. Silakan coba lagi.');
             return $this->response->setJSON([
                 'status' => 'error',
                 'message' => 'Failed to load statistics'
@@ -511,7 +462,7 @@ class Quotation extends BaseController
                 log_message('debug', "Quotation not found for ID: $id");
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
             
@@ -535,11 +486,11 @@ class Quotation extends BaseController
             return $this->response->setJSON($response);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting quotation detail: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'status' => 'error',
-                'message' => 'Failed to load quotation: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -578,7 +529,7 @@ class Quotation extends BaseController
                 log_message('debug', "Quotation not found for ID: $quotationId");
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -597,11 +548,11 @@ class Quotation extends BaseController
             ]);
             
         } catch (\Exception $e) {
-            log_message('error', 'Error getting quotation specifications: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load specifications: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -633,7 +584,7 @@ class Quotation extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -736,15 +687,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to add specification'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
-            
+
         } catch (\Exception $e) {
-            log_message('error', 'Error adding quotation specification: ' . $e->getMessage());
+            log_message('error', 'Quotation addSpecification error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to add specification: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -777,7 +728,7 @@ class Quotation extends BaseController
             if (!$specification) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Specification not found'
+                    'message' => 'Spesifikasi tidak ditemukan'
                 ]);
             }
 
@@ -786,7 +737,7 @@ class Quotation extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -925,12 +876,12 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update specification'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
-            
+
         } catch (\Exception $e) {
-            log_message('error', 'Error updating quotation specification: ' . $e->getMessage());
+            log_message('error', 'Quotation updateSpecification error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to update specification'
@@ -956,7 +907,7 @@ class Quotation extends BaseController
             if (!$specification) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Specification not found'
+                    'message' => 'Spesifikasi tidak ditemukan'
                 ]);
             }
 
@@ -965,7 +916,7 @@ class Quotation extends BaseController
             if (!$quotation) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation tidak ditemukan'
                 ]);
             }
 
@@ -992,310 +943,15 @@ class Quotation extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to delete specification'
+                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
                 ]);
             }
-            
+
         } catch (\Exception $e) {
-            log_message('error', 'Error deleting quotation specification: ' . $e->getMessage());
+            log_message('error', 'Quotation deleteSpecification error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to delete specification'
-            ]);
-        }
-    }
-
-    // ============= DROPDOWN DATA ENDPOINTS =============
-
-    /**
-     * Get departments for dropdown
-     */
-    public function getDepartments()
-    {
-        try {
-            $departments = $this->db->table('departemen')
-                ->select('id_departemen, nama_departemen')
-                ->where('is_active', 1)
-                ->orderBy('nama_departemen')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $departments
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting departments: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load departments'
-            ]);
-        }
-    }
-
-    /**
-     * Get unit types for dropdown
-     */
-    public function getUnitTypes()
-    {
-        try {
-            $unitTypes = $this->db->table('tipe_unit tu')
-                ->select('tu.id_tipe_unit, tu.nama_tipe_unit, tu.tipe, tu.jenis, d.nama_departemen')
-                ->join('departemen d', 'tu.departemen_id = d.id_departemen', 'left')
-                ->where('tu.is_active', 1)
-                ->orderBy('tu.nama_tipe_unit')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $unitTypes
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting unit types: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load unit types'
-            ]);
-        }
-    }
-
-    /**
-     * Get capacities for dropdown
-     */
-    public function getCapacities()
-    {
-        try {
-            $capacities = $this->db->table('kapasitas')
-                ->select('id_kapasitas, kapasitas, satuan')
-                ->where('is_active', 1)
-                ->orderBy('kapasitas')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $capacities
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting capacities: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load capacities'
-            ]);
-        }
-    }
-
-    /**
-     * Get chargers for dropdown
-     */
-    public function getChargers()
-    {
-        try {
-            $chargers = $this->db->table('charger')
-                ->select('id_charger, merk_charger, tipe_charger')
-                ->orderBy('merk_charger, tipe_charger')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $chargers
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting chargers: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load chargers'
-            ]);
-        }
-    }
-
-    /**
-     * Get unit brands for dropdown
-     */
-    public function getUnitBrands()
-    {
-        try {
-            $brands = $this->db->table('merk_unit')
-                ->select('merk_unit')
-                ->distinct()
-                ->orderBy('merk_unit')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $brands
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting unit brands: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load unit brands'
-            ]);
-        }
-    }
-
-    /**
-     * Get batteries for dropdown
-     */
-    public function getBatteries()
-    {
-        try {
-            $batteries = $this->db->table('jenis_baterai')
-                ->select('jenis_baterai')
-                ->distinct()
-                ->orderBy('jenis_baterai')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $batteries
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting batteries: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load batteries'
-            ]);
-        }
-    }
-
-    /**
-     * Get attachment types for dropdown
-     */
-    public function getAttachmentTypes()
-    {
-        try {
-            $attachments = $this->db->table('attachment_tipe')
-                ->select('attachment_tipe')
-                ->distinct()
-                ->orderBy('attachment_tipe')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $attachments
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting attachment types: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load attachment types'
-            ]);
-        }
-    }
-
-    /**
-     * Get valves for dropdown
-     */
-    public function getValves()
-    {
-        try {
-            $valves = $this->db->table('valve')
-                ->select('id_valve, nama_valve')
-                ->orderBy('nama_valve')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $valves
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting valves: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load valves'
-            ]);
-        }
-    }
-
-    /**
-     * Get masts for dropdown
-     */
-    public function getMasts()
-    {
-        try {
-            $masts = $this->db->table('mast')
-                ->select('id_mast, nama_mast')
-                ->orderBy('nama_mast')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $masts
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting masts: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load masts'
-            ]);
-        }
-    }
-
-    /**
-     * Get tires for dropdown
-     */
-    public function getTires()
-    {
-        try {
-            $tires = $this->db->table('ban')
-                ->select('id_ban, nama_ban')
-                ->orderBy('nama_ban')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $tires
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting tires: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load tires'
-            ]);
-        }
-    }
-
-    /**
-     * Get wheels for dropdown
-     */
-    public function getWheels()
-    {
-        try {
-            $wheels = $this->db->table('roda')
-                ->select('id_roda, nama_roda')
-                ->orderBy('nama_roda')
-                ->get()
-                ->getResultArray();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $wheels
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error getting wheels: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to load wheels'
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }

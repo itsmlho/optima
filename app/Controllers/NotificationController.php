@@ -21,12 +21,22 @@ class NotificationController extends BaseController
 
     public function __construct()
     {
-        $this->notificationModel = new NotificationModel();
-        $this->ruleModel = new NotificationRuleModel();
         $this->db = \Config\Database::connect();
-        $this->divisionModel = new DivisionModel();
-        $this->roleModel = new RoleModel();
-        $this->initializeActivityLogging();
+        
+        try {
+            $this->notificationModel = new NotificationModel();
+            $this->ruleModel = new NotificationRuleModel();
+            $this->divisionModel = new DivisionModel();
+            $this->roleModel = new RoleModel();
+        } catch (\Exception $e) {
+            log_message('error', 'NotificationController model init error: ' . $e->getMessage());
+        }
+        
+        try {
+            $this->initializeActivityLogging();
+        } catch (\Exception $e) {
+            log_message('debug', 'Activity logging init skipped: ' . $e->getMessage());
+        }
     }
 
     // ========================================================================
@@ -39,7 +49,7 @@ class NotificationController extends BaseController
     public function index()
     {
         if (!$this->canAccess('admin')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak');
         }
 
         $userId = session()->get('user_id');
@@ -74,7 +84,7 @@ class NotificationController extends BaseController
     {
         // For debugging: temporarily disable authentication check
         // if (!$this->canAccess('admin')) {
-        //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        //     return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         // }
 
         $userId = session()->get('user_id') ?? 1; // Default to user ID 1 for testing
@@ -101,7 +111,7 @@ class NotificationController extends BaseController
         $userId = session()->get('user_id');
         
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User belum terautentikasi. Silakan login kembali.']);
         }
 
         try {
@@ -122,11 +132,11 @@ class NotificationController extends BaseController
             if ($result) {
                 return $this->response->setJSON(['success' => true, 'message' => 'Notification marked as read']);
             } else {
-                return $this->response->setJSON(['success' => false, 'message' => 'Failed to mark as read']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
             }
         } catch (\Exception $e) {
             log_message('error', 'markAsRead error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem.']);
         }
     }
 
@@ -161,7 +171,7 @@ class NotificationController extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load event types: ' . $e->getMessage(),
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
@@ -202,7 +212,7 @@ class NotificationController extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load divisions: ' . $e->getMessage(),
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
@@ -243,7 +253,7 @@ class NotificationController extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load roles: ' . $e->getMessage(),
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
@@ -355,7 +365,7 @@ class NotificationController extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load notification metadata: ' . $e->getMessage(),
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
@@ -450,7 +460,7 @@ class NotificationController extends BaseController
         $userId = session()->get('user_id');
         
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+            return $this->response->setJSON(['success' => false, 'message' => 'User belum terautentikasi. Silakan login kembali.']);
         }
 
         try {
@@ -475,7 +485,7 @@ class NotificationController extends BaseController
             ]);
         } catch (\Exception $e) {
             log_message('error', 'markAllAsRead error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
 
@@ -484,14 +494,19 @@ class NotificationController extends BaseController
      */
     public function getCount()
     {
-        $userId = session()->get('user_id') ?? 1; // Default to user ID 1 for testing
+        $userId = session()->get('user_id');
         
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'count' => 0]);
+            return $this->response->setJSON(['success' => true, 'count' => 0]);
         }
 
         try {
-            $count = $this->notificationModel
+            // Check if notifications table exists
+            if (!$this->db->tableExists('notifications')) {
+                return $this->response->setJSON(['success' => true, 'count' => 0]);
+            }
+            
+            $count = $this->db->table('notifications')
                 ->where('user_id', $userId)
                 ->where('is_read', 0)
                 ->countAllResults();
@@ -501,7 +516,8 @@ class NotificationController extends BaseController
                 'count' => $count
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'count' => 0]);
+            log_message('debug', 'Notification getCount error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => true, 'count' => 0]);
         }
     }
 
@@ -514,16 +530,23 @@ class NotificationController extends BaseController
         $lastId = $this->request->getGet('lastId') ?? 0;
         
         if (!$userId) {
-            return $this->response->setJSON(['success' => false, 'notifications' => []]);
+            return $this->response->setJSON(['success' => true, 'notifications' => [], 'lastId' => 0]);
         }
 
         try {
-            $notifications = $this->notificationModel
+            // Check if notifications table exists
+            if (!$this->db->tableExists('notifications')) {
+                return $this->response->setJSON(['success' => true, 'notifications' => [], 'lastId' => 0]);
+            }
+            
+            $notifications = $this->db->table('notifications')
                 ->where('user_id', $userId)
                 ->where('id >', $lastId)
                 ->where('is_read', 0)
                 ->orderBy('created_at', 'DESC')
-                ->findAll(10);
+                ->limit(10)
+                ->get()
+                ->getResultArray();
 
             $maxId = $lastId;
             if (!empty($notifications)) {
@@ -536,7 +559,8 @@ class NotificationController extends BaseController
                 'lastId' => $maxId
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'notifications' => []]);
+            log_message('debug', 'Notification poll error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => true, 'notifications' => [], 'lastId' => 0]);
         }
     }
 
@@ -549,7 +573,7 @@ class NotificationController extends BaseController
     public function delete($notificationId)
     {
         if (!$this->canAccess('admin')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $userId = session()->get('user_id');
@@ -581,7 +605,7 @@ class NotificationController extends BaseController
     public function admin()
     {
         if (!$this->canManage('admin')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak');
         }
 
         $rules = $this->ruleModel->findAll();
@@ -614,7 +638,7 @@ class NotificationController extends BaseController
     public function getRules()
     {
         if (!$this->canManage('admin')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $rules = $this->ruleModel->findAll();
@@ -632,13 +656,13 @@ class NotificationController extends BaseController
     {
         // Temporarily disable permission check for testing
         // if (!$this->canManage('admin')) {
-        //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        //     return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         // }
 
         $rule = $this->ruleModel->find($ruleId);
         
         if (!$rule) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Rule not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Rule notifikasi tidak ditemukan']);
         }
 
         return $this->response->setJSON([
@@ -662,7 +686,7 @@ class NotificationController extends BaseController
     {
         // Temporarily disable permission check for testing
         // if (!$this->canManage('admin')) {
-        //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        //     return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         // }
 
         $data = [
@@ -702,7 +726,7 @@ class NotificationController extends BaseController
     {
         // Temporarily disable permission check for testing
         // if (!$this->canManage('admin')) {
-        //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        //     return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         // }
 
         $oldRule = $this->ruleModel->find($ruleId);
@@ -710,7 +734,7 @@ class NotificationController extends BaseController
         if (!$oldRule) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Rule not found'
+                'message' => 'Rule notifikasi tidak ditemukan'
             ]);
         }
         
@@ -765,10 +789,10 @@ class NotificationController extends BaseController
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error updating rule: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating rule: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -780,13 +804,13 @@ class NotificationController extends BaseController
     {
         // Temporarily disable permission check for testing
         // if (!$this->canManage('admin')) {
-        //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        //     return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         // }
 
         $rule = $this->ruleModel->find($ruleId);
         
         if (!$rule) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Rule not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Rule notifikasi tidak ditemukan']);
         }
 
         $newStatus = $rule['is_active'] == '1' ? '0' : '1';
@@ -809,7 +833,7 @@ class NotificationController extends BaseController
     public function deleteRule($ruleId)
     {
         if (!$this->canManage('admin')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         $oldRule = $this->ruleModel->find($ruleId);
@@ -835,7 +859,7 @@ class NotificationController extends BaseController
     public function toggleRuleStatus($ruleId)
     {
         if (!$this->canManage('admin')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
         $rule = $this->ruleModel->find($ruleId);

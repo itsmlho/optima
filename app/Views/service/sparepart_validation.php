@@ -1,6 +1,6 @@
 <!-- Sparepart Validation Modal -->
 <div class="modal fade" id="sparepartValidationModal" tabindex="-1" aria-labelledby="sparepartValidationModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title" id="sparepartValidationModalLabel">
@@ -157,36 +157,33 @@
                             </div>
 
                             <!-- Sparepart Tambahan -->
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="fas fa-plus-square me-2 text-success"></i>Sparepart Tambahan</h6>
-                                    <button type="button" class="btn btn-sm btn-success" id="btn-add-sparepart-row">
-                                        <i class="fas fa-plus me-1"></i>Tambah Baris
-                                    </button>
+                            <div class="card shadow-sm mb-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-plus-square me-2"></i>Sparepart Tambahan <small class="text-muted fw-normal">(tidak direncanakan)</small></h6>
                                 </div>
-                                <div class="card-body p-0">
+                                <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-0" id="additionalSparepartTable">
-                                            <thead class="table-header">
+                                        <table class="table table-striped table-hover table-sm" id="additionalSparepartTable" style="table-layout: fixed; width: 100%;">
+                                            <thead class="table-light">
                                                 <tr>
-                                                    <th width="38%">Nama Sparepart</th>
-                                                    <th width="10%" class="text-center">Quantity</th>
-                                                    <th width="13%">Satuan</th>
-                                                    <th width="13%" class="text-center">Source</th>
-                                                    <th width="16%">Catatan</th>
-                                                    <th width="10%" class="text-center">Aksi</th>
+                                                    <th style="width: 100px;">Type*</th>
+                                                    <th style="width: 280px;">Item Name*</th>
+                                                    <th style="width: 80px;">Qty*</th>
+                                                    <th style="width: 90px;">Unit*</th>
+                                                    <th style="width: 110px;">Source*</th>
+                                                    <th style="width: auto;">Notes</th>
+                                                    <th style="width: 60px;">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="additionalSparepartTableBody">
-                                                <!-- Dynamic content will be loaded here -->
-                                                <tr id="no-additional-sparepart">
-                                                    <td colspan="6" class="text-center text-muted py-3">
-                                                        <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
-                                                        Belum ada sparepart tambahan. Klik "Tambah Baris" untuk menambah.
-                                                    </td>
-                                                </tr>
+                                                <!-- Dynamic rows -->
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <div class="mt-3">
+                                        <button type="button" class="btn btn-success btn-sm" id="btn-add-sparepart-row">
+                                            <i class="fas fa-plus"></i> Add Item
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -230,7 +227,6 @@ $(document).ready(function() {
     
     // Global variables
     let additionalSparepartCounter = 0;
-    let sparepartMasterData = [];
 
     /**
      * Open Sparepart Validation Modal
@@ -269,7 +265,6 @@ $(document).ready(function() {
                 console.log('📦 Sparepart validation data received:', response);
                 if (response.success) {
                     populateSparepartValidationData(response.data);
-                    loadSparepartMasterData();
                 } else {
                     showSparepartAlert('error', response.message || 'Gagal memuat data sparepart');
                 }
@@ -444,14 +439,6 @@ $(document).ready(function() {
         tbody.empty();
         
         if (spareparts.length === 0) {
-            tbody.append(`
-                <tr id="no-additional-sparepart">
-                    <td colspan="6" class="text-center text-muted py-3">
-                        <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
-                        Belum ada sparepart tambahan. Klik "Tambah Sparepart" untuk menambah.
-                    </td>
-                </tr>
-            `);
             return;
         }
         
@@ -465,7 +452,7 @@ $(document).ready(function() {
      */
     function updateSparepartCounters() {
         let usedCount = $('#usedSparepartTableBody tr').not('#no-used-sparepart').length;
-        let additionalCount = $('#additionalSparepartTableBody tr').not('#no-additional-sparepart').length;
+        let additionalCount = $('#additionalSparepartTableBody tr').length;
         
         $('#used-count').text(usedCount + (additionalCount > 0 ? ' + ' + additionalCount + ' tambahan' : ''));
     }
@@ -491,7 +478,7 @@ $(document).ready(function() {
             }
         });
         
-        let additionalCount = $('#additionalSparepartTableBody tr').not('#no-additional-sparepart').length;
+        let additionalCount = $('#additionalSparepartTableBody tr').length;
         
         let summary = `
             <div class="row">
@@ -519,7 +506,7 @@ $(document).ready(function() {
         console.log('🔄 Resetting sparepart validation modal');
         
         // Destroy Select2 instances before clearing
-        $('.sparepart-select-s2').each(function() {
+        $('[id^="vadd_sparepart_"]').each(function() {
             if ($(this).hasClass('select2-hidden-accessible')) {
                 $(this).select2('destroy');
             }
@@ -544,243 +531,348 @@ $(document).ready(function() {
         console.log('✅ Sparepart modal reset completed');
     }
 
-    /**
-     * Load Sparepart Master Data
-     */
-    function loadSparepartMasterData() {
-        if (sparepartMasterData.length > 0) return; // Already loaded
-        
-        $.ajax({
-            url: '<?= base_url('service/work-orders/get-sparepart-master') ?>',
-            type: 'GET',
-            success: function(response) {
-                if (response.success) {
-                    sparepartMasterData = response.data;
-                    populateSparepartDropdown();
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('❌ Error loading sparepart master data:', error);
-            }
-        });
-    }
-
-    /**
-     * Populate Sparepart Dropdown
-     */
-    function populateSparepartDropdown() {
-        let select = $('#sparepart-search');
-        select.empty().append('<option value="">Pilih Sparepart</option>');
-        
-        sparepartMasterData.forEach(function(item) {
-            select.append(`<option value="${item.id}" data-price="${item.price || 0}">${item.name} (${item.code})</option>`);
-        });
-    }
-
     // Event Handlers
-    
+
     /**
      * Add Sparepart Row Button
      */
     $('#btn-add-sparepart-row').on('click', function() {
-        loadSparepartMasterData();
         addAdditionalSparepartRow({}, additionalSparepartCounter++, true);
         updateSparepartCounters();
-    });
-
-    /**
-     * Handle sparepart selection change - Select2 version
-     */
-    $(document).on('change', '.sparepart-select-s2', function() {
-        let selectedOption = $(this).find('option:selected');
-        let sparepartName = selectedOption.text();
-        let sparepartId = selectedOption.val();
-        let sparepartCode = selectedOption.data('code');
-        
-        console.log(`Selected sparepart: ${sparepartName} (ID: ${sparepartId})`);
         updateValidationSummary();
     });
 
     /**
-     * Add Additional Sparepart Row
+     * Add Additional Sparepart Row — SPK-style AJAX Select2
      */
     function addAdditionalSparepartRow(item, index, isNew = false) {
-        // Remove no-data row if exists
-        $('#no-additional-sparepart').remove();
-        
-        // Create dropdown options
-        let sparepartOptions = '<option value="">-- Select Sparepart --</option>';
-        sparepartMasterData.forEach(function(sparepart) {
-            let selected = item.sparepart_id && item.sparepart_id == sparepart.id ? 'selected' : '';
-            sparepartOptions += `<option value="${sparepart.id}" data-code="${sparepart.code}" ${selected}>${sparepart.name} (${sparepart.code})</option>`;
-        });
-        
-        // Determine if from warehouse (default = 1)
-        let isFromWarehouse = item.is_from_warehouse !== undefined ? parseInt(item.is_from_warehouse) : 1;
-        let warehouseChecked = isFromWarehouse === 1 ? 'checked' : '';
-        let warehouseBadgeClass = isFromWarehouse === 1 ? '' : 'd-none';
-        let nonWarehouseBadgeClass = isFromWarehouse === 0 ? '' : 'd-none';
-        
-        let row = `
-            <tr data-index="${index}">
-                <td class="align-middle">
-                    <select class="form-select form-select-sm sparepart-select-s2" 
-                            name="additional_spareparts[${index}][sparepart_id]" 
-                            id="sparepart-select-${index}" 
-                            required>
-                        ${sparepartOptions}
+        // tbody is already empty from .empty() above
+
+        const rc = index;
+        let itemType = item.item_type || 'sparepart';
+        if (itemType === 'part') itemType = 'sparepart'; // map legacy
+        const source = item.source || (parseInt(item.is_from_warehouse) === 0 ? 'BEKAS' : 'WAREHOUSE');
+        const satuan = item.satuan || 'PCS';
+        const preSelected = (!isNew && item.sparepart_id)
+            ? `<option value="${item.sparepart_id}" selected>${item.sparepart_name || item.sparepart_id}</option>`
+            : '';
+
+        const row = `
+            <tr id="vadd_row_${rc}">
+                <td>
+                    <!-- Item Type: Sparepart or Tool -->
+                    <select class="form-select form-select-sm"
+                            name="additional_spareparts[${rc}][item_type]"
+                            id="vadd_type_${rc}"
+                            onchange="switchVldItemInput(${rc})" required>
+                        <option value="sparepart" ${itemType === 'sparepart' ? 'selected' : ''}>
+                            <i class="fas fa-cog"></i> Sparepart
+                        </option>
+                        <option value="tool" ${itemType === 'tool' ? 'selected' : ''}>
+                            <i class="fas fa-tools"></i> Tool
+                        </option>
                     </select>
                 </td>
-                <td class="align-middle">
-                    <input type="number" class="form-control form-control-sm text-center" 
-                           name="additional_spareparts[${index}][quantity]" 
-                           value="${item.quantity || 1}" min="1" max="999" required>
-                </td>
-                <td class="align-middle">
-                    <select class="form-select form-select-sm" 
-                            name="additional_spareparts[${index}][satuan]" 
-                            required>
-                        <option value="">Pilih Satuan</option>
-                        <optgroup label="📦 Barang / Unit">
-                            <option value="PCS" ${item.satuan === 'PCS' ? 'selected' : ''}>PCS</option>
-                            <option value="UNIT" ${item.satuan === 'UNIT' ? 'selected' : ''}>UNIT</option>
-                            <option value="SET" ${item.satuan === 'SET' ? 'selected' : ''}>SET</option>
-                            <option value="PASANG" ${item.satuan === 'PASANG' ? 'selected' : ''}>PASANG</option>
-                        </optgroup>
-                        <optgroup label="⚖️ Berat">
-                            <option value="KG" ${item.satuan === 'KG' ? 'selected' : ''}>KG</option>
-                            <option value="GRAM" ${item.satuan === 'GRAM' ? 'selected' : ''}>GRAM</option>
-                        </optgroup>
-                        <optgroup label="📏 Panjang">
-                            <option value="METER" ${item.satuan === 'METER' ? 'selected' : ''}>METER</option>
-                            <option value="CM" ${item.satuan === 'CM' ? 'selected' : ''}>CM</option>
-                        </optgroup>
-                        <optgroup label="🧴 Volume">
-                            <option value="LITER" ${item.satuan === 'LITER' ? 'selected' : ''}>LITER</option>
-                            <option value="ML" ${item.satuan === 'ML' ? 'selected' : ''}>ML</option>
-                        </optgroup>
-                        <optgroup label="📦 Kemasan">
-                            <option value="BOX" ${item.satuan === 'BOX' ? 'selected' : ''}>BOX</option>
-                            <option value="ROLL" ${item.satuan === 'ROLL' ? 'selected' : ''}>ROLL</option>
-                        </optgroup>
-                    </select>
-                </td>
-                <td class="text-center align-middle">
-                    <div class="form-check form-switch d-inline-block">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               name="is_from_warehouse_check[${index}]" 
-                               id="warehouse-check-${index}" 
-                               value="1" 
-                               ${warehouseChecked}
-                               onchange="toggleSourceLabelValidation(this, ${index})">
-                        <input type="hidden" 
-                               name="additional_spareparts[${index}][is_from_warehouse]" 
-                               id="warehouse-value-${index}" 
-                               value="${isFromWarehouse}">
-                        <label class="form-check-label small" for="warehouse-check-${index}">
-                            <span class="badge badge-soft-green warehouse-badge-${index} ${warehouseBadgeClass}">
-                                <i class="fas fa-warehouse"></i> WH
-                            </span>
-                            <span class="badge badge-soft-yellow non-warehouse-badge-${index} ${nonWarehouseBadgeClass}">
-                                <i class="fas fa-recycle"></i> Bekas
-                            </span>
-                        </label>
+                <td>
+                    <!-- Dynamic Input Container -->
+                    <div id="vadd_input_${rc}">
+                        <!-- Sparepart Dropdown (Default - active) -->
+                        <select class="form-select form-select-sm ${itemType === 'tool' ? 'd-none' : ''}"
+                                name="additional_spareparts[${rc}][sparepart_id]"
+                                id="vadd_sparepart_${rc}"
+                                ${itemType !== 'tool' ? 'required' : ''}>
+                            <option value="">-- Select Sparepart --</option>
+                            ${preSelected}
+                        </select>
+                        <!-- Manual Sparepart Input (Hidden by default - NO name attr) -->
+                        <input type="text"
+                               class="form-control form-control-sm d-none"
+                               id="vadd_manual_${rc}"
+                               placeholder="Ketik nama sparepart manual"
+                               maxlength="255">
+                        <!-- Tool Text Input (Hidden by default - NO name attr until activated) -->
+                        <input type="text"
+                               class="form-control form-control-sm ${itemType !== 'tool' ? 'd-none' : ''}"
+                               id="vadd_tool_${rc}"
+                               ${itemType === 'tool' ? `name="additional_spareparts[${rc}][item_name_manual]"` : ''}
+                               placeholder="e.g., Kunci Inggris 12mm" maxlength="255"
+                               value="${item.item_name_manual || ''}"
+                               ${itemType === 'tool' ? 'required' : ''}>
                     </div>
                 </td>
-                <td class="align-middle">
-                    <input type="text" class="form-control form-control-sm" 
-                           name="additional_spareparts[${index}][notes]" 
-                           value="${item.notes || ''}" placeholder="Catatan...">
+                <td>
+                    <input type="number"
+                           class="form-control form-control-sm"
+                           name="additional_spareparts[${rc}][quantity]"
+                           value="${item.quantity || 1}"
+                           min="1"
+                           required>
                 </td>
-                <td class="text-center align-middle">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-additional-sparepart" data-index="${index}" title="Hapus">
-                        <i class="fas fa-trash"></i>
+                <td>
+                    <select class="form-select form-select-sm" name="additional_spareparts[${rc}][satuan]" required>
+                        <optgroup label="📦 Barang / Unit">
+                            <option value="PCS" ${satuan === 'PCS' ? 'selected' : ''}>PCS</option>
+                            <option value="UNIT" ${satuan === 'UNIT' ? 'selected' : ''}>UNIT</option>
+                            <option value="SET" ${satuan === 'SET' ? 'selected' : ''}>SET</option>
+                            <option value="PASANG" ${satuan === 'PASANG' ? 'selected' : ''}>PASANG</option>
+                        </optgroup>
+                        <optgroup label="⚖️ Berat">
+                            <option value="KG" ${satuan === 'KG' ? 'selected' : ''}>KG</option>
+                            <option value="GRAM" ${satuan === 'GRAM' ? 'selected' : ''}>GRAM</option>
+                        </optgroup>
+                        <optgroup label="📏 Panjang">
+                            <option value="METER" ${satuan === 'METER' ? 'selected' : ''}>METER</option>
+                            <option value="CM" ${satuan === 'CM' ? 'selected' : ''}>CM</option>
+                        </optgroup>
+                        <optgroup label="🧴 Volume">
+                            <option value="LITER" ${satuan === 'LITER' ? 'selected' : ''}>LITER</option>
+                            <option value="ML" ${satuan === 'ML' ? 'selected' : ''}>ML</option>
+                        </optgroup>
+                    </select>
+                </td>
+                <td>
+                    <!-- Source Type Dropdown -->
+                    <select class="form-select form-select-sm"
+                            name="additional_spareparts[${rc}][source]"
+                            id="vadd_source_${rc}"
+                            onchange="toggleVldKanibalFields(${rc})"
+                            required>
+                        <option value="WAREHOUSE" ${source === 'WAREHOUSE' ? 'selected' : ''}>
+                            <i class="fas fa-warehouse"></i> Warehouse
+                        </option>
+                        <option value="BEKAS" ${source === 'BEKAS' ? 'selected' : ''}>
+                            <i class="fas fa-recycle"></i> Bekas
+                        </option>
+                        <option value="KANIBAL" ${source === 'KANIBAL' ? 'selected' : ''}>
+                            <i class="fas fa-exchange-alt"></i> Kanibal
+                        </option>
+                    </select>
+                </td>
+                <td>
+                    <!-- KANIBAL Fields (Hidden by default) -->
+                    <div class="kanibal-fields d-none" id="vadd_kanibal_${rc}">
+                        <div class="mb-2">
+                            <label class="form-label form-label-sm mb-1">Dari Unit *</label>
+                            <select class="form-select form-select-sm"
+                                    name="additional_spareparts[${rc}][source_unit_id]"
+                                    id="vadd_src_unit_${rc}">
+                                <option value="">-- Pilih Unit Sumber --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label form-label-sm mb-1">Alasan *</label>
+                            <textarea class="form-control form-control-sm"
+                                      name="additional_spareparts[${rc}][source_notes]"
+                                      id="vadd_src_notes_${rc}"
+                                      rows="2"
+                                      placeholder="Contoh: Unit rusak total"
+                                      maxlength="500"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Notes for non-KANIBAL -->
+                    <div class="non-kanibal-notes" id="vadd_nkanibal_${rc}">
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               name="additional_spareparts[${rc}][notes]"
+                               value="${item.notes || ''}"
+                               placeholder="Optional notes..."
+                               maxlength="255">
+                    </div>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm remove-additional-sparepart">
+                        <i class="fas fa-times"></i>
                     </button>
                 </td>
-            </tr>
-        `;
-        
+            </tr>`;
+
         $('#additionalSparepartTableBody').append(row);
-        
-        // Initialize Select2 for searchable dropdown
-        setTimeout(function() {
-            try {
-                const selectElement = $(`#sparepart-select-${index}`);
-                if (selectElement.length > 0 && !selectElement.hasClass('select2-hidden-accessible')) {
-                    selectElement.select2({
-                        placeholder: '-- Select Sparepart --',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: selectElement.closest('.modal-body'),
-                        dropdownPosition: 'below',
-                        minimumInputLength: 0,
-                        minimumResultsForSearch: 0,
-                        language: {
-                            noResults: function() {
-                                return "No sparepart found";
-                            },
-                            searching: function() {
-                                return "Searching...";
-                            }
-                        }
-                    });
-                    console.log(`✅ Select2 initialized for sparepart-select-${index}`);
-                }
-            } catch (error) {
-                console.error(`❌ Error initializing Select2 for index ${index}:`, error);
-            }
-        }, 200);
+
+        if (itemType !== 'tool') {
+            _initValidationSelect2(rc);
+        }
+
+        // Populate fields if editing existing data
+        if (!isNew && item.source === 'KANIBAL') {
+            toggleVldKanibalFields(rc);
+        }
     }
-    
+
     /**
-     * Toggle Source Label for Validation Modal
+     * Init AJAX Select2 for sparepart dropdown in validation modal
      */
-    window.toggleSourceLabelValidation = function(checkbox, index) {
-        const isChecked = checkbox.checked;
-        const warehouseBadge = $(`.warehouse-badge-${index}`);
-        const nonWarehouseBadge = $(`.non-warehouse-badge-${index}`);
-        const hiddenInput = $(`#warehouse-value-${index}`);
-        
-        if (isChecked) {
-            // Warehouse
-            warehouseBadge.removeClass('d-none');
-            nonWarehouseBadge.addClass('d-none');
-            hiddenInput.val('1');
+    function _initValidationSelect2(rc) {
+        setTimeout(function() {
+            const $sel = $(`#vadd_sparepart_${rc}`);
+            if ($sel.length && !$sel.hasClass('select2-hidden-accessible')) {
+                $sel.select2({
+                    placeholder: '-- Ketik untuk cari sparepart --',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#sparepartValidationModal'),
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) { return { q: params.term, page: params.page || 1 }; },
+                        processResults: function(data, params) {
+                            params.page = params.page || 1;
+                            return { results: data.results, pagination: { more: data.pagination.more } };
+                        },
+                        cache: true
+                    },
+                    language: {
+                        inputTooShort: function() { return 'Ketik minimal 2 karakter untuk mencari...'; },
+                        searching:     function() { return 'Mencari sparepart...'; },
+                        noResults:     function() { return 'Tidak ada sparepart ditemukan'; },
+                        loadingMore:   function() { return 'Memuat lebih banyak...'; }
+                    }
+                });
+                console.log(`✅ AJAX Select2 initialized for vadd_sparepart_${rc}`);
+            }
+        }, 150);
+    }
+
+    /**
+     * Manual Entry Button — appended into Select2 dropdown when it opens
+     */
+    $(document).on('select2:open', '[id^="vadd_sparepart_"]:not([id$="_manual"])', function() {
+        const $select = $(this);
+        const rowId = $select.attr('id').replace('vadd_sparepart_', '');
+        const $dropdown = $('.select2-dropdown:last');
+
+        $dropdown.find('.sparepart-manual-entry-btn').remove();
+
+        const manualButton = $(`
+            <div class="sparepart-manual-entry-btn"
+                 style="padding: 12px 15px;
+                        cursor: pointer;
+                        border: 2px solid #007bff;
+                        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                        text-align: center;
+                        font-weight: 600;
+                        color: #0d47a1;
+                        margin: 0;
+                        border-radius: 0;
+                        border-left: 0;
+                        border-right: 0;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        transition: all 0.2s ease;">
+                <i class="fas fa-pencil-alt me-2"></i>
+                <span>📝 Input Manual Sparepart</span>
+            </div>
+        `);
+
+        manualButton.hover(
+            function() { $(this).css({ 'background': 'linear-gradient(135deg, #bbdefb 0%, #90caf9 100%)', 'transform': 'scale(1.02)', 'box-shadow': '0 4px 8px rgba(0,0,0,0.15)' }); },
+            function() { $(this).css({ 'background': 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 'transform': 'scale(1)', 'box-shadow': '0 2px 4px rgba(0,0,0,0.1)' }); }
+        );
+
+        manualButton.on('click', function() {
+            $select.select2('close');
+            const $manualInput = $(`#vadd_manual_${rowId}`);
+            $select.addClass('d-none').removeAttr('name').removeAttr('required');
+            if ($select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
+            $manualInput.removeClass('d-none')
+                        .attr('name', `additional_spareparts[${rowId}][sparepart_id]`)
+                        .attr('required', 'required')
+                        .focus();
+            console.log(`✅ Switched to manual input for vadd row ${rowId}`);
+        });
+
+        const $searchContainer = $dropdown.find('.select2-search');
+        if ($searchContainer.length > 0) {
+            $searchContainer.after(manualButton);
         } else {
-            // Bekas/Non-warehouse
-            warehouseBadge.addClass('d-none');
-            nonWarehouseBadge.removeClass('d-none');
-            hiddenInput.val('0');
+            $dropdown.find('.select2-results').prepend(manualButton);
+        }
+    });
+
+    /**
+     * Switch Item Input — toggle between Sparepart dropdown, Manual input, and Tool text input
+     */
+    window.switchVldItemInput = function(rc) {
+        const type        = $(`#vadd_type_${rc}`).val();
+        const $drop       = $(`#vadd_sparepart_${rc}`);
+        const $manual     = $(`#vadd_manual_${rc}`);
+        const $tool       = $(`#vadd_tool_${rc}`);
+
+        if (type === 'tool') {
+            // TOOL mode: show text input, hide dropdown & manual
+            if ($drop.hasClass('select2-hidden-accessible')) $drop.select2('destroy');
+            $drop.addClass('d-none').removeAttr('required').removeAttr('name');
+            $manual.addClass('d-none').removeAttr('required').removeAttr('name');
+            $tool.removeClass('d-none').attr('required', 'required').attr('name', `additional_spareparts[${rc}][item_name_manual]`);
+        } else {
+            // SPAREPART mode: show dropdown, hide text inputs
+            $tool.addClass('d-none').removeAttr('required').removeAttr('name');
+            $manual.addClass('d-none').removeAttr('required').removeAttr('name');
+            $drop.removeClass('d-none').attr('required', 'required').attr('name', `additional_spareparts[${rc}][sparepart_id]`);
+            if (!$drop.hasClass('select2-hidden-accessible')) _initValidationSelect2(rc);
         }
     };
-    
+
     /**
-     * Remove Additional Sparepart
+     * Toggle KANIBAL Fields — show/hide unit selector and notes when KANIBAL selected
+     */
+    window.toggleVldKanibalFields = function(rc) {
+        const sourceType       = $(`#vadd_source_${rc}`).val();
+        const $kanibal         = $(`#vadd_kanibal_${rc}`);
+        const $nonKanibal      = $(`#vadd_nkanibal_${rc}`);
+        const $srcUnit         = $(`#vadd_src_unit_${rc}`);
+        const $srcNotes        = $(`#vadd_src_notes_${rc}`);
+
+        if (sourceType === 'KANIBAL') {
+            $kanibal.removeClass('d-none');
+            $nonKanibal.addClass('d-none');
+            $srcUnit.attr('required', 'required');
+            $srcNotes.attr('required', 'required');
+
+            // Populate unit dropdown if not yet populated
+            if ($srcUnit.children().length <= 1) {
+                if (window.unitsData && Array.isArray(window.unitsData) && window.unitsData.length > 0) {
+                    window.unitsData.forEach(function(unit) {
+                        const unitNumber = unit.no_unit || unit.unit_number;
+                        const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
+                        $srcUnit.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                    });
+                    $srcUnit.select2({
+                        placeholder: '-- Pilih Unit Sumber --',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#sparepartValidationModal'),
+                        language: {
+                            noResults:  function() { return 'Unit tidak ditemukan'; },
+                            searching:  function() { return 'Mencari...'; }
+                        }
+                    });
+                } else {
+                    console.warn('⚠️ window.unitsData kosong — unit tidak dapat dimuat');
+                }
+            }
+
+            console.log(`✅ KANIBAL fields shown for vadd row ${rc}`);
+        } else {
+            $kanibal.addClass('d-none');
+            $nonKanibal.removeClass('d-none');
+            $srcUnit.removeAttr('required').val('');
+            $srcNotes.removeAttr('required').val('');
+            console.log(`✅ KANIBAL fields hidden for vadd row ${rc}`);
+        }
+    };
+
+    /**
+     * Remove Additional Sparepart Row
      */
     $(document).on('click', '.remove-additional-sparepart', function() {
-        let row = $(this).closest('tr');
-        let selectElement = row.find('.sparepart-select-s2');
-        
-        // Destroy Select2 instance if exists
-        if (selectElement.hasClass('select2-hidden-accessible')) {
-            selectElement.select2('destroy');
+        const row = $(this).closest('tr');
+        const $sel = row.find('[id^="vadd_sparepart_"]');
+        if ($sel.length && $sel.hasClass('select2-hidden-accessible')) {
+            $sel.select2('destroy');
         }
-        
         row.remove();
-        
-        // Add no-data row if table is empty
-        if ($('#additionalSparepartTableBody tr').length === 0) {
-            $('#additionalSparepartTableBody').append(`
-                <tr id="no-additional-sparepart">
-                    <td colspan="5" class="text-center text-muted py-3">
-                        <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
-                        Belum ada sparepart tambahan. Klik "Tambah Baris" untuk menambah.
-                    </td>
-                </tr>
-            `);
-        }
-        
         updateSparepartCounters();
         updateValidationSummary();
     });

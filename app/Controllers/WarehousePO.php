@@ -235,7 +235,7 @@ class WarehousePO extends BaseController
     public function getUnitVerificationOptions()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Metode request tidak valid.']);
         }
 
         $fieldType = $this->request->getGet('field');
@@ -440,7 +440,7 @@ class WarehousePO extends BaseController
             log_message('error', '[WarehousePO] Error getting dropdown options: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -1232,7 +1232,7 @@ class WarehousePO extends BaseController
                 if ($db->transStatus()) { $db->transRollback(); }
                 return $this->response->setJSON([
                     'statusCode' => 500, 
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
                 ]);
             }
         }
@@ -1804,7 +1804,7 @@ class WarehousePO extends BaseController
     public function updateVerification()
     {
         if (!$this->request->isAJAX()) {
-            return redirect()->back()->with('error', 'Invalid request method');
+            return redirect()->back()->with('error', 'Metode request tidak valid.');
         }
 
         try {
@@ -1878,14 +1878,15 @@ class WarehousePO extends BaseController
             } else {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update verification status'
+                    'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
                 ]);
             }
+
         } catch (\Exception $e) {
-            log_message('error', 'Verification update failed: ' . $e->getMessage());
+            log_message('error', 'updateVerification error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'System error occurred: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
             ]);
         }
     }
@@ -2121,7 +2122,7 @@ class WarehousePO extends BaseController
                 try {
                     $this->updateOverallPOStatus($po_id);
                 } catch (\Exception $e) {
-                    log_message('error', '[WarehousePO] Gagal update status PO: ' . $e->getMessage());
+                    log_message('error', '[WarehousePO] Gagal update status PO. Silakan coba lagi.');
                 }
                 // Audit log untuk sparepart - ensure user_id is set correctly
                 $userId = session()->get('user_id') ?? session()->get('id');

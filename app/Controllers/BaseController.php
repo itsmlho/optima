@@ -233,7 +233,7 @@ abstract class BaseController extends Controller
     {
         if (!$this->canAccess($module)) {
             if ($ajax) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])
+                return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])
                                       ->setStatusCode(403);
             }
             return redirect()->to('/')->with('error', 'Access denied to ' . $module . ' module');
@@ -381,10 +381,10 @@ abstract class BaseController extends Controller
             if ($ajax || $this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to access this resource'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
-            return redirect()->to('/dashboard')->with('error', 'Access denied: You do not have permission to access this resource');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         return null;

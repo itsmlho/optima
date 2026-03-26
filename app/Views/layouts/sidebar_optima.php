@@ -219,21 +219,13 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- ── Reports ────────────────────────────────────────────── -->
-            <li class="nav-item dropdown-container">
-                <a href="#" class="nav-link dropdown-toggle">
-                    <span class="material-symbols-rounded">bar_chart</span>
-                    <span class="nav-label">Reports</span>
-                    <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
+            <?php if (hasModuleAccess('reports')): ?>
+            <li class="nav-item">
+                <a href="<?= base_url('/reports') ?>" class="nav-link dropdown-link">
+                    <span class="material-symbols-rounded drop-icon">bar_chart</span>
                 </a>
-                <ul class="dropdown-menu">
-                    <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Reports</span></li>
-                    <li class="nav-item"><a href="<?= base_url('/reports') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">summarize</span><span class="drop-label">All Reports</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/reports/rental') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">receipt</span><span class="drop-label">Rental Report</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/reports/maintenance') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">build</span><span class="drop-label">Maintenance Report</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/reports/financial') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">account_balance</span><span class="drop-label">Financial Report</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/reports/inventory') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">inventory</span><span class="drop-label">Inventory Report</span></a></li>
-                </ul>
             </li>
+            <?php endif; ?>
 
             <!-- ── Master Data ────────────────────────────────────────── -->
             <li class="nav-item dropdown-container">

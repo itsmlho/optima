@@ -31,7 +31,7 @@ class SSEController extends BaseController
         $userId = $this->request->getGet('user_id') ?? session()->get('user_id');
         
         if (!$userId) {
-            return $this->response->setJSON(['error' => 'User not authenticated'], 401);
+            return $this->response->setJSON(['error' => 'User belum terautentikasi. Silakan login kembali.'], 401);
         }
         
         // Set SSE headers
@@ -247,7 +247,7 @@ class SSEController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error creating test notification: ' . $e->getMessage()
+                'message' => 'Gagal membuat data. Silakan coba lagi.'
             ]);
         }
     }

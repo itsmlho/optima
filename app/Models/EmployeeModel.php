@@ -37,7 +37,7 @@ class EmployeeModel extends Model
         'staff_code' => 'required|max_length[20]|is_unique[employees.staff_code,id,{id}]',
         'staff_name' => 'required|max_length[100]',
         'staff_role' => 'required|in_list[ADMIN,SUPERVISOR,FOREMAN,MECHANIC,MECHANIC_SERVICE_AREA,MECHANIC_UNIT_PREP,MECHANIC_FABRICATION,HELPER]',
-        'work_location' => 'permit_empty|in_list[CENTRAL,BRANCH,BOTH]',
+        'work_location' => 'permit_empty|in_list[CENTRAL,MILL,BOTH]',
         'job_description' => 'permit_empty',
         'departemen_id' => 'permit_empty|integer',
         'phone' => 'permit_empty|max_length[20]',

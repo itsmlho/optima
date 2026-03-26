@@ -44,7 +44,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditModel->getCustomersWithUnits();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -57,7 +57,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditLocationModel->getCustomersWithLocationAuditSummary();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -70,7 +70,7 @@ class UnitAudit extends BaseController
             $units = $this->auditModel->getUnitsForCustomer((int) $customerId);
             return $this->response->setJSON(['success' => true, 'data' => $units]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -154,7 +154,7 @@ class UnitAudit extends BaseController
                 'data'    => ['id' => $result, 'audit_number' => $data['audit_number']],
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -178,7 +178,7 @@ class UnitAudit extends BaseController
             $data = $this->auditModel->getWithDetails($filters);
             return $this->response->setJSON(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -201,7 +201,7 @@ class UnitAudit extends BaseController
             }
             return $this->response->setJSON(['success' => true, 'data' => $item]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -214,7 +214,7 @@ class UnitAudit extends BaseController
             $units = $this->unitModel->getUnitsForDropdown();
             return $this->response->setJSON(['success' => true, 'data' => $units]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -227,7 +227,7 @@ class UnitAudit extends BaseController
             $customers = (new \App\Models\CustomerModel())->getActiveCustomers();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -296,7 +296,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditLocationModel->getCustomersWithLocations();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -309,7 +309,7 @@ class UnitAudit extends BaseController
             $locations = $this->auditLocationModel->getLocationsForCustomer((int) $customerId);
             return $this->response->setJSON(['success' => true, 'data' => $locations]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -331,7 +331,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $areas]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -385,7 +385,7 @@ class UnitAudit extends BaseController
                 'area_id'          => $areaId,
                 'location_name'    => $locationName,
                 'location_code'    => $locationCode,
-                'location_type'    => 'BRANCH',
+                'location_type'    => 'MILL',
                 'address'          => $address,
                 'city'             => $city,
                 'province'         => $province,
@@ -424,7 +424,7 @@ class UnitAudit extends BaseController
             $units = $this->auditLocationModel->getUnitsForLocation((int) $locationId);
             return $this->response->setJSON(['success' => true, 'data' => $units]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -436,11 +436,11 @@ class UnitAudit extends BaseController
         try {
             $location = $this->auditLocationModel->getLocationDetails((int) $locationId);
             if (!$location) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Location not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
             }
             return $this->response->setJSON(['success' => true, 'data' => $location]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -476,7 +476,7 @@ class UnitAudit extends BaseController
                 'data'    => ['id' => $auditId],
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -497,7 +497,7 @@ class UnitAudit extends BaseController
             $audits = $this->auditLocationModel->getAllAudits($filters);
             return $this->response->setJSON(['success' => true, 'data' => $audits]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -511,7 +511,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditLocationModel->getVerificationGrouped();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -524,7 +524,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditLocationModel->getVerificationGroupedFromAudits();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -542,7 +542,7 @@ class UnitAudit extends BaseController
             }
             return $this->response->setJSON(['success' => true, 'data' => $locations]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -601,7 +601,7 @@ class UnitAudit extends BaseController
                 'data'    => ['id' => $auditId],
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -656,7 +656,7 @@ class UnitAudit extends BaseController
             }
             return $this->response->setJSON(['success' => true, 'data' => $audit]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -702,7 +702,7 @@ class UnitAudit extends BaseController
             $this->auditLocationModel->markAsPrinted((int) $id);
             return $this->response->setJSON(['success' => true, 'message' => 'Status diubah menjadi Printed']);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -715,7 +715,7 @@ class UnitAudit extends BaseController
             $this->auditLocationModel->markAsInProgress((int) $id);
             return $this->response->setJSON(['success' => true, 'message' => 'Status diubah menjadi In Progress']);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -736,7 +736,7 @@ class UnitAudit extends BaseController
             $this->auditLocationModel->submitAuditResults((int) $auditId, $items, $summary);
             return $this->response->setJSON(['success' => true, 'message' => 'Hasil audit berhasil disimpan']);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -749,7 +749,7 @@ class UnitAudit extends BaseController
             $result = $this->auditLocationModel->submitForApproval((int) $id);
             return $this->response->setJSON($result);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -888,7 +888,7 @@ class UnitAudit extends BaseController
             $audits = $this->auditLocationModel->getPendingApprovals();
             return $this->response->setJSON(['success' => true, 'data' => $audits]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -962,7 +962,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $requests]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1048,7 +1048,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => array_slice($merged, 0, 50)]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1130,7 +1130,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $req]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1155,7 +1155,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $requests]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1316,7 +1316,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1380,7 +1380,7 @@ class UnitAudit extends BaseController
                 'message' => 'Lokasi berhasil ditolak',
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1461,7 +1461,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'message' => 'Lokasi berhasil di-rollback ke status PENDING']);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1483,7 +1483,7 @@ class UnitAudit extends BaseController
 
             return $this->response->setJSON(['success' => true, 'data' => $contracts]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1512,7 +1512,7 @@ class UnitAudit extends BaseController
             $result = $this->auditLocationModel->approveAudit((int) $id, $pricing, $userId);
             return $this->response->setJSON($result);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1532,7 +1532,7 @@ class UnitAudit extends BaseController
             $result = $this->auditLocationModel->rejectAudit((int) $id, $notes, $userId);
             return $this->response->setJSON($result);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1671,7 +1671,7 @@ class UnitAudit extends BaseController
                 'csrf_hash'  => csrf_hash(),
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
@@ -1770,7 +1770,7 @@ class UnitAudit extends BaseController
             ]);
         } catch (\Exception $e) {
             $db->transRollback();
-            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 

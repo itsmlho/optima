@@ -35,6 +35,7 @@ class UnitActivityService
         $events = array_merge($events, $this->getVerificationEvents($unitId));
         $events = array_merge($events, $this->getComponentEvents($unitId));
         $events = array_merge($events, $this->getSparepartUsageEvents($unitId));
+        $events = array_merge($events, $this->getSpkSparepartEvents($unitId));
         $events = array_merge($events, $this->getStatusEvents($unitId));
 
         // Filter by category if specified
@@ -492,7 +493,10 @@ class UnitActivityService
     }
 
     /**
-     * Get sparepart usage events from work_order_spareparts (via work_orders.unit_id)
+     * Get sparepart usage events from work_order_spareparts.
+     * Handles two perspectives for KANIBAL:
+     *   - Inbound (recipient): wo.unit_id = $unitId — enriched with donor unit info when KANIBAL.
+     *   - Outbound (donor): wos.source_unit_id = $unitId AND source_type='KANIBAL'.
      */
     protected function getSparepartUsageEvents(int $unitId): array
     {
@@ -503,11 +507,14 @@ class UnitActivityService
                 return $events;
             }
 
-            $rows = $this->db->table('work_order_spareparts wos')
-                ->select('wos.*, wo.work_order_number, wo.unit_id, wo.report_date,
-                    CONCAT(u.first_name, " ", u.last_name) as mechanic_name')
+            // --- A1: Inbound (this unit received the WO) ---
+            $inboundRows = $this->db->table('work_order_spareparts wos')
+                ->select('wos.*, wo.work_order_number, wo.unit_id AS wo_unit_id, wo.report_date,
+                    CONCAT(u.first_name, " ", u.last_name) as mechanic_name,
+                    iu_src.no_unit as donor_unit_no')
                 ->join('work_orders wo', 'wo.id = wos.work_order_id', 'inner')
                 ->join('users u', 'u.id = wo.mechanic_id', 'left')
+                ->join('inventory_unit iu_src', 'iu_src.id_inventory_unit = wos.source_unit_id', 'left')
                 ->where('wo.unit_id', $unitId)
                 ->whereNull('wo.deleted_at')
                 ->groupStart()
@@ -517,32 +524,206 @@ class UnitActivityService
                 ->orderBy('wo.report_date', 'DESC')
                 ->get()->getResultArray();
 
-            foreach ($rows as $row) {
+            foreach ($inboundRows as $row) {
                 $qty = (int)($row['quantity_used'] ?? $row['quantity_brought'] ?? 0);
                 if ($qty <= 0) continue;
 
-                $partName = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+                $isKanibal = strtoupper($row['source_type'] ?? '') === 'KANIBAL';
+                $partName  = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+
+                $detailParts = [
+                    'Qty: ' . $qty . ' ' . ($row['satuan'] ?? ''),
+                ];
+                if ($isKanibal && !empty($row['donor_unit_no'])) {
+                    $detailParts[] = 'Dari unit: ' . $row['donor_unit_no'];
+                }
+                if ($isKanibal && !empty($row['source_notes'])) {
+                    $detailParts[] = 'Alasan: ' . $row['source_notes'];
+                }
+                if (!empty($row['mechanic_name'])) {
+                    $detailParts[] = 'Mekanik: ' . $row['mechanic_name'];
+                }
+
                 $events[] = [
-                    'category' => 'SPAREPART',
-                    'icon' => 'wrench',
-                    'color' => 'indigo',
-                    'title' => 'Sparepart dipakai: ' . $partName,
-                    'description' => $row['work_order_number'] ?? '-',
-                    'detail' => implode(' | ', array_filter([
-                        'Qty: ' . $qty . ' ' . ($row['satuan'] ?? ''),
-                        !empty($row['mechanic_name']) ? 'Mekanik: ' . $row['mechanic_name'] : null,
-                    ])),
-                    'date' => $row['report_date'] ?? $row['created_at'] ?? $row['updated_at'],
-                    'reference_type' => 'work_order',
-                    'reference_id' => $row['work_order_id'],
+                    'category'         => 'SPAREPART',
+                    'icon'             => $isKanibal ? 'exchange-alt' : 'wrench',
+                    'color'            => $isKanibal ? 'orange' : 'indigo',
+                    'title'            => ($isKanibal ? 'Kanibal masuk: ' : 'Sparepart dipakai: ') . $partName,
+                    'description'      => $row['work_order_number'] ?? '-',
+                    'detail'           => implode(' | ', array_filter($detailParts)),
+                    'date'             => $row['report_date'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'reference_type'   => 'work_order',
+                    'reference_id'     => $row['work_order_id'],
                     'reference_number' => $row['work_order_number'],
-                    'meta' => [
-                        'url' => base_url('service/work-orders/detail/' . $row['work_order_id']),
-                    ],
+                    'meta'             => ['url' => base_url('service/work-orders/detail/' . $row['work_order_id'])],
+                ];
+            }
+
+            // --- A2: Outbound (this unit is the KANIBAL donor for another WO) ---
+            $outboundRows = $this->db->table('work_order_spareparts wos')
+                ->select('wos.*, wo.work_order_number, wo.unit_id AS recipient_unit_id, wo.report_date,
+                    CONCAT(u.first_name, " ", u.last_name) as mechanic_name,
+                    iu_tgt.no_unit as recipient_unit_no')
+                ->join('work_orders wo', 'wo.id = wos.work_order_id', 'inner')
+                ->join('users u', 'u.id = wo.mechanic_id', 'left')
+                ->join('inventory_unit iu_tgt', 'iu_tgt.id_inventory_unit = wo.unit_id', 'left')
+                ->where('wos.source_type', 'KANIBAL')
+                ->where('wos.source_unit_id', $unitId)
+                ->whereNull('wo.deleted_at')
+                // Exclude rare edge case where donor == recipient
+                ->where('wo.unit_id !=', $unitId)
+                ->groupStart()
+                    ->where('wos.quantity_used >', 0)
+                    ->orWhere('wos.quantity_brought >', 0)
+                ->groupEnd()
+                ->orderBy('wo.report_date', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($outboundRows as $row) {
+                $qty      = (int)($row['quantity_used'] ?? $row['quantity_brought'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $partName = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+
+                $detailParts = [
+                    'Qty: ' . $qty . ' ' . ($row['satuan'] ?? ''),
+                ];
+                if (!empty($row['recipient_unit_no'])) {
+                    $detailParts[] = 'Ke unit: ' . $row['recipient_unit_no'];
+                }
+                if (!empty($row['source_notes'])) {
+                    $detailParts[] = 'Alasan: ' . $row['source_notes'];
+                }
+                if (!empty($row['mechanic_name'])) {
+                    $detailParts[] = 'Mekanik: ' . $row['mechanic_name'];
+                }
+
+                $events[] = [
+                    'category'         => 'SPAREPART',
+                    'icon'             => 'exchange-alt',
+                    'color'            => 'orange',
+                    'title'            => 'Kanibal keluar (WO): ' . $partName,
+                    'description'      => $row['work_order_number'] ?? '-',
+                    'detail'           => implode(' | ', array_filter($detailParts)),
+                    'date'             => $row['report_date'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'reference_type'   => 'work_order',
+                    'reference_id'     => $row['work_order_id'],
+                    'reference_number' => $row['work_order_number'],
+                    'meta'             => ['url' => base_url('service/work-orders/detail/' . $row['work_order_id'])],
                 ];
             }
         } catch (\Throwable $e) {
             log_message('warning', '[UnitActivityService] getSparepartUsageEvents: ' . $e->getMessage());
+        }
+
+        return $events;
+    }
+
+    /**
+     * Get SPK sparepart events (inbound & outbound KANIBAL) from spk_spareparts.
+     * Requires spk_spareparts.unit_id (recipient) column added in the kanibal schema migration.
+     *   - Inbound (recipient Y): ssp.unit_id = $unitId
+     *   - Outbound (donor X): ssp.source_type='KANIBAL' AND ssp.source_unit_id = $unitId
+     */
+    protected function getSpkSparepartEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('spk_spareparts') || !$this->db->tableExists('spk')) {
+                return $events;
+            }
+
+            // Check if unit_id column exists (added via kanibal migration)
+            $cols = $this->db->getFieldNames('spk_spareparts');
+            if (!in_array('unit_id', $cols)) {
+                return $events;
+            }
+
+            // --- B-Inbound: this unit is the recipient in the SPK sparepart row ---
+            $inboundRows = $this->db->table('spk_spareparts ssp')
+                ->select('ssp.*, s.nomor_spk, s.tanggal_spk, s.id AS spk_id,
+                    iu_src.no_unit AS donor_unit_no')
+                ->join('spk s', 's.id = ssp.spk_id', 'inner')
+                ->join('inventory_unit iu_src', 'iu_src.id_inventory_unit = ssp.source_unit_id', 'left')
+                ->where('ssp.unit_id', $unitId)
+                ->where('ssp.quantity_brought >', 0)
+                ->orderBy('s.tanggal_spk', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($inboundRows as $row) {
+                $isKanibal = strtoupper($row['source_type'] ?? '') === 'KANIBAL';
+                $partName  = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+                $qty       = (int)($row['quantity_brought'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $detailParts = ['Qty: ' . $qty . ' ' . ($row['satuan'] ?? '')];
+                if ($isKanibal && !empty($row['donor_unit_no'])) {
+                    $detailParts[] = 'Dari unit: ' . $row['donor_unit_no'];
+                }
+                if ($isKanibal && !empty($row['source_notes'])) {
+                    $detailParts[] = 'Alasan: ' . $row['source_notes'];
+                }
+
+                $events[] = [
+                    'category'         => 'SPAREPART',
+                    'icon'             => $isKanibal ? 'exchange-alt' : 'toolbox',
+                    'color'            => $isKanibal ? 'orange' : 'teal',
+                    'title'            => ($isKanibal ? 'Kanibal masuk (SPK): ' : 'Sparepart (SPK): ') . $partName,
+                    'description'      => $row['nomor_spk'] ?? ('-'),
+                    'detail'           => implode(' | ', array_filter($detailParts)),
+                    'date'             => $row['tanggal_spk'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'reference_type'   => 'spk',
+                    'reference_id'     => $row['spk_id'],
+                    'reference_number' => $row['nomor_spk'],
+                    'meta'             => ['url' => base_url('service/spk/detail/' . $row['spk_id'])],
+                ];
+            }
+
+            // --- B-Outbound: this unit is the KANIBAL donor for another SPK ---
+            $outboundRows = $this->db->table('spk_spareparts ssp')
+                ->select('ssp.*, s.nomor_spk, s.tanggal_spk, s.id AS spk_id,
+                    iu_tgt.no_unit AS recipient_unit_no')
+                ->join('spk s', 's.id = ssp.spk_id', 'inner')
+                ->join('inventory_unit iu_tgt', 'iu_tgt.id_inventory_unit = ssp.unit_id', 'left')
+                ->where('ssp.source_type', 'KANIBAL')
+                ->where('ssp.source_unit_id', $unitId)
+                // Exclude edge case donor == recipient (unit_id may be NULL for old rows)
+                ->where("(ssp.unit_id IS NULL OR ssp.unit_id != {$unitId})", null, false)
+                ->where('ssp.quantity_brought >', 0)
+                ->orderBy('s.tanggal_spk', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($outboundRows as $row) {
+                $qty      = (int)($row['quantity_brought'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $partName = $row['sparepart_name'] ?? $row['sparepart_code'] ?? 'Sparepart';
+
+                $detailParts = ['Qty: ' . $qty . ' ' . ($row['satuan'] ?? '')];
+                if (!empty($row['recipient_unit_no'])) {
+                    $detailParts[] = 'Ke unit: ' . $row['recipient_unit_no'];
+                }
+                if (!empty($row['source_notes'])) {
+                    $detailParts[] = 'Alasan: ' . $row['source_notes'];
+                }
+
+                $events[] = [
+                    'category'         => 'SPAREPART',
+                    'icon'             => 'exchange-alt',
+                    'color'            => 'orange',
+                    'title'            => 'Kanibal keluar (SPK): ' . $partName,
+                    'description'      => $row['nomor_spk'] ?? '-',
+                    'detail'           => implode(' | ', array_filter($detailParts)),
+                    'date'             => $row['tanggal_spk'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'reference_type'   => 'spk',
+                    'reference_id'     => $row['spk_id'],
+                    'reference_number' => $row['nomor_spk'],
+                    'meta'             => ['url' => base_url('service/spk/detail/' . $row['spk_id'])],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getSpkSparepartEvents: ' . $e->getMessage());
         }
 
         return $events;

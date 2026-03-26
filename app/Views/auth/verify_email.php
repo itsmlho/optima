@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
@@ -107,9 +107,9 @@
                     <i class="fas fa-envelope"></i>
                 </div>
                 
-                <h1 class="auth-title verify-title">Cek Email Anda</h1>
+                <h1 class="auth-title verify-title">Check Your Email</h1>
                 <p class="auth-subtitle verify-subtitle">
-                    Kami telah mengirimkan link verifikasi ke alamat email Anda
+                    We have sent a verification link to your email address
                 </p>
             </div>
             
@@ -121,63 +121,63 @@
             
             <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>Email verifikasi telah dikirim!</strong> Silakan cek inbox atau folder spam Anda.
+                <strong>Verification email sent!</strong> Please check your inbox or spam folder.
             </div>
             
             <div class="steps-container">
                 <h5>
                     <i class="fas fa-list-ol"></i>
-                    Langkah Selanjutnya:
+                    Next steps:
                 </h5>
                 
                 <div class="step-item">
                     <div class="step-number">1</div>
                     <div class="step-content">
-                        <strong>Buka Email Anda</strong>
-                        <span>Cek inbox atau folder spam/junk untuk email dari OPTIMA</span>
+                        <strong>Open your email</strong>
+                        <span>Check your inbox or spam/junk folder for an email from OPTIMA</span>
                     </div>
                 </div>
                 
                 <div class="step-item">
                     <div class="step-number">2</div>
                     <div class="step-content">
-                        <strong>Klik Link Verifikasi</strong>
-                        <span>Klik tombol "Verify Email" atau link verifikasi di email</span>
+                        <strong>Click the verification link</strong>
+                        <span>Click the "Verify Email" button or verification link in the email</span>
                     </div>
                 </div>
                 
                 <div class="step-item">
                     <div class="step-number">3</div>
                     <div class="step-content">
-                        <strong>Tunggu Persetujuan Admin</strong>
-                        <span>Setelah email terverifikasi, akun menunggu approval dari admin</span>
+                        <strong>Wait for admin approval</strong>
+                        <span>After your email is verified, your account awaits administrator approval</span>
                     </div>
                 </div>
                 
                 <div class="step-item">
                     <div class="step-number">4</div>
                     <div class="step-content">
-                        <strong>Login ke Sistem</strong>
-                        <span>Setelah disetujui admin, Anda dapat login ke OPTIMA</span>
+                        <strong>Sign in</strong>
+                        <span>Once approved, you can sign in to OPTIMA</span>
                     </div>
                 </div>
             </div>
             
             <div class="alert alert-warning">
                 <i class="fas fa-clock me-2"></i>
-                Link verifikasi berlaku selama <strong>24 jam</strong>. Jika expired, Anda perlu request link baru.
+                The verification link is valid for <strong>24 hours</strong>. If it expires, request a new link.
             </div>
             
             <a href="<?= base_url('auth/resend-verification') ?>" class="btn btn-outline-primary">
                 <i class="fas fa-paper-plane me-2"></i>
-                Kirim Ulang Email Verifikasi
+                Resend Verification Email
             </a>
             
             <div class="help-text">
-                Tidak menerima email? Periksa folder spam atau 
-                <a href="<?= base_url('auth/resend-verification') ?>">kirim ulang email verifikasi</a>.
+                Didn't receive the email? Check your spam folder or 
+                <a href="<?= base_url('auth/resend-verification') ?>">resend the verification email</a>.
                 <br>
-                Butuh bantuan? Hubungi 
+                Need help? Contact 
                 <a href="mailto:support@sml.co.id">support@sml.co.id</a>
             </div>
         </div>

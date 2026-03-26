@@ -51,7 +51,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -103,7 +103,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -134,7 +134,7 @@ class Workflow extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.'
             ]);
         }
     }
@@ -216,10 +216,10 @@ class Workflow extends BaseController
             ];
 
         } catch (\Exception $e) {
-            log_message('error', 'Failed to auto-generate SPK: ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
             return [
                 'success' => false,
-                'message' => 'Failed to auto-generate SPK: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ];
         }
     }
@@ -310,14 +310,7 @@ class Workflow extends BaseController
                     'message' => 'Workflow status updated successfully'
                 ]);
             } else {
-                throw new \Exception('Failed to update workflow status');
+                throw new \Exception('Gagal memproses permintaan. Silakan coba lagi.');
             }
-
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error updating workflow status: ' . $e->getMessage()
-            ]);
-        }
     }
 }

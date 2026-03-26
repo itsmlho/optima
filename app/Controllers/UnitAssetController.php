@@ -44,7 +44,7 @@ class UnitAssetController extends BaseController
     {
         return $this->response->setJSON([
             'success' => false,
-            'message' => 'Store not implemented after migration to inventory_unit'
+            'message' => 'Fitur penyimpanan belum tersedia setelah migrasi ke inventory_unit'
         ]);
     }
 
@@ -65,8 +65,8 @@ class UnitAssetController extends BaseController
             }
             return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengubah status unit']);
         } catch (\Exception $e) {
-            log_message('error', 'Error confirmToAsset: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Kesalahan server: ' . $e->getMessage()]);
+            log_message('error', 'Error confirmToAsset. Silakan coba lagi.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.']);
         }
     }
 
@@ -194,7 +194,7 @@ class UnitAssetController extends BaseController
     public function updateStatus()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
         $id = $this->request->getPost('id');
         $status = $this->request->getPost('status');

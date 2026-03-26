@@ -27,7 +27,7 @@ class Admin extends BaseController
     {
         // Check permission for accessing admin dashboard
         if (!$this->hasPermission('admin.access')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to access admin dashboard');
+            return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         $data = [
@@ -37,12 +37,13 @@ class Admin extends BaseController
                 '/' => 'Dashboard',
                 '/admin' => 'Administration'
             ],
-            'loadDataTables' => true, // Enable DataTables loading
+            'loadDataTables' => true,
             'system_status' => $this->getSystemStatus(),
             'performance_metrics' => $this->getPerformanceMetrics(),
             'cache_stats' => $this->getCacheStats(),
             'queue_status' => $this->getQueueStatus(),
-            'recent_activities' => $this->getRecentActivities()
+            'recent_activities' => $this->getRecentActivities(),
+            'total_users' => $this->getTotalUsersCount()
         ];
 
         return view('admin/index', $data);
@@ -52,7 +53,7 @@ class Admin extends BaseController
     {
         // Check permission
         if (!$this->hasPermission('admin.settings')) {
-            return redirect()->to('/admin')->with('error', 'Access denied: You do not have permission to manage settings');
+            return redirect()->to('/admin')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         $data = [
@@ -75,7 +76,7 @@ class Admin extends BaseController
     {
         // Check permission
         if (!$this->hasPermission('admin.configuration')) {
-            return redirect()->to('/admin')->with('error', 'Access denied: You do not have permission to manage configuration');
+            return redirect()->to('/admin')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         $data = [
@@ -118,10 +119,10 @@ class Admin extends BaseController
                 'token' => csrf_hash()
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error updating settings: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating settings: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
                 'token' => csrf_hash()
             ]);
         }
@@ -141,7 +142,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error clearing cache: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -172,7 +173,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Cache connection test failed: ' . $e->getMessage()
+                'message' => 'Gagal menguji koneksi cache. Silakan coba lagi.'
             ]);
         }
     }
@@ -212,7 +213,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Performance test failed: ' . $e->getMessage()
+                'message' => 'Gagal menguji performa. Silakan coba lagi.'
             ]);
         }
     }
@@ -254,7 +255,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error clearing failed jobs: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -272,7 +273,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Health check failed: ' . $e->getMessage()
+                'message' => 'Gagal melakukan health check. Silakan coba lagi.'
             ]);
         }
     }
@@ -300,7 +301,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database optimization failed: ' . $e->getMessage()
+                'message' => 'Gagal mengoptimasi database. Silakan coba lagi.'
             ]);
         }
     }
@@ -322,7 +323,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error clearing sessions: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -348,7 +349,7 @@ class Admin extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error clearing logs: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -420,7 +421,7 @@ class Admin extends BaseController
                     // Clean up test key
                     cache()->delete($testKey);
                 } catch (\Exception $e) {
-                    $cacheStatus = 'Error: ' . $e->getMessage();
+                    $cacheStatus = 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.';
                 }
             }
             
@@ -446,7 +447,7 @@ class Admin extends BaseController
                 'system_load' => $this->getSystemLoad()
             ];
         } catch (\Exception $e) {
-            log_message('error', 'Error getting system status: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return [
                 'database_status' => 'Error',
                 'cache_status' => 'Error',
@@ -464,28 +465,35 @@ class Admin extends BaseController
     
     private function getPerformanceMetrics()
     {
+        // Measure real database query time
+        $queryTime = 0;
+        try {
+            $queryStart = microtime(true);
+            $this->db->query('SELECT 1');
+            $queryTime = round(microtime(true) - $queryStart, 4);
+        } catch (\Exception $e) {
+            $queryTime = 0;
+        }
+        
+        $pageLoadTime = round(microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)), 3);
+        $memoryPeak = round(memory_get_peak_usage(true) / (1024 * 1024), 1) . ' MB';
+        
+        // Count slow queries from log if available
+        $slowQueries = 0;
         try {
             if ($this->performanceService) {
                 $report = $this->performanceService->generatePerformanceReport();
-                $memoryData = $this->performanceService->checkMemoryUsage();
-                $databaseStats = $report['database'] ?? [];
-                
-                return [
-                    'query_time' => 0.05, // Default since no query timing in service
-                    'page_load_time' => round(microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'], 3),
-                    'memory_peak' => $memoryData['peak_mb'] . ' MB',
-                    'slow_queries' => $databaseStats['slow_queries_today'] ?? 0
-                ];
+                $slowQueries = $report['database']['slow_queries_today'] ?? 0;
             }
         } catch (\Exception $e) {
-            log_message('debug', 'Performance service not available: ' . $e->getMessage());
+            // Ignore
         }
         
         return [
-            'query_time' => 0.05,
-            'page_load_time' => 1.2,
-            'memory_peak' => '128 MB',
-            'slow_queries' => 0
+            'query_time' => $queryTime,
+            'page_load_time' => $pageLoadTime,
+            'memory_peak' => $memoryPeak,
+            'slow_queries' => $slowQueries
         ];
     }
     
@@ -495,38 +503,44 @@ class Admin extends BaseController
             if ($this->cacheService) {
                 $stats = $this->cacheService->getStats();
                 
-                // Jika tidak ada data cache yang sesungguhnya, berikan nilai yang realistis
-                if ($stats['hit_ratio'] == 0 && $stats['key_count'] == 0) {
-                    // Simulasi cache yang aktif berdasarkan session dan data aplikasi
-                    $sessionCount = count(session()->get() ?? []);
-                    $estimatedKeys = max(50, $sessionCount * 10);
-                    $hitRate = rand(75, 90) / 100;
-                    
+                if ($stats['hit_ratio'] > 0 || $stats['key_count'] > 0) {
                     return [
-                        'hit_rate' => round($hitRate * 100, 1),
-                        'miss_rate' => round((1 - $hitRate) * 100, 1),
-                        'total_keys' => $estimatedKeys,
-                        'memory_usage' => round(memory_get_usage() / (1024 * 1024), 1) . ' MB'
+                        'hit_rate' => round($stats['hit_ratio'] * 100, 1),
+                        'miss_rate' => round((1 - $stats['hit_ratio']) * 100, 1),
+                        'total_keys' => $stats['key_count'],
+                        'memory_usage' => round($stats['memory_usage'] / (1024 * 1024), 1) . ' MB'
                     ];
                 }
-                
-                return [
-                    'hit_rate' => round($stats['hit_ratio'] * 100, 1),
-                    'miss_rate' => round((1 - $stats['hit_ratio']) * 100, 1),
-                    'total_keys' => $stats['key_count'],
-                    'memory_usage' => round($stats['memory_usage'] / (1024 * 1024), 1) . ' MB'
-                ];
             }
         } catch (\Exception $e) {
             log_message('debug', 'Cache service not available: ' . $e->getMessage());
         }
         
-        // Fallback dengan nilai realistis
+        // Count actual cache files in writable/cache directory
+        $cacheDir = WRITEPATH . 'cache';
+        $totalKeys = 0;
+        $totalSize = 0;
+        
+        if (is_dir($cacheDir)) {
+            $files = glob($cacheDir . '/*');
+            if ($files) {
+                $totalKeys = count($files);
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        $totalSize += filesize($file);
+                    }
+                }
+            }
+        }
+        
+        $driver = config('Cache')->handler ?? 'file';
+        
         return [
-            'hit_rate' => 82.3,
-            'miss_rate' => 17.7,
-            'total_keys' => 347,
-            'memory_usage' => round(memory_get_usage() / (1024 * 1024), 1) . ' MB'
+            'hit_rate' => 0.0,
+            'miss_rate' => 0.0,
+            'total_keys' => $totalKeys,
+            'memory_usage' => round($totalSize / (1024 * 1024), 2) . ' MB',
+            'driver' => $driver
         ];
     }
     
@@ -552,38 +566,19 @@ class Admin extends BaseController
                     'pending' => $pendingJobs,
                     'failed' => $failedJobs,
                     'completed_today' => $completedJobs,
-                    'status' => 'Active'
-                ];
-            }
-            
-            // Cek aktivitas sistem alternatif untuk menentukan status queue
-            $hasRecentActivity = false;
-            
-            // Cek dari tabel users atau activity jika ada
-            if ($this->db->tableExists('users')) {
-                $recentUsers = $this->db->table('users')
-                    ->where('updated_at >=', date('Y-m-d H:i:s', strtotime('-1 hour')))
-                    ->countAllResults();
-                $hasRecentActivity = $recentUsers > 0;
-            }
-            
-            if ($hasRecentActivity) {
-                return [
-                    'pending' => rand(2, 8),
-                    'failed' => 0,
-                    'completed_today' => rand(15, 35),
-                    'status' => 'Active'
+                    'status' => $pendingJobs > 0 ? 'Active' : 'Idle'
                 ];
             }
         } catch (\Exception $e) {
             log_message('debug', 'Queue system not available: ' . $e->getMessage());
         }
         
+        // No queue_jobs table - queue system not installed
         return [
             'pending' => 0,
             'failed' => 0,
             'completed_today' => 0,
-            'status' => 'Inactive'
+            'status' => 'Not Installed'
         ];
     }
 
@@ -660,47 +655,65 @@ class Admin extends BaseController
     
     private function getCpuUsage()
     {
-        // Mock CPU usage - real implementation would require system-specific commands
-        return rand(20, 80);
+        try {
+            if (PHP_OS_FAMILY === 'Windows') {
+                // Use wmic to get real CPU usage on Windows
+                $output = @shell_exec('wmic cpu get loadpercentage /value 2>nul');
+                if ($output && preg_match('/LoadPercentage=(\d+)/', $output, $m)) {
+                    return (int) $m[1];
+                }
+            } elseif (function_exists('sys_getloadavg')) {
+                $load = sys_getloadavg();
+                // Normalize to percentage (assume 1 core = 100%)
+                return min(100, round($load[0] * 100));
+            }
+        } catch (\Exception $e) {
+            log_message('debug', 'Cannot get CPU usage: ' . $e->getMessage());
+        }
+        
+        // Fallback: use PHP memory ratio as proxy
+        $memUsage = memory_get_usage(true);
+        $memPeak = memory_get_peak_usage(true);
+        return $memPeak > 0 ? round(($memUsage / $memPeak) * 100) : 0;
     }
     
     private function getSystemUptime()
     {
         try {
-            // Untuk Unix/Linux systems
-            if (function_exists('sys_getloadavg') && is_readable('/proc/uptime')) {
+            // Unix/Linux systems
+            if (is_readable('/proc/uptime')) {
                 $uptime = file_get_contents('/proc/uptime');
                 $uptimeSeconds = (float) explode(' ', $uptime)[0];
                 $days = floor($uptimeSeconds / 86400);
                 $hours = floor(($uptimeSeconds % 86400) / 3600);
-                return "{$days} days, {$hours} hours";
+                $minutes = floor(($uptimeSeconds % 3600) / 60);
+                if ($days > 0) {
+                    return "{$days}d {$hours}h {$minutes}m";
+                }
+                return "{$hours}h {$minutes}m";
             }
             
-            // Untuk Windows systems
+            // Windows systems - use wmic for real OS uptime
             if (PHP_OS_FAMILY === 'Windows') {
-                // Gunakan server start time sebagai proxy
-                $serverStart = $_SERVER['REQUEST_TIME'] ?? time();
-                $phpStart = $serverStart - (time() - $serverStart);
-                
-                // Estimasi berdasarkan session dan aplikasi
-                $estimatedUptime = time() - strtotime('today'); // Uptime sejak hari ini
-                $hours = floor($estimatedUptime / 3600);
-                $minutes = floor(($estimatedUptime % 3600) / 60);
-                
-                if ($hours > 0) {
-                    return "{$hours} hours, {$minutes} minutes";
-                } else {
-                    return "{$minutes} minutes";
+                $output = @shell_exec('wmic os get lastbootuptime /value 2>nul');
+                if ($output && preg_match('/LastBootUpTime=(\d{14})/', $output, $m)) {
+                    $bootTime = \DateTime::createFromFormat('YmdHis', $m[1]);
+                    if ($bootTime) {
+                        $now = new \DateTime();
+                        $diff = $now->diff($bootTime);
+                        $parts = [];
+                        if ($diff->days > 0) $parts[] = $diff->days . 'd';
+                        if ($diff->h > 0) $parts[] = $diff->h . 'h';
+                        $parts[] = $diff->i . 'm';
+                        return implode(' ', $parts);
+                    }
                 }
             }
         } catch (\Exception $e) {
             log_message('debug', 'Cannot get system uptime: ' . $e->getMessage());
         }
         
-        // Default fallback
-        $hours = rand(2, 24);
-        $minutes = rand(10, 59);
-        return "{$hours} hours, {$minutes} minutes";
+        return 'N/A';
     }
     
     private function getLastBackupTime()
@@ -832,10 +845,22 @@ class Admin extends BaseController
                 }
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error getting system load: ' . $e->getMessage());
+            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
         return 'Low';
+    }
+    
+    /**
+     * Get total registered users count
+     */
+    private function getTotalUsersCount()
+    {
+        try {
+            return $this->db->table('users')->countAllResults();
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
     
     private function convertToBytes($value)

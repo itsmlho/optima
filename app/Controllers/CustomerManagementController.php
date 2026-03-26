@@ -307,11 +307,11 @@ class CustomerManagementController extends BaseController
     public function show($id)
     {
         if (!$this->hasPermission('marketing.customer.view')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak'])->setStatusCode(403);
         }
         $customer = $this->customerModel->find($id);
         if (!$customer) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Customer tidak ditemukan']);
         }
         
         // Get customer with area info
@@ -355,7 +355,7 @@ class CustomerManagementController extends BaseController
         
         if (!$this->hasPermission('marketing.customer.view')) {
             log_message('warning', '[CustomerManagement] Permission denied for user accessing customer ID: ' . $id);
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized - Permission denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak - Anda tidak memiliki izin'])->setStatusCode(403);
         }
         
         try {
@@ -371,7 +371,7 @@ class CustomerManagementController extends BaseController
             
             if (!$customer) {
                 log_message('warning', '[CustomerManagement] Customer not found: ID ' . $id);
-                return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Customer tidak ditemukan']);
             }
             
             log_message('debug', '[CustomerManagement] Customer found: ' . ($customer['customer_name'] ?? 'N/A'));
@@ -500,7 +500,7 @@ class CustomerManagementController extends BaseController
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading customer details: ' . $e->getMessage(),
+                'message' => 'Gagal memuat detail customer. Silakan coba lagi.',
                 'debug' => ENVIRONMENT === 'development' ? [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -524,7 +524,7 @@ class CustomerManagementController extends BaseController
     public function storeCustomer()
     {
         if (!$this->hasPermission('marketing.customer.create')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak'])->setStatusCode(403);
         }
         
         $rules = [
@@ -550,11 +550,50 @@ class CustomerManagementController extends BaseController
             'notes' => 'permit_empty|max_length[255]'
         ];
         
-        if (!$this->validate($rules)) {
+        $messages = [
+            'customer_code' => [
+                'required' => 'Kode customer harus diisi.',
+                'is_unique' => 'Kode customer sudah digunakan. Silakan gunakan kode yang berbeda.',
+                'max_length' => 'Kode customer maksimal 20 karakter.'
+            ],
+            'customer_name' => [
+                'required' => 'Nama customer harus diisi.',
+                'max_length' => 'Nama customer maksimal 255 karakter.'
+            ],
+            'area_id' => [
+                'required' => 'Area harus dipilih.',
+                'integer' => 'Area tidak valid.'
+            ],
+            'location_name' => [
+                'required' => 'Nama lokasi harus diisi.'
+            ],
+            'address' => [
+                'required' => 'Alamat harus diisi.'
+            ],
+            'city' => [
+                'required' => 'Kota harus diisi.'
+            ],
+            'province' => [
+                'required' => 'Provinsi harus diisi.'
+            ],
+            'contact_person' => [
+                'required' => 'Nama kontak harus diisi.'
+            ],
+            'phone' => [
+                'required' => 'Nomor telepon harus diisi.'
+            ],
+            'email' => [
+                'max_length' => 'Email maksimal 128 karakter.'
+            ]
+        ];
+        
+        if (!$this->validate($rules, $messages)) {
+            $errors = $this->validator->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $this->validator->getErrors()
+                'message' => $firstError,
+                'errors' => $errors
             ]);
         }
         
@@ -563,8 +602,8 @@ class CustomerManagementController extends BaseController
         if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'The email field must contain a valid email address.',
-                'errors' => ['email' => 'The email field must contain a valid email address.']
+                'message' => 'Format email tidak valid.',
+                'errors' => ['email' => 'Format email tidak valid.']
             ]);
         }
         
@@ -583,7 +622,7 @@ class CustomerManagementController extends BaseController
             
             if (!$customerId) {
                 log_message('error', 'Failed to insert customer: ' . json_encode($this->customerModel->errors()));
-                throw new \Exception('Failed to create customer');
+                throw new \Exception('Gagal menyimpan data customer');
             }
             
             if ($customerId) {
@@ -670,7 +709,7 @@ class CustomerManagementController extends BaseController
                     
                     return $this->response->setJSON([
                         'success' => true,
-                        'message' => 'Customer and primary location created successfully',
+                        'message' => 'Customer dan lokasi utama berhasil dibuat',
                         'data' => [
                             'customer_id' => $customerId,
                             'location_id' => $locationId
@@ -681,22 +720,23 @@ class CustomerManagementController extends BaseController
                     $this->db->transRollback();
                     return $this->response->setJSON([
                         'success' => false,
-                        'message' => 'Failed to create primary location'
+                        'message' => 'Gagal membuat lokasi utama customer'
                     ]);
                 }
             } else {
                 $this->db->transRollback();
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to create customer'
+                    'message' => 'Gagal membuat data customer'
                 ]);
             }
             
         } catch (\Exception $e) {
             $this->db->transRollback();
+            log_message('error', 'Customer create exception. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error creating customer: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat membuat customer. Silakan coba lagi.'
             ]);
         }
     }
@@ -715,11 +755,11 @@ class CustomerManagementController extends BaseController
     public function updateCustomer($id)
     {
         if (!$this->hasPermission('marketing.customer.edit')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak'])->setStatusCode(403);
         }
         $customer = $this->customerModel->find($id);
         if (!$customer) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Customer tidak ditemukan']);
         }
         
         // Validate input
@@ -729,11 +769,20 @@ class CustomerManagementController extends BaseController
             'is_active' => 'permit_empty|in_list[0,1]'
         ];
         
-        if (!$this->validate($rules)) {
+        $messages = [
+            'customer_name' => [
+                'required' => 'Nama customer harus diisi.',
+                'max_length' => 'Nama customer maksimal 255 karakter.'
+            ]
+        ];
+        
+        if (!$this->validate($rules, $messages)) {
+            $errors = $this->validator->getErrors();
+            $firstError = !empty($errors) ? reset($errors) : 'Validasi gagal';
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $this->validator->getErrors()
+                'message' => $firstError,
+                'errors' => $errors
             ]);
         }
         
@@ -801,7 +850,7 @@ class CustomerManagementController extends BaseController
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Customer updated successfully'
+                    'message' => 'Customer berhasil diperbarui'
                 ]);
             }
             
@@ -809,9 +858,10 @@ class CustomerManagementController extends BaseController
             log_message('error', '[CustomerManagement] Update exception: ' . $e->getMessage());
             log_message('error', '[CustomerManagement] Stack trace: ' . $e->getTraceAsString());
             
+            log_message('error', '[CustomerManagement] Update exception: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating customer: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat memperbarui customer. Silakan coba lagi.',
                 'debug' => ENVIRONMENT === 'development' ? [
                     'file' => $e->getFile(),
                     'line' => $e->getLine()
@@ -825,7 +875,7 @@ class CustomerManagementController extends BaseController
         
         return $this->response->setJSON([
             'success' => false,
-            'message' => 'Failed to update customer',
+            'message' => 'Gagal memperbarui customer',
             'errors' => $modelErrors
         ]);
     }
@@ -845,7 +895,7 @@ class CustomerManagementController extends BaseController
     public function checkCustomerDeletion($id)
     {
         if (!$this->hasPermission('marketing.customer.delete')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak'])->setStatusCode(403);
         }
         
         try {
@@ -854,7 +904,7 @@ class CustomerManagementController extends BaseController
             if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
             
@@ -891,16 +941,17 @@ class CustomerManagementController extends BaseController
             ];
             
             if (!$canDelete) {
-                $response['message'] = 'Customer cannot be deleted due to active contracts or units at location';
+                $response['message'] = 'Customer tidak dapat dihapus karena masih memiliki kontrak aktif atau unit di lokasi';
             }
             
             return $this->response->setJSON($response);
             
         } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement] Check deletion error. Silakan coba lagi.');
             log_message('error', '[CustomerManagement] Check deletion error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error checking customer deletion status: ' . $e->getMessage()
+                'message' => 'Gagal memeriksa status penghapusan customer. Silakan coba lagi.'
             ]);
         }
     }
@@ -911,7 +962,7 @@ class CustomerManagementController extends BaseController
     public function deleteCustomer($id)
     {
         if (!$this->hasPermission('marketing.customer.delete')) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak'])->setStatusCode(403);
         }
         
         try {
@@ -920,7 +971,7 @@ class CustomerManagementController extends BaseController
             if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
             
@@ -941,14 +992,14 @@ class CustomerManagementController extends BaseController
             if ($activeContracts > 0) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => "Cannot delete customer with {$activeContracts} active contract(s). Please terminate contracts first."
+                    'message' => "Tidak dapat menghapus customer dengan {$activeContracts} kontrak aktif. Silakan akhiri kontrak terlebih dahulu."
                 ]);
             }
             
             if ($unitsAtLocation > 0) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => "Cannot delete customer with {$unitsAtLocation} unit(s) at location. Please return units to warehouse first."
+                    'message' => "Tidak dapat menghapus customer dengan {$unitsAtLocation} unit di lokasi. Silakan kembalikan unit ke warehouse terlebih dahulu."
                 ]);
             }
             
@@ -988,7 +1039,7 @@ class CustomerManagementController extends BaseController
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Customer deleted successfully'
+                    'message' => 'Customer berhasil dihapus'
                 ]);
             }
             
@@ -996,15 +1047,16 @@ class CustomerManagementController extends BaseController
             log_message('error', '[CustomerManagement] Delete customer error: ' . $e->getMessage());
             log_message('error', '[CustomerManagement] Stack trace: ' . $e->getTraceAsString());
             
+            log_message('error', '[CustomerManagement] Delete error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error deleting customer: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menghapus customer. Silakan coba lagi.'
             ]);
         }
         
         return $this->response->setJSON([
             'success' => false,
-            'message' => 'Failed to delete customer'
+            'message' => 'Gagal menghapus customer'
         ]);
     }
 
@@ -1039,7 +1091,7 @@ class CustomerManagementController extends BaseController
         if (!$location) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Location not found'
+                'message' => 'Lokasi tidak ditemukan'
             ]);
         }
         
@@ -1072,7 +1124,7 @@ class CustomerManagementController extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $this->validator->getErrors()
             ]);
         }
@@ -1125,7 +1177,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error adding location: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
         
@@ -1145,7 +1197,7 @@ class CustomerManagementController extends BaseController
         }
         $location = $this->locationModel->find($id);
         if (!$location) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Location not found']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
         }
         
         $rules = [
@@ -1159,7 +1211,7 @@ class CustomerManagementController extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $this->validator->getErrors()
             ]);
         }
@@ -1206,7 +1258,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating location: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
         
@@ -1227,7 +1279,7 @@ class CustomerManagementController extends BaseController
         try {
             $location = $this->locationModel->find($id);
             if (!$location) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Location not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
             }
             
             // Check if this is the only location
@@ -1290,7 +1342,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error deleting location: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
         
@@ -1314,7 +1366,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading areas: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1333,7 +1385,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading departemen: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1358,7 +1410,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading tipe unit: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1377,7 +1429,7 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading kapasitas: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -1693,7 +1745,7 @@ class CustomerManagementController extends BaseController
             log_message('error', 'CustomerManagementController::getCustomerStats - Trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load statistics: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1726,7 +1778,7 @@ class CustomerManagementController extends BaseController
             if (!$customer) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => 'Customer tidak ditemukan'
                 ]);
             }
 
@@ -1788,7 +1840,7 @@ class CustomerManagementController extends BaseController
             log_message('error', 'CustomerManagementController::getCustomerContracts - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load contracts: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1917,7 +1969,7 @@ class CustomerManagementController extends BaseController
             log_message('error', 'CustomerManagementController::getCustomerActivity - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to load activity log: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -1987,7 +2039,7 @@ class CustomerManagementController extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $this->validator->getErrors(),
             ]);
         }
@@ -2056,7 +2108,7 @@ class CustomerManagementController extends BaseController
             if (!$location) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Location not found'
+                    'message' => 'Lokasi tidak ditemukan'
                 ]);
             }
 
@@ -2099,7 +2151,7 @@ class CustomerManagementController extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
                 'errors' => $this->validator->getErrors(),
             ]);
         }
@@ -2165,7 +2217,7 @@ class CustomerManagementController extends BaseController
             // Get customer data
             $customer = $this->customerModel->find($customerId);
             if (!$customer) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Customer not found']);
+                return $this->response->setJSON(['success' => false, 'message' => 'Customer tidak ditemukan']);
             }
 
             // Get customer locations
@@ -2242,7 +2294,7 @@ class CustomerManagementController extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'generateCustomerPDF error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Failed to generate PDF: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memproses permintaan. Silakan coba lagi.']);
         }
     }
 
@@ -2296,7 +2348,7 @@ class CustomerManagementController extends BaseController
             log_message('error', 'CustomerManagementController::searchCustomers error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error searching customers: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
                 'data' => []
             ]);
         }
@@ -2326,7 +2378,7 @@ class CustomerManagementController extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'generatePDFDirectly error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Failed to generate PDF: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memproses permintaan. Silakan coba lagi.']);
         }
     }
 
@@ -2340,7 +2392,7 @@ class CustomerManagementController extends BaseController
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid request'
+                'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'
             ]);
         }
 
@@ -2374,7 +2426,7 @@ class CustomerManagementController extends BaseController
             log_message('error', 'getUnlinkedDeliveriesWidget error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading widget data: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }

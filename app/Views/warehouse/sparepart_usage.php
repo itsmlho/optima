@@ -1,85 +1,129 @@
 <?= $this->extend('layouts/base') ?>
 
+<?= $this->section('css') ?>
+<style>
+/* ── Sparepart Usage Page: 2-level tab system ─────────────────── */
+.su-source-tabs .nav-link {
+    padding: .55rem 1.3rem;
+    font-weight: 600;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    background: transparent;
+    border-radius: 0;
+    transition: color .15s, border-color .15s;
+}
+.su-source-tabs .nav-link.active {
+    color: var(--bs-primary, #0d6efd);
+    border-bottom-color: var(--bs-primary, #0d6efd);
+    background: transparent;
+}
+.su-source-tabs .nav-link:hover:not(.active) {
+    color: #343a40;
+    border-bottom-color: #dee2e6;
+}
+.su-sub-bar {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: .6rem 1.5rem 0;
+}
+.su-sub-tabs .nav-link {
+    padding: .35rem .9rem;
+    font-size: .82rem;
+    font-weight: 500;
+    border-radius: 4px;
+    color: #6c757d;
+    border: 1px solid transparent;
+    margin-right: .25rem;
+    transition: background .15s, color .15s;
+}
+.su-sub-tabs .nav-link.active {
+    background-color: var(--bs-primary, #0d6efd);
+    color: #fff;
+    border-color: var(--bs-primary, #0d6efd);
+}
+.su-sub-tabs .nav-link:hover:not(.active) {
+    background-color: #e7f0ff;
+    color: var(--bs-primary, #0d6efd);
+    border-color: #b3cfff;
+}
+.su-tab-body { padding: 1.25rem 1.5rem; }
+.su-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: .6rem .8rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: .375rem;
+}
+.su-filter-bar .form-label { margin-bottom: 0; font-weight: 500; white-space: nowrap; }
+</style>
+<?= $this->endSection() ?>
+
 <?php
 /**
  * Sparepart Usage & Returns - Warehouse
- * BADGE/CARD: Optima badge-soft-* in JS; card-header bg-light; styles in optima-pro.css (SPAREPART USAGE PAGE).
+ * BADGE/CARD: Optima badge-soft-* in JS; styles below (SPAREPART USAGE PAGE).
  */
 ?>
 <?= $this->section('content') ?>
 
 <div class="sparepart-usage-page">
-<!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-arrow-left-right me-2 text-primary"></i>
-        Sparepart Usage & Returns Management
-    </h4>
-    <p class="text-muted mb-0">Track sparepart usage from warehouse to service and manage returns</p>
-</div>
+
+    <!-- Page Header -->
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-arrow-left-right me-2 text-primary"></i>
+            Sparepart Usage &amp; Returns Management
+        </h4>
+        <p class="text-muted mb-0">Track sparepart usage from warehouse to service and manage returns</p>
+    </div>
 
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-info-soft">
                 <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="bi bi-list stat-icon text-info"></i>
-                    </div>
+                    <div class="me-3"><i class="bi bi-list-ul stat-icon text-info"></i></div>
                     <div>
-                        <div class="stat-value" id="stat-usage-total">
-                            <?= $stats['usage_total'] ?? 0 ?>
-                        </div>
+                        <div class="stat-value" id="stat-usage-total"><?= $stats['usage_total'] ?? 0 ?></div>
                         <div class="text-muted">Total Usage (All)</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- NEW: Warehouse Usage -->
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-primary-soft">
                 <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="fas fa-warehouse stat-icon text-primary"></i>
-                    </div>
+                    <div class="me-3"><i class="fas fa-warehouse stat-icon text-primary"></i></div>
                     <div>
-                        <div class="stat-value" id="stat-usage-warehouse">
-                            <?= $stats['usage_warehouse'] ?? 0 ?>
-                        </div>
+                        <div class="stat-value" id="stat-usage-warehouse"><?= $stats['usage_warehouse'] ?? 0 ?></div>
                         <div class="text-muted">Warehouse Stock</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- NEW: Non-Warehouse Usage -->
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-warning-soft">
                 <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="fas fa-recycle stat-icon text-warning"></i>
-                    </div>
+                    <div class="me-3"><i class="fas fa-recycle stat-icon text-warning"></i></div>
                     <div>
-                        <div class="stat-value" id="stat-usage-non-warehouse">
-                            <?= $stats['usage_non_warehouse'] ?? 0 ?>
-                        </div>
-                        <div class="text-muted">Bekas/Reuse</div>
+                        <div class="stat-value" id="stat-usage-non-warehouse"><?= $stats['usage_non_warehouse'] ?? 0 ?></div>
+                        <div class="text-muted">Bekas / Reuse</div>
                     </div>
                 </div>
             </div>
         </div>
-
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-warning-soft">
+            <?php $pending = $stats['return_pending'] ?? 0; ?>
+            <div class="stat-card <?= $pending > 0 ? 'bg-danger-soft' : 'bg-secondary-soft' ?>">
                 <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="bi bi-clock stat-icon text-warning"></i>
-                    </div>
+                    <div class="me-3"><i class="bi bi-clock-history stat-icon <?= $pending > 0 ? 'text-danger' : 'text-secondary' ?>"></i></div>
                     <div>
-                        <div class="stat-value" id="stat-return-pending">
-                            <?= $stats['return_pending'] ?? 0 ?>
-                        </div>
+                        <div class="stat-value" id="stat-return-pending"><?= $pending ?></div>
                         <div class="text-muted"><?= lang('Warehouse.pending_returns') ?></div>
                     </div>
                 </div>
@@ -87,21 +131,21 @@
         </div>
     </div>
 
-    <!-- Main Content Card with Source Tabs -->
-    <div class="card table-card shadow mb-4">
-        <div class="card-header bg-light">
-            <div class="row align-items-center mb-2">
-                <div class="col">
-                    <h5 class="card-title fw-bold m-0">
-                        <i class="fas fa-tools text-primary me-2"></i>
-                        <?= lang('App.sparepart_usage_returns') ?>
-                    </h5>
-                </div>
+    <!-- Main Content Card -->
+    <div class="card table-card shadow-sm mb-4">
+
+        <!-- Card Header: title + Source-level tabs (WO / SPK) -->
+        <div class="card-header bg-white pb-0 pt-3 px-4 border-bottom-0">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title fw-bold m-0">
+                    <i class="fas fa-tools text-primary me-2"></i>
+                    <?= lang('App.sparepart_usage_returns') ?>
+                </h5>
+                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Pilih sumber data di bawah</small>
             </div>
-            <!-- Top-level: Source Tabs (Work Orders / SPK) -->
-            <ul class="nav nav-tabs border-0" id="sourceTab" role="tablist">
+            <ul class="nav su-source-tabs border-0 mb-n1" id="sourceTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="wo-source-tab" data-bs-toggle="tab" data-bs-target="#source-wo" type="button" role="tab" aria-selected="true">
+                    <button class="nav-link active" id="wo-source-tab" data-bs-toggle="tab" data-bs-target="#source-wo" type="button" role="tab" aria-selected="true"> 
                         <i class="fas fa-wrench me-1"></i><strong>Work Orders</strong>
                     </button>
                 </li>
@@ -113,31 +157,41 @@
             </ul>
         </div>
 
-        <div class="card-body">
-            <div class="tab-content" id="sourceTabContent">
+        <!-- Source Tab Content -->
+        <div class="tab-content" id="sourceTabContent">
 
-                <!-- ===== WORK ORDERS TAB ===== -->
-                <div class="tab-pane fade show active" id="source-wo" role="tabpanel">
-                    <ul class="nav nav-pills mb-3 mt-1" id="woSubTab" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="wo-usage-tab" data-bs-toggle="tab" data-bs-target="#wo-usage" type="button" role="tab">
+            <!-- ===== WORK ORDERS TAB ===== -->
+            <div class="tab-pane fade show active" id="source-wo" role="tabpanel">
+
+                <!-- Sub-tab bar -->
+                <div class="su-sub-bar">
+                    <ul class="nav su-sub-tabs pb-2" id="woSubTab">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="wo-usage-tab" type="button" onclick="switchSubTab('WO','#wo-usage')">
                                 <i class="fas fa-list-check me-1"></i><?= lang('Warehouse.usage') ?>
                             </button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="wo-returns-tab" data-bs-toggle="tab" data-bs-target="#wo-returns" type="button" role="tab">
+                        <li class="nav-item">
+                            <button class="nav-link" id="wo-returns-tab" type="button" onclick="switchSubTab('WO','#wo-returns')">
                                 <i class="fas fa-undo me-1"></i><?= lang('Warehouse.returns') ?>
+                                <?php if (($stats['return_pending'] ?? 0) > 0): ?>
+                                <span class="badge badge-soft-orange ms-1"><?= $stats['return_pending'] ?></span>
+                                <?php endif; ?>
                             </button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="wo-nonwh-tab" data-bs-toggle="tab" data-bs-target="#wo-nonwh" type="button" role="tab">
+                        <li class="nav-item">
+                            <button class="nav-link" id="wo-nonwh-tab" type="button" onclick="switchSubTab('WO','#wo-nonwh')">
                                 <i class="fas fa-recycle me-1"></i>Non-Warehouse
                             </button>
                         </li>
                     </ul>
+                </div>
+
+                <div class="su-tab-body">
                     <div class="tab-content">
+
                         <!-- WO: Usage -->
-                        <div class="tab-pane fade show active" id="wo-usage" role="tabpanel">
+                        <div class="tab-pane show active" id="wo-usage" role="tabpanel">
                             <?php if (isset($usage_table_exists) && !$usage_table_exists): ?>
                             <div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Table <code>work_order_sparepart_usage</code> is not available yet.</div>
                             <?php else: ?>
@@ -145,13 +199,13 @@
                                 <table class="table table-hover table-sm mb-0" id="woUsageTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 30px;"></th>
-                                            <th style="width: 120px;">Reference</th>
-                                            <th style="width: 100px;">Date</th>
+                                            <th style="width:30px;"></th>
+                                            <th style="width:130px;">Reference</th>
+                                            <th style="width:100px;">Date</th>
                                             <th>Customer</th>
                                             <th>Unit</th>
-                                            <th style="width: 100px; text-align: center;">Items</th>
-                                            <th style="width: 70px; text-align: center;">Action</th>
+                                            <th style="width:110px;text-align:center;">Items</th>
+                                            <th style="width:70px;text-align:center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -159,36 +213,33 @@
                             </div>
                             <?php endif; ?>
                         </div>
+
                         <!-- WO: Returns -->
-                        <div class="tab-pane fade" id="wo-returns" role="tabpanel">
+                        <div class="tab-pane" id="wo-returns" role="tabpanel">
                             <?php if (isset($return_table_exists) && !$return_table_exists): ?>
                             <div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Table <code>work_order_sparepart_returns</code> is not available yet.</div>
                             <?php else: ?>
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Filter Status</label>
-                                    <select class="form-select" id="wo-filter-status">
-                                        <option value="PENDING" selected>Pending</option>
-                                        <option value="CONFIRMED">Confirmed</option>
-                                        <option value="ALL">All</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <button class="btn btn-primary w-100" onclick="applyReturnFilters('WO')">
-                                        <i class="fas fa-search me-2"></i>Apply Filter
-                                    </button>
-                                </div>
+                            <div class="su-filter-bar">
+                                <label class="form-label"><i class="fas fa-filter me-1 text-primary"></i>Status:</label>
+                                <select class="form-select form-select-sm" id="wo-filter-status" style="width:150px;">
+                                    <option value="PENDING" selected>Pending</option>
+                                    <option value="CONFIRMED">Confirmed</option>
+                                    <option value="ALL">Semua</option>
+                                </select>
+                                <button class="btn btn-sm btn-primary" onclick="applyReturnFilters('WO')">
+                                    <i class="fas fa-search me-1"></i>Terapkan
+                                </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover table-sm mb-0" id="woReturnsTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 130px;">Reference</th>
-                                            <th style="min-width: 200px;">Item Details</th>
-                                            <th style="width: 180px;">Customer / Unit</th>
-                                            <th style="width: 120px;">Mechanic</th>
-                                            <th style="width: 150px; text-align: center;">Quantity</th>
-                                            <th style="width: 70px; text-align: center;">Action</th>
+                                            <th style="width:130px;">Reference</th>
+                                            <th style="min-width:200px;">Item Details</th>
+                                            <th style="width:180px;">Customer / Unit</th>
+                                            <th style="width:120px;">Mechanic</th>
+                                            <th style="width:150px;text-align:center;">Quantity</th>
+                                            <th style="width:70px;text-align:center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -196,98 +247,105 @@
                             </div>
                             <?php endif; ?>
                         </div>
+
                         <!-- WO: Non-Warehouse -->
-                        <div class="tab-pane fade" id="wo-nonwh" role="tabpanel">
+                        <div class="tab-pane" id="wo-nonwh" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-hover table-sm mb-0" id="woNonwhTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 120px;">Reference</th>
+                                            <th style="width:120px;">Reference</th>
                                             <th>Item Name</th>
-                                            <th style="width: 80px;">Type</th>
-                                            <th style="width: 90px;">Item Source</th>
+                                            <th style="width:80px;">Type</th>
+                                            <th style="width:90px;">Source</th>
                                             <th>Notes</th>
-                                            <th style="width: 80px; text-align: center;">Qty</th>
-                                            <th style="width: 180px;">Customer / Unit</th>
-                                            <th style="width: 110px;">Date</th>
+                                            <th style="width:80px;text-align:center;">Qty</th>
+                                            <th style="width:180px;">Customer / Unit</th>
+                                            <th style="width:110px;">Date</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
                                 </table>
                             </div>
                         </div>
-                    </div>
-                </div><!-- /#source-wo -->
 
-                <!-- ===== SPK TAB ===== -->
-                <div class="tab-pane fade" id="source-spk" role="tabpanel">
-                    <ul class="nav nav-pills mb-3 mt-1" id="spkSubTab" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="spk-usage-tab" data-bs-toggle="tab" data-bs-target="#spk-usage" type="button" role="tab">
+                    </div>
+                </div>
+            </div><!-- /#source-wo -->
+
+            <!-- ===== SPK TAB ===== -->
+            <div class="tab-pane fade" id="source-spk" role="tabpanel">
+
+                <!-- Sub-tab bar -->
+                <div class="su-sub-bar">
+                    <ul class="nav su-sub-tabs pb-2" id="spkSubTab">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="spk-usage-tab" type="button" onclick="switchSubTab('SPK','#spk-usage')">
                                 <i class="fas fa-list-check me-1"></i><?= lang('Warehouse.usage') ?>
                             </button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="spk-returns-tab" data-bs-toggle="tab" data-bs-target="#spk-returns" type="button" role="tab">
+                        <li class="nav-item">
+                            <button class="nav-link" id="spk-returns-tab" type="button" onclick="switchSubTab('SPK','#spk-returns')">
                                 <i class="fas fa-undo me-1"></i><?= lang('Warehouse.returns') ?>
                             </button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="spk-nonwh-tab" data-bs-toggle="tab" data-bs-target="#spk-nonwh" type="button" role="tab">
+                        <li class="nav-item">
+                            <button class="nav-link" id="spk-nonwh-tab" type="button" onclick="switchSubTab('SPK','#spk-nonwh')">
                                 <i class="fas fa-recycle me-1"></i>Non-Warehouse
                             </button>
                         </li>
                     </ul>
+                </div>
+
+                <div class="su-tab-body">
                     <div class="tab-content">
+
                         <!-- SPK: Usage -->
-                        <div class="tab-pane fade show active" id="spk-usage" role="tabpanel">
+                        <div class="tab-pane show active" id="spk-usage" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-hover table-sm mb-0" id="spkUsageTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 30px;"></th>
-                                            <th style="width: 120px;">Reference</th>
-                                            <th style="width: 100px;">Date</th>
+                                            <th style="width:30px;"></th>
+                                            <th style="width:130px;">Reference</th>
+                                            <th style="width:100px;">Date</th>
                                             <th>Customer</th>
                                             <th>Unit</th>
-                                            <th style="width: 100px; text-align: center;">Items</th>
-                                            <th style="width: 70px; text-align: center;">Action</th>
+                                            <th style="width:110px;text-align:center;">Items</th>
+                                            <th style="width:70px;text-align:center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
                                 </table>
                             </div>
                         </div>
+
                         <!-- SPK: Returns -->
-                        <div class="tab-pane fade" id="spk-returns" role="tabpanel">
+                        <div class="tab-pane" id="spk-returns" role="tabpanel">
                             <?php if (isset($return_table_exists) && !$return_table_exists): ?>
                             <div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>SPK returns table is not available yet.</div>
                             <?php else: ?>
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Filter Status</label>
-                                    <select class="form-select" id="spk-filter-status">
-                                        <option value="PENDING" selected>Pending</option>
-                                        <option value="CONFIRMED">Confirmed</option>
-                                        <option value="ALL">All</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <button class="btn btn-primary w-100" onclick="applyReturnFilters('SPK')">
-                                        <i class="fas fa-search me-2"></i>Apply Filter
-                                    </button>
-                                </div>
+                            <div class="su-filter-bar">
+                                <label class="form-label"><i class="fas fa-filter me-1 text-primary"></i>Status:</label>
+                                <select class="form-select form-select-sm" id="spk-filter-status" style="width:150px;">
+                                    <option value="PENDING" selected>Pending</option>
+                                    <option value="CONFIRMED">Confirmed</option>
+                                    <option value="ALL">Semua</option>
+                                </select>
+                                <button class="btn btn-sm btn-primary" onclick="applyReturnFilters('SPK')">
+                                    <i class="fas fa-search me-1"></i>Terapkan
+                                </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover table-sm mb-0" id="spkReturnsTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 130px;">Reference</th>
-                                            <th style="min-width: 200px;">Item Details</th>
-                                            <th style="width: 180px;">Customer / Unit</th>
-                                            <th style="width: 120px;">Mechanic</th>
-                                            <th style="width: 150px; text-align: center;">Quantity</th>
-                                            <th style="width: 70px; text-align: center;">Action</th>
+                                            <th style="width:130px;">Reference</th>
+                                            <th style="min-width:200px;">Item Details</th>
+                                            <th style="width:180px;">Customer / Unit</th>
+                                            <th style="width:120px;">Mechanic</th>
+                                            <th style="width:150px;text-align:center;">Quantity</th>
+                                            <th style="width:70px;text-align:center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -295,33 +353,36 @@
                             </div>
                             <?php endif; ?>
                         </div>
+
                         <!-- SPK: Non-Warehouse -->
-                        <div class="tab-pane fade" id="spk-nonwh" role="tabpanel">
+                        <div class="tab-pane" id="spk-nonwh" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-hover table-sm mb-0" id="spkNonwhTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 120px;">Reference</th>
+                                            <th style="width:120px;">Reference</th>
                                             <th>Item Name</th>
-                                            <th style="width: 80px;">Type</th>
-                                            <th style="width: 90px;">Item Source</th>
+                                            <th style="width:80px;">Type</th>
+                                            <th style="width:90px;">Source</th>
                                             <th>Notes</th>
-                                            <th style="width: 80px; text-align: center;">Qty</th>
-                                            <th style="width: 180px;">Customer / Unit</th>
-                                            <th style="width: 110px;">Date</th>
+                                            <th style="width:80px;text-align:center;">Qty</th>
+                                            <th style="width:180px;">Customer / Unit</th>
+                                            <th style="width:110px;">Date</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
                                 </table>
                             </div>
                         </div>
-                    </div>
-                </div><!-- /#source-spk -->
 
-            </div><!-- /.tab-content sourceTabContent -->
-        </div><!-- /.card-body -->
+                    </div>
+                </div>
+            </div><!-- /#source-spk -->
+
+        </div><!-- /.tab-content sourceTabContent -->
     </div><!-- /.card -->
-</div>
+
+</div><!-- .sparepart-usage-page -->
 
 <!-- Detail Usage Modal -->
 <div class="modal fade modal-wide" id="usageDetailModal" tabindex="-1">
@@ -345,20 +406,29 @@
 </div>
 
 <!-- Detail/Confirm Return Modal -->
-<div class="modal fade modal-wide" id="returnDetailModal" tabindex="-1">
+<div class="modal fade modal-wider" id="returnDetailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.returns') ?> <?= lang('Warehouse.sparepart') ?>
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title text-dark fw-semibold">
+                    <i class="fas fa-info-circle text-primary me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.returns') ?> <?= lang('Warehouse.sparepart') ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="returnDetailBody">
+            <div class="modal-body p-4" id="returnDetailBody">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top d-none" id="returnDetailFooter">
+                <div class="w-100">
+                    <label class="form-label fw-semibold">Confirmation Notes (Optional)</label>
+                    <textarea class="form-control mb-3" id="confirm-notes" rows="2" placeholder="Add notes if necessary..."></textarea>
+                    <button class="btn btn-success w-100" id="confirmReturnBtn">
+                        <i class="fas fa-check me-2"></i>Confirm Return
+                    </button>
                 </div>
             </div>
         </div>
@@ -612,52 +682,64 @@ function initNonwhTable(source) {
 }
 
 // ----------------------------------------------------------------
-// Tab event handling
 // ----------------------------------------------------------------
+// Sub-tab manual switcher — completely bypasses Bootstrap's tab JS
+// for inner sub-tabs to avoid the nested-tab double-render bug.
+// ----------------------------------------------------------------
+window.switchSubTab = function(source, targetId) {
+    const prefix   = source === 'SPK' ? 'spk' : 'wo';
+    const paneIds  = ['#' + prefix + '-usage', '#' + prefix + '-returns', '#' + prefix + '-nonwh'];
+    const btnIds   = ['#' + prefix + '-usage-tab', '#' + prefix + '-returns-tab', '#' + prefix + '-nonwh-tab'];
+
+    // Update pane visibility
+    paneIds.forEach(function(id) {
+        if (id === targetId) {
+            $(id).addClass('show active');
+        } else {
+            $(id).removeClass('show active');
+        }
+    });
+
+    // Update button active state
+    btnIds.forEach(function(btnId) {
+        const btn    = $(btnId);
+        const myPane = '#' + prefix + '-' + btnId.replace('#' + prefix + '-', '').replace('-tab', '');
+        btn.toggleClass('active', myPane === targetId);
+    });
+
+    // Init DataTable (first visit) or adjust columns (revisit)
+    if (targetId === '#' + prefix + '-usage') {
+        if (source === 'WO')  { initUsageTable('WO');  if (woUsageDT)  woUsageDT.columns.adjust().draw(false); }
+        else                  { initUsageTable('SPK'); if (spkUsageDT) spkUsageDT.columns.adjust().draw(false); }
+    } else if (targetId === '#' + prefix + '-returns') {
+        <?php if (isset($return_table_exists) && $return_table_exists): ?>
+        if (source === 'WO')  { initReturnsTable('WO');  if (woReturnsDT)  woReturnsDT.columns.adjust().draw(false); }
+        else                  { initReturnsTable('SPK'); if (spkReturnsDT) spkReturnsDT.columns.adjust().draw(false); }
+        <?php endif; ?>
+    } else if (targetId === '#' + prefix + '-nonwh') {
+        if (source === 'WO')  { initNonwhTable('WO');  if (woNonwhDT)  woNonwhDT.columns.adjust().draw(false); }
+        else                  { initNonwhTable('SPK'); if (spkNonwhDT) spkNonwhDT.columns.adjust().draw(false); }
+    }
+};
+
 $(document).ready(function() {
-    // Source tab switches
+    // Outer source tab (WO / SPK) — still uses Bootstrap BS tab JS (works fine at top level)
     $('#sourceTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
         const target = $(e.target).data('bs-target');
-        setTimeout(function() {
-            if (target === '#source-wo') {
-                if ($('#wo-usage').hasClass('active'))   { initUsageTable('WO'); }
-                else if ($('#wo-returns').hasClass('active')) { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('WO'); <?php endif; ?> }
-                else if ($('#wo-nonwh').hasClass('active'))   initNonwhTable('WO');
-            } else if (target === '#source-spk') {
-                if ($('#spk-usage').hasClass('active'))   initUsageTable('SPK');
-                else if ($('#spk-returns').hasClass('active')) { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('SPK'); <?php endif; ?> }
-                else if ($('#spk-nonwh').hasClass('active'))   initNonwhTable('SPK');
-            }
-        }, 150);
-    });
-
-    // WO sub-tab switches
-    $('#woSubTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
-        const target = $(e.target).data('bs-target');
-        setTimeout(function() {
-            if (target === '#wo-usage')   { initUsageTable('WO'); }
-            else if (target === '#wo-returns') { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('WO'); <?php endif; ?> }
-            else if (target === '#wo-nonwh')   initNonwhTable('WO');
-        }, 150);
-    });
-
-    // SPK sub-tab switches
-    $('#spkSubTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
-        const target = $(e.target).data('bs-target');
-        setTimeout(function() {
-            if (target === '#spk-usage')   initUsageTable('SPK');
-            else if (target === '#spk-returns') { <?php if (isset($return_table_exists) && $return_table_exists): ?> initReturnsTable('SPK'); <?php endif; ?> }
-            else if (target === '#spk-nonwh')   initNonwhTable('SPK');
-        }, 150);
-    });
-
-    // Initialize default: activate WO source tab on page load
-    setTimeout(function() {
-        var woSourceTab = document.getElementById('wo-source-tab');
-        if (woSourceTab) {
-            bootstrap.Tab.getOrCreateInstance(woSourceTab).show();
+        if (target === '#source-wo') {
+            // Trigger the currently active WO sub-tab to init/adjust its table
+            const activePaneId = '#wo-' + $('#wo-usage').hasClass('active') ? 'usage'
+                : ($('#wo-returns').hasClass('active') ? 'returns' : 'nonwh');
+            switchSubTab('WO', '#wo-' + ($('#wo-usage').hasClass('active') ? 'usage'
+                : ($('#wo-returns').hasClass('active') ? 'returns' : 'nonwh')));
+        } else if (target === '#source-spk') {
+            switchSubTab('SPK', '#spk-' + ($('#spk-usage').hasClass('active') ? 'usage'
+                : ($('#spk-returns').hasClass('active') ? 'returns' : 'nonwh')));
         }
-    }, 300);
+    });
+
+    // WO Usage is the default active sub-tab — initialize its table on page load.
+    initUsageTable('WO');
 });
 
 // ----------------------------------------------------------------
@@ -824,15 +906,17 @@ window.viewReturnDetail = function(id, sourceType) {
                     ${data.return_notes ? `<div class="mb-3"><strong>Return Notes:</strong><br>${data.return_notes}</div>` : ''}
                     ${data.confirmed_at ? `<div class="mb-3"><strong>Confirmed:</strong><br>${data.confirmed_at_formatted || data.confirmed_at} by ${data.confirmed_by_name || '-'}</div>` : ''}
                 `;
+                $('#returnDetailBody').html(html);
                 if (data.status === 'PENDING') {
                     const confirmUrl = sourceType === 'SPK'
                         ? '<?= base_url('warehouse/sparepart-usage/confirm-spk-return') ?>/' + id
                         : '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id;
-                    html += `<hr><div class="mb-3"><label class="form-label">Confirmation Notes (Optional)</label>
-                        <textarea class="form-control" id="confirm-notes" rows="3" placeholder="Add notes if necessary..."></textarea></div>
-                        <div class="d-grid"><button class="btn btn-success" onclick="doConfirmReturn('${confirmUrl}')"><i class="fas fa-check me-2"></i>Confirm Return</button></div>`;
+                    $('#confirmReturnBtn').off('click').on('click', function() { doConfirmReturn(confirmUrl); });
+                    $('#confirm-notes').val('');
+                    $('#returnDetailFooter').removeClass('d-none');
+                } else {
+                    $('#returnDetailFooter').addClass('d-none');
                 }
-                $('#returnDetailBody').html(html);
                 $('#returnDetailModal').modal('show');
             } else {
                 if (window.OptimaNotify) OptimaNotify.error('Error: ' + (response.message || 'Failed to load data'));

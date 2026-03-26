@@ -133,7 +133,7 @@ class BatchContractOperations extends BaseController
             log_message('error', '[BatchContractOperations] Error in updateExpiredContracts: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error updating expired contracts: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -236,7 +236,7 @@ class BatchContractOperations extends BaseController
             log_message('error', '[BatchContractOperations] Error getting stats: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error getting batch stats: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.'
             ]);
         }
     }
@@ -249,7 +249,7 @@ class BatchContractOperations extends BaseController
         // Check admin permission
         helper('simple_rbac');
         if (!can_manage('admin')) {
-            return redirect()->to('/')->with('error', 'Access denied');
+            return redirect()->to('/')->with('error', 'Akses ditolak');
         }
 
         // Run batch update

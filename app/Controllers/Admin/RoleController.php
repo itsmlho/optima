@@ -48,7 +48,7 @@ class RoleController extends BaseController
     public function getRoles()
     {
         if (!$this->hasPermission('admin.role_management')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         try {
@@ -61,7 +61,7 @@ class RoleController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading roles: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -72,7 +72,7 @@ class RoleController extends BaseController
     public function getRole($roleId)
     {
         if (!$this->hasPermission('admin.role_management')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         try {
@@ -80,7 +80,7 @@ class RoleController extends BaseController
             if (!$role) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Role not found'
+                    'message' => 'Role tidak ditemukan'
                 ]);
             }
 
@@ -100,7 +100,7 @@ class RoleController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading role: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -111,7 +111,7 @@ class RoleController extends BaseController
     public function getPermissions()
     {
         if (!$this->hasPermission('admin.role_management')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         try {
@@ -124,7 +124,7 @@ class RoleController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading permissions: ' . $e->getMessage()
+                'message' => 'Gagal memuat data. Silakan coba lagi.'
             ]);
         }
     }
@@ -135,7 +135,7 @@ class RoleController extends BaseController
     public function saveRole()
     {
         if (!$this->hasPermission('admin.role_management')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         try {
@@ -215,7 +215,7 @@ class RoleController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error saving role: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan data. Silakan coba lagi.'
             ]);
         }
     }

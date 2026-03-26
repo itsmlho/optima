@@ -283,7 +283,7 @@ class AttachmentInventoryController extends BaseController
     public function getAttachmentDetail($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -357,7 +357,7 @@ class AttachmentInventoryController extends BaseController
 
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memuat detail: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat memuat detail. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -761,7 +761,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memuat history: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat memuat history. Silakan coba lagi.',
             ])->setStatusCode(500);
         }
     }
@@ -769,7 +769,7 @@ class AttachmentInventoryController extends BaseController
     public function updateAttachment($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -829,7 +829,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::updateAttachment] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -837,7 +837,7 @@ class AttachmentInventoryController extends BaseController
     public function deleteAttachment($id)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -892,7 +892,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::deleteAttachment] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.',
                 'csrf_hash' => csrf_hash()
             ])->setStatusCode(500);
         }
@@ -901,7 +901,7 @@ class AttachmentInventoryController extends BaseController
     public function addInventoryItem()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -984,7 +984,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::addInventoryItem] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.'
             ])->setStatusCode(500);
         }
     }
@@ -1017,7 +1017,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading merk data: ' . $e->getMessage()
+                'message' => 'Gagal memuat data merk. Silakan coba lagi.'
             ]);
         }
     }
@@ -1050,7 +1050,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading tipe data: ' . $e->getMessage()
+                'message' => 'Gagal memuat data tipe. Silakan coba lagi.'
             ]);
         }
     }
@@ -1073,7 +1073,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading jenis data: ' . $e->getMessage()
+                'message' => 'Gagal memuat data jenis. Silakan coba lagi.'
             ]);
         }
     }
@@ -1096,7 +1096,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading model data: ' . $e->getMessage()
+                'message' => 'Gagal memuat data model. Silakan coba lagi.'
             ]);
         }
     }
@@ -1105,7 +1105,7 @@ class AttachmentInventoryController extends BaseController
     public function saveMasterMerk($type)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1153,7 +1153,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error saving merk: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan merk. Silakan coba lagi.'
             ]);
         }
     }
@@ -1161,7 +1161,7 @@ class AttachmentInventoryController extends BaseController
     public function saveMasterTipe($type)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1209,7 +1209,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error saving tipe: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan tipe. Silakan coba lagi.'
             ]);
         }
     }
@@ -1217,7 +1217,7 @@ class AttachmentInventoryController extends BaseController
     public function saveMasterJenis($type)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1248,7 +1248,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error saving jenis: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan jenis. Silakan coba lagi.'
             ]);
         }
     }
@@ -1256,7 +1256,7 @@ class AttachmentInventoryController extends BaseController
     public function saveMasterModel($type)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1287,7 +1287,7 @@ class AttachmentInventoryController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error saving model: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan model. Silakan coba lagi.'
             ]);
         }
     }
@@ -1296,7 +1296,7 @@ class AttachmentInventoryController extends BaseController
     public function attachmentData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1335,7 +1335,7 @@ class AttachmentInventoryController extends BaseController
     public function batteryData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1374,7 +1374,7 @@ class AttachmentInventoryController extends BaseController
     public function chargerData()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1413,7 +1413,7 @@ class AttachmentInventoryController extends BaseController
     public function saveMasterData($type)
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1474,7 +1474,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::saveMasterData] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }
@@ -1504,7 +1504,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::getAvailableUnits] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat daftar unit: ' . $e->getMessage()
+                'message' => 'Gagal memuat daftar unit. Silakan coba lagi.'
             ]);
         }
     }
@@ -1515,7 +1515,7 @@ class AttachmentInventoryController extends BaseController
     public function attachToUnit()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1651,7 +1651,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::attachToUnit] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1663,7 +1663,7 @@ class AttachmentInventoryController extends BaseController
     public function swapUnit()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1832,7 +1832,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::swapUnit] Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1844,7 +1844,7 @@ class AttachmentInventoryController extends BaseController
     public function detachFromUnit()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
 
         try {
@@ -1944,7 +1944,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::detachFromUnit] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.',
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -1971,7 +1971,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::masterAttachment] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat data attachment: ' . $e->getMessage()
+                'message' => 'Gagal memuat data attachment. Silakan coba lagi.'
             ]);
         }
     }
@@ -1997,7 +1997,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::masterBaterai] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat data baterai: ' . $e->getMessage()
+                'message' => 'Gagal memuat data baterai. Silakan coba lagi.'
             ]);
         }
     }
@@ -2023,7 +2023,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::masterCharger] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat data charger: ' . $e->getMessage()
+                'message' => 'Gagal memuat data charger. Silakan coba lagi.'
             ]);
         }
     }
@@ -2050,7 +2050,7 @@ class AttachmentInventoryController extends BaseController
             log_message('error', '[AttachmentInventoryController::getUnits] Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memuat data units: ' . $e->getMessage()
+                'message' => 'Gagal memuat data units. Silakan coba lagi.'
             ]);
         }
     }

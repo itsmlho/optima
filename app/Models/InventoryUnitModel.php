@@ -208,11 +208,11 @@ class InventoryUnitModel extends Model
     // Mapping lama->baru untuk kompatibilitas (dipakai di SELECT alias)
     // id_inventory_unit -> no_unit, serial_number_po -> serial_number, status_unit -> status_unit_id, tanggal_masuk -> created_at
 
-    /** Check if a unit is available as stock (status_unit_id in [7,8]). */
+    /** Check if a unit is available as stock (status_unit_id in [1,2,3,12] = AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED). */
     public function isStockAvailable(int $unitId): bool
     {
         $row = $this->select('status_unit_id')->where('id_inventory_unit', $unitId)->first();
-        return $row && in_array((int)$row['status_unit_id'], [7,8], true);
+        return $row && in_array((int)$row['status_unit_id'], [1, 2, 3, 12], true);
     }
 
     /** Get basic unit info including no_unit for labelling. */
@@ -508,11 +508,11 @@ class InventoryUnitModel extends Model
     public function getStats()
     {
     $total     = $this->db->table($this->table)->countAllResults();
-    $in_stock  = $this->db->table($this->table)->where('status_unit_id', 7)->countAllResults();
-    $non_asset = $this->db->table($this->table)->where('status_unit_id', 8)->countAllResults();
-    $rented    = $this->db->table($this->table)->where('status_unit_id', 3)->countAllResults();
-    $sold      = $this->db->table($this->table)->where('status_unit_id', 13)->countAllResults(); // Fixed: SOLD status is 13, not 9
-    $workshop  = $this->db->table($this->table)->where('status_unit_id', 2)->countAllResults();
+    $in_stock  = $this->db->table($this->table)->whereIn('status_unit_id', [1, 2, 3, 12, 15])->countAllResults(); // AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED, SPARE
+    $non_asset = $this->db->table($this->table)->where('status_unit_id', 2)->countAllResults();  // NON_ASSET_STOCK
+    $rented    = $this->db->table($this->table)->whereIn('status_unit_id', [7, 8, 14])->countAllResults(); // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
+    $sold      = $this->db->table($this->table)->where('status_unit_id', 13)->countAllResults(); // SOLD
+    $workshop  = $this->db->table($this->table)->whereIn('status_unit_id', [10, 11])->countAllResults(); // UNDER_REPAIR, MAINTENANCE
 
         return [
             'total'     => $total,
@@ -684,8 +684,8 @@ class InventoryUnitModel extends Model
     {
         $unit = $this->find($unitId);
         
-        if (!$unit || $unit['status_unit_id'] != 8) {
-            throw new \Exception('Unit bukan Non-Asset (status_unit_id harus 8)');
+        if (!$unit || $unit['status_unit_id'] != 2) {
+            throw new \Exception('Unit bukan Non-Asset (status_unit_id harus 2)');
         }
         
         // Auto-generate asset number if not provided

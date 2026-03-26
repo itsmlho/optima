@@ -266,7 +266,7 @@ return [
     'login_history' => 'Login History',
     'failed_attempts' => 'Failed Attempts',
     'account_locked' => 'Account locked due to too many failed login attempts',
-    
+
     // Help Text
     'password_requirements' => 'Minimum 8 characters, contains uppercase, lowercase, and numbers',
     'username_help' => 'Username can only contain letters, numbers, and underscores',

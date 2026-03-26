@@ -35,7 +35,7 @@ class Settings extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to update settings'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
             return redirect()->back()->with('error', 'Access denied.');
@@ -247,7 +247,7 @@ class Settings extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Backup failed: ' . $e->getMessage()
+                'message' => 'Gagal membuat backup. Silakan coba lagi.'
             ]);
         }
     }
@@ -276,7 +276,7 @@ class Settings extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to clear cache: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -382,7 +382,7 @@ class Settings extends BaseController
             
             return true;
         } catch (\Exception $e) {
-            log_message('error', 'Failed to save settings: ' . $e->getMessage());
+            log_message('error', 'Gagal memproses permintaan. Silakan coba lagi.');
             return false;
         }
     }
@@ -479,7 +479,7 @@ class Settings extends BaseController
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Invalid request method'
+                'message' => 'Metode request tidak valid.'
             ])->setStatusCode(400);
         }
 

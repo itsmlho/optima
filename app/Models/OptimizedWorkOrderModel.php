@@ -96,9 +96,15 @@ class OptimizedWorkOrderModel extends Model
             $builder->where('DATE_FORMAT(wo.report_date, "%Y-%m")', $filters['month']);
         }
         
-        // Department filter for division-based access
+        // Department filter for division-based access (CENTRAL/ELECTRIC users)
         if (!empty($filters['department_ids'])) {
             $builder->whereIn('iu.departemen_id', $filters['department_ids']);
+        }
+        
+        // Area filter for MILL users (filter by admin/foreman assignment)
+        if (!empty($filters['area_ids'])) {
+            $areaIdsStr = implode(',', array_map('intval', $filters['area_ids']));
+            $builder->where("(wo.admin_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1) OR wo.foreman_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1))", null, false);
         }
         
         // Order by latest first for better performance
@@ -147,6 +153,11 @@ class OptimizedWorkOrderModel extends Model
         if (!empty($filters['department_ids'])) {
             $builder->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left');
             $builder->whereIn('iu.departemen_id', $filters['department_ids']);
+        }
+        
+        if (!empty($filters['area_ids'])) {
+            $areaIdsStr = implode(',', array_map('intval', $filters['area_ids']));
+            $builder->where("(wo.admin_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1) OR wo.foreman_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1))", null, false);
         }
         
         if (!empty($filters['month'])) {

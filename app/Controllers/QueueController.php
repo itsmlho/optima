@@ -61,7 +61,7 @@ class QueueController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to process queue: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -99,7 +99,7 @@ class QueueController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to clean jobs: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -126,7 +126,7 @@ class QueueController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to clear cache: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -170,7 +170,7 @@ class QueueController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to queue email: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -186,7 +186,7 @@ class QueueController extends BaseController
             if (!$userId) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'User not authenticated'
+                    'message' => 'User belum terautentikasi. Silakan login kembali.'
                 ]);
             }
             
@@ -212,7 +212,7 @@ class QueueController extends BaseController
         } catch (\Exception $e) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to queue notification: ' . $e->getMessage()
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
     }
@@ -229,7 +229,7 @@ class QueueController extends BaseController
         
         if (!in_array($clientIP, $allowedIPs)) {
             return $this->response->setStatusCode(403)->setJSON([
-                'error' => 'Access denied'
+                'error' => 'Akses ditolak'
             ]);
         }
         

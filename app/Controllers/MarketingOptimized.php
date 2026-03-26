@@ -77,10 +77,10 @@ class MarketingOptimized extends BaseDataTableController
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Access denied: You do not have permission to view inventory'
+                    'message' => 'Akses ditolak: Anda tidak memiliki izin'
                 ])->setStatusCode(403);
             }
-            return redirect()->to('/dashboard')->with('error', 'Access denied: You do not have permission to view inventory');
+            return redirect()->to('/dashboard')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
         // Cache view data

@@ -304,6 +304,7 @@
         </button>
       </div>
       <form id="addAreaForm">
+        <?= csrf_field() ?>
         <div class="modal-body">
           <div class="form-errors text-danger small mb-3" style="display: none;"></div>
           <div class="form-group">
@@ -316,14 +317,27 @@
           </div>
           <div class="form-group">
             <label>Area Type <span class="text-danger">*</span></label>
-            <select name="area_type" class="form-control" required>
-              <option value="BRANCH">BRANCH - Handle all departments</option>
-              <option value="CENTRAL">CENTRAL - Department-specific focus</option>
+            <select name="area_type" id="add_area_type" class="form-control" required>
+              <option value="MILL">MILL - Site / Plant Location</option>
+              <option value="CENTRAL">CENTRAL - Head Office / Department Specific</option>
             </select>
             <small class="form-text text-muted">
-              <strong>BRANCH:</strong> For branch locations (employees handle all departments)<br>
-              <strong>CENTRAL:</strong> For HQ/Central locations (employees focus on specific departments)
+              <strong>MILL:</strong> Area lokasi site/pabrik — karyawan menangani semua departemen (department scope = ALL)<br>
+              <strong>CENTRAL:</strong> Area kantor pusat/HQ — karyawan fokus pada departemen tertentu (DIESEL/ELECTRIC)
             </small>
+          </div>
+          <div class="form-group" id="add_dept_group" style="display:none;">
+            <label>Department <span class="text-danger">*</span></label>
+            <select name="departemen_id" id="add_departemen_id" class="form-control">
+              <option value="">-- Pilih Departemen --</option>
+              <?php foreach ($departemen as $dept): ?>
+                <?php if ($dept['id_departemen'] == 3) continue; // GASOLINE digabung ke DIESEL ?>
+                <option value="<?= $dept['id_departemen'] ?>">
+                  <?= $dept['id_departemen'] == 1 ? 'DIESEL & GASOLINE' : esc($dept['nama_departemen']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <small class="form-text text-muted">Pilih departemen yang ditangani area CENTRAL ini</small>
           </div>
           <div class="form-group">
             <label>Description</label>
@@ -350,6 +364,7 @@
         </button>
       </div>
       <form id="addEmployeeForm">
+        <?= csrf_field() ?>
         <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
           <div class="form-errors alert alert-danger" style="display: none;"></div>
           <div class="form-group">
@@ -388,7 +403,7 @@
             <select name="work_location" class="form-control" required>
               <option value="">-- Select Work Location --</option>
               <option value="CENTRAL">Central (Head Office)</option>
-              <option value="BRANCH">Branch Office</option>
+              <option value="MILL">Mill</option>
               <option value="BOTH">Both (Flexible)</option>
             </select>
           </div>
@@ -434,7 +449,11 @@
         </button>
       </div>
       <form id="addAssignmentForm">
+        <?= csrf_field() ?>
         <div class="modal-body">
+          <div id="assignment_area_info" class="alert alert-light border py-2 mb-2" style="display:none;">
+            <small>Area Type: <strong id="assignment_area_type_badge"></strong></small>
+          </div>
           <div class="form-group">
             <label>Area <span class="text-danger">*</span></label>
             <select name="area_id" id="assignment_area_id" class="form-control" required onchange="loadAvailableEmployeesForAssignment()">
@@ -479,8 +498,8 @@
               <option value="DIESEL,GASOLINE">DIESEL & GASOLINE</option>
             </select>
             <small class="form-text text-muted">
-              <strong>ALL:</strong> For branch employees (handle all departments)<br>
-              <strong>Specific:</strong> For central HQ employees (focus on specific departments)
+              <strong>ALL:</strong> Untuk area MILL (karyawan menangani semua departemen)<br>
+              <strong>Specific:</strong> Untuk area CENTRAL (fokus DIESEL atau ELECTRIC saja)
             </small>
           </div>
           <div class="form-group">
@@ -561,6 +580,26 @@
             <label>Area Name <span class="text-danger">*</span></label>
             <input type="text" name="area_name" id="edit_area_name" class="form-control" required maxlength="255">
           </div>
+          <div class="form-group">
+            <label>Area Type <span class="text-danger">*</span></label>
+            <select name="area_type" id="edit_area_type" class="form-control" required>
+              <option value="MILL">MILL - Site / Plant Location</option>
+              <option value="CENTRAL">CENTRAL - Head Office / Department Specific</option>
+            </select>
+          </div>
+          <div class="form-group" id="edit_dept_group" style="display:none;">
+            <label>Department <span class="text-danger">*</span></label>
+            <select name="departemen_id" id="edit_departemen_id" class="form-control">
+              <option value="">-- Pilih Departemen --</option>
+              <?php foreach ($departemen as $dept): ?>
+                <?php if ($dept['id_departemen'] == 3) continue; // GASOLINE digabung ke DIESEL ?>
+                <option value="<?= $dept['id_departemen'] ?>">
+                  <?= $dept['id_departemen'] == 1 ? 'DIESEL & GASOLINE' : esc($dept['nama_departemen']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <small class="form-text text-muted">Pilih departemen yang ditangani area CENTRAL ini</small>
+          </div>
             <div class="form-group">
             <label>Description</label>
             <textarea name="area_description" id="edit_area_description" class="form-control" rows="2"></textarea>
@@ -621,7 +660,7 @@
             <select name="work_location" id="edit_work_location" class="form-control" required>
               <option value="">-- Select Work Location --</option>
               <option value="CENTRAL">Central (Head Office)</option>
-              <option value="BRANCH">Branch Office</option>
+              <option value="MILL">Mill</option>
               <option value="BOTH">Both (Flexible)</option>
             </select>
           </div>
@@ -1107,7 +1146,7 @@ function initializeAreaTable() {
         type: 'POST',
         timeout: 30000, // 30 second timeout
         data: function(d) {
-          // DataTables akan mengirim parameter search, order, pagination secara otomatis
+          d[window.csrfTokenName] = window.getCsrfToken();
           return d;
         },
         dataSrc: function(json) {
@@ -1139,9 +1178,23 @@ function initializeAreaTable() {
         data: 'area_type', 
         render: function(data, type, row) {
           if (!data) return '<span class="text-muted">-</span>';
-          return data === 'CENTRAL' 
-            ? '<span class="text-primary font-weight-bold">CENTRAL</span>' 
-            : '<span class="text-success font-weight-bold">BRANCH</span>';
+          const typeBadge = data === 'CENTRAL'
+            ? '<span class="badge badge-soft-blue">CENTRAL</span>'
+            : '<span class="badge badge-soft-green">MILL</span>';
+          
+          let deptBadge = '';
+          if (data === 'CENTRAL') {
+            if (row.departemen_name) {
+              const deptColors = { 'ELECTRIC': 'badge-soft-cyan', 'DIESEL': 'badge-soft-orange', 'GASOLINE': 'badge-soft-orange' };
+              const deptLabel = (row.departemen_name === 'DIESEL' || row.departemen_name === 'GASOLINE') ? 'DIESEL & GASOLINE' : row.departemen_name;
+              const cls = deptColors[row.departemen_name] || 'badge-soft-blue';
+              deptBadge = ` <span class="badge ${cls}">${deptLabel}</span>`;
+            }
+          } else {
+            deptBadge = ' <span class="badge badge-soft-gray">All Depts</span>';
+          }
+          
+          return typeBadge + deptBadge;
         }
       },
       { data: 'description', render: d => d ? (d.length > 50 ? `<span class="text-dark">${d.substring(0,50)}</span><span class="text-muted">…</span>` : `<span class="text-dark">${d}</span>`) : '<span class="text-muted">-</span>' },
@@ -1230,7 +1283,7 @@ function initializeEmployeeTable() {
       type: 'POST',
       timeout: 30000, // 30 second timeout
       data: function(d) {
-        // DataTables akan mengirim parameter search, order, pagination secara otomatis
+        d[window.csrfTokenName] = window.getCsrfToken();
         return d;
       },
       dataSrc: function(json) {
@@ -1282,14 +1335,14 @@ function initializeEmployeeTable() {
             return '<span class="text-warning">⚠️ Unassigned</span>';
           }
           const central = data.filter(a => a.area_type === 'CENTRAL');
-          const branch = data.filter(a => a.area_type === 'BRANCH');
+          const mill = data.filter(a => a.area_type === 'MILL');
           
           let output = [];
           if (central.length > 0) {
             output.push(`<strong class="text-primary">${central.length} Central</strong>`);
           }
-          if (branch.length > 0) {
-            output.push(`<strong class="text-success">${branch.length} Branch</strong>`);
+          if (mill.length > 0) {
+            output.push(`<strong class="text-success">${mill.length} Mill</strong>`);
           }
           return output.join(' | ');
         }
@@ -1379,41 +1432,22 @@ function initializeCharts() {
 
 /* ===================== ROLE COVERAGE MATRIX ===================== */
 function buildRoleCoverageMatrix() {
+  const matrixData = { draw: 1, start: 0, length: 1000 };
+  matrixData[window.csrfTokenName] = window.getCsrfToken();
   $.ajax({
     url: '<?= base_url('service/area-management/getAreas') ?>',
     type: 'POST',
-    data: { draw:1, start:0, length:1000 },
+    data: matrixData,
     success: function(resp) {
       if (!resp.data) return;
-      const roles = ['SUPERVISOR','FOREMAN','MECHANIC','HELPER'];
+      const roles = ['FOREMAN','MECHANIC','HELPER'];
       let html = '<table class="table table-sm table-bordered"><thead><tr><th>Area</th>' + roles.map(r => `<th>${r}</th>`).join('') + '</tr></thead><tbody>';
       resp.data.forEach(area => {
+        const bd = area.employees_breakdown || {};
         html += `<tr><td>${area.area_code}</td>`;
-        
-        // Supervisor (kita tidak punya ini dalam struktur baru)
-        html += '<td>-</td>';
-        
-        // Foreman 
-        if (area.assignment_summary && area.assignment_summary.foreman) {
-          html += `<td><strong class='text-success'>1</strong></td>`;
-        } else {
-          html += '<td>-</td>';
-        }
-        
-        // Mechanic
-        if (area.assignment_summary && area.assignment_summary.mechanics && area.assignment_summary.mechanics.length > 0) {
-          html += `<td><strong class='text-success'>${area.assignment_summary.mechanics.length}</strong></td>`;
-        } else {
-          html += '<td>-</td>';
-        }
-        
-        // Helper
-        if (area.assignment_summary && area.assignment_summary.helpers && area.assignment_summary.helpers.length > 0) {
-          html += `<td><strong class='text-success'>${area.assignment_summary.helpers.length}</strong></td>`;
-        } else {
-          html += '<td>-</td>';
-        }
-        
+        html += bd.foreman  > 0 ? `<td><strong class='text-success'>${bd.foreman}</strong></td>`  : '<td>-</td>';
+        html += bd.mechanic > 0 ? `<td><strong class='text-success'>${bd.mechanic}</strong></td>` : '<td>-</td>';
+        html += bd.helper   > 0 ? `<td><strong class='text-success'>${bd.helper}</strong></td>`   : '<td>-</td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
@@ -1468,10 +1502,11 @@ function roleBadgeColor(role) {
 
 function locationBadgeColor(location) {
   switch(location) {
-    case 'CENTRAL': return 'primary';       // Biru - untuk central
-    case 'BRANCH': return 'success';        // Hijau - untuk branch
+    case 'CENTRAL': return 'primary';       // Blue - for central
+    case 'MILL': return 'success';          // Green - for mill (legacy work_location value)
+    case 'BRANCH': return 'success';        // Green - for branch/mill
     case 'BOTH': return 'info';             // Cyan - untuk both
-    default: return 'muted';                // Abu muda - untuk default
+    default: return 'muted';               // Abu muda - untuk default
   }
 }
 
@@ -1489,6 +1524,19 @@ function bindForms() {
     html += '</ul>';
     $errorDiv.html(html).show();
   }
+
+  // Show/hide department dropdown based on area_type selection
+  $('#add_area_type').on('change', function() {
+    const isCentral = $(this).val() === 'CENTRAL';
+    $('#add_dept_group').toggle(isCentral);
+    if (!isCentral) $('#add_departemen_id').val('');
+  });
+
+  $('#edit_area_type').on('change', function() {
+    const isCentral = $(this).val() === 'CENTRAL';
+    $('#edit_dept_group').toggle(isCentral);
+    if (!isCentral) $('#edit_departemen_id').val('');
+  });
 
   $('#addAreaForm').on('submit', function(e){
     e.preventDefault();
@@ -1654,6 +1702,8 @@ function bindForms() {
 function showAddAreaModal(){ 
   $('#addAreaForm')[0].reset();
   $('#addAreaForm .form-errors').html('').hide();
+  $('#add_dept_group').hide();
+  $('#add_departemen_id').val('');
   $('#addAreaModal').modal('show'); 
 }
 
@@ -1666,6 +1716,8 @@ function showAddEmployeeModal(){
 }
 function showAddAssignmentModal(){
   const selectedArea = $('#assignAreaSelect').val();
+  $('#assignment_area_info').hide();
+  $('#assignment_area_type_badge').html('');
   if (selectedArea) {
     $('#assignment_area_id').val(selectedArea);
     loadAvailableEmployeesForAssignment();
@@ -1731,6 +1783,8 @@ function deleteArea(id) {
     error: function() {
       notify('Error deleting area', 'error');
     }
+  });
+      }
   });
 }
 
@@ -1904,8 +1958,33 @@ function loadAvailableEmployeesForAssignment() {
   if (!areaId) {
     const select = $('#assignment_staff_id');
     select.empty().append('<option value="">-- Select Area First --</option>');
+    $('#assignment_area_info').hide();
     return;
   }
+
+  // Load area info to show area type badge and auto-set department_scope
+  $.getJSON(`<?= base_url('service/area-management/showArea') ?>/${areaId}`, function(areaResp) {
+    if (areaResp.success && areaResp.data && areaResp.data.area) {
+      const atype = areaResp.data.area.area_type || 'MILL';
+      const color = atype === 'CENTRAL' ? 'text-primary' : 'text-success';
+      const hint = atype === 'CENTRAL'
+        ? '— pilih departemen spesifik (DIESEL/ELECTRIC)'
+        : '— karyawan menangani semua departemen (ALL)';
+      $('#assignment_area_type_badge').html(`<span class="${color}">${atype}</span> <small class="text-muted">${hint}</small>`);
+      $('#assignment_area_info').show();
+
+      // Auto-set department_scope based on area_type
+      const $deptScope = $('#assignment_dept_scope');
+      if (atype === 'MILL') {
+        $deptScope.val('ALL');
+      } else if (atype === 'CENTRAL') {
+        // Only change if currently ALL — nudge user to pick specific dept
+        if ($deptScope.val() === 'ALL') {
+          $deptScope.val('DIESEL');
+        }
+      }
+    }
+  });
   
   $.getJSON(`<?= base_url('service/area-management/getAvailableEmployees') ?>/${areaId}/${role || ''}`, function(resp){
     if (!resp.success) return;
@@ -2044,6 +2123,8 @@ function editArea(id) {
     $('#edit_area_id').val(a.id);
     $('#edit_area_code').val(a.area_code);
     $('#edit_area_name').val(a.area_name);
+    $('#edit_area_type').val(a.area_type || 'MILL').trigger('change');
+    $('#edit_departemen_id').val(a.departemen_id || '');
     $('#edit_area_description').val(a.description || '');
     $('#editAreaModal').modal('show');
   });
@@ -2286,6 +2367,8 @@ function editAreaFromDetail() {
   $('#edit_area_id').val(currentAreaId);
   $('#edit_area_code').val(currentAreaData.area_code || '');
   $('#edit_area_name').val(currentAreaData.area_name || '');
+  $('#edit_area_type').val(currentAreaData.area_type || 'MILL').trigger('change');
+  $('#edit_departemen_id').val(currentAreaData.departemen_id || '');
   $('#edit_area_description').val(currentAreaData.description || '');
   
   // Show edit modal

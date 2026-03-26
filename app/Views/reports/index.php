@@ -2,14 +2,34 @@
 
 <?= $this->section('content') ?>
 
+<?php
+$activeSection = $reports_active_section ?? '';
+$sections = $reports_center_sections ?? [];
+$customOpts = $custom_report_type_options ?? [];
+?>
 <div class="container-fluid">
     <!-- Page Header -->
     <div class="mb-3">
         <h4 class="fw-bold mb-1">
             <i class="bi bi-graph-up me-2 text-primary"></i>
-            Reports Dashboard
+            <?= esc(lang('Reports.page_title_hub')) ?>
         </h4>
-        <p class="text-muted mb-0">Access, generate, and export various reports for business insights and analysis</p>
+        <p class="text-muted mb-1"><?= esc(lang('Reports.hub_intro_body')) ?></p>
+        <div class="btn-group btn-group-sm flex-wrap gap-1 mt-2" role="group" aria-label="Report sections">
+            <a href="<?= base_url('reports') ?>" class="btn btn-sm <?= $activeSection === '' ? 'btn-primary' : 'btn-outline-primary' ?>"><?= esc(lang('Reports.hub_nav_all')) ?></a>
+            <?php foreach ($sections as $secNav): ?>
+                <?php
+                $sk = $secNav['key'];
+                $active = ($activeSection === $sk);
+                $outline = 'btn-outline-' . ($secNav['header'] ?? 'secondary');
+                $solid = 'btn-' . ($secNav['header'] ?? 'secondary');
+                ?>
+                <a href="<?= base_url('reports?section=' . esc($sk, 'url')) ?>" class="btn btn-sm <?= $active ? $solid : $outline ?>"><?= esc($secNav['title']) ?></a>
+            <?php endforeach; ?>
+            <?php if ($customOpts !== []): ?>
+                <a href="<?= base_url('reports?section=custom') ?>" class="btn btn-sm <?= $activeSection === 'custom' ? 'btn-secondary' : 'btn-outline-secondary' ?>"><?= esc(lang('Reports.hub_nav_custom')) ?></a>
+            <?php endif; ?>
+        </div>
     </div>
     <!-- Old header section removed for consistency -->
     <div class="row mt-3">
@@ -21,9 +41,11 @@
                 <button class="btn btn-outline-primary btn-sm" onclick="scheduleReport()">
                     <i class="fas fa-clock me-1"></i>Schedule Report
                 </button>
+                <?php if ($customOpts !== []): ?>
                 <button class="btn btn-primary btn-sm" onclick="generateCustomReport()">
                     <i class="fas fa-plus me-1"></i>Custom Report
                 </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -36,7 +58,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Reports</div>
+                                <?= esc(lang('Reports.stats_total')) ?></div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 <?= $report_stats['total_reports'] ?? 0 ?>
                             </div>
@@ -55,7 +77,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Completed Reports</div>
+                                <?= esc(lang('Reports.stats_completed')) ?></div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 <?= $report_stats['completed_reports'] ?? 0 ?>
                             </div>
@@ -74,7 +96,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Reports</div>
+                                <?= esc(lang('Reports.stats_pending')) ?></div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 <?= $report_stats['pending_reports'] ?? 0 ?>
                             </div>
@@ -93,7 +115,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Month</div>
+                                <?= esc(lang('Reports.stats_this_month')) ?></div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 <?= $report_stats['this_month_reports'] ?? 0 ?>
                             </div>
@@ -107,176 +129,85 @@
         </div>
     </div>
 
-    <!-- Quick Reports -->
-    <div class="row">
-        <!-- Rental Reports -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-handshake me-2"></i>Rental Reports
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Monthly Rental Summary</h6>
-                                <p class="mb-1 text-muted">Overview of all rental activities this month</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" onclick="generateQuickReport('rental_monthly')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Contract Performance</h6>
-                                <p class="mb-1 text-muted">Analysis of contract completion rates</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" onclick="generateQuickReport('contract_performance')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Unit Utilization</h6>
-                                <p class="mb-1 text-muted">Equipment usage and availability metrics</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" onclick="generateQuickReport('unit_utilization')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Financial Reports -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-dollar-sign me-2"></i>Financial Reports
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Revenue Report</h6>
-                                <p class="mb-1 text-muted">Monthly and yearly revenue analysis</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-success" onclick="generateQuickReport('revenue')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Expense Tracking</h6>
-                                <p class="mb-1 text-muted">Operational and maintenance expenses</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-success" onclick="generateQuickReport('expenses')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Profit & Loss</h6>
-                                <p class="mb-1 text-muted">Comprehensive P&L statement</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-success" onclick="generateQuickReport('profit_loss')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Maintenance Reports -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-wrench me-2"></i>Maintenance Reports
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Maintenance Schedule</h6>
-                                <p class="mb-1 text-muted">Upcoming and overdue maintenance</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-warning" onclick="generateQuickReport('maintenance_schedule')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Work Order Summary</h6>
-                                <p class="mb-1 text-muted">Completed and pending work orders</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-warning" onclick="generateQuickReport('work_orders')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Downtime Analysis</h6>
-                                <p class="mb-1 text-muted">Equipment downtime and causes</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-warning" onclick="generateQuickReport('downtime')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Inventory Reports -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-boxes me-2"></i>Inventory Reports
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Stock Level Report</h6>
-                                <p class="mb-1 text-muted">Current inventory levels and alerts</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-info" onclick="generateQuickReport('stock_levels')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Sparepart Usage</h6>
-                                <p class="mb-1 text-muted">Sparepart consumption analysis</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-info" onclick="generateQuickReport('sparepart_usage')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Asset Valuation</h6>
-                                <p class="mb-1 text-muted">Current asset values and depreciation</p>
-                            </div>
-                            <button class="btn btn-sm btn-outline-info" onclick="generateQuickReport('asset_valuation')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <?php if ($sections === [] && $activeSection !== 'custom'): ?>
+    <div class="alert alert-info"><?= esc(lang('Reports.no_segments_for_role')) ?></div>
+    <?php elseif ($activeSection === 'custom' && $customOpts !== []): ?>
+    <div class="card shadow mb-4" id="reports-section-custom">
+        <div class="card-body">
+            <h5 class="fw-bold mb-2"><?= esc(lang('Reports.custom_page_title')) ?></h5>
+            <p class="text-muted mb-3"><?= esc(lang('Reports.custom_intro')) ?></p>
+            <button type="button" class="btn btn-primary" onclick="generateCustomReport()">
+                <i class="fas fa-plus me-1"></i><?= esc(lang('Reports.hub_nav_custom')) ?>
+            </button>
         </div>
     </div>
+    <?php else: ?>
+    <p class="text-muted small mb-3"><?= esc(lang('Reports.summary_matches_export')) ?></p>
+    <div class="row">
+        <?php foreach ($sections as $sec): ?>
+            <?php if ($activeSection !== '' && $activeSection !== $sec['key']) {
+                continue;
+            } ?>
+            <div class="col-12 mb-4" id="reports-section-<?= esc($sec['key'], 'attr') ?>">
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light">
+                        <h6 class="m-0 font-weight-bold text-<?= esc($sec['header'] ?? 'secondary', 'attr') ?>">
+                            <i class="<?= esc($sec['icon'] ?? '', 'attr') ?>"></i><?= esc($sec['title']) ?>
+                        </h6>
+                        <span class="small text-muted"><?= esc($sec['date_from']) ?> — <?= esc($sec['date_to']) ?></span>
+                    </div>
+                    <div class="card-body">
+                        <?php if (!empty($sec['summary']['segments'])): ?>
+                        <div class="row g-2 mb-3">
+                            <?php foreach ($sec['summary']['segments'] as $segId => $segInfo): ?>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100 bg-light">
+                                        <div class="small text-muted text-uppercase"><?= esc($segInfo['title'] ?? $segId) ?></div>
+                                        <div class="fw-semibold"><?= esc(lang('Reports.rows_in_export')) ?>: <?= (int) ($segInfo['row_count'] ?? 0) ?></div>
+                                        <?php
+                                        $sum = $segInfo['summary'] ?? [];
+                                        $shown = 0;
+                                        foreach ($sum as $k => $v) {
+                                            if ($shown >= 4) {
+                                                break;
+                                            }
+                                            if ($k === 'error') {
+                                                echo '<div class="small text-danger">' . esc((string) $v) . '</div>';
+                                                $shown++;
+
+                                                continue;
+                                            }
+                                            if (!is_scalar($v) && $v !== null) {
+                                                $v = json_encode($v, JSON_UNESCAPED_UNICODE);
+                                            }
+                                            echo '<div class="small"><span class="text-muted">' . esc(str_replace('_', ' ', (string) $k)) . ':</span> ' . esc((string) $v) . '</div>';
+                                            $shown++;
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <div class="list-group list-group-flush">
+                            <?php foreach ($sec['items'] as $item): ?>
+                                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <h6 class="mb-1"><?= esc($item['title']) ?></h6>
+                                        <p class="mb-0 text-muted small"><?= esc($item['description']) ?></p>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-<?= esc($sec['header'] ?? 'primary', 'attr') ?>" data-report-type="<?= esc($item['id'], 'attr') ?>" title="<?= esc(lang('Reports.btn_generate_excel')) ?>">
+                                        <i class="fas fa-file-excel me-1"></i><?= esc(lang('Reports.btn_generate_excel')) ?>
+                                    </button>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <!-- Recent Reports -->
     <div class="card shadow mb-4">
@@ -321,15 +252,20 @@
                                     <td><?= date('d/m/Y H:i', strtotime($report['created_at'])) ?></td>
                                     <td>
                                         <?php
-                                        $statusClass = $report['status'] == 'completed' ? 'success' : 
-                                                      ($report['status'] == 'generating' ? 'warning' : 'secondary');
+                                        $st = $report['status'] ?? '';
+                                        $statusClass = match ($st) {
+                                            'completed' => 'success',
+                                            'failed' => 'danger',
+                                            'pending', 'processing' => 'warning',
+                                            default => 'secondary',
+                                        };
                                         ?>
-                                        <span class="badge badge-<?= $statusClass ?>">
-                                            <?= ucfirst($report['status']) ?>
+                                        <span class="badge badge-<?= esc($statusClass, 'attr') ?>">
+                                            <?= esc(ucfirst((string) $st)) ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <?php if ($report['status'] == 'completed'): ?>
+                                        <?php if ($st === 'completed'): ?>
                                             <button class="btn btn-sm btn-primary" onclick="downloadReport(<?= $report['id'] ?>)" title="Download">
                                                 <i class="fas fa-download"></i>
                                             </button>
@@ -345,7 +281,12 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted">No reports found</td>
+                                <td class="text-center text-muted">No reports found</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -372,19 +313,10 @@
                             <div class="mb-3">
                                 <label for="reportType" class="form-label">Report Type *</label>
                                 <select class="form-select" id="reportType" required>
-                                    <option value="">Select Report Type</option>
-                                    <option value="rental_monthly">Monthly Rental Summary</option>
-                                    <option value="contract_performance">Contract Performance</option>
-                                    <option value="unit_utilization">Unit Utilization</option>
-                                    <option value="revenue">Revenue Report</option>
-                                    <option value="expenses">Expense Report</option>
-                                    <option value="profit_loss">Profit & Loss</option>
-                                    <option value="maintenance_schedule">Maintenance Schedule</option>
-                                    <option value="work_orders">Work Order Summary</option>
-                                    <option value="downtime">Downtime Analysis</option>
-                                    <option value="stock_levels">Stock Level Report</option>
-                                    <option value="sparepart_usage">Sparepart Usage</option>
-                                    <option value="asset_valuation">Asset Valuation</option>
+                                    <option value=""><?= esc(lang('Reports.select_report_type_placeholder')) ?></option>
+                                    <?php foreach ($customOpts as $optVal => $optLabel): ?>
+                                        <option value="<?= esc($optVal, 'attr') ?>"><?= esc($optLabel) ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                         </div>
@@ -456,6 +388,21 @@
 <?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
+    $(document).on('click', '[data-report-type]', function () {
+        var t = $(this).data('report-type');
+        if (t) {
+            generateQuickReport(t);
+        }
+    });
+
+    const sp = new URLSearchParams(window.location.search);
+    const sec = sp.get('section');
+    if (sec === 'custom') {
+        document.getElementById('reports-section-custom')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    } else if (sec) {
+        document.getElementById('reports-section-' + sec)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
     // Initialize DataTable
     $('#reportsTable').DataTable({
         responsive: true,
@@ -489,10 +436,16 @@ $(document).ready(function() {
 // Report Generation Functions
 function generateQuickReport(type) {
     showLoading('Generating quick report...');
-    
+
+    var postData = {};
+    if (window.csrfTokenName && window.csrfToken) {
+        postData[window.csrfTokenName] = window.csrfToken;
+    }
+
     $.ajax({
         url: '<?= base_url('reports/quick/') ?>' + type,
         method: 'POST',
+        data: postData,
         dataType: 'json',
         headers: {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -524,6 +477,10 @@ function generateQuickReport(type) {
 }
 
 function generateCustomReport() {
+    if (!$('#reportType option').length || $('#reportType option').length <= 1) {
+        showNotification('No report types available for your role.', 'warning');
+        return;
+    }
     $('#customReportModal').modal('show');
 }
 
@@ -542,6 +499,9 @@ function generateCustomReportNow() {
         report_name: $('#reportName').val(),
         description: $('#reportDescription').val()
     };
+    if (window.csrfTokenName && window.csrfToken) {
+        formData[window.csrfTokenName] = window.csrfToken;
+    }
 
     $('#customReportModal').modal('hide');
     showLoading('Generating custom report...');
@@ -594,9 +554,14 @@ function deleteReport(id) {
         title: 'Hapus Report',
         text: 'Apakah Anda yakin ingin menghapus report ini? Tindakan ini tidak dapat dibatalkan.',
         onConfirm: function() {
+            var delBody = {};
+            if (window.csrfTokenName && window.csrfToken) {
+                delBody[window.csrfTokenName] = window.csrfToken;
+            }
             $.ajax({
         url: '<?= base_url('reports/delete/') ?>' + id,
-        method: 'DELETE',
+        method: 'POST',
+        data: delBody,
         dataType: 'json',
         headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
         success: function(response) {
@@ -632,10 +597,35 @@ function exportReportsList() {
 function clearOldReports() {
     OptimaConfirm.danger({
         title: 'Hapus Report Lama',
-        text: 'Ini akan menghapus semua report yang lebih dari 30 hari. Lanjutkan?',
+        text: 'Ini akan menghapus semua report yang lebih dari 30 hari beserta file-nya. Tindakan ini tidak dapat dibatalkan.',
         confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Report Lama',
         onConfirm: function() {
-            alertSwal('info', 'Fitur hapus report lama akan segera tersedia!');
+            showLoading('Menghapus report lama...');
+            var body = { days: 30 };
+            if (window.csrfTokenName && window.csrfToken) {
+                body[window.csrfTokenName] = window.csrfToken;
+            }
+            $.ajax({
+                url: '<?= base_url('reports/clear-old') ?>',
+                method: 'POST',
+                data: body,
+                dataType: 'json',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(response) {
+                    hideLoading();
+                    if (response.success) {
+                        alertSwal('success', response.message, 'Selesai');
+                        setTimeout(function() { location.reload(); }, 2000);
+                    } else {
+                        alertSwal('error', response.message, 'Gagal');
+                    }
+                },
+                error: function(xhr) {
+                    hideLoading();
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Terjadi kesalahan.';
+                    alertSwal('error', msg, 'Gagal Hapus Report Lama');
+                }
+            });
         }
     });
 }
