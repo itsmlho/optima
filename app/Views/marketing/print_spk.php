@@ -4,6 +4,20 @@ $s   = $spesifikasi ?? [];
 $k   = $kontrak_spesifikasi ?? []; // Data quotation_specifications untuk Equipment section
 $status = strtoupper((string)($spk['status'] ?? $spk['status_spk'] ?? ''));
 $placeholder = ($status === 'SUBMITTED');
+
+if (!function_exists('resolvePrintSignerName')) {
+    function resolvePrintSignerName(array $data, array $keys, string $fallback): string
+    {
+        foreach ($keys as $key) {
+            $value = trim((string)($data[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -728,8 +742,15 @@ $placeholder = ($status === 'SUBMITTED');
             <div class="muted">Marketing</div>
             <?php 
                 // Auto-approve untuk marketing karena yang buat SPK adalah marketing
-                $currentUser = session()->get('user_name') ?? session()->get('username') ?? session()->get('nama') ?? null;
-                $createdBy = $spk['created_by_name'] ?? $spk['created_by'] ?? $spk['marketing_name'] ?? $currentUser;
+                $currentUser = trim(((string)session()->get('first_name')) . ' ' . ((string)session()->get('last_name')));
+                if ($currentUser === '') {
+                    $currentUser = session()->get('nama') ?? null;
+                }
+                $createdBy = resolvePrintSignerName(
+                    $spk,
+                    ['created_by_name', 'created_by_full_name', 'marketing_name', 'dibuat_oleh_name'],
+                    $currentUser ?: 'MARKETING'
+                );
                 $createdAt = $spk['created_at'] ?? $spk['dibuat_pada'] ?? null;
                 
                 // Marketing selalu APPROVED karena mereka yang membuat SPK

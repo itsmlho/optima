@@ -1134,6 +1134,20 @@ $routes->group('reports', ['namespace' => 'App\Controllers'], function($routes) 
     $routes->post('clear-old', 'Reports::clearOldReports');
 });
 
+// Centralized Master Data Routes
+$routes->group('master-data', ['filter' => 'permission:view_master_data'], static function ($routes) {
+    $routes->get('/', 'MasterDataController::index');
+    $routes->get('entities', 'MasterDataController::entities');
+    $routes->get('schema/(:segment)', 'MasterDataController::schema/$1');
+    $routes->get('list/(:segment)', 'MasterDataController::list/$1');
+    $routes->post('create/(:segment)', 'MasterDataController::create/$1');
+    $routes->put('update/(:segment)/(:segment)', 'MasterDataController::update/$1/$2');
+    $routes->post('update/(:segment)/(:segment)', 'MasterDataController::update/$1/$2'); // fallback
+    $routes->delete('delete/(:segment)/(:segment)', 'MasterDataController::delete/$1/$2');
+    $routes->post('delete/(:segment)/(:segment)', 'MasterDataController::delete/$1/$2'); // fallback
+    $routes->get('options/(:segment)', 'MasterDataController::options/$1');
+});
+
 // Administration Routes
 $routes->group('admin', static function ($routes) {
  

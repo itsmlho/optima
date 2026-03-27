@@ -2,6 +2,18 @@
 $quotation = $quotation ?? [];
 $specs = $specifications ?? [];
 $status = strtoupper((string)($quotation['stage'] ?? ''));
+helper('accessory');
+
+// Helper untuk format nama user agar tidak menampilkan username
+function resolvePrintPersonName(array $data, array $keys, string $fallback): string {
+    foreach ($keys as $key) {
+        $value = trim((string)($data[$key] ?? ''));
+        if ($value !== '') {
+            return $value;
+        }
+    }
+    return $fallback;
+}
 
 // Helper untuk format mata uang
 function formatCurrency($amount, $currency = 'IDR') {
@@ -547,7 +559,7 @@ function formatCurrency($amount, $currency = 'IDR') {
                 7: `Harga belum termasuk biaya mobilisasi Rp ${customValues.biayaMobilisasi || '4.000.000'}`,
                 8: 'Harga sudah termasuk training pengoperasian unit dan refresh training',
                 9: 'Laporan preventive maintenance serta evaluasi performance setiap bulannya',
-                10: 'Harga termasuk additional safety seperti Apar, Rotary Lamp, Blue Spot, redline dan kebutuhan safety lainnya',
+                10: 'Harga termasuk additional safety seperti Apar, Rotary Lamp, Klason dan kebutuhan safety lainnya',
                 11: 'Harga belum termasuk PPN 12%'
             };
             
@@ -671,7 +683,7 @@ function formatCurrency($amount, $currency = 'IDR') {
                                     <?php endif; ?>
                                     <?= !empty($spec['attachment_type']) ? (!empty($spec['jenis_baterai']) ? ' | ' : '&bull; ') . 'Attachment: ' . esc($spec['attachment_type']) : '' ?>
                                     <br>
-                                    <?= (!empty($spec['unit_accessories']) && $spec['unit_accessories'] !== 'null') ? '&bull; Acc: ' . esc($spec['unit_accessories']) : '' ?>
+                                    <?= (!empty($spec['unit_accessories']) && $spec['unit_accessories'] !== 'null') ? '&bull; Acc: ' . esc(format_accessory_csv($spec['unit_accessories'])) : '' ?>
                                 </div>
                             <?php else: ?>
                                 <div class="unit-title">
@@ -810,7 +822,14 @@ function formatCurrency($amount, $currency = 'IDR') {
                 <div style="margin-bottom: 8px; font-weight: bold;">Marketing Department</div>
                 <div class="sig-line"></div>
                 <div class="sig-name" style="font-weight: bold; margin-top: 5px;">
-                    <?= esc($quotation['created_by_name'] ?? 'Marketing Manager') ?>
+                    <?php
+                    $marketingSigner = resolvePrintPersonName(
+                        $quotation,
+                        ['created_by_name', 'created_by_full_name', 'marketing_full_name', 'marketing_name'],
+                        'Marketing Manager'
+                    );
+                    ?>
+                    <?= esc($marketingSigner) ?>
                 </div>
                 <?php if (!empty($quotation['created_by_phone'])): ?>
                 <div style="font-size: 8pt; color: #666; margin-top: 2px;">
@@ -915,7 +934,7 @@ function formatCurrency($amount, $currency = 'IDR') {
                 <div class="terms-item">
                     <input type="checkbox" name="terms" value="10" id="term10">
                     <div class="terms-text">
-                        <label for="term10"><strong>10. Additional Safety</strong><br>Termasuk Apar, Rotary Lamp, Blue Spot, redline dan kebutuhan safety lainnya</label>
+                        <label for="term10"><strong>10. Additional Safety</strong><br>Termasuk Apar, Rotary Lamp, Klason dan kebutuhan safety lainnya</label>
                     </div>
                 </div>
                 

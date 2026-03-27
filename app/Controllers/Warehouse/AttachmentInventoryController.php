@@ -1958,12 +1958,8 @@ class AttachmentInventoryController extends BaseController
     public function masterAttachment()
     {
         try {
-            $db = \Config\Database::connect();
-            $attachments = $db->table('attachment')
-                ->select('id_attachment as id, CONCAT(tipe, " - ", merk, " ", model) as text')
-                ->orderBy('tipe', 'ASC')
-                ->get()
-                ->getResultArray();
+            $lookup = new \App\Services\MasterDataLookupService();
+            $attachments = $lookup->attachmentOptions();
 
             return $this->response->setJSON([
                 'success' => true,
@@ -1984,12 +1980,8 @@ class AttachmentInventoryController extends BaseController
     public function masterBaterai()
     {
         try {
-            $db = \Config\Database::connect();
-            $batteries = $db->table('baterai')
-                ->select('id, CONCAT(merk_baterai, " - ", tipe_baterai, " (", jenis_baterai, ")") as text')
-                ->orderBy('merk_baterai', 'ASC')
-                ->get()
-                ->getResultArray();
+            $lookup = new \App\Services\MasterDataLookupService();
+            $batteries = $lookup->batteryOptions();
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2010,12 +2002,8 @@ class AttachmentInventoryController extends BaseController
     public function masterCharger()
     {
         try {
-            $db = \Config\Database::connect();
-            $chargers = $db->table('charger')
-                ->select('id_charger as id, CONCAT(merk_charger, " - ", tipe_charger) as text')
-                ->orderBy('merk_charger', 'ASC')
-                ->get()
-                ->getResultArray();
+            $lookup = new \App\Services\MasterDataLookupService();
+            $chargers = $lookup->chargerOptions();
 
             return $this->response->setJSON([
                 'success' => true,

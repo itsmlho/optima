@@ -1422,9 +1422,11 @@ function initPODeliveryTable() {
                     // Action buttons based on status (similar to delivery.php)
                     let actionButtons = '';
                     let actionNote = '';
-                    const packingListNo = JSON.stringify(row.packing_list_no || '');
+                    const packingListNo = String(row.packing_list_no || '')
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'");
                     const printButton = `
-                        <button class="btn btn-sm btn-outline-secondary" onclick="printPackingList(${data}, ${packingListNo}, event)" title="Print Packing List">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="printPackingList(${data}, '${packingListNo}', event)" title="Print Packing List">
                             <i class="fas fa-print"></i>
                         </button>
                     `;
@@ -2932,9 +2934,13 @@ function addNewDelivery(poId) {
             event.stopPropagation();
         }
         const url = '<?= base_url('purchasing/print-packing-list') ?>?delivery_id=' + deliveryId + '&packing_list=' + encodeURIComponent(packingListNo);
-        const printWindow = window.open(url, '_blank', 'noopener');
-        if (!printWindow) {
-            window.location.href = url;
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.opener = null;
+            printWindow.location.href = url;
+            printWindow.focus();
+        } else if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+            OptimaNotify.warning('Popup diblokir browser. Izinkan popup untuk membuka hasil print di tab baru.');
         }
     }
     

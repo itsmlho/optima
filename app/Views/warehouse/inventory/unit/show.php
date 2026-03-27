@@ -2,6 +2,7 @@
 
 <?php
 helper('global_permission');
+helper('accessory');
 $permissions = get_global_permission('warehouse');
 $can_edit = $permissions['edit'];
 
@@ -27,27 +28,20 @@ $unitNo = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-'.$unit['id_inventor
 $brand = !empty($unit['merk_unit']) ? $unit['merk_unit'] : ($unit['unit_tipe'] ?? 'N/A');
 $model = !empty($unit['model_unit']) ? $unit['model_unit'] : ($unit['unit_jenis'] ?? '');
 
-// Parse aksesoris JSON → readable labels
+// Parse aksesoris JSON -> readable labels
 $aksesorisRaw  = $unit['aksesoris'] ?? null;
-$aksesorisMap  = [
-    'rotary_lamp'  => 'Rotary Lamp',
-    'back_buzzer'  => 'Back Buzzer',
-    'mirror'       => 'Mirror',
-    'lampu_sorot'  => 'Work Light',
-    'fire_ext'     => 'Fire Extinguisher',
-    'safety_belt'  => 'Seat Belt',
-    'horn'         => 'Horn',
-    'strobe_light' => 'Strobe Light',
-];
 $aksesorisItems = [];
 if ($aksesorisRaw) {
     $decoded = json_decode($aksesorisRaw, true);
     if (is_array($decoded)) {
         foreach ($decoded as $k => $v) {
-            if ($v) $aksesorisItems[] = $aksesorisMap[$k] ?? ucwords(str_replace('_', ' ', $k));
+            if ($v) {
+                $aksesorisItems[] = format_accessory_label($k);
+            }
         }
     } else {
-        $aksesorisItems = array_values(array_filter(array_map('trim', explode(',', $aksesorisRaw))));
+        $rawItems = array_values(array_filter(array_map('trim', explode(',', $aksesorisRaw))));
+        $aksesorisItems = array_map(static fn ($item) => format_accessory_label($item), $rawItems);
     }
 }
 ?>
@@ -203,21 +197,21 @@ if ($aksesorisRaw) {
                                     <?php if (!$hasAny): ?>
                                     <p class="text-muted mb-0">Tidak ada attachment, charger, atau baterai terpasang.</p>
                                     <?php else: ?>
-                                    <?php if (!empty($comp['attachment'])): $a = $comp['attachment']; ?>
+                                    <?php if (!empty($comp['attachment']) && is_array($comp['attachment'])): $a = $comp['attachment']; ?>
                                     <div class="col-md-4">
                                         <span class="badge bg-secondary me-1">Attachment</span>
                                         <strong><?= esc(trim(($a['merk'] ?? '').' '.($a['model'] ?? '').' '.($a['tipe'] ?? '')) ?: 'N/A') ?></strong>
                                         <?php if (!empty($a['sn_attachment'])): ?><br><span class="text-muted font-monospace">S/N: <?= esc($a['sn_attachment']) ?></span><?php endif; ?>
                                     </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($comp['charger'])): $c = $comp['charger']; ?>
+                                    <?php if (!empty($comp['charger']) && is_array($comp['charger'])): $c = $comp['charger']; ?>
                                     <div class="col-md-4">
                                         <span class="badge bg-info me-1">Charger</span>
                                         <strong><?= esc(trim(($c['merk_charger'] ?? '').' '.($c['tipe_charger'] ?? '')) ?: 'N/A') ?></strong>
                                         <?php if (!empty($c['sn_charger'])): ?><br><span class="text-muted font-monospace">S/N: <?= esc($c['sn_charger']) ?></span><?php endif; ?>
                                     </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($comp['battery'])): $b = $comp['battery']; ?>
+                                    <?php if (!empty($comp['battery']) && is_array($comp['battery'])): $b = $comp['battery']; ?>
                                     <div class="col-md-4">
                                         <span class="badge bg-warning text-dark me-1">Baterai</span>
                                         <strong><?= esc(trim(($b['merk_baterai'] ?? '').' '.($b['tipe_baterai'] ?? '').' '.($b['jenis_baterai'] ?? '')) ?: 'N/A') ?></strong>

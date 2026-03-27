@@ -241,7 +241,7 @@
             color: #333;
         }
         
-        /* --- Aksesoris Checkboxes --- */
+        /* --- Unit Accessories Checkboxes --- */
         .accessory-checkbox {
             cursor: default;
             font-size: 8pt;
@@ -552,7 +552,7 @@
                         ✓ = Terpasang dan berfungsi | ✗ = Tidak ada / rusak | - = Tidak dibutuhkan
                     </div>
                     
-                    <!-- Aksesoris Unit -->
+                    <!-- Unit Accessories -->
                     <div style="margin-bottom: 15px;">
                         <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 8pt;">
                             <div><span class="accessory-checkbox" data-accessory="LAMPU UTAMA">☐</span> Lampu (Utama, Mundur, Sign, Stop)</div>
@@ -568,22 +568,33 @@
                             <div><span class="accessory-checkbox" data-accessory="WORK LIGHT">☐</span> Work Light</div>
                             <div><span class="accessory-checkbox" data-accessory="BACK BUZZER">☐</span> Back Buzzer</div>
                             <div><span class="accessory-checkbox" data-accessory="CAMERA AI">☐</span> Camera AI</div>
-                            <div><span class="accessory-checkbox" data-accessory="CAMERA">☐</span> Camera</div>
+                            <div><span class="accessory-checkbox" data-accessory="CAMERA MONITOR">☐</span> Camera Monitor</div>
                             <div><span class="accessory-checkbox" data-accessory="SPEED LIMITER">☐</span> Speed Limiter</div>
                             <div><span class="accessory-checkbox" data-accessory="LASER FORK">☐</span> Laser Fork</div>
                             <div><span class="accessory-checkbox" data-accessory="VOICE ANNOUNCER">☐</span> Voice Announcer</div>
                             <div><span class="accessory-checkbox" data-accessory="HORN KLASON">☐</span> Horn Klason</div>
                             <div><span class="accessory-checkbox" data-accessory="BIO METRIC">☐</span> Bio Metric</div>
                             <div><span class="accessory-checkbox" data-accessory="ACRYLIC">☐</span> Acrylic</div>
-                            <div><span class="accessory-checkbox" data-accessory="P3K">☐</span> P3K</div>
-                            <div><span class="accessory-checkbox" data-accessory="SPARS ARRESTOR">☐</span> Spars Arrestor</div>
-                            <div><span class="accessory-checkbox" data-accessory="SAFETY BELT INTERLOC">☐</span> Safety Belt Interloc</div>
+                            <div><span class="accessory-checkbox" data-accessory="FIRST AID KIT">☐</span> First Aid Kit</div>
+                            <div><span class="accessory-checkbox" data-accessory="SPARK ARRESTOR">☐</span> Spark Arrestor</div>
+                            <div><span class="accessory-checkbox" data-accessory="SAFETY BELT INTERLOCK">☐</span> Safety Belt Interlock</div>
+                            <div><span class="accessory-checkbox" data-accessory="MIRROR">☐</span> Mirror / Spion</div>
+                            <div><span class="accessory-checkbox" data-accessory="SAFETY BELT STANDAR">☐</span> Safety Belt Standar</div>
+                            <div><span class="accessory-checkbox" data-accessory="LOAD BACKREST">☐</span> Load Backrest</div>
+                            <div><span class="accessory-checkbox" data-accessory="FORKS">☐</span> Forks</div>
+                            <div><span class="accessory-checkbox" data-accessory="OVERHEAD GUARD">☐</span> Overhead Guard</div>
+                            <div><span class="accessory-checkbox" data-accessory="DOCUMENT HOLDER">☐</span> Document Holder</div>
+                            <div><span class="accessory-checkbox" data-accessory="TOOL KIT">☐</span> Tool Kit</div>
+                            <div><span class="accessory-checkbox" data-accessory="APAR BRACKET">☐</span> APAR + Bracket</div>
+                            <div><span class="accessory-checkbox" data-accessory="ANTI STATIC STRAP">☐</span> Anti-Static Strap</div>
+                            <div><span class="accessory-checkbox" data-accessory="WHEEL STOPPER CHOCK">☐</span> Wheel Stopper / Chock</div>
+                            <div><span class="accessory-checkbox" data-accessory="FORK EXTENSION">☐</span> Fork Extension</div>
                         </div>
                     </div>
                     
                     <!-- Summary Row -->
                     <div style="margin-top: 8px; padding: 4px; background-color: #f9f9f9; border: 1px solid #ddd; font-size: 6pt;">
-                        <strong>Total Aksesoris Terpasang (database):</strong> <span id="accessories-summary">0 aksesoris</span>
+                        <strong>Total Unit Accessories Terpasang (database):</strong> <span id="accessories-summary">0 item</span>
                     </div>
                 </div>
             </div>
@@ -624,6 +635,7 @@
         </div>
     </div>
     
+    <?= $this->include('partials/accessory_js') ?>
     <script>
         // Check if loaded in iframe or embedded mode
         const isInIframe = window.parent !== window;
@@ -880,6 +892,13 @@
         }
         
         // Populate Accessories function
+        function normalizeAccessoryValue(value) {
+            if (window.OptimaAccessory && typeof window.OptimaAccessory.normalizeCheckboxValue === 'function') {
+                return window.OptimaAccessory.normalizeCheckboxValue(value);
+            }
+            return String(value || '').trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+        }
+
         function populateAccessories(accessories) {
             // console.log('🔧 Populating print accessories:', accessories);
             
@@ -894,7 +913,7 @@
             // Check accessories that exist in database
             if (accessories && accessories.length > 0) {
                 accessories.forEach(function(accessory) {
-                    let accessoryValue = accessory.name || accessory.accessory_name || accessory;
+                    let accessoryValue = normalizeAccessoryValue(accessory.name || accessory.accessory_name || accessory);
                     // console.log('🔍 Looking for print accessory:', accessoryValue);
                     
                     // Find checkbox with matching data-accessory value
@@ -913,7 +932,7 @@
             // Update summary
             const summaryElement = document.getElementById('accessories-summary');
             if (summaryElement) {
-                summaryElement.textContent = `${checkedCount} aksesoris`;
+                summaryElement.textContent = `${checkedCount} item`;
             }
             
             // console.log(`📊 Print: Auto-checked ${checkedCount} accessories out of ${accessories.length}`);

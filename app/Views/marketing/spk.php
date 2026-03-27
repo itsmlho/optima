@@ -264,11 +264,11 @@ $can_export = $permissions['export'];
                                             <input class="form-control" name="po_kontrak_nomor" id="inpPoKontrak" readonly>
                                         </div>
                                         <div class="col-md-12">
-                                            <label class="form-label"><?= lang('Marketing.select_location') ?> <span class="text-danger">*</span></label>
-                                            <select class="form-select" name="customer_location_id" id="customerLocationSelect" required>
-                                                <option value="">-- <?= lang('Marketing.select_location') ?> --</option>
-                                            </select>
-                                            <div class="form-text"><?= lang('Marketing.select_location_pic_autofill') ?></div>
+                                            <label class="form-label"><?= lang('Marketing.select_location') ?></label>
+                                            <div class="form-control bg-light">
+                                                Lokasi customer dipilih saat Create DI.
+                                            </div>
+                                            <div class="form-text">Tahap SPK tetap global, pemilahan lokasi dilakukan di DI.</div>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label"><?= lang('Marketing.pic_person_in_charge') ?></label>
@@ -535,6 +535,7 @@ $can_export = $permissions['export'];
         </div>
     </div>
 
+    <?= $this->include('partials/accessory_js') ?>
     <script>
     // UI Badge Helper - Generate consistent badge colors based on type (Optima badge-soft-* system)
     function uiBadge(type, text, options = {}) {
@@ -1369,11 +1370,6 @@ $can_export = $permissions['export'];
                     // Load specifications for this quotation
                     loadQuotationSpesifikasiForSpk(quotationId);
                     
-                    // Load customer locations if customer_id is available
-                    if (customerId) {
-                        loadCustomerLocations(customerId);
-                    }
-                    
                     // Load units for ATTACHMENT if SPK type is ATTACHMENT
                     const jenisSpk = document.getElementById('jenisSpkSelect');
                     if (jenisSpk && jenisSpk.value === 'ATTACHMENT') {
@@ -1575,10 +1571,7 @@ $can_export = $permissions['export'];
                             }
                         }
                         
-                        // Load customer locations
-                        if (quotation.created_customer_id) {
-                            loadCustomerLocations(quotation.created_customer_id, quotation.location_id);
-                        }
+                        // Customer location is selected in DI stage.
                     }
                 })
                 .catch(error => {
@@ -1648,10 +1641,7 @@ $can_export = $permissions['export'];
                             }
                         }
                         
-                        // Load customer locations if customer_id is available
-                        if (quotation.created_customer_id) {
-                            loadCustomerLocations(quotation.created_customer_id);
-                        }
+                        // Customer location is selected in DI stage.
                     }
                     
                     let options = '<option value="">-- Select Specification from Quotation --</option>';
@@ -2809,38 +2799,45 @@ $can_export = $permissions['export'];
             } else if (s && s.spek_kode) {
                 specDisplay = s.spek_kode;
             }
+
+            const formatAccessoryList = (list) => {
+                const items = window.OptimaAccessory
+                    ? window.OptimaAccessory.formatList(Array.isArray(list) ? list : [])
+                    : (Array.isArray(list) ? list : []);
+                return items.join(', ');
+            };
             
             // Process accessories - prioritize kontrak_spec data
             let aksText = '-';
             if (ks && ks.aksesoris) {
                 const aks = ks.aksesoris;
                 if (Array.isArray(aks) && aks.length > 0) {
-                    aksText = aks.join(', ');
+                    aksText = formatAccessoryList(aks);
                 } else if (typeof aks === 'string' && aks.trim()) {
                     try {
                         const parsed = JSON.parse(aks);
                         if (Array.isArray(parsed) && parsed.length > 0) {
-                            aksText = parsed.join(', ');
+                            aksText = formatAccessoryList(parsed);
                         } else {
-                            aksText = aks;
+                            aksText = formatAccessoryList(String(aks).split(',').map(v => v.trim()).filter(Boolean)) || aks;
                         }
                     } catch(e) {
-                        aksText = aks;
+                        aksText = formatAccessoryList(String(aks).split(',').map(v => v.trim()).filter(Boolean)) || aks;
                     }
                 }
             } else if (s && s.aksesoris) {
                 if (Array.isArray(s.aksesoris) && s.aksesoris.length > 0) {
-                    aksText = s.aksesoris.join(', ');
+                    aksText = formatAccessoryList(s.aksesoris);
                 } else if (typeof s.aksesoris === 'string' && s.aksesoris.trim()) {
                     try {
                         const parsed = JSON.parse(s.aksesoris);
                         if (Array.isArray(parsed) && parsed.length > 0) {
-                            aksText = parsed.join(', ');
+                            aksText = formatAccessoryList(parsed);
                         } else {
-                            aksText = s.aksesoris;
+                            aksText = formatAccessoryList(String(s.aksesoris).split(',').map(v => v.trim()).filter(Boolean)) || s.aksesoris;
                         }
                     } catch(e) {
-                        aksText = s.aksesoris;
+                        aksText = formatAccessoryList(String(s.aksesoris).split(',').map(v => v.trim()).filter(Boolean)) || s.aksesoris;
                     }
                 }
             }

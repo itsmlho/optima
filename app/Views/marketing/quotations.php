@@ -441,22 +441,17 @@ window.addEventListener('DOMContentLoaded', function() {
                             <hr class="my-2">
                             <h6 class="text-info mb-3"><i class="fas fa-user-tie me-2"></i><?= $isEn ? 'Operator Details' : 'Detail Operator' ?></h6>
                             <div class="row g-3" id="operatorDetails">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label"><?= $isEn ? 'Operator Quantity' : 'Jumlah Operator' ?> <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control" name="operator_quantity" id="operatorQuantity" min="1" value="1" placeholder="<?= $isEn ? 'Operator quantity' : 'Jumlah operator' ?>">
                                     <small class="text-muted"><?= $isEn ? 'How many operators per unit' : 'Per unit berapa operator' ?></small>
                                 </div>
-                                
-                                <div class="col-md-4">
-                                    <label class="form-label"><?= $isEn ? 'Price per Operator (Monthly)' : 'Harga per Operator (Monthly)' ?> <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="operator_price_monthly" id="operatorPriceMonthly" inputmode="numeric" autocomplete="off" placeholder="<?= $isEn ? 'IDR per operator per month' : 'Rp per operator per bulan' ?>">
-                                    <small class="text-muted"><?= $isEn ? 'Monthly price per operator' : 'Harga bulanan per operator' ?></small>
-                                </div>
-                                
-                                <div class="col-md-4">
-                                    <label class="form-label"><?= $isEn ? 'Price per Operator (Daily)' : 'Harga per Operator (Daily)' ?></label>
-                                    <input type="text" class="form-control" name="operator_price_daily" id="operatorPriceDaily" inputmode="numeric" autocomplete="off" placeholder="<?= $isEn ? 'IDR per operator per day' : 'Rp per operator per hari' ?>">
-                                    <small class="text-muted"><?= $isEn ? 'Optional - daily rate' : 'Opsional - harga harian' ?></small>
+                                <div class="col-md-6">
+                                    <label class="form-label"><?= $isEn ? 'Operator Rate Source' : 'Sumber Tarif Operator' ?></label>
+                                    <div class="form-control bg-light">
+                                        <?= $isEn ? 'Auto from Customer Location in DI ' : 'Otomatis dari Customer Location saat pembuatan DI' ?>
+                                    </div>
+                                    <small class="text-muted"><?= $isEn ? 'No operator rate input in quotation.' : 'Harga operator tidak diisi di quotation.' ?></small>
                                 </div>
                             </div>
                         </div>
@@ -505,10 +500,16 @@ window.addEventListener('DOMContentLoaded', function() {
                             <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
                         </div>
                         
-                        <div class="col-md-6">
-                            <label class="form-label"><?= lang('Marketing.mast') ?> (Tinggi Angkat)</label>
-                            <select class="form-select" name="mast_id" id="specMast">
-                                <option value="">Pilih Mast (Opsional)</option>
+                        <div class="col-md-3">
+                            <label class="form-label"><?= lang('Marketing.mast') ?> (Model)</label>
+                            <select class="form-select" id="specMastModel">
+                                <option value="">Pilih Model Mast</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><?= lang('Marketing.mast') ?> (Tinggi)</label>
+                            <select class="form-select" name="mast_id" id="specMastHeight">
+                                <option value="">Pilih Tinggi Mast</option>
                             </select>
                             <small class="text-muted">Untuk mast custom, tulis di Notes</small>
                         </div>
@@ -521,15 +522,101 @@ window.addEventListener('DOMContentLoaded', function() {
                         </div>
                         
                         <!-- Accessories Section -->
-                        <div class="col-12"><hr><h6><?= lang('Marketing.unit_accessories') ?></h6></div>
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <hr class="w-100">
+                        </div>
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><?= lang('Marketing.unit_accessories') ?></h6>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnSetAksesoriStandar">
+                                <i class="fas fa-check-double me-1"></i>Set Aksesori Standar
+                            </button>
+                        </div>
                         <div class="col-12">
                             <div class="row g-2">
-                                <!-- Row 1 -->
+                                <div class="col-12 mt-1">
+                                    <div class="fw-semibold text-success">Aksesori Standar (Bawaan Pabrik)</div>
+                                </div>
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="main_light" id="acc_main_light">
-                                        <label class="form-check-label" for="acc_main_light">Main Light (Main, Reverse, Signal, Stop)</label>
+                                        <label class="form-check-label" for="acc_main_light">Main Light Set (Headlight, Reverse, Signal, Stop Lamp)</label>
                                     </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="work_light" id="acc_work_light">
+                                        <label class="form-check-label" for="acc_work_light">Work Light (Lampu Sorot Depan/Tiang)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="rotary_lamp" id="acc_rotary_lamp">
+                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp (Lampu Peringatan Berputar)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="back_buzzer" id="acc_back_buzzer">
+                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer (Alarm Mundur)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_klason" id="acc_horn_klason">
+                                        <label class="form-check-label" for="acc_horn_klason">Horn / Klakson (Tipe Standar)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="mirror" id="acc_mirror">
+                                        <label class="form-check-label" for="acc_mirror">Mirror / Spion (Kiri & Kanan)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt" id="acc_safety_belt">
+                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Standar (Manual)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="load_backrest" id="acc_load_backrest">
+                                        <label class="form-check-label" for="acc_load_backrest">Load Backrest</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="forks" id="acc_forks">
+                                        <label class="form-check-label" for="acc_forks">Forks (Sepasang Garpu Standar)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="overhead_guard" id="acc_overhead_guard">
+                                        <label class="form-check-label" for="acc_overhead_guard">Overhead Guard</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="document_holder" id="acc_document_holder">
+                                        <label class="form-check-label" for="acc_document_holder">Document Holder</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="tool_kit" id="acc_tool_kit">
+                                        <label class="form-check-label" for="acc_tool_kit">Tool Kit</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="apar_bracket" id="acc_apar_bracket">
+                                        <label class="form-check-label" for="acc_apar_bracket">APAR + Bracket</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mt-3">
+                                    <div class="fw-semibold text-primary">Aksesori Tambahan (Optional / Safety Upgrade)</div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-check">
@@ -543,28 +630,6 @@ window.addEventListener('DOMContentLoaded', function() {
                                         <label class="form-check-label" for="acc_red_line">Red Line</label>
                                     </div>
                                 </div>
-                                
-                                <!-- Row 2 -->
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="work_light" id="acc_work_light">
-                                        <label class="form-check-label" for="acc_work_light">Work Light (Lampu Sorot)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="rotary_lamp" id="acc_rotary_lamp">
-                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="back_buzzer" id="acc_back_buzzer">
-                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 3 -->
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera_ai" id="acc_camera_ai">
@@ -574,7 +639,7 @@ window.addEventListener('DOMContentLoaded', function() {
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera" id="acc_camera">
-                                        <label class="form-check-label" for="acc_camera">Camera</label>
+                                        <label class="form-check-label" for="acc_camera">Camera Monitor</label>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -583,8 +648,6 @@ window.addEventListener('DOMContentLoaded', function() {
                                         <label class="form-check-label" for="acc_sensor_parking">Sensor Parking</label>
                                     </div>
                                 </div>
-                                
-                                <!-- Row 4 -->
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="speed_limiter" id="acc_speed_limiter">
@@ -603,8 +666,6 @@ window.addEventListener('DOMContentLoaded', function() {
                                         <label class="form-check-label" for="acc_voice_announcer">Voice Announcer</label>
                                     </div>
                                 </div>
-                                
-                                <!-- Row 5 -->
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_speaker" id="acc_horn_speaker">
@@ -613,38 +674,10 @@ window.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_klason" id="acc_horn_klason">
-                                        <label class="form-check-label" for="acc_horn_klason">Horn Klason</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="bio_metric" id="acc_bio_metric">
                                         <label class="form-check-label" for="acc_bio_metric">Bio Metric</label>
                                     </div>
                                 </div>
-                                
-                                <!-- Row 6 -->
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="acrylic" id="acc_acrylic">
-                                        <label class="form-check-label" for="acc_acrylic">Acrylic</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="first_aid_kit" id="acc_first_aid_kit">
-                                        <label class="form-check-label" for="acc_first_aid_kit">First Aid Kit</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt" id="acc_safety_belt">
-                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Standar</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 7 -->
                                 <div class="col-md-4">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt_interlock" id="acc_safety_belt_interlock">
@@ -659,8 +692,32 @@ window.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="mirror" id="acc_mirror">
-                                        <label class="form-check-label" for="acc_mirror">Mirror (Spion)</label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="anti_static_strap" id="acc_anti_static_strap">
+                                        <label class="form-check-label" for="acc_anti_static_strap">Anti-Static Strap</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="acrylic" id="acc_acrylic">
+                                        <label class="form-check-label" for="acc_acrylic">Acrylic Roof/Windshield</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="first_aid_kit" id="acc_first_aid_kit">
+                                        <label class="form-check-label" for="acc_first_aid_kit">First Aid Kit</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="wheel_stopper_chock" id="acc_wheel_stopper_chock">
+                                        <label class="form-check-label" for="acc_wheel_stopper_chock">Wheel Stopper / Chock</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="fork_extension" id="acc_fork_extension">
+                                        <label class="form-check-label" for="acc_fork_extension">Fork Extension</label>
                                     </div>
                                 </div>
                             </div>
@@ -1153,6 +1210,7 @@ window.addEventListener('DOMContentLoaded', function() {
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
+<?= $this->include('partials/accessory_js') ?>
 <script>
 /**
  * Quotations Module - Using Optima Badge Standards (optima-pro.css)
@@ -1334,11 +1392,11 @@ $(document).ready(function() {
         if (isChecked) {
             operatorDetailsContainer.slideDown(300);
             // Make operator fields required
-            $('#operatorQuantity, #operatorPriceMonthly').prop('required', true);
+            $('#operatorQuantity').prop('required', true);
         } else {
             operatorDetailsContainer.slideUp(300);
             // Remove required and clear values
-            $('#operatorQuantity, #operatorPriceMonthly, #operatorPriceDaily')
+            $('#operatorQuantity')
                 .prop('required', false)
                 .val('');
         }
@@ -2920,8 +2978,8 @@ function displayQuotationSpecifications(specifications) {
         let accessoriesBadges = '';
         if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
             const accessories = spec.unit_accessories.split(',').map(a => a.trim());
-            accessoriesBadges = accessories.map(acc => 
-                `<span class="badge badge-soft-blue me-1"><i class="fas fa-plus-circle me-1"></i>${acc}</span>`
+            accessoriesBadges = accessories.map(acc =>
+                `<span class="badge badge-soft-blue me-1"><i class="fas fa-plus-circle me-1"></i>${formatAccessoryLabel(acc)}</span>`
             ).join('');
         }
         
@@ -3060,12 +3118,16 @@ function proceedWithSpecificationModal() {
     loadDepartemenForSpecification();
     loadTipeUnitForSpecification(); // This will load data but not populate options until dept is selected
     loadKapasitasForSpecification();
-    loadUnitBrandsForSpecification();
     loadAttachmentTypesForSpecification();
     loadValvesForSpecification();
-    loadMastsForSpecification();
+    loadMastModelsForSpecification();
     loadTiresForSpecification();
     loadWheelsForSpecification();
+
+    // Unit Brand must follow selected department to prevent cross-department selection
+    $('#specMerkUnit')
+        .prop('disabled', true)
+        .html('<option value="">-- Select Department First --</option>');
     
     // Initialize battery and charger as disabled
     $('#specJenisBaterai, #specCharger').prop('disabled', true);
@@ -3122,6 +3184,21 @@ $(document).on('change', '#specDepartemen', function() {
     
     // Update Unit Type options based on selected department
     updateTipeUnitOptions();
+
+    // Unit Brand is strictly department-based
+    if (selectedDept) {
+        $('#specMerkUnit').prop('disabled', false);
+        loadUnitBrandsForSpecification();
+    } else {
+        $('#specMerkUnit')
+            .val('')
+            .prop('disabled', true)
+            .html('<option value="">-- Select Department First --</option>');
+    }
+});
+
+$(document).on('change', '#specMastModel', function() {
+    loadMastHeightsForSpecification($(this).val());
 });
 
 // Unit Type change handler - handle cascading to other components
@@ -3290,13 +3367,34 @@ function loadChargersForSpecification() {
 }
 
 function loadUnitBrandsForSpecification() {
-    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit', function(response) {
+    const selectedDeptId = $('#specDepartemen').val();
+
+    if (!selectedDeptId) {
+        $('#specMerkUnit')
+            .val('')
+            .prop('disabled', true)
+            .html('<option value="">-- Select Department First --</option>');
+        return Promise.resolve();
+    }
+
+    let endpoint = '<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit';
+    endpoint += `&departemen_id=${encodeURIComponent(selectedDeptId)}`;
+
+    $('#specMerkUnit')
+        .prop('disabled', false)
+        .html('<option value="">Loading brands...</option>');
+
+    return $.get(endpoint, function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Brand --</option>';
-            response.data.forEach(brand => {
-                // Backend returns {id: model_unit_id, name: "Brand - Model"}
-                options += `<option value="${brand.id}">${brand.name}</option>`;
-            });
+            if (response.data.length === 0) {
+                options = '<option value="">No brands available for selected department</option>';
+            } else {
+                response.data.forEach(brand => {
+                    // Backend returns {id: model_unit_id, name: "Brand - Model"}
+                    options += `<option value="${brand.id}">${brand.name}</option>`;
+                });
+            }
             $('#specMerkUnit').html(options);
         }
     }).fail(function(xhr) {
@@ -3377,30 +3475,44 @@ function loadValvesForSpecification() {
     });
 }
 
-function loadMastsForSpecification() {
-    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
+function loadMastModelsForSpecification() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast_model', function(response) {
         if (response.success) {
-            // Sort mast data by height in MM (from smallest to largest)
-            const sortedData = response.data.sort((a, b) => {
-                // Extract numeric value from mast name (e.g., "5400 MM" -> 5400)
-                const matchA = a.name.match(/(\d+)\s*MM/i);
-                const matchB = b.name.match(/(\d+)\s*MM/i);
-                
-                const numA = matchA ? parseInt(matchA[1]) : 0;
-                const numB = matchB ? parseInt(matchB[1]) : 0;
-                
-                return numA - numB;
-            });
-            
-            let options = '<option value="">-- Select Mast --</option>';
-            sortedData.forEach(mast => {
+            let options = '<option value="">-- Pilih Model Mast --</option>';
+            response.data.forEach(mast => {
                 options += `<option value="${mast.id}">${mast.name}</option>`;
             });
-            $('#specMast').html(options);
+            $('#specMastModel').html(options);
+            $('#specMastHeight').html('<option value="">Pilih model mast terlebih dahulu</option>');
         }
     }).fail(function(xhr) {
-        console.error('Failed to load masts:', xhr.responseText);
-        $('#specMast').html('<option value="">Error loading masts</option>');
+        console.error('Failed to load mast models:', xhr.responseText);
+        $('#specMastModel').html('<option value="">Error loading mast models</option>');
+        $('#specMastHeight').html('<option value="">Error loading mast heights</option>');
+    });
+}
+
+function loadMastHeightsForSpecification(mastModelId, selectedMastId = '') {
+    const modelName = $('#specMastModel option:selected').text();
+    if (!mastModelId || !modelName || modelName.includes('Pilih')) {
+        $('#specMastHeight').html('<option value="">Pilih model mast terlebih dahulu</option>');
+        return Promise.resolve();
+    }
+
+    return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=mast_height&mast_model=${encodeURIComponent(modelName)}`, function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Pilih Tinggi Mast --</option>';
+            response.data.forEach(mast => {
+                options += `<option value="${mast.id}">${mast.name}</option>`;
+            });
+            $('#specMastHeight').html(options);
+            if (selectedMastId) {
+                $('#specMastHeight').val(selectedMastId);
+            }
+        }
+    }).fail(function(xhr) {
+        console.error('Failed to load mast heights:', xhr.responseText);
+        $('#specMastHeight').html('<option value="">Error loading mast heights</option>');
     });
 }
 
@@ -3438,6 +3550,32 @@ function loadWheelsForSpecification() {
 // Bilingual helper for inline translations
 const isEnLocale = (document.documentElement.lang || '').toLowerCase().startsWith('en');
 const tr = (idText, enText) => isEnLocale ? enText : idText;
+function formatAccessoryLabel(value) {
+    return window.OptimaAccessory ? window.OptimaAccessory.formatLabel(value) : String(value || '').trim();
+}
+const standardAccessories = [
+    'main_light',
+    'work_light',
+    'rotary_lamp',
+    'back_buzzer',
+    'horn_klason',
+    'safety_belt',
+    'mirror',
+    'load_backrest',
+    'forks',
+    'overhead_guard',
+    'document_holder',
+    'tool_kit',
+    'apar_bracket'
+];
+
+$(document).on('click', '#btnSetAksesoriStandar', function() {
+    const accessoryInputs = $('[name="aksesoris[]"]');
+    accessoryInputs.prop('checked', false);
+    standardAccessories.forEach((item) => {
+        accessoryInputs.filter(`[value="${item}"]`).prop('checked', true);
+    });
+});
 
 // Utility: Remove all non-digit characters from value
 function sanitizeRupiahToNumber(value) {
@@ -3589,6 +3727,8 @@ $('#addSpecificationForm').on('submit', function(e) {
         formData.set('include_operator', '1');
         const opQty = parseInt($('#operatorQuantity').val()) || 1;
         formData.set('operator_quantity', opQty.toString());
+        formData.set('operator_price_monthly', '0');
+        formData.set('operator_price_daily', '0');
         console.log('Ã¢Å“â€¦ Operator enabled - quantity:', opQty);
     } else {
         // Operator not included - set all to 0/false
@@ -3950,7 +4090,7 @@ function editSpecification(specId) {
                 loadUnitBrandsForSpecification(),
                 loadAttachmentTypesForSpecification(),
                 loadValvesForSpecification(),
-                loadMastsForSpecification(),
+                loadMastModelsForSpecification(),
                 loadTiresForSpecification(),
                 loadWheelsForSpecification(),
                 loadTipeUnitForSpecification()
@@ -3961,9 +4101,6 @@ function editSpecification(specId) {
                 console.log('Ã°Å¸â€œÅ’ Setting Capacity:', spec.kapasitas_id);
                 $('#specKapasitas').val(spec.kapasitas_id || '');
                 
-                console.log('Ã°Å¸â€œÅ’ Setting Unit Brand:', spec.merk_unit);
-                $('#specMerkUnit').val(spec.brand_id || '');
-                
                 console.log('Ã°Å¸â€œÅ’ Setting Attachment Type:', spec.attachment_tipe);
                 $('#specAttachmentTipe').val(spec.attachment_id || '');
                 
@@ -3971,7 +4108,18 @@ function editSpecification(specId) {
                 $('#specValve').val(spec.valve_id || '');
                 
                 console.log('Ã°Å¸â€œÅ’ Setting Mast:', spec.mast_id);
-                $('#specMast').val(spec.mast_id || '');
+                if (spec.mast_name) {
+                    const mastModelName = String(spec.mast_name).split(' - ')[0].trim();
+                    const mastModelOption = $('#specMastModel option').filter(function() {
+                        return $(this).text().trim() === mastModelName;
+                    }).first();
+                    if (mastModelOption.length) {
+                        $('#specMastModel').val(mastModelOption.val());
+                        loadMastHeightsForSpecification(mastModelOption.val(), spec.mast_id || '');
+                    }
+                } else if (spec.mast_id) {
+                    $('#specMastHeight').val(spec.mast_id);
+                }
                 
                 console.log('Ã°Å¸â€œÅ’ Setting Tire:', spec.ban_id);
                 $('#specBan').val(spec.ban_id || '');
@@ -3982,6 +4130,12 @@ function editSpecification(specId) {
                 // STEP 2: Set department and handle cascading
                 $('#specDepartemen').val(spec.departemen_id || '');
                 console.log('Ã¢Å“â€¦ Department set to:', spec.departemen_id);
+
+                // Reload Unit Brand after department is selected to ensure strict department filtering
+                loadUnitBrandsForSpecification().then(() => {
+                    console.log('Ã°Å¸â€œÅ’ Setting Unit Brand:', spec.merk_unit);
+                    $('#specMerkUnit').val(spec.brand_id || '');
+                });
                 
                 // Check if electric department
                 const deptText = $('#specDepartemen option:selected').text().toLowerCase();
@@ -4776,7 +4930,10 @@ function openPrintSpecModal(quotationId) {
                         if (spec.wheel_name) details.push(spec.wheel_name);
                         if (spec.jenis_baterai) details.push(`Baterai: ${spec.jenis_baterai}`);
                         if (spec.attachment_type) details.push(`Attachment: ${spec.attachment_type}`);
-                        if (spec.unit_accessories && spec.unit_accessories !== 'null') details.push(`Acc: ${spec.unit_accessories}`);
+                        if (spec.unit_accessories && spec.unit_accessories !== 'null') {
+                            const accSummary = spec.unit_accessories.split(',').map(a => formatAccessoryLabel(a)).join(', ');
+                            details.push(`Acc: ${accSummary}`);
+                        }
                         
                         if (details.length > 0) {
                             desc += '<br><small class="text-muted">' + details.join(' | ') + '</small>';
@@ -5020,8 +5177,8 @@ function markAsDeal(quotationId) {
 
 function proceedMarkAsDeal(quotationId, skipValidation = false) {
     const confirmText = skipValidation ? 
-        'Will mark as deal and automatically create customer record (profile can be completed later).' :
-        'Will mark as deal and automatically create customer record.';
+        'Will mark as deal and automatically create or link the customer record. If automatic customer creation fails, a manual fallback button will remain available.' :
+        'Will mark as deal and automatically create or link the customer record.';
         
     OptimaUI.fire({
         title: 'Mark as Deal?',
@@ -5040,13 +5197,12 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
             })
                 .done(function(response) {
                     if (response.success) {
-                        // Show location modal and DO NOT update table yet
-                        // Table will be updated only after location workflow completes
-                        showCustomerLocationModal(response.customer_id, quotationId, response.message);
-                        
-                        // Do NOT reload table here - wait for location selection completion
-                        // quotationsTable.ajax.reload(); // Removed
-                        // loadStatistics(); // Removed
+                        showCustomerLocationModal(
+                            response.customer_id,
+                            quotationId,
+                            response.message,
+                            response.needs_manual_customer_creation === true
+                        );
                     } else {
                         OptimaUI.fire('Error', response.message, 'error');
                     }
@@ -5064,8 +5220,14 @@ function completeCustomerProfile(quotationId) {
     $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + quotationId)
         .done(function(response) {
             if (response.success && response.data && response.data.created_customer_id) {
-                // Show customer location modal directly
-                showCustomerLocationModal(response.data.created_customer_id, quotationId, 'Please complete customer profile and location to proceed with contract creation.');
+                const customerEditUrl = '<?= base_url('customer-management/showCustomer/') ?>' + response.data.created_customer_id;
+                window.open(customerEditUrl, '_blank');
+
+                OptimaUI.fire({
+                    title: 'Customer Profile Opened',
+                    text: 'Silakan lengkapi profil customer di tab baru, lalu kembali untuk lanjut Create Contract/SPK.',
+                    icon: 'info'
+                });
             } else {
                 OptimaUI.fire('Error', 'Customer not found for this quotation', 'error');
             }
@@ -5171,8 +5333,36 @@ function markAsNotDeal(quotationId) {
     });
 }
 
-// Function to show customer location modal after marking as deal
-function showCustomerLocationModal(customerId, quotationId, dealMessage) {
+// Compatibility bridge after Deal processing.
+function showCustomerLocationModal(customerId, quotationId, dealMessage, needsManualCustomerFallback = false) {
+    // Location selection has been moved to Create DI stage.
+    // Keep this function as a compatibility bridge so legacy callers do not open old modal.
+    const resultText = dealMessage
+        ? `${dealMessage} Customer Location sekarang dipilih saat Create DI.`
+        : 'Quotation berhasil diproses. Customer Location dipilih saat Create DI.';
+
+    OptimaUI.fire({
+        title: needsManualCustomerFallback ? 'Deal Processed with Fallback Available' : 'Success!',
+        text: resultText,
+        icon: needsManualCustomerFallback ? 'warning' : 'success',
+        timer: needsManualCustomerFallback ? 3200 : 2200,
+        showConfirmButton: false
+    });
+
+    if (typeof quotationsTable !== 'undefined' && quotationsTable) {
+        quotationsTable.ajax.reload(null, false);
+    }
+
+    if (typeof loadStatistics === 'function') {
+        loadStatistics();
+    }
+
+    if (currentQuotationId == quotationId && $('#detailModal').hasClass('show')) {
+        viewQuotation(quotationId);
+    }
+
+    return;
+
     console.log('=== showCustomerLocationModal ===');
     console.log('Customer ID:', customerId);
     console.log('Quotation ID:', quotationId);
@@ -6078,8 +6268,8 @@ function completeDealWorkflowWithUpdate(quotationId, successMessage) {
 
 function createCustomerFromDeal(quotationId) {
     OptimaUI.fire({
-        title: 'Create Customer?',
-        text: 'This will create a customer record from this successful deal and save the prospect data permanently.',
+        title: 'Run Customer Fallback?',
+        text: 'Use this manual fallback only if automatic customer creation during Deal did not succeed.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Yes, Create Customer',
@@ -6092,7 +6282,7 @@ function createCustomerFromDeal(quotationId) {
                 .done(function(response) {
                     if (response.success) {
                         OptimaUI.fire({
-                            title: 'Customer Created!',
+                            title: 'Customer Fallback Completed',
                             text: response.message,
                             icon: 'success',
                             showCancelButton: true,
@@ -6118,7 +6308,7 @@ function createCustomerFromDeal(quotationId) {
                     }
                 })
                 .fail(function() {
-                    OptimaUI.fire('Error', 'Failed to create customer', 'error');
+                    OptimaUI.fire('Error', 'Failed to run customer fallback', 'error');
                 });
         }
     });
@@ -6929,7 +7119,7 @@ function showSPKCreationModal(quotation, specifications) {
                     ${spec.unit_accessories && spec.unit_accessories.trim() !== '' ? `
                     <div class="mt-2 small">
                         <strong>Accessories:</strong> 
-                        ${spec.unit_accessories.split(',').map(acc => `<span class="badge badge-soft-blue me-1">${acc.trim()}</span>`).join('')}
+                        ${spec.unit_accessories.split(',').map(acc => `<span class="badge badge-soft-blue me-1">${formatAccessoryLabel(acc)}</span>`).join('')}
                     </div>
                     ` : ''}
                     
@@ -7058,7 +7248,8 @@ function buildSpecificationDescription(spec) {
     if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
         const accessories = spec.unit_accessories.split(',').map(a => a.trim());
         if (accessories.length > 0) {
-            parts.push(`<strong>Accessories:</strong> ${accessories.slice(0, 3).join(', ')}${accessories.length > 3 ? '...' : ''}`);
+            const accessoryText = accessories.map(a => formatAccessoryLabel(a));
+            parts.push(`<strong>Accessories:</strong> ${accessoryText.slice(0, 3).join(', ')}${accessoryText.length > 3 ? '...' : ''}`);
         }
     }
     

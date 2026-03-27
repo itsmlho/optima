@@ -3588,32 +3588,9 @@ EOF;
     public function getMasterAttachment()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
-        
-        $qb = $this->db->table('attachment')
-            ->select('id_attachment as id, tipe, merk, model')
-            ->orderBy('tipe, merk, model')
-            ->limit(50);
-            
-        if ($q !== '') {
-            $qb->groupStart()
-                ->like('tipe', $q)
-                ->orLike('merk', $q)
-                ->orLike('model', $q)
-                ->groupEnd();
-        }
-        
-        $rows = $qb->get()->getResultArray();
-        $data = array_map(function($r){
-            $label = trim(($r['tipe'] ?: '') . ' ' . ($r['merk'] ?: '') . ' ' . ($r['model'] ?: ''));
-            return [
-                'id' => (int)$r['id'],
-                'text' => $label,
-                'tipe' => $r['tipe'],
-                'merk' => $r['merk'],
-                'model' => $r['model']
-            ];
-        }, $rows);
-        
+        $lookup = new \App\Services\MasterDataLookupService($this->db);
+        $data = $lookup->attachmentOptions($q, 50);
+
         return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
     }
 
@@ -3621,35 +3598,9 @@ EOF;
     public function getMasterBaterai()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
-        
-        $qb = $this->db->table('baterai')
-            ->select('id, merk_baterai, tipe_baterai, jenis_baterai')
-            ->orderBy('merk_baterai, tipe_baterai')
-            ->limit(50);
-            
-        if ($q !== '') {
-            $qb->groupStart()
-                ->like('merk_baterai', $q)
-                ->orLike('tipe_baterai', $q)
-                ->orLike('jenis_baterai', $q)
-                ->groupEnd();
-        }
-        
-        $rows = $qb->get()->getResultArray();
-        $data = array_map(function($r){
-            $label = trim(($r['merk_baterai'] ?: '') . ' ' . ($r['tipe_baterai'] ?: ''));
-            if (!empty($r['jenis_baterai'])) {
-                $label .= ' (' . $r['jenis_baterai'] . ')';
-            }
-            return [
-                'id' => (int)$r['id'],
-                'text' => $label,
-                'merk_baterai' => $r['merk_baterai'],
-                'tipe_baterai' => $r['tipe_baterai'],
-                'jenis_baterai' => $r['jenis_baterai']
-            ];
-        }, $rows);
-        
+        $lookup = new \App\Services\MasterDataLookupService($this->db);
+        $data = $lookup->batteryOptions($q, 50);
+
         return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
     }
 
@@ -3657,30 +3608,9 @@ EOF;
     public function getMasterCharger()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
-        
-        $qb = $this->db->table('charger')
-            ->select('id_charger as id, merk_charger, tipe_charger')
-            ->orderBy('merk_charger, tipe_charger')
-            ->limit(50);
-            
-        if ($q !== '') {
-            $qb->groupStart()
-                ->like('merk_charger', $q)
-                ->orLike('tipe_charger', $q)
-                ->groupEnd();
-        }
-        
-        $rows = $qb->get()->getResultArray();
-        $data = array_map(function($r){
-            $label = trim(($r['merk_charger'] ?: '') . ' ' . ($r['tipe_charger'] ?: ''));
-            return [
-                'id' => (int)$r['id'],
-                'text' => $label,
-                'merk_charger' => $r['merk_charger'],
-                'tipe_charger' => $r['tipe_charger']
-            ];
-        }, $rows);
-        
+        $lookup = new \App\Services\MasterDataLookupService($this->db);
+        $data = $lookup->chargerOptions($q, 50);
+
         return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
     }
     

@@ -8,6 +8,20 @@ $k = $k ?? []; // Kontrak spesifikasi data - added to prevent undefined variable
 $status = strtoupper((string)($di['status'] ?? ''));
 $placeholder = ($status === 'SUBMITTED' || $status === 'DIAJUKAN');
 
+if (!function_exists('resolvePrintSignerName')) {
+    function resolvePrintSignerName(array $data, array $keys, string $fallback): string
+    {
+        foreach ($keys as $key) {
+            $value = trim((string)($data[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+}
+
 // If no unit_items array provided, create from single unit_item or items
 if (empty($unit_items)) {
     $unit_item = $unit_item ?? null;
@@ -587,7 +601,11 @@ if (empty($unit_items)) {
                     <div style="font-weight: bold; margin-bottom: 5px;">MARKETING</div>
                     <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pembuat DI</div>
                     <?php 
-                        $marketingName = $spk['created_by_name'] ?? $spk['marketing_name'] ?? $spk['created_by'] ?? '';
+                        $marketingName = resolvePrintSignerName(
+                            $spk,
+                            ['created_by_name', 'created_by_full_name', 'marketing_name', 'dibuat_oleh_name'],
+                            ''
+                        );
                         if (!empty($marketingName)): 
                     ?>
                         <div style="color: #059669; border: 2px solid #059669; padding: 3px 8px; font-size: 10px; font-weight: bold; display: inline-block; transform: rotate(-15deg); margin: 10px 0;">APPROVED</div>

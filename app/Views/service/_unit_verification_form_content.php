@@ -394,9 +394,9 @@ $formIdPrefix = $formIdPrefix ?? 'verify';
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA" id="acc-camera">
+                        <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA MONITOR" id="acc-camera">
                         <label class="form-check-label" for="acc-camera">
-                            Camera
+                            Camera Monitor
                         </label>
                     </div>
                 </div>
@@ -457,28 +457,39 @@ $formIdPrefix = $formIdPrefix ?? 'verify';
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="P3K" id="acc-p3k">
+                        <input class="form-check-input" type="checkbox" name="accessories[]" value="FIRST AID KIT" id="acc-p3k">
                         <label class="form-check-label" for="acc-p3k">
-                            P3K
+                            First Aid Kit
                         </label>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SPARS ARRESTOR" id="acc-spars">
+                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SPARK ARRESTOR" id="acc-spars">
                         <label class="form-check-label" for="acc-spars">
-                            Spars Arrestor
+                            Spark Arrestor
                         </label>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT INTERLOC" id="acc-safety-belt">
+                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT INTERLOCK" id="acc-safety-belt">
                         <label class="form-check-label" for="acc-safety-belt">
-                            Safety Belt Interloc
+                            Safety Belt Interlock
                         </label>
                     </div>
                 </div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="MIRROR" id="acc-mirror"><label class="form-check-label" for="acc-mirror">Mirror / Spion</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT STANDAR" id="acc-safety-belt-std"><label class="form-check-label" for="acc-safety-belt-std">Safety Belt Standar</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="LOAD BACKREST" id="acc-load-backrest"><label class="form-check-label" for="acc-load-backrest">Load Backrest</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORKS" id="acc-forks"><label class="form-check-label" for="acc-forks">Forks</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="OVERHEAD GUARD" id="acc-overhead-guard"><label class="form-check-label" for="acc-overhead-guard">Overhead Guard</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="DOCUMENT HOLDER" id="acc-document-holder"><label class="form-check-label" for="acc-document-holder">Document Holder</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="TOOL KIT" id="acc-tool-kit"><label class="form-check-label" for="acc-tool-kit">Tool Kit</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="APAR BRACKET" id="acc-apar-bracket"><label class="form-check-label" for="acc-apar-bracket">APAR + Bracket</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="ANTI STATIC STRAP" id="acc-anti-static-strap"><label class="form-check-label" for="acc-anti-static-strap">Anti-Static Strap</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="WHEEL STOPPER CHOCK" id="acc-wheel-stopper-chock"><label class="form-check-label" for="acc-wheel-stopper-chock">Wheel Stopper / Chock</label></div></div>
+                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORK EXTENSION" id="acc-fork-extension"><label class="form-check-label" for="acc-fork-extension">Fork Extension</label></div></div>
             </div>
         </div>
 

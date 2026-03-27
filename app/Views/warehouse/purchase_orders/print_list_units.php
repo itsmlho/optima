@@ -34,7 +34,7 @@
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Jenis Mast</th>
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Jenis Ban</th>
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Roda</th>
-                <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Aksesoris</th>
+                <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Unit Accessories</th>
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Kondisi Penjualan</th>
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Valve</th>
                 <th style="font-size:9pt;" class="text-center align-middle" rowspan="2">Keterangan</th>

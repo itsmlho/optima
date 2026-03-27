@@ -435,6 +435,7 @@
         </div>
     </div>
     
+    <?= $this->include('partials/accessory_js') ?>
     <script>
         let verificationLoaded = false;
         
@@ -625,6 +626,12 @@
                     // If function not available, manually populate
                     console.log('⚠️ populateAccessories() not available, populating manually');
                     let checkedCount = 0;
+                    const normalizeAccessoryValue = (value) => {
+                        if (window.OptimaAccessory && typeof window.OptimaAccessory.normalizeCheckboxValue === 'function') {
+                            return window.OptimaAccessory.normalizeCheckboxValue(value);
+                        }
+                        return String(value || '').trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+                    };
                     
                     // Clear all checkboxes first
                     document.querySelectorAll('.accessory-checkbox').forEach(checkbox => {
@@ -635,7 +642,7 @@
                     // Check accessories that exist in database
                     if (accessories && accessories.length > 0) {
                         accessories.forEach(function(accessory) {
-                            let accessoryValue = accessory.name || accessory.accessory_name || accessory;
+                            let accessoryValue = normalizeAccessoryValue(accessory.name || accessory.accessory_name || accessory);
                             console.log('🔍 Looking for accessory:', accessoryValue);
                             
                             // Find checkbox with matching data-accessory value
@@ -654,8 +661,8 @@
                     // Update summary
                     const summaryElement = document.getElementById('accessories-summary');
                     if (summaryElement) {
-                        summaryElement.textContent = `${checkedCount} aksesoris`;
-                        console.log(`📊 Updated summary: ${checkedCount} aksesoris`);
+                        summaryElement.textContent = `${checkedCount} item`;
+                        console.log(`📊 Updated summary: ${checkedCount} item`);
                     }
                     
                     console.log(`📊 Auto-checked ${checkedCount} accessories out of ${accessories.length}`);

@@ -10948,3 +10948,88 @@ body.sidebar-collapsed .user-name {
 /* ========================================================================
    PAGE-SPECIFIC STYLES (DEPRECATED - REMOVE GRADUALLY)
    ======================================================================== */
+
+/* ========================================================================
+   MASTER DATA CENTER
+   ======================================================================== */
+.master-data-page .md-card {
+    border: 1px solid #e9edf3;
+    border-radius: 14px;
+    box-shadow: 0 2px 14px rgba(16, 24, 40, 0.04);
+}
+
+.master-data-page .md-subtle { color: #667085; }
+
+.master-data-page .md-toolbar {
+    background: linear-gradient(180deg, #fcfdff 0%, #f7f9fc 100%);
+    border: 1px solid #e9edf3;
+    border-radius: 12px;
+}
+
+.master-data-page .md-table-wrap {
+    border: 1px solid #e9edf3;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.master-data-page #masterDataTable {
+    margin-bottom: 0;
+    min-width: 980px;
+}
+
+.master-data-page #masterDataTable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.master-data-page #masterDataTable td {
+    vertical-align: top;
+    font-size: 13px;
+    color: #1f2937;
+}
+
+.master-data-page #masterDataTable tbody tr:nth-child(even) { background: #fcfdff; }
+.master-data-page #masterDataTable tbody tr:hover { background: #f1f5f9; }
+
+.master-data-page .md-cell {
+    white-space: nowrap;
+    line-height: 1.25;
+}
+
+.master-data-page .md-actions {
+    white-space: nowrap;
+    min-width: 140px;
+    text-align: center;
+}
+
+.master-data-page .md-btn {
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 12px;
+}
+
+.master-data-page .md-entity-meta {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+}
+
+.master-data-page .md-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #475467;
+    border: 1px solid #eaecf0;
+}

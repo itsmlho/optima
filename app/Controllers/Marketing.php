@@ -704,33 +704,9 @@ class Marketing extends BaseDataTableController
         // Check if quotation has specifications (required for SEND action)
         $hasSpecs = $this->quotationSpecificationModel->where('id_quotation', $quotationId)->countAllResults() > 0;
         
-        // Check if customer was created (for contract/PO buttons)
+        // Check if customer was created (for DEAL stage actions)
         $quotation = $this->quotationModel->find($quotationId);
         $hasCustomer = !empty($quotation['created_customer_id']);
-        $hasContract = !empty($quotation['created_contract_id']);
-        
-        // Check if customer has completed profile and location (for DEAL workflow)
-        $customerLocationComplete = false;
-        $customerContractComplete = false;
-        if ($hasCustomer) {
-            $customerModel = new \App\Models\CustomerModel();
-            $profileStatus = $customerModel->getCustomerProfileStatus($quotation['created_customer_id']);
-            $customerLocationComplete = $profileStatus['complete'] && $profileStatus['has_location'];
-            
-            // For contract completion, prioritize the direct link in quotation
-            if ($hasContract) {
-                // If quotation is directly linked to a contract, consider it complete
-                $customerContractComplete = true;
-            } else {
-                // Otherwise, check if customer has any available contracts
-                $db = \Config\Database::connect();
-                $contractCount = $db->table('kontrak k')
-                    ->where('k.customer_id', $quotation['created_customer_id'])
-                    ->whereIn('k.status', ['ACTIVE', 'PENDING'])
-                    ->countAllResults();
-                $customerContractComplete = $contractCount > 0;
-            }
-        }
         
         // Workflow actions based on current stage
         switch ($workflowStage) {
@@ -774,35 +750,25 @@ class Marketing extends BaseDataTableController
                 break;
                 
             case 'DEAL':
-                // DEAL stage - Flexible workflow: Quotation → Contract (optional) → SPK
-                
-                // Check database flags for workflow state
-                $customerLocationComplete = !empty($quotation['customer_location_complete']);
-                $customerContractComplete = !empty($quotation['customer_contract_complete']);
+                // DEAL stage flow:
+                // 1) No customer yet => show manual customer fallback
+                // 2) Customer exists => Create Contract + Create SPK
+                // 3) SPK created => show completion badge
                 $spkCreated = !empty($quotation['spk_created']);
-                
-                // Step 1: Location must be completed first (MANDATORY)
-                if (!$customerLocationComplete) {
-                    $actions .= '<button class="btn btn-sm btn-warning" onclick="completeCustomerProfile(' . $quotationId . ')" title="Complete customer profile and location first">';
-                    $actions .= '<i class="fas fa-user-edit me-1"></i>Complete Customer Profile';
+
+                if (!$hasCustomer) {
+                    $actions .= '<button class="btn btn-sm btn-warning" onclick="createCustomerFromDeal(' . $quotationId . ')" title="Fallback: create customer manually if automatic creation on Deal did not succeed">';
+                    $actions .= '<i class="fas fa-user-plus me-1"></i>Add Customer';
                     $actions .= '</button>';
-                } 
-                // Step 2: After location complete, show BOTH options (contract optional)
-                else if (!$spkCreated) {
-                    // Option A: Create Contract first (if not yet created)
-                    if (!$customerContractComplete) {
-                        $actions .= '<button class="btn btn-sm btn-info me-1" onclick="completeCustomerContract(' . $quotationId . ')" title="Create contract first (optional - recommended for complete documentation)">';
-                        $actions .= '<i class="fas fa-file-contract me-1"></i>Create Contract';
-                        $actions .= '</button>';
-                    }
-                    
-                    // Option B: Create SPK directly (with or without contract)
-                    $actions .= '<button class="btn btn-sm btn-success" onclick="createSPKFromQuotation(' . $quotationId . ')" title="Create SPK from Quotation (Contract can be linked later)">';
+                } elseif (!$spkCreated) {
+                    $actions .= '<button class="btn btn-sm btn-info me-1" onclick="completeCustomerContract(' . $quotationId . ')" title="Create or link customer contract">';
+                    $actions .= '<i class="fas fa-file-contract me-1"></i>Create Contract';
+                    $actions .= '</button>';
+
+                    $actions .= '<button class="btn btn-sm btn-success" onclick="createSPKFromQuotation(' . $quotationId . ')" title="Create SPK from quotation">';
                     $actions .= '<i class="fas fa-clipboard-check me-1"></i>Create SPK';
                     $actions .= '</button>';
-                }
-                // SPK already created
-                else {
+                } else {
                     $actions .= '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>SPK Created</span>';
                 }
                 break;
@@ -4467,7 +4433,10 @@ class Marketing extends BaseDataTableController
     public function spkReadyOptions()
     {
         $q = trim($this->request->getGet('q') ?? '');
-    $b = $this->spkModel->select('id, nomor_spk, po_kontrak_nomor, pelanggan, lokasi')->where('status','READY');
+        $b = $this->spkModel
+            ->select('spk.id, spk.nomor_spk, spk.po_kontrak_nomor, spk.pelanggan, spk.lokasi, k.customer_id')
+            ->join('kontrak k', 'k.id = spk.kontrak_id', 'left')
+            ->where('spk.status', 'READY');
         if ($q !== '') {
             $b->groupStart()
                 ->like('nomor_spk',$q)
@@ -4484,6 +4453,7 @@ class Marketing extends BaseDataTableController
                 'lokasi' => $r['lokasi'] ?: '',
                 'po' => $r['po_kontrak_nomor'] ?: '',
                 'nomor_spk' => $r['nomor_spk'] ?: '',
+                'customer_id' => isset($r['customer_id']) ? (int)$r['customer_id'] : null,
             ];
         }, $rows);
         return $this->response->setJSON(['data'=>$opts,'csrf_hash'=>csrf_hash()]);
@@ -5457,6 +5427,8 @@ class Marketing extends BaseDataTableController
             'jenis_baterai'   => null, // DISTINCT jenis_baterai from baterai
             'attachment_tipe' => null, // DISTINCT tipe from attachment
             'roda'            => null, // jenis_roda.id_roda, jenis_roda.tipe_roda
+            'mast_model'      => null, // DISTINCT tipe_mast
+            'mast_height'     => null, // Rows by selected model mast
         ];
 
         // Handle special DISTINCT cases and departmental filtering
@@ -5531,13 +5503,41 @@ class Marketing extends BaseDataTableController
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
         if ($type === 'merk_unit') {
+            $departemenId = trim($this->request->getGet('departemen_id') ?? '');
             // Return FK ID for brand
-            $rows = $this->db->table('model_unit')
+            $builder = $this->db->table('model_unit')
                 ->select('id_model_unit as id, CONCAT(merk_unit, " - ", model_unit) as name')
                 ->where('merk_unit IS NOT NULL', null, false)
                 ->where("TRIM(merk_unit) <> ''", null, false)
                 ->orderBy('merk_unit, model_unit','ASC')
-                ->limit(200)
+                ->limit(200);
+            if ($departemenId !== '') {
+                $builder->where('departemen_id', (int)$departemenId);
+            }
+            $rows = $builder->get()->getResultArray();
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+        if ($type === 'mast_model') {
+            $rows = $this->db->table('tipe_mast')
+                ->select('MIN(id_mast) as id, TRIM(tipe_mast) as name', false)
+                ->where('tipe_mast IS NOT NULL', null, false)
+                ->where("TRIM(tipe_mast) <> ''", null, false)
+                ->groupBy('TRIM(tipe_mast)')
+                ->orderBy('name', 'ASC')
+                ->get()->getResultArray();
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+        if ($type === 'mast_height') {
+            $mastModel = trim($this->request->getGet('mast_model') ?? '');
+            $builder = $this->db->table('tipe_mast')
+                ->select('id_mast as id, CONCAT(TRIM(tipe_mast), " - ", COALESCE(NULLIF(TRIM(tinggi_mast), ""), "-")) as name', false)
+                ->where('tipe_mast IS NOT NULL', null, false)
+                ->where("TRIM(tipe_mast) <> ''", null, false);
+            if ($mastModel !== '') {
+                $builder->where('TRIM(tipe_mast)', $mastModel);
+            }
+            $rows = $builder
+                ->orderBy('tinggi_mast', 'ASC')
                 ->get()->getResultArray();
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
@@ -5574,6 +5574,16 @@ class Marketing extends BaseDataTableController
                 ->select('id_roda as id, tipe_roda as name')
                 ->orderBy('tipe_roda','ASC')
                 ->limit(200)
+                ->get()->getResultArray();
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+        if ($type === 'mast') {
+            $rows = $this->db->table('tipe_mast')
+                ->select('id_mast as id, CONCAT(TRIM(tipe_mast), " - ", COALESCE(NULLIF(TRIM(tinggi_mast), ""), "-")) as name', false)
+                ->where('tipe_mast IS NOT NULL', null, false)
+                ->where("TRIM(tipe_mast) <> ''", null, false)
+                ->orderBy('tipe_mast', 'ASC')
+                ->orderBy('tinggi_mast', 'ASC')
                 ->get()->getResultArray();
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
@@ -6002,6 +6012,7 @@ class Marketing extends BaseDataTableController
 
         $pelanggan = $this->request->getPost('pelanggan') ?: '';
         $lokasi = $this->request->getPost('lokasi') ?: null;
+        $customerLocationId = (int)($this->request->getPost('customer_location_id') ?? 0) ?: null;
 
     // units selected for this DI (allow multiple)
     $unitIds = $this->request->getPost('unit_ids');
@@ -6124,6 +6135,24 @@ class Marketing extends BaseDataTableController
             }
         }
 
+        if ($customerLocationId === null) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Customer Location wajib dipilih']);
+        }
+
+        $locationRow = $this->db->table('customer_locations')
+            ->select('id, customer_id, location_name, operator_monthly_rate, operator_daily_rate')
+            ->where('id', $customerLocationId)
+            ->limit(1)
+            ->get()->getRowArray();
+        if (!$locationRow) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Customer Location tidak ditemukan']);
+        }
+        if (!empty($pelangganId) && !empty($locationRow['customer_id']) && (int)$locationRow['customer_id'] !== (int)$pelangganId) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Customer Location tidak sesuai dengan customer DI']);
+        }
+
+        $lokasi = $locationRow['location_name'] ?? $lokasi;
+
         // Determine initial status based on SPK contract linkage
         // DIAJUKAN if SPK has no contract, DISETUJUI if SPK has contract
         $initialStatus = 'DIAJUKAN'; // Default for backward compatibility
@@ -6141,6 +6170,7 @@ class Marketing extends BaseDataTableController
             'po_kontrak_nomor' => $poNo,
             'pelanggan' => $pelanggan,
             'pelanggan_id' => $pelangganId,
+            'customer_location_id' => $customerLocationId,
             'lokasi' => $lokasi,
             'status_di' => $initialStatus,  // Auto-determined based on SPK contract status
             'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
@@ -6231,6 +6261,41 @@ class Marketing extends BaseDataTableController
             error_log('DI Create - diItemModel class: ' . get_class($this->diItemModel));
             error_log('DI Create - About to insert delivery items for unit_ids: ' . json_encode($unitIds));
             error_log('DI Create - SPK Type: ' . ($spk['jenis_spk'] ?? 'UNKNOWN') . ', isAttachmentSpk: ' . ($isAttachmentSpk ?? 'UNDEFINED'));
+
+            $operatorRequired = 0;
+            $operatorQuantity = 0;
+            if (!empty($spk['quotation_specification_id'])) {
+                $specRow = $this->db->table('quotation_specifications')
+                    ->select('include_operator, operator_quantity')
+                    ->where('id_specification', (int)$spk['quotation_specification_id'])
+                    ->get()->getRowArray();
+                if ($specRow) {
+                    $operatorRequired = (int)($specRow['include_operator'] ?? 0);
+                    $operatorQuantity = (int)($specRow['operator_quantity'] ?? 0);
+                }
+            }
+            if ($operatorQuantity <= 0 && !empty($spk['spesifikasi'])) {
+                $specJson = json_decode($spk['spesifikasi'], true);
+                if (is_array($specJson)) {
+                    $operatorRequired = (int)($specJson['include_operator'] ?? $operatorRequired);
+                    $operatorQuantity = (int)($specJson['operator_quantity'] ?? $operatorQuantity);
+                }
+            }
+            if ($operatorRequired !== 1) {
+                $operatorQuantity = 0;
+            }
+            $operatorMonthlySnapshot = ($locationRow['operator_monthly_rate'] ?? null);
+            $operatorDailySnapshot = ($locationRow['operator_daily_rate'] ?? null);
+            if ($operatorRequired === 1 && $operatorMonthlySnapshot === null && $operatorDailySnapshot === null) {
+                throw new \Exception('Tarif operator pada customer location belum diisi. Isi tarif bulanan/harian terlebih dahulu.');
+            }
+            $operatorSnapshotFields = [
+                'operator_required' => $operatorRequired,
+                'operator_quantity' => $operatorQuantity,
+                'operator_monthly_rate_snapshot' => $operatorMonthlySnapshot,
+                'operator_daily_rate_snapshot' => $operatorDailySnapshot,
+                'operator_rate_source' => 'customer_location_master',
+            ];
             
             if (!empty($unitIds)) {
                 foreach ($unitIds as $uid) {
@@ -6250,6 +6315,7 @@ class Marketing extends BaseDataTableController
                         'item_type' => 'UNIT',
                         'unit_id' => (int)$uid,
                     ];
+                    $unitPayload = array_merge($unitPayload, $operatorSnapshotFields);
                     
                     // Only add optional fields if they have values
                     // attachment_id and keterangan are nullable, so we can skip them if null
@@ -6334,13 +6400,13 @@ class Marketing extends BaseDataTableController
                                 ->get()->getRowArray();
                             
                             if ($invBattery && $invBattery['baterai_id']) {
-                                $itemResult = $this->diItemModel->insert([
+                                $itemResult = $this->db->table('delivery_items')->insert([
                                     'di_id' => $diId,
                                     'item_type' => 'ATTACHMENT',
                                     'attachment_id' => $invBattery['baterai_id'],
                                     'parent_unit_id' => $unitId,
                                     'keterangan' => 'Battery (Approved in SPK Persiapan Unit)'
-                                ]);
+                                ] + $operatorSnapshotFields);
                                 error_log("DI Create - Added approved battery (ID: {$invBattery['baterai_id']}) for unit $unitId");
                             }
                         }
@@ -6354,13 +6420,13 @@ class Marketing extends BaseDataTableController
                                 ->get()->getRowArray();
                             
                             if ($invCharger && $invCharger['charger_id']) {
-                                $itemResult = $this->diItemModel->insert([
+                                $itemResult = $this->db->table('delivery_items')->insert([
                                     'di_id' => $diId,
                                     'item_type' => 'ATTACHMENT',
                                     'attachment_id' => $invCharger['charger_id'],
                                     'parent_unit_id' => $unitId,
                                     'keterangan' => 'Charger (Approved in SPK Persiapan Unit)'
-                                ]);
+                                ] + $operatorSnapshotFields);
                                 error_log("DI Create - Added approved charger (ID: {$invCharger['charger_id']}) for unit $unitId");
                             }
                         }
@@ -6374,13 +6440,13 @@ class Marketing extends BaseDataTableController
                                 ->get()->getRowArray();
                             
                             if ($invAttachment && $invAttachment['attachment_id']) {
-                                $itemResult = $this->diItemModel->insert([
+                                $itemResult = $this->db->table('delivery_items')->insert([
                                     'di_id' => $diId,
                                     'item_type' => 'ATTACHMENT',
                                     'attachment_id' => $invAttachment['attachment_id'],
                                     'parent_unit_id' => $unitId,
                                     'keterangan' => 'Attachment (Approved in SPK Fabrikasi)'
-                                ]);
+                                ] + $operatorSnapshotFields);
                                 error_log("DI Create - Added approved attachment (ID: {$invAttachment['attachment_id']}) for unit $unitId");
                             }
                         }
@@ -6395,12 +6461,12 @@ class Marketing extends BaseDataTableController
                     $attId = $inv['attachment_id'] ?? $inv['baterai_id'] ?? $inv['charger_id'] ?? null;
                     $componentType = $inv['tipe_item'] ?? 'attachment';
                     if ($attId) {
-                        $itemResult = $this->diItemModel->insert([
+                        $itemResult = $this->db->table('delivery_items')->insert([
                             'di_id' => $diId,
                             'item_type' => 'ATTACHMENT',
                             'attachment_id' => $attId,
                             'keterangan' => 'Pure Attachment Delivery - ' . ($inv['tipe_item'] ?? 'attachment'),
-                        ]);
+                        ] + $operatorSnapshotFields);
                         if (!$itemResult) {
                             $errors = $this->diItemModel->errors();
                             throw new \Exception('Failed to insert pure attachment: ' . implode(', ', $errors));
@@ -6410,11 +6476,11 @@ class Marketing extends BaseDataTableController
                 } else {
                     // Standard workflow for UNIT SPK
                     if (!empty($selected['unit_id'])) {
-                        $itemResult = $this->diItemModel->insert([
+                        $itemResult = $this->db->table('delivery_items')->insert([
                             'di_id' => $diId,
                             'item_type' => 'UNIT',
                             'unit_id' => (int)$selected['unit_id'],
-                        ]);
+                        ] + $operatorSnapshotFields);
                         if (!$itemResult) {
                             $errors = $this->diItemModel->errors();
                             throw new \Exception('Failed to insert selected unit: ' . implode(', ', $errors));
@@ -6425,11 +6491,11 @@ class Marketing extends BaseDataTableController
                         $inv = $this->componentHelper->findComponentByIdAny($selected['inventory_attachment_id']);
                         $attId = $inv['attachment_id'] ?? $inv['baterai_id'] ?? $inv['charger_id'] ?? null;
                         if ($attId) {
-                            $itemResult = $this->diItemModel->insert([
+                            $itemResult = $this->db->table('delivery_items')->insert([
                                 'di_id' => $diId,
                                 'item_type' => 'ATTACHMENT',
                                 'attachment_id' => $attId,
-                            ]);
+                            ] + $operatorSnapshotFields);
                             if (!$itemResult) {
                                 $errors = $this->diItemModel->errors();
                                 throw new \Exception('Failed to insert attachment: ' . implode(', ', $errors));
@@ -6565,9 +6631,14 @@ class Marketing extends BaseDataTableController
                 'spk_id' => $spkId ?: null,
                 'po_kontrak_nomor' => $poNo,
                 'pelanggan' => $pelanggan,
+                'customer_location_id' => $customerLocationId,
                 'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
                 'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
-                'unit_ids' => $unitIds
+                'unit_ids' => $unitIds,
+                'operator_required' => $operatorRequired,
+                'operator_quantity' => $operatorQuantity,
+                'operator_monthly_rate_snapshot' => $operatorMonthlySnapshot,
+                'operator_daily_rate_snapshot' => $operatorDailySnapshot
             ]);
             
             // Send notification: DI Created
@@ -8077,13 +8148,14 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Failed to update quotation status');
             }
 
-            // Auto-create customer from prospect data (Simplified approach)
+            // Auto-create customer from prospect data. If this fails, fallback remains available in DEAL stage.
             $customerMessage = '';
             $customerExists = false;
+            $customerNeedsManualRecovery = false;
+            $customerId = !empty($quotation['created_customer_id']) ? (int) $quotation['created_customer_id'] : null;
+            $customerModel = new \App\Models\CustomerModel();
             
             try {
-                $customerModel = new \App\Models\CustomerModel();
-                
                 // Simple check by name only (using correct field name)
                 $existingCustomer = $customerModel->where('customer_name', $quotation['prospect_name'])->first();
                 
@@ -8091,7 +8163,7 @@ class Marketing extends BaseDataTableController
                     // Customer already exists
                     $customerId = $existingCustomer['id'];
                     $customerExists = true;
-                    $customerMessage = 'Customer sudah terdaftar: ' . $existingCustomer['customer_name'];
+                    $customerMessage = 'Customer existing berhasil terhubung otomatis: ' . $existingCustomer['customer_name'];
                     
                     // Update quotation with existing customer ID
                     $quotationModel->update($quotationId, [
@@ -8118,7 +8190,7 @@ class Marketing extends BaseDataTableController
                     $customerId = $customerModel->insert($customerData);
                     
                     if ($customerId && $customerId > 0) {
-                        $customerMessage = 'Customer baru berhasil ditambahkan: ' . $quotation['prospect_name'] . ' (Detail dapat dilengkapi nanti)';
+                        $customerMessage = 'Customer baru berhasil dibuat otomatis: ' . $quotation['prospect_name'] . ' (detail dapat dilengkapi nanti)';
                         
                         // Update quotation with new customer ID
                         $quotationModel->update($quotationId, [
@@ -8134,12 +8206,14 @@ class Marketing extends BaseDataTableController
                         }
                         
                         log_message('error', 'Customer creation failed: ' . $errorMsg);
-                        $customerMessage = 'Customer gagal ditambahkan (' . $errorMsg . '), silakan buat manual';
+                        $customerNeedsManualRecovery = true;
+                        $customerMessage = 'Quotation berhasil diubah ke DEAL, tetapi pembuatan customer otomatis gagal (' . $errorMsg . '). Gunakan tombol Add Customer sebagai fallback manual.';
                     }
                 }
             } catch (\Exception $customerError) {
                 log_message('error', 'Auto customer creation failed: ' . $customerError->getMessage());
-                $customerMessage = 'Customer gagal ditambahkan otomatis, silakan buat manual';
+                $customerNeedsManualRecovery = true;
+                $customerMessage = 'Quotation berhasil diubah ke DEAL, tetapi pembuatan customer otomatis gagal. Gunakan tombol Add Customer sebagai fallback manual.';
             }
 
             // Auto-link to existing contract if available
@@ -8201,9 +8275,13 @@ class Marketing extends BaseDataTableController
             $this->logActivity('mark_as_deal', 'quotations', $quotationId, 
                 'Quotation marked as deal: ' . $quotation['quotation_number']);
 
-            // Check customer profile completion status
-            $profileStatus = $customerModel->getCustomerProfileStatus($customerId);
-            $needsProfileCompletion = !$profileStatus['complete'];
+            // Check customer profile completion status only if customer is already linked.
+            $profileStatus = null;
+            $needsProfileCompletion = false;
+            if (!empty($customerId)) {
+                $profileStatus = $customerModel->getCustomerProfileStatus($customerId);
+                $needsProfileCompletion = !$profileStatus['complete'];
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -8212,6 +8290,7 @@ class Marketing extends BaseDataTableController
                 'customer_message' => $customerMessage,
                 'contract_message' => $contractMessage,
                 'customer_id' => $customerId,
+                'needs_manual_customer_creation' => $customerNeedsManualRecovery,
                 'quotation_id' => $quotationId,
                 'needs_profile_completion' => $needsProfileCompletion,
                 'profile_status' => $profileStatus
@@ -8676,15 +8755,21 @@ class Marketing extends BaseDataTableController
             ->get()
             ->getResultArray();
 
-        // Get created by user info
+        // Get created by user info (prefer full name over username)
         $createdBy = $this->db->table('users')->where('id', $quotation['created_by'])->get()->getRowArray();
-        $quotation['created_by_name'] = $createdBy['nama'] ?? $createdBy['username'] ?? 'Unknown';
+        $createdByFullName = trim(((string)($createdBy['first_name'] ?? '')) . ' ' . ((string)($createdBy['last_name'] ?? '')));
+        $quotation['created_by_name'] = $createdByFullName !== ''
+            ? $createdByFullName
+            : ($createdBy['nama'] ?? 'Marketing Manager');
         $quotation['created_by_phone'] = $createdBy['no_hp'] ?? $createdBy['phone'] ?? '';
 
         // Get assigned to user info
         if (!empty($quotation['assigned_to'])) {
             $assignedTo = $this->db->table('users')->where('id', $quotation['assigned_to'])->get()->getRowArray();
-            $quotation['assigned_to_name'] = $assignedTo['nama'] ?? $assignedTo['username'] ?? 'Unknown';
+            $assignedToFullName = trim(((string)($assignedTo['first_name'] ?? '')) . ' ' . ((string)($assignedTo['last_name'] ?? '')));
+            $quotation['assigned_to_name'] = $assignedToFullName !== ''
+                ? $assignedToFullName
+                : ($assignedTo['nama'] ?? 'Assigned User');
         }
 
         return view('marketing/print_quotation', [

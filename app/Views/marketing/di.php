@@ -313,6 +313,25 @@ $can_export = $permissions['export'];
             <!-- Hidden fields for backend validation -->
             <input type="hidden" name="po_kontrak_nomor" id="po_kontrak_nomor">
             <input type="hidden" name="pelanggan" id="pelanggan">
+            <input type="hidden" name="pelanggan_id" id="pelanggan_id">
+
+            <div class="row g-2 mb-2">
+              <div class="col-12">
+                <label class="form-label">Customer Location <span class="text-danger">*</span></label>
+                <select class="form-select" name="customer_location_id" id="customerLocationSelect" required disabled>
+                  <option value="">-- Pilih Customer Location --</option>
+                </select>
+                <small class="text-muted">Lokasi customer wajib dipilih pada tahap DI.</small>
+              </div>
+              <div class="col-12" id="operatorRatePreview" style="display:none;">
+                <div class="alert alert-info py-2 mb-0">
+                  <strong>Operator Rate Lokasi:</strong>
+                  <span id="operatorRateMonthly">Bulanan: -</span>
+                  <span class="mx-2">|</span>
+                  <span id="operatorRateDaily">Harian: -</span>
+                </div>
+              </div>
+            </div>
 
             <!-- Common Fields -->
             <div class="row g-2">
@@ -660,6 +679,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Auto-populate hidden fields for backend validation
         document.getElementById('po_kontrak_nomor').value = noKontrak;
         document.getElementById('pelanggan').value = pelanggan;
+        fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${this.value}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(res => {
+            const customerId = res?.data?.customer_id || res?.customer_id || '';
+            pelangganIdInput.value = customerId;
+            loadCustomerLocationsByCustomer(customerId);
+          })
+          .catch(() => resetCustomerLocationSelection());
         
         console.log(`TARIK Kontrak selected: ${noKontrak} - ${pelanggan}`);
         
@@ -669,6 +696,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Reset hidden fields and list
         document.getElementById('po_kontrak_nomor').value = '';
         document.getElementById('pelanggan').value = '';
+        pelangganIdInput.value = '';
+        resetCustomerLocationSelection();
         document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
         document.getElementById('tarikOnlyCount').textContent = '0';
       }
@@ -727,6 +756,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Auto-populate hidden fields for backend validation
         document.getElementById('po_kontrak_nomor').value = noKontrak;
         document.getElementById('pelanggan').value = pelanggan;
+        fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${this.value}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(res => {
+            const customerId = res?.data?.customer_id || res?.customer_id || '';
+            pelangganIdInput.value = customerId;
+            loadCustomerLocationsByCustomer(customerId);
+          })
+          .catch(() => resetCustomerLocationSelection());
         
         console.log(`Kontrak selected: ${noKontrak} - ${pelanggan}`);
         
@@ -736,6 +773,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Reset hidden fields and unit list
         document.getElementById('po_kontrak_nomor').value = '';
         document.getElementById('pelanggan').value = '';
+        pelangganIdInput.value = '';
+        resetCustomerLocationSelection();
         document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
         document.getElementById('tarikCount').textContent = '0';
       }
@@ -915,6 +954,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (tujuanSelect) {
         tujuanSelect.innerHTML = '<option value="">-- Select Command Type first --</option>';
         tujuanSelect.disabled = true;
+      }
+      if (typeof resetCustomerLocationSelection === 'function') {
+        resetCustomerLocationSelection();
       }
       
       // Reset workflow sections with correct IDs
@@ -1431,10 +1473,68 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 
   const spkPick = document.getElementById('spkPick');
+  const customerLocationSelect = document.getElementById('customerLocationSelect');
+  const pelangganIdInput = document.getElementById('pelanggan_id');
+  let spkReadyMap = {};
+
+  function formatIDR(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '-';
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+  }
+
+  function resetCustomerLocationSelection() {
+    customerLocationSelect.innerHTML = '<option value="">-- Pilih Customer Location --</option>';
+    customerLocationSelect.value = '';
+    customerLocationSelect.disabled = true;
+    document.getElementById('operatorRatePreview').style.display = 'none';
+    document.getElementById('operatorRateMonthly').textContent = 'Bulanan: -';
+    document.getElementById('operatorRateDaily').textContent = 'Harian: -';
+  }
+
+  async function loadCustomerLocationsByCustomer(customerId) {
+    if (!customerId) {
+      resetCustomerLocationSelection();
+      return;
+    }
+    try {
+      const response = await fetch(`<?= base_url('marketing/kontrak/customer-locations/') ?>${customerId}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const result = await response.json();
+      if (!result.success) {
+        resetCustomerLocationSelection();
+        return;
+      }
+      const options = (result.data || []).map(loc => {
+        const monthly = loc.operator_monthly_rate ? ` | Bulanan ${formatIDR(loc.operator_monthly_rate)}` : '';
+        const daily = loc.operator_daily_rate ? ` | Harian ${formatIDR(loc.operator_daily_rate)}` : '';
+        return `<option value="${loc.id}" data-op-monthly="${loc.operator_monthly_rate || ''}" data-op-daily="${loc.operator_daily_rate || ''}">${loc.location_name}${monthly}${daily}</option>`;
+      }).join('');
+      customerLocationSelect.innerHTML = '<option value="">-- Pilih Customer Location --</option>' + options;
+      customerLocationSelect.disabled = false;
+    } catch (error) {
+      console.error('Failed to load customer locations:', error);
+      resetCustomerLocationSelection();
+    }
+  }
+
+  customerLocationSelect.addEventListener('change', function() {
+    const selected = this.selectedOptions[0];
+    const monthly = selected?.dataset?.opMonthly || '';
+    const daily = selected?.dataset?.opDaily || '';
+    const hasRate = monthly !== '' || daily !== '';
+    document.getElementById('operatorRatePreview').style.display = hasRate ? 'block' : 'none';
+    document.getElementById('operatorRateMonthly').textContent = `Bulanan: ${monthly !== '' ? formatIDR(monthly) : '-'}`;
+    document.getElementById('operatorRateDaily').textContent = `Harian: ${daily !== '' ? formatIDR(daily) : '-'}`;
+  });
+
   function loadReadySpk(q){
     const url = new URL('<?= base_url('marketing/spk/ready-options') ?>', window.location.origin);
     if (q) url.searchParams.set('q', q);
     fetch(url).then(r=>r.json()).then(j=>{
+      spkReadyMap = {};
+      (j.data || []).forEach(item => { spkReadyMap[String(item.id)] = item; });
       spkPick.innerHTML = '<option value="">- Select SPK -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
     });
   }
@@ -1446,7 +1546,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const section = document.getElementById('diUnitsSection');
     const list = document.getElementById('diUnitList');
     const selCount = document.getElementById('selCount');
-    if (!id) { section.style.display='none'; list.innerHTML=''; return; }
+    if (!id) { section.style.display='none'; list.innerHTML=''; resetCustomerLocationSelection(); return; }
+    const selectedSpk = spkReadyMap[String(id)] || null;
+    if (selectedSpk) {
+      document.getElementById('po_kontrak_nomor').value = selectedSpk.po || '';
+      document.getElementById('pelanggan').value = selectedSpk.pelanggan || '';
+      pelangganIdInput.value = selectedSpk.customer_id || '';
+      loadCustomerLocationsByCustomer(selectedSpk.customer_id || '');
+    } else {
+      resetCustomerLocationSelection();
+    }
     section.style.display='block';
     list.innerHTML = '<div class="text-muted small">Loading items from SPK...</div>';
     fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`).then(r=>r.json()).then(j=>{
@@ -1611,6 +1720,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('diCreateForm').addEventListener('submit', (e)=>{
     e.preventDefault();
     const fd = new FormData(e.target);
+    const customerLocationId = customerLocationSelect.value;
+    if (!customerLocationId) {
+      OptimaNotify.warning('Pilih Customer Location terlebih dahulu.');
+      return;
+    }
     
     // Check workflow type
     const jenisSelect = document.getElementById('jenisPerintahSelect');

@@ -13,6 +13,19 @@ class DeliveryItemModel extends Model
     protected $useSoftDeletes = false;
     protected $protectFields = true;
     protected $allowedFields = [
+        // DI workflow fields
+        'di_id',
+        'item_type',
+        'unit_id',
+        'attachment_id',
+        'parent_unit_id',
+        'keterangan',
+        'operator_required',
+        'operator_quantity',
+        'operator_monthly_rate_snapshot',
+        'operator_daily_rate_snapshot',
+        'operator_rate_source',
+        // Legacy PO delivery fields
         'delivery_id',
         'po_item_id',
         'qty_delivered',

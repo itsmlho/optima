@@ -6,6 +6,22 @@ $deliveries = $deliveries ?? [];
 $status = strtoupper((string)($po['status'] ?? ''));
 $placeholder = ($status === 'PENDING' || $status === 'SUBMITTED');
 ?>
+<?php
+if (!function_exists('resolvePrintSignerName')) {
+    function resolvePrintSignerName(array $data, array $keys, string $fallback): string
+    {
+        foreach ($keys as $key) {
+            $value = trim((string)($data[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -934,7 +950,11 @@ $placeholder = ($status === 'PENDING' || $status === 'SUBMITTED');
                 <div style="font-weight: bold; margin-bottom: 5px;">PURCHASING</div>
                 <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pembuat PO</div>
                 <?php 
-                    $purchasingName = $po['created_by_name'] ?? $po['created_by'] ?? '';
+                    $purchasingName = resolvePrintSignerName(
+                        $po,
+                        ['created_by_full_name', 'created_by_name', 'purchasing_name'],
+                        ''
+                    );
                     if (!empty($purchasingName)): 
                 ?>
                     <div style="color: #059669; border: 2px solid #059669; padding: 3px 8px; font-size: 10px; font-weight: bold; display: inline-block; transform: rotate(-15deg); margin: 10px 0;">APPROVED</div>

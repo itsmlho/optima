@@ -239,19 +239,10 @@ helper('permission_helper');
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Master Data</span></li>
-                    <?php if (canNavigateTo('marketing', 'customer')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/marketing/customer-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">group</span><span class="drop-label">Customers</span></a></li>
+                    <?php if (hasPermission('view_master_data') || hasPermission('master_data.index.navigation')): ?>
+                    <li class="nav-item"><a href="<?= base_url('/master-data') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">table_view</span><span class="drop-label">Master Data Center</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('purchasing', 'supplier')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/purchasing/supplier-management-page') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">business</span><span class="drop-label">Suppliers</span></a></li>
-                    <?php endif; ?>
-                    <?php if (canNavigateTo('service', 'area')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area & Karyawan</span></a></li>
-                    <?php endif; ?>
-                    <?php if (hasModuleAccess('admin')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/admin/divisions') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">corporate_fare</span><span class="drop-label">Divisions</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/admin/positions') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">badge</span><span class="drop-label">Positions</span></a></li>
-                    <?php endif; ?>
+                    <li class="nav-item"><span class="nav-link dropdown-link text-muted"><span class="material-symbols-rounded drop-icon">info</span><span class="drop-label">Entity CRUD terpusat</span></span></li>
                 </ul>
             </li>
 

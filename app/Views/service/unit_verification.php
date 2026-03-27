@@ -376,9 +376,9 @@
                                     </div>
                                     <div class="col-md-3 col-sm-6 mb-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA" id="acc-camera">
+                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA MONITOR" id="acc-camera">
                                             <label class="form-check-label" for="acc-camera">
-                                                Camera
+                                                Camera Monitor
                                             </label>
                                         </div>
                                     </div>
@@ -439,28 +439,39 @@
                                     </div>
                                     <div class="col-md-3 col-sm-6 mb-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="P3K" id="acc-p3k">
+                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="FIRST AID KIT" id="acc-p3k">
                                             <label class="form-check-label" for="acc-p3k">
-                                                P3K
+                                                First Aid Kit
                                             </label>
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-6 mb-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="SPARS ARRESTOR" id="acc-spars">
+                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="SPARK ARRESTOR" id="acc-spars">
                                             <label class="form-check-label" for="acc-spars">
-                                                Spars Arrestor
+                                                Spark Arrestor
                                             </label>
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-6 mb-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT INTERLOC" id="acc-safety-belt">
+                                            <input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT INTERLOCK" id="acc-safety-belt">
                                             <label class="form-check-label" for="acc-safety-belt">
-                                                Safety Belt Interloc
+                                                Safety Belt Interlock
                                             </label>
                                         </div>
                                     </div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="MIRROR" id="acc-mirror"><label class="form-check-label" for="acc-mirror">Mirror / Spion</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT STANDAR" id="acc-safety-belt-std"><label class="form-check-label" for="acc-safety-belt-std">Safety Belt Standar</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="LOAD BACKREST" id="acc-load-backrest"><label class="form-check-label" for="acc-load-backrest">Load Backrest</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORKS" id="acc-forks"><label class="form-check-label" for="acc-forks">Forks</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="OVERHEAD GUARD" id="acc-overhead-guard"><label class="form-check-label" for="acc-overhead-guard">Overhead Guard</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="DOCUMENT HOLDER" id="acc-document-holder"><label class="form-check-label" for="acc-document-holder">Document Holder</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="TOOL KIT" id="acc-tool-kit"><label class="form-check-label" for="acc-tool-kit">Tool Kit</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="APAR BRACKET" id="acc-apar-bracket"><label class="form-check-label" for="acc-apar-bracket">APAR + Bracket</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="ANTI STATIC STRAP" id="acc-anti-static-strap"><label class="form-check-label" for="acc-anti-static-strap">Anti-Static Strap</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="WHEEL STOPPER CHOCK" id="acc-wheel-stopper-chock"><label class="form-check-label" for="acc-wheel-stopper-chock">Wheel Stopper / Chock</label></div></div>
+                                    <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORK EXTENSION" id="acc-fork-extension"><label class="form-check-label" for="acc-fork-extension">Fork Extension</label></div></div>
                                 </div>
                             </div>
 
@@ -912,6 +923,53 @@ $(document).ready(function() {
     }
 
     // Populate Unit Accessories
+    function normalizeAccessoryValue(value) {
+        const raw = String(value || '').trim();
+        const key = raw.toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+        const map = {
+            'MAIN LIGHT': 'LAMPU UTAMA',
+            'MAIN LIGHT SET': 'LAMPU UTAMA',
+            'MAIN LIGHT SET (HEADLIGHT, REVERSE, SIGNAL, STOP LAMP)': 'LAMPU UTAMA',
+            'WORK LIGHT': 'WORK LIGHT',
+            'ROTARY LAMP': 'ROTARY LAMP',
+            'BACK BUZZER': 'BACK BUZZER',
+            'HORN KLASON': 'HORN KLASON',
+            'HORN / KLAKSON': 'HORN KLASON',
+            'MIRROR': 'MIRROR',
+            'SAFETY BELT': 'SAFETY BELT STANDAR',
+            'SAFETY BELT STANDAR': 'SAFETY BELT STANDAR',
+            'LOAD BACKREST': 'LOAD BACKREST',
+            'FORKS': 'FORKS',
+            'OVERHEAD GUARD': 'OVERHEAD GUARD',
+            'DOCUMENT HOLDER': 'DOCUMENT HOLDER',
+            'TOOL KIT': 'TOOL KIT',
+            'APAR BRACKET': 'APAR BRACKET',
+            'APAR + BRACKET': 'APAR BRACKET',
+            'BLUE SPOT': 'BLUE SPOT',
+            'RED LINE': 'RED LINE',
+            'CAMERA AI': 'CAMERA AI',
+            'CAMERA': 'CAMERA MONITOR',
+            'CAMERA MONITOR': 'CAMERA MONITOR',
+            'SENSOR PARKING': 'SENSOR PARKING',
+            'SPEED LIMITER': 'SPEED LIMITER',
+            'LASER FORK': 'LASER FORK',
+            'VOICE ANNOUNCER': 'VOICE ANNOUNCER',
+            'HORN SPEAKER': 'HORN SPEAKER',
+            'BIO METRIC': 'BIO METRIC',
+            'SAFETY BELT INTERLOC': 'SAFETY BELT INTERLOCK',
+            'SAFETY BELT INTERLOCK': 'SAFETY BELT INTERLOCK',
+            'SPARS ARRESTOR': 'SPARK ARRESTOR',
+            'SPARK ARRESTOR': 'SPARK ARRESTOR',
+            'ANTI STATIC STRAP': 'ANTI STATIC STRAP',
+            'ACRYLIC': 'ACRYLIC',
+            'FIRST AID KIT': 'FIRST AID KIT',
+            'P3K': 'FIRST AID KIT',
+            'WHEEL STOPPER CHOCK': 'WHEEL STOPPER CHOCK',
+            'FORK EXTENSION': 'FORK EXTENSION'
+        };
+        return map[key] || key;
+    }
+
     window.populateUnitAccessories = function(accessories) {
         console.log('🔧 Populating unit accessories:', accessories);
         
@@ -922,7 +980,7 @@ $(document).ready(function() {
         if (accessories && accessories.length > 0) {
             let checkedCount = 0;
             accessories.forEach(function(accessory) {
-                let accessoryValue = accessory.name || accessory.accessory_name || accessory;
+                let accessoryValue = normalizeAccessoryValue(accessory.name || accessory.accessory_name || accessory);
                 console.log('🔍 Looking for accessory:', accessoryValue);
                 
                 // Try exact match first
@@ -986,10 +1044,18 @@ $(document).ready(function() {
         // Select commonly used accessories (sama dengan Marketing/Kontrak)
         let commonAccessories = [
             'LAMPU UTAMA',
-            'HORN SPEAKER',
-            'APAR 1 KG',
-            'BLUE SPOT',
-            'BACK BUZZER'
+            'WORK LIGHT',
+            'ROTARY LAMP',
+            'BACK BUZZER',
+            'HORN KLASON',
+            'MIRROR',
+            'SAFETY BELT STANDAR',
+            'LOAD BACKREST',
+            'FORKS',
+            'OVERHEAD GUARD',
+            'DOCUMENT HOLDER',
+            'TOOL KIT',
+            'APAR BRACKET'
         ];
         
         commonAccessories.forEach(function(accessory) {

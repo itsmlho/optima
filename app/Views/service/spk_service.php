@@ -451,6 +451,7 @@ $can_export = true;
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
+<?= $this->include('partials/accessory_js') ?>
 
 <script>
 // Global variables
@@ -879,20 +880,27 @@ document.addEventListener('DOMContentLoaded', () => {
 				pdi_catatan: d.pdi_catatan,
 			};
 
+			const formatAccessoryLabel = (value) => window.OptimaAccessory
+				? window.OptimaAccessory.formatLabel(value)
+				: String(value || '').trim();
+			const formatAccessoryList = (list) => window.OptimaAccessory
+				? window.OptimaAccessory.formatList(Array.isArray(list) ? list : [])
+				: (Array.isArray(list) ? list : []);
+
 			// Build accessories text robustly (array or JSON string)
 			let aksText = '-';
 			if (j.kontrak_spec && j.kontrak_spec.aksesoris) {
 				const aks = j.kontrak_spec.aksesoris;
-				if (Array.isArray(aks) && aks.length) aksText = aks.join(', ');
+				if (Array.isArray(aks) && aks.length) aksText = formatAccessoryList(aks).join(', ');
 				else if (typeof aks === 'string') {
-					try { const parsed = JSON.parse(aks); aksText = Array.isArray(parsed) && parsed.length ? parsed.join(', ') : (aks.trim() || '-'); }
-					catch(e){ aksText = aks.trim() || '-'; }
+					try { const parsed = JSON.parse(aks); aksText = Array.isArray(parsed) && parsed.length ? formatAccessoryList(parsed).join(', ') : (formatAccessoryLabel(aks.trim()) || '-'); }
+					catch(e){ aksText = formatAccessoryLabel(aks.trim()) || '-'; }
 				}
 			} else if (s && s.aksesoris) {
-				if (Array.isArray(s.aksesoris) && s.aksesoris.length) aksText = s.aksesoris.join(', ');
+				if (Array.isArray(s.aksesoris) && s.aksesoris.length) aksText = formatAccessoryList(s.aksesoris).join(', ');
 				else if (typeof s.aksesoris === 'string') {
-					try { const parsed = JSON.parse(s.aksesoris); aksText = Array.isArray(parsed) && parsed.length ? parsed.join(', ') : (s.aksesoris.trim() || '-'); }
-					catch(e){ aksText = (s.aksesoris||'').trim() || '-'; }
+					try { const parsed = JSON.parse(s.aksesoris); aksText = Array.isArray(parsed) && parsed.length ? formatAccessoryList(parsed).join(', ') : (formatAccessoryLabel(s.aksesoris.trim()) || '-'); }
+					catch(e){ aksText = formatAccessoryLabel((s.aksesoris||'').trim()) || '-'; }
 				}
 			}
 
@@ -1509,23 +1517,22 @@ document.addEventListener('DOMContentLoaded', () => {
 						const aks = j.kontrak_spec.aksesoris;
 						if (Array.isArray(aks)) aksesoris = aks;
 						else if (typeof aks === 'string' && aks.trim()) {
-							try { const parsed = JSON.parse(aks); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = [aks.trim()]; }
-							catch(e){ aksesoris = [aks.trim()]; }
+							try { const parsed = JSON.parse(aks); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = aks.split(',').map(v => v.trim()).filter(Boolean); }
+							catch(e){ aksesoris = aks.split(',').map(v => v.trim()).filter(Boolean); }
 						}
 					} else if (spesifikasi.aksesoris) {
 						if (Array.isArray(spesifikasi.aksesoris)) aksesoris = spesifikasi.aksesoris;
 						else if (typeof spesifikasi.aksesoris === 'string' && spesifikasi.aksesoris.trim()) {
-							try { const parsed = JSON.parse(spesifikasi.aksesoris); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = [spesifikasi.aksesoris.trim()]; }
-							catch(e){ aksesoris = [spesifikasi.aksesoris.trim()]; }
+							try { const parsed = JSON.parse(spesifikasi.aksesoris); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = spesifikasi.aksesoris.split(',').map(v => v.trim()).filter(Boolean); }
+							catch(e){ aksesoris = spesifikasi.aksesoris.split(',').map(v => v.trim()).filter(Boolean); }
 						}
 					}
-					
 					let aksesorisCheckboxes = '';
 					if (Array.isArray(aksesoris) && aksesoris.length > 0) {
 						aksesorisCheckboxes = aksesoris.map(item => 
 							`<div class="form-check">
-								<input class="form-check-input" type="checkbox" name="aksesoris_tersedia[]" value="${item}" id="aks_${item.replace(/\s+/g, '_')}">
-								<label class="form-check-label" for="aks_${item.replace(/\s+/g, '_')}">${item}</label>
+								<input class="form-check-input" type="checkbox" name="aksesoris_tersedia[]" value="${item}" id="aks_${item.replace(/[^\w]+/g, '_')}">
+								<label class="form-check-label" for="aks_${item.replace(/[^\w]+/g, '_')}">${window.OptimaAccessory ? window.OptimaAccessory.formatLabel(item) : item}</label>
 							</div>`
 						).join('');
 					} else {
