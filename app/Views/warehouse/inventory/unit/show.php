@@ -6,12 +6,21 @@ $permissions = get_global_permission('warehouse');
 $can_edit = $permissions['edit'];
 
 // Setup status badges
-$statusId = $unit['status_unit_id'] ?? 0;
+// status_unit_id canonical mapping:
+// 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED, 4=PREPARATION, 5=READY_TO_DELIVER,
+// 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=BREAKDOWN,
+// 11=MAINTENANCE (DI/service), 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE, 16=NONAKTIF
+$statusId = (int)($unit['status_unit_id'] ?? 0);
 $badgeClass = 'secondary';
 $statusIcon = 'fa-info-circle';
-if (in_array($statusId, [1, 5])) { $badgeClass = 'success'; $statusIcon='fa-check-circle'; }
-else if (in_array($statusId, [3, 4, 6, 7])) { $badgeClass = 'warning'; $statusIcon='fa-clock'; }
-else if ($statusId == 8) { $badgeClass = 'danger'; $statusIcon='fa-tools'; }
+if (in_array($statusId, [1, 9, 12, 15]))          { $badgeClass = 'success';   $statusIcon = 'fa-check-circle'; }
+elseif (in_array($statusId, [2, 3]))               { $badgeClass = 'info';      $statusIcon = 'fa-tag'; }
+elseif (in_array($statusId, [4, 5, 6]))            { $badgeClass = 'warning';   $statusIcon = 'fa-clock'; }
+elseif (in_array($statusId, [7, 8]))               { $badgeClass = 'warning';   $statusIcon = 'fa-industry'; }
+elseif (in_array($statusId, [10, 11]))             { $badgeClass = 'danger';    $statusIcon = 'fa-tools'; }
+elseif ($statusId === 13)                          { $badgeClass = 'dark';      $statusIcon = 'fa-times-circle'; }
+elseif ($statusId === 14)                          { $badgeClass = 'secondary'; $statusIcon = 'fa-pause-circle'; }
+elseif ($statusId === 16)                          { $badgeClass = 'dark';      $statusIcon = 'fa-ban'; }
 
 $unitNo = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-'.$unit['id_inventory_unit']);
 // Fall back to tipe_unit (tipe/jenis) when model_unit FK is missing (id=0)
@@ -727,7 +736,10 @@ if ($aksesorisRaw) {
                     'check-circle': 'fa-check-circle',
                     'puzzle-piece': 'fa-puzzle-piece',
                     'wrench': 'fa-wrench',
-                    'sync-alt': 'fa-sync-alt'
+                    'sync-alt': 'fa-sync-alt',
+                    // Used by UnitActivityService for KANIBAL / sparepart events
+                    'exchange-alt': 'fa-exchange-alt',
+                    'toolbox': 'fa-toolbox'
                 };
 
                 var refLabels = {

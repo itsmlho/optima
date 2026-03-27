@@ -312,5 +312,11 @@ class Workflow extends BaseController
             } else {
                 throw new \Exception('Gagal memproses permintaan. Silakan coba lagi.');
             }
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 }

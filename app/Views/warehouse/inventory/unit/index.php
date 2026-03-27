@@ -136,6 +136,9 @@ $can_export = $permissions['export'];
                         <input type="radio" class="btn-check" name="subFilter" id="sub-in-deliv" data-sub-status="6">
                         <label class="btn btn-sm btn-outline-primary" for="sub-in-deliv">In Delivery</label>
 
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-under-repair" data-sub-status="10">
+                        <label class="btn btn-sm btn-outline-danger" for="sub-under-repair">Breakdown</label>
+
                         <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="11">
                         <label class="btn btn-sm btn-outline-danger" for="sub-maintenance">Maintenance</label>
                     </div>
@@ -256,7 +259,8 @@ $(document).ready(function() {
                     const id    = parseInt(row.status_unit_id, 10) || 0;
                     // status_unit_id DB mapping: 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED,
                     // 4=PREPARATION, 5=READY_TO_DELIVER, 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY,
-                    // 9=TRIAL, 10=UNDER_REPAIR, 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE
+                    // 9=TRIAL, 10=BREAKDOWN, 11=MAINTENANCE (in progress), 12=RETURNED,
+                    // 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE, 16=NONAKTIF (decommissioned)
                     const badgeMap = {
                         1:  'badge-soft-green',   // AVAILABLE_STOCK
                         2:  'badge-soft-yellow',  // NON_ASSET_STOCK
@@ -267,12 +271,13 @@ $(document).ready(function() {
                         7:  'badge-soft-yellow',  // RENTAL_ACTIVE
                         8:  'badge-soft-yellow',  // RENTAL_DAILY
                         9:  'badge-soft-gray',    // TRIAL
-                        10: 'badge-soft-red',     // UNDER_REPAIR
-                        11: 'badge-soft-red',     // MAINTENANCE
+                        10: 'badge-soft-red',     // BREAKDOWN
+                        11: 'badge-soft-red',     // MAINTENANCE   ← DI TARIK/service
                         12: 'badge-soft-gray',    // RETURNED
                         13: 'badge-soft-dark',    // SOLD
                         14: 'badge-soft-gray',    // RENTAL_INACTIVE
                         15: 'badge-soft-blue',    // SPARE
+                        16: 'badge-soft-dark',    // NONAKTIF (decommissioned/nonaktif)
                     };
                     const cls = badgeMap[id] || 'badge-soft-gray';
                     return `<span class="badge ${cls} rounded-pill px-3 py-1 fw-medium shadow-sm">${label}</span>`;
@@ -281,8 +286,18 @@ $(document).ready(function() {
             { 
                 data: 'lokasi_unit', 
                 render: function(data, type, row) {
-                    if (row.status_unit_id == 7 && data) {
+                    const sid = parseInt(row.status_unit_id, 10);
+                    if (sid === 7 && data) {
                         return '<div class="text-success fw-bold"><i class="fas fa-building me-1"></i> Rented Area</div><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>' + data + '</small>';
+                    }
+                    if (sid === 10) {
+                        return '<div class="text-danger"><i class="fas fa-tools me-2"></i>' + (data || 'Workshop') + '</div>';
+                    }
+                    if (sid === 11) {
+                        return '<div class="text-danger"><i class="fas fa-wrench me-2"></i>' + (data || 'Workshop') + '</div>';
+                    }
+                    if (sid === 16) {
+                        return '<div class="text-muted"><i class="fas fa-ban me-2"></i>' + (data || '-') + '</div>';
                     }
                     return '<div class="d-flex align-items-center"><i class="fas fa-warehouse text-muted me-2"></i> ' + (data || 'HQ Internal Warehouse') + '</div>';
                 }
@@ -365,7 +380,8 @@ $(document).ready(function() {
         const rentalCount = (stats.rental_active||0) + (stats.rental_inactive||0) + (stats.rental_daily||0);
         $('#count-rental').text(rentalCount);
 
-        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0) + (stats.maintenance||0);
+        // Progress: SPK preparation/delivery pipeline + BREAKDOWN + MAINTENANCE
+        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0) + (stats.under_repair||0) + (stats.maintenance||0);
         $('#count-progress').text(progressCount);
     }
 });

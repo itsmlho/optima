@@ -194,6 +194,9 @@ helper('permission_helper');
                     <li class="nav-item"><a href="<?= base_url('/warehouse/purchase-orders/wh-verification') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">fact_check</span><span class="drop-label">PO Verification</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <li class="nav-item"><a href="<?= base_url('/warehouse/returned-verifications') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">assignment_turned_in</span><span class="drop-label">Returned Verifications</span></a></li>
+                    <?php endif; ?>
+                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/movements') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">swap_horiz</span><span class="drop-label">Surat Jalan</span></a></li>
                     <?php endif; ?>
                 </ul>

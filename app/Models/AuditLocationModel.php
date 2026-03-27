@@ -818,11 +818,8 @@ class AuditLocationModel extends Model
         $db->transStart();
 
         try {
-            // Get kontrak_id from pricing (required) or fallback to existing
-            $kontrakId = $pricing['kontrak_id'] ?? $audit['kontrak_id'];
-            if (empty($kontrakId)) {
-                return ['success' => false, 'message' => 'Kontrak/PO harus dipilih'];
-            }
+            // Use kontrak_id from existing audit record
+            $kontrakId = $audit['kontrak_id'];
 
             // Calculate price adjustment
             $unitDifference = $audit['actual_total_units'] - $audit['kontrak_total_units'];
@@ -917,13 +914,20 @@ class AuditLocationModel extends Model
                 }
             }
 
+            // Nonaktifkan lokasi jika diminta
+            if (!empty($pricing['deactivate_location'])) {
+                $db->table('customer_locations')
+                    ->where('id', $audit['customer_location_id'])
+                    ->update(['is_active' => 0]);
+            }
+
             $db->transComplete();
 
             return [
                 'success' => true,
-                'message' => 'Audit berhasil diapprove',
+                'message' => 'Audit berhasil diapprove' . (!empty($pricing['deactivate_location']) ? ' & lokasi dinonaktifkan' : ''),
                 'data'    => [
-                    'unit_difference'       => $unitDifference,
+                    'unit_difference'        => $unitDifference,
                     'total_price_adjustment' => $totalAdjustment,
                 ],
             ];

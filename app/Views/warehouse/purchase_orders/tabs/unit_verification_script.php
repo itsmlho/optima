@@ -15,6 +15,13 @@
     }
 
     $(document).ready(function() {
+        // Auto-expand semua PO group pada saat halaman dimuat
+        $('#unit-list .po-group-header').each(function() {
+            const poId = $(this).data('po-id');
+            $(this).addClass('open');
+            $(`.child-po-${poId}`).slideDown(0);
+        });
+
         $('#unit-list').on('click', '.unit-list-item', function(e) {
             e.preventDefault();
             $('.unit-list-item').removeClass('active');
@@ -344,9 +351,7 @@
     window.toggleUnitDropdown = function(element) {
         const poId = $(element).data('po-id');
         $(element).toggleClass('open');
-        $(`.child-po-${poId}`).each(function() {
-            $(this).toggleClass('show');
-        });
+        $(`.child-po-${poId}`).slideToggle(200);
     };
 
     window.prepareUnitVerificationModal = function(element) {
@@ -1175,12 +1180,11 @@
                     discrepancies_count: discrepancies.length,
                     discrepancies: discrepancies
                 });
-                OptimaPro.showLoading('Verifying unit...');
+                $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', true).text('Menyimpan...');
             },
             success: function(r) {
                 window._verifyingUnit = false;
-                $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false);
-                OptimaPro.hideLoading();
+                $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false).text('Submit Verifikasi');
                 
                 if (r.statusCode == 200) {
                     $('#modalUpdateSN').modal('hide');
@@ -1210,7 +1214,7 @@
             },
             error: function(xhr, status, error) {
                 window._verifyingUnit = false;
-                $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false);
+                $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false).text('Submit Verifikasi');
                 
                 // Log error detail untuk debugging
                 console.error('AJAX Error:', {

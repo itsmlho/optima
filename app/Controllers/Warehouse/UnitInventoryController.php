@@ -57,12 +57,12 @@ class UnitInventoryController extends BaseController
 
             // Map broad categories to status ID groups (based on actual status_unit table):
             // 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED, 4=PREPARATION, 5=READY_TO_DELIVER
-            // 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=UNDER_REPAIR
-            // 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE
+            // 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=BREAKDOWN
+            // 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE, 16=NONAKTIF
             $categoryMap = [
-                'stock'    => '1,2,3,9,12,15',   // AVAILABLE_STOCK, NON_ASSET, BOOKED, TRIAL, RETURNED, SPARE
-                'rental'   => '7,8,14',           // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
-                'progress' => '4,5,6,11',         // PREPARATION, READY_TO_DELIVER, IN_DELIVERY, MAINTENANCE
+                'stock'    => '1,2,3,9,12,15',    // AVAILABLE_STOCK, NON_ASSET, BOOKED, TRIAL, RETURNED, SPARE
+                'rental'   => '7,8,14',            // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
+                'progress' => '4,5,6,10,11',       // PREPARATION, READY_TO_DELIVER, IN_DELIVERY, BREAKDOWN, MAINTENANCE
             ];
             // Sub-filter (statusFilter) takes priority over category
             if (!empty($category) && isset($categoryMap[$category]) && empty($statusFilter)) {
@@ -214,7 +214,7 @@ class UnitInventoryController extends BaseController
                 ->join('work_order_statuses   wos', 'wos.id = wo.status_id',   'left')
                 ->join('users u',                   'u.id   = wo.mechanic_id', 'left')
                 ->where('wo.unit_id', (int)$id)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 ->orderBy('wo.report_date', 'DESC')
                 ->limit(25)
                 ->get()->getResultArray();
@@ -233,7 +233,7 @@ class UnitInventoryController extends BaseController
                           wo.report_date       as date')
                 ->join('work_orders wo', 'wo.id = wsp.work_order_id', 'left')
                 ->where('wo.unit_id', (int)$id)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 ->orderBy('wo.report_date', 'DESC')
                 ->limit(30)
                 ->get()->getResultArray();
@@ -460,7 +460,7 @@ class UnitInventoryController extends BaseController
                         'DITUKAR'      => ['Ditukar',     'warning'],
                         'NON_AKTIF'    => ['Non-Aktif',   'secondary'],
                         'MAINTENANCE'  => ['Maintenance', 'danger'],
-                        'UNDER_REPAIR' => ['Under Repair','danger'],
+                        'UNDER_REPAIR' => ['Breakdown','danger'],
                         default        => [$r['status'] ?? '-', 'secondary'],
                     };
                     $meta = [];
@@ -868,26 +868,36 @@ class UnitInventoryController extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
         }
 
-        if (in_array((int)$unit['status_unit_id'], [4, 5, 6, 7], true)) {
+        // Block deactivation while unit is actively in use
+        if (in_array((int)$unit['status_unit_id'], [4, 5, 6, 7, 8], true)) {
             return $this->response->setStatusCode(422)->setJSON([
                 'success' => false,
-                'message' => 'Unit tidak dapat dihapus, masih dalam status aktif.',
+                'message' => 'Unit tidak dapat dinonaktifkan, masih dalam status aktif (In Preparation / Ready / In Delivery / Rental).',
+            ]);
+        }
+
+        // Block deactivation while unit has an open Work Order (MAINTENANCE / BREAKDOWN)
+        if (in_array((int)$unit['status_unit_id'], [10, 11], true)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'success' => false,
+                'message' => 'Unit sedang dalam proses perbaikan/maintenance. Selesaikan Work Order terlebih dahulu sebelum menonaktifkan unit.',
             ]);
         }
 
         try {
-            $this->inventoryUnitModel->update((int)$id, ['status_unit_id' => 10]);
+            // Use status 16 (NONAKTIF) — distinct from status 10 (BREAKDOWN) and 11 (MAINTENANCE)
+            $this->inventoryUnitModel->update((int)$id, ['status_unit_id' => 16]);
             
             // Log to system_activity_log
             $unitNumber = $unit['no_unit'] ?? $unit['no_unit_na'] ?? "ID #{$id}";
             $this->logDelete('inventory_unit', $id, $unit, [
                 'module_name' => 'warehouse',
-                'description' => "Unit {$unitNumber} deactivated (soft delete)",
+                'description' => "Unit {$unitNumber} dinonaktifkan (NONAKTIF)",
                 'business_impact' => 'HIGH',
                 'is_critical' => true,
             ]);
             
-            return $this->response->setJSON(['success' => true, 'message' => 'Unit berhasil di-nonaktifkan.']);
+            return $this->response->setJSON(['success' => true, 'message' => 'Unit berhasil dinonaktifkan.']);
         } catch (\Throwable $e) {
             log_message('error', 'UnitInventoryController::destroy: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
@@ -951,14 +961,15 @@ class UnitInventoryController extends BaseController
             'ready_to_deliver' => $counts[5]  ?? 0,
             'in_delivery'      => $counts[6]  ?? 0,
             'rental_active'    => $counts[7]  ?? 0,
-            'rental_daily'     => $counts[8]  ?? 0,   // RENTAL_DAILY
-            'trial'            => $counts[9]  ?? 0,   // TRIAL
-            'under_repair'     => $counts[10] ?? 0,
-            'maintenance'      => $counts[11] ?? 0,   // MAINTENANCE (was wrongly 8)
-            'returned'         => $counts[12] ?? 0,   // RETURNED (was wrongly 9)
+            'rental_daily'     => $counts[8]  ?? 0,
+            'trial'            => $counts[9]  ?? 0,
+            'under_repair'     => $counts[10] ?? 0,   // BREAKDOWN (termasuk dalam progress)
+            'maintenance'      => $counts[11] ?? 0,   // MAINTENANCE
+            'returned'         => $counts[12] ?? 0,
             'sold'             => $counts[13] ?? 0,
-            'rental_inactive'  => $counts[14] ?? 0,   // RENTAL_INACTIVE (was wrongly 11)
+            'rental_inactive'  => $counts[14] ?? 0,
             'spare'            => $counts[15] ?? 0,
+            'nonaktif'         => $counts[16] ?? 0,   // NONAKTIF (dinonaktifkan, bukan repair)
         ];
     }
 

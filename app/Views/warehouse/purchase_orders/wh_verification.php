@@ -28,19 +28,11 @@ $can_export = $permissions['export'];
     .item-child-item, .unit-child-item { 
         padding-left: 2.5rem; 
         border-left: 3px solid #dee2e6;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding 0.3s ease-out;
-        opacity: 0;
-        padding-top: 0;
-        padding-bottom: 0;
+        display: none;
         margin: 0;
     }
-    .item-child-item.show, .unit-child-item.show {
-        max-height: 500px;
-        opacity: 1;
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
+    .item-child-item.open, .unit-child-item.open {
+        display: block;
     }
     .item-child-item:hover, .unit-child-item:hover { border-left-color: #0d6efd; }
     .list-group-item.active { background-color: #e9ecef; border-color: #dee2e6; color: #212529; }
@@ -279,8 +271,8 @@ $can_export = $permissions['export'];
 <?= $this->section('javascript') ?>
 
 <script>
-// Define base URL for AJAX requests
-const baseUrl = '<?= base_url() ?>';
+// Define base URL for AJAX requests (strip trailing slash to avoid double-slash in URLs)
+const baseUrl = '<?= rtrim(base_url(), '/') ?>';
 
 // ========================================
 // TAB SWITCHING LOGIC - FIX STACKING ISSUE

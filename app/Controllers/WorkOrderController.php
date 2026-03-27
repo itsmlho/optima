@@ -981,7 +981,17 @@ class WorkOrderController extends Controller
                     if ($currentWorkOrder) {
                         $unitId = is_array($currentWorkOrder) ? ($currentWorkOrder['unit_id'] ?? null) : ($currentWorkOrder->unit_id ?? null);
                         if ($unitId) {
-                            $this->revertUnitWorkflowStatus((int)$unitId);
+                            $this->revertUnitWorkflowStatus((int)$unitId, (int)$id);
+                        }
+                    }
+                    break;
+                case 'CANCELLED':
+                    $updateData['cancelled_date'] = date('Y-m-d H:i:s');
+                    // Revert unit workflow_status when WO is cancelled
+                    if ($currentWorkOrder) {
+                        $unitId = is_array($currentWorkOrder) ? ($currentWorkOrder['unit_id'] ?? null) : ($currentWorkOrder->unit_id ?? null);
+                        if ($unitId) {
+                            $this->revertUnitWorkflowStatus((int)$unitId, (int)$id);
                         }
                     }
                     break;
@@ -1671,11 +1681,30 @@ class WorkOrderController extends Controller
                     }
                 }
                 
-                // Update unit workflow_status to MAINTENANCE_IN_PROGRESS
+                // Snapshot current unit status before setting MAINTENANCE_IN_PROGRESS
+                $preWoUnit = $db->table('inventory_unit')
+                    ->select('workflow_status, status_unit_id')
+                    ->where('id_inventory_unit', (int)$input['unit_id'])
+                    ->get()->getRowArray();
+                $preWoWorkflowStatus  = $preWoUnit['workflow_status']  ?? null;
+                $preWoStatusUnitId    = $preWoUnit['status_unit_id']   ?? null;
+
+                // Update unit to in-progress maintenance status for WO lifecycle lock
                 $db->table('inventory_unit')
                     ->where('id_inventory_unit', (int)$input['unit_id'])
-                    ->update(['workflow_status' => 'MAINTENANCE_IN_PROGRESS']);
-                log_message('info', 'Unit ' . $input['unit_id'] . ' workflow_status set to MAINTENANCE_IN_PROGRESS');
+                    ->update([
+                        'workflow_status' => 'MAINTENANCE_IN_PROGRESS',
+                        'status_unit_id'  => 11, // MAINTENANCE (in progress)
+                    ]);
+                log_message('info', 'Unit ' . $input['unit_id'] . ' set to MAINTENANCE_IN_PROGRESS with status_unit_id=11');
+
+                // Persist snapshot on the WO row so every terminal path can restore it
+                $db->table('work_orders')
+                    ->where('id', $result)
+                    ->update([
+                        'pre_wo_workflow_status' => $preWoWorkflowStatus,
+                        'pre_wo_status_unit_id'  => $preWoStatusUnitId,
+                    ]);
 
                 $db->transComplete();
                 
@@ -2148,23 +2177,58 @@ class WorkOrderController extends Controller
      * Get area staff information for work order assignment
      */
     /**
-     * Revert unit workflow_status after Work Order is CLOSED.
-     * Sets to DISEWA if unit has active contract, otherwise TERSEDIA.
+     * Revert unit workflow/status after Work Order reaches a terminal state.
+     *
+     * Priority:
+     *   1. Restore from pre_wo_workflow_status + pre_wo_status_unit_id snapshot stored on the WO row.
+     *   2. Fallback: derive from active contract presence (DISEWA / TERSEDIA).
+     *
+     * @param int      $unitId   inventory_unit.id_inventory_unit
+     * @param int|null $woId     work_orders.id (used to read snapshot)
      */
-    private function revertUnitWorkflowStatus(int $unitId): void
+    private function revertUnitWorkflowStatus(int $unitId, ?int $woId = null): void
     {
         $db = \Config\Database::connect();
-        $hasActiveContract = $db->table('kontrak_unit')
-            ->where('unit_id', $unitId)
-            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
-            ->where('is_temporary', 0)
-            ->countAllResults() > 0;
 
-        $revertStatus = $hasActiveContract ? 'DISEWA' : 'TERSEDIA';
+        // Attempt to restore from snapshot
+        $revertStatus = null;
+        $revertStatusUnitId = null;
+        if ($woId) {
+            $snap = $db->table('work_orders')
+                ->select('pre_wo_workflow_status, pre_wo_status_unit_id')
+                ->where('id', $woId)
+                ->get()->getRowArray();
+            if (!empty($snap['pre_wo_workflow_status'])) {
+                $revertStatus = $snap['pre_wo_workflow_status'];
+            }
+            if (!empty($snap['pre_wo_status_unit_id'])) {
+                $revertStatusUnitId = (int) $snap['pre_wo_status_unit_id'];
+            }
+        }
+
+        // Fallback: derive from active contract if no snapshot available
+        if ($revertStatus === null) {
+            $hasActiveContract = $db->table('kontrak_unit')
+                ->where('unit_id', $unitId)
+                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('is_temporary', 0)
+                ->countAllResults() > 0;
+            $revertStatus = $hasActiveContract ? 'DISEWA' : 'TERSEDIA';
+            log_message('info', "Unit {$unitId}: no pre_wo snapshot found, deriving workflow_status as {$revertStatus}");
+        }
+
+        $updateData = ['workflow_status' => $revertStatus];
+        if ($revertStatusUnitId !== null) {
+            $updateData['status_unit_id'] = $revertStatusUnitId;
+        }
+
         $db->table('inventory_unit')
             ->where('id_inventory_unit', $unitId)
-            ->update(['workflow_status' => $revertStatus]);
-        log_message('info', "Unit {$unitId} workflow_status reverted to {$revertStatus} after WO CLOSED");
+            ->update($updateData);
+        log_message(
+            'info',
+            "Unit {$unitId} reverted after WO terminal state: workflow_status={$revertStatus}, status_unit_id=" . ($updateData['status_unit_id'] ?? 'unchanged')
+        );
     }
 
     private function getAreaStaffInfo($unitId)
@@ -3079,6 +3143,7 @@ class WorkOrderController extends Controller
                 SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
+                    iu.status_unit_id,
                     iu.serial_number,
                     iu.tahun_unit,
                     iu.departemen_id,
@@ -3797,6 +3862,19 @@ class WorkOrderController extends Controller
                 }
             }
 
+            // Validate and map post verification status (business decision output)
+            $postVerificationStatus = $this->request->getPost('post_verification_status');
+            $postVerificationStatus = ($postVerificationStatus !== null && $postVerificationStatus !== '')
+                ? (int) $postVerificationStatus
+                : null;
+            $allowedPostStatuses = [1, 7, 8, 10]; // AVAILABLE_STOCK, RENTAL_ACTIVE, RENTAL_DAILY, BREAKDOWN
+            if ($postVerificationStatus !== null && !in_array($postVerificationStatus, $allowedPostStatuses, true)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Hasil verifikasi status unit tidak valid'
+                ]);
+            }
+
             // Update inventory_unit table with unit verification data
             $unitUpdateData = [
                 'no_unit' => $this->request->getPost('no_unit'),
@@ -3817,6 +3895,23 @@ class WorkOrderController extends Controller
                 'valve_id' => $this->request->getPost('valve_id') ?: null,
                 'updated_at' => date('Y-m-d H:i:s')
             ];
+
+            // Apply status outcome from verification.
+            // If unit came from RETURNED queue and operator does not choose explicitly,
+            // default to AVAILABLE_STOCK to prevent units getting stuck at status 12.
+            if ($postVerificationStatus !== null) {
+                $unitUpdateData['status_unit_id'] = $postVerificationStatus;
+                $unitUpdateData['workflow_status'] = match ($postVerificationStatus) {
+                    1 => 'TERSEDIA',
+                    7 => 'DISEWA',
+                    8 => 'DISEWA',
+                    10 => 'UNDER_REPAIR',
+                    default => $oldUnitData['workflow_status'] ?? null,
+                };
+            } elseif ((int)($oldUnitData['status_unit_id'] ?? 0) === 12) {
+                $unitUpdateData['status_unit_id'] = 1;
+                $unitUpdateData['workflow_status'] = 'TERSEDIA';
+            }
 
             // Validate foreign keys before update
             if (!empty($unitUpdateData['departemen_id'])) {
@@ -4924,6 +5019,13 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             // Add status history
             $this->workOrderModel->addStatusHistory($workOrderId, $statusData['id'], 'Work order closed with sparepart validation completed', $fromStatusId);
 
+            // Revert unit workflow_status now that WO is closed (sparepart validation path)
+            $woUnitRow = is_array($currentWorkOrder) ? $currentWorkOrder : (array)($currentWorkOrder ?? []);
+            $woUnitId  = $woUnitRow['unit_id'] ?? null;
+            if ($woUnitId) {
+                $this->revertUnitWorkflowStatus((int)$woUnitId, (int)$workOrderId);
+            }
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -5107,6 +5209,13 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
 
             // Add status history with improved tracking
             $this->workOrderModel->addStatusHistory($workOrderId, $statusData['id'], 'Work order closed with sparepart usage tracking', $fromStatusId);
+
+            // Revert unit workflow_status now that WO is closed (sparepart usage path)
+            $woUnitRow = is_array($currentWorkOrder) ? $currentWorkOrder : (array)($currentWorkOrder ?? []);
+            $woUnitId  = $woUnitRow['unit_id'] ?? null;
+            if ($woUnitId) {
+                $this->revertUnitWorkflowStatus((int)$woUnitId, (int)$workOrderId);
+            }
 
             // Generate gap alert for admin if there are remaining spareparts
             $this->generateGapAlertBasedOnUsage($workOrderId);

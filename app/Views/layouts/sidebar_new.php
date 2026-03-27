@@ -190,6 +190,11 @@ helper('permission_helper');
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <a href="<?= base_url('/warehouse/returned-verifications') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'warehouse/returned-verifications') !== false ? 'active' : '' ?>">
+                        <i class="fas fa-clipboard-list"></i> Returned Verifications
+                    </a>
+                    <?php endif; ?>
+                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
                     <a href="<?= base_url('/warehouse/movements') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'warehouse/movements') !== false) ? 'active' : '' ?>">
                         <i class="fas fa-truck-moving"></i> Surat Jalan
                     </a>
@@ -587,6 +592,17 @@ helper('permission_helper');
                    data-search-terms="po verification verify purchase order warehouse">
                     <i class="fas fa-clipboard-check"></i>
                     <span class="nav-link-text"><?= lang('App.po_verification') ?></span>
+                </a>
+            </li>
+            <?php endif; ?>
+
+            <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'warehouse/returned-verifications') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/warehouse/returned-verifications') ?>"
+                   data-search-terms="returned verification warehouse unit returned">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span class="nav-link-text">Returned Verifications</span>
                 </a>
             </li>
             <?php endif; ?>

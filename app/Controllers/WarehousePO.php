@@ -1241,39 +1241,7 @@ class WarehousePO extends BaseController
 
     private function updateOverallPOStatusForUnit($po_id)
     {
-        // 1. Hitung total item unit untuk PO ini
-        $totalItems = $this->pounitsmodel->where('po_id', $po_id)->countAllResults();
-
-        // 2. Hitung item unit yang sudah diverifikasi (Sesuai atau Tidak Sesuai)
-        $verifiedItems = $this->pounitsmodel
-            ->where('po_id', $po_id)
-            ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])
-            ->countAllResults();
-
-        // 3. Hanya lanjutkan jika semua item sudah diverifikasi
-        if ($totalItems > 0 && $totalItems == $verifiedItems) {
-            
-            // 4. Periksa apakah ada item yang "Tidak Sesuai"
-            $mismatchedItems = $this->pounitsmodel
-                ->where('po_id', $po_id)
-                ->where('status_verifikasi', 'Tidak Sesuai')
-                ->countAllResults();
-
-            $newStatus = '';
-            if ($mismatchedItems > 0) {
-                // Jika ada minimal satu item ditolak, status PO menjadi 'Selesai dengan Catatan'
-                $newStatus = 'Selesai dengan Catatan';
-            } else {
-                // Jika semua item 'Sesuai', status PO menjadi 'completed'
-                $newStatus = 'completed';
-            }
-
-            // 5. Update status di tabel purchase_orders
-            if ($newStatus) {
-                $this->purchasemodel->update($po_id, ['status' => $newStatus]);
-            }
-        }
-        // Jika belum semua item diverifikasi, tidak ada yang diubah. Status PO tetap 'pending'.
+        $this->updateAllPOVerificationStatus($po_id);
     }
 
     public function verifyPoAttachment()
@@ -1452,6 +1420,13 @@ class WarehousePO extends BaseController
                 }
 
                 $db->transCommit();
+
+                // Update status PO setelah attachment diverifikasi
+                try {
+                    $this->updateAllPOVerificationStatus($po_id);
+                } catch (\Exception $e) {
+                    log_message('error', '[WarehousePO] Gagal update status PO setelah verifikasi attachment: ' . $e->getMessage());
+                }
                 
                 // Send notification: PO Verified
                 helper('notification');
@@ -2173,29 +2148,53 @@ class WarehousePO extends BaseController
 
     private function updateOverallPOStatus($po_id)
     {
-        $totalItems = $this->poSparepartItemModel->where('po_id', $po_id)->countAllResults();
-        $verifiedItems = $this->poSparepartItemModel
-            ->where('po_id', $po_id)
-            ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])
-            ->countAllResults();
+        $this->updateAllPOVerificationStatus($po_id);
+    }
 
-        // Jika semua item sudah diverifikasi, ubah status PO menjadi 'completed'
-        if ($totalItems > 0 && $totalItems == $verifiedItems) {
-            // Cek apakah ada item yang "Tidak Sesuai"
-            $mismatchedItems = $this->poSparepartItemModel
-                ->where('po_id', $po_id)
-                ->where('status_verifikasi', 'Tidak Sesuai')
-                ->countAllResults();
+    /**
+     * Update status PO berdasarkan verifikasi SEMUA item (unit + attachment/battery/charger + sparepart).
+     * PO hanya bisa 'completed' jika semua item dari ketiga tabel sudah diverifikasi.
+     */
+    private function updateAllPOVerificationStatus($po_id)
+    {
+        $db = \Config\Database::connect();
 
-            if ($mismatchedItems > 0) {
-                // Jika ada item yang tidak sesuai, set status ke "Selesai dengan Catatan"
-                $newStatus = 'Selesai dengan Catatan';
-            } else {
-                // Jika semua sesuai, set status ke "completed"
-                $newStatus = 'completed';
-            }
+        // Hitung total dan terverifikasi dari po_units
+        $totalUnits    = $this->pounitsmodel->where('po_id', $po_id)->countAllResults();
+        $verifiedUnits = $this->pounitsmodel->where('po_id', $po_id)
+            ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])->countAllResults();
+
+        // Hitung total dan terverifikasi dari po_attachment (Attachment, Battery, Charger)
+        $totalAtt    = $this->poAttachmentModel->where('po_id', $po_id)->countAllResults();
+        $verifiedAtt = $this->poAttachmentModel->where('po_id', $po_id)
+            ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])->countAllResults();
+
+        // Hitung total dan terverifikasi dari po_sparepart_items
+        $totalSp    = $this->poSparepartItemModel->where('po_id', $po_id)->countAllResults();
+        $verifiedSp = $this->poSparepartItemModel->where('po_id', $po_id)
+            ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])->countAllResults();
+
+        $totalAll    = $totalUnits + $totalAtt + $totalSp;
+        $verifiedAll = $verifiedUnits + $verifiedAtt + $verifiedSp;
+
+        // Hanya ubah status jika ADA item dan SEMUA sudah diverifikasi
+        if ($totalAll > 0 && $totalAll === $verifiedAll) {
+            // Cek apakah ada item 'Tidak Sesuai' di salah satu tabel
+            $mismatchUnits = $this->pounitsmodel->where('po_id', $po_id)
+                ->where('status_verifikasi', 'Tidak Sesuai')->countAllResults();
+            $mismatchAtt   = $this->poAttachmentModel->where('po_id', $po_id)
+                ->where('status_verifikasi', 'Tidak Sesuai')->countAllResults();
+            $mismatchSp    = $this->poSparepartItemModel->where('po_id', $po_id)
+                ->where('status_verifikasi', 'Tidak Sesuai')->countAllResults();
+
+            $newStatus = ($mismatchUnits + $mismatchAtt + $mismatchSp) > 0
+                ? 'Selesai dengan Catatan'
+                : 'completed';
 
             $this->purchasemodel->update($po_id, ['status' => $newStatus]);
+            log_message('info', "[WarehousePO] PO {$po_id} status updated to '{$newStatus}' ({$verifiedAll}/{$totalAll} items verified)");
+        } else {
+            log_message('info', "[WarehousePO] PO {$po_id} belum completed: {$verifiedAll}/{$totalAll} items verified");
         }
     }
     

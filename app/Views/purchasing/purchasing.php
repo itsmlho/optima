@@ -32,6 +32,128 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+<style>
+    #poDeliveryTable {
+        table-layout: fixed;
+    }
+
+    #poDeliveryTable th,
+    #poDeliveryTable td {
+        vertical-align: middle;
+    }
+
+    #poDeliveryTable .col-packing-list {
+        width: 14%;
+    }
+
+    #poDeliveryTable .col-po-supplier {
+        width: 22%;
+    }
+
+    #poDeliveryTable .col-delivery-info {
+        width: 16%;
+    }
+
+    #poDeliveryTable .col-items {
+        width: 24%;
+    }
+
+    #poDeliveryTable .col-status {
+        width: 10%;
+    }
+
+    #poDeliveryTable .col-actions {
+        width: 14%;
+    }
+
+    .delivery-packing-list {
+        display: inline-block;
+        max-width: 100%;
+        font-weight: 600;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-cell-title {
+        font-weight: 600;
+        line-height: 1.35;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-cell-subtitle {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.775rem;
+        color: #6c757d;
+        line-height: 1.3;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-items-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+    }
+
+    .delivery-items-wrap .badge {
+        margin-right: 0;
+        white-space: nowrap;
+    }
+
+    .delivery-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.3rem;
+        width: 100%;
+    }
+
+    .delivery-actions-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .delivery-actions-left {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .delivery-actions-right {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex: 0 0 auto;
+    }
+
+    .delivery-action-note {
+        display: block;
+        width: 100%;
+        font-size: 0.76rem;
+        line-height: 1.25;
+        text-align: left;
+    }
+
+    .delivery-status-note {
+        font-size: 0.78rem;
+        line-height: 1.3;
+    }
+
+    @media (max-width: 1400px) {
+        #poDeliveryTable {
+            table-layout: auto;
+        }
+    }
+</style>
+
 <!-- Success/Error Messages -->
 <?php if (session()->getFlashdata('success')): ?>
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -174,15 +296,12 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="poDeliveryTable">
                         <thead class="table-light">
                             <tr>
-                                <th><?= lang('App.packing_list') ?></th>
-                                <th><?= lang('App.po_number') ?></th>
-                                <th><?= lang('App.supplier') ?></th>
-                                <th><?= lang('App.delivery_date') ?></th>
-                                <th><?= lang('App.driver') ?></th>
-                                <th><?= lang('App.items') ?></th>
-                                <th><?= lang('Common.status') ?></th>
-                                <th class="text-center"><?= lang('Common.actions') ?></th>
-                                <th><?= lang('App.print_packing_list') ?></th>
+                                <th class="col-packing-list"><?= lang('App.packing_list') ?></th>
+                                <th class="col-po-supplier">PO / Supplier</th>
+                                <th class="col-delivery-info">Delivery</th>
+                                <th class="col-items"><?= lang('App.items') ?></th>
+                                <th class="col-status"><?= lang('Common.status') ?></th>
+                                <th class="text-center col-actions"><?= lang('Common.actions') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -231,7 +350,7 @@ $can_export = $permissions['export'];
 
 <!-- Create Delivery Modal -->
 <div class="modal fade" id="createDeliveryModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Create Delivery Schedule</h5>
@@ -362,7 +481,7 @@ $can_export = $permissions['export'];
 
 <!-- View PO Detail Modal -->
 <div class="modal fade" id="viewPOModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
             <div class="modal-header" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); color: #2c3e50; border-bottom: 1px solid #e9ecef; border-radius: 12px 12px 0 0;">
                 <h5 class="modal-title" style="font-weight: 600;">
@@ -760,7 +879,9 @@ $can_export = $permissions['export'];
                 // Adjust column sizing
                 setTimeout(function() {
                     poDeliveryTable.columns.adjust();
-                    poDeliveryTable.responsive.recalc();
+                    if (poDeliveryTable.responsive && typeof poDeliveryTable.responsive.recalc === 'function') {
+                        poDeliveryTable.responsive.recalc();
+                    }
                 }, 100);
             }
             console.log('Delivery tab activated - reloading data');
@@ -776,7 +897,9 @@ $can_export = $permissions['export'];
                         // Adjust column sizing
                         setTimeout(function() {
                             poDeliveryTable.columns.adjust();
-                            poDeliveryTable.responsive.recalc();
+                            if (poDeliveryTable.responsive && typeof poDeliveryTable.responsive.recalc === 'function') {
+                                poDeliveryTable.responsive.recalc();
+                            }
                         }, 100);
                     }
                 }
@@ -866,6 +989,29 @@ let unitAttachmentPOTable = null;
 let poDeliveryTable = null;
 let unitAttachmentPOCompletedTable = null;
 
+function reinitializeModalSelect2($element) {
+    if (!$element || !$element.length || typeof $.fn.select2 === 'undefined') {
+        return;
+    }
+
+    if ($element.hasClass('select2-hidden-accessible')) {
+        $element.select2('destroy');
+    }
+
+    $element.select2({
+        theme: 'bootstrap-5',
+        dropdownParent: $('#itemDetailModal .modal-content'),
+        width: '100%',
+        dropdownAutoWidth: true
+    });
+}
+
+function reloadPurchasingTables() {
+    if (unitAttachmentPOTable) unitAttachmentPOTable.ajax.reload(null, false);
+    if (poDeliveryTable) poDeliveryTable.ajax.reload(null, false);
+    if (unitAttachmentPOCompletedTable) unitAttachmentPOCompletedTable.ajax.reload(null, false);
+}
+
 function initUnitAttachmentPOTable() {
     unitAttachmentPOTable = $('#unitAttachmentPOTable').DataTable({
         processing: true,
@@ -891,12 +1037,8 @@ function initUnitAttachmentPOTable() {
             { 
                 data: 'status', 
                 name: 'status',
-                render: function(data) {
-                    const badgeClass = getStatusBadgeClass(data);
-                    const icon = getStatusIcon(data);
-                    return `<span class="badge ${badgeClass}">
-                        <i class="fas ${icon} me-1"></i>${data}
-                    </span>`;
+                render: function(data, type, row) {
+                    return renderPOStatusBadge(row);
                 }
             },
             {
@@ -970,13 +1112,8 @@ function initUnitAttachmentPOTable() {
                 data: null,
                 orderable: false,
                 render: function(data, type, row) {
-                    // Calculate verification progress based on warehouse verification status
-                    const totalUnit = parseInt(row.total_unit, 10) || 0;
-                    const totalAttachment = parseInt(row.total_attachment, 10) || 0;
-                    const totalBattery = parseInt(row.total_battery, 10) || 0;
-                    const totalCharger = parseInt(row.total_charger, 10) || 0;
-                    
-                    const totalItems = totalUnit + totalAttachment + totalBattery + totalCharger;
+                    // Calculate verification progress based on actual verifiable items in warehouse
+                    const totalItems = parseInt(row.total_items_actual, 10) || 0;
                     const verified = parseInt(row.total_qty_verified, 10) || 0;
                     
                     if (totalItems === 0) {
@@ -1000,79 +1137,7 @@ function initUnitAttachmentPOTable() {
                 data: null,
                 orderable: false,
                 render: function(data, type, row) {
-                    const totalDeliveries = parseInt(row.total_deliveries, 10) || 0;
-                    const completedDeliveries = parseInt(row.completed_deliveries, 10) || 0;
-                    const inTransitDeliveries = parseInt(row.in_transit_deliveries, 10) || 0;
-                    const scheduledDeliveries = parseInt(row.scheduled_deliveries, 10) || 0;
-                    
-                    // Calculate total items for better understanding
-                    const totalUnit = parseInt(row.total_unit, 10) || 0;
-                    const totalAttachment = parseInt(row.total_attachment, 10) || 0;
-                    const totalBattery = parseInt(row.total_battery, 10) || 0;
-                    const totalCharger = parseInt(row.total_charger, 10) || 0;
-                    const totalItems = totalUnit + totalAttachment + totalBattery + totalCharger;
-                    const receivedItems = parseInt(row.total_qty_received, 10) || 0;
-                    
-                    if (totalDeliveries === 0) {
-                        return `<span class="text-muted small">
-                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
-                        </span>`;
-                    }
-                    
-                    // More descriptive status based on delivery state and verification status
-                    let statusText = '';
-                    let statusClass = '';
-                    let progressBar = '';
-                    
-                    // Calculate delivered items (items that have been shipped, not necessarily verified)
-                    const deliveredItems = receivedItems; // Items that reached warehouse and verified
-                    const remainingItems = totalItems - deliveredItems;
-                    
-                    if (totalDeliveries === 0) {
-                        // No deliveries created yet
-                        statusText = `<span class="text-muted">
-                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
-                        </span>`;
-                    } else if (completedDeliveries === totalDeliveries && deliveredItems >= totalItems) {
-                        // All deliveries completed and all items received/verified
-                        statusText = `<span class="text-success">
-                            <i class="fas fa-check-circle me-1"></i>All Items Delivered & Verified
-                        </span>`;
-                        progressBar = `<div class="progress mt-1" style="height: 16px;">
-                            <div class="progress-bar bg-success" style="width: 100%;">100%</div>
-                        </div>`;
-                    } else if (deliveredItems > 0 && deliveredItems < totalItems) {
-                        // Partial delivery - some items delivered and verified
-                        const deliveredPercentage = Math.round((deliveredItems/totalItems)*100);
-                        statusText = `<span class="text-warning">
-                            <i class="fas fa-clock me-1"></i>Delivered: ${deliveredItems}/${totalItems} items
-                        </span>`;
-                        progressBar = `<div class="progress mt-1" style="height: 16px;">
-                            <div class="progress-bar bg-warning" style="width: ${deliveredPercentage}%;">
-                                ${deliveredPercentage}%
-                            </div>
-                        </div>`;
-                    } else if (totalDeliveries > 0 && deliveredItems === 0) {
-                        // Deliveries created but no items received/verified yet
-                        statusText = `<span class="text-info">
-                            <i class="fas fa-truck me-1"></i>In Transit: ${totalDeliveries} deliveries
-                        </span>`;
-                    } else if (scheduledDeliveries > 0 && deliveredItems === 0) {
-                        // Scheduled but not yet started
-                        statusText = `<span class="text-primary">
-                            <i class="fas fa-calendar me-1"></i>Scheduled: ${scheduledDeliveries} deliveries
-                        </span>`;
-                    }
-                    
-                    return `
-                        <div class="small">
-                            <div class="mb-1">${statusText}</div>
-                            ${progressBar}
-                            <div class="text-muted mt-1">
-                                <small>${completedDeliveries}/${totalDeliveries} deliveries completed</small>
-                            </div>
-                        </div>
-                    `;
+                    return renderPODeliverySummary(row);
                 }
             },
             { 
@@ -1090,6 +1155,8 @@ function initUnitAttachmentPOTable() {
                     const receivedItems = parseInt(row.total_qty_received, 10) || 0;
                     // Use total_qty_scheduled from backend (items already scheduled for delivery, regardless of status)
                     const scheduledItems = parseInt(row.total_qty_scheduled, 10) || 0;
+                    const totalVerificationItems = parseInt(row.total_items_actual, 10) || 0;
+                    const verifiedItems = parseInt(row.total_qty_verified, 10) || 0;
                     
                     // Calculate remaining items that haven't been scheduled for delivery yet
                     const remainingItems = totalOrdered - scheduledItems;
@@ -1099,14 +1166,18 @@ function initUnitAttachmentPOTable() {
                     // Dynamic action buttons based on status and progress
                     // Priority 1: Check if all items are already received
                     if (totalOrdered > 0 && receivedItems >= totalOrdered) {
-                        // All items received - can mark as completed
-                        if (row.status !== 'completed') {
+                        // All items delivered, but only allow manual completion when verification is fully done
+                        if (totalVerificationItems > 0 && verifiedItems >= totalVerificationItems && row.status !== 'completed') {
                             actionButtons = `<button class="btn btn-sm btn-success" onclick="completePO(${data}, event)">
                                 <i class="fas fa-check-circle me-1"></i>Mark as Completed
                             </button>`;
+                        } else if (totalVerificationItems > 0 && verifiedItems < totalVerificationItems) {
+                            actionButtons = `<span class="text-warning small">
+                                <i class="fas fa-clipboard-check me-1"></i>Awaiting Verification
+                            </span>`;
                         } else {
                             actionButtons = `<span class="text-success small">
-                                <i class="fas fa-check-circle me-1"></i>Completed
+                                <i class="fas fa-check-circle me-1"></i>Verification Completed
                             </span>`;
                         }
                     } else if (totalOrdered > 0 && scheduledItems >= totalOrdered) {
@@ -1188,6 +1259,7 @@ function initPODeliveryTable() {
         ajax: {
             url: '<?= base_url('/purchasing/api/get-delivery-data') ?>',
             type: 'POST',
+            dataType: 'json',
             data: function(d) {
                 d.status = $('#globalFilterStatus').val();
                 // Add date filter
@@ -1195,14 +1267,61 @@ function initPODeliveryTable() {
                     d.start_date = window.globalDateRangeStart;
                     d.end_date = window.globalDateRangeEnd;
                 }
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                console.error('Delivery DataTable AJAX error:', {
+                    status: xhr.status,
+                    textStatus: textStatus,
+                    errorThrown: errorThrown,
+                    responsePreview: (xhr.responseText || '').substring(0, 500)
+                });
+
+                if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+                    OptimaNotify.error('Gagal memuat data Delivery. Silakan refresh halaman.');
+                }
             }
         },
         columns: [
-            { data: 'packing_list_no', name: 'packing_list_no' },
-            { data: 'no_po', name: 'no_po' },
-            { data: 'nama_supplier', name: 'nama_supplier' },
-            { data: 'delivery_date', name: 'delivery_date' },
-            { data: 'driver_name', name: 'driver_name' },
+            {
+                data: 'packing_list_no',
+                name: 'packing_list_no',
+                render: function(data) {
+                    const packingListNo = data || '-';
+                    return `<span class="badge badge-soft-blue delivery-packing-list">${packingListNo}</span>`;
+                }
+            },
+            {
+                data: 'no_po',
+                name: 'no_po',
+                render: function(data, type, row) {
+                    const poNumber = data || '-';
+                    const supplierName = row.nama_supplier || 'Supplier tidak tersedia';
+
+                    return `
+                        <div>
+                            <div class="delivery-cell-title">${poNumber}</div>
+                            <span class="delivery-cell-subtitle">${supplierName}</span>
+                        </div>
+                    `;
+                }
+            },
+            {
+                data: 'delivery_date',
+                name: 'delivery_date',
+                render: function(data, type, row) {
+                    const deliveryDate = data || '-';
+                    const driverName = row.driver_name || 'Driver belum diisi';
+
+                    return `
+                        <div>
+                            <div class="delivery-cell-title">${deliveryDate}</div>
+                            <span class="delivery-cell-subtitle">
+                                <i class="fas fa-user me-1"></i>${driverName}
+                            </span>
+                        </div>
+                    `;
+                }
+            },
             { 
                 data: 'total_items', 
                 name: 'total_items',
@@ -1241,48 +1360,46 @@ function initPODeliveryTable() {
                     });
                     
                     const itemBadges = [];
+                    const totalSelectedItems = Object.values(itemCounts).reduce((sum, qty) => sum + qty, 0);
+
+                    if (totalSelectedItems > 0) {
+                        itemBadges.push(`
+                            <span class="badge badge-soft-gray" title="Total selected items">
+                                ${totalSelectedItems} Total
+                            </span>
+                        `);
+                    }
+
                     if (itemCounts.unit > 0) {
                         itemBadges.push(`
-                            <span class="badge badge-soft-blue me-1 mb-1">
-                                <i class="fas fa-truck me-1"></i>${itemCounts.unit} Units
+                            <span class="badge badge-soft-blue" title="Units">
+                                ${itemCounts.unit} Unit
                             </span>
                         `);
                     }
                     if (itemCounts.attachment > 0) {
                         itemBadges.push(`
-                            <span class="badge badge-soft-cyan me-1 mb-1">
-                                <i class="fas fa-puzzle-piece me-1"></i>${itemCounts.attachment} Attachment
+                            <span class="badge badge-soft-cyan" title="Attachments">
+                                ${itemCounts.attachment} Att
                             </span>
                         `);
                     }
                     if (itemCounts.battery > 0) {
                         itemBadges.push(`
-                            <span class="badge badge-soft-yellow me-1 mb-1">
-                                <i class="fas fa-battery-half me-1"></i>${itemCounts.battery} Battery
+                            <span class="badge badge-soft-yellow" title="Batteries">
+                                ${itemCounts.battery} Bat
                             </span>
                         `);
                     }
                     if (itemCounts.charger > 0) {
                         itemBadges.push(`
-                            <span class="badge badge-soft-green me-1 mb-1">
-                                <i class="fas fa-plug me-1"></i>${itemCounts.charger} Charger
+                            <span class="badge badge-soft-green" title="Chargers">
+                                ${itemCounts.charger} Chg
                             </span>
                         `);
                     }
-                    // Split badges into 2 rows for better layout
-                    let row1 = itemBadges.slice(0, 2);
-                    let row2 = itemBadges.slice(2);
-                    
-                    let result = `<div class="d-flex flex-column">`;
-                    if (row1.length > 0) {
-                        result += `<div class="d-flex flex-wrap">${row1.join('')}</div>`;
-                    }
-                    if (row2.length > 0) {
-                        result += `<div class="d-flex flex-wrap">${row2.join('')}</div>`;
-                    }
-                    result += `</div>`;
-                    
-                    return result;
+
+                    return `<div class="delivery-items-wrap">${itemBadges.join('')}</div>`;
                 }
             },
             { 
@@ -1304,6 +1421,13 @@ function initPODeliveryTable() {
                 render: function(data, type, row) {
                     // Action buttons based on status (similar to delivery.php)
                     let actionButtons = '';
+                    let actionNote = '';
+                    const packingListNo = JSON.stringify(row.packing_list_no || '');
+                    const printButton = `
+                        <button class="btn btn-sm btn-outline-secondary" onclick="printPackingList(${data}, ${packingListNo}, event)" title="Print Packing List">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    `;
                     
                     if (row.status === 'Scheduled') {
                         actionButtons = `
@@ -1311,47 +1435,37 @@ function initPODeliveryTable() {
                                 <i class="fas fa-barcode me-1"></i>Assign SN
                             </button>
                         `;
+                        actionNote = `<span class="text-warning delivery-action-note"><i class="fas fa-hourglass-half me-1"></i>Waiting serial number assignment</span>`;
                     } else if (row.status === 'In Transit') {
                         actionButtons = `
                             <button class="btn btn-sm btn-success" onclick="markAsReceived(${data})" title="Mark as Received">
                                 <i class="fas fa-check-circle me-1"></i>Received
                             </button>
                         `;
+                        actionNote = `<span class="text-muted delivery-action-note"><i class="fas fa-truck me-1"></i>Waiting warehouse receipt</span>`;
                     } else if (row.status === 'Received') {
-                        actionButtons = `
-                            <span class="text-info small">
-                                <i class="fas fa-clock me-1"></i>On Verification
-                            </span>
-                        `;
+                        actionButtons = '<span></span>';
+                        actionNote = `<span class="text-info delivery-action-note"><i class="fas fa-clipboard-check me-1"></i>On verification</span>`;
                     } else if (row.status === 'Completed') {
-                        actionButtons = `
-                            <span class="text-success">
-                                <i class="fas fa-check-circle"></i> Completed
-                            </span>
-                        `;
+                        actionButtons = '<span></span>';
+                        actionNote = `<span class="text-success delivery-action-note"><i class="fas fa-check-circle me-1"></i>Verification completed</span>`;
                     }
                     
-                    return `<div class="btn-group" role="group">${actionButtons}</div>`;
-                }
-            },
-            {
-                data: 'id_delivery',
-                name: 'id_delivery',
-                orderable: false,
-                searchable: false,
-                render: function(data, type, row) {
-                    const packingListNo = row.packing_list_no || '';
                     return `
-                        <button class="btn btn-sm btn-primary" onclick="printPackingList(${data}, '${packingListNo}', event)" title="Print Packing List">
-                            <i class="fas fa-print me-1"></i>Print
-                        </button>
+                        <div class="delivery-actions">
+                            <div class="delivery-actions-row">
+                                <div class="delivery-actions-left">${actionButtons}</div>
+                                <div class="delivery-actions-right">${printButton}</div>
+                            </div>
+                            ${actionNote ? `<div>${actionNote}</div>` : ''}
+                        </div>
                     `;
                 }
-            }
+            },
         ],
-        order: [[3, 'desc']], // Order by delivery_date descending
+        order: [[2, 'desc']], // Order by delivery date descending
         pageLength: 10,
-        responsive: true,
+        responsive: false,
         autoWidth: false,
         scrollX: false,
         language: {
@@ -1401,12 +1515,8 @@ function initUnitAttachmentPOCompletedTable() {
             { 
                 data: 'status', 
                 name: 'status',
-                render: function(data) {
-                    const badgeClass = getStatusBadgeClass(data);
-                    const icon = getStatusIcon(data);
-                    return `<span class="badge ${badgeClass}">
-                        <i class="fas ${icon} me-1"></i>${data}
-                    </span>`;
+                render: function(data, type, row) {
+                    return renderPOStatusBadge(row);
                 }
             },
             {
@@ -1480,23 +1590,19 @@ function initUnitAttachmentPOCompletedTable() {
                 data: null,
                 orderable: false,
                 render: function(data, type, row) {
-                    const totalUnit = parseInt(row.total_unit, 10) || 0;
-                    const totalAttachment = parseInt(row.total_attachment, 10) || 0;
-                    const totalBattery = parseInt(row.total_battery, 10) || 0;
-                    const totalCharger = parseInt(row.total_charger, 10) || 0;
-                    
-                    const totalItems = totalUnit + totalAttachment + totalBattery + totalCharger;
+                    const totalItems = parseInt(row.total_items_actual, 10) || 0;
                     const verified = parseInt(row.total_qty_verified, 10) || 0;
                     
                     if (totalItems === 0) {
                         return `<span class="text-muted small fst-italic">-</span>`;
                     }
 
-                    // For completed items, show 100% with same styling as progres tab
-                    const percentage = 100;
+                    const percentage = totalItems > 0 ? Math.round((verified / totalItems) * 100) : 0;
+                    const remaining = totalItems - verified;
+
                     return `
-                        <div class="progress" title="Verifikasi selesai: ${verified} dari ${totalItems} item" style="height: 22px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: ${percentage}%;">
+                        <div class="progress" title="Verifikasi: ${verified} dari ${totalItems} item (${remaining} tersisa)" style="height: 22px;">
+                            <div class="progress-bar progress-bar-striped ${percentage >= 100 ? 'bg-success' : percentage > 0 ? 'bg-warning' : 'bg-secondary'}" role="progressbar" style="width: ${percentage}%;">
                                 ${verified} / ${totalItems}
                             </div>
                         </div>
@@ -1508,40 +1614,7 @@ function initUnitAttachmentPOCompletedTable() {
                 data: null,
                 orderable: false,
                 render: function(data, type, row) {
-                    const totalDeliveries = parseInt(row.total_deliveries, 10) || 0;
-                    const completedDeliveries = parseInt(row.completed_deliveries, 10) || 0;
-                    
-                    // Calculate total items for better understanding
-                    const totalUnit = parseInt(row.total_unit, 10) || 0;
-                    const totalAttachment = parseInt(row.total_attachment, 10) || 0;
-                    const totalBattery = parseInt(row.total_battery, 10) || 0;
-                    const totalCharger = parseInt(row.total_charger, 10) || 0;
-                    const totalItems = totalUnit + totalAttachment + totalBattery + totalCharger;
-                    const receivedItems = parseInt(row.total_qty_received, 10) || 0;
-                    
-                    if (totalDeliveries === 0) {
-                        return `<span class="text-muted small">
-                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
-                        </span>`;
-                    }
-                    
-                    // For completed items, show all delivered and verified
-                    const statusText = `<span class="text-success">
-                        <i class="fas fa-check-circle me-1"></i>All Items Delivered & Verified
-                    </span>`;
-                    const progressBar = `<div class="progress mt-1" style="height: 16px;">
-                        <div class="progress-bar bg-success" style="width: 100%;">100%</div>
-                    </div>`;
-                    
-                    return `
-                        <div class="small">
-                            <div class="mb-1">${statusText}</div>
-                            ${progressBar}
-                            <div class="text-muted mt-1">
-                                <small>${completedDeliveries}/${totalDeliveries} deliveries completed</small>
-                            </div>
-                        </div>
-                    `;
+                    return renderPODeliverySummary(row);
                 }
             },
             { 
@@ -1554,16 +1627,13 @@ function initUnitAttachmentPOCompletedTable() {
                     const completedDeliveries = parseInt(row.completed_deliveries, 10) || 0;
                     const totalItems = parseInt(row.total_qty_ordered, 10) || 0;
                     const receivedItems = parseInt(row.total_qty_received, 10) || 0;
+                    const totalVerificationItems = parseInt(row.total_items_actual, 10) || 0;
+                    const verifiedItems = parseInt(row.total_qty_verified, 10) || 0;
                     
                     let actionButtons = '';
                     
                     // For completed items, show status instead of buttons
-                    if (row.status === 'completed' || receivedItems >= totalItems) {
-                        // All items received and verified - show status
-                        actionButtons = `<span class="text-success small">
-                            <i class="fas fa-check-circle me-1"></i>Completed
-                        </span>`;
-                    } else if (row.status === 'Selesai dengan Catatan') {
+                    if (row.status === 'Selesai dengan Catatan') {
                         // Special actions for partial rejection
                         <?php if (can_edit('purchasing')): ?>
                         actionButtons = `
@@ -1578,10 +1648,18 @@ function initUnitAttachmentPOCompletedTable() {
                             </button>
                         `;
                         <?php endif; ?>
+                    } else if (totalVerificationItems > 0 && verifiedItems >= totalVerificationItems) {
+                        actionButtons = `<span class="text-success small">
+                            <i class="fas fa-check-circle me-1"></i>Verification Completed
+                        </span>`;
+                    } else if (receivedItems >= totalItems) {
+                        actionButtons = `<span class="text-info small">
+                            <i class="fas fa-truck me-1"></i>Delivery Completed
+                        </span>`;
                     } else {
                         // Default status for completed tab
-                        actionButtons = `<span class="text-success small">
-                            <i class="fas fa-check-circle me-1"></i>Completed
+                        actionButtons = `<span class="text-warning small">
+                            <i class="fas fa-clock me-1"></i>Pending Verification
                         </span>`;
                     }
                     
@@ -1616,17 +1694,17 @@ function initUnitAttachmentPOCompletedTable() {
 // Utility functions
 function getStatusBadgeClass(status) {
     const classes = {
-        'pending': 'bg-warning text-dark',
-        'approved': 'bg-info text-white',
-        'completed': 'bg-success text-white',
-        'Selesai dengan Catatan': 'bg-primary text-white',
-        'cancelled': 'bg-danger text-white',
-        'Pending': 'bg-warning text-dark',
-        'Approved': 'bg-info text-white',
-        'Completed': 'bg-success text-white',
-        'Cancelled': 'bg-danger text-white'
+        'pending': 'badge-soft-yellow',
+        'approved': 'badge-soft-cyan',
+        'completed': 'badge-soft-green',
+        'Selesai dengan Catatan': 'badge-soft-orange',
+        'cancelled': 'badge-soft-red',
+        'Pending': 'badge-soft-yellow',
+        'Approved': 'badge-soft-cyan',
+        'Completed': 'badge-soft-green',
+        'Cancelled': 'badge-soft-red'
     };
-    return classes[status] || 'bg-secondary text-white';
+    return classes[status] || 'badge-soft-gray';
 }
 
 function getStatusIcon(status) {
@@ -1642,6 +1720,133 @@ function getStatusIcon(status) {
         'Cancelled': 'fa-times-circle'
     };
     return icons[status] || 'fa-question-circle';
+}
+
+function getVerificationMetrics(row) {
+    const totalItems = parseInt(row.total_items_actual, 10) || 0;
+    const verified = parseInt(row.total_qty_verified, 10) || 0;
+    const percentage = totalItems > 0 ? Math.min(100, Math.round((verified / totalItems) * 100)) : 0;
+
+    return {
+        totalItems,
+        verified,
+        remaining: Math.max(0, totalItems - verified),
+        percentage
+    };
+}
+
+function getDeliveryMetrics(row) {
+    const totalDeliveries = parseInt(row.total_deliveries, 10) || 0;
+    const completedDeliveries = parseInt(row.completed_deliveries, 10) || 0;
+    const totalOrdered = parseInt(row.total_qty_ordered, 10) || 0;
+    const receivedItems = parseInt(row.total_qty_received, 10) || 0;
+    const percentage = totalOrdered > 0 ? Math.min(100, Math.round((receivedItems / totalOrdered) * 100)) : 0;
+
+    return {
+        totalDeliveries,
+        completedDeliveries,
+        totalOrdered,
+        receivedItems,
+        remainingItems: Math.max(0, totalOrdered - receivedItems),
+        percentage
+    };
+}
+
+function renderPOStatusBadge(row) {
+    const rawStatus = row.status || 'pending';
+    const normalizedStatus = String(rawStatus).toLowerCase();
+    const verification = getVerificationMetrics(row);
+    const delivery = getDeliveryMetrics(row);
+
+    let label = rawStatus;
+    let badgeClass = getStatusBadgeClass(rawStatus);
+    let icon = getStatusIcon(rawStatus);
+
+    if (verification.totalItems > 0 && verification.percentage >= 100) {
+        if (rawStatus === 'Selesai dengan Catatan') {
+            label = 'Verification Complete (Notes)';
+            badgeClass = 'badge-soft-orange';
+            icon = 'fa-clipboard-check';
+        } else {
+            label = 'Verification Completed';
+            badgeClass = 'badge-soft-green';
+            icon = 'fa-clipboard-check';
+        }
+    } else if (delivery.totalOrdered > 0 && delivery.receivedItems >= delivery.totalOrdered) {
+        label = 'Delivery Completed';
+        badgeClass = 'badge-soft-cyan';
+        icon = 'fa-truck';
+    } else if (delivery.totalDeliveries > 0) {
+        label = 'Delivery In Progress';
+        badgeClass = 'badge-soft-yellow';
+        icon = 'fa-truck';
+    } else if (normalizedStatus === 'approved') {
+        label = 'Ready for Delivery';
+        badgeClass = 'badge-soft-blue';
+        icon = 'fa-check-circle';
+    }
+
+    return `<span class="badge ${badgeClass}">
+        <i class="fas ${icon} me-1"></i>${label}
+    </span>`;
+}
+
+function renderPODeliverySummary(row) {
+    const delivery = getDeliveryMetrics(row);
+    const verification = getVerificationMetrics(row);
+
+    if (delivery.totalDeliveries === 0) {
+        return `<div class="small">
+            <div class="text-muted">
+                <i class="fas fa-truck me-1"></i>No deliveries yet
+            </div>
+            <div class="text-muted mt-1">
+                <small><i class="fas fa-clipboard-check me-1"></i>Verification: ${verification.verified}/${verification.totalItems}</small>
+            </div>
+        </div>`;
+    }
+
+    let statusText = '';
+    let progressBar = '';
+
+    if (delivery.totalOrdered > 0 && delivery.receivedItems >= delivery.totalOrdered) {
+        statusText = `<span class="text-success">
+            <i class="fas fa-check-circle me-1"></i>All Deliveries Completed
+        </span>`;
+        progressBar = `<div class="progress mt-1" style="height: 16px;">
+            <div class="progress-bar bg-success" style="width: 100%;">100%</div>
+        </div>`;
+    } else if (delivery.receivedItems > 0 && delivery.receivedItems < delivery.totalOrdered) {
+        statusText = `<span class="text-warning">
+            <i class="fas fa-clock me-1"></i>Delivered: ${delivery.receivedItems}/${delivery.totalOrdered} items
+        </span>`;
+        progressBar = `<div class="progress mt-1" style="height: 16px;">
+            <div class="progress-bar bg-warning" style="width: ${delivery.percentage}%;">
+                ${delivery.percentage}%
+            </div>
+        </div>`;
+    } else {
+        statusText = `<span class="text-primary">
+            <i class="fas fa-truck me-1"></i>Scheduled / In Transit
+        </span>`;
+    }
+
+    const verificationHint = verification.totalItems > 0
+        ? (verification.percentage >= 100
+            ? `<div class="text-success mt-1"><small><i class="fas fa-clipboard-check me-1"></i>Verification completed</small></div>`
+            : `<div class="text-muted mt-1"><small><i class="fas fa-clipboard-check me-1"></i>Verification pending: ${verification.verified}/${verification.totalItems}</small></div>`)
+        : '';
+
+    return `
+        <div class="small">
+            <div class="mb-1">${statusText}</div>
+            ${progressBar}
+            <div class="text-muted mt-1">
+                <small>${delivery.completedDeliveries}/${delivery.totalDeliveries} deliveries completed</small>
+            </div>
+            ${verificationHint}
+        </div>
+    `;
 }
 
 function getDeliveryStatusBadgeClass(status) {
@@ -1682,19 +1887,15 @@ function viewPODetail(poId, event) {
         success: function(response) {
             if (response.success) {
                 renderPODetailNew(response.data);
-        $('#poLoadingState').hide();
-        $('#poContent').show();
-        
-        // Show print button
-        $('#printPOBtn').show();
-        
-        // Initialize tab switching
-        initializePODetailTabs();
-        
-        // Hide print button when modal is closed
-        $('#viewPOModal').on('hidden.bs.modal', function() {
-            $('#printPOBtn').hide();
-        });
+                $('#poLoadingState').hide();
+                $('#poContent').show();
+
+                $('#printPOBtn').show();
+                initializePODetailTabs();
+
+                $('#viewPOModal').off('hidden.bs.modal.printpo').on('hidden.bs.modal.printpo', function() {
+                    $('#printPOBtn').hide();
+                });
             } else {
                 $('#poLoadingState').html(`
                     <div class="text-center text-danger p-5">
@@ -1730,165 +1931,6 @@ function printPOFromModal() {
     if (currentPOId) {
         printPO(currentPOId);
     }
-}
-
-function renderPODetailNew(data) {
-    if (typeof $ === 'undefined') return;
-    
-    const po = data.po;
-    const items = data.items || [];
-    const deliveries = data.deliveries || [];
-    const deliveryItems = data.delivery_items || {};
-    const summary = data.summary || {};
-    
-        // Update summary cards with badge format
-        const itemTypeBreakdown = summary.item_type_breakdown || {};
-        let breakdownHtml = '';
-        Object.keys(itemTypeBreakdown).forEach(type => {
-            const count = itemTypeBreakdown[type];
-            const badgeClass = getItemTypeBadgeClass(type);
-            breakdownHtml += `<span class="badge ${badgeClass} me-1">${type} ${count}</span>`;
-        });
-        $('#totalItemsOrdered').html(breakdownHtml || '<span class="text-muted">0 items</span>');
-        
-        $('#totalItemsReceived').text(summary.total_items_received || 0);
-        $('#deliveryProgress').text(`${summary.completed_deliveries || 0}/${summary.total_deliveries || 0}`);
-        $('#verifiedItems').text(summary.verified_items || 0);
-    
-    // Update PO information
-    $('#poNumber').text(po.no_po || '-');
-    $('#poDate').text(po.tanggal_po ? new Date(po.tanggal_po).toLocaleDateString('id-ID') : '-');
-    $('#poSupplier').text(po.nama_supplier || '-');
-    $('#poContact').text(po.kontak_supplier || '-');
-    $('#poInvoice').text(po.invoice_no || '-');
-    
-    // Update status with badge
-    const statusBadge = getStatusBadge(po.status);
-    $('#poStatus').html(statusBadge);
-    
-    // Breakdown section removed for simplicity
-    
-    // Update items tab
-    $('#itemsCount').text(items.length);
-    renderItemsTable(items, data.summary, deliveries);
-    
-    // Update deliveries tab
-    $('#deliveriesCount').text(deliveries.length);
-    renderDeliveriesContent(deliveries, deliveryItems);
-}
-
-function getVerificationStatusBadge(status) {
-    const statusMap = {
-        'Sesuai': 'bg-success',
-        'Tidak Sesuai': 'bg-danger', 
-        'Belum Dicek': 'bg-secondary',
-        'Pending': 'bg-warning'
-    };
-    
-    const textMap = {
-        'Sesuai': 'Verified',
-        'Tidak Sesuai': 'Not Verified',
-        'Belum Dicek': 'Not Checked',
-        'Pending': 'Pending'
-    };
-    
-    const badgeClass = statusMap[status] || 'bg-secondary';
-    const badgeText = textMap[status] || status || 'Unknown';
-    
-    return `<span class="badge ${badgeClass}">${badgeText}</span>`;
-}
-
-// Render Serial Numbers in 2-column format with collapse/expand
-function renderSerialNumbers(items, specId) {
-    if (!items || items.length === 0) {
-        return '';
-    }
-    
-    // Collect all serial numbers from items
-    const serialNumbers = [];
-    items.forEach((item, index) => {
-        // Get serial number based on item type
-        let sn = null;
-        if (item.item_type === 'Unit') {
-            sn = item.serial_number_po || item.serial_number || null;
-        } else {
-            sn = item.serial_number || null;
-        }
-        serialNumbers.push({
-            index: index + 1,
-            sn: sn || ''
-        });
-    });
-    
-    // Generate HTML for 2-column layout
-    let serialNumbersHtml = '';
-    const totalItems = serialNumbers.length;
-    const rows = Math.ceil(totalItems / 2);
-    
-    for (let i = 0; i < rows; i++) {
-        const col1Index = i * 2;
-        const col2Index = i * 2 + 1;
-        
-        const item1 = serialNumbers[col1Index];
-        const item2 = col2Index < totalItems ? serialNumbers[col2Index] : null;
-        
-        serialNumbersHtml += `
-            <div class="row mb-2">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item1.index}</span>
-                        <code class="flex-grow-1 ${item1.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item1.sn || 'No SN yet'}</code>
-                    </div>
-                </div>
-                ${item2 ? `
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item2.index}</span>
-                        <code class="flex-grow-1 ${item2.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item2.sn || 'No SN yet'}</code>
-                    </div>
-                </div>
-                ` : '<div class="col-md-6"></div>'}
-            </div>
-        `;
-    }
-    
-    // Use specId for unique collapse ID
-    const collapseId = 'snCollapse_' + specId.replace(/[^a-zA-Z0-9]/g, '_');
-    
-    return `
-        <div class="mt-3 pt-3 border-top">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0 text-warning">
-                    <i class="fas fa-barcode me-2"></i>Serial Number:
-                </h6>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}" onclick="toggleSNIcon('${collapseId}')">
-                    <i class="fas fa-chevron-down" id="icon-${collapseId}"></i>
-                </button>
-            </div>
-            <div class="collapse" id="${collapseId}">
-                <div class="p-2" style="background: #f8f9fa; border-radius: 4px; border: 1px solid #e9ecef;">
-                    ${serialNumbersHtml}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// Toggle SN icon when collapse is toggled
-function toggleSNIcon(collapseId) {
-    setTimeout(() => {
-        const collapseEl = document.getElementById(collapseId);
-        const iconEl = document.getElementById('icon-' + collapseId);
-        if (collapseEl && iconEl) {
-            if (collapseEl.classList.contains('show')) {
-                iconEl.classList.remove('fa-chevron-down');
-                iconEl.classList.add('fa-chevron-up');
-            } else {
-                iconEl.classList.remove('fa-chevron-up');
-                iconEl.classList.add('fa-chevron-down');
-            }
-        }
-    }, 100);
 }
 
 function getPackingListInfo(deliveries, itemType) {
@@ -2050,6 +2092,105 @@ function renderSpecificationDetails(item, itemType) {
             </div>
         `;
     }
+}
+
+function renderSerialNumbers(items, specId) {
+    if (!Array.isArray(items) || items.length === 0) {
+        return `
+            <div class="mt-3 pt-3 border-top">
+                <h6 class="mb-2 text-secondary">
+                    <i class="fas fa-barcode me-2"></i>Serial Numbers:
+                </h6>
+                <span class="text-muted small">No serial numbers available</span>
+            </div>
+        `;
+    }
+
+    const serialNumbers = items.map((item, index) => {
+        const serialNumber = item.serial_number_po || item.serial_number || item.sn_baterai || item.sn_charger || '-';
+        return {
+            index: index + 1,
+            serialNumber
+        };
+    });
+
+    let serialNumbersHtml = '';
+    const totalItems = serialNumbers.length;
+    const totalRows = Math.ceil(totalItems / 2);
+
+    for (let i = 0; i < totalRows; i++) {
+        const col1Index = i * 2;
+        const col2Index = i * 2 + 1;
+
+        const item1 = serialNumbers[col1Index];
+        const item2 = col2Index < totalItems ? serialNumbers[col2Index] : null;
+
+        serialNumbersHtml += `
+            <div class="row mb-2">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item1.index}</span>
+                        <code class="flex-grow-1 ${item1.serialNumber !== '-' ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item1.serialNumber}</code>
+                    </div>
+                </div>
+                ${item2 ? `
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item2.index}</span>
+                        <code class="flex-grow-1 ${item2.serialNumber !== '-' ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item2.serialNumber}</code>
+                    </div>
+                </div>
+                ` : '<div class="col-md-6"></div>'}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="mt-3 pt-3 border-top" id="serial-group-${specId}">
+            <h6 class="mb-2 text-secondary">
+                <i class="fas fa-barcode me-2"></i>Serial Numbers:
+            </h6>
+            ${serialNumbersHtml}
+        </div>
+    `;
+}
+
+function renderPODetailNew(data) {
+    const po = data?.po || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const deliveries = Array.isArray(data?.deliveries) ? data.deliveries : [];
+    const deliveryItems = data?.delivery_items || {};
+    const summary = data?.summary || {};
+
+    const totalItemsOrdered = parseInt(summary.total_items_ordered, 10) || items.length || 0;
+    const totalItemsReceived = parseInt(summary.total_items_received, 10) || 0;
+    const verifiedItemsCount = (parseInt(summary.verified_items, 10) || 0) + (parseInt(summary.rejected_items, 10) || 0);
+    const totalDeliveries = parseInt(summary.total_deliveries, 10) || deliveries.length || 0;
+    const completedDeliveries = parseInt(summary.completed_deliveries, 10) || 0;
+
+    const itemBreakdown = summary.item_type_breakdown || {};
+    const breakdownHtml = Object.entries(itemBreakdown).map(([type, count]) => {
+        const badgeClass = getItemTypeBadgeClass(type);
+        const icon = getItemTypeIcon(type);
+        return `<span class="badge ${badgeClass} me-1 mb-1"><i class="${icon} me-1"></i>${count} ${type}</span>`;
+    }).join('');
+
+    $('#poNumber').text(po.no_po || '-');
+    $('#poDate').text(po.tanggal_po || '-');
+    $('#poSupplier').text(po.nama_supplier || '-');
+    $('#poContact').text(po.contact_person || po.pic_supplier || '-');
+    $('#poStatus').html(getStatusBadge(po.status || 'pending'));
+    $('#poInvoice').text(po.invoice_no || '-');
+
+    $('#totalItemsOrdered').html(breakdownHtml || `<span class="text-muted">${totalItemsOrdered} items</span>`);
+    $('#deliveryProgress').text(`${completedDeliveries}/${totalDeliveries}`);
+    $('#totalItemsReceived').text(totalItemsReceived);
+    $('#verifiedItems').text(verifiedItemsCount);
+    $('#itemsCount').text(totalItemsOrdered);
+    $('#deliveriesCount').text(totalDeliveries);
+
+    renderItemsTable(items, summary, deliveries);
+    renderDeliveriesContent(deliveries, deliveryItems);
 }
 
 function renderItemsTable(items, summary = null, deliveries = []) {
@@ -2335,6 +2476,30 @@ function getDeliveryStatusBadge(status) {
     const badgeClass = statusMap[status] || 'bg-secondary';
     const text = statusText[status] || status;
     return `<span class="badge ${badgeClass}">${text}</span>`;
+}
+
+function getVerificationStatusBadge(status) {
+    const statusMap = {
+        'Sesuai': 'badge-soft-green',
+        'Tidak Sesuai': 'badge-soft-red',
+        'Belum Dicek': 'badge-soft-yellow',
+        'Not Checked': 'badge-soft-yellow'
+    };
+
+    const iconMap = {
+        'Sesuai': 'fa-check-circle',
+        'Tidak Sesuai': 'fa-times-circle',
+        'Belum Dicek': 'fa-clock',
+        'Not Checked': 'fa-clock'
+    };
+
+    const badgeClass = statusMap[status] || 'badge-soft-gray';
+    const icon = iconMap[status] || 'fa-question-circle';
+    const label = status || 'Unknown';
+
+    return `<span class="badge ${badgeClass}">
+        <i class="fas ${icon} me-1"></i>${label}
+    </span>`;
 }
 
 // Duplicate function removed - using renderPODetailNew instead
@@ -2763,10 +2928,14 @@ function addNewDelivery(poId) {
 
     function printPackingList(deliveryId, packingListNo, event) {
         if (event) {
+            event.preventDefault();
             event.stopPropagation();
         }
         const url = '<?= base_url('purchasing/print-packing-list') ?>?delivery_id=' + deliveryId + '&packing_list=' + encodeURIComponent(packingListNo);
-        window.open(url, '_blank');
+        const printWindow = window.open(url, '_blank', 'noopener');
+        if (!printWindow) {
+            window.location.href = url;
+        }
     }
     
     function printPO(poId, event) {
@@ -2796,7 +2965,7 @@ function deletePO(poId, event) {
                 success: function(response) {
                     if (response.success) {
                         OptimaNotify.success('PO has been deleted successfully.');
-                        if (unifiedPOTable) unifiedPOTable.ajax.reload();
+                        reloadPurchasingTables();
                     } else {
                         OptimaNotify.error(response.message || 'An error occurred.');
                     }
@@ -2825,7 +2994,7 @@ function reverifyPO(poId) {
                 success: function(response) {
                     if (response.success) {
                         OptimaNotify.success('PO has been returned to the verification queue.');
-                        if (unifiedPOTable) unifiedPOTable.ajax.reload();
+                        reloadPurchasingTables();
                     } else {
                         OptimaNotify.error(response.message || 'An error occurred.');
                     }
@@ -2852,7 +3021,7 @@ function cancelPO(poId) {
                 success: function(response) {
                     if (response.success) {
                         OptimaNotify.success('PO has been cancelled successfully.');
-                        if (unifiedPOTable) unifiedPOTable.ajax.reload();
+                        reloadPurchasingTables();
                     } else {
                         OptimaNotify.error(response.message || 'An error occurred.');
                     }
@@ -3185,18 +3354,21 @@ function completePO(poId, event) {
     
     OptimaConfirm.approve({
         title: 'Complete PO?',
-        text: 'All items have been received. Mark this PO as completed?',
+        text: 'Delivery sudah selesai. PO hanya akan di-complete jika semua item juga sudah selesai diverifikasi. Lanjutkan?',
         confirmText: 'Yes, Complete!',
         cancelText: window.lang('cancel'),
         onConfirm: function() {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/complete-po/') ?>' + poId,
+                data: {
+                    '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
                         OptimaNotify.success('PO has been marked as completed.');
-                        if (unifiedPOTable) unifiedPOTable.ajax.reload();
+                        reloadPurchasingTables();
                         $('#viewPOModal').modal('hide');
                     } else {
                         OptimaNotify.error(response.message || 'An error occurred.');
@@ -3384,13 +3556,8 @@ function openItemModal(itemType, index = -1) {
             // Initialize Select2 after content loaded
             setTimeout(() => {
                 if (typeof $.fn.select2 !== 'undefined') {
-                    $('#itemDetailModal .select2-basic').select2({
-                        theme: 'bootstrap-5',
-                        dropdownParent: $('#itemDetailModal .modal-content'),
-                        width: '100%',
-                        dropdownAutoWidth: true,
-                        // Fix scroll issue in modal
-                        dropdownCssClass: 'select2-dropdown-fixed'
+                    $('#itemDetailModal .select2-basic').each(function() {
+                        reinitializeModalSelect2($(this));
                     });
                 }
                 
@@ -3675,15 +3842,7 @@ function initializeUnitDropdowns() {
                     }
                     
                     // Re-initialize Select2 if available
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $jenis.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($jenis);
                 } else {
                     console.warn('No jenis data found');
                     $jenis.html('<option value="">No data available</option>');
@@ -3742,15 +3901,7 @@ function initializeUnitDropdowns() {
                     }
                     
                     // Re-initialize Select2 if available
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $model.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($model);
                 } else {
                     console.warn('No model data found');
                     $model.html('<option value="">No models available</option>');
@@ -3808,15 +3959,7 @@ function initializeAttachmentDropdowns() {
                     $merk.prop('disabled', false);
                     
                     // Re-initialize Select2
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $merk.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($merk);
                 } else {
                     $merk.html('<option value="">No brands available</option>');
                 }
@@ -3861,15 +4004,7 @@ function initializeAttachmentDropdowns() {
                     $model.prop('disabled', false);
                     
                     // Re-initialize Select2
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $model.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($model);
                 } else {
                     $model.html('<option value="">No models available</option>');
                 }
@@ -3923,15 +4058,7 @@ function initializeBatteryDropdowns() {
                     $merk.prop('disabled', false);
                     
                     // Re-initialize Select2
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $merk.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($merk);
                 } else {
                     $merk.html('<option value="">No brands available</option>');
                 }
@@ -3976,15 +4103,7 @@ function initializeBatteryDropdowns() {
                     $tipe.prop('disabled', false);
                     
                     // Re-initialize Select2
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $tipe.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($tipe);
                 } else {
                     $tipe.html('<option value="">No types available</option>');
                 }
@@ -4036,15 +4155,7 @@ function initializeChargerDropdowns() {
                     $model.prop('disabled', false);
                     
                     // Re-initialize Select2
-                    if (typeof $.fn.select2 !== 'undefined') {
-                        $model.select2('destroy').select2({
-                            theme: 'bootstrap-5',
-                            dropdownParent: $('#itemDetailModal .modal-content'),
-                            width: '100%',
-                            dropdownAutoWidth: true,
-                            dropdownCssClass: 'select2-dropdown-fixed'
-                        });
-                    }
+                    reinitializeModalSelect2($model);
                 } else {
                     $model.html('<option value="">No models available</option>');
                 }

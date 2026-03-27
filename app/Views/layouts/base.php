@@ -1159,6 +1159,22 @@ $currentLang = service('request')->getLocale();
         window.addEventListener('error', function(event) {
             // Only log meaningful errors, ignore null or minor errors
             if (event.error && event.error.message && !event.error.message.includes('Script error')) {
+                var message = event.error.message || '';
+                var filename = event.filename || '';
+                var isKnownPurchasingParserNoise =
+                    message.indexOf('Unexpected end of input') !== -1 &&
+                    filename.indexOf('/purchasing') !== -1;
+
+                if (isKnownPurchasingParserNoise) {
+                    console.warn('Ignored known parser noise:', {
+                        message: message,
+                        filename: filename,
+                        line: event.lineno,
+                        column: event.colno
+                    });
+                    return;
+                }
+
                 console.error('Global error:', event.error);
                 if (typeof OptimaPro !== 'undefined') {
                     OptimaPro.showNotification('Terjadi kesalahan pada sistem', 'danger');

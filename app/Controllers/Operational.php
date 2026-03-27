@@ -2817,7 +2817,7 @@ class Operational extends BaseController
                     'customer_id' => null,
                     'customer_location_id' => null,
                     'workflow_status' => 'RETURNED_FROM_TEMP_ASSIGNMENT',
-                    'status_unit_id' => 1, // AVAILABLE_STOCK
+                    'status_unit_id' => 12, // RETURNED (must enter verification queue)
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 

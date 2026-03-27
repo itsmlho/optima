@@ -6,6 +6,57 @@
  * =======================================================================================
  */
 
+const optimaSafeStorage = {
+    localAvailable: (() => {
+        try {
+            const testKey = '__optima_local_storage_test__';
+            window.localStorage.setItem(testKey, '1');
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    })(),
+    sessionAvailable: (() => {
+        try {
+            const testKey = '__optima_session_storage_test__';
+            window.sessionStorage.setItem(testKey, '1');
+            window.sessionStorage.removeItem(testKey);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    })(),
+    getLocal(key) {
+        if (!this.localAvailable) return null;
+        try {
+            return window.localStorage.getItem(key);
+        } catch (_) {
+            return null;
+        }
+    },
+    setLocal(key, value) {
+        if (!this.localAvailable) return;
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (_) {}
+    },
+    getSession(key) {
+        if (!this.sessionAvailable) return null;
+        try {
+            return window.sessionStorage.getItem(key);
+        } catch (_) {
+            return null;
+        }
+    },
+    setSession(key, value) {
+        if (!this.sessionAvailable) return;
+        try {
+            window.sessionStorage.setItem(key, value);
+        } catch (_) {}
+    }
+};
+
 class OptimaSPAMain {
     constructor() {
         this.contentContainer = document.querySelector('#content-area, .content-wrapper, main');
@@ -175,7 +226,7 @@ class OptimaSPAMain {
         const sidebar = document.querySelector('.sidebar-nav, .sidebar, #sidebar');
         if (sidebar) {
             const scrollPos = sidebar.scrollTop;
-            sessionStorage.setItem('sidebar-scroll-position', scrollPos);
+            optimaSafeStorage.setSession('sidebar-scroll-position', scrollPos);
             // Saved scroll position
         }
     }
@@ -183,7 +234,7 @@ class OptimaSPAMain {
     restoreScrollPosition() {
         const sidebar = document.querySelector('.sidebar-nav, .sidebar, #sidebar');
         if (sidebar) {
-            const savedPos = sessionStorage.getItem('sidebar-scroll-position');
+            const savedPos = optimaSafeStorage.getSession('sidebar-scroll-position');
             if (savedPos !== null) {
                 const scrollPos = parseInt(savedPos);
                 
@@ -204,7 +255,7 @@ class OptimaSPAMain {
 
     restoreSidebarState() {
         // Restore sidebar collapsed state from localStorage
-        const isCollapsed = localStorage.getItem('optima-sidebar-collapsed') === 'true';
+        const isCollapsed = optimaSafeStorage.getLocal('optima-sidebar-collapsed') === 'true';
         const sidebar = document.querySelector('.sidebar');
         const mainContent = document.querySelector('.main-content');
         
@@ -353,7 +404,7 @@ window.toggleSidebar = function() {
     
     // Save state to localStorage
     const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('optima-sidebar-collapsed', isCollapsed);
+    optimaSafeStorage.setLocal('optima-sidebar-collapsed', isCollapsed);
     
     // Update tooltips for collapsed state
     updateSidebarTooltips(isCollapsed);

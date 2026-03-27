@@ -48,8 +48,20 @@ class OptimaNotificationLightweight {
         
         // Simplified popup tracking (in-memory only for performance)
         this.shownPopupIds = new Set();
+        this.storageAvailable = this.checkStorageAvailability();
         
         this.init();
+    }
+
+    checkStorageAvailability() {
+        try {
+            const testKey = '__optima_notification_storage_test__';
+            window.localStorage.setItem(testKey, '1');
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
     
     /**
@@ -57,6 +69,11 @@ class OptimaNotificationLightweight {
      * Uses localStorage to persist across page reloads/logins
      */
     loadShownPopups() {
+        if (!this.storageAvailable) {
+            this.shownPopupIds = new Set();
+            return;
+        }
+
         try {
             const stored = localStorage.getItem('optima_shown_notification_popups');
             if (stored) {
@@ -77,6 +94,10 @@ class OptimaNotificationLightweight {
      * Prevents re-showing alerts on reload/login
      */
     saveShownPopups() {
+        if (!this.storageAvailable) {
+            return;
+        }
+
         try {
             const ids = Array.from(this.shownPopupIds);
             // Keep only last 100 notification IDs to prevent localStorage bloat

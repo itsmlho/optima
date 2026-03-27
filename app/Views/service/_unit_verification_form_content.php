@@ -523,5 +523,22 @@ $formIdPrefix = $formIdPrefix ?? 'verify';
                 </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-0">
+                    <label class="form-label">Hasil Verifikasi Unit <span class="text-danger">*</span></label>
+                    <select class="form-select" id="verify-post-status" name="post_verification_status" required>
+                        <option value="">Pilih hasil status unit</option>
+                        <option value="1">Available Stock</option>
+                        <option value="7">Rental Active</option>
+                        <option value="8">Rental Daily</option>
+                        <option value="10">Breakdown</option>
+                    </select>
+                    <small class="form-text text-muted">
+                        Gunakan <strong>Breakdown</strong> jika unit hasil pengecekan dinyatakan rusak.
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

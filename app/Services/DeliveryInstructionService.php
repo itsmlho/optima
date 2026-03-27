@@ -314,6 +314,7 @@ class DeliveryInstructionService
                     ->where('id_inventory_unit', $unitId)
                     ->update([
                         'workflow_status' => ($tujuanId == 6) ? 'MAINTENANCE_IN_PROGRESS' : 'UNDER_REPAIR',
+                        'status_unit_id' => 11, // MAINTENANCE (in-progress bucket)
                         'maintenance_location' => 'WORKSHOP',
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
@@ -475,6 +476,7 @@ class DeliveryInstructionService
             ->where('id_inventory_unit', $oldUnitId)
             ->update([
                 'workflow_status' => 'MAINTENANCE_WITH_REPLACEMENT',
+                'status_unit_id' => 11, // MAINTENANCE (in-progress bucket)
                 'maintenance_location' => 'WORKSHOP',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);

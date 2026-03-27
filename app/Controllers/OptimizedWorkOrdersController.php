@@ -6,7 +6,7 @@ use App\Controllers\BaseDataTableController;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
-use App\Models\Optimized\OptimizedWorkOrderModel;
+use App\Models\OptimizedWorkOrderModel;
 use App\Services\LazyLoadingService;
 use App\Services\AssetMinificationService;
 

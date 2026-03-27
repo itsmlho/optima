@@ -3,9 +3,16 @@
 // ATTACHMENT VERIFICATION SCRIPT
 // ========================================
 (function() {
-    const baseUrl = '<?= base_url() ?>';
+    const baseUrl = '<?= rtrim(base_url(), '/') ?>';
     
     $(document).ready(function() {
+        // Auto-expand semua PO group pada saat halaman dimuat
+        $('#attachment-item-list .po-group-header').each(function() {
+            const poId = $(this).data('po-id');
+            $(this).addClass('open');
+            $(`.child-po-${poId}`).show();
+        });
+
         $('#attachment-item-list').on('click', '.item-child-item', function(e) {
             e.preventDefault();
             $('#attachment-item-list .item-child-item').removeClass('active');
@@ -155,9 +162,7 @@
     window.toggleAttachmentDropdown = function(element) {
         const poId = $(element).data('po-id');
         $(element).toggleClass('open');
-        $(`.child-po-${poId}`).each(function() {
-            $(this).toggleClass('show');
-        });
+        $(`.child-po-${poId}`).slideToggle(200);
     };
 
     // Load dropdown options from database

@@ -826,6 +826,13 @@ $routes->group('warehouse', static function ($routes) {
         $routes->get('getComponentsByType', 'Warehouse\UnitMovementController::getComponentsByType');
     });
 
+    // Returned Unit Verification Queue (status_unit_id = 12)
+    $routes->group('returned-verifications', static function ($routes) {
+        $routes->get('/', 'Warehouse\ReturnedVerificationController::index');
+        $routes->get('detail/(:num)', 'Warehouse\ReturnedVerificationController::detail/$1');
+        $routes->post('verify', 'Warehouse\ReturnedVerificationController::verify');
+    });
+
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders
     $routes->group('inventory', static function ($routes) {
         // ATTACHMENT - Clean subgroup (new controller)

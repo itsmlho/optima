@@ -9,6 +9,33 @@
 (function () {
   'use strict';
 
+  const safeLocalStorage = {
+    available: (() => {
+      try {
+        const testKey = '__optima_sidebar_storage_test__';
+        window.localStorage.setItem(testKey, '1');
+        window.localStorage.removeItem(testKey);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    })(),
+    get(key) {
+      if (!this.available) return null;
+      try {
+        return window.localStorage.getItem(key);
+      } catch (_) {
+        return null;
+      }
+    },
+    set(key, value) {
+      if (!this.available) return;
+      try {
+        window.localStorage.setItem(key, value);
+      } catch (_) {}
+    }
+  };
+
   const toggleDropdown = (dropdown, menu, isOpen) => {
     dropdown.classList.remove('flyout-open-up');
     dropdown.classList.toggle('open', isOpen);
@@ -46,13 +73,11 @@
     if (!sidebar) return;
 
     // Restore expand/collapse state (desktop only)
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) {
-        if (saved === 'true') sidebar.classList.add('collapsed');
-        else sidebar.classList.remove('collapsed');
-      }
-    } catch (_) {}
+    const saved = safeLocalStorage.get(STORAGE_KEY);
+    if (saved !== null) {
+      if (saved === 'true') sidebar.classList.add('collapsed');
+      else sidebar.classList.remove('collapsed');
+    }
 
     // Click pada group: buka/tutup dropdown (expanded = inline, collapsed = flyout)
     document.querySelectorAll('.cn-sidebar-layout .sidebar .dropdown-toggle').forEach((dropdownToggle) => {
@@ -77,9 +102,7 @@
           closeAllDropdowns();
         } else {
           sidebar.classList.toggle('collapsed');
-          try {
-            localStorage.setItem(STORAGE_KEY, sidebar.classList.contains('collapsed'));
-          } catch (_) {}
+          safeLocalStorage.set(STORAGE_KEY, sidebar.classList.contains('collapsed'));
           closeAllDropdowns();
         }
       });

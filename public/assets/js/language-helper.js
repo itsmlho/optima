@@ -7,6 +7,17 @@
  */
 
 const LanguageHelper = {
+    storageAvailable: (() => {
+        try {
+            const testKey = '__optima_language_storage_test__';
+            window.localStorage.setItem(testKey, '1');
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    })(),
+
     /**
      * Current active language (id or en). Default English to match app default.
      */
@@ -17,7 +28,7 @@ const LanguageHelper = {
      */
     init: function() {
         // Prefer server-set value; then localStorage; then app default (en)
-        const stored = localStorage.getItem('user_language');
+        const stored = this.storageAvailable ? localStorage.getItem('user_language') : null;
         this.currentLang = stored || 'en';
     },
 
@@ -26,7 +37,9 @@ const LanguageHelper = {
      */
     setLanguage: function(lang) {
         this.currentLang = lang;
-        localStorage.setItem('user_language', lang);
+        if (this.storageAvailable) {
+            localStorage.setItem('user_language', lang);
+        }
     },
 
     /**

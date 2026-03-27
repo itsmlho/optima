@@ -845,6 +845,18 @@ $(document).ready(function() {
         // SN fields - auto-fill with database values
         $('#verify-sn-mesin').val(unitData.sn_mesin || '');
         $('#verify-sn-mast').val(unitData.sn_mast || '');
+
+        // Post-verification status default:
+        // keep explicit choice when possible, and auto-default RETURNED -> AVAILABLE_STOCK.
+        const currentStatusId = parseInt(unitData.status_unit_id || 0, 10);
+        const allowedPostStatuses = [1, 7, 8, 10];
+        if (allowedPostStatuses.includes(currentStatusId)) {
+            $('#verify-post-status').val(String(currentStatusId));
+        } else if (currentStatusId === 12) {
+            $('#verify-post-status').val('1');
+        } else {
+            $('#verify-post-status').val('');
+        }
         
         // Tinggi Mast - will be populated as dropdown when Model Mast is selected (see setSelectedDropdownValues)
         

@@ -20,7 +20,7 @@
                         </div>
                         <?php foreach ($value['data'] as $item): ?>
                             <a href="#" class="list-group-item list-group-item-action item-child-item child-po-<?= $key ?>" 
-                               data-item='<?= json_encode($item) ?>' 
+                               data-item='<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) ?>' 
                                id="list-sparepart-item-<?= $item['id'] ?>">
                                 <div class="d-flex align-items-center">
                                     <div class="me-3"><i class="fas fa-cogs fa-2x text-secondary"></i></div>

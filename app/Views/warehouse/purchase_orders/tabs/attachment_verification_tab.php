@@ -32,7 +32,7 @@
                         </div>
                         <?php foreach ($value['data'] as $item): ?>
                             <a href="#" class="list-group-item list-group-item-action item-child-item child-po-<?= $key ?>" 
-                               data-item='<?= json_encode($item) ?>' 
+                               data-item='<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) ?>' 
                                id="list-attachment-item-<?= $item['id_po_attachment'] ?? $item['id_po_attachment'] ?>">
                                 <div class="d-flex align-items-center">
                                     <div class="me-3">

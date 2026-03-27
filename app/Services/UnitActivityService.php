@@ -98,7 +98,7 @@ class UnitActivityService
             }
 
             $stages = $this->db->table('spk_unit_stages sus')
-                ->select('sus.*, s.nomor_spk, s.spk_number, s.no_spk, s.pelanggan, s.status as spk_status')
+                ->select('sus.*, s.nomor_spk, s.pelanggan, s.status as spk_status')
                 ->join('spk s', 's.id = sus.spk_id', 'left')
                 ->where('sus.unit_id', $unitId)
                 ->orderBy('sus.created_at', 'DESC')
@@ -114,7 +114,7 @@ class UnitActivityService
                 ];
                 $isCompleted = !empty($stage['tanggal_approve']);
 
-                $spkNumber = $stage['nomor_spk'] ?? $stage['spk_number'] ?? $stage['no_spk'] ?? null;
+                $spkNumber = $stage['nomor_spk'] ?? null;
 
                 $events[] = [
                     'category' => 'SPK',
@@ -193,7 +193,7 @@ class UnitActivityService
             }
 
             $diItems = $this->db->table('delivery_items di')
-                ->select('di.*, dins.nomor_di, dins.di_number, dins.no_di, dins.status_di, dins.pelanggan, dins.lokasi, dins.tanggal_kirim, dins.dibuat_pada')
+                ->select('di.*, dins.nomor_di, dins.status_di, dins.pelanggan, dins.lokasi, dins.tanggal_kirim, dins.dibuat_pada')
                 ->join('delivery_instructions dins', 'dins.id = di.di_id', 'left')
                 ->where('di.unit_id', $unitId)
                 ->where('di.item_type', 'UNIT')
@@ -211,7 +211,7 @@ class UnitActivityService
                     'SELESAI' => 'Completed',
                 ];
 
-                $diNumber = $di['nomor_di'] ?? $di['di_number'] ?? $di['no_di'] ?? null;
+                $diNumber = $di['nomor_di'] ?? null;
 
                 $events[] = [
                     'category' => 'DELIVERY',
@@ -251,7 +251,7 @@ class UnitActivityService
             }
 
             $contracts = $this->db->table('kontrak_unit ku')
-                ->select('ku.*, k.no_kontrak, c.customer_name, cl.location_name')
+                ->select('ku.*, k.no_kontrak, c.customer_name')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
@@ -271,7 +271,6 @@ class UnitActivityService
                         'description' => $contract['no_kontrak'] ?? '-',
                         'detail' => implode(' | ', array_filter([
                             'Customer: ' . ($contract['customer_name'] ?? '-'),
-                            'Location: ' . ($contract['location_name'] ?? '-'),
                         ])),
                         'date' => $contract['tanggal_mulai'],
                         'reference_type' => 'contract',
@@ -322,7 +321,7 @@ class UnitActivityService
                 ->join('work_order_categories woc', 'woc.id = wo.category_id', 'left')
                 ->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left')
                 ->where('wo.unit_id', $unitId)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 ->orderBy('wo.report_date', 'DESC')
                 ->get()->getResultArray();
 
@@ -362,7 +361,7 @@ class UnitActivityService
 
             $verifications = $this->db->table('unit_verification_history uvh')
                 ->select('uvh.*, wo.work_order_number,
-                    COALESCE(CONCAT(e.first_name, " ", e.last_name), CONCAT(u.first_name, " ", u.last_name)) as verifier_name')
+                    COALESCE(e.staff_name, CONCAT(u.first_name, " ", u.last_name)) as verifier_name')
                 ->join('work_orders wo', 'wo.id = uvh.work_order_id', 'left')
                 ->join('employees e', 'e.id = uvh.verified_by', 'left')
                 ->join('users u', 'u.id = uvh.verified_by', 'left')
@@ -516,7 +515,7 @@ class UnitActivityService
                 ->join('users u', 'u.id = wo.mechanic_id', 'left')
                 ->join('inventory_unit iu_src', 'iu_src.id_inventory_unit = wos.source_unit_id', 'left')
                 ->where('wo.unit_id', $unitId)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 ->groupStart()
                     ->where('wos.quantity_used >', 0)
                     ->orWhere('wos.quantity_brought >', 0)
@@ -569,7 +568,7 @@ class UnitActivityService
                 ->join('inventory_unit iu_tgt', 'iu_tgt.id_inventory_unit = wo.unit_id', 'left')
                 ->where('wos.source_type', 'KANIBAL')
                 ->where('wos.source_unit_id', $unitId)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 // Exclude rare edge case where donor == recipient
                 ->where('wo.unit_id !=', $unitId)
                 ->groupStart()
@@ -642,13 +641,13 @@ class UnitActivityService
 
             // --- B-Inbound: this unit is the recipient in the SPK sparepart row ---
             $inboundRows = $this->db->table('spk_spareparts ssp')
-                ->select('ssp.*, s.nomor_spk, s.tanggal_spk, s.id AS spk_id,
+                ->select('ssp.*, s.nomor_spk, s.dibuat_pada, s.id AS spk_id,
                     iu_src.no_unit AS donor_unit_no')
                 ->join('spk s', 's.id = ssp.spk_id', 'inner')
                 ->join('inventory_unit iu_src', 'iu_src.id_inventory_unit = ssp.source_unit_id', 'left')
                 ->where('ssp.unit_id', $unitId)
                 ->where('ssp.quantity_brought >', 0)
-                ->orderBy('s.tanggal_spk', 'DESC')
+                ->orderBy('s.dibuat_pada', 'DESC')
                 ->get()->getResultArray();
 
             foreach ($inboundRows as $row) {
@@ -672,7 +671,7 @@ class UnitActivityService
                     'title'            => ($isKanibal ? 'Kanibal masuk (SPK): ' : 'Sparepart (SPK): ') . $partName,
                     'description'      => $row['nomor_spk'] ?? ('-'),
                     'detail'           => implode(' | ', array_filter($detailParts)),
-                    'date'             => $row['tanggal_spk'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'date'             => $row['dibuat_pada'] ?? $row['created_at'] ?? $row['updated_at'],
                     'reference_type'   => 'spk',
                     'reference_id'     => $row['spk_id'],
                     'reference_number' => $row['nomor_spk'],
@@ -682,7 +681,7 @@ class UnitActivityService
 
             // --- B-Outbound: this unit is the KANIBAL donor for another SPK ---
             $outboundRows = $this->db->table('spk_spareparts ssp')
-                ->select('ssp.*, s.nomor_spk, s.tanggal_spk, s.id AS spk_id,
+                ->select('ssp.*, s.nomor_spk, s.dibuat_pada, s.id AS spk_id,
                     iu_tgt.no_unit AS recipient_unit_no')
                 ->join('spk s', 's.id = ssp.spk_id', 'inner')
                 ->join('inventory_unit iu_tgt', 'iu_tgt.id_inventory_unit = ssp.unit_id', 'left')
@@ -691,7 +690,7 @@ class UnitActivityService
                 // Exclude edge case donor == recipient (unit_id may be NULL for old rows)
                 ->where("(ssp.unit_id IS NULL OR ssp.unit_id != {$unitId})", null, false)
                 ->where('ssp.quantity_brought >', 0)
-                ->orderBy('s.tanggal_spk', 'DESC')
+                ->orderBy('s.dibuat_pada', 'DESC')
                 ->get()->getResultArray();
 
             foreach ($outboundRows as $row) {
@@ -715,7 +714,7 @@ class UnitActivityService
                     'title'            => 'Kanibal keluar (SPK): ' . $partName,
                     'description'      => $row['nomor_spk'] ?? '-',
                     'detail'           => implode(' | ', array_filter($detailParts)),
-                    'date'             => $row['tanggal_spk'] ?? $row['created_at'] ?? $row['updated_at'],
+                    'date'             => $row['dibuat_pada'] ?? $row['created_at'] ?? $row['updated_at'],
                     'reference_type'   => 'spk',
                     'reference_id'     => $row['spk_id'],
                     'reference_number' => $row['nomor_spk'],
@@ -785,7 +784,7 @@ class UnitActivityService
                 ->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left')
                 ->join('users u', 'u.id = wo.mechanic_id', 'left')
                 ->where('wo.unit_id', $unitId)
-                ->whereNull('wo.deleted_at')
+                ->where('wo.deleted_at IS NULL')
                 ->orderBy('wo.report_date', 'DESC')
                 ->get()->getResultArray();
 
@@ -928,7 +927,7 @@ class UnitActivityService
             if ($this->db->tableExists('work_orders')) {
                 $stats['total_work_orders'] = $this->db->table('work_orders')
                     ->where('unit_id', $unitId)
-                    ->whereNull('deleted_at')
+                    ->where('deleted_at IS NULL')
                     ->countAllResults();
             }
 

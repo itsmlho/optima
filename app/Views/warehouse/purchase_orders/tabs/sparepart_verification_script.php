@@ -4,6 +4,13 @@
 // ========================================
 (function() {
     $(document).ready(function() {
+        // Auto-expand semua PO group pada saat halaman dimuat
+        $('#sparepart-item-list .po-group-header').each(function() {
+            const poId = $(this).data('po-id');
+            $(this).addClass('open');
+            $(`.child-po-${poId}`).show();
+        });
+
         $('#sparepart-item-list').on('click', '.item-child-item', function(e) {
             e.preventDefault();
             $('#sparepart-item-list .item-child-item').removeClass('active');
@@ -16,9 +23,7 @@
     window.toggleSparepartDropdown = function(element) {
         const poId = $(element).data('po-id');
         $(element).toggleClass('open');
-        $(`.child-po-${poId}`).each(function() {
-            $(this).toggleClass('show');
-        });
+        $(`.child-po-${poId}`).slideToggle(200);
     };
 
     function createSparepartDetailCard(data) {

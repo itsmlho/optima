@@ -878,6 +878,8 @@ class AttachmentInventoryController extends BaseController
 
             $this->logActivity(
                 'delete',
+                'inventory_attachment',
+                (int)$id,
                 "Deleted {$tipeItem} inventory item #{$id} (SN: " . ($item['serial_number'] ?? '-') . ")",
                 ['item_id' => $id, 'tipe_item' => $tipeItem, 'item_data' => $item]
             );

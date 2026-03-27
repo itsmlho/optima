@@ -62,7 +62,7 @@
                         </div>
                         <?php foreach ($value['data'] as $unit): ?>
                             <a href="#" class="list-group-item list-group-item-action unit-list-item unit-child-item child-po-<?= $key ?>" 
-                               data-unit='<?= json_encode($unit) ?>' 
+                               data-unit='<?= json_encode($unit, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP) ?>' 
                                id="list-item-<?= $unit['id_po_unit'] ?>">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1" style="min-width: 0;">

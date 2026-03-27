@@ -1273,16 +1273,19 @@ class Purchasing extends BaseController
             return view('purchasing/print_packing_list', $data);
 
         } catch (\Exception $e) {
-            log_message('error', 'Print Packing List Error: ' . $e->getMessage());
-            log_message('error', 'Print Packing List Stack Trace: ' . $e->getTraceAsString());
-            
-            // Return error page instead of JSON for better debugging
-            $errorMessage = 'Gagal mencetak Packing List. Silakan coba lagi.';
-            if (ENVIRONMENT === 'development') {
-                $errorMessage .= '<br><br>Stack Trace:<br><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
-            }
-            
-            return $this->failServerError($errorMessage);
+            log_message('error', '[Purchasing::printPackingList] ' . $e->getMessage());
+            log_message('error', '[Purchasing::printPackingList] ' . $e->getTraceAsString());
+
+            $errorDetail = ENVIRONMENT === 'development'
+                ? '<pre style="white-space:pre-wrap;font-size:12px;color:#842029;background:#f8d7da;padding:12px;border-radius:8px;">' . esc($e->getMessage() . "\n\n" . $e->getTraceAsString()) . '</pre>'
+                : '';
+
+            $html = '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Print Packing List Error</title><style>body{font-family:Arial,sans-serif;background:#f8f9fa;padding:32px;color:#212529}.card{max-width:840px;margin:0 auto;background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.08)}h1{margin-top:0;font-size:22px}.muted{color:#6c757d}</style></head><body><div class="card"><h1>Gagal mencetak Packing List</h1><p class="muted">Sistem menemukan error saat menyiapkan dokumen print. Detail error sudah dicatat ke log aplikasi.</p>' . $errorDetail . '</div></body></html>';
+
+            return $this->response
+                ->setStatusCode(500)
+                ->setContentType('text/html')
+                ->setBody($html);
         }
     }
 
@@ -1510,7 +1513,12 @@ class Purchasing extends BaseController
                 (SELECT COALESCE(COUNT(*), 0) FROM po_units pu 
                  WHERE pu.po_id = po.id_po AND pu.status_verifikasi = "Sesuai") + 
                 (SELECT COALESCE(COUNT(*), 0) FROM po_attachment pa 
-                 WHERE pa.po_id = po.id_po AND pa.status_verifikasi = "Sesuai") as total_qty_verified,
+                 WHERE pa.po_id = po.id_po AND pa.status_verifikasi = "Sesuai") +
+                (SELECT COALESCE(COUNT(*), 0) FROM po_sparepart_items psi 
+                 WHERE psi.po_id = po.id_po AND psi.status_verifikasi = "Sesuai") as total_qty_verified,
+                (SELECT COALESCE(COUNT(*), 0) FROM po_units pu2 WHERE pu2.po_id = po.id_po) +
+                (SELECT COALESCE(COUNT(*), 0) FROM po_attachment pa2 WHERE pa2.po_id = po.id_po) +
+                (SELECT COALESCE(COUNT(*), 0) FROM po_sparepart_items psi2 WHERE psi2.po_id = po.id_po) as total_items_actual,
                 CASE 
                     WHEN (SELECT COALESCE(SUM(pdi.qty), 0) FROM po_delivery_items pdi 
                           LEFT JOIN po_deliveries pd2 ON pdi.delivery_id = pd2.id_delivery 
@@ -2969,14 +2977,70 @@ class Purchasing extends BaseController
     public function completePO($poId)
     {
         try {
-            $result = $this->purchaseModel->update($poId, ['status' => 'Completed']);
+            $db = \Config\Database::connect();
+
+            $totalUnitItems = $db->table('po_units')
+                ->where('po_id', $poId)
+                ->countAllResults();
+            $totalAttachmentItems = $db->table('po_attachment')
+                ->where('po_id', $poId)
+                ->countAllResults();
+            $totalSparepartItems = $db->table('po_sparepart_items')
+                ->where('po_id', $poId)
+                ->countAllResults();
+
+            $verifiedUnitItems = $db->table('po_units')
+                ->where('po_id', $poId)
+                ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])
+                ->countAllResults();
+            $verifiedAttachmentItems = $db->table('po_attachment')
+                ->where('po_id', $poId)
+                ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])
+                ->countAllResults();
+            $verifiedSparepartItems = $db->table('po_sparepart_items')
+                ->where('po_id', $poId)
+                ->whereIn('status_verifikasi', ['Sesuai', 'Tidak Sesuai'])
+                ->countAllResults();
+
+            $totalVerificationItems = $totalUnitItems + $totalAttachmentItems + $totalSparepartItems;
+            $verifiedItems = $verifiedUnitItems + $verifiedAttachmentItems + $verifiedSparepartItems;
+
+            if ($totalVerificationItems > 0 && $verifiedItems < $totalVerificationItems) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'PO belum bisa di-complete. Verifikasi baru selesai ' . $verifiedItems . '/' . $totalVerificationItems . ' item.'
+                ], 400);
+            }
+
+            $mismatchUnitItems = $db->table('po_units')
+                ->where('po_id', $poId)
+                ->where('status_verifikasi', 'Tidak Sesuai')
+                ->countAllResults();
+            $mismatchAttachmentItems = $db->table('po_attachment')
+                ->where('po_id', $poId)
+                ->where('status_verifikasi', 'Tidak Sesuai')
+                ->countAllResults();
+            $mismatchSparepartItems = $db->table('po_sparepart_items')
+                ->where('po_id', $poId)
+                ->where('status_verifikasi', 'Tidak Sesuai')
+                ->countAllResults();
+
+            $newStatus = ($mismatchUnitItems + $mismatchAttachmentItems + $mismatchSparepartItems) > 0
+                ? 'Selesai dengan Catatan'
+                : 'completed';
+
+            $result = $this->purchaseModel->update($poId, ['status' => $newStatus]);
             
             if ($result) {
-                return $this->respond(['success' => true, 'message' => 'PO berhasil ditandai sebagai completed']);
+                return $this->respond([
+                    'success' => true,
+                    'message' => 'PO berhasil diperbarui ke status ' . $newStatus
+                ]);
             } else {
                 return $this->respond(['success' => false, 'message' => 'Gagal complete PO'], 500);
             }
         } catch (\Exception $e) {
+            log_message('error', '[Purchasing::completePO] ' . $e->getMessage());
             return $this->respond(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'], 500);
         }
     }

@@ -139,6 +139,45 @@ helper('ui');
     </div>
 </div>
 
+<!-- Riwayat Audit Lokasi (AUDLOC) -->
+<div class="card shadow-sm mt-3">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h6 class="mb-0 fw-semibold"><i class="fas fa-map-marker-alt me-2"></i>Riwayat Audit Lokasi <span class="badge badge-soft-blue ms-1">AUDLOC</span></h6>
+            <p class="text-muted small mb-0 mt-1">Hasil verifikasi per lokasi yang dikirim ke Marketing</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="filterAudlocStatus" style="width:200px;" onchange="loadAudlocHistory()">
+                <option value="">Semua Status</option>
+                <option value="DRAFT">Draft</option>
+                <option value="PENDING_APPROVAL">Menunggu Approval</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0" id="audlocHistoryTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>No. Audit</th>
+                        <th>Customer</th>
+                        <th>Lokasi</th>
+                        <th>Tanggal Audit</th>
+                        <th class="text-center">Kontrak / Aktual</th>
+                        <th>Status</th>
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody id="audlocHistoryBody">
+                    <tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Memuat...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ MODAL: Verifikasi Lokasi (per unit dalam grup lokasi) ═══════════════════════════════ -->
 <div class="modal fade" id="verifikasiModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -430,6 +469,24 @@ helper('ui');
     </div>
 </div>
 
+<!-- ═══ MODAL: Detail Audit Lokasi (AUDLOC) ════════════════════ -->
+<div class="modal fade" id="audlocDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-semibold"><i class="fas fa-map-marker-alt me-2 text-primary"></i>Detail Audit Lokasi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body" id="audlocDetailContent">
+                <div class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Memuat...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </div><!-- /.unit-audit-page -->
 
 <?= $this->endSection() ?>
@@ -444,6 +501,7 @@ let selectedLocationData = {};
 $(document).ready(function() {
     loadCustomerList();
     loadAuditHistory();
+    loadAudlocHistory();
 });
 
 // ─── Customer (Select2 + total lokasi + badge) ───────────────────
@@ -1176,6 +1234,7 @@ function submitVerifikasi() {
                 OptimaNotify.success(res.message);
                 loadLocations();
                 loadAuditHistory();
+                loadAudlocHistory();
             } else {
                 OptimaNotify.error('Error: ' + res.message);
             }
@@ -1652,6 +1711,180 @@ function renderProposedData(type, data) {
         'UNIT_MISSING': `<p class="mb-0"><strong>Lokasi Terakhir:</strong> ${esc(data.last_known_location || '-')}</p>`,
     };
     return m[type] || `<p class="mb-0">${esc(data.description || '-')}</p>`;
+}
+
+// ─── Riwayat Audit Lokasi (AUDLOC) ──────────────────────────────
+
+function loadAudlocHistory() {
+    const status = $('#filterAudlocStatus').val();
+    const custId = selectedCustomerId || '';
+    $('#audlocHistoryBody').html('<tr><td colspan="7" class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat...</td></tr>');
+    $.get(BASE + 'service/unit-audit/getLocationAudits', { status: status, customer_id: custId }, function(res) {
+        if (res.success) renderAudlocTable(res.data);
+        else $('#audlocHistoryBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data</td></tr>');
+    }).fail(function() {
+        $('#audlocHistoryBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data</td></tr>');
+    });
+}
+
+function renderAudlocTable(data) {
+    if (!data || data.length === 0) {
+        $('#audlocHistoryBody').html('<tr><td colspan="7" class="text-center text-muted py-4">Belum ada riwayat audit lokasi</td></tr>');
+        return;
+    }
+    let html = '';
+    data.forEach(function(item) {
+        const kontrak = parseInt(item.kontrak_total_units || 0, 10);
+        const actual  = parseInt(item.actual_total_units  || 0, 10);
+        const selisih = actual - kontrak;
+        const selisihBadge = selisih === 0
+            ? '<span class="badge badge-soft-green">0</span>'
+            : (selisih < 0
+                ? `<span class="badge badge-soft-red">${selisih}</span>`
+                : `<span class="badge badge-soft-yellow">+${selisih}</span>`);
+        const auditDate = item.audit_date
+            ? new Date(item.audit_date).toLocaleDateString('id-ID')
+            : '-';
+        html += `<tr>
+            <td class="small"><strong>${esc(item.audit_number || '-')}</strong></td>
+            <td class="small">${esc(item.customer_name || '-')}</td>
+            <td class="small">${esc(item.location_name || '-')}</td>
+            <td class="small">${auditDate}</td>
+            <td class="text-center small">${kontrak} / ${actual} &nbsp;${selisihBadge}</td>
+            <td>${getAudlocStatusBadge(item.status)}</td>
+            <td><button class="btn btn-xs btn-outline-primary" onclick="viewAudlocDetail(${item.id})" title="Detail"><i class="fas fa-eye"></i></button></td>
+        </tr>`;
+    });
+    $('#audlocHistoryBody').html(html);
+}
+
+function getAudlocStatusBadge(s) {
+    const m = {
+        'DRAFT':            '<span class="badge badge-soft-gray">Draft</span>',
+        'PRINTED':          '<span class="badge badge-soft-blue">Printed</span>',
+        'IN_PROGRESS':      '<span class="badge badge-soft-cyan">In Progress</span>',
+        'RESULTS_ENTERED':  '<span class="badge badge-soft-cyan">Hasil Diisi</span>',
+        'PENDING_APPROVAL': '<span class="badge badge-soft-yellow">Menunggu Approval</span>',
+        'APPROVED':         '<span class="badge badge-soft-green">Approved</span>',
+        'REJECTED':         '<span class="badge badge-soft-red">Rejected</span>',
+    };
+    return m[s] || `<span class="badge badge-soft-gray">${esc(s)}</span>`;
+}
+
+function viewAudlocDetail(id) {
+    $('#audlocDetailContent').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Memuat...</div>');
+    $('#audlocDetailModal').modal('show');
+
+    $.get(BASE + 'service/unit-audit/getLocationAuditDetail/' + id, function(res) {
+        if (!res.success) {
+            $('#audlocDetailContent').html('<div class="alert alert-danger">' + esc(res.message || 'Gagal memuat detail') + '</div>');
+            return;
+        }
+        const d = res.data;
+        const kontrak = parseInt(d.kontrak_total_units || 0, 10);
+        const actual  = parseInt(d.actual_total_units  || 0, 10);
+        const selisih = actual - kontrak;
+        const selisihClass = selisih === 0 ? 'badge-soft-green' : (selisih < 0 ? 'badge-soft-red' : 'badge-soft-yellow');
+        const selisihText  = selisih === 0 ? '0' : (selisih > 0 ? '+' + selisih : '' + selisih);
+
+        let html = `
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="text-muted small">No. Audit</div>
+                <span class="badge badge-soft-blue">${esc(d.audit_number || '-')}</span>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted small">Status</div>
+                ${getAudlocStatusBadge(d.status)}
+            </div>
+            <div class="col-md-6 mt-2">
+                <div class="text-muted small">Customer</div>
+                <strong>${esc(d.customer_name || '-')}</strong>
+            </div>
+            <div class="col-md-6 mt-2">
+                <div class="text-muted small">Lokasi</div>
+                <strong>${esc(d.location_name || '-')}</strong>
+            </div>
+            <div class="col-md-6 mt-2">
+                <div class="text-muted small">Tanggal Audit</div>
+                ${d.audit_date ? new Date(d.audit_date).toLocaleDateString('id-ID') : '-'}
+            </div>
+            <div class="col-md-6 mt-2">
+                <div class="text-muted small">Mekanik</div>
+                ${esc(d.mechanic_name || '-')}
+            </div>
+        </div>
+        <hr>
+        <div class="row g-2 mb-3 text-center">
+            <div class="col-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted small mb-1">Kontrak Unit</div>
+                    <div class="fw-bold fs-4">${kontrak}</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted small mb-1">Actual Unit</div>
+                    <div class="fw-bold fs-4">${actual}</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded p-3">
+                    <div class="text-muted small mb-1">Selisih</div>
+                    <div class="fw-bold fs-4"><span class="badge ${selisihClass} fs-5">${selisihText}</span></div>
+                </div>
+            </div>
+        </div>`;
+
+        const items = d.items || [];
+        if (items.length > 0) {
+            const resultLabel = {
+                'MATCH':              '<span class="badge badge-soft-green">Sesuai</span>',
+                'MISMATCH_NO_UNIT':   '<span class="badge badge-soft-red">No Unit Berbeda</span>',
+                'NO_UNIT_IN_KONTRAK': '<span class="badge badge-soft-red">Unit Hilang</span>',
+                'EXTRA_UNIT':         '<span class="badge badge-soft-yellow">Unit Tambahan</span>',
+                'MISMATCH_SERIAL':    '<span class="badge badge-soft-orange">S/N Berbeda</span>',
+            };
+            html += `<hr>
+            <h6 class="fw-semibold mb-2"><i class="fas fa-list-check me-2 text-primary"></i>Hasil per Unit</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>No Unit (Kontrak)</th>
+                            <th>No Unit (Aktual)</th>
+                            <th>Hasil</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            items.forEach(function(it) {
+                const badge = resultLabel[it.result] || `<span class="badge badge-soft-gray">${esc(it.result || '-')}</span>`;
+                html += `<tr>
+                    <td class="small"><strong>${esc(it.expected_no_unit || '—')}</strong></td>
+                    <td class="small">${esc(it.actual_no_unit || '—')}</td>
+                    <td>${badge}</td>
+                    <td class="small text-muted">${esc(it.notes || '—')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        if (d.reviewed_by) {
+            const isApproved = d.status === 'APPROVED';
+            html += `<hr>
+            <div class="alert alert-${isApproved ? 'success' : 'danger'} mb-0">
+                <h6 class="fw-bold mb-2">Review Marketing</h6>
+                <p class="mb-1"><strong>Oleh:</strong> ${esc(d.reviewer_name || '-')}</p>
+                <p class="mb-1"><strong>Tanggal:</strong> ${d.reviewed_at ? new Date(d.reviewed_at).toLocaleString('id-ID') : '-'}</p>
+                <p class="mb-0"><strong>Catatan:</strong> ${esc(d.marketing_notes || '-')}</p>
+            </div>`;
+        }
+
+        $('#audlocDetailContent').html(html);
+    }).fail(function() {
+        $('#audlocDetailContent').html('<div class="alert alert-danger">Gagal memuat detail</div>');
+    });
 }
 
 // ─── Utils ───────────────────────────────────────────────────────

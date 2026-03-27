@@ -1497,15 +1497,10 @@ class UnitAudit extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
-        $kontrakId = $this->request->getPost('kontrak_id');
-        if (empty($kontrakId)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Pilih kontrak/PO terlebih dahulu']);
-        }
-
         $pricing = [
-            'kontrak_id'       => $kontrakId,
-            'price_per_unit'   => $this->request->getPost('price_per_unit'),
-            'marketing_notes'  => $this->request->getPost('marketing_notes'),
+            'price_per_unit'      => $this->request->getPost('price_per_unit'),
+            'marketing_notes'     => $this->request->getPost('marketing_notes'),
+            'deactivate_location' => $this->request->getPost('deactivate_location') === '1',
         ];
 
         try {
@@ -1709,6 +1704,13 @@ class UnitAudit extends BaseController
                 $oldAtt = $oldComponents['attachment']['id_inventory_attachment'] ?? null;
                 $oldBat = $oldComponents['battery']['id_inventory_attachment'] ?? null;
                 $oldChr = $oldComponents['charger']['id_inventory_attachment'] ?? null;
+                $postVerificationStatus = isset($master['post_verification_status']) && $master['post_verification_status'] !== ''
+                    ? (int) $master['post_verification_status']
+                    : null;
+                $allowedPostStatuses = [1, 7, 8, 10]; // AVAILABLE_STOCK, RENTAL_ACTIVE, RENTAL_DAILY, BREAKDOWN
+                if ($postVerificationStatus !== null && !in_array($postVerificationStatus, $allowedPostStatuses, true)) {
+                    throw new \RuntimeException('Hasil verifikasi status unit tidak valid');
+                }
 
                 $unitData = array_filter([
                     'serial_number'     => $master['serial_number'] ?? null,
@@ -1724,6 +1726,16 @@ class UnitAudit extends BaseController
                     'tinggi_mast'       => $master['tinggi_mast'] ?? null,
                     'keterangan'        => $master['keterangan'] ?? null,
                     'hour_meter'        => $master['hour_meter'] ?? null,
+                    'status_unit_id'    => $postVerificationStatus,
+                    'workflow_status'   => $postVerificationStatus !== null
+                        ? match ($postVerificationStatus) {
+                            1 => 'TERSEDIA',
+                            7 => 'DISEWA',
+                            8 => 'DISEWA',
+                            10 => 'UNDER_REPAIR',
+                            default => null,
+                        }
+                        : null,
                 ], fn($v) => $v !== null && $v !== '');
 
                 $newAttachmentId = $master['attachment_id'] ?? null;

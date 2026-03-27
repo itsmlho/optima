@@ -8,19 +8,45 @@
     'use strict';
     
     const STORAGE_KEY = 'optima_sidebar_scroll_position';
+    const safeSessionStorage = {
+        available: (() => {
+            try {
+                const testKey = '__optima_sidebar_scroll_test__';
+                window.sessionStorage.setItem(testKey, '1');
+                window.sessionStorage.removeItem(testKey);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        })(),
+        get(key) {
+            if (!this.available) return null;
+            try {
+                return window.sessionStorage.getItem(key);
+            } catch (_) {
+                return null;
+            }
+        },
+        set(key, value) {
+            if (!this.available) return;
+            try {
+                window.sessionStorage.setItem(key, value);
+            } catch (_) {}
+        }
+    };
     
     // Save sidebar scroll position
     function saveSidebarScrollPosition() {
         const sidebar = document.querySelector('.sidebar-nav');
         if (sidebar) {
-            sessionStorage.setItem(STORAGE_KEY, sidebar.scrollTop.toString());
+            safeSessionStorage.set(STORAGE_KEY, sidebar.scrollTop.toString());
         }
     }
     
     // Restore sidebar scroll position
     function restoreSidebarScrollPosition() {
         const sidebar = document.querySelector('.sidebar-nav');
-        const savedPosition = sessionStorage.getItem(STORAGE_KEY);
+        const savedPosition = safeSessionStorage.get(STORAGE_KEY);
         
         if (sidebar && savedPosition !== null) {
             const position = parseInt(savedPosition);

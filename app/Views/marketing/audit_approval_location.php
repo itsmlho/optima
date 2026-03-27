@@ -1052,6 +1052,8 @@ function renderDetailModal(audit) {
 
     const difference = audit.actual_total_units - audit.kontrak_total_units;
     const hasDiscrepancy = difference !== 0;
+    const hasExtraUnits = (audit.items || []).some(item => item.result === 'EXTRA_UNIT');
+    const hasMissingUnits = (audit.items || []).some(item => item.result === 'NO_UNIT_IN_KONTRAK');
 
     let itemsHtml = '';
     audit.items.forEach((item, idx) => {
@@ -1154,55 +1156,35 @@ function renderDetailModal(audit) {
             </div>
         </div>
 
-        <!-- Contract/PO Selection and Pricing -->
-        <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
-                <i class="fas fa-file-contract me-2"></i>Kontrak & Harga
+        <!-- Hidden: kontrak_id auto dari audit record -->
+        <input type="hidden" id="approveAuditKontrakId" value="${audit.kontrak_id || ''}">
+
+        ${hasMissingUnits ? `
+        <div class="alert alert-warning mb-3">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Unit hilang terdeteksi.</strong> Unit yang tidak ditemukan di lapangan akan otomatis dicabut dari kontrak saat di-approve.
+        </div>
+        ` : ''}
+
+        ${hasExtraUnits ? `
+        <div class="card mb-3 border-warning">
+            <div class="card-header" style="background:#fff3cd;">
+                <i class="fas fa-tag me-2"></i>Harga Unit Baru Ditemukan
             </div>
             <div class="card-body">
+                <p class="small text-muted mb-3">Ada <strong>${difference > 0 ? '+' + difference : difference}</strong> unit tambahan yang ditemukan di lapangan. Masukkan harga sewa per unit untuk mencatatnya ke kontrak.</p>
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Pilih Kontrak/PO <span class="text-danger">*</span></label>
-                        <select class="form-select" id="kontrakSelect">
-                            <option value="">-- Memuat kontrak... --</option>
-                        </select>
-                        <input type="hidden" id="selectedKontrakId" value="${audit.kontrak_id || ''}">
-                        <div class="form-text">Pilih kontrak yang sesuai dengan lokasi audit ini</div>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Harga per Unit</label>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Harga Sewa per Unit <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="number" class="form-control" id="pricePerUnit" placeholder="0" min="0" value="${audit.price_per_unit || ''}">
                         </div>
                     </div>
-                    ${hasDiscrepancy ? `
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Selisih Unit</label>
-                        <input type="text" class="form-control ${difference > 0 ? 'text-danger' : 'text-success'}" value="${difference > 0 ? '+' : ''}${difference}" readonly>
-                    </div>
-                    ` : `
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Status</label>
-                        <div class="form-control-plaintext">
-                            <span class="badge badge-soft-green">Sesuai Kontrak</span>
-                        </div>
-                    </div>
-                    `}
                 </div>
-                ${hasDiscrepancy ? `
-                <div class="row g-3 mt-2">
-                    <div class="col-md-6 offset-md-6">
-                        <label class="form-label">Total Penyesuaian Harga</label>
-                        <div class="input-group">
-                            <span class="input-group-text">Rp</span>
-                            <input type="text" class="form-control fw-bold" id="totalAdjustment" readonly>
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
             </div>
         </div>
+        ` : ''}
 
         <!-- Notes -->
         <div class="mb-3">
@@ -1213,6 +1195,17 @@ function renderDetailModal(audit) {
             <label class="form-label">Catatan Marketing</label>
             <textarea class="form-control" id="marketingNotes" rows="2" placeholder="Catatan untuk approval ini...">${audit.marketing_notes || ''}</textarea>
         </div>
+        ${audit.actual_total_units === 0 ? `
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="deactivateLocation">
+                <label class="form-check-label text-danger fw-semibold" for="deactivateLocation">
+                    <i class="fas fa-ban me-1"></i>Nonaktifkan lokasi ini setelah approve
+                </label>
+                <div class="form-text">Tidak ada unit ditemukan di lokasi ini. Centang untuk menonaktifkan lokasi setelah approve.</div>
+            </div>
+        </div>
+        ` : ''}
 
         <!-- Items Table -->
         <h6>Detail Unit</h6>
@@ -1248,17 +1241,7 @@ function renderDetailModal(audit) {
             </button>
         `;
 
-        // Load contracts for customer
-        loadContractsForCustomer(audit.customer_id, audit.kontrak_id);
-
-        // Setup price calculation
-        if (hasDiscrepancy) {
-            document.getElementById('pricePerUnit').addEventListener('input', function() {
-                const price = parseFloat(this.value) || 0;
-                const total = price * difference;
-                document.getElementById('totalAdjustment').value = formatCurrency(total);
-            });
-        }
+        // No need to load contracts — kontrak_id is already on the audit record
     } else {
         footer.innerHTML = `
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -1330,21 +1313,14 @@ function confirmReject() {
 }
 
 function approveAudit() {
-    const kontrakId = document.getElementById('selectedKontrakId')?.value || document.getElementById('kontrakSelect')?.value;
-    const pricePerUnit = document.getElementById('pricePerUnit')?.value;
+    const pricePerUnit = document.getElementById('pricePerUnit')?.value || '';
     const marketingNotes = document.getElementById('marketingNotes')?.value || '';
-
-    // Validation
-    if (!kontrakId) {
-        if (window.OptimaNotify) OptimaNotify.warning('Pilih kontrak/PO terlebih dahulu');
-        else alert('Pilih kontrak/PO terlebih dahulu');
-        return;
-    }
+    const deactivateLocation = document.getElementById('deactivateLocation')?.checked ? '1' : '0';
 
     fetch(`<?= base_url('marketing/unit-audit/approveLocation/') ?>${selectedAuditId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `kontrak_id=${kontrakId}&price_per_unit=${pricePerUnit || ''}&marketing_notes=${encodeURIComponent(marketingNotes)}`
+        body: `price_per_unit=${pricePerUnit}&marketing_notes=${encodeURIComponent(marketingNotes)}&deactivate_location=${deactivateLocation}`
     })
     .then(res => res.json())
     .then(data => {

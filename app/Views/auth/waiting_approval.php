@@ -50,7 +50,7 @@
             height: 3px;
             background: linear-gradient(90deg, #0061f2, #0056b3);
         }
-        .auth-card-wide { /* alias */ }
+        .auth-card-wide { max-width: 560px; width: 100%; }
         .header-section { text-align: center; margin-bottom: 1.5rem; }
         .auth-icon.waiting-icon {
             width: 64px; height: 64px;
