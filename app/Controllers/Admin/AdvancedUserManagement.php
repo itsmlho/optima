@@ -23,6 +23,7 @@ class AdvancedUserManagement extends BaseController
     protected $permissionModel;
     protected $userRoleModel;
     protected $userPermissionModel;
+    protected array $permissionColumns = [];
 
     public function __construct()
     {
@@ -36,6 +37,31 @@ class AdvancedUserManagement extends BaseController
         $this->permissionModel = new PermissionModel();
         $this->userRoleModel = new UserRoleModel();
         $this->userPermissionModel = new UserPermissionModel();
+
+        try {
+            $this->permissionColumns = $this->db->tableExists('permissions')
+                ? $this->db->getFieldNames('permissions')
+                : [];
+        } catch (\Throwable $e) {
+            $this->permissionColumns = [];
+        }
+    }
+
+    protected function permissionColumnExists(string $column): bool
+    {
+        return in_array($column, $this->permissionColumns, true);
+    }
+
+    protected function permissionKeyColumn(string $alias = 'p'): string
+    {
+        $column = $this->permissionColumnExists('key_name') ? 'key_name' : 'key';
+        return $alias . '.' . $column;
+    }
+
+    protected function permissionDisplayColumn(string $alias = 'p'): string
+    {
+        $column = $this->permissionColumnExists('display_name') ? 'display_name' : 'name';
+        return $alias . '.' . $column;
     }
 
     public function index()
@@ -417,11 +443,19 @@ class AdvancedUserManagement extends BaseController
 
         // Get current user permissions (TAMBAHKAN INI)
         try {
-            $userPermissions = $this->db->table('user_permissions up')
+            $permissionQuery = $this->db->table('user_permissions up')
                 ->join('permissions p', 'p.id = up.permission_id')
                 ->where('up.user_id', $userId)
-                ->select('up.permission_id as id, p.key, p.name, p.description, up.granted')
-                ->get()->getResultArray();
+                ->select([
+                    'up.permission_id as id',
+                    $this->permissionKeyColumn('p') . ' as key_name',
+                    $this->permissionDisplayColumn('p') . ' as display_name',
+                    'p.description',
+                    'up.granted',
+                ]);
+
+            $permissionResult = $permissionQuery->get();
+            $userPermissions = $permissionResult ? $permissionResult->getResultArray() : [];
         } catch (\Exception $e) {
             $userPermissions = [];
         }
@@ -1070,7 +1104,12 @@ class AdvancedUserManagement extends BaseController
         $allPerms = $this->permissionModel->findAll();
         $result = [];
         foreach ($allPerms as $perm) {
-            $result[$perm['key']] = false;
+            $permissionKey = $perm['key_name'] ?? $perm['key'] ?? null;
+            if ($permissionKey === null) {
+                continue;
+            }
+
+            $result[$permissionKey] = false;
         }
 
         // Dari role
@@ -1078,10 +1117,10 @@ class AdvancedUserManagement extends BaseController
             ->join('role_permissions rp', 'rp.role_id = ur.role_id')
             ->join('permissions p', 'p.id = rp.permission_id')
             ->where('ur.user_id', $userId)
-            ->select('p.key')
+            ->select($this->permissionKeyColumn('p') . ' as permission_key')
             ->get()->getResultArray();
         foreach ($rolePerms as $rp) {
-            $result[$rp['key']] = true;
+            $result[$rp['permission_key']] = true;
         }
 
         // Dari division (jika ada logic permission per division)
@@ -1091,10 +1130,13 @@ class AdvancedUserManagement extends BaseController
         $customPerms = $this->db->table('user_permissions up')
             ->join('permissions p', 'p.id = up.permission_id')
             ->where('up.user_id', $userId)
-            ->select('p.key, up.granted')
+            ->select([
+                $this->permissionKeyColumn('p') . ' as permission_key',
+                'up.granted',
+            ])
             ->get()->getResultArray();
         foreach ($customPerms as $cp) {
-            $result[$cp['key']] = (bool)$cp['granted'];
+            $result[$cp['permission_key']] = (bool)$cp['granted'];
         }
 
         return ['effective_permissions' => $result];
@@ -1411,7 +1453,13 @@ class AdvancedUserManagement extends BaseController
                     ->join('role_permissions rp', 'rp.role_id = r.id')
                     ->join('permissions p', 'p.id = rp.permission_id')
                     ->where('ur.user_id', $userId)
-                    ->select('p.key as permission_key, p.name, p.description, "role" as source, r.name as source_name')
+                    ->select([
+                        $this->permissionKeyColumn('p') . ' as permission_key',
+                        $this->permissionDisplayColumn('p') . ' as display_name',
+                        'p.description',
+                        '"role" as source',
+                        'r.name as source_name',
+                    ])
             );
         } catch (\Exception $e) {
             $rolePermissions = [];
@@ -1423,7 +1471,13 @@ class AdvancedUserManagement extends BaseController
                 $this->db->table('user_permissions up')
                     ->join('permissions p', 'p.id = up.permission_id')
                     ->where('up.user_id', $userId)
-                    ->select('p.key as permission_key, p.name, p.description, up.granted, "custom" as source')
+                    ->select([
+                        $this->permissionKeyColumn('p') . ' as permission_key',
+                        $this->permissionDisplayColumn('p') . ' as display_name',
+                        'p.description',
+                        'up.granted',
+                        '"custom" as source',
+                    ])
             );
         } catch (\Exception $e) {
             $customPermissions = [];
@@ -1512,7 +1566,7 @@ class AdvancedUserManagement extends BaseController
             $customPermission = $this->db->table('user_permissions up')
                 ->join('permissions p', 'p.id = up.permission_id')
                 ->where('up.user_id', $userId)
-                ->where('p.key', $permissionKey);
+                ->where($this->permissionKeyColumn('p'), $permissionKey);
             if ($divisionId) {
                 $customPermission->where('up.division_id', $divisionId);
             }
@@ -1526,7 +1580,7 @@ class AdvancedUserManagement extends BaseController
                 ->join('role_permissions rp', 'rp.role_id = ur.role_id')
                 ->join('permissions p', 'p.id = rp.permission_id')
                 ->where('ur.user_id', $userId)
-                ->where('p.key', $permissionKey)
+                ->where($this->permissionKeyColumn('p'), $permissionKey)
                 ->countAllResults();
             if ($rolePermission > 0) {
                 return true;

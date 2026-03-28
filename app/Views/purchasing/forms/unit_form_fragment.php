@@ -2,8 +2,8 @@
 <div class="row g-3">
     <!-- Departemen -->
     <div class="col-md-6">
-        <label for="unit_departemen" class="form-label">Departmen <span class="text-danger">*</span></label>
-        <select id="unit_departemen" class="form-select select2-basic" data-master-type="departemen" required>
+        <label for="unit_departemen" class="form-label">Departmen</label>
+        <select id="unit_departemen" class="form-select select2-basic" data-master-type="departemen">
             <option value="">Select Departmen...</option>
             <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Departmen</option>
             <option disabled>─────────────</option>
@@ -50,14 +50,14 @@
 
     <!-- Tahun -->
     <div class="col-md-4">
-        <label for="unit_tahun" class="form-label">Year <span class="text-danger">*</span></label>
-        <input type="number" id="unit_tahun" class="form-control" min="1990" max="<?= date('Y') + 2 ?>" value="<?= date('Y') ?>" required>
+        <label for="unit_tahun" class="form-label">Year</label>
+        <input type="number" id="unit_tahun" class="form-control" min="1990" max="<?= date('Y') + 2 ?>" value="<?= date('Y') ?>" placeholder="Opsional — bisa dilengkapi saat verifikasi WH">
     </div>
 
     <!-- Kapasitas -->
     <div class="col-md-4">
-        <label for="unit_kapasitas" class="form-label">Capacity <span class="text-danger">*</span></label>
-        <select id="unit_kapasitas" class="form-select select2-basic" data-master-type="kapasitas" required>
+        <label for="unit_kapasitas" class="form-label">Capacity</label>
+        <select id="unit_kapasitas" class="form-select select2-basic" data-master-type="kapasitas">
             <option value="">Select Capacity...</option>
             <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Capacity</option>
             <option disabled>─────────────</option>
@@ -85,8 +85,44 @@
         <input type="number" id="unit_qty" class="form-control" min="1" value="1" required>
     </div>
 
+    <div class="col-md-6">
+        <label for="unit_vendor_model_code" class="form-label">Kode model pabrik (PI)</label>
+        <input type="text" id="unit_vendor_model_code" class="form-control" maxlength="120" placeholder="Contoh: CPCD50-M4XK2">
+    </div>
+    <div class="col-12">
+        <label for="unit_vendor_spec_text" class="form-label">Spesifikasi vendor — paste utuh dari baris PI</label>
+        <textarea id="unit_vendor_spec_text" class="form-control font-monospace small" rows="5" placeholder="Tempel teks deskripsi baris proforma invoice tanpa dirangkum."></textarea>
+    </div>
+    <div class="col-12">
+        <span class="form-label d-block mb-1">Isi paket (membantu form verifikasi gudang)</span>
+        <div class="d-flex flex-wrap gap-3">
+            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_fork_std" name="pkg_flags[]" value="fork_standard" checked><label class="form-check-label" for="pkg_fork_std">Fork standar</label></div>
+            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_battery" name="pkg_flags[]" value="battery"><label class="form-check-label" for="pkg_battery">Baterai</label></div>
+            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_charger" name="pkg_flags[]" value="charger"><label class="form-check-label" for="pkg_charger">Charger</label></div>
+            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_attachment" name="pkg_flags[]" value="attachment"><label class="form-check-label" for="pkg_attachment">Attachment</label></div>
+            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_acc" name="pkg_flags[]" value="accessories"><label class="form-check-label" for="pkg_acc">Aksesoris (lampu, sabuk, dll.)</label></div>
+        </div>
+    </div>
+    <div class="col-12">
+        <label class="form-label">Aksesoris diharapkan (kunci seperti quotation, opsional)</label>
+        <div class="row g-2 small">
+            <?php
+            $accKeys = ['main_light','work_light','rotary_lamp','back_buzzer','blue_spot','camera','camera_ai','speed_limiter','safety_belt','mirror','horn_klason'];
+            foreach ($accKeys as $k):
+            ?>
+            <div class="col-md-4 col-lg-3">
+                <div class="form-check">
+                    <input class="form-check-input po-unit-acc" type="checkbox" name="unit_acc[]" value="<?= esc($k) ?>" id="acc_<?= esc($k) ?>">
+                    <label class="form-check-label" for="acc_<?= esc($k) ?>"><?= esc(str_replace('_', ' ', $k)) ?></label>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
     <div class="col-12"><hr class="my-3"></div>
-    <div class="col-12"><h6 class="text-muted"><i class="fas fa-cogs me-2"></i>Components (Optional)</h6></div>
+    <details class="col-12 mb-2"><summary class="fw-semibold text-muted cursor-pointer">Komponen lanjutan &amp; link master (opsional)</summary>
+    <div class="row g-3 mt-1">
 
     <!-- Mast -->
     <div class="col-md-4">
@@ -171,10 +207,46 @@
         </select>
     </div>
 
+    <?php if (!empty($baterais) && is_array($baterais)): ?>
+    <div class="col-md-6">
+        <label for="unit_baterai_id" class="form-label">Baterai (master)</label>
+        <select id="unit_baterai_id" class="form-select select2-basic">
+            <option value="">—</option>
+            <?php foreach ($baterais as $b): ?>
+                <option value="<?= (int)($b['id'] ?? 0) ?>"><?= esc(($b['merk_baterai'] ?? '') . ' ' . ($b['tipe_baterai'] ?? '') . ' ' . ($b['jenis_baterai'] ?? '')) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($chargers) && is_array($chargers)): ?>
+    <div class="col-md-6">
+        <label for="unit_charger_id" class="form-label">Charger (master)</label>
+        <select id="unit_charger_id" class="form-select select2-basic">
+            <option value="">—</option>
+            <?php foreach ($chargers as $c): ?>
+                <option value="<?= (int)($c['id_charger'] ?? 0) ?>"><?= esc(($c['merk_charger'] ?? '') . ' ' . ($c['tipe_charger'] ?? '')) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($attachments) && is_array($attachments)): ?>
+    <div class="col-md-12">
+        <label for="unit_attachment_id" class="form-label">Attachment (master)</label>
+        <select id="unit_attachment_id" class="form-select select2-basic">
+            <option value="">—</option>
+            <?php foreach ($attachments as $a): ?>
+                <option value="<?= (int)($a['id_attachment'] ?? 0) ?>"><?= esc(($a['tipe'] ?? '') . ' | ' . ($a['merk'] ?? '') . ' ' . ($a['model'] ?? '')) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php endif; ?>
+
+    </div></details>
+
     <!-- Keterangan -->
     <div class="col-12">
-        <label for="unit_keterangan" class="form-label">Notes</label>
-        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
+        <label for="unit_keterangan" class="form-label">Catatan singkat (opsional)</label>
+        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Catatan operasional, bukan pengganti paste PI di atas"></textarea>
     </div>
 </div>
 

@@ -100,7 +100,7 @@
                                 <div class="mb-3">
                                     <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="password" name="password" required>
+                                        <input type="password" class="form-control" id="password" name="password" required autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -112,7 +112,7 @@
                                 <div class="mb-3">
                                     <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" required autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirm">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -307,12 +307,12 @@ const USER_ID = null;
 const USER_DATA = null;
 
 // console.log('📊 Create User Form initialized:', {
-    mode: 'CREATE',
-    user_id: USER_ID,
-    roles_count: ROLES_DATA?.length || 0,
-    roles_data: ROLES_DATA,
-    divisions_available: <?= json_encode(isset($divisions) ? count($divisions) : 0) ?>
-});
+//     mode: 'CREATE',
+//     user_id: USER_ID,
+//     roles_count: ROLES_DATA?.length || 0,
+//     roles_data: ROLES_DATA,
+//     divisions_available: <?= json_encode(isset($divisions) ? count($divisions) : 0) ?>
+// });
 </script>
 
 <!-- ========================================

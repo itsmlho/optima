@@ -1911,24 +1911,37 @@ class Purchasing extends BaseController
         log_message('info', '[storeUnifiedPO] Inserting ' . $qty . ' unit items');
         
         // Create base data structure
+        $pkg = $item['package_flags'] ?? null;
+        if (is_array($pkg)) {
+            $pkg = json_encode($pkg);
+        }
+
         $unitDataTemplate = [
-                        'po_id' => $poId,
+            'po_id' => $poId,
             'jenis_unit' => $item['tipe_unit_id'] ?? null,
             'tipe_unit_id' => $item['tipe_unit_id'] ?? null,
             'merk_unit' => $item['merk_unit'] ?? null,
-            'model_unit_id' => $item['model_unit_id'] ?? null,
-            'tahun_po' => $item['tahun_unit'] ?? null,
-            'kapasitas_id' => $item['kapasitas_id'] ?? null,
+            'model_unit_id' => !empty($item['model_unit_id']) ? (int) $item['model_unit_id'] : null,
+            'tahun_po' => !empty($item['tahun_unit']) ? (int) $item['tahun_unit'] : null,
+            'kapasitas_id' => !empty($item['kapasitas_id']) ? (int) $item['kapasitas_id'] : null,
             'status_penjualan' => $item['kondisi_penjualan'] ?? null,
-            'mast_id' => $item['mast_id'] ?? null,
+            'mast_id' => !empty($item['mast_id']) ? (int) $item['mast_id'] : null,
             'sn_mast_po' => $item['sn_mast'] ?? null,
-            'mesin_id' => $item['mesin_id'] ?? null,
+            'mesin_id' => !empty($item['mesin_id']) ? (int) $item['mesin_id'] : null,
             'sn_mesin_po' => $item['sn_mesin'] ?? null,
-            'ban_id' => $item['ban_id'] ?? null,
-            'roda_id' => $item['roda_id'] ?? null,
-            'valve_id' => $item['valve_id'] ?? null,
+            'ban_id' => !empty($item['ban_id']) ? (int) $item['ban_id'] : null,
+            'roda_id' => !empty($item['roda_id']) ? (int) $item['roda_id'] : null,
+            'valve_id' => !empty($item['valve_id']) ? (int) $item['valve_id'] : null,
+            'baterai_id' => !empty($item['baterai_id']) ? (int) $item['baterai_id'] : null,
+            'charger_id' => !empty($item['charger_id']) ? (int) $item['charger_id'] : null,
+            'attachment_id' => !empty($item['attachment_id']) ? (int) $item['attachment_id'] : null,
+            'vendor_model_code' => isset($item['vendor_model_code']) ? substr((string) $item['vendor_model_code'], 0, 120) : null,
+            'vendor_spec_text' => $item['vendor_spec_text'] ?? null,
+            'package_flags' => $pkg,
+            'unit_accessories' => isset($item['unit_accessories']) ? (string) $item['unit_accessories'] : null,
+            'po_line_group_id' => !empty($item['po_line_group_id']) ? substr((string) $item['po_line_group_id'], 0, 36) : null,
             'status_verifikasi' => $itemData['status_verifikasi'],
-            'keterangan' => $itemData['keterangan']
+            'keterangan' => $itemData['keterangan'],
         ];
         
         // Insert multiple rows based on qty
@@ -1937,7 +1950,9 @@ class Purchasing extends BaseController
             unset($unitData['id_po_unit']);
             
             try {
+                $this->poUnitsModel->skipValidation(true);
                 $result = $this->poUnitsModel->insert($unitData);
+                $this->poUnitsModel->skipValidation(false);
                 if ($result) {
                     $successCount++;
                     log_message('info', "[storeUnifiedPO] Unit #{$i} inserted with ID: {$result}");
@@ -1954,6 +1969,7 @@ class Purchasing extends BaseController
                     }
                 }
             } catch (\Exception $e) {
+                $this->poUnitsModel->skipValidation(false);
                 log_message('error', "[storeUnifiedPO] Unit #{$i} exception: " . $e->getMessage());
             }
         }
@@ -2353,7 +2369,9 @@ class Purchasing extends BaseController
                 $data['bans'] = $this->tipeBanModel->findAll();
                 $data['rodas'] = $this->jenisRodaModel->findAll();
                 $data['valves'] = $this->valveModel->findAll();
-                $data['baterais'] = $this->bateraiModel->findAll();
+                $data['baterais'] = $this->bateraiModel->orderBy('merk_baterai', 'ASC')->orderBy('tipe_baterai', 'ASC')->findAll();
+                $data['chargers'] = $this->chargerModel->orderBy('merk_charger', 'ASC')->orderBy('tipe_charger', 'ASC')->findAll();
+                $data['attachments'] = $this->attachmentModel->orderBy('tipe', 'ASC')->orderBy('merk', 'ASC')->findAll();
                 return view('purchasing/forms/unit_form_fragment', $data);
                 
             case 'attachment':
@@ -4528,17 +4546,45 @@ class Purchasing extends BaseController
                 ]);
             }
             
+            // Expand unit_group -> daftar unit sebelum hitung total & simpan header
+            $expandedItems = [];
+            foreach ($items as $item) {
+                if (($item['type'] ?? '') === 'unit_group') {
+                    $ship = max(0, (int) ($item['ship_qty'] ?? 0));
+                    $candidates = $item['undelivered_unit_ids'] ?? $item['unit_ids'] ?? [];
+                    if (!is_array($candidates)) {
+                        $candidates = [];
+                    }
+                    $n = 0;
+                    foreach ($candidates as $uid) {
+                        if ($n >= $ship) {
+                            break;
+                        }
+                        $expandedItems[] = ['type' => 'unit', 'id' => (int) $uid, 'name' => $item['name'] ?? 'Unit', 'qty' => 1];
+                        $n++;
+                    }
+                } else {
+                    $expandedItems[] = $item;
+                }
+            }
+            $items = $expandedItems;
+
+            if (empty($items)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Pilih minimal satu unit untuk dikirim (periksa qty pengiriman per grup)',
+                ]);
+            }
+
             // Get delivery sequence for this PO
             $sequenceQuery = $db->query("SELECT COALESCE(MAX(delivery_sequence), 0) + 1 as next_seq FROM po_deliveries WHERE po_id = ?", [$poId]);
             $nextSequence = $sequenceQuery->getRow()->next_seq;
             
-            // Calculate total items for delivery
             $totalItems = 0;
             foreach ($items as $item) {
-                $totalItems += intval($item['qty']);
+                $totalItems += max(1, (int) ($item['qty'] ?? 1));
             }
             
-            // Insert delivery record
             $deliveryData = [
                 'po_id' => $poId,
                 'delivery_sequence' => $nextSequence,
@@ -4547,13 +4593,13 @@ class Purchasing extends BaseController
                 'expected_date' => $deliveryDate,
                 'status' => 'Scheduled',
                 'total_items' => $totalItems,
-                'total_value' => 0, // Will be calculated later if needed
+                'total_value' => 0,
                 'driver_name' => $driverName,
                 'driver_phone' => $driverPhone,
                 'vehicle_info' => $vehicleInfo,
                 'vehicle_plate' => $vehiclePlate,
                 'notes' => $notes,
-                'serial_numbers' => json_encode($items), // Store selected items as JSON
+                'serial_numbers' => json_encode($items),
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ];
@@ -4562,7 +4608,7 @@ class Purchasing extends BaseController
             $deliveryId = $db->insertID();
             
             log_message('info', 'Create Delivery Debug - Insert ID: ' . $deliveryId);
-            
+
             // Insert selected items to po_delivery_items with proper foreign keys
             if (!empty($items) && is_array($items)) {
                 log_message('info', 'Create Delivery Debug - Processing ' . count($items) . ' selected items');
@@ -4902,7 +4948,7 @@ class Purchasing extends BaseController
                 'delivered_attachments' => $deliveredAttachments
             ];
             
-            // Get detailed unit items - ALL units from PO (not grouped)
+            // Get detailed unit items — flat list + grup berdasarkan po_line_group_id (satu baris PI)
             if ($po->total_unit > 0) {
                 $unitsQuery = $db->query("
                     SELECT 
@@ -4910,6 +4956,9 @@ class Purchasing extends BaseController
                         pu.model_unit_id,
                         pu.tipe_unit_id,
                         pu.kapasitas_id,
+                        pu.po_line_group_id,
+                        pu.vendor_model_code,
+                        pu.vendor_spec_text,
                         COALESCE(mu.model_unit, 'Unknown Model') as model_name,
                         COALESCE(mu.merk_unit, 'Unknown Brand') as brand_name,
                         COALESCE(tu.jenis, 'Unknown Jenis') as jenis,
@@ -4921,22 +4970,69 @@ class Purchasing extends BaseController
                     LEFT JOIN departemen d ON tu.id_departemen = d.id_departemen
                     LEFT JOIN kapasitas k ON pu.kapasitas_id = k.id_kapasitas
                     WHERE pu.po_id = ?
-                    ORDER BY pu.id_po_unit
+                    ORDER BY pu.po_line_group_id, pu.id_po_unit
                 ", [$poId]);
                 
                 $units = $unitsQuery->getResult();
+                $groups = [];
                 foreach ($units as $unit) {
-                    $isDelivered = in_array($unit->id_po_unit, $deliveredUnits);
+                    $isDelivered = in_array($unit->id_po_unit, $deliveredUnits, true);
                     log_message('info', 'Unit ' . $unit->id_po_unit . ' is_delivered: ' . ($isDelivered ? 'true' : 'false'));
                     
+                    $lineLabel = trim((string) ($unit->vendor_model_code ?? ''));
+                    if ($lineLabel === '') {
+                        $lineLabel = $unit->brand_name . ' | ' . $unit->model_name;
+                    }
+                    $specShort = '';
+                    if (!empty($unit->vendor_spec_text)) {
+                        $specShort = mb_substr(preg_replace('/\s+/', ' ', (string) $unit->vendor_spec_text), 0, 120);
+                        if (mb_strlen((string) $unit->vendor_spec_text) > 120) {
+                            $specShort .= '…';
+                        }
+                    }
+                    $itemName = $lineLabel . ' | ' . $unit->jenis . ' | ' . $unit->kapasitas;
+                    if ($specShort !== '') {
+                        $itemName .= ' — ' . $specShort;
+                    }
+
                     $items['units'][] = [
                         'id_po_unit' => $unit->id_po_unit,
-                        'item_name' => $unit->brand_name . ' | ' . $unit->model_name . ' | ' . $unit->jenis . ' | ' . $unit->departemen . ' | ' . $unit->kapasitas,
+                        'item_name' => $itemName,
                         'item_description' => '',
                         'qty' => 1,
-                        'is_delivered' => $isDelivered
+                        'is_delivered' => $isDelivered,
+                        'po_line_group_id' => $unit->po_line_group_id ?? null,
                     ];
+
+                    $gkey = !empty($unit->po_line_group_id) ? $unit->po_line_group_id : ('u_' . $unit->id_po_unit);
+                    if (!isset($groups[$gkey])) {
+                        $groups[$gkey] = [
+                            'group_key' => $gkey,
+                            'label' => $itemName,
+                            'vendor_model_code' => $unit->vendor_model_code,
+                            'unit_ids' => [],
+                            'qty_ordered' => 0,
+                            'qty_delivered' => 0,
+                        ];
+                    }
+                    $groups[$gkey]['unit_ids'][] = (int) $unit->id_po_unit;
+                    $groups[$gkey]['qty_ordered']++;
+                    if ($isDelivered) {
+                        $groups[$gkey]['qty_delivered']++;
+                    }
                 }
+                foreach ($groups as &$g) {
+                    $g['qty_remaining'] = max(0, $g['qty_ordered'] - $g['qty_delivered']);
+                    sort($g['unit_ids']);
+                    $g['undelivered_unit_ids'] = [];
+                    foreach ($g['unit_ids'] as $uid) {
+                        if (!in_array($uid, $deliveredUnits, true)) {
+                            $g['undelivered_unit_ids'][] = $uid;
+                        }
+                    }
+                }
+                unset($g);
+                $items['unit_groups'] = array_values($groups);
             }
             
             // Get detailed attachment items - ALL attachments from PO (not grouped)
@@ -5348,8 +5444,24 @@ class Purchasing extends BaseController
                 'updated_at' => date('Y-m-d H:i:s')
             ];
             
-            // If status is 'Received', set actual_date to current date
             if ($status === 'Received') {
+                $poCfg = config('OptimaPurchasing');
+                if ($poCfg && !empty($poCfg->requireSerialBeforeReceived)) {
+                    $missing = $db->query("
+                        SELECT pu.id_po_unit
+                        FROM po_delivery_items pdi
+                        INNER JOIN po_units pu ON pu.id_po_unit = pdi.id_po_unit
+                        WHERE pdi.delivery_id = ?
+                          AND pdi.item_type = 'unit'
+                          AND (pu.serial_number_po IS NULL OR TRIM(pu.serial_number_po) = '')
+                    ", [$deliveryId])->getResultArray();
+                    if (!empty($missing)) {
+                        return $this->respond([
+                            'success' => false,
+                            'message' => 'Tidak dapat set Received: masih ada unit tanpa serial number. Lengkapi SN terlebih dahulu.',
+                        ]);
+                    }
+                }
                 $updateData['actual_date'] = date('Y-m-d H:i:s');
             }
             

@@ -12,6 +12,8 @@ use App\Models\POSparepartItemModel; // adit
 use App\Models\InventorySparepartModel; 
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
 use App\Models\VerificationAuditLogModel;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -29,6 +31,8 @@ class WarehousePO extends BaseController
     protected $inventorySparepartModel;
     protected $inventoryUnitModel;
     protected $inventoryAttachmentModel;
+    protected $inventoryBatteryModel;
+    protected $inventoryChargerModel;
     protected $verificationAuditLogModel;
 
     // Replace the constructor with initController
@@ -56,7 +60,9 @@ class WarehousePO extends BaseController
         $this->poSparepartItemModel = new POSparepartItemModel(); // adit
         $this->inventorySparepartModel = new InventorySparepartModel(); 
         $this->inventoryUnitModel = new InventoryUnitModel();
-        $this->inventoryAttachmentModel = new InventoryAttachmentModel(); // pastikan ada
+        $this->inventoryAttachmentModel = new InventoryAttachmentModel();
+        $this->inventoryBatteryModel = new InventoryBatteryModel();
+        $this->inventoryChargerModel = new InventoryChargerModel();
         $this->verificationAuditLogModel = new VerificationAuditLogModel();
     }
 
@@ -847,6 +853,96 @@ class WarehousePO extends BaseController
         return view('warehouse/purchase_orders/rejected_items', $data);
     }
 
+    /**
+     * @param array<string,mixed> $dataToUpdate
+     * @return array<string,mixed>
+     */
+    private function mergePoUnitFieldsFromRequest(array $dataToUpdate): array
+    {
+        $raw = $this->request->getPost('po_unit_fields');
+        if (!is_string($raw) || $raw === '') {
+            return $dataToUpdate;
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return $dataToUpdate;
+        }
+        $intKeys = [
+            'tipe_unit_id', 'model_unit_id', 'tahun_po', 'kapasitas_id', 'mast_id', 'mesin_id',
+            'ban_id', 'roda_id', 'valve_id', 'baterai_id', 'charger_id', 'attachment_id', 'jenis_unit',
+        ];
+        $strKeys = ['merk_unit', 'keterangan', 'unit_accessories', 'tinggi_mast_po'];
+        foreach ($intKeys as $k) {
+            if (!array_key_exists($k, $decoded) || $decoded[$k] === '' || $decoded[$k] === null) {
+                continue;
+            }
+            $dataToUpdate[$k] = (int) $decoded[$k];
+        }
+        foreach ($strKeys as $k) {
+            if (!array_key_exists($k, $decoded) || $decoded[$k] === null) {
+                continue;
+            }
+            $dataToUpdate[$k] = $decoded[$k];
+        }
+
+        return $dataToUpdate;
+    }
+
+    private function createLinkedInventoryComponents(int $inventoryUnitId, int $poId, array $pu, string $lokasi, array $snData): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $common = [
+            'inventory_unit_id'  => $inventoryUnitId,
+            'purchase_order_id'  => $poId,
+            'physical_condition' => 'GOOD',
+            'completeness'       => 'COMPLETE',
+            'storage_location'   => $lokasi,
+            'status'             => 'AVAILABLE',
+            'received_at'        => $now,
+            'notes'              => 'Dari verifikasi PO unit',
+        ];
+
+        if (!empty($pu['baterai_id'])) {
+            $sn = trim((string) ($snData['sn_baterai_po'] ?? $pu['sn_baterai_po'] ?? ''));
+            if ($sn !== '') {
+                $cnt = $this->inventoryBatteryModel->countAll() + 1;
+                $this->inventoryBatteryModel->skipValidation(true);
+                $this->inventoryBatteryModel->insert(array_merge($common, [
+                    'item_number'     => 'B' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'battery_type_id' => (int) $pu['baterai_id'],
+                    'serial_number'   => $sn,
+                ]));
+                $this->inventoryBatteryModel->skipValidation(false);
+            }
+        }
+        if (!empty($pu['charger_id'])) {
+            $sn = trim((string) ($this->request->getPost('sn_charger') ?? $pu['sn_charger_po'] ?? ''));
+            if ($sn !== '') {
+                $cnt = $this->inventoryChargerModel->countAll() + 1;
+                $this->inventoryChargerModel->skipValidation(true);
+                $this->inventoryChargerModel->insert(array_merge($common, [
+                    'item_number'     => 'C' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'charger_type_id' => (int) $pu['charger_id'],
+                    'serial_number'   => $sn,
+                ]));
+                $this->inventoryChargerModel->skipValidation(false);
+            }
+        }
+        if (!empty($pu['attachment_id'])) {
+            $sn = trim((string) ($pu['sn_attachment_po'] ?? ''));
+            if ($sn !== '') {
+                $cnt = $this->inventoryAttachmentModel->countAll() + 1;
+                $this->inventoryAttachmentModel->skipValidation(true);
+                $this->inventoryAttachmentModel->insert(array_merge($common, [
+                    'item_number'        => 'ATT' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'attachment_type_id' => (int) $pu['attachment_id'],
+                    'serial_number'      => $sn,
+                ]));
+                $this->inventoryAttachmentModel->skipValidation(false);
+            }
+        }
+    }
+
     public function verifyPoUnit()
     {
         if ($this->request->isAJAX()) {
@@ -856,18 +952,21 @@ class WarehousePO extends BaseController
             $catatan = $this->request->getPost('catatan_verifikasi');
             $lokasi_unit = $this->request->getPost('lokasi_unit') ?: 'POS 1';
             
-            // Mengambil data Serial Number dari form (jika ada)
             $snData = [
                 'serial_number_po' => $this->request->getPost('sn_unit'),
                 'sn_mesin_po'      => $this->request->getPost('sn_mesin'),
                 'sn_baterai_po'    => $this->request->getPost('sn_baterai'),
                 'sn_mast_po'       => $this->request->getPost('sn_mast'),
             ];
+            $snCharger = $this->request->getPost('sn_charger');
+            if ($snCharger !== null && $snCharger !== '') {
+                $snData['sn_charger_po'] = $snCharger;
+            }
 
-            // Menyiapkan data lengkap untuk diupdate ke tabel po_units
             $dataToUpdate = [
                 'status_verifikasi'  => $status,
             ];
+            $dataToUpdate = $this->mergePoUnitFieldsFromRequest($dataToUpdate);
             
             // Hanya tambahkan catatan_verifikasi jika ada (untuk "Tidak Sesuai")
             // Potong jika terlalu panjang (max 500 karakter sesuai validation rule)
@@ -932,13 +1031,20 @@ class WarehousePO extends BaseController
                         if ($verifiedUnit) {
                             // Siapkan data LENGKAP untuk dimasukkan ke tabel inventory_unit
                             // Map fields from PO Unit to inventory_unit schema (hanya field yang ada di allowedFields)
+                            $aksesorisVal = $verifiedUnit['unit_accessories'] ?? null;
+                            if ($aksesorisVal !== null && $aksesorisVal !== '') {
+                                if (is_array($aksesorisVal)) {
+                                    $aksesorisVal = json_encode($aksesorisVal);
+                                }
+                            }
+
                             $inventoryData = [
                                 'serial_number'      => $snData['serial_number_po'] ?: ($verifiedUnit['serial_number_po'] ?? null),
                                 'id_po'              => $verifiedUnit['po_id'] ?? null,
                                 'tahun_unit'         => $verifiedUnit['tahun_po'] ?? null,
-                                'status_unit_id'     => 2, // 2 = STOCK NON-ASET
+                                'status_unit_id'     => 2,
                                 'lokasi_unit'        => $lokasi_unit,
-                                'departemen_id'      => $verifiedUnit['id_departemen'] ?? null, // ✅ FIX: dari tipe_unit.id_departemen
+                                'departemen_id'      => $verifiedUnit['id_departemen'] ?? null,
                                 'keterangan'         => $verifiedUnit['keterangan'] ?? null,
                                 'tipe_unit_id'       => $verifiedUnit['tipe_unit_id'] ?? null,
                                 'model_unit_id'      => $verifiedUnit['model_unit_id'] ?? null,
@@ -950,6 +1056,7 @@ class WarehousePO extends BaseController
                                 'roda_id'            => $verifiedUnit['roda_id'] ?? null,
                                 'ban_id'             => $verifiedUnit['ban_id'] ?? null,
                                 'valve_id'           => $verifiedUnit['valve_id'] ?? null,
+                                'aksesoris'          => $aksesorisVal,
                             ];
                             
                             // Hapus nilai null untuk menghindari error database
@@ -957,25 +1064,32 @@ class WarehousePO extends BaseController
                                 return !($value === null || $value === '');
                             });
                             
-                            // CATATAN: Attachment, Battery, Charger disimpan di tabel inventory_attachments terpisah
-                            // Tidak disimpan langsung di inventory_unit
-                            
-                            // Log untuk debugging
                             log_message('debug', '[WarehousePO] Attempting to insert to inventory_unit: ' . json_encode($inventoryData));
                             
-                            // Gunakan InventoryUnitModel untuk menyimpan data ke tabel inventory
-                            if (!$this->inventoryUnitModel->insert($inventoryData)) {
-                                // Log error jika insert gagal
+                            $this->inventoryUnitModel->skipValidation(true);
+                            $invOk = $this->inventoryUnitModel->insert($inventoryData);
+                            $this->inventoryUnitModel->skipValidation(false);
+                            if (!$invOk) {
                                 $errors = $this->inventoryUnitModel->errors();
                                 log_message('error', '[WarehousePO] Failed to insert to inventory_unit: ' . json_encode($errors));
                                 log_message('error', '[WarehousePO] Attempted data: ' . json_encode($inventoryData));
                                 $db->transRollback();
                                 return $this->response->setJSON(['statusCode' => 500, 'message' => 'Gagal memasukkan data ke inventory: ' . implode(', ', $errors)]);
-                            } else {
-                                log_message('info', '[WarehousePO] Successfully inserted unit ' . $id_unit . ' to inventory_unit');
-                                
-                                // CATATAN: Data di po_units TIDAK dihapus, tetap ada untuk tracking dan history
-                                // Status sudah diupdate menjadi 'Sesuai' di atas
+                            }
+                            $newInvId = (int) $this->inventoryUnitModel->getInsertID();
+                            log_message('info', '[WarehousePO] Successfully inserted unit ' . $id_unit . ' to inventory_unit id=' . $newInvId);
+                            try {
+                                $this->createLinkedInventoryComponents(
+                                    $newInvId,
+                                    (int) ($verifiedUnit['po_id'] ?? 0),
+                                    $verifiedUnit,
+                                    $lokasi_unit,
+                                    $snData
+                                );
+                            } catch (\Throwable $e) {
+                                log_message('error', '[WarehousePO] createLinkedInventoryComponents: ' . $e->getMessage());
+                                $db->transRollback();
+                                return $this->response->setJSON(['statusCode' => 500, 'message' => 'Gagal membuat stok komponen: ' . $e->getMessage()]);
                             }
                         }
                     }

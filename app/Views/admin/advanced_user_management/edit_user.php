@@ -114,7 +114,7 @@ helper('permission_helper');
                                 <div class="mb-3">
                                     <label for="password" class="form-label">New Password</label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="password" name="password">
+                                        <input type="password" class="form-control" id="password" name="password" autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -126,7 +126,7 @@ helper('permission_helper');
                                 <div class="mb-3">
                                     <label for="password_confirm" class="form-label">Confirm Password</label>
                                     <div class="input-group">
-                                        <input type="password" class="form-control" id="password_confirm" name="password_confirm">
+                                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" autocomplete="new-password">
                                         <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirm">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -515,22 +515,22 @@ const CURRENT_USER_PERMISSIONS = {
 
 // Debug service access data
 // console.log('🔍 SERVICE_ACCESS_DATA Debug:', {
-    raw_data: SERVICE_ACCESS_DATA,
-    type: typeof SERVICE_ACCESS_DATA,
-    is_object: typeof SERVICE_ACCESS_DATA === 'object',
-    has_area_type: SERVICE_ACCESS_DATA?.area_type,
-    has_department_scope: SERVICE_ACCESS_DATA?.department_scope,
-    has_service_area_ids: SERVICE_ACCESS_DATA?.service_area_ids
-});
+//     raw_data: SERVICE_ACCESS_DATA,
+//     type: typeof SERVICE_ACCESS_DATA,
+//     is_object: typeof SERVICE_ACCESS_DATA === 'object',
+//     has_area_type: SERVICE_ACCESS_DATA?.area_type,
+//     has_department_scope: SERVICE_ACCESS_DATA?.department_scope,
+//     has_service_area_ids: SERVICE_ACCESS_DATA?.service_area_ids
+// });
 
 // console.log('📊 Edit User Form initialized:', {
-    mode: 'EDIT',
-    user_id: USER_ID,
-    user_data: USER_DATA,
-    service_access: SERVICE_ACCESS_DATA,
-    roles_count: ROLES_DATA?.length || 0,
-    divisions_available: <?= json_encode(isset($divisions) ? count($divisions) : 0) ?>
-});
+//     mode: 'EDIT',
+//     user_id: USER_ID,
+//     user_data: USER_DATA,
+//     service_access: SERVICE_ACCESS_DATA,
+//     roles_count: ROLES_DATA?.length || 0,
+//     divisions_available: <?= json_encode(isset($divisions) ? count($divisions) : 0) ?>
+// });
 </script>
 
 <!-- ========================================
@@ -835,10 +835,10 @@ function renderServiceAreas(areas) {
     let html = '';
     
     // console.log('🔍 Rendering service areas:', {
-        areas_count: areas.length,
-        selectedServiceAreasIds: selectedServiceAreasIds,
-        selectedServiceAreasIds_types: selectedServiceAreasIds.map(id => typeof id)
-    });
+    //     areas_count: areas.length,
+    //     selectedServiceAreasIds: selectedServiceAreasIds,
+    //     selectedServiceAreasIds_types: selectedServiceAreasIds.map(id => typeof id)
+    // });
     
     areas.forEach(area => {
         // Ensure consistent type comparison (both as integers)
@@ -848,11 +848,11 @@ function renderServiceAreas(areas) {
         const selectedClass = isSelected ? 'border-primary bg-light' : '';
         
         // console.log('🔍 Area check:', {
-            area_id: area.id,
-            area_id_int: areaId,
-            is_selected: isSelected,
-            area_name: area.name
-        });
+        //     area_id: area.id,
+        //     area_id_int: areaId,
+        //     is_selected: isSelected,
+        //     area_name: area.name
+        // });
         
         html += `
             <div class="col-md-6 mb-2">
@@ -944,10 +944,10 @@ function updateSelectedServiceAreasDisplay() {
     const display = $('#selectedServiceAreasDisplay');
     
     // console.log('🔄 Updating service areas display:', {
-        count: count,
-        ids: selectedServiceAreasIds,
-        display_element_exists: display.length > 0
-    });
+    //     count: count,
+    //     ids: selectedServiceAreasIds,
+    //     display_element_exists: display.length > 0
+    // });
     
     if (count > 0) {
         display.html(`<span class="badge bg-success">${count} area(s) selected</span>`);
@@ -983,11 +983,11 @@ function loadExistingServiceAccess() {
             // Debug: Check visibility after trigger
             setTimeout(() => {
                 // console.log('🔍 Section visibility check:', {
-                    centralSection: $('#centralAccessSection').is(':visible'),
-                    branchSection: $('#branchAccessSection').is(':visible'),
-                    selectedDisplay: $('#selectedServiceAreasDisplay').length > 0,
-                    area_type_value: $('#area_type').val()
-                });
+                //     centralSection: $('#centralAccessSection').is(':visible'),
+                //     branchSection: $('#branchAccessSection').is(':visible'),
+                //     selectedDisplay: $('#selectedServiceAreasDisplay').length > 0,
+                //     area_type_value: $('#area_type').val()
+                // });
                 
                 // Force show branch section if area type is BRANCH
                 if (SERVICE_ACCESS_DATA.area_type === 'BRANCH') {
@@ -1016,10 +1016,10 @@ function loadExistingServiceAccess() {
             updateSelectedServiceAreasDisplay();
             
             // console.log('🌿 Loaded service area IDs:', {
-                original: SERVICE_ACCESS_DATA.service_area_ids,
-                converted: selectedServiceAreasIds,
-                types: selectedServiceAreasIds.map(id => typeof id)
-            });
+            //     original: SERVICE_ACCESS_DATA.service_area_ids,
+            //     converted: selectedServiceAreasIds,
+            //     types: selectedServiceAreasIds.map(id => typeof id)
+            // });
             
             // If branch type, load specific service areas for modal
             if (SERVICE_ACCESS_DATA.area_type === 'BRANCH') {
@@ -1803,11 +1803,11 @@ function initializeFormSubmission() {
         }
         
         // console.log('📤 Submitting form with service access:', {
-            area_type: areaType,
-            department_scope: departmentScope,
-            selected_areas: selectedAreas,
-            area_ids_array: selectedAreas ? selectedAreas.split(',') : []
-        });
+        //     area_type: areaType,
+        //     department_scope: departmentScope,
+        //     selected_areas: selectedAreas,
+        //     area_ids_array: selectedAreas ? selectedAreas.split(',') : []
+        // });
         
         // Submit form
         $.ajax({
@@ -1926,26 +1926,26 @@ $(document).ready(function() {
     
     // Debug: Check if form elements exist
     // console.log('🔍 Form Elements Check:', {
-        area_type_exists: $('#area_type').length > 0,
-        department_scope_exists: $('#department_scope').length > 0,
-        selectedServiceAreas_exists: $('#selectedServiceAreas').length > 0,
-        editUserForm_exists: $('#editUserForm').length > 0,
-        btnManagePermissions_exists: $('#btnManagePermissions').length > 0,
-        customPermissionsModal_exists: $('#customPermissionsModal').length > 0,
-        permissionsList_exists: $('#permissionsList').length > 0,
-        division_select_exists: $('#division_select').length > 0,
-        role_select_exists: $('#role_select').length > 0,
-        serviceAccessSection_exists: $('#serviceAccessSection').length > 0
-    });
+    //     area_type_exists: $('#area_type').length > 0,
+    //     department_scope_exists: $('#department_scope').length > 0,
+    //     selectedServiceAreas_exists: $('#selectedServiceAreas').length > 0,
+    //     editUserForm_exists: $('#editUserForm').length > 0,
+    //     btnManagePermissions_exists: $('#btnManagePermissions').length > 0,
+    //     customPermissionsModal_exists: $('#customPermissionsModal').length > 0,
+    //     permissionsList_exists: $('#permissionsList').length > 0,
+    //     division_select_exists: $('#division_select').length > 0,
+    //     role_select_exists: $('#role_select').length > 0,
+    //     serviceAccessSection_exists: $('#serviceAccessSection').length > 0
+    // });
     
     // Debug: Check data availability
     // console.log('🔍 Data Availability Check:', {
-        USER_DATA_defined: typeof USER_DATA !== 'undefined',
-        ROLES_DATA_defined: typeof ROLES_DATA !== 'undefined',
-        ROLES_DATA_length: ROLES_DATA ? ROLES_DATA.length : 0,
-        permissions_data_available: <?= json_encode(!empty($allPermissions)) ?>,
-        permissions_count: <?= json_encode(count($allPermissions ?? [])) ?>
-    });
+    //     USER_DATA_defined: typeof USER_DATA !== 'undefined',
+    //     ROLES_DATA_defined: typeof ROLES_DATA !== 'undefined',
+    //     ROLES_DATA_length: ROLES_DATA ? ROLES_DATA.length : 0,
+    //     permissions_data_available: <?= json_encode(!empty($allPermissions)) ?>,
+    //     permissions_count: <?= json_encode(count($allPermissions ?? [])) ?>
+    // });
     
     // Initialize all handlers
     try {

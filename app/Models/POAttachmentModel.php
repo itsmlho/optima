@@ -26,6 +26,7 @@ class POAttachmentModel extends Model
         'baterai_id',
         'charger_id',
         'serial_number',
+        'serial_number_charger',
         'keterangan',
         'status_verifikasi',
         'catatan_verifikasi',

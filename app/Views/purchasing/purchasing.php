@@ -723,6 +723,10 @@ $can_export = $permissions['export'];
                                 <button type="button" class="btn btn-primary btn-sm" onclick="openItemModal('unit')">
                                     <i class="fas fa-truck me-1"></i>Add Unit
                                 </button>
+                                <details class="d-inline-block">
+                                    <summary class="btn btn-outline-secondary btn-sm" style="cursor:pointer; list-style:none;">Baris PI terpisah (lanjutan)</summary>
+                                    <div class="small text-muted mt-1 mb-2" style="max-width:28rem;">Hanya jika vendor memisahkan attachment, baterai, atau charger ke <strong>baris berbeda</strong> di PI. Paket pabrik satu baris cukup lewat <strong>Add Unit</strong>.</div>
+                                    <div class="d-flex gap-2 flex-wrap">
                                 <button type="button" class="btn btn-success btn-sm" onclick="openItemModal('attachment')">
                                     <i class="fas fa-tools me-1"></i>Add Attachment
                                 </button>
@@ -732,18 +736,11 @@ $can_export = $permissions['export'];
                                 <button type="button" class="btn btn-warning btn-sm" onclick="openItemModal('charger')">
                                     <i class="fas fa-plug me-1"></i>Add Charger
                                 </button>
+                                    </div>
+                                </details>
                                 <?php else: ?>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
                                     <i class="fas fa-lock me-1"></i>Add Unit
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Add Attachment
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Add Battery
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Add Charger
                                 </button>
                                 <?php endif; ?>
                             </div>
@@ -3138,8 +3135,36 @@ function renderDeliveryItems(po, items) {
                 </div>
     `;
     
-    // Units Section
-    if (items.units && items.units.length > 0) {
+    // Units: grup konfigurasi (satu baris PI) dengan qty parsial
+    if (items.unit_groups && items.unit_groups.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h6 class="mb-2"><i class="fas fa-layer-group me-2 text-primary"></i>Unit per baris konfigurasi / PI</h6>
+                <div class="form-text mb-2">Isi <strong>Qty kirim</strong> untuk pengiriman ini (0 = tidak ikut). Maks = sisa belum terkirim.</div>
+                <div class="table-responsive border rounded">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead class="table-light"><tr><th>Konfigurasi</th><th class="text-center" style="width:7rem">Pesan</th><th class="text-center" style="width:7rem">Sudah kirim</th><th class="text-center" style="width:8rem">Sisa</th><th class="text-center" style="width:9rem">Qty kirim ini</th></tr></thead>
+                    <tbody>`;
+        items.unit_groups.forEach((g, index) => {
+            const undel = Array.isArray(g.undelivered_unit_ids) ? g.undelivered_unit_ids : [];
+            const rem = typeof g.qty_remaining === 'number' ? g.qty_remaining : undel.length;
+            const disabledRow = rem <= 0 ? 'table-secondary' : '';
+            html += `<tr class="${disabledRow}">
+                <td><small>${index + 1}. ${g.label || g.group_key}</small></td>
+                <td class="text-center">${g.qty_ordered}</td>
+                <td class="text-center">${g.qty_delivered}</td>
+                <td class="text-center">${rem}</td>
+                <td class="text-center">
+                    <input type="number" class="form-control form-control-sm delivery-group-qty text-center" min="0" max="${rem}" value="0"
+                        data-group-key="${g.group_key}"
+                        data-name="${(g.label || '').replace(/"/g, '&quot;')}"
+                        data-undelivered='${JSON.stringify(undel)}'
+                        ${rem <= 0 ? 'disabled' : ''}>
+                </td>
+            </tr>`;
+        });
+        html += `</tbody></table></div></div>`;
+    } else if (items.units && items.units.length > 0) {
         html += `
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -3163,7 +3188,6 @@ function renderDeliveryItems(po, items) {
             const disabledAttr = isDisabled ? 'disabled' : '';
             const deliveredBadge = isDisabled ? '<span class="badge badge-soft-green ms-2">Already Delivered</span>' : '';
             
-            // Debug logging
             console.log('Unit ' + unit.id_po_unit + ' is_delivered: ' + isDisabled);
             
             html += `<div class="mb-2 p-2 border rounded ${disabledClass}">
@@ -3535,6 +3559,11 @@ function initCreatePOModal() {
 function openItemModal(itemType, index = -1) {
     currentItemType = itemType;
     editIndex = index;
+    if (itemType === 'unit' && index < 0 && typeof crypto !== 'undefined' && crypto.randomUUID) {
+        window._currentPoLineGroupId = crypto.randomUUID();
+    } else if (itemType === 'unit' && index >= 0 && poItems[index] && poItems[index].po_line_group_id) {
+        window._currentPoLineGroupId = poItems[index].po_line_group_id;
+    }
     
     const modalBody = document.getElementById('itemModalBody');
     const modalTitle = document.getElementById('itemModalTitle');
@@ -3595,6 +3624,45 @@ function openItemModal(itemType, index = -1) {
         });
 }
 
+function populateFormForEdit(item) {
+    if (!item || item.item_type !== 'unit') return;
+    if (item.departemen_id) $('#unit_departemen').val(String(item.departemen_id)).trigger('change');
+    setTimeout(() => {
+        if (item.tipe_unit_id) $('#unit_jenis').val(String(item.tipe_unit_id)).trigger('change');
+    }, 200);
+    setTimeout(() => {
+        if (item.merk_unit) $('#unit_merk').val(String(item.merk_unit)).trigger('change');
+    }, 400);
+    setTimeout(() => {
+        if (item.model_unit_id) $('#unit_model').val(String(item.model_unit_id)).trigger('change');
+    }, 600);
+    if (item.tahun_unit) $('#unit_tahun').val(item.tahun_unit);
+    if (item.kapasitas_id) $('#unit_kapasitas').val(String(item.kapasitas_id)).trigger('change');
+    if (item.kondisi_penjualan) $('#unit_kondisi').val(item.kondisi_penjualan);
+    $('#unit_qty').val(item.qty || 1);
+    if ($('#unit_vendor_model_code').length) $('#unit_vendor_model_code').val(item.vendor_model_code || '');
+    if ($('#unit_vendor_spec_text').length) $('#unit_vendor_spec_text').val(item.vendor_spec_text || '');
+    if ($('#unit_keterangan').length) $('#unit_keterangan').val(item.keterangan || '');
+    $('input[name="pkg_flags[]"]').prop('checked', false);
+    if (Array.isArray(item.package_flags)) {
+        item.package_flags.forEach(v => { $(`input[name="pkg_flags[]"][value="${v}"]`).prop('checked', true); });
+    }
+    $('.po-unit-acc').prop('checked', false);
+    if (item.unit_accessories) {
+        String(item.unit_accessories).split(',').map(s => s.trim()).filter(Boolean).forEach(v => {
+            $(`.po-unit-acc[value="${v}"]`).prop('checked', true);
+        });
+    }
+    if ($('#unit_baterai_id').length && item.baterai_id) $('#unit_baterai_id').val(String(item.baterai_id)).trigger('change');
+    if ($('#unit_charger_id').length && item.charger_id) $('#unit_charger_id').val(String(item.charger_id)).trigger('change');
+    if ($('#unit_attachment_id').length && item.attachment_id) $('#unit_attachment_id').val(String(item.attachment_id)).trigger('change');
+    if (item.mast_id) $('#unit_mast').val(String(item.mast_id)).trigger('change');
+    if (item.mesin_id) $('#unit_mesin').val(String(item.mesin_id)).trigger('change');
+    if (item.ban_id) $('#unit_ban').val(String(item.ban_id)).trigger('change');
+    if (item.roda_id) $('#unit_roda').val(String(item.roda_id)).trigger('change');
+    if (item.valve_id) $('#unit_valve').val(String(item.valve_id)).trigger('change');
+}
+
 // Collect data from modal form based on item type
 function collectItemData() {
     const data = {
@@ -3626,6 +3694,24 @@ function collectItemData() {
         
         data.qty = $('#unit_qty').val();
         data.keterangan = $('#unit_keterangan').val();
+        data.vendor_model_code = ($('#unit_vendor_model_code').val() || '').trim();
+        data.vendor_spec_text = ($('#unit_vendor_spec_text').val() || '').trim();
+        data.po_line_group_id = window._currentPoLineGroupId || '';
+        const pkg = [];
+        $('input[name="pkg_flags[]"]:checked').each(function () { pkg.push($(this).val()); });
+        data.package_flags = pkg;
+        const accSel = [];
+        $('.po-unit-acc:checked').each(function () { accSel.push($(this).val()); });
+        data.unit_accessories = accSel.join(', ');
+        if ($('#unit_baterai_id').length) {
+            data.baterai_id = $('#unit_baterai_id').val() || '';
+        }
+        if ($('#unit_charger_id').length) {
+            data.charger_id = $('#unit_charger_id').val() || '';
+        }
+        if ($('#unit_attachment_id').length) {
+            data.attachment_id = $('#unit_attachment_id').val() || '';
+        }
         
         // Collect text labels for display
         data._display = {
@@ -3637,8 +3723,8 @@ function collectItemData() {
             kondisi_text: $('#unit_kondisi option:selected').text()
         };
         
-        // Validation
-        if (!data.departemen_id || !data.tipe_unit_id || !data.merk_unit || !data.model_unit_id || !data.qty) {
+        // Validation — inti PO: jenis, brand, model, qty, kondisi
+        if (!data.tipe_unit_id || !data.merk_unit || !data.model_unit_id || !data.qty) {
             return null;
         }
         
@@ -3734,7 +3820,14 @@ function updateItemsTable() {
         
         let description = '';
         if (item.item_type === 'unit') {
-            description = `${item._display.merk_text} ${item._display.model_text} | ${item._display.departemen_text} - ${item._display.jenis_text} | ${item._display.kapasitas_text} | Tahun ${item.tahun_unit} (${item._display.kondisi_text})`;
+            description = `${item._display.merk_text} ${item._display.model_text} | ${item._display.departemen_text} - ${item._display.jenis_text} | ${item._display.kapasitas_text} | Tahun ${item.tahun_unit || '-'} (${item._display.kondisi_text})`;
+            if (item.vendor_model_code) {
+                description += `<br><small class="text-primary">PI code: ${item.vendor_model_code}</small>`;
+            }
+            if (item.vendor_spec_text) {
+                const specShort = item.vendor_spec_text.length > 180 ? item.vendor_spec_text.substring(0, 180) + '…' : item.vendor_spec_text;
+                description += `<br><small class="text-muted">${specShort.replace(/</g, '&lt;')}</small>`;
+            }
         } else if (item.item_type === 'attachment') {
             description = `${item._display.tipe_text} | ${item._display.merk_text} - ${item._display.model_text}`;
             if (item.serial_number) description += ` | SN: ${item.serial_number}`;
@@ -4183,14 +4276,32 @@ function initializeChargerDropdowns() {
                 return;
             }
             
-            // Collect selected items for delivery (simple checklist)
             const selectedItems = [];
+            document.querySelectorAll('.delivery-group-qty').forEach(inp => {
+                const q = parseInt(inp.value, 10) || 0;
+                if (q <= 0) return;
+                let ids = [];
+                try {
+                    ids = JSON.parse(inp.getAttribute('data-undelivered') || '[]');
+                } catch (e) { ids = []; }
+                const max = ids.length;
+                const ship = Math.min(q, max);
+                if (ship <= 0) return;
+                selectedItems.push({
+                    type: 'unit_group',
+                    group_key: inp.getAttribute('data-group-key'),
+                    name: inp.getAttribute('data-name') || 'Unit group',
+                    ship_qty: ship,
+                    undelivered_unit_ids: ids,
+                    qty: ship
+                });
+            });
             document.querySelectorAll('.delivery-item-checkbox:checked').forEach(checkbox => {
                 selectedItems.push({
                     type: checkbox.getAttribute('data-type'),
                     id: checkbox.getAttribute('data-id'),
                     name: checkbox.getAttribute('data-name'),
-                    qty: 1 // Always 1 for checklist items
+                    qty: 1
                 });
             });
             

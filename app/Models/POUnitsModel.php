@@ -39,6 +39,11 @@ class POUnitsModel extends Model
         'status_penjualan',
         'keterangan',
         'catatan_verifikasi',
+        'vendor_model_code',
+        'vendor_spec_text',
+        'package_flags',
+        'unit_accessories',
+        'po_line_group_id',
     ];
 
     // Dates
@@ -71,8 +76,13 @@ class POUnitsModel extends Model
         'sn_attachment_po'  => 'permit_empty|max_length[100]',
         'sn_baterai_po'     => 'permit_empty|max_length[100]',
         'sn_charger_po'     => 'permit_empty|max_length[100]',
-        'keterangan'        => 'permit_empty|max_length[500]',
-        'catatan_verifikasi'=> 'permit_empty|max_length[500]',
+        'keterangan'         => 'permit_empty|max_length[65535]',
+        'catatan_verifikasi' => 'permit_empty|max_length[500]',
+        'vendor_model_code'  => 'permit_empty|max_length[120]',
+        'vendor_spec_text'   => 'permit_empty',
+        'package_flags'      => 'permit_empty|max_length[255]',
+        'unit_accessories'   => 'permit_empty|max_length[65535]',
+        'po_line_group_id'   => 'permit_empty|max_length[36]',
     ];
 
     protected $validationMessages = [
