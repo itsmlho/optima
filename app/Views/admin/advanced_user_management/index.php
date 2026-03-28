@@ -750,31 +750,31 @@ function deactivateUser(userId, userName) {
         confirmButtonColor: '#fd7e14',
         onConfirm: function() {
             $.ajax({
-        url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
-        type: 'POST',
-        dataType: 'json',
-        data: (function() {
-            var d = {};
-            d['<?= csrf_token() ?>'] = getCsrfToken();
-            return d;
-        })(),
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken()
-        },
-        success: function(response) {
-            if (response.success) {
-                alertSwal('success', response.message, 'User Dinonaktifkan');
-                $('#usersTable').DataTable().ajax.reload();
-            } else {
-                alertSwal('error', response.message || 'Gagal menonaktifkan user', 'Error');
-            }
-        },
-        error: function(xhr) {
-            const response = xhr.responseJSON || {};
-            alertSwal('error', response.message || 'Terjadi kesalahan saat menonaktifkan user', 'Error');
-        }
-    });
+                url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
+                type: 'POST',
+                dataType: 'json',
+                data: (function() {
+                    var d = {};
+                    d['<?= csrf_token() ?>'] = getCsrfToken();
+                    return d;
+                })(),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alertSwal('success', response.message, 'User Dinonaktifkan');
+                        $('#usersTable').DataTable().ajax.reload();
+                    } else {
+                        alertSwal('error', response.message || 'Gagal menonaktifkan user', 'Error');
+                    }
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    alertSwal('error', response.message || 'Terjadi kesalahan saat menonaktifkan user', 'Error');
+                }
+            });
         }
     });
 }
@@ -785,27 +785,29 @@ function confirmDeleteUser(userId, userName) {
         text: `Apakah Anda yakin ingin menghapus user "${userName}"? Tindakan ini tidak dapat dibatalkan!`,
         onConfirm: function() {
             $.ajax({
-        url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
-        method: 'DELETE',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            if (response.success) {
-                alertSwal('success', 'User berhasil dihapus!');
-                location.reload();
-            } else {
-                alertSwal('error', response.message, 'Error');
-            }
-        },
-        error: function(xhr) {
-            try {
-                var response = JSON.parse(xhr.responseText);
-                alertSwal('error', response.message);
-            } catch (e) {
-                alertSwal('error', 'Terjadi kesalahan saat menghapus user.');
-            }
+                url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alertSwal('success', 'User berhasil dihapus!');
+                        location.reload();
+                    } else {
+                        alertSwal('error', response.message, 'Error');
+                    }
+                },
+                error: function(xhr) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        alertSwal('error', response.message);
+                    } catch (e) {
+                        alertSwal('error', 'Terjadi kesalahan saat menghapus user.');
+                    }
+                }
+            });
         }
     });
 }
@@ -823,15 +825,15 @@ function cleanExpiredPermissions() {
         confirmButtonColor: '#fd7e14',
         onConfirm: function() {
             $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
-        if (response.success) {
-            alertSwal('success', 'Permission kadaluarsa berhasil dibersihkan.\nTerhapus: ' + (response.removed_count || 0) + ' permissions');
-            location.reload();
-        } else {
-            alertSwal('error', response.message, 'Error');
-        }
-    }).fail(function() {
-        alertSwal('error', 'Terjadi kesalahan saat membersihkan permission kadaluarsa.');
-    });
+                if (response.success) {
+                    alertSwal('success', 'Permission kadaluarsa berhasil dibersihkan.\nTerhapus: ' + (response.removed_count || 0) + ' permissions');
+                    location.reload();
+                } else {
+                    alertSwal('error', response.message, 'Error');
+                }
+            }).fail(function() {
+                alertSwal('error', 'Terjadi kesalahan saat membersihkan permission kadaluarsa.');
+            });
         }
     });
 }
