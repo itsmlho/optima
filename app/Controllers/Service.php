@@ -1731,11 +1731,11 @@ class Service extends BaseController
                 'spk_number' => $spk['nomor_spk'] ?? 'N/A'
             ]);
             
-        } catch (\Exception $e) {
-            log_message('error', 'SPK Approval Error: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'SPK Approval Error [' . get_class($e) . ']: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ]);
         }
     }
@@ -1783,11 +1783,11 @@ class Service extends BaseController
                 'message' => 'Fabrikasi berhasil di-approve'
             ]);
             
-        } catch (\Exception $e) {
-            log_message('error', 'Fabrikasi Approval Error: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'Fabrikasi Approval Error [' . get_class($e) . ']: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ]);
         }
     }
@@ -2496,7 +2496,7 @@ class Service extends BaseController
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->transRollback();
             throw $e;
         }
@@ -2672,8 +2672,8 @@ class Service extends BaseController
                     $approvalData['stage']
                 );
                 
-            } catch (\Exception $e) {
-                log_message('error', 'Background attachment update failed: ' . $e->getMessage());
+            } catch (\Throwable $e) {
+                log_message('error', 'Attachment update failed [' . get_class($e) . ']: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
                 // Don't throw exception as main approval already succeeded
             }
         }
