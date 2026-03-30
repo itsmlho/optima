@@ -4,8 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unit Verification - Loading...</title>
+    <!-- CSRF token for AJAX requests -->
+    <meta name="csrf-token-name" content="<?= csrf_token() ?>">
+    <meta name="csrf-token-value" content="<?= csrf_hash() ?>">
     <!-- jQuery for consistency with unit_verification.php -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Setup CSRF header for all jQuery AJAX (no global base.php on this standalone print page)
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof $ !== 'undefined') {
+                var csrfName  = document.querySelector('meta[name="csrf-token-name"]').getAttribute('content');
+                var csrfValue = document.querySelector('meta[name="csrf-token-value"]').getAttribute('content');
+                $.ajaxSetup({
+                    headers: { 'X-CSRF-TOKEN': csrfValue },
+                    data: {}  // will be merged per-call
+                });
+                // Also expose for inline use
+                window._csrfName  = csrfName;
+                window._csrfValue = csrfValue;
+            }
+        });
+    </script>
     <style>
         @page {
             size: A4;
@@ -671,7 +690,10 @@
                 $.ajax({
                     url: '<?= base_url('service/work-orders/get-unit-verification-data') ?>',
                     type: 'POST',
-                    data: { work_order_id: workOrderId },
+                    data: {
+                        work_order_id: workOrderId,
+                        [window._csrfName]: window._csrfValue
+                    },
                     success: function(response) {
                         // console.log('📦 Unit verification data received:', response);
                         // console.log('📦 Full response structure:', JSON.stringify(response, null, 2));
@@ -700,9 +722,12 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token-value"]') || {}).getAttribute('content') || ''
                     },
                     body: 'work_order_id=' + workOrderId
+                        + '&' + encodeURIComponent((document.querySelector('meta[name="csrf-token-name"]') || {}).getAttribute('content') || '_csrf')
+                        + '=' + encodeURIComponent((document.querySelector('meta[name="csrf-token-value"]') || {}).getAttribute('content') || '')
                 })
                 .then(response => response.json())
                 .then(data => {
