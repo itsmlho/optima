@@ -900,11 +900,7 @@ class WorkOrderController extends Controller
                 break;
         }
         
-        // Add a "Detail" link button for all statuses
-        $detailUrl = base_url('service/work-orders/detail/' . $woId);
-        $detailBtn = '<a href="'.$detailUrl.'" class="btn btn-sm btn-outline-info" title="Lihat Detail"><i class="fas fa-eye me-1"></i>Detail</a>';
-        
-        return '<div class="btn-group-vertical btn-group-sm" role="group">' . implode(' ', $buttons) . $detailBtn . '</div>';
+        return '<div class="btn-group-vertical btn-group-sm" role="group">' . implode(' ', $buttons) . '</div>';
     }
     
     // Update work order status
