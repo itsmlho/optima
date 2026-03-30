@@ -495,8 +495,28 @@ helper('ui');
 <script>
 const BASE = '<?= base_url() ?>';
 
-/** Select2 AJAX — Unit Audit: tidak memuat seluruh inventory sekaligus */
-/** Baris 1 = tampilan terpilih: No unit · Merk Model · Kapasitas (tanpa id DB) */
+/** Select2 AJAX unit audit — ringan, tidak memuat seluruh inventory. */
+
+/** Hapus [12] / [id] di depan no unit (data kotor atau cache). */
+function cleanAuditUnitNoUnitLabel(raw, id) {
+    let s = (raw == null ? '' : String(raw)).trim();
+    if (!s) {
+        return s;
+    }
+    if (id != null && id !== '') {
+        const idEsc = String(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        s = s.replace(new RegExp('^\\[' + idEsc + '\\]\\s*', 'i'), '');
+    }
+    let prev;
+    do {
+        prev = s;
+        s = s.replace(/^\[[\d\s]+\]\s*/, '');
+        s = s.replace(/^\s*[·•]\s*/, '');
+    } while (s !== prev);
+    return s.trim();
+}
+
+/** Baris terpilih / baris 1 dropdown: No · Merk Model · Kapasitas */
 function formatAuditUnitLine1(item) {
     if (!item || item.loading) {
         return (item && item.text) ? item.text : '';
@@ -504,7 +524,14 @@ function formatAuditUnitLine1(item) {
     if (!item.id) {
         return item.text || '';
     }
-    const no = (item.no_unit || item.text || '').trim();
+    let rawNo = (item.no_unit != null && String(item.no_unit).trim() !== '') ? String(item.no_unit).trim() : '';
+    if (!rawNo) {
+        const t = String(item.text || '').trim();
+        const sep = ' · ';
+        const j = t.indexOf(sep);
+        rawNo = j === -1 ? t : t.slice(0, j).trim();
+    }
+    const no = cleanAuditUnitNoUnitLabel(rawNo, item.id);
     const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
     const kap = (item.kapasitas || '').trim();
     const jenis = (item.jenis || '').trim();
@@ -520,12 +547,7 @@ function formatAuditUnitLine1(item) {
     return parts.join(' · ');
 }
 
-/**
- * Dropdown 3 baris (sama struktur untuk Tambah Unit & Verifikasi):
- * 1) 306 · KOMATSU FD25C · 2.5 TON
- * 2) COUNTER BALANCE · SN : 123
- * 3) AVAILABLE_STOCK | N/A
- */
+/** Template hasil Select2: 3 baris (info unit + badge status + lokasi). */
 function formatAuditUnitAjaxOption(item) {
     if (item.loading) {
         return item.text;
@@ -551,16 +573,26 @@ function formatAuditUnitAjaxOption(item) {
 
     const status = (item.status || '—').trim();
     const loc = (item.lokasi && String(item.lokasi).trim()) ? String(item.lokasi).trim() : 'N/A';
-    $container.append($line2, $('<div class="small text-muted"></div>').text(status + ' | ' + loc));
+    const su = status.toUpperCase();
+    let badgeCls = 'badge-soft-gray';
+    if (su.includes('AVAILABLE') || su.includes('NON_ASSET') || su.includes('BOOKED')) {
+        badgeCls = 'badge-soft-green';
+    } else if (su.includes('RETURN')) {
+        badgeCls = 'badge-soft-blue';
+    } else if (su.includes('RENTAL')) {
+        badgeCls = 'badge-soft-cyan';
+    } else if (su.includes('INACTIVE') || su.includes('JUAL')) {
+        badgeCls = 'badge-soft-red';
+    }
+    const $line3 = $('<div class="small text-muted d-flex align-items-center flex-wrap gap-2 mt-1"></div>');
+    $line3.append($('<span class="badge ' + badgeCls + '"></span>').text(status));
+    const $loc = $('<span class="d-inline-flex align-items-center"></span>');
+    $loc.append($('<i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>'));
+    $loc.append(document.createTextNode(loc));
+    $line3.append($loc);
+    $container.append($line2, $line3);
 
     return $container;
-}
-
-function formatAuditUnitAjaxSelection(item) {
-    if (!item.id) {
-        return item.text;
-    }
-    return formatAuditUnitLine1(item);
 }
 
 function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
@@ -592,13 +624,12 @@ function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
                     if (String(u.status || '').toUpperCase() === 'JUAL') {
                         return;
                     }
-                    const no = (u.no_unit || '').trim();
+                    const no = cleanAuditUnitNoUnitLabel((u.no_unit || '').trim(), u.id);
                     if (!no) {
                         return;
                     }
-                    out.push({
+                    const row = {
                         id: String(u.id),
-                        text: no,
                         no_unit: no,
                         serial_number: u.serial_number || '',
                         jenis: u.jenis || '',
@@ -608,14 +639,18 @@ function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
                         status: u.status || '',
                         pelanggan: u.pelanggan || '',
                         lokasi: u.lokasi || ''
-                    });
+                    };
+                    row.text = no;
+                    out.push(row);
                 });
                 return { results: out };
             },
             cache: true
         },
         templateResult: formatAuditUnitAjaxOption,
-        templateSelection: formatAuditUnitAjaxSelection
+        templateSelection: function (item) {
+            return item.id ? formatAuditUnitLine1(item) : item.text;
+        }
     };
 }
 
