@@ -2684,6 +2684,104 @@ class Service extends BaseController
      */
     private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment, $spk_id = null, $stage_name = 'fabrikasi')
     {
+        // Inline (synchronous) attachment update — replaces the old exec() background-script approach
+        // which fails on shared hosting (Hostinger) where exec/popen are disabled.
+        // The main stage transaction is already committed before this method is called, so it is safe
+        // to run this synchronously.
+        $attachment_id = (int) $attachment_id;
+        $unit_id       = (int) $unit_id;
+        $spk_id        = (int) ($spk_id ?? 0);
+
+        // Detect component type
+        $componentType = $this->componentHelper->detectComponentType($attachment_id);
+        if (!$componentType) {
+            log_message('error', "executeBackgroundAttachmentUpdate: component not found for ID {$attachment_id}");
+            return;
+        }
+
+        $tableMap = [
+            'battery'    => 'inventory_batteries',
+            'charger'    => 'inventory_chargers',
+            'attachment' => 'inventory_attachments',
+        ];
+        $tableName = $tableMap[$componentType] ?? null;
+        if (!$tableName) {
+            log_message('error', "executeBackgroundAttachmentUpdate: unknown component type '{$componentType}'");
+            return;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $performedBy = (int) (session('user_id') ?? 1);
+
+        if ($transfer_attachment) {
+            // KANIBAL MODE: detach from old unit, then attach to new unit
+            $row = $this->db->table($tableName)
+                ->select('inventory_unit_id')
+                ->where('id', $attachment_id)
+                ->get()->getRowArray();
+            $old_unit_id = $row['inventory_unit_id'] ?? null;
+
+            // Step 1: detach
+            $this->db->table($tableName)->where('id', $attachment_id)->update([
+                'inventory_unit_id' => null,
+                'updated_at'        => $now,
+            ]);
+
+            // Step 2: attach to new unit
+            $this->db->table($tableName)->where('id', $attachment_id)->update([
+                'inventory_unit_id' => $unit_id,
+                'updated_at'        => $now,
+            ]);
+
+            // Audit log
+            $this->db->table('component_audit_log')->insert([
+                'component_type'  => strtoupper($componentType),
+                'component_id'    => $attachment_id,
+                'event_type'      => 'TRANSFERRED',
+                'event_category'  => 'TRANSFER',
+                'from_unit_id'    => $old_unit_id,
+                'to_unit_id'      => $unit_id,
+                'spk_id'          => $spk_id ?: null,
+                'stage_name'      => $stage_name,
+                'triggered_by'    => 'KANIBAL_FABRIKASI',
+                'performed_by'    => $performedBy,
+                'performed_at'    => $now,
+                'created_at'      => $now,
+            ]);
+
+            log_message('info', "✅ KANIBAL transfer: {$componentType} #{$attachment_id} from unit " . ($old_unit_id ?? 'NULL') . " to unit {$unit_id}");
+        } else {
+            // NORMAL MODE: direct assignment
+            $this->db->table($tableName)->where('id', $attachment_id)->update([
+                'inventory_unit_id' => $unit_id,
+                'updated_at'        => $now,
+            ]);
+
+            // Audit log
+            $this->db->table('component_audit_log')->insert([
+                'component_type'  => strtoupper($componentType),
+                'component_id'    => $attachment_id,
+                'event_type'      => 'ASSIGNED',
+                'event_category'  => 'ASSIGNMENT',
+                'from_unit_id'    => null,
+                'to_unit_id'      => $unit_id,
+                'spk_id'          => $spk_id ?: null,
+                'stage_name'      => $stage_name,
+                'triggered_by'    => 'FABRIKASI',
+                'performed_by'    => $performedBy,
+                'performed_at'    => $now,
+                'created_at'      => $now,
+            ]);
+
+            log_message('info', "✅ NORMAL assignment: {$componentType} #{$attachment_id} assigned to unit {$unit_id}");
+        }
+
+        log_message('info', "✅ ATTACHMENT UPDATE COMPLETE (inline)");
+    }
+
+    /** @deprecated kept only to satisfy old callers if any — remove in next cleanup */
+    private function executeBackgroundAttachmentUpdate_old($attachment_id, $unit_id, $transfer_attachment, $spk_id = null, $stage_name = 'fabrikasi')
+    {
         // Get database config for script generation
         $db = \Config\Database::connect();
         $dbConfig = $db->getDatabase();
