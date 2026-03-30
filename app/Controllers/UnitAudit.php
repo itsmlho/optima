@@ -535,14 +535,63 @@ class UnitAudit extends BaseController
     {
         try {
             $locations = $this->auditLocationModel->getLocationsForCustomer((int) $customerId);
-            $statusMap = $this->auditLocationModel->getLocationAuditStatusForCustomer((int) $customerId);
+
+            // Be defensive for mixed deploy states (controller updated, model may lag behind in prod).
+            // If status method is unavailable or fails, keep returning locations instead of HTTP 500.
+            $statusMap = [];
+            if (method_exists($this->auditLocationModel, 'getLocationAuditStatusForCustomer')) {
+                try {
+                    $statusMap = $this->auditLocationModel->getLocationAuditStatusForCustomer((int) $customerId);
+                } catch (\Throwable $e) {
+                    log_message('error', 'UnitAudit getLocationAuditStatusForCustomer failed: {msg}', ['msg' => $e->getMessage()]);
+                    $statusMap = [];
+                }
+            } else {
+                log_message('warning', 'UnitAudit model method getLocationAuditStatusForCustomer not found; returning locations without audit badges');
+            }
+
             foreach ($locations as &$loc) {
                 $locId = (int) $loc['id'];
                 $loc['audit_status'] = $statusMap[$locId] ?? null;
             }
             return $this->response->setJSON(['success' => true, 'data' => $locations]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+        } catch (\Throwable $e) {
+            log_message('error', 'UnitAudit getLocationsWithAuditStatus failed: {msg}', ['msg' => $e->getMessage()]);
+
+            // Fallback for production schema drift: return basic active locations only.
+            try {
+                $fallbackLocations = \Config\Database::connect()
+                    ->table('customer_locations')
+                    ->select('id, location_name, address')
+                    ->where('customer_id', (int) $customerId)
+                    ->where('is_active', 1)
+                    ->orderBy('location_name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+
+                if (is_array($fallbackLocations)) {
+                    foreach ($fallbackLocations as &$loc) {
+                        $loc['audit_status'] = null;
+                        $loc['total_units'] = 0;
+                        $loc['no_kontrak_masked'] = '-';
+                        $loc['no_po_masked'] = '-';
+                        $loc['periode_text'] = '-';
+                        $loc['periode_badge_text'] = '-';
+                        $loc['is_pending_approval'] = false;
+                    }
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'data' => $fallbackLocations,
+                        'fallback' => true
+                    ]);
+                }
+            } catch (\Throwable $fallbackError) {
+                log_message('error', 'UnitAudit fallback locations also failed: {msg}', ['msg' => $fallbackError->getMessage()]);
+            }
+
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
 
