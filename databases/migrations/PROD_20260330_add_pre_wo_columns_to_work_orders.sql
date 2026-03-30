@@ -10,9 +10,9 @@
 -- ============================================================
 
 ALTER TABLE `work_orders`
-    ADD COLUMN IF NOT EXISTS `pre_wo_workflow_status` VARCHAR(50) NULL DEFAULT NULL
+    ADD COLUMN `pre_wo_workflow_status` VARCHAR(50) NULL DEFAULT NULL
         COMMENT 'Snapshot of inventory_unit.workflow_status before WO creation',
-    ADD COLUMN IF NOT EXISTS `pre_wo_status_unit_id` TINYINT UNSIGNED NULL DEFAULT NULL
+    ADD COLUMN `pre_wo_status_unit_id` TINYINT UNSIGNED NULL DEFAULT NULL
         COMMENT 'Snapshot of inventory_unit.status_unit_id before WO creation';
 
 -- Verify
