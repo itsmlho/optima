@@ -1379,6 +1379,16 @@ class WorkOrderController extends Controller
                     'message' => 'No active work order status found. Please contact administrator to setup work order statuses.'
                 ]);
             }
+
+            // Validate session user_id before INSERT — work_orders.created_by is NOT NULL FK → users.id
+            $creatorId = (int)session()->get('user_id');
+            if ($creatorId <= 0 || !$db->table('users')->where('id', $creatorId)->countAllResults()) {
+                log_message('error', "[WorkOrder] createWorkOrder rejected: user_id={$creatorId} missing or not in users table");
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Session tidak valid. Silakan login ulang sebelum membuat Work Order.'
+                ]);
+            }
             
             // Generate work order number
             $woNumber = $this->generateWorkOrderNumber();
@@ -1513,7 +1523,7 @@ class WorkOrderController extends Controller
                 'area' => $unitAreaInfo['area_name'] ?? null,
                 'pic' => $input['pic'] ?? null,
                 'hm' => $input['hm'] ?? null,
-                'created_by' => session()->get('user_id') ?? 1
+                'created_by' => $creatorId
             ];
             
             // Start transaction for work order and spareparts

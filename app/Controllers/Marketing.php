@@ -851,6 +851,14 @@ class Marketing extends BaseDataTableController
         $db->transStart();
         
         try {
+            // Validate session user_id — quotations.created_by is NOT NULL FK → users.id
+            $creatorId = (int)session()->get('user_id');
+            if ($creatorId <= 0 || !$db->table('users')->where('id', $creatorId)->countAllResults()) {
+                log_message('error', "[Marketing] storeQuotation rejected: user_id={$creatorId} not found in users table");
+                $db->transRollback();
+                return $this->response->setJSON(['success' => false, 'message' => 'Session tidak valid. Silakan login ulang.']);
+            }
+
             // Generate quotation number
             $quotationNumber = $this->generateQuotationNumber();
             
@@ -873,8 +881,8 @@ class Marketing extends BaseDataTableController
                 'warranty_terms' => $this->request->getPost('warranty_terms'),
                 'stage' => 'DRAFT',
                 'probability_percent' => $this->request->getPost('probability_percent') ?: 50,
-                'created_by' => session('user_id'),
-                'assigned_to' => $this->request->getPost('assigned_to') ?: session('user_id')
+                'created_by' => $creatorId,
+                'assigned_to' => $this->request->getPost('assigned_to') ?: $creatorId
             ];
             
             $quotationId = $this->quotationModel->insert($quotationData);
@@ -2183,14 +2191,19 @@ class Marketing extends BaseDataTableController
         // Log stage history if table exists
         $db = \Config\Database::connect();
         if ($db->tableExists('quotation_stage_history')) {
-            $db->table('quotation_stage_history')->insert([
-                'id_quotation' => $quotationId,
-                'stage' => $updateData['stage'],
-                'change_reason' => $this->request->getPost('change_reason'),
-                'change_notes' => $this->request->getPost('change_notes'),
-                'changed_by' => session('user_id'),
-                'changed_at' => date('Y-m-d H:i:s')
-            ]);
+            $stageUserId = (int)session('user_id');
+            if ($stageUserId > 0 && $db->table('users')->where('id', $stageUserId)->countAllResults()) {
+                $db->table('quotation_stage_history')->insert([
+                    'id_quotation' => $quotationId,
+                    'stage' => $updateData['stage'],
+                    'change_reason' => $this->request->getPost('change_reason'),
+                    'change_notes' => $this->request->getPost('change_notes'),
+                    'changed_by' => $stageUserId,
+                    'changed_at' => date('Y-m-d H:i:s')
+                ]);
+            } else {
+                log_message('warning', "[Marketing] updateStage: skipping stage_history insert - user_id={$stageUserId} not valid");
+            }
         }
 
         return $this->response->setJSON([
