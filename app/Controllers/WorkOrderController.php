@@ -4618,10 +4618,11 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             log_message('info', "[WorkOrder] WO {$workOrderId} successfully updated to COMPLETED. Update result: " . json_encode($woUpdated));
 
             // Insert unit_verification_history
+            $verifiedBy = (int)(session()->get('user_id') ?: 1);
             $verificationHistoryData = [
                 'unit_id' => $unitId,
                 'work_order_id' => $workOrderId,
-                'verified_by' => session()->get('user_id') ?: 1,
+                'verified_by' => $verifiedBy,
                 'verified_at' => date('Y-m-d H:i:s'),
                 'verification_data' => json_encode([
                     'unit_changes' => $allChanges,
@@ -4638,29 +4639,47 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             
             // Check if table exists before inserting
             if ($db->tableExists('unit_verification_history')) {
+                log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO={$workOrderId}, verified_by={$verifiedBy}");
                 $db->table('unit_verification_history')->insert($verificationHistoryData);
+                $uvhError = $db->error();
+                if (!empty($uvhError['code'])) {
+                    log_message('error', "[WorkOrder] unit_verification_history INSERT error: code={$uvhError['code']}, msg={$uvhError['message']}, verified_by={$verifiedBy}");
+                    $db->transRollback();
+                    throw new \Exception('Gagal insert riwayat verifikasi [' . $uvhError['code'] . ']: ' . $uvhError['message']);
+                }
                 log_message('info', "[WorkOrder] Inserted unit_verification_history for unit {$unitId}, WO {$workOrderId}");
             }
             
             // Insert status history
+            $changedBy = (int)(session()->get('user_id') ?: 1);
             $historyData = [
                 'work_order_id' => $workOrderId,
                 'from_status_id' => $fromStatusId,
                 'to_status_id' => $statusData['id'],
-                'changed_by' => session()->get('user_id') ?: 1,
+                'changed_by' => $changedBy,
                 'change_reason' => 'Work order completed with unit verification',
                 'changed_at' => date('Y-m-d H:i:s')
             ];
+
+            log_message('info', "[WorkOrder] Inserting status history: WO={$workOrderId}, from_status={$fromStatusId}, to_status={$statusData['id']}, changed_by={$changedBy}");
             
             $db->table('work_order_status_history')->insert($historyData);
+
+            // Capture error BEFORE transComplete — MySQL clears last error after transaction ends
+            $historyError = $db->error();
+            if (!empty($historyError['code'])) {
+                log_message('error', "[WorkOrder] status_history INSERT error: code={$historyError['code']}, msg={$historyError['message']}, data=" . json_encode($historyData));
+                $db->transRollback();
+                throw new \Exception('Gagal insert riwayat status [' . $historyError['code'] . ']: ' . $historyError['message']);
+            }
             
             $db->transComplete();
             
             // Check transaction status
             if ($db->transStatus() === false) {
                 $dbError = $this->getMySQLError($db);
-                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId} status update. DB error: " . $dbError);
-                throw new \Exception('Gagal menyimpan perubahan status work order: ' . $dbError);
+                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId} status update. DB error: " . ($dbError ?: '(empty - check earlier log entries)'));
+                throw new \Exception('Gagal menyimpan perubahan status work order: ' . ($dbError ?: 'Periksa server log untuk detail error'));
             }
             
             log_message('info', "[WorkOrder] Transaction completed successfully for WO {$workOrderId}");
