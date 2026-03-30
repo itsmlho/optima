@@ -899,6 +899,8 @@ $(document).ready(function() {
                 d.useOptimized = true;
                 d.status = $('#filter-status-progress').val();
                 d.priority = $('#filter-priority-progress').val();
+                d.start_date = $('#filter-start-date-progress').val();
+                d.end_date = $('#filter-end-date-progress').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
                     d[window.csrfTokenName] = window.getCsrfToken();
@@ -967,6 +969,8 @@ $(document).ready(function() {
                 d.useOptimized = true;
                 d.priority = $('#filter-priority-closed').val();
                 d.month = $('#filter-month-closed').val();
+                d.start_date = $('#filter-start-date-closed').val();
+                d.end_date = $('#filter-end-date-closed').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
                     d[window.csrfTokenName] = window.getCsrfToken();
@@ -1096,13 +1100,19 @@ $(document).ready(function() {
         }, 100);
     });
 
-    // Filter handlers for Progress tab (status and priority only, date handled by helper)
+    // Filter handlers for Progress tab
     $('#filter-status-progress, #filter-priority-progress').on('change', function() {
         reloadProgressTable();
     });
+    $('#filter-start-date-progress, #filter-end-date-progress').on('change', function() {
+        reloadProgressTable();
+    });
 
-    // Filter handlers for Closed tab (priority and month only, date handled by helper)
+    // Filter handlers for Closed tab
     $('#filter-priority-closed, #filter-month-closed').on('change', function() {
+        reloadClosedTable();
+    });
+    $('#filter-start-date-closed, #filter-end-date-closed').on('change', function() {
         reloadClosedTable();
     });
 
