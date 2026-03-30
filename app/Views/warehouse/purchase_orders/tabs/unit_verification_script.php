@@ -27,7 +27,7 @@
             $('.unit-list-item').removeClass('active');
             $(this).addClass('active');
             const unitData = $(this).data('unit');
-            $('#unit-detail-view-container').html(createUnitDetailCard(unitData));
+            $('#unit-detail-view-container').html(createUnitDetailCard(unitData, {}));
             // Load dropdown options after card is created
             setTimeout(() => loadDropdownOptions(), 100);
         });
@@ -39,7 +39,7 @@
         $(document).on('change', '#lokasi_unit_inline', checkAllUnitVerifiedInline);
         
         // Event listener untuk checkbox "Sesuai"
-        $(document).on('change', '.verify-checkbox-sesuai', function() {
+        $(document).on('change', '#unitVerificationFormInline .verify-checkbox-sesuai', function() {
             const row = $(this).closest('tr');
             const verifyField = row.find('.verify-field');
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea');
@@ -50,9 +50,21 @@
                 // Uncheck "Tidak Sesuai" jika "Sesuai" dicentang (mutually exclusive)
                 tidakSesuaiCheckbox.prop('checked', false);
                 
-                // SELALU samakan dengan nilai database (persis seperti kolom Database)
                 if (verifyField.is('select')) {
-                    verifyField.val(dbValue).prop('disabled', true);
+                    const dbId = row.attr('data-db-id');
+                    if (dbId !== undefined && dbId !== '') {
+                        verifyField.val(dbId);
+                    } else {
+                        const $opt = verifyField.find('option').filter(function() {
+                            return $(this).text().trim() === String(dbValue).trim();
+                        }).first();
+                        if ($opt.length) {
+                            verifyField.val($opt.val());
+                        } else {
+                            verifyField.val(dbValue);
+                        }
+                    }
+                    verifyField.prop('disabled', true);
                 } else {
                     verifyField.val(dbValue).prop('readonly', true);
                 }
@@ -62,7 +74,11 @@
                 });
                 row.css('background-color', '#f0fdf4');
             } else {
-                verifyField.prop('readonly', false).css({
+                verifyField.prop('readonly', false);
+                if (verifyField.is('select')) {
+                    verifyField.prop('disabled', false);
+                }
+                verifyField.css({
                     'background-color': '#fff',
                     'border-color': '#333'
                 });
@@ -72,7 +88,7 @@
         });
         
         // Event listener untuk checkbox "Tidak Sesuai"
-        $(document).on('change', '.verify-checkbox-tidak-sesuai', function() {
+        $(document).on('change', '#unitVerificationFormInline .verify-checkbox-tidak-sesuai', function() {
             const row = $(this).closest('tr');
             const verifyField = row.find('.verify-field');
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
@@ -118,7 +134,7 @@
                 row.css('background-color', '');
                 
                 // Cek apakah masih ada checkbox "Tidak Sesuai" yang dicentang
-                const hasTidakSesuai = $('.verify-checkbox-tidak-sesuai:checked').length > 0;
+                const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
                     $('#alasan-reject-container').slideUp(300);
                     $('#alasan_reject_inline').prop('required', false).val('');
@@ -126,20 +142,33 @@
             }
             checkAllUnitVerifiedInline();
         });
-        
-        // Event listener untuk input field "Real Lapangan"
-        // Jika ada pengeditan, otomatis check "Tidak Sesuai" dan uncheck "Sesuai"
-        $(document).on('input', '.verify-field', function() {
+
+        $(document).on('input change', '#unitVerificationFormInline .verify-field', function() {
             const row = $(this).closest('tr');
             const verifyField = $(this);
-            const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea');
-            const dbValue = dbField.val() || '';
+            const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea, td:nth-child(2) select');
+            let dbValue = '';
+            if (dbField.is('select')) {
+                dbValue = dbField.find('option:selected').text() || dbField.val() || '';
+            } else {
+                dbValue = dbField.val() || '';
+            }
             const realValue = verifyField.val() || '';
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
+            const dbIdRow = row.attr('data-db-id');
+            let differs;
+            if (verifyField.is('select')) {
+                if (dbIdRow !== undefined && dbIdRow !== '') {
+                    differs = String(verifyField.val() || '') !== String(dbIdRow);
+                } else {
+                    differs = verifyField.find('option:selected').text().trim() !== String(dbValue).trim();
+                }
+            } else {
+                differs = realValue.trim() !== String(dbValue).trim();
+            }
             
-            // Jika nilai berbeda dengan database, otomatis check "Tidak Sesuai"
-            if (realValue.trim() !== dbValue.trim()) {
+            if (differs) {
                 // Uncheck "Sesuai" jika ada
                 sesuaiCheckbox.prop('checked', false);
                 // Check "Tidak Sesuai"
@@ -165,20 +194,20 @@
                 // Biarkan user memilih sendiri
                 
                 // Cek apakah masih ada checkbox "Tidak Sesuai" yang dicentang
-                const hasTidakSesuai = $('.verify-checkbox-tidak-sesuai:checked').length > 0;
+                const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
                     $('#alasan-reject-container').slideUp(300);
                     $('#alasan_reject_inline').prop('required', false).val('');
                 }
             }
-            
+
             checkAllUnitVerifiedInline();
         });
-        
+
         // Load dropdown options for all dropdown fields
         function loadDropdownOptions() {
             console.log('🔄 Loading dropdown options...');
-            $('.verify-dropdown').each(function() {
+            $('#unitVerificationFormInline .verify-dropdown').each(function() {
                 const $dropdown = $(this);
                 const dropdownType = $dropdown.data('dropdown-type');
                 let currentValue = $dropdown.find('option:selected').val();
@@ -236,15 +265,14 @@
                             // Add options from API
                             response.data.forEach(function(option) {
                                 const optionText = option.text || option.label || option.name || option.id;
-                                const optionValue = optionText; // Use text as value for display
-                                const isSelected = (currentValue && optionValue === currentValue) || (currentValue && option.id == currentValue);
+                                const optionValue = (option.id !== undefined && option.id !== null) ? String(option.id) : String(optionText);
+                                const isSelected = currentValue && (String(option.id) === String(currentValue) || optionValue === String(currentValue));
                                 
                                 $dropdown.append(
                                     $('<option>', {
                                         value: optionValue,
                                         text: optionText,
                                         selected: isSelected,
-                                        'data-id': option.id || optionValue
                                     })
                                 );
                             });
@@ -280,8 +308,7 @@
             });
         }
         
-        // Event listener for dropdown change (same as text input)
-        $(document).on('change', '.verify-dropdown', function() {
+        $(document).on('change', '#unitVerificationFormInline .verify-dropdown', function() {
             const $dropdown = $(this);
             const fieldName = $dropdown.data('field-name');
             const row = $(this).closest('tr');
@@ -299,8 +326,7 @@
             
             // Handle cascading dropdowns
             if (fieldName === 'merk') {
-                // Brand changed - update Model dropdown
-                const selectedMerk = realValue;
+                const selectedMerk = verifyField.find('option:selected').text().trim() || realValue;
                 const $modelDropdown = $('#verify_model');
                 if ($modelDropdown.length) {
                     $modelDropdown.data('loaded', false);
@@ -310,8 +336,7 @@
                     setTimeout(() => loadDropdownOptions(), 100);
                 }
             } else if (fieldName === 'engine_type') {
-                // Engine Type changed - update Model Mesin dropdown
-                const selectedEngineType = realValue;
+                const selectedEngineType = verifyField.find('option:selected').text().trim() || realValue;
                 const $modelMesinDropdown = $('#verify_model_mesin');
                 if ($modelMesinDropdown.length) {
                     $modelMesinDropdown.data('loaded', false);
@@ -322,8 +347,20 @@
                 }
             }
             
-            // If value differs from database, auto-check "Tidak Sesuai"
-            if (realValue.trim() !== dbValue.trim()) {
+            const dbIdRow = row.attr('data-db-id');
+            let matchesDb;
+            if (verifyField.is('select')) {
+                if (dbIdRow !== undefined && dbIdRow !== '') {
+                    matchesDb = String(verifyField.val() || '') === String(dbIdRow);
+                } else {
+                    const selText = verifyField.find('option:selected').text().trim();
+                    matchesDb = selText === String(dbValue).trim();
+                }
+            } else {
+                matchesDb = String(verifyField.val() || '').trim() === String(dbValue).trim();
+            }
+            
+            if (!matchesDb) {
                 sesuaiCheckbox.prop('checked', false);
                 tidakSesuaiCheckbox.prop('checked', true);
                 
@@ -337,15 +374,17 @@
                 $('#alasan-reject-container').slideDown(300);
                 $('#alasan_reject_inline').prop('required', true);
             } else {
-                const hasTidakSesuai = $('.verify-checkbox-tidak-sesuai:checked').length > 0;
+                const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
                     $('#alasan-reject-container').slideUp(300);
                     $('#alasan_reject_inline').prop('required', false).val('');
                 }
             }
-            
+
             checkAllUnitVerifiedInline();
         });
+
+        window.loadUnitVerificationDropdowns = loadDropdownOptions;
     });
 
     window.toggleUnitDropdown = function(element) {
@@ -655,7 +694,7 @@
         let allVerified = true;
         let allRowsVerified = true;
         
-        $('#unitVerificationFormInline tbody tr').each(function() {
+        $('#unitVerificationFormInline tbody tr.verification-data-row:not(.wh-no-verify-check)').each(function() {
             const row = $(this);
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
@@ -718,7 +757,7 @@
         const discrepancies = []; // Array untuk menyimpan discrepancy data yang terstruktur
         
         // Collect data from verification table
-        form.find('tbody tr').each(function() {
+        form.find('tbody tr.verification-data-row').each(function() {
             const row = $(this);
             const label = row.find('td:first').text().replace(/\s*\*/g, '').trim();
             
@@ -742,9 +781,21 @@
                 realValue = realInput.val() || '';
             }
             
+            const fieldName = row.data('field');
+            
+            if (row.hasClass('wh-no-verify-check')) {
+                if (fieldName && (fieldName === 'sn_unit' || (fieldName.startsWith && fieldName.startsWith('sn_')))) {
+                    const snVal = (realInput.length ? realInput.val() : '') || '';
+                    const t = snVal && snVal.trim() !== '' && snVal !== 'Belum ada SN' ? snVal.trim() : '';
+                    if (t) {
+                        snData[fieldName] = t;
+                    }
+                }
+                return;
+            }
+            
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
-            const fieldName = row.data('field');
             
             // Check status verifikasi
             const isSesuai = sesuaiCheckbox.is(':checked');
@@ -774,9 +825,7 @@
             
             // Collect SN data (prioritaskan real value jika ada, jika tidak gunakan db value)
             // SN selalu input text, bukan dropdown
-            if (fieldName && (fieldName.includes('sn_') || fieldName === 'sn_unit' || fieldName === 'sn_mast' || fieldName === 'sn_mesin')) {
-                // Untuk SN, ambil langsung dari realValue yang sudah diambil di atas
-                // realValue sudah berisi nilai dari input field .verify-field
+            if (fieldName && (fieldName === 'sn_unit' || (fieldName.startsWith && fieldName.startsWith('sn_')))) {
                 const snValue = realValue && realValue.trim() !== '' && realValue !== 'Belum ada SN' ? realValue.trim() : '';
                 if (snValue) {
                     snData[fieldName] = snValue;
@@ -787,7 +836,7 @@
         // Pastikan finalStatus ditentukan dengan benar berdasarkan checkbox yang dicentang
         // Cek ulang apakah ada checkbox "Tidak Sesuai" yang dicentang
         let hasTidakSesuai = false;
-        form.find('tbody tr').each(function() {
+        form.find('tbody tr.verification-data-row:not(.wh-no-verify-check)').each(function() {
             const row = $(this);
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             if (tidakSesuaiCheckbox.is(':checked')) {
@@ -829,11 +878,34 @@
             fullNotes.unshift(`Alasan Reject: ${alasanReject}`);
         }
         
+        const poUnitFields = {};
+        form.find('tbody tr.verification-data-row').each(function() {
+            const mk = $(this).attr('data-merge-key');
+            if (!mk) return;
+            const row = $(this);
+            const sel = row.find('.verify-dropdown');
+            const inp = row.find('.verify-field').not('.verify-dropdown');
+            if (sel.length) {
+                const v = sel.val();
+                if (v !== '' && v !== undefined && v !== null) {
+                    poUnitFields[mk] = /^-?\d+$/.test(String(v)) ? parseInt(v, 10) : v;
+                }
+            } else if (inp.length) {
+                const v = inp.val();
+                if (v !== undefined && v !== null) poUnitFields[mk] = v;
+            }
+        });
+        const accKeys = [];
+        form.find('.verify-acc:checked').each(function() {
+            accKeys.push($(this).data('acc-key'));
+        });
+        if (accKeys.length) poUnitFields.unit_accessories = JSON.stringify(accKeys);
+        
         // Tampilkan modal konfirmasi sebelum kirim ke database
-        showVerificationConfirmation(idUnit, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies);
+        showVerificationConfirmation(idUnit, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies, poUnitFields);
     }
 
-    function showVerificationConfirmation(idUnit, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies = []) {
+    function showVerificationConfirmation(idUnit, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies = [], poUnitFields = {}) {
         // Siapkan ringkasan data untuk ditampilkan
         let summaryHTML = '<div style="text-align: left; margin-top: 15px;">';
         summaryHTML += '<div style="margin-bottom: 10px;"><strong>Status Verifikasi:</strong> ';
@@ -853,6 +925,8 @@
             if (snData['sn_mast']) summaryHTML += '<li>SN Mast: <code>' + snData['sn_mast'] + '</code></li>';
             if (snData['sn_mesin']) summaryHTML += '<li>SN Mesin: <code>' + snData['sn_mesin'] + '</code></li>';
             if (snData['sn_baterai']) summaryHTML += '<li>SN Baterai: <code>' + snData['sn_baterai'] + '</code></li>';
+            if (snData['sn_charger']) summaryHTML += '<li>SN Charger: <code>' + snData['sn_charger'] + '</code></li>';
+            if (snData['sn_attachment']) summaryHTML += '<li>SN Attachment: <code>' + snData['sn_attachment'] + '</code></li>';
             summaryHTML += '</ul></div>';
         }
         
@@ -882,65 +956,106 @@
             cancelText: window.lang('cancel'),
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
             onConfirm: function() {
-                // Jika user konfirmasi, baru kirim ke database
-                updateUnitStatusVerifikasi(idUnit, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies);
+                updateUnitStatusVerifikasi(idUnit, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies, poUnitFields);
             }
         });
     }
 
-    function createUnitDetailCard(data) {
+    /** Selaras form PO: DIESEL/GASOLINE tidak memakai baterai & charger listrik. */
+    function whDepartemenIsNonElectric(name) {
+        const u = String(name || '').trim().toUpperCase();
+        return u === 'DIESEL' || u === 'GASOLINE';
+    }
+
+    function createUnitDetailCard(data, options) {
+        options = options || {};
         const h = (str) => str ? String(str).replace(/</g, '&lt;') : "-";
         
-        // Build specification details array (same format as workorder verification)
-        const specDetails = [];
-        
-        // Add unit specifications with dropdown type mapping
-        // Mapping: fieldName -> dropdown type (null = text input, 'dropdown' = use dropdown)
-        const dropdownFieldMap = {
-            'departemen': 'departemen',
-            'jenis_unit': 'tipe_unit',
-            'merk': 'merk_unit', // Dropdown from merk_unit
-            'model': 'model_unit', // Cascading dropdown filtered by merk
-            'tahun': null, // Text field (year)
-            'kapasitas': 'kapasitas',
-            'mast_type': 'tipe_mast',
-            'engine_type': 'merk_mesin', // Dropdown from merk_mesin
-            'model_mesin': 'model_mesin', // Cascading dropdown filtered by engine_type
-            'tire_type': 'tipe_ban',
-            'wheel_type': 'jenis_roda',
-            'valve': 'valve',
-            'keterangan': null // Textarea
-        };
-        
-        if (data.nama_departemen) specDetails.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen'});
-        if (data.jenis) specDetails.push({label: 'Jenis Unit', value: h(data.jenis), fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit'});
-        
-        // Brand - always shown (use brand_name_po from po_units, fallback to merk_unit from model_unit)
-        const brandValue = data.brand_name_po || data.merk_unit || '-';
-        specDetails.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null});
-        
-        // Model - always shown (required for verification even if empty in PO)
-        specDetails.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue)});
-        
-        if (data.tahun_po) specDetails.push({label: 'Tahun', value: h(data.tahun_po), fieldName: 'tahun', required: false, dropdownType: null});
-        if (data.kapasitas_unit) specDetails.push({label: 'Kapasitas', value: h(data.kapasitas_unit), fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas'});
-        if (data.tipe_mast) specDetails.push({label: 'Mast Type', value: h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : ''), fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast'});
-        if (data.merk_mesin) specDetails.push({label: 'Engine Type', value: h(data.merk_mesin), fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null});
-        
-        // Model Mesin always shown (required for verification even if empty in PO)
-        if (data.merk_mesin) {
-            specDetails.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin)});
+        function whParsePkgFlags(d) {
+            try {
+                const p = d.package_flags;
+                if (p == null || p === '') return [];
+                if (typeof p === 'string') {
+                    const j = JSON.parse(p);
+                    return Array.isArray(j) ? j : [];
+                }
+                return Array.isArray(p) ? p : [];
+            } catch (e) { return []; }
         }
+        function whParseUnitAcc(d) {
+            try {
+                const p = d.unit_accessories;
+                if (p == null || p === '') return [];
+                if (typeof p === 'string') {
+                    const j = JSON.parse(p);
+                    return Array.isArray(j) ? j : [];
+                }
+                return Array.isArray(p) ? p : [];
+            } catch (e) { return []; }
+        }
+        const pkgFlags = whParsePkgFlags(data);
+        const isNonElectricDept = whDepartemenIsNonElectric(data.nama_departemen);
+        const unitAccSelected = whParseUnitAcc(data);
+        const accOpts = [
+            ['main_light','Main / signal lights'],['blue_spot','Blue spot'],['red_line','Red line'],['work_light','Work light'],
+            ['rotary_lamp','Rotary lamp'],['back_buzzer','Back buzzer'],['camera_ai','Camera AI'],['camera','Camera'],
+            ['sensor_parking','Sensor parking'],['speed_limiter','Speed limiter'],['laser_fork','Laser fork'],
+            ['voice_announcer','Voice announcer'],['horn_speaker','Horn speaker'],['horn_klason','Horn klason'],
+            ['bio_metric','Bio metric'],['acrylic','Acrylic'],['first_aid_kit','First aid kit'],['safety_belt','Safety belt'],
+            ['safety_belt_interlock','Safety belt interlock'],['spark_arrestor','Spark arrestor'],['mirror','Mirror']
+        ];
         
-        if (data.tipe_ban) specDetails.push({label: 'Tire Type', value: h(data.tipe_ban), fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban'});
-        if (data.tipe_roda) specDetails.push({label: 'Wheel Type', value: h(data.tipe_roda), fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda'});
-        if (data.jumlah_valve) specDetails.push({label: 'Valve', value: h(data.jumlah_valve), fieldName: 'valve', required: false, dropdownType: 'valve'});
-        if (data.keterangan) specDetails.push({label: 'Keterangan', value: h(data.keterangan), fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null});
+        const specDetails = [];
+        const brandValue = data.brand_name_po || data.merk_unit || data.brand_from_model_table || '-';
         
-        // Add Serial Numbers (required fields - always show even if empty)
-        specDetails.push({label: 'Serial Number', value: h(data.serial_number_po) || 'Belum ada SN', fieldName: 'sn_unit', required: true});
+        if (data.nama_departemen) {
+            specDetails.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen', mergeKey: '', dbId: data.id_departemen, selectValue: data.id_departemen});
+        }
+        specDetails.push({label: 'Jenis Unit', value: h(data.jenis) || '-', fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit', mergeKey: 'tipe_unit_id', dbId: data.tipe_unit_id, selectValue: data.tipe_unit_id});
+        specDetails.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null, mergeKey: 'merk_unit', dbId: '', selectValue: ''});
+        specDetails.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue), mergeKey: 'model_unit_id', dbId: data.model_unit_id, selectValue: data.model_unit_id});
+        specDetails.push({label: 'Tahun', value: h(data.tahun_po) || '-', fieldName: 'tahun', required: false, dropdownType: null, mergeKey: 'tahun_po', dbId: '', selectValue: data.tahun_po});
+        specDetails.push({label: 'Kapasitas', value: h(data.kapasitas_unit) || '-', fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas', mergeKey: 'kapasitas_id', dbId: data.kapasitas_id, selectValue: data.kapasitas_id});
+        const mastLabel = data.tipe_mast ? (h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : '')) : '-';
+        specDetails.push({label: 'Mast Type', value: mastLabel, fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast', mergeKey: 'mast_id', dbId: data.mast_id, selectValue: data.mast_id});
+        specDetails.push({label: 'Engine Type', value: h(data.merk_mesin) || '-', fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null, mergeKey: '', dbId: '', selectValue: ''});
+        specDetails.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin) || '-', mergeKey: 'mesin_id', dbId: data.mesin_id, selectValue: data.mesin_id});
+        specDetails.push({label: 'Tire Type', value: h(data.tipe_ban) || '-', fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban', mergeKey: 'ban_id', dbId: data.ban_id, selectValue: data.ban_id});
+        specDetails.push({label: 'Wheel Type', value: h(data.tipe_roda) || '-', fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda', mergeKey: 'roda_id', dbId: data.roda_id, selectValue: data.roda_id});
+        specDetails.push({label: 'Valve', value: h(data.jumlah_valve) || '-', fieldName: 'valve', required: false, dropdownType: 'valve', mergeKey: 'valve_id', dbId: data.valve_id, selectValue: data.valve_id});
+        specDetails.push({label: 'Keterangan / catatan PO', value: h(data.keterangan) || '-', fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null, mergeKey: 'keterangan', dbId: '', selectValue: ''});
+        
+        const embed = options.embedAccessoryRows || {};
+        const embedBat = !!embed.battery;
+        const embedChg = !!embed.charger;
+        const embedAtt = !!embed.attachment;
+
+        const reqBat = !isNonElectricDept && pkgFlags.includes('battery');
+        const reqChg = !isNonElectricDept && pkgFlags.includes('charger');
+        const reqAtt = pkgFlags.includes('attachment');
+
+        if (reqBat && !embedBat) {
+            specDetails.push({label: 'Tipe baterai (master)', value: '-', fieldName: 'po_baterai', required: true, noVerifyCheck: false, dropdownType: 'baterai_master', mergeKey: 'baterai_id', dbId: data.baterai_id, selectValue: data.baterai_id});
+        }
+        if (reqChg && !embedChg) {
+            specDetails.push({label: 'Tipe charger (master)', value: '-', fieldName: 'po_charger', required: true, noVerifyCheck: false, dropdownType: 'charger_master', mergeKey: 'charger_id', dbId: data.charger_id, selectValue: data.charger_id});
+        }
+        if (reqAtt && !embedAtt) {
+            specDetails.push({label: 'Attachment (master)', value: '-', fieldName: 'po_attachment', required: true, noVerifyCheck: false, dropdownType: 'attachment_master', mergeKey: 'attachment_id', dbId: data.attachment_id, selectValue: data.attachment_id});
+        }
+
+        specDetails.push({label: 'Serial Number Unit', value: h(data.serial_number_po) || 'Belum ada SN', fieldName: 'sn_unit', required: true});
         specDetails.push({label: 'SN Mast', value: h(data.sn_mast_po) || 'Belum ada SN', fieldName: 'sn_mast', required: true});
         specDetails.push({label: 'SN Mesin', value: h(data.sn_mesin_po) || 'Belum ada SN', fieldName: 'sn_mesin', required: true});
+        if (reqBat && !embedBat) {
+            specDetails.push({label: 'SN Baterai', value: h(data.sn_baterai_po) || 'Belum ada SN', fieldName: 'sn_baterai', required: true, noVerifyCheck: false});
+        }
+        if (reqChg && !embedChg) {
+            specDetails.push({label: 'SN Charger', value: h(data.sn_charger_po) || 'Belum ada SN', fieldName: 'sn_charger', required: true, noVerifyCheck: false});
+        }
+        if (reqAtt && !embedAtt) {
+            specDetails.push({label: 'SN Attachment', value: h(data.sn_attachment_po) || 'Belum ada SN', fieldName: 'sn_attachment', required: true, noVerifyCheck: false});
+        }
         
         // Build table rows with editable fields (like workorder)
         let tableRows = '';
@@ -966,9 +1081,27 @@
             // Nilai awal "Real Lapangan" selalu sama dengan "Database" (akan berubah jika user edit)
             const realValue = dbValue;
             
+            const rowMerge = spec.mergeKey ? ` data-merge-key="${spec.mergeKey}"` : '';
+            const rowDbId = (spec.dbId !== undefined && spec.dbId !== null && spec.dbId !== '') ? ` data-db-id="${spec.dbId}"` : '';
+            const rowOptionalClass = spec.noVerifyCheck ? ' wh-no-verify-check' : '';
+            const optionalVerifyCells = spec.noVerifyCheck
+                ? `<td colspan="2" class="text-center text-muted small" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">Opsional — tidak wajib centang Sesuai / Tidak sesuai</td>`
+                : `<td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
+                            <input type="checkbox" class="form-check-input verify-checkbox-sesuai cursor-pointer" 
+                                   id="${checkId}_sesuai" 
+                                   data-field="${spec.fieldName}"
+                                   data-row-index="${index}">
+                        </td>
+                        <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
+                            <input type="checkbox" class="form-check-input verify-checkbox-tidak-sesuai cursor-pointer" 
+                                   id="${checkId}_tidak_sesuai" 
+                                   data-field="${spec.fieldName}"
+                                   data-row-index="${index}">
+                        </td>`;
+            
             if (spec.isTextarea) {
                 tableRows += `
-                    <tr data-field="${spec.fieldName}">
+                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px; vertical-align: middle;">${spec.label}${spec.required ? ' <span class="text-danger">*</span>' : ''}</td>
                         <td style="background-color: #fff; padding: 8px;">
                             <textarea class="form-control form-control-sm" id="${dbId}" readonly rows="2" style="border: none; background: transparent; padding: 0; resize: none;">${dbValue}</textarea>
@@ -981,36 +1114,21 @@
                                       placeholder="Masukkan ${spec.label.toLowerCase()} real"
                                       style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px; resize: vertical;">${realValue}</textarea>
                         </td>
-                        <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
-                            <input type="checkbox" class="form-check-input verify-checkbox-sesuai" 
-                                   id="${checkId}_sesuai" 
-                                   data-field="${spec.fieldName}"
-                                   data-row-index="${index}"
-                                   class="cursor-pointer">
-                        </td>
-                        <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
-                            <input type="checkbox" class="form-check-input verify-checkbox-tidak-sesuai" 
-                                   id="${checkId}_tidak_sesuai" 
-                                   data-field="${spec.fieldName}"
-                                   data-row-index="${index}"
-                                   class="cursor-pointer">
-                        </td>
+                        ${optionalVerifyCells}
                     </tr>
                 `;
             } else {
-                // Check if this field should use dropdown (not SN fields)
-                const isSNField = spec.fieldName && (spec.fieldName.includes('sn_') || spec.fieldName === 'sn_unit' || spec.fieldName === 'sn_mast' || spec.fieldName === 'sn_mesin');
+                const isSNField = spec.fieldName && (spec.fieldName.startsWith('sn_') || spec.fieldName === 'sn_unit');
                 const useDropdown = spec.dropdownType && !isSNField;
                 
                 let realFieldInput = '';
                 if (useDropdown) {
-                    // Check if this is a cascading dropdown
-                    const isCascading = spec.cascadingParent && spec.parentValue;
+                    const isCascading = spec.cascadingParent && spec.parentValue && spec.parentValue !== '-';
                     const cascadingAttr = isCascading ? `data-cascading-parent="${spec.cascadingParent}" data-parent-value="${spec.parentValue}"` : '';
                     
-                    // Create dropdown for non-SN fields
-                    // Don't pre-populate with "-" or empty value - let AJAX load the options
                     const hasValidValue = realValue && realValue !== '-' && realValue !== '';
+                    const selVal = (spec.selectValue !== undefined && spec.selectValue !== null && spec.selectValue !== '') ? String(spec.selectValue) : '';
+                    const seedFromId = selVal && dbValue && dbValue !== '-' ? `<option value="${selVal}" selected>${dbValue}</option>` : '';
                     
                     realFieldInput = `
                         <select class="form-select form-select-sm verify-field verify-dropdown" 
@@ -1022,7 +1140,7 @@
                                 ${spec.required ? 'required' : ''}
                                 style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
                             <option value="">Pilih ${spec.label}...</option>
-                            ${hasValidValue ? `<option value="${realValue}" selected>${realValue}</option>` : ''}
+                            ${seedFromId || (hasValidValue ? `<option value="${realValue}" selected>${realValue}</option>` : '')}
                         </select>
                     `;
                 } else {
@@ -1042,7 +1160,7 @@
                 const dbFieldInput = `<input type="text" class="form-control form-control-sm" id="${dbId}" value="${dbValue}" readonly style="border: none; background: transparent; padding: 0;">`;
                 
                 tableRows += `
-                    <tr data-field="${spec.fieldName}">
+                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px; vertical-align: middle;">${spec.label}${spec.required ? ' <span class="text-danger">*</span>' : ''}</td>
                         <td style="background-color: #fff; padding: 8px;">
                             ${dbFieldInput}
@@ -1050,27 +1168,44 @@
                         <td style="background-color: #fff; padding: 8px;">
                             ${realFieldInput}
                         </td>
-                        <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
-                            <input type="checkbox" class="form-check-input verify-checkbox-sesuai" 
-                                   id="${checkId}_sesuai" 
-                                   data-field="${spec.fieldName}"
-                                   data-row-index="${index}"
-                                   class="cursor-pointer">
-                        </td>
-                        <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
-                            <input type="checkbox" class="form-check-input verify-checkbox-tidak-sesuai" 
-                                   id="${checkId}_tidak_sesuai" 
-                                   data-field="${spec.fieldName}"
-                                   data-row-index="${index}"
-                                   class="cursor-pointer">
-                        </td>
+                        ${optionalVerifyCells}
                     </tr>
                 `;
             }
         });
         
+        let accHtml = '';
+        if (pkgFlags.includes('accessories')) {
+            accHtml = '<div class="mb-3 border rounded p-3 bg-light"><label class="form-label fw-semibold mb-2">Aksesoris terpasang <span class="text-muted fw-normal">(kunci quotation; wajib konfirmasi jika PO mencentang paket aksesoris)</span></label><div class="row row-cols-1 row-cols-md-2 g-1 small">';
+            accOpts.forEach(function(pair) {
+                const key = pair[0];
+                const lbl = pair[1];
+                const chk = unitAccSelected.indexOf(key) >= 0 ? ' checked' : '';
+                accHtml += '<div class="col"><div class="form-check"><input class="form-check-input verify-acc" type="checkbox" data-acc-key="' + key + '" id="wh_acc_' + key + '"' + chk + '><label class="form-check-label" for="wh_acc_' + key + '">' + lbl + '</label></div></div>';
+            });
+            accHtml += '</div></div>';
+        }
+        
+        const vendorSpecEsc = data.vendor_spec_text ? String(data.vendor_spec_text).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+        const vendorCodeLine = data.vendor_model_code ? ('<div><strong>Kode model pabrik (arsip):</strong> ' + h(data.vendor_model_code) + '</div>') : '';
+        const vendorBlock = (data.vendor_model_code || data.vendor_spec_text) ? (
+            '<div class="alert alert-secondary mb-3 small">' +
+            '<div class="fw-semibold mb-1"><i class="fas fa-file-invoice me-1"></i>Acuan vendor (PI)</div>' +
+            vendorCodeLine +
+            (vendorSpecEsc ? '<div class="mt-2"><strong>Teks spesifikasi vendor:</strong><pre class="mb-0 mt-1 p-2 bg-white border rounded" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:0.8rem;">' + vendorSpecEsc + '</pre></div>' : '') +
+            (pkgFlags.length ? '<div class="mt-2 text-muted">Paket dideklarasikan saat PO: ' + pkgFlags.join(', ') + '</div>' : '') +
+            '</div>'
+        ) : '';
+
+        const showNonElectricNote = isNonElectricDept && ((reqBat && !embedBat) || (reqChg && !embedChg));
+        const nonElectricNoteHtml = showNonElectricNote
+            ? '<div class="alert alert-light border mb-3 small py-2"><i class="fas fa-info-circle text-primary me-1"></i><strong>DIESEL / GASOLINE:</strong> Baterai &amp; charger (master + SN) bersifat <strong>opsional</strong>; tidak wajib centang Sesuai/Tidak sesuai pada baris tersebut — selaras dengan asisten PO.</div>'
+            : '';
+
+        const whDel = options.whDeliveryId != null && options.whDeliveryId !== '' ? String(options.whDeliveryId) : '';
+
         return `
-            <form id="unitVerificationFormInline" data-unit-id="${data.id_po_unit}" data-po-id="${data.po_id}">
+            <form id="unitVerificationFormInline" data-unit-id="${data.id_po_unit}" data-po-id="${data.po_id}" data-wh-delivery-id="${whDel}">
                 <div class="card table-card animate__animated animate__fadeIn">
                     <div class="card-header p-3" style="background-color: #f5f5f5; border-bottom: 1px solid #ccc;">
                         <div class="d-flex justify-content-between align-items-center">
@@ -1080,6 +1215,8 @@
                         </div>
                     </div>
                     <div class="card-body p-4">
+                        ${vendorBlock}
+                        ${nonElectricNoteHtml}
                         <div class="alert alert-info mb-3" style="font-size: 0.85rem;">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Cara kerja:</strong> 
@@ -1104,7 +1241,7 @@
                                 ${tableRows || '<tr><td colspan="5" class="text-center text-muted">Tidak ada data</td></tr>'}
                             </tbody>
                         </table>
-                        
+                        ${accHtml}
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="lokasi_unit_inline" class="form-label fw-semibold">
@@ -1149,7 +1286,7 @@
             </form>`;
     }
 
-    function updateUnitStatusVerifikasi(idUnit, poId, status, snData = {}, catatan = '', lokasiUnit = '', discrepancies = []) {
+    function updateUnitStatusVerifikasi(idUnit, poId, status, snData = {}, catatan = '', lokasiUnit = '', discrepancies = [], poUnitFields = {}) {
         window._verifyingUnit = true;
         $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', true);
         
@@ -1168,7 +1305,10 @@
                 sn_unit: snData['sn_unit'] || '',
                 sn_mast: snData['sn_mast'] || '',
                 sn_mesin: snData['sn_mesin'] || '',
-                sn_baterai: snData['sn_baterai'] || ''
+                sn_baterai: snData['sn_baterai'] || '',
+                sn_charger: snData['sn_charger'] || '',
+                sn_attachment: snData['sn_attachment'] || '',
+                po_unit_fields: JSON.stringify(poUnitFields)
             },
             dataType: "JSON",
             beforeSend: function() {
@@ -1188,18 +1328,35 @@
                 
                 if (r.statusCode == 200) {
                     $('#modalUpdateSN').modal('hide');
-                    let sisaElem = $(`#lbl-remain-po-${poId}`);
-                    let sisaCount = parseInt(sisaElem.text()) - 1;
-                    sisaElem.text(`${sisaCount} Unit`);
-                    
-                    $(`#list-item-${idUnit}`).fadeOut(500, function() { 
-                        $(this).remove(); 
-                        if (sisaCount === 0) {
-                            $(`[data-po-id="${poId}"]`).fadeOut(500);
+                    const whDel = $('#unitVerificationFormInline').data('whDeliveryId');
+                    if (whDel) {
+                        $(`#bundle-line-d${whDel}-u${idUnit}`).remove();
+                        const sisaPl = $(`#lbl-remain-pl-${whDel}`);
+                        let n = parseInt(sisaPl.text(), 10) || 0;
+                        if (n > 0) {
+                            sisaPl.text(n - 1);
                         }
-                    });
-                    
-                    $('#unit-detail-view-container').html(`
+                        $('#wh-verification-detail-container').html(`
+                            <div class="card table-card">
+                                <div class="card-body text-center p-5">
+                                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                    <h5 class="text-muted">Verifikasi unit berhasil. Pilih paket lain dari daftar.</h5>
+                                </div>
+                            </div>
+                        `);
+                    } else {
+                        let sisaElem = $(`#lbl-remain-po-${poId}`);
+                        let sisaCount = parseInt(sisaElem.text(), 10) - 1;
+                        sisaElem.text(`${sisaCount} Unit`);
+
+                        $(`#list-item-${idUnit}`).fadeOut(500, function() {
+                            $(this).remove();
+                            if (sisaCount === 0) {
+                                $(`[data-po-id="${poId}"]`).fadeOut(500);
+                            }
+                        });
+
+                        $('#unit-detail-view-container').html(`
                         <div class="card table-card">
                             <div class="card-body text-center p-5">
                                 <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
@@ -1207,6 +1364,7 @@
                             </div>
                         </div>
                     `);
+                    }
                     unitToast('success', r.message || 'Unit berhasil diverifikasi.');
                 } else {
                     unitToast('error', r.message || 'Verifikasi gagal.');
@@ -1243,6 +1401,72 @@
             }
         });
     }
+
+    function whBundleParsePkgFlags(d) {
+        try {
+            const p = d.package_flags;
+            if (p == null || p === '') return [];
+            if (typeof p === 'string') {
+                const j = JSON.parse(p);
+                return Array.isArray(j) ? j : [];
+            }
+            return Array.isArray(p) ? p : [];
+        } catch (e) { return []; }
+    }
+
+    function whBundleDepartemenIsNonElectric(name) {
+        const u = String(name || '').trim().toUpperCase();
+        return u === 'DIESEL' || u === 'GASOLINE';
+    }
+
+    window.createBundleVerificationCard = function(bundle) {
+        const unit = bundle.unit;
+        const embed = bundle.embed_accessories || {};
+        const acc = bundle.accessories || {};
+        const idDelivery = bundle.id_delivery;
+        const pkgFlags = whBundleParsePkgFlags(unit);
+        const isNonElectricDept = whBundleDepartemenIsNonElectric(unit.nama_departemen);
+        const showBat = pkgFlags.includes('battery') && !isNonElectricDept;
+        const showChg = pkgFlags.includes('charger') && !isNonElectricDept;
+        const showAtt = pkgFlags.includes('attachment');
+
+        const unitOpts = {
+            embedAccessoryRows: {
+                battery: !!embed.battery && showBat,
+                charger: !!embed.charger && showChg,
+                attachment: !!embed.attachment && showAtt
+            },
+            whDeliveryId: idDelivery
+        };
+        let html = createUnitDetailCard(unit, unitOpts);
+        const order = ['attachment', 'charger', 'battery'];
+        const titles = { attachment: 'Verifikasi Attachment', charger: 'Verifikasi Charger', battery: 'Verifikasi Baterai' };
+        let idx = 0;
+        order.forEach(function(key) {
+            const row = acc[key];
+            if (!row || typeof window.createAttachmentDetailCard !== 'function') return;
+            if (key === 'battery' && !showBat) return;
+            if (key === 'charger' && !showChg) return;
+            if (key === 'attachment' && !showAtt) return;
+            const sfx = 'd' + idDelivery + '_u' + (unit.id_po_unit || '') + '_' + key + '_' + (idx++);
+            html += '<div class="wh-embed-att-block mt-3 border-top pt-3" data-po-attachment-id="' + row.id_po_attachment + '">';
+            html += '<h6 class="fw-bold mb-2">' + titles[key] + '</h6>';
+            html += window.createAttachmentDetailCard(row, sfx, { whDeliveryId: idDelivery });
+            html += '</div>';
+        });
+        return '<div class="wh-bundle-verify-root" data-delivery-id="' + idDelivery + '">' + html + '</div>';
+    };
+
+    window.createOrphanAttachmentVerificationCard = function(payload) {
+        const att = payload.orphan_attachment;
+        const idDelivery = payload.id_delivery;
+        const sfx = 'orphan_d' + idDelivery + '_a' + (att.id_po_attachment || '');
+        let inner = '';
+        if (typeof window.createAttachmentDetailCard === 'function') {
+            inner = window.createAttachmentDetailCard(att, sfx, { whDeliveryId: idDelivery });
+        }
+        return '<div class="wh-orphan-verify-root" data-delivery-id="' + idDelivery + '">' + inner + '</div>';
+    };
 })();
 </script>
 

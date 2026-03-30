@@ -15,6 +15,7 @@ use App\Models\InventoryAttachmentModel;
 use App\Models\InventoryBatteryModel;
 use App\Models\InventoryChargerModel;
 use App\Models\VerificationAuditLogModel;
+use App\Libraries\DeliveryBundleLibrary;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
@@ -89,14 +90,10 @@ class WarehousePO extends BaseController
     }
 
     /**
-     * Unified PO Verification Page (3 tabs in 1 page)
+     * Unified PO Verification Page — daftar PL (delivery) + bundle unit/aksesoris (tanpa sparepart).
      */
     public function whVerification()
     {
-        // Get data untuk semua tipe PO dengan detail lengkap dan packing list
-        // Only show items with Received delivery status
-        // Get unit data with delivery info - similar to attachment approach
-        // Don't use GROUP BY, let each unit have its own tanggal_datang like attachment
         $dataUnit = $this->pounitsmodel
             ->select('
                 po_units.*, 
@@ -106,6 +103,7 @@ class WarehousePO extends BaseController
                 mu.model_unit, 
                 mu.merk_unit as brand_from_model_table,
                 tu.jenis as jenis, 
+                d.id_departemen,
                 d.nama_departemen,
                 k.kapasitas_unit,
                 tm.tipe_mast, tm.tinggi_mast,
@@ -113,6 +111,8 @@ class WarehousePO extends BaseController
                 tb.tipe_ban,
                 jr.tipe_roda,
                 v.jumlah_valve,
+                pd.id_delivery,
+                pdi.id_delivery_item,
                 pd.packing_list_no, 
                 pd.actual_date as tanggal_datang,
                 pd.updated_at,
@@ -129,17 +129,15 @@ class WarehousePO extends BaseController
             ->join('tipe_ban tb', 'tb.id_ban = po_units.ban_id', 'left')
             ->join('jenis_roda jr', 'jr.id_roda = po_units.roda_id', 'left')
             ->join('valve v', 'v.id_valve = po_units.valve_id', 'left')
-            // INNER JOIN to only show units that are in a delivery
             ->join('po_delivery_items pdi', 'pdi.id_po_unit = po_units.id_po_unit', 'inner')
-            // INNER JOIN to only show units in "Received" deliveries
             ->join('po_deliveries pd', 'pd.id_delivery = pdi.delivery_id', 'inner')
             ->where('po_units.status_verifikasi', 'Belum Dicek')
-            ->where('pd.status', 'Received') // Only Received deliveries
+            ->where('pd.status', 'Received')
             ->orderBy('pd.actual_date', 'DESC')
-            ->orderBy('po_units.id_po_unit', 'DESC') // Fallback ordering jika tidak ada delivery date
+            ->orderBy('pd.id_delivery', 'DESC')
+            ->orderBy('po_units.id_po_unit', 'DESC')
             ->get()->getResultArray();
 
-        // Only show attachments with Received delivery status
         $dataAttachment = $this->poAttachmentModel
             ->select('
                 po_attachment.*, 
@@ -148,6 +146,8 @@ class WarehousePO extends BaseController
                 a.merk as merk_attachment, a.model as model_attachment, a.tipe as tipe_attachment,
                 b.merk_baterai as merk_battery, b.tipe_baterai as tipe_battery, b.jenis_baterai as jenis_battery,
                 c.merk_charger as merk_charger, c.tipe_charger as tipe_charger,
+                pd.id_delivery,
+                pdi.id_delivery_item,
                 pd.packing_list_no, pd.actual_date as tanggal_datang,
                 pd.updated_at,
                 pd.status as delivery_status,
@@ -157,26 +157,15 @@ class WarehousePO extends BaseController
             ->join('attachment a', 'a.id_attachment = po_attachment.attachment_id', 'left')
             ->join('baterai b', 'b.id = po_attachment.baterai_id', 'left')
             ->join('charger c', 'c.id_charger = po_attachment.charger_id', 'left')
-            // INNER JOIN to only show items with delivery records
             ->join('po_delivery_items pdi', 'pdi.id_po_attachment = po_attachment.id_po_attachment', 'inner')
-            // INNER JOIN to only show items with "Received" status
             ->join('po_deliveries pd', 'pd.id_delivery = pdi.delivery_id', 'inner')
             ->where('po_attachment.status_verifikasi', 'Belum Dicek')
-            ->where('pd.status', 'Received') // Only Received deliveries
+            ->where('pd.status', 'Received')
             ->orderBy('pd.actual_date', 'DESC')
+            ->orderBy('pd.id_delivery', 'DESC')
             ->get()->getResultArray();
 
-        $dataSparepart = $this->poSparepartItemModel
-            ->select('po_sparepart_items.*, purchase_orders.no_po, purchase_orders.id_po')
-            ->join('purchase_orders', 'purchase_orders.id_po = po_sparepart_items.po_id')
-            ->where('po_sparepart_items.status_verifikasi', 'Belum Dicek')
-            ->orderBy('purchase_orders.no_po', 'ASC')
-            ->get()->getResultArray();
-
-        // Group data by PO
-        $detailGroupUnit = $this->groupByPO($dataUnit, 'id_po_unit');
-        $detailGroupAttachment = $this->groupByPO($dataAttachment, 'id_po_item');
-        $detailGroupSparepart = $this->groupByPO($dataSparepart, 'id');
+        $deliveryGroups = $this->buildWhDeliveryVerificationGroups($dataUnit, $dataAttachment);
 
         $data = [
             'title' => 'PO Verification | Warehouse',
@@ -184,12 +173,218 @@ class WarehousePO extends BaseController
                 '/' => 'Dashboard',
                 '/warehouse/wh_verification' => 'PO Verification'
             ],
-            'detailGroupUnit' => $detailGroupUnit,
-            'detailGroupAttachment' => $detailGroupAttachment,
-            'detailGroupSparepart' => $detailGroupSparepart
+            'deliveryGroups' => $deliveryGroups,
         ];
 
         return view('warehouse/purchase_orders/wh_verification', $data);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $dataUnit
+     * @param list<array<string, mixed>> $dataAttachment
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function buildWhDeliveryVerificationGroups(array $dataUnit, array $dataAttachment): array
+    {
+        $unitByDeliveryUnit = [];
+        foreach ($dataUnit as $row) {
+            $did = (int) ($row['id_delivery'] ?? 0);
+            $uid = (int) ($row['id_po_unit'] ?? 0);
+            if ($did > 0 && $uid > 0) {
+                $unitByDeliveryUnit[$did][$uid] = $this->normalizeWhAttachmentItemTypesInRow($row);
+            }
+        }
+
+        $attByDeliveryAtt = [];
+        foreach ($dataAttachment as $row) {
+            $did = (int) ($row['id_delivery'] ?? 0);
+            $aid = (int) ($row['id_po_attachment'] ?? 0);
+            if ($did > 0 && $aid > 0) {
+                $attByDeliveryAtt[$did][$aid] = $this->normalizeWhAttachmentItemTypesInRow($row);
+            }
+        }
+
+        $db = \Config\Database::connect();
+        $pairSql = "
+            SELECT 
+                pdi.*,
+                pu.baterai_id AS fk_unit_baterai,
+                pu.charger_id AS fk_unit_charger,
+                pu.attachment_id AS fk_unit_attachment,
+                pa.baterai_id AS line_pa_baterai,
+                pa.charger_id AS line_pa_charger,
+                pa.attachment_id AS line_pa_attachment
+            FROM po_delivery_items pdi
+            INNER JOIN po_deliveries pd ON pd.id_delivery = pdi.delivery_id AND pd.status = 'Received'
+            LEFT JOIN po_units pu ON pdi.id_po_unit = pu.id_po_unit AND LOWER(TRIM(pdi.item_type)) = 'unit'
+            LEFT JOIN po_attachment pa ON pdi.id_po_attachment = pa.id_po_attachment
+                AND LOWER(TRIM(pdi.item_type)) IN ('attachment','battery','charger')
+            WHERE
+                (
+                    LOWER(TRIM(pdi.item_type)) = 'unit'
+                    AND pu.id_po_unit IS NOT NULL
+                    AND pu.status_verifikasi = 'Belum Dicek'
+                )
+                OR (
+                    LOWER(TRIM(pdi.item_type)) IN ('attachment','battery','charger')
+                    AND pa.id_po_attachment IS NOT NULL
+                    AND pa.status_verifikasi = 'Belum Dicek'
+                )
+            ORDER BY pdi.delivery_id ASC, pdi.id_delivery_item ASC
+        ";
+        $pairRows = $db->query($pairSql)->getResult();
+        $itemsByDelivery = [];
+        foreach ($pairRows as $obj) {
+            $did = (int) $obj->delivery_id;
+            $itemsByDelivery[$did][] = $obj;
+        }
+
+        $metaByDelivery = [];
+        foreach (array_merge($dataUnit, $dataAttachment) as $row) {
+            $did = (int) ($row['id_delivery'] ?? 0);
+            if ($did <= 0) {
+                continue;
+            }
+            if (! isset($metaByDelivery[$did])) {
+                $metaByDelivery[$did] = [
+                    'id_delivery' => $did,
+                    'no_po' => $row['no_po'] ?? '',
+                    'po_id' => (int) ($row['po_id'] ?? 0),
+                    'packing_list_no' => $row['packing_list_no'] ?? '',
+                    'tanggal_datang' => $row['tanggal_datang'] ?? null,
+                    'updated_at' => $row['updated_at'] ?? null,
+                    'delivery_status' => $row['delivery_status'] ?? null,
+                ];
+            } else {
+                $m = &$metaByDelivery[$did];
+                if (empty($m['packing_list_no']) && ! empty($row['packing_list_no'])) {
+                    $m['packing_list_no'] = $row['packing_list_no'];
+                }
+                $td = $row['tanggal_datang'] ?? null;
+                if (! empty($td)) {
+                    $cur = $m['tanggal_datang'] ?? null;
+                    $tNew = is_string($td) ? strtotime($td) : (int) $td;
+                    $tCur = (! empty($cur) && is_string($cur)) ? strtotime($cur) : (int) ($cur ?: 0);
+                    if ($tNew > $tCur) {
+                        $m['tanggal_datang'] = $td;
+                    }
+                }
+            }
+        }
+
+        $deliveryIds = array_keys($itemsByDelivery);
+        usort($deliveryIds, static function ($a, $b) use ($metaByDelivery) {
+            $ta = $metaByDelivery[$a]['tanggal_datang'] ?? '';
+            $tb = $metaByDelivery[$b]['tanggal_datang'] ?? '';
+            $sa = $ta ? strtotime((string) $ta) : 0;
+            $sb = $tb ? strtotime((string) $tb) : 0;
+            if ($sa !== $sb) {
+                return $sb <=> $sa;
+            }
+
+            return $b <=> $a;
+        });
+
+        $groups = [];
+        foreach ($deliveryIds as $did) {
+            $items = $itemsByDelivery[$did] ?? [];
+            [$bundles, $orphans] = DeliveryBundleLibrary::pairDeliveryItemsIntoBundles($items);
+            $meta = $metaByDelivery[$did] ?? [
+                'id_delivery' => $did,
+                'no_po' => '',
+                'po_id' => 0,
+                'packing_list_no' => '',
+                'tanggal_datang' => null,
+                'updated_at' => null,
+                'delivery_status' => null,
+            ];
+
+            $outBundles = [];
+            foreach ($bundles as $b) {
+                $u = $b['unit'];
+                $uid = (int) ($u['id_po_unit'] ?? 0);
+                $unitFull = $unitByDeliveryUnit[$did][$uid] ?? null;
+                if ($unitFull === null) {
+                    continue;
+                }
+                $embed = [
+                    'attachment' => false,
+                    'charger' => false,
+                    'battery' => false,
+                ];
+                $attRows = ['attachment' => null, 'charger' => null, 'battery' => null];
+                foreach (['charger', 'battery', 'attachment'] as $slot) {
+                    $line = $b[$slot] ?? null;
+                    if (! $line || empty($line['id_po_attachment'])) {
+                        continue;
+                    }
+                    $aid = (int) $line['id_po_attachment'];
+                    $full = $attByDeliveryAtt[$did][$aid] ?? null;
+                    if ($full === null) {
+                        continue;
+                    }
+                    $t = strtolower((string) ($full['item_type'] ?? ''));
+                    if ($t === 'charger') {
+                        $embed['charger'] = true;
+                        $attRows['charger'] = $full;
+                    } elseif ($t === 'battery') {
+                        $embed['battery'] = true;
+                        $attRows['battery'] = $full;
+                    } else {
+                        $embed['attachment'] = true;
+                        $attRows['attachment'] = $full;
+                    }
+                }
+                $outBundles[] = [
+                    'unit' => $unitFull,
+                    'embed_accessories' => $embed,
+                    'accessories' => $attRows,
+                ];
+            }
+
+            $orphanRows = [];
+            foreach (['attachments', 'chargers', 'batteries'] as $k) {
+                foreach ($orphans[$k] ?? [] as $line) {
+                    $aid = (int) ($line['id_po_attachment'] ?? 0);
+                    if ($aid <= 0) {
+                        continue;
+                    }
+                    $full = $attByDeliveryAtt[$did][$aid] ?? null;
+                    if ($full !== null) {
+                        $orphanRows[] = $full;
+                    }
+                }
+            }
+
+            $groups[] = [
+                'meta' => $meta,
+                'pending_count' => count($items),
+                'bundles' => $outBundles,
+                'orphans' => $orphanRows,
+            ];
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeWhAttachmentItemTypesInRow(array $row): array
+    {
+        $t = strtolower(trim((string) ($row['item_type'] ?? '')));
+        if ($t === 'battery') {
+            $row['item_type'] = 'Battery';
+        } elseif ($t === 'charger') {
+            $row['item_type'] = 'Charger';
+        } elseif ($t === 'attachment') {
+            $row['item_type'] = 'Attachment';
+        }
+
+        return $row;
     }
 
     /**
@@ -429,6 +624,26 @@ class WarehousePO extends BaseController
                         $query->where('merk_charger', $merk);
                     }
                     $options = $query->get()->getResultArray();
+                    break;
+                case 'baterai_master':
+                    $options = $db->table('baterai')
+                        ->select('id as id, CONCAT(merk_baterai, " ", tipe_baterai) as text')
+                        ->orderBy('merk_baterai', 'ASC')
+                        ->orderBy('tipe_baterai', 'ASC')
+                        ->get()->getResultArray();
+                    break;
+                case 'charger_master':
+                    $options = $db->table('charger')
+                        ->select('id_charger as id, CONCAT(merk_charger, " ", tipe_charger) as text')
+                        ->orderBy('merk_charger', 'ASC')
+                        ->get()->getResultArray();
+                    break;
+                case 'attachment_master':
+                    $options = $db->table('attachment')
+                        ->select('id_attachment as id, CONCAT(tipe, " ", merk, " ", model) as text')
+                        ->orderBy('tipe', 'ASC')
+                        ->orderBy('merk', 'ASC')
+                        ->get()->getResultArray();
                     break;
                 default:
                     return $this->response->setJSON([
@@ -884,8 +1099,101 @@ class WarehousePO extends BaseController
             }
             $dataToUpdate[$k] = $decoded[$k];
         }
+        if (!empty($dataToUpdate['tipe_unit_id'])) {
+            $dataToUpdate['jenis_unit'] = (int) $dataToUpdate['tipe_unit_id'];
+        }
 
         return $dataToUpdate;
+    }
+
+    private function allocateInventoryItemNumber(string $table, string $prefix): string
+    {
+        $db = \Config\Database::connect();
+        $allowed = ['inventory_batteries', 'inventory_chargers', 'inventory_attachments'];
+        if (!in_array($table, $allowed, true)) {
+            return $prefix . str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT);
+        }
+        $row = $db->query('SELECT MAX(id) AS m FROM ' . $db->escapeIdentifiers($table))->getRowArray();
+        $next = (int) ($row['m'] ?? 0) + 1;
+
+        return $prefix . str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * @param array<string,mixed> $effective Row setelah merge update + SN dari request
+     * @param array<string,mixed> $snData
+     */
+    private function validatePoUnitSesuaiCompleteness(array $effective, array $snData): ?string
+    {
+        $snUnit = trim((string) ($snData['serial_number_po'] ?? $effective['serial_number_po'] ?? ''));
+        $snMesin = trim((string) ($snData['sn_mesin_po'] ?? $effective['sn_mesin_po'] ?? ''));
+        if ($snUnit === '' || $snMesin === '') {
+            return 'Serial number unit dan mesin wajib diisi untuk status Sesuai.';
+        }
+
+        $needInt = [
+            'tipe_unit_id' => 'Jenis / tipe unit',
+            'model_unit_id' => 'Model unit',
+            'kapasitas_id' => 'Kapasitas',
+            'mast_id' => 'Mast',
+            'mesin_id' => 'Mesin',
+            'ban_id' => 'Ban',
+            'roda_id' => 'Roda',
+            'valve_id' => 'Valve',
+        ];
+        foreach ($needInt as $col => $label) {
+            $v = (int) ($effective[$col] ?? 0);
+            if ($v <= 0) {
+                return "Untuk Sesuai, {$label} wajib dipilih (lengkapi di form verifikasi).";
+            }
+        }
+        $tahun = (int) ($effective['tahun_po'] ?? 0);
+        if ($tahun <= 1900) {
+            return 'Tahun unit wajib diisi untuk status Sesuai.';
+        }
+        $merk = trim((string) ($effective['merk_unit'] ?? ''));
+        if ($merk === '') {
+            return 'Brand (merk) wajib diisi untuk status Sesuai.';
+        }
+
+        $flagsRaw = $effective['package_flags'] ?? null;
+        $flags = [];
+        if (is_string($flagsRaw) && $flagsRaw !== '') {
+            $decoded = json_decode($flagsRaw, true);
+            $flags = is_array($decoded) ? $decoded : [];
+        } elseif (is_array($flagsRaw)) {
+            $flags = $flagsRaw;
+        }
+
+        if (in_array('battery', $flags, true)) {
+            if ((int) ($effective['baterai_id'] ?? 0) <= 0) {
+                return 'Paket menyertakan baterai: pilih tipe baterai dan isi SN baterai sebelum Sesuai.';
+            }
+            $snBat = trim((string) ($snData['sn_baterai_po'] ?? $effective['sn_baterai_po'] ?? ''));
+            if ($snBat === '') {
+                return 'Paket menyertakan baterai: SN baterai wajib diisi sebelum Sesuai.';
+            }
+        }
+        if (in_array('charger', $flags, true)) {
+            if ((int) ($effective['charger_id'] ?? 0) <= 0) {
+                return 'Paket menyertakan charger: pilih tipe charger dan isi SN charger sebelum Sesuai.';
+            }
+            $snCh = trim((string) ($this->request->getPost('sn_charger') ?? $effective['sn_charger_po'] ?? ''));
+            if ($snCh === '') {
+                return 'Paket menyertakan charger: SN charger wajib diisi sebelum Sesuai.';
+            }
+        }
+        if (in_array('attachment', $flags, true)) {
+            if ((int) ($effective['attachment_id'] ?? 0) <= 0) {
+                return 'Paket menyertakan attachment: pilih tipe attachment dan isi SN attachment sebelum Sesuai.';
+            }
+            $snAtt = trim((string) ($effective['sn_attachment_po'] ?? ''));
+            if ($snAtt === '') {
+                return 'Paket menyertakan attachment: SN attachment wajib diisi sebelum Sesuai.';
+            }
+        }
+
+        return null;
     }
 
     private function createLinkedInventoryComponents(int $inventoryUnitId, int $poId, array $pu, string $lokasi, array $snData): void
@@ -905,10 +1213,9 @@ class WarehousePO extends BaseController
         if (!empty($pu['baterai_id'])) {
             $sn = trim((string) ($snData['sn_baterai_po'] ?? $pu['sn_baterai_po'] ?? ''));
             if ($sn !== '') {
-                $cnt = $this->inventoryBatteryModel->countAll() + 1;
                 $this->inventoryBatteryModel->skipValidation(true);
                 $this->inventoryBatteryModel->insert(array_merge($common, [
-                    'item_number'     => 'B' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'item_number'     => $this->allocateInventoryItemNumber('inventory_batteries', 'B'),
                     'battery_type_id' => (int) $pu['baterai_id'],
                     'serial_number'   => $sn,
                 ]));
@@ -918,10 +1225,9 @@ class WarehousePO extends BaseController
         if (!empty($pu['charger_id'])) {
             $sn = trim((string) ($this->request->getPost('sn_charger') ?? $pu['sn_charger_po'] ?? ''));
             if ($sn !== '') {
-                $cnt = $this->inventoryChargerModel->countAll() + 1;
                 $this->inventoryChargerModel->skipValidation(true);
                 $this->inventoryChargerModel->insert(array_merge($common, [
-                    'item_number'     => 'C' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'item_number'     => $this->allocateInventoryItemNumber('inventory_chargers', 'C'),
                     'charger_type_id' => (int) $pu['charger_id'],
                     'serial_number'   => $sn,
                 ]));
@@ -931,10 +1237,9 @@ class WarehousePO extends BaseController
         if (!empty($pu['attachment_id'])) {
             $sn = trim((string) ($pu['sn_attachment_po'] ?? ''));
             if ($sn !== '') {
-                $cnt = $this->inventoryAttachmentModel->countAll() + 1;
                 $this->inventoryAttachmentModel->skipValidation(true);
                 $this->inventoryAttachmentModel->insert(array_merge($common, [
-                    'item_number'        => 'ATT' . str_pad((string) $cnt, 4, '0', STR_PAD_LEFT),
+                    'item_number'        => $this->allocateInventoryItemNumber('inventory_attachments', 'ATT'),
                     'attachment_type_id' => (int) $pu['attachment_id'],
                     'serial_number'      => $sn,
                 ]));
@@ -957,6 +1262,7 @@ class WarehousePO extends BaseController
                 'sn_mesin_po'      => $this->request->getPost('sn_mesin'),
                 'sn_baterai_po'    => $this->request->getPost('sn_baterai'),
                 'sn_mast_po'       => $this->request->getPost('sn_mast'),
+                'sn_attachment_po' => $this->request->getPost('sn_attachment'),
             ];
             $snCharger = $this->request->getPost('sn_charger');
             if ($snCharger !== null && $snCharger !== '') {
@@ -985,16 +1291,6 @@ class WarehousePO extends BaseController
                 }
             }
 
-            // Serial number mandatory validation when status 'Sesuai'
-            $snUnit = $this->request->getPost('sn_unit');
-            $snMesin = $this->request->getPost('sn_mesin');
-            if ($status === 'Sesuai' && (empty($snUnit) || empty($snMesin))) {
-                return $this->response->setJSON([
-                    'statusCode' => 422,
-                    'message' => 'Serial number unit dan mesin wajib diisi untuk status Sesuai.'
-                ]);
-            }
-
             $db = \Config\Database::connect();
             $db->transBegin();
             $original = $this->pounitsmodel->find($id_unit);
@@ -1005,6 +1301,18 @@ class WarehousePO extends BaseController
                     'statusCode' => 404,
                     'message' => 'Unit tidak ditemukan.'
                 ]);
+            }
+
+            if ($status === 'Sesuai') {
+                $effective = array_merge($original, $dataToUpdate);
+                $sesuaiErr = $this->validatePoUnitSesuaiCompleteness($effective, $snData);
+                if ($sesuaiErr !== null) {
+                    $db->transRollback();
+                    return $this->response->setJSON([
+                        'statusCode' => 422,
+                        'message' => $sesuaiErr,
+                    ]);
+                }
             }
             
             try {
@@ -1369,37 +1677,54 @@ class WarehousePO extends BaseController
             // Ambil nilai dari form
             $snAttachment = trim((string)$this->request->getPost('serial_number'));            // SN Attachment atau SN Baterai
             $snCharger    = trim((string)$this->request->getPost('serial_number_charger'));
-            $lokasi       = trim((string)$this->request->getPost('lokasi')) ?: 'POS 1';
+            $lokasi       = trim((string)$this->request->getPost('lokasi'))
+                ?: trim((string)$this->request->getPost('lokasi_unit'))
+                ?: 'POS 1';
 
             $db = \Config\Database::connect();
             $db->transBegin();
 
             $original = $this->poAttachmentModel->find($id_item);
             if (!$original) {
+                $db->transRollback();
                 return $this->response->setJSON(['success' => false, 'message' => 'PO Item tidak ditemukan.']);
             }
 
-            $itemType = trim((string)($original['item_type'] ?? '')); // 'Attachment' | 'Battery'
+            $itemType = trim((string) ($original['item_type'] ?? ''));
             $statusNorm = strtolower($status);
 
-            // Validasi SN saat status = "Sesuai"
             if ($statusNorm === 'sesuai') {
                 if ($itemType === 'Attachment') {
                     if (empty($original['attachment_id'])) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Model Attachment belum terdaftar di master.']);
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Model Attachment belum terdaftar di master.']);
                     }
                     if (!$snAttachment) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Attachment wajib diisi.']);
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Serial number Attachment wajib diisi.']);
                     }
                 } elseif ($itemType === 'Battery') {
                     if (empty($original['baterai_id']) && empty($original['charger_id'])) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'PO item Battery tidak memiliki baterai/charger model.']);
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'PO item Battery tidak memiliki baterai/charger model.']);
                     }
                     if (!empty($original['baterai_id']) && !$snAttachment) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Baterai wajib diisi.']);
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Serial number Baterai wajib diisi.']);
                     }
                     if (!empty($original['charger_id']) && !$snCharger) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Charger wajib diisi.']);
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Serial number Charger wajib diisi.']);
+                    }
+                } elseif ($itemType === 'Charger') {
+                    if (empty($original['charger_id'])) {
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Model Charger belum terdaftar di master.']);
+                    }
+                    $snChOnly = $snCharger !== '' ? $snCharger : $snAttachment;
+                    if ($snChOnly === '') {
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Serial number Charger wajib diisi.']);
                     }
                 }
             }
@@ -1418,91 +1743,95 @@ class WarehousePO extends BaseController
                     return $this->response->setJSON(['success'=>false,'message'=>'Gagal update PO item.']);
                 }
 
-                // Insert stok fisik hanya jika 'Sesuai'
                 if ($statusNorm === 'sesuai') {
                     $verified = $this->poAttachmentModel->find($id_item);
-
-                    $rows = [];
-                    if ($itemType === 'Attachment') {
-                        $rows[] = [
-                            'po_id'               => (int)$verified['po_id'],
-                            'attachment_id'       => (int)$verified['attachment_id'],
-                            'sn_attachment'       => $snAttachment ?: $verified['serial_number'],
-                            'id_inventory_unit'   => null,
-                            'attachment_status'   => 'AVAILABLE',
-                            'lokasi_penyimpanan'  => $lokasi,
-                            'kondisi_fisik'       => 'Baik',
-                            'kelengkapan'         => 'Lengkap',
-                            'tanggal_masuk'       => date_jakarta(),
-                            'catatan_inventory'   => 'Dari verifikasi PO: '.($catatan ?: 'Sesuai'),
-                        ];
-                    } elseif ($itemType === 'Battery') {
-                        if (!empty($verified['baterai_id'])) {
-                            $rows[] = [
-                                'po_id'               => (int)$verified['po_id'],
-                                'baterai_id'          => (int)$verified['baterai_id'],
-                                'sn_baterai'          => $snAttachment ?: $verified['serial_number'],
-                                'id_inventory_unit'   => null,
-                                'attachment_status'   => 'AVAILABLE',
-                                'lokasi_penyimpanan'  => $lokasi,
-                                'kondisi_fisik'       => 'Baik',
-                                'kelengkapan'         => 'Lengkap',
-                                'tanggal_masuk'       => date_jakarta(),
-                                'catatan_inventory'   => 'Dari verifikasi PO (Battery): '.($catatan ?: 'Sesuai'),
-                            ];
-                        }
-                        if (!empty($verified['charger_id'])) {
-                            $rows[] = [
-                                'po_id'               => (int)$verified['po_id'],
-                                'charger_id'          => (int)$verified['charger_id'],
-                                'sn_charger'          => $snCharger ?: $verified['serial_number_charger'],
-                                'id_inventory_unit'   => null,
-                                'attachment_status'   => 'AVAILABLE',
-                                'lokasi_penyimpanan'  => $lokasi,
-                                'kondisi_fisik'       => 'Baik',
-                                'kelengkapan'         => 'Lengkap',
-                                'tanggal_masuk'       => date_jakarta(),
-                                'catatan_inventory'   => 'Dari verifikasi PO (Charger): '.($catatan ?: 'Sesuai'),
-                            ];
-                        }
-                    }
-
-                    if (!$rows) {
-                        $db->transRollback();
-                        return $this->response->setJSON(['success'=>false,'message'=>'Tidak ada item fisik yang bisa dibuat.']);
-                    }
-
-                    // Simpan, dan tampilkan error validasi/DB jika gagal
-                    // Hindari insertBatch karena kolom baris bisa berbeda (baterai vs charger)
-                    // Normalisasi kunci agar konsisten, lalu insert satu per satu
-                    $baseDefaults = [
-                        'attachment_id'      => null,
-                        'sn_attachment'      => null,
-                        'baterai_id'         => null,
-                        'sn_baterai'         => null,
-                        'charger_id'         => null,
-                        'sn_charger'         => null,
-                        'id_inventory_unit'  => null,
-                        'attachment_status'  => 'AVAILABLE',
-                        'lokasi_penyimpanan' => $lokasi,
-                        'kondisi_fisik'      => 'Baik',
-                        'kelengkapan'        => 'Lengkap',
+                    $now = date('Y-m-d H:i:s');
+                    $poIdInv = (int) ($verified['po_id'] ?? 0);
+                    $noteBase = 'Dari verifikasi PO baris terpisah: ' . ($catatan ?: 'Sesuai');
+                    $common = [
+                        'inventory_unit_id'  => null,
+                        'purchase_order_id'  => $poIdInv,
+                        'physical_condition' => 'GOOD',
+                        'completeness'       => 'COMPLETE',
+                        'storage_location'   => $lokasi,
+                        'status'             => 'AVAILABLE',
+                        'received_at'        => $now,
+                        'notes'              => $noteBase,
                     ];
 
-                    foreach ($rows as $idx => $r) {
-                        $payload = array_merge($baseDefaults, $r);
-                        if (!$this->inventoryAttachmentModel->insert($payload)) {
+                    if ($itemType === 'Attachment') {
+                        $this->inventoryAttachmentModel->skipValidation(true);
+                        $ok = $this->inventoryAttachmentModel->insert(array_merge($common, [
+                            'item_number'        => $this->allocateInventoryItemNumber('inventory_attachments', 'ATT'),
+                            'attachment_type_id' => (int) $verified['attachment_id'],
+                            'serial_number'      => $snAttachment ?: (string) ($verified['serial_number'] ?? ''),
+                        ]));
+                        $this->inventoryAttachmentModel->skipValidation(false);
+                        if (!$ok) {
                             $errors = $this->inventoryAttachmentModel->errors();
-                            $dberr  = $db->error();
                             $db->transRollback();
                             return $this->response->setJSON([
-                                'success'      => false,
-                                'message'      => 'Gagal insert inventory pada baris '.($idx+1),
+                                'success' => false,
+                                'message' => 'Gagal insert inventory attachment.',
                                 'model_errors' => $errors,
-                                'db_error'     => $dberr,
-                                'payload'      => $payload,
                             ]);
                         }
+                    } elseif ($itemType === 'Battery') {
+                        if (!empty($verified['baterai_id'])) {
+                            $this->inventoryBatteryModel->skipValidation(true);
+                            $okB = $this->inventoryBatteryModel->insert(array_merge($common, [
+                                'item_number'     => $this->allocateInventoryItemNumber('inventory_batteries', 'B'),
+                                'battery_type_id' => (int) $verified['baterai_id'],
+                                'serial_number'   => $snAttachment ?: (string) ($verified['serial_number'] ?? ''),
+                            ]));
+                            $this->inventoryBatteryModel->skipValidation(false);
+                            if (!$okB) {
+                                $db->transRollback();
+                                return $this->response->setJSON([
+                                    'success' => false,
+                                    'message' => 'Gagal insert inventory baterai.',
+                                    'model_errors' => $this->inventoryBatteryModel->errors(),
+                                ]);
+                            }
+                        }
+                        if (!empty($verified['charger_id'])) {
+                            $snForCharger = $snCharger !== '' ? $snCharger : (string) ($verified['serial_number_charger'] ?? '');
+                            $this->inventoryChargerModel->skipValidation(true);
+                            $okC = $this->inventoryChargerModel->insert(array_merge($common, [
+                                'item_number'     => $this->allocateInventoryItemNumber('inventory_chargers', 'C'),
+                                'charger_type_id' => (int) $verified['charger_id'],
+                                'serial_number'   => $snForCharger,
+                            ]));
+                            $this->inventoryChargerModel->skipValidation(false);
+                            if (!$okC) {
+                                $db->transRollback();
+                                return $this->response->setJSON([
+                                    'success' => false,
+                                    'message' => 'Gagal insert inventory charger.',
+                                    'model_errors' => $this->inventoryChargerModel->errors(),
+                                ]);
+                            }
+                        }
+                    } elseif ($itemType === 'Charger') {
+                        $snChOnly = $snCharger !== '' ? $snCharger : $snAttachment;
+                        $this->inventoryChargerModel->skipValidation(true);
+                        $okC = $this->inventoryChargerModel->insert(array_merge($common, [
+                            'item_number'     => $this->allocateInventoryItemNumber('inventory_chargers', 'C'),
+                            'charger_type_id' => (int) $verified['charger_id'],
+                            'serial_number'   => $snChOnly,
+                        ]));
+                        $this->inventoryChargerModel->skipValidation(false);
+                        if (!$okC) {
+                            $db->transRollback();
+                            return $this->response->setJSON([
+                                'success' => false,
+                                'message' => 'Gagal insert inventory charger.',
+                                'model_errors' => $this->inventoryChargerModel->errors(),
+                            ]);
+                        }
+                    } else {
+                        $db->transRollback();
+                        return $this->response->setJSON(['success' => false, 'message' => 'Tipe PO item tidak dikenal untuk verifikasi stok.']);
                     }
                 }
                 

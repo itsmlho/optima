@@ -2017,7 +2017,7 @@ class CustomerManagementController extends BaseController
      */
     public function storeCustomerLocation()
     {
-        if (!$this->hasPermission('marketing.customer.update')) {
+        if (!$this->hasPermission('marketing.customer.edit')) {
             return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
         }
 
@@ -2130,7 +2130,7 @@ class CustomerManagementController extends BaseController
      */
     public function updateCustomerLocation($id)
     {
-        if (!$this->hasPermission('marketing.customer.update')) {
+        if (!$this->hasPermission('marketing.customer.edit')) {
             return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
         }
 

@@ -1,0 +1,15 @@
+# Copy/rename to sparepart_kodes.txt after exporting from MySQL (one kode per line):
+#
+#   mysql -u root -N optima_ci -e "SELECT kode FROM sparepart" > sparepart_kodes.txt
+#
+# Windows (Laragon), adjust path to mysql.exe and database name:
+#   "C:\laragon\bin\mysql\mysql-8.x\bin\mysql.exe" -u root -N optima_ci -e "SELECT kode FROM sparepart" > sparepart_kodes.txt
+#
+# Then:
+#   python generate_sparepart_usage_import.py
+#   mysql ... optima_ci < import_sparepart_usage.sql
+#
+# Or run in one step (loads kodes from DB): python generate_sparepart_usage_import.py --execute --mysql-database optima_ci
+# Optional: --skip-existing  --with-usage-table  (see python generate_sparepart_usage_import.py --help)
+#
+# Dry-run (no codes file needed): python generate_sparepart_usage_import.py --dry-run

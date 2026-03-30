@@ -190,27 +190,39 @@ class RoleModel extends Model
     private function getManagementPermissions()
     {
         return [
-           'dashboard.view', 'dashboard.export', 'users.view', 'users.create', 'users.edit',
-           'divisions.view', 'projects.view', 'projects.create', 'projects.edit',
-           'rentals.view', 'rentals.create', 'rentals.edit', 'rentals.approve',
-           'forklifts.view', 'forklifts.create', 'forklifts.edit', 'reports.view', 'reports.export', 'settings.view', 'logs.view'
+           'admin.dashboard.navigation', 'admin.dashboard.index', 'admin.dashboard.reports',
+           'settings.user.view', 'settings.user.create', 'settings.user.edit',
+           'settings.role.view', 'settings.role.create', 'settings.role.edit',
+           'settings.permission.view', 'settings.permission.create', 'settings.permission.edit',
+           'settings.system.view', 'settings.system.edit',
+           'marketing.quotation.view', 'service.work_order.view', 'purchasing.po.index',
+           'warehouse.unit_inventory.index', 'accounting.invoice.index', 'operational.delivery.index'
         ];
     }
 
     private function getDivisionHeadPermissions()
     {
         return [
-           'dashboard.view', 'divisions.view', 'projects.view', 'projects.create', 'projects.edit',
-           'rentals.view', 'rentals.create', 'rentals.edit', 'rentals.approve',
-           'forklifts.view', 'forklifts.create', 'forklifts.edit', 'reports.view', 'logs.view'
+           'admin.dashboard.navigation', 'admin.dashboard.index',
+           'settings.role.view',
+           'marketing.quotation.view', 'marketing.quotation.create', 'marketing.quotation.edit',
+           'service.work_order.view', 'service.work_order.create', 'service.work_order.edit',
+           'purchasing.po.index', 'purchasing.po.create', 'purchasing.po.edit',
+           'warehouse.unit_inventory.index', 'warehouse.unit_inventory.edit',
+           'accounting.invoice.index', 'operational.delivery.index'
         ];
     }
 
     private function getAdminPermissions()
     {
         return [
-           'dashboard.view', 'rentals.view', 'rentals.create', 'rentals.edit',
-           'forklifts.view', 'forklifts.create', 'forklifts.edit', 'ports.view'
+           'admin.dashboard.navigation',
+           'admin.dashboard.index',
+           'settings.user.view',
+           'marketing.customer.view',
+           'service.work_order.view',
+           'purchasing.po.index',
+           'warehouse.unit_inventory.index'
         ];
     }
 }

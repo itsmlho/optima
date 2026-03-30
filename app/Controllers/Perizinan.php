@@ -24,11 +24,35 @@ class Perizinan extends BaseController
     }
 
     /**
+     * Canonical permission gate for read/view access in Perizinan module.
+     */
+    private function canViewPerizinan(): bool
+    {
+        return $this->hasPermission('perizinan.silo.navigation')
+            || $this->hasPermission('perizinan.emisi.navigation')
+            || $this->hasPermission('perizinan.silo.index')
+            || $this->hasPermission('perizinan.emisi.index');
+    }
+
+    /**
+     * Canonical permission gate for create/update actions in Perizinan module.
+     */
+    private function canManagePerizinan(): bool
+    {
+        return $this->hasPermission('perizinan.silo.create')
+            || $this->hasPermission('perizinan.silo.edit')
+            || $this->hasPermission('perizinan.emisi.create')
+            || $this->hasPermission('perizinan.emisi.edit')
+            || $this->hasPermission('perizinan.silo.approve')
+            || $this->hasPermission('perizinan.emisi.approve');
+    }
+
+    /**
      * SILO (Surat Izin Layak Operasi) Management
      */
     public function silo()
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
 
@@ -57,7 +81,7 @@ class Perizinan extends BaseController
      */
     public function getSiloList()
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -179,7 +203,7 @@ class Perizinan extends BaseController
      */
     public function getSiloStats()
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -206,7 +230,7 @@ class Perizinan extends BaseController
      */
     public function getAvailableUnits()
     {
-        if (!$this->hasPermission('perizinan.manage')) {
+        if (!$this->canManagePerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -279,7 +303,7 @@ class Perizinan extends BaseController
      */
     public function createSilo()
     {
-        if (!$this->hasPermission('perizinan.manage')) {
+        if (!$this->canManagePerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -396,7 +420,7 @@ class Perizinan extends BaseController
      */
     public function getSiloDetail($id)
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -426,7 +450,7 @@ class Perizinan extends BaseController
      */
     public function updateSiloStatus($id)
     {
-        if (!$this->hasPermission('perizinan.manage')) {
+        if (!$this->canManagePerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -525,7 +549,7 @@ class Perizinan extends BaseController
      */
     public function uploadFile($id)
     {
-        if (!$this->hasPermission('perizinan.manage')) {
+        if (!$this->canManagePerizinan()) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak'
@@ -716,7 +740,7 @@ class Perizinan extends BaseController
      */
     public function previewFile($id, $type)
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return $this->response->setStatusCode(403)->setBody('Akses ditolak');
         }
 
@@ -768,7 +792,7 @@ class Perizinan extends BaseController
      */
     public function downloadFile($id, $type)
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
 
@@ -792,7 +816,7 @@ class Perizinan extends BaseController
      */
     public function emisi()
     {
-        if (!$this->hasPermission('perizinan.access')) {
+        if (!$this->canViewPerizinan()) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
 

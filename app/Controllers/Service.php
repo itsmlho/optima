@@ -51,7 +51,7 @@ class Service extends BaseController
     public function printVerification($workOrderId = null)
     {
         // Check permission for viewing service verification
-        if (!$this->hasPermission('service.work_orders.view')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         
@@ -92,7 +92,7 @@ class Service extends BaseController
     public function spkPrint($id)
     {
         // Check permission for printing SPK
-        if (!$this->hasPermission('service.spk_service.view')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
         

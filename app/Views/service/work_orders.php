@@ -206,10 +206,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="progressWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="progressWorkOrdersTable" class="table table-striped table-hover mb-0 nowrap <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
-                                <th width="5%"><?= lang('Common.no') ?></th>
                                 <th><?= lang('Service.work_order') ?></th>
                                 <th><?= lang('Common.date') ?></th>
                                 <th><?= lang('App.unit') ?></th>
@@ -285,10 +284,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="closedWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="closedWorkOrdersTable" class="table table-striped table-hover mb-0 nowrap <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
-                                <th width="5%"><?= lang('Common.no') ?></th>
                                 <th><?= lang('Service.work_order') ?></th>
                                 <th><?= lang('Common.date') ?></th>
                                 <th><?= lang('App.unit') ?></th>
@@ -890,6 +888,7 @@ $(document).ready(function() {
     progressTable = $('#progressWorkOrdersTable').DataTable({
         processing: true,
         serverSide: true,
+        scrollX: true,
         ajax: {
             url: '<?= base_url('service/work-orders/data') ?>',
             type: 'POST',
@@ -907,7 +906,6 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 0, orderable: false, searchable: false }, // Row number
             { data: 1 }, // work_order_number
             { data: 2 }, // report_date
             { data: 3 }, // unit_info
@@ -917,7 +915,7 @@ $(document).ready(function() {
             { data: 7 }, // status_badge
             { data: 8, orderable: false, searchable: false } // action
         ],
-        order: [[2, 'desc']], // Order by report_date descending
+        order: [[1, 'desc']], // Order by report_date descending
         language: {
             "sLengthMenu": "Show _MENU_ entries",
             "sZeroRecords": "No matching records found",
@@ -958,6 +956,7 @@ $(document).ready(function() {
     closedTable = $('#closedWorkOrdersTable').DataTable({
         processing: true,
         serverSide: true,
+        scrollX: true,
         ajax: {
             url: '<?= base_url('service/work-orders/data') ?>',
             type: 'POST',
@@ -975,7 +974,6 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 0, orderable: false, searchable: false }, // Row number
             { data: 1 }, // work_order_number
             { data: 2 }, // report_date
             { data: 3 }, // unit_info
@@ -985,7 +983,7 @@ $(document).ready(function() {
             { data: 9 }, // closed_date
             { data: 8, orderable: false, searchable: false } // action
         ],
-        order: [[7, 'desc']], // Order by closed_date descending
+        order: [[6, 'desc']], // Order by closed_date descending
         language: {
             "sProcessing": "Processing...",
             "sLengthMenu": "Show _MENU_ entries",

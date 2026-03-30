@@ -8,6 +8,62 @@
 
 if (!function_exists('hasPermission')) {
     /**
+     * Resolve legacy permission keys to canonical keys.
+     *
+     * @param string $permissionKey
+     * @return array<string>
+     */
+    function resolvePermissionAliases(string $permissionKey): array
+    {
+        $aliases = [
+            'view_marketing' => [
+                'marketing.audit_approval.view',
+                'marketing.quotation.view',
+                'marketing.customer.view'
+            ],
+            'approve_marketing' => [
+                'marketing.audit_approval.approve',
+                'marketing.quotation.approve'
+            ],
+            'view_service' => [
+                'service.unit_audit.view',
+                'service.unit_audit_location.view',
+                'service.workorder.navigation'
+            ],
+            'create_service' => [
+                'service.unit_audit.create',
+                'service.unit_audit_location.create',
+                'service.workorder.create'
+            ],
+            'divisions.view' => [
+                'settings.division.view'
+            ],
+            'positions.view' => [
+                'settings.role.view',
+                'settings.user.view'
+            ],
+            'logs.view' => [
+                'settings.system.view',
+                'admin.access'
+            ],
+            'service.area_management.view' => [
+                'service.area_management.view',
+                'service.area.navigation'
+            ],
+            'marketing.customer.update' => [
+                'marketing.customer.edit'
+            ]
+        ];
+
+        $keys = [$permissionKey];
+        if (isset($aliases[$permissionKey])) {
+            $keys = array_merge($keys, $aliases[$permissionKey]);
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
      * Check if user has specific permission
      * 
      * @param string $permissionKey Permission in format module.page.action[.subaction][.component]
@@ -16,6 +72,8 @@ if (!function_exists('hasPermission')) {
      */
     function hasPermission(string $permissionKey, ?int $userId = null): bool
     {
+        $permissionKeys = resolvePermissionAliases($permissionKey);
+
         if (!$userId) {
             $userId = session()->get('user_id');
         }
@@ -31,6 +89,9 @@ if (!function_exists('hasPermission')) {
         }
 
         $db = \Config\Database::connect();
+
+        $placeholders = implode(',', array_fill(0, count($permissionKeys), '?'));
+        $queryKeys = array_values($permissionKeys);
         
         // ═══════════════════════════════════════════════════════════════
         // PRIORITY 1: Check User-Specific Permissions (HIGHEST PRIORITY)
@@ -40,11 +101,11 @@ if (!function_exists('hasPermission')) {
             FROM user_permissions up
             INNER JOIN permissions p ON up.permission_id = p.id
             WHERE up.user_id = ? 
-            AND p.key_name = ?
+            AND p.key_name IN ({$placeholders})
             AND (up.expires_at IS NULL OR up.expires_at > NOW())
             ORDER BY up.created_at DESC
             LIMIT 1
-        ", [$userId, $permissionKey]);
+        ", array_merge([$userId], $queryKeys));
         
         $userPermission = safe_get_row($userPermissionQuery);
         
@@ -64,10 +125,10 @@ if (!function_exists('hasPermission')) {
             INNER JOIN permissions p ON rp.permission_id = p.id
             INNER JOIN user_roles ur ON ur.role_id = rp.role_id
             WHERE ur.user_id = ? 
-            AND p.key_name = ?
+            AND p.key_name IN ({$placeholders})
             AND rp.granted = 1
             AND ur.is_active = 1
-        ", [$userId, $permissionKey]);
+        ", array_merge([$userId], $queryKeys));
         
         $result = safe_get_row($rolePermissionQuery);
 

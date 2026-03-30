@@ -350,37 +350,37 @@ if (!function_exists('get_user_menu_permissions')) {
                 
                 // Service Division
                 'service' => [
-                    'access' => user_in_division('SVC', $user_id) && can_access('service.access', $user_id),
-                    'work_orders' => can_access('service.work_orders.view', $user_id),
+                    'access' => user_in_division('SVC', $user_id) && can_access('service.workorder.navigation', $user_id),
+                    'work_orders' => can_access('service.work_order.view', $user_id),
                     'maintenance' => can_access('service.maintenance.view', $user_id),
                 ],
                 
                 // Marketing Division
                 'marketing' => [
-                    'access' => user_in_division('MKT', $user_id) && can_access('marketing.access', $user_id),
-                    'customers' => can_access('marketing.customers.view', $user_id),
-                    'rentals' => can_access('marketing.rentals.view', $user_id),
+                    'access' => user_in_division('MKT', $user_id) && can_access('marketing.quotation.navigation', $user_id),
+                    'customers' => can_access('marketing.customer.view', $user_id),
+                    'rentals' => can_access('marketing.kontrak.view', $user_id),
                 ],
                 
                 // Warehouse Division
                 'warehouse' => [
-                    'access' => user_in_division('WHS', $user_id) && can_access('warehouse.access', $user_id),
-                    'inventory' => can_access('warehouse.inventory.view', $user_id),
-                    'units' => can_access('warehouse.units.view', $user_id),
+                    'access' => user_in_division('WHS', $user_id) && can_access('warehouse.unit_inventory.navigation', $user_id),
+                    'inventory' => can_access('warehouse.unit_inventory.index', $user_id),
+                    'units' => can_access('warehouse.unit_inventory.index', $user_id),
                 ],
                 
                 // Purchasing Division
                 'purchasing' => [
-                    'access' => user_in_division('PUR', $user_id) && can_access('purchasing.access', $user_id),
-                    'orders' => can_access('purchasing.orders.view', $user_id),
-                    'suppliers' => can_access('purchasing.suppliers.view', $user_id),
+                    'access' => user_in_division('PUR', $user_id) && can_access('purchasing.po.navigation', $user_id),
+                    'orders' => can_access('purchasing.po.index', $user_id),
+                    'suppliers' => can_access('purchasing.supplier.index', $user_id),
                 ],
                 
                 // Finance Division
                 'finance' => [
-                    'access' => user_in_division('FIN', $user_id) && can_access('finance.access', $user_id),
-                    'invoices' => can_access('finance.invoices.view', $user_id),
-                    'payments' => can_access('finance.payments.view', $user_id),
+                    'access' => user_in_division('FIN', $user_id) && can_access('accounting.invoice.navigation', $user_id),
+                    'invoices' => can_access('accounting.invoice.index', $user_id),
+                    'payments' => can_access('accounting.payment.index', $user_id),
                 ],
                 
                 // Reports

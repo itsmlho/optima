@@ -152,22 +152,22 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('quotations', 'Marketing::quotations');
     
     // Audit Approval (digabung dengan Approve Audit Unit - 1 halaman)
-    $routes->get('audit-approval', 'UnitAudit::approvalLocation', ['filter' => 'permission:view_marketing']);
-    $routes->get('audit-approval-location', 'UnitAudit::approvalLocation', ['filter' => 'permission:view_marketing']);
+    $routes->get('audit-approval', 'UnitAudit::approvalLocation', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('audit-approval-location', 'UnitAudit::approvalLocation', ['filter' => 'permission:marketing.audit_approval.view']);
     // API untuk Audit Approval (Request Lokasi, Approve Audit Lokasi, Riwayat)
-    $routes->get('unit-audit/getPendingApprovals', 'UnitAudit::getPendingLocationApprovals', ['filter' => 'permission:view_marketing']);
-    $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:view_marketing']);
-    $routes->get('unit-audit/getApprovalDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_marketing']);
-    $routes->get('unit-audit/getContractsForCustomer/(:num)', 'UnitAudit::getContractsForCustomer/$1', ['filter' => 'permission:view_marketing']);
-    $routes->post('unit-audit/approveLocation/(:num)', 'UnitAudit::approveLocationAudit/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->post('unit-audit/rejectLocation/(:num)', 'UnitAudit::rejectLocationAudit/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->get('unit-audit/getPendingLocationRequests', 'UnitAudit::getPendingLocationRequests', ['filter' => 'permission:view_marketing']);
-    $routes->post('unit-audit/approveLocationRequest/(:num)', 'UnitAudit::approveLocationRequest/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->post('unit-audit/rejectLocationRequest/(:num)', 'UnitAudit::rejectLocationRequest/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->post('unit-audit/rollbackLocationRequest/(:num)', 'UnitAudit::rollbackLocationRequest/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->get('unit-audit/getApprovedLocationRequests', 'UnitAudit::getApprovedLocationRequests', ['filter' => 'permission:view_marketing']);
-    $routes->get('unit-audit/getApprovalHistory', 'UnitAudit::getApprovalHistory', ['filter' => 'permission:view_marketing']);
-    $routes->get('unit-audit/getLocationRequestDetail/(:num)', 'UnitAudit::getLocationRequestDetail/$1', ['filter' => 'permission:view_marketing|view_service']);
+    $routes->get('unit-audit/getPendingApprovals', 'UnitAudit::getPendingLocationApprovals', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('unit-audit/getApprovalDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('unit-audit/getContractsForCustomer/(:num)', 'UnitAudit::getContractsForCustomer/$1', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->post('unit-audit/approveLocation/(:num)', 'UnitAudit::approveLocationAudit/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->post('unit-audit/rejectLocation/(:num)', 'UnitAudit::rejectLocationAudit/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->get('unit-audit/getPendingLocationRequests', 'UnitAudit::getPendingLocationRequests', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->post('unit-audit/approveLocationRequest/(:num)', 'UnitAudit::approveLocationRequest/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->post('unit-audit/rejectLocationRequest/(:num)', 'UnitAudit::rejectLocationRequest/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->post('unit-audit/rollbackLocationRequest/(:num)', 'UnitAudit::rollbackLocationRequest/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->get('unit-audit/getApprovedLocationRequests', 'UnitAudit::getApprovedLocationRequests', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('unit-audit/getApprovalHistory', 'UnitAudit::getApprovalHistory', ['filter' => 'permission:marketing.audit_approval.view']);
+    $routes->get('unit-audit/getLocationRequestDetail/(:num)', 'UnitAudit::getLocationRequestDetail/$1', ['filter' => 'permission:marketing.audit_approval.view|service.unit_audit.view']);
     $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
     $routes->post('quotations/linkContract', 'Marketing::linkContract');
@@ -587,48 +587,48 @@ $routes->group('service', static function ($routes) {
 
 
     // Unit Audit & Movement (Audit is in Service, Movement is in Warehouse)
-    $routes->get('unit-audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
-    $routes->get('unit_audit/getCustomersWithUnits', 'UnitAudit::getCustomersWithUnits', ['filter' => 'permission:view_service']);
-    $routes->get('unit_audit/getCustomersForUnitAudit', 'UnitAudit::getCustomersForUnitAudit', ['filter' => 'permission:view_service']);
-    $routes->get('unit_audit/getCustomerUnits/(:num)', 'UnitAudit::getCustomerUnits/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit_audit/getAvailableUnits', 'UnitAudit::getAvailableUnits', ['filter' => 'permission:view_service']);
-    $routes->post('unit_audit/createAuditRequest', 'UnitAudit::createAuditRequest', ['filter' => 'permission:create_service']);
-    $routes->get('unit_audit/getAuditRequests', 'UnitAudit::getAuditRequests', ['filter' => 'permission:view_service|view_marketing']);
-    $routes->get('unit_audit/getAuditDetail/(:num)', 'UnitAudit::getAuditDetail/$1', ['filter' => 'permission:view_service|view_marketing']);
-    $routes->post('unit_audit/approveRequest/(:num)', 'UnitAudit::approveRequest/$1', ['filter' => 'permission:approve_marketing']);
-    $routes->post('unit_audit/rejectRequest/(:num)', 'UnitAudit::rejectRequest/$1', ['filter' => 'permission:approve_marketing']);
+    $routes->get('unit-audit', 'UnitAudit::index', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit_audit/getCustomersWithUnits', 'UnitAudit::getCustomersWithUnits', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit_audit/getCustomersForUnitAudit', 'UnitAudit::getCustomersForUnitAudit', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit_audit/getCustomerUnits/(:num)', 'UnitAudit::getCustomerUnits/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit_audit/getAvailableUnits', 'UnitAudit::getAvailableUnits', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->post('unit_audit/createAuditRequest', 'UnitAudit::createAuditRequest', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->get('unit_audit/getAuditRequests', 'UnitAudit::getAuditRequests', ['filter' => 'permission:service.unit_audit.view|marketing.audit_approval.view']);
+    $routes->get('unit_audit/getAuditDetail/(:num)', 'UnitAudit::getAuditDetail/$1', ['filter' => 'permission:service.unit_audit.view|marketing.audit_approval.view']);
+    $routes->post('unit_audit/approveRequest/(:num)', 'UnitAudit::approveRequest/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
+    $routes->post('unit_audit/rejectRequest/(:num)', 'UnitAudit::rejectRequest/$1', ['filter' => 'permission:marketing.audit_approval.approve']);
     
     // Fallback for direct controller access
-    $routes->get('unit_audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit', 'UnitAudit::index', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit_audit/getCustomers', 'UnitAudit::getCustomers');
 
     // ── Unit Verification (satu halaman verifikasi unit di lokasi; Audit per Lokasi digabung ke sini) ──
-    $routes->get('unit-audit/location', 'UnitAudit::redirectToVerification', ['filter' => 'permission:view_service']);
-    $routes->get('unit-verification', 'UnitAudit::verificationIndex', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getLocationDetails/(:num)', 'UnitAudit::getLocationDetails/$1', ['filter' => 'permission:view_service']);
-    $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:create_service']);
-    $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getVerificationGrouped', 'UnitAudit::getVerificationGrouped', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getVerificationGroupedFromAudits', 'UnitAudit::getVerificationGroupedFromAudits', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getLocationsWithAuditStatus/(:num)', 'UnitAudit::getLocationsWithAuditStatus/$1', ['filter' => 'permission:view_service']);
-    $routes->post('unit-audit/createAuditVerification', 'UnitAudit::createAuditVerification', ['filter' => 'permission:create_service']);
-    $routes->get('unit-audit/printLocationForm/(:num)/(:num)', 'UnitAudit::printLocationForm/$1/$2', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit-verification/print/(:num)', 'UnitAudit::printVerificationLocation/$1', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/getAreas', 'UnitAudit::getAreas', ['filter' => 'permission:view_service']);
-    $routes->post('unit-audit/requestAddLocation', 'UnitAudit::requestAddLocation', ['filter' => 'permission:create_service']);
-    $routes->get('unit-verification/unit/(:num)/(:num)', 'UnitAudit::verifyUnit/$1/$2', ['filter' => 'permission:view_service']);
-    $routes->get('unit-audit/unit-master-data/(:num)', 'UnitAudit::getUnitVerificationMasterData/$1', ['filter' => 'permission:view_service']);
-    $routes->post('unit-audit/save-unit-verification', 'UnitAudit::saveUnitVerificationFromAudit', ['filter' => 'permission:create_service']);
-    $routes->post('unit-audit/markAuditPrinted/(:num)', 'UnitAudit::markAuditPrinted/$1', ['filter' => 'permission:create_service']);
-    $routes->post('unit-audit/markAuditInProgress/(:num)', 'UnitAudit::markAuditInProgress/$1', ['filter' => 'permission:create_service']);
-    $routes->post('unit-audit/submitAuditResults', 'UnitAudit::submitAuditResults', ['filter' => 'permission:create_service']);
-    $routes->post('unit-audit/submitToMarketing/(:num)', 'UnitAudit::submitToMarketing/$1', ['filter' => 'permission:create_service']);
-    $routes->get('unit-audit/inputResults/(:num)', 'UnitAudit::inputAuditResults/$1', ['filter' => 'permission:create_service']);
+    $routes->get('unit-audit/location', 'UnitAudit::redirectToVerification', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-verification', 'UnitAudit::verificationIndex', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getLocationDetails/(:num)', 'UnitAudit::getLocationDetails/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getVerificationGrouped', 'UnitAudit::getVerificationGrouped', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getVerificationGroupedFromAudits', 'UnitAudit::getVerificationGroupedFromAudits', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getLocationsWithAuditStatus/(:num)', 'UnitAudit::getLocationsWithAuditStatus/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->post('unit-audit/createAuditVerification', 'UnitAudit::createAuditVerification', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->get('unit-audit/printLocationForm/(:num)/(:num)', 'UnitAudit::printLocationForm/$1/$2', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-verification/print/(:num)', 'UnitAudit::printVerificationLocation/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getAreas', 'UnitAudit::getAreas', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->post('unit-audit/requestAddLocation', 'UnitAudit::requestAddLocation', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->get('unit-verification/unit/(:num)/(:num)', 'UnitAudit::verifyUnit/$1/$2', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/unit-master-data/(:num)', 'UnitAudit::getUnitVerificationMasterData/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->post('unit-audit/save-unit-verification', 'UnitAudit::saveUnitVerificationFromAudit', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->post('unit-audit/markAuditPrinted/(:num)', 'UnitAudit::markAuditPrinted/$1', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->post('unit-audit/markAuditInProgress/(:num)', 'UnitAudit::markAuditInProgress/$1', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->post('unit-audit/submitAuditResults', 'UnitAudit::submitAuditResults', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->post('unit-audit/submitToMarketing/(:num)', 'UnitAudit::submitToMarketing/$1', ['filter' => 'permission:service.unit_audit.create']);
+    $routes->get('unit-audit/inputResults/(:num)', 'UnitAudit::inputAuditResults/$1', ['filter' => 'permission:service.unit_audit.create']);
 
     // PMP and other service pages
     $routes->get('pmps', 'Service::pmps');
@@ -1329,7 +1329,7 @@ $routes->group('admin', static function ($routes) {
     $routes->get('verify-resource-permissions', 'Admin\VerifyResourcePermissions::index');
     
     // Activity Log Routes
-    $routes->group('activity-logs', ['filter' => 'permission:logs.view'], static function ($routes) {
+    $routes->group('activity-logs', ['filter' => 'permission:settings.system.view'], static function ($routes) {
         $routes->get('/', 'ActivityLogController::index');
         $routes->get('list', 'ActivityLogController::list');
         $routes->get('export', 'ActivityLogController::export');
@@ -1343,7 +1343,7 @@ $routes->group('admin', static function ($routes) {
     });
     
     // Division Management Routes
-    $routes->group('divisions', ['filter' => 'permission:divisions.view'], static function ($routes) {
+    $routes->group('divisions', ['filter' => 'permission:settings.division.view'], static function ($routes) {
         $routes->get('/', 'DivisionController::index');
         $routes->get('list', 'DivisionController::list');
         $routes->get('create', 'DivisionController::create');
@@ -1357,7 +1357,7 @@ $routes->group('admin', static function ($routes) {
     });
     
     // Position Management Routes
-    $routes->group('positions', ['filter' => 'permission:positions.view'], static function ($routes) {
+    $routes->group('positions', ['filter' => 'permission:settings.role.view'], static function ($routes) {
         $routes->get('/', 'PositionController::index');
         $routes->get('list', 'PositionController::list');
         $routes->get('create', 'PositionController::create');
@@ -1515,6 +1515,7 @@ $routes->post('purchasing/api/get-delivery-data', 'Purchasing::getDeliveryData')
 // Delivery Management API
 $routes->post('purchasing/api/create-delivery', 'Purchasing::createDelivery');
 $routes->get('purchasing/api/delivery-items/(:num)', 'Purchasing::getDeliveryItems/$1');
+$routes->get('purchasing/api/quotation-specification/(:num)', 'Purchasing::getQuotationSpecificationForPo/$1');
 $routes->post('purchasing/api/assign-sn', 'Purchasing::assignSerialNumbers');
 $routes->post('purchasing/api/update-delivery-status', 'Purchasing::updateDeliveryStatus');
 

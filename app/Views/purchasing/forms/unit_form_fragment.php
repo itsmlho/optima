@@ -85,39 +85,26 @@
         <input type="number" id="unit_qty" class="form-control" min="1" value="1" required>
     </div>
 
-    <div class="col-md-6">
-        <label for="unit_vendor_model_code" class="form-label">Kode model pabrik (PI)</label>
-        <input type="text" id="unit_vendor_model_code" class="form-control" maxlength="120" placeholder="Contoh: CPCD50-M4XK2">
-    </div>
     <div class="col-12">
         <label for="unit_vendor_spec_text" class="form-label">Spesifikasi vendor — paste utuh dari baris PI</label>
-        <textarea id="unit_vendor_spec_text" class="form-control font-monospace small" rows="5" placeholder="Tempel teks deskripsi baris proforma invoice tanpa dirangkum."></textarea>
+        <textarea id="unit_vendor_spec_text" class="form-control font-monospace small" rows="5" placeholder="Tempel teks deskripsi baris proforma invoice tanpa dirangkum (termasuk detail fork, mis. 1220mm fork, jika ada di PI)."></textarea>
+        <div class="form-text">Kode/variant model mengikuti master <strong>Brand / Model</strong> di atas. Jika kode pabrik di PI berbeda, cukup tercermin di teks ini; untuk beda model nyata tambahkan baris unit terpisah di PO.</div>
     </div>
     <div class="col-12">
         <span class="form-label d-block mb-1">Isi paket (membantu form verifikasi gudang)</span>
-        <div class="d-flex flex-wrap gap-3">
-            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_fork_std" name="pkg_flags[]" value="fork_standard" checked><label class="form-check-label" for="pkg_fork_std">Fork standar</label></div>
+        <div class="d-flex flex-wrap gap-3 align-items-start">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="pkg_fork_std" name="pkg_flags[]" value="fork_standard" checked>
+                <label class="form-check-label" for="pkg_fork_std">Fork termasuk paket (standar pabrik)</label>
+            </div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_battery" name="pkg_flags[]" value="battery"><label class="form-check-label" for="pkg_battery">Baterai</label></div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_charger" name="pkg_flags[]" value="charger"><label class="form-check-label" for="pkg_charger">Charger</label></div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_attachment" name="pkg_flags[]" value="attachment"><label class="form-check-label" for="pkg_attachment">Attachment</label></div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="pkg_acc" name="pkg_flags[]" value="accessories"><label class="form-check-label" for="pkg_acc">Aksesoris (lampu, sabuk, dll.)</label></div>
         </div>
-    </div>
-    <div class="col-12">
-        <label class="form-label">Aksesoris diharapkan (kunci seperti quotation, opsional)</label>
-        <div class="row g-2 small">
-            <?php
-            $accKeys = ['main_light','work_light','rotary_lamp','back_buzzer','blue_spot','camera','camera_ai','speed_limiter','safety_belt','mirror','horn_klason'];
-            foreach ($accKeys as $k):
-            ?>
-            <div class="col-md-4 col-lg-3">
-                <div class="form-check">
-                    <input class="form-check-input po-unit-acc" type="checkbox" name="unit_acc[]" value="<?= esc($k) ?>" id="acc_<?= esc($k) ?>">
-                    <label class="form-check-label" for="acc_<?= esc($k) ?>"><?= esc(str_replace('_', ' ', $k)) ?></label>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
+        <div class="form-text mt-1"><i class="fas fa-info-circle text-primary me-1"></i>Departemen <strong>DIESEL</strong> atau <strong>GASOLINE</strong>: centang <strong>Baterai</strong> dan <strong>Charger</strong> dinonaktifkan (hanya relevan untuk unit listrik / ELECTRIC).</div>
+        <div class="form-text mt-2"><strong>Fork:</strong> ukuran atau tipe khusus dari PI (mis. <em>1220mm fork</em>) harus ada di teks spesifikasi vendor di atas. Centang &quot;Fork termasuk paket&quot; jika baris PI menyertakan fork sesuai konfigurasi standar pabrik untuk model ini; jika fork non-standar atau hanya dijelaskan di PI, biarkan penjelasan di teks dan sesuaikan ekspektasi verifikasi gudang.</div>
+        <div class="form-text mt-1 text-muted">Rincian aksesoris per item (daftar seperti spesifikasi quotation) tidak diisi di halaman PO — checklist lengkap ada saat <strong>verifikasi gudang</strong>. Centang &quot;Aksesoris&quot; di atas hanya menandai bahwa baris PI menyertakan paket aksesoris.</div>
     </div>
 
     <div class="col-12"><hr class="my-3"></div>
@@ -246,7 +233,7 @@
     <!-- Keterangan -->
     <div class="col-12">
         <label for="unit_keterangan" class="form-label">Catatan singkat (opsional)</label>
-        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Catatan operasional, bukan pengganti paste PI di atas"></textarea>
+        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Catatan operasional singkat (bukan pengganti teks PI lengkap)"></textarea>
     </div>
 </div>
 

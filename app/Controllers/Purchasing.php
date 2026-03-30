@@ -31,6 +31,7 @@ use App\Models\InventoryUnitModel; // <-- untuk inventory unit
 use App\Models\InventoryAttachmentModel; // <-- untuk inventory attachment
 use App\Models\PODeliveryModel; // <-- untuk delivery tracking
 use App\Models\DeliveryItemModel; // <-- untuk delivery items
+use App\Libraries\DeliveryBundleLibrary;
 use App\Services\ExportService;
 
 
@@ -1606,8 +1607,8 @@ class Purchasing extends BaseController
      */
     public function storeUnifiedPO()
     {
-        // Check permission for creating PO
-        if (!$this->hasPermission('purchasing.po_unit_attachment.create')) {
+        // Check permission for creating PO with canonical RBAC key.
+        if (!$this->hasPermission('purchasing.po.create')) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Akses ditolak: Anda tidak memiliki izin'
@@ -1825,9 +1826,13 @@ class Purchasing extends BaseController
         } catch (\Exception $e) {
             $db->transRollback();
             log_message('error', '[storeUnifiedPO] Error: ' . $e->getMessage());
+            $msg = 'Gagal menyimpan Purchase Order. Silakan coba lagi.';
+            if (ENVIRONMENT !== 'production') {
+                $msg .= ' ' . $e->getMessage();
+            }
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal menyimpan Purchase Order. Silakan coba lagi.'
+                'message' => $msg,
             ]);
         }
     }
@@ -1959,18 +1964,25 @@ class Purchasing extends BaseController
                 } else {
                     $errors = $this->poUnitsModel->errors();
                     log_message('error', "[storeUnifiedPO] Unit #{$i} model insert failed: " . json_encode($errors));
-                    
-                    // Try direct insert as fallback
-                    $db = \Config\Database::connect();
-                    $builder = $db->table('po_units');
+
+                    $dbIns = \Config\Database::connect();
+                    $builder = $dbIns->table('po_units');
                     if ($builder->insert($unitData)) {
                         $successCount++;
                         log_message('info', "[storeUnifiedPO] Unit #{$i} direct insert successful");
+                    } else {
+                        $dbErr = $dbIns->error();
+                        $detail = trim((string) ($dbErr['message'] ?? ''));
+                        if ($detail === '') {
+                            $detail = json_encode($errors, JSON_UNESCAPED_UNICODE);
+                        }
+                        throw new \RuntimeException('Gagal menyimpan baris unit PO: ' . $detail);
                     }
                 }
             } catch (\Exception $e) {
                 $this->poUnitsModel->skipValidation(false);
                 log_message('error', "[storeUnifiedPO] Unit #{$i} exception: " . $e->getMessage());
+                throw $e;
             }
         }
         
@@ -4868,6 +4880,111 @@ class Purchasing extends BaseController
     }
 
     /**
+     * Prefill PO unit modal from quotation_specifications (id_specification).
+     * GET purchasing/api/quotation-specification/{id}
+     */
+    public function getQuotationSpecificationForPo($specId = null)
+    {
+        $id = (int) ($specId ?? $this->request->getGet('id_specification') ?? 0);
+        if ($id < 1) {
+            return $this->respond(['success' => false, 'message' => 'id_specification tidak valid'], 400);
+        }
+
+        helper('global_permission');
+        $perm = get_global_permission('purchasing');
+        if (empty($perm['view']) && empty($perm['create']) && empty($perm['edit'])) {
+            return $this->respond(['success' => false, 'message' => 'Akses ditolak'], 403);
+        }
+
+        $specModel = new \App\Models\QuotationSpecificationModel();
+        $row = $specModel->find($id);
+        if (!$row) {
+            return $this->respond(['success' => false, 'message' => 'Spesifikasi quotation tidak ditemukan'], 404);
+        }
+
+        $db = \Config\Database::connect();
+        $jenisLower = '';
+        if (!empty($row['tipe_unit_id'])) {
+            $tu = $db->table('tipe_unit')->select('jenis')->where('id_tipe_unit', (int) $row['tipe_unit_id'])->get()->getRowArray();
+            $jenisLower = strtolower((string) ($tu['jenis'] ?? ''));
+        }
+
+        $flags = ['fork_standard'];
+        if (!empty($row['battery_id'])) {
+            $flags[] = 'battery';
+        }
+        if (!empty($row['charger_id'])) {
+            $flags[] = 'charger';
+        }
+        if (!empty($row['attachment_id'])) {
+            $flags[] = 'attachment';
+        }
+
+        $accArr = [];
+        $ua = $row['unit_accessories'] ?? null;
+        if ($ua !== null && $ua !== '') {
+            if (is_string($ua)) {
+                $dec = json_decode($ua, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) {
+                    $accArr = $dec;
+                } else {
+                    $accArr = array_values(array_filter(array_map('trim', explode(',', $ua))));
+                }
+            } elseif (is_array($ua)) {
+                $accArr = $ua;
+            }
+        }
+        if ($accArr !== []) {
+            $flags[] = 'accessories';
+        }
+
+        foreach (['listrik', 'elektrik', 'electric', 'battery'] as $kw) {
+            if ($jenisLower !== '' && str_contains($jenisLower, $kw)) {
+                if (!in_array('battery', $flags, true)) {
+                    $flags[] = 'battery';
+                }
+                if (!in_array('charger', $flags, true)) {
+                    $flags[] = 'charger';
+                }
+                break;
+            }
+        }
+
+        $flags = array_values(array_unique($flags));
+
+        $merkForSelect = null;
+        if (!empty($row['brand_id'])) {
+            $mu = $this->modelUnitModel->find((int) $row['brand_id']);
+            if ($mu) {
+                $merkForSelect = $mu['merk_unit'] ?? null;
+            }
+        }
+
+        $data = [
+            'id_specification'   => (int) $row['id_specification'],
+            'id_quotation'       => (int) ($row['id_quotation'] ?? 0),
+            'specification_name' => $row['specification_name'] ?? '',
+            'departemen_id'      => !empty($row['departemen_id']) ? (int) $row['departemen_id'] : null,
+            'tipe_unit_id'       => !empty($row['tipe_unit_id']) ? (int) $row['tipe_unit_id'] : null,
+            'kapasitas_id'       => !empty($row['kapasitas_id']) ? (int) $row['kapasitas_id'] : null,
+            'mast_id'            => !empty($row['mast_id']) ? (int) $row['mast_id'] : null,
+            'ban_id'             => !empty($row['ban_id']) ? (int) $row['ban_id'] : null,
+            'roda_id'            => !empty($row['roda_id']) ? (int) $row['roda_id'] : null,
+            'valve_id'           => !empty($row['valve_id']) ? (int) $row['valve_id'] : null,
+            'model_unit_id'      => !empty($row['brand_id']) ? (int) $row['brand_id'] : null,
+            'merk_unit_label'    => $merkForSelect,
+            'baterai_id'         => !empty($row['battery_id']) ? (int) $row['battery_id'] : null,
+            'charger_id'         => !empty($row['charger_id']) ? (int) $row['charger_id'] : null,
+            'attachment_id'      => !empty($row['attachment_id']) ? (int) $row['attachment_id'] : null,
+            'unit_accessories'   => $accArr,
+            'package_flags'      => $flags,
+            'notes'              => $row['notes'] ?? '',
+        ];
+
+        return $this->respond(['success' => true, 'data' => $data]);
+    }
+
+    /**
      * Get PO Items for Delivery Selection
      */
     public function getDeliveryItems($poId)
@@ -4929,9 +5046,9 @@ class Purchasing extends BaseController
                 log_message('info', 'Delivered item - Type: ' . $item->item_type . ', Unit ID: ' . $item->id_po_unit . ', Attachment ID: ' . $item->id_po_attachment);
                 
                 if ($item->item_type === 'unit' && $item->id_po_unit) {
-                    $deliveredUnits[] = $item->id_po_unit;
-                } elseif (in_array($item->item_type, ['attachment', 'battery', 'charger']) && $item->id_po_attachment) {
-                    $deliveredAttachments[] = $item->id_po_attachment;
+                    $deliveredUnits[] = (int) $item->id_po_unit;
+                } elseif (in_array($item->item_type, ['attachment', 'battery', 'charger'], true) && $item->id_po_attachment) {
+                    $deliveredAttachments[] = (int) $item->id_po_attachment;
                 }
             }
             
@@ -5155,6 +5272,36 @@ class Purchasing extends BaseController
     }
 
     /**
+     * Map payload Assign SN ke kolom po_delivery_items (hanya key yang dikirim).
+     *
+     * @return array<string, mixed>
+     */
+    private function buildSnUpdateColumnsForDeliveryItem(string $itemType, array $sn): array
+    {
+        $updateData = [];
+
+        if ($itemType === 'unit') {
+            foreach (['serial_number', 'sn_mast_po', 'sn_mesin_po'] as $k) {
+                if (array_key_exists($k, $sn)) {
+                    $updateData[$k] = $sn[$k];
+                }
+            }
+            if (array_key_exists('sn_mast', $sn)) {
+                $updateData['sn_mast_po'] = $sn['sn_mast'];
+            }
+            if (array_key_exists('sn_engine', $sn)) {
+                $updateData['sn_mesin_po'] = $sn['sn_engine'];
+            }
+        } elseif (in_array($itemType, ['attachment', 'battery', 'charger'], true)) {
+            if (array_key_exists('serial_number', $sn)) {
+                $updateData['serial_number'] = $sn['serial_number'];
+            }
+        }
+
+        return $updateData;
+    }
+
+    /**
      * Get Delivery Items for SN Assignment (based on serial_numbers from delivery)
      */
     public function getDeliveryItemsForSN($deliveryId)
@@ -5195,6 +5342,12 @@ class Purchasing extends BaseController
             $deliveryItemsQuery = $db->query("
                 SELECT 
                     pdi.*,
+                    pu.baterai_id AS fk_unit_baterai,
+                    pu.charger_id AS fk_unit_charger,
+                    pu.attachment_id AS fk_unit_attachment,
+                    pa.baterai_id AS line_pa_baterai,
+                    pa.charger_id AS line_pa_charger,
+                    pa.attachment_id AS line_pa_attachment,
                     mu.model_unit,
                     mu.merk_unit,
                     tu.tipe as jenis,
@@ -5219,7 +5372,7 @@ class Purchasing extends BaseController
                 LEFT JOIN baterai b ON pa.baterai_id = b.id
                 LEFT JOIN charger c ON pa.charger_id = c.id_charger
                 WHERE pdi.delivery_id = ?
-                ORDER BY pdi.item_type, pdi.id_delivery_item
+                ORDER BY pdi.id_delivery_item ASC
             ", [$deliveryId]);
             
             $deliveryItems = $deliveryItemsQuery->getResult();
@@ -5235,35 +5388,29 @@ class Purchasing extends BaseController
             ];
             
             foreach ($deliveryItems as $item) {
-                $itemData = [
-                    'id_delivery_item' => $item->id_delivery_item,
-                    'item_type' => $item->item_type,
-                    'qty' => $item->qty,
-                    'item_name' => $item->item_name,
-                    'item_description' => $item->item_description,
-                    'sn_mast_po' => $item->sn_mast_po,
-                    'sn_mesin_po' => $item->sn_mesin_po,
-                    'serial_number' => $item->serial_number
-                ];
-                
-                // Add to appropriate category
-                if ($item->item_type === 'unit') {
+                $itemData = DeliveryBundleLibrary::formatDeliveryItemRow($item);
+                $t = strtolower((string) ($item->item_type ?? ''));
+
+                if ($t === 'unit') {
                     $items['units'][] = $itemData;
-                } elseif ($item->item_type === 'attachment') {
+                } elseif ($t === 'attachment') {
                     $items['attachments'][] = $itemData;
-                } elseif ($item->item_type === 'battery') {
+                } elseif ($t === 'battery') {
                     $items['batteries'][] = $itemData;
-                } elseif ($item->item_type === 'charger') {
+                } elseif ($t === 'charger') {
                     $items['chargers'][] = $itemData;
                 }
             }
-            
+
+            [$unitBundles, $orphans] = DeliveryBundleLibrary::pairDeliveryItemsIntoBundles($deliveryItems);
             
             log_message('info', 'Final items array: ' . json_encode($items));
             
             return $this->respond([
                 'success' => true,
-                'items' => $items
+                'items' => $items,
+                'unit_bundles' => $unitBundles,
+                'orphans' => $orphans,
             ]);
             
         } catch (\Exception $e) {
@@ -5314,23 +5461,60 @@ class Purchasing extends BaseController
                 SELECT id_delivery_item, item_type, id_po_unit, id_po_attachment
                 FROM po_delivery_items 
                 WHERE delivery_id = ?
-                ORDER BY item_type, id_delivery_item
+                ORDER BY id_delivery_item ASC
             ", [$deliveryId])->getResult();
             
             log_message('info', 'Assign SN Debug - Found ' . count($deliveryItems) . ' delivery items');
+
+            $snByLineId = [];
+            foreach ($snData as $snItem) {
+                if (! is_array($snItem)) {
+                    continue;
+                }
+                if (! empty($snItem['id_delivery_item'])) {
+                    $snByLineId[(int) $snItem['id_delivery_item']] = $snItem;
+                }
+            }
             
-            // Group items by type and create type-specific indexes
+            // Group items by type and create type-specific indexes (legacy tanpa id_delivery_item)
             $itemCounts = ['unit' => 0, 'attachment' => 0, 'battery' => 0, 'charger' => 0];
             
             // Update each item in po_delivery_items with serial numbers
             foreach ($deliveryItems as $item) {
-                // Get the correct index for this item type
+                $lineId = (int) $item->id_delivery_item;
+
+                if (isset($snByLineId[$lineId])) {
+                    $matchingSnData = $snByLineId[$lineId];
+                    $updateData = $this->buildSnUpdateColumnsForDeliveryItem((string) $item->item_type, $matchingSnData);
+
+                    log_message('info', 'Assign SN Debug - By id_delivery_item ' . $lineId .
+                        ' type: ' . $item->item_type . ' payload: ' . json_encode($matchingSnData));
+
+                    if ($updateData !== []) {
+                        $updateData['updated_at'] = date('Y-m-d H:i:s');
+                        $db->table('po_delivery_items')
+                            ->where('id_delivery_item', $lineId)
+                            ->where('delivery_id', $deliveryId)
+                            ->update($updateData);
+
+                        log_message('info', 'Assign SN Debug - Updated item ' . $lineId .
+                            ' (' . $item->item_type . '): ' . json_encode($updateData));
+                    }
+
+                    $itemCounts[$item->item_type]++;
+
+                    continue;
+                }
+
+                // Legacy: cocokkan type + index (tanpa id_delivery_item)
                 $typeIndex = $itemCounts[$item->item_type];
                 
-                // Find matching SN data by type and type-specific index
                 $matchingSnData = null;
                 foreach ($snData as $snItem) {
-                    if ($snItem['type'] === $item->item_type && $snItem['index'] == $typeIndex) {
+                    if (! is_array($snItem) || ! empty($snItem['id_delivery_item'])) {
+                        continue;
+                    }
+                    if (($snItem['type'] ?? '') === $item->item_type && ($snItem['index'] ?? null) == $typeIndex) {
                         $matchingSnData = $snItem;
                         break;
                     }
@@ -5343,7 +5527,6 @@ class Purchasing extends BaseController
                 if ($matchingSnData) {
                     $updateData = [];
                     
-                    // Update based on item type
                     if (isset($matchingSnData['sn_mast'])) {
                         $updateData['sn_mast_po'] = $matchingSnData['sn_mast'];
                     }
@@ -5354,12 +5537,12 @@ class Purchasing extends BaseController
                         $updateData['serial_number'] = $matchingSnData['serial_number'];
                     }
                     
-                    if (!empty($updateData)) {
+                    if ($updateData !== []) {
                         $updateData['updated_at'] = date('Y-m-d H:i:s');
                         
-                        // Update the specific item by id_delivery_item
                         $db->table('po_delivery_items')
                            ->where('id_delivery_item', $item->id_delivery_item)
+                           ->where('delivery_id', $deliveryId)
                            ->update($updateData);
                            
                         log_message('info', 'Assign SN Debug - Updated item ' . $item->id_delivery_item . 
@@ -5367,7 +5550,6 @@ class Purchasing extends BaseController
                     }
                 }
                 
-                // Increment the counter for this item type
                 $itemCounts[$item->item_type]++;
             }
             

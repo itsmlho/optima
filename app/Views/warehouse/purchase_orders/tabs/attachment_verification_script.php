@@ -18,19 +18,21 @@
             $('#attachment-item-list .item-child-item').removeClass('active');
             $(this).addClass('active');
             const itemData = $(this).data('item');
-            $('#attachment-detail-view-container').html(createAttachmentDetailCard(itemData));
-            // Load dropdown options after card is created
-            setTimeout(() => loadDropdownOptions(), 100);
+            $('#attachment-detail-view-container').html(createAttachmentDetailCard(itemData, '', {}));
+            setTimeout(function() {
+                loadDropdownOptions();
+                checkAllAttachmentVerifiedInline($('#attachment-detail-view-container .attachment-inline-verify-form').first());
+            }, 100);
         });
 
-        // Event listener untuk submit verifikasi inline (tanpa modal)
-        $(document).on('click', '#btn-submit-attachment-verification-inline', submitAttachmentVerificationInline);
-        
-        // Event listener untuk dropdown lokasi
-        $(document).on('change', '#attachment_lokasi_unit_inline', checkAllAttachmentVerifiedInline);
-        
-        // Event listener untuk checkbox "Sesuai"
-        $(document).on('change', '#attachment-detail-view-container .verify-checkbox-sesuai', function() {
+        $(document).on('click', '.btn-submit-attachment-verification-inline', submitAttachmentVerificationInline);
+
+        $(document).on('change', '.attachment-inline-verify-form .attachment-lokasi-inline', function() {
+            checkAllAttachmentVerifiedInline($(this).closest('form'));
+        });
+
+        $(document).on('change', '.attachment-inline-verify-form .verify-checkbox-sesuai', function() {
+            const $form = $(this).closest('form');
             const row = $(this).closest('tr');
             const verifyField = row.find('.verify-field');
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea, td:nth-child(2) select');
@@ -41,10 +43,10 @@
                 dbValue = dbField.val() || '';
             }
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
-            
+
             if ($(this).is(':checked')) {
                 tidakSesuaiCheckbox.prop('checked', false);
-                
+
                 if (verifyField.is('select')) {
                     verifyField.val(dbValue).prop('disabled', true);
                 } else {
@@ -67,19 +69,19 @@
                 });
                 row.css('background-color', '');
             }
-            checkAllAttachmentVerifiedInline();
+            checkAllAttachmentVerifiedInline($form);
         });
-        
-        // Event listener untuk checkbox "Tidak Sesuai"
-        $(document).on('change', '#attachment-detail-view-container .verify-checkbox-tidak-sesuai', function() {
+
+        $(document).on('change', '.attachment-inline-verify-form .verify-checkbox-tidak-sesuai', function() {
+            const $form = $(this).closest('form');
             const row = $(this).closest('tr');
             const verifyField = row.find('.verify-field');
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const isTextarea = verifyField.is('textarea');
-            
+
             if ($(this).is(':checked')) {
                 sesuaiCheckbox.prop('checked', false);
-                
+
                 if (verifyField.is('select')) {
                     verifyField.prop('disabled', false);
                 } else {
@@ -89,39 +91,39 @@
                     'background-color': '#fef2f2',
                     'border-color': '#ef4444'
                 });
-                
+
                 if (!isTextarea) {
                     verifyField.focus();
                 }
-                
+
                 row.css('background-color', '#fef2f2');
-                
+
                 if (!verifyField.val() || verifyField.val().trim() === '') {
                     verifyField.val('').attr('required', true);
                 } else {
                     verifyField.attr('required', true);
                 }
-                
-                $('#attachment-alasan-reject-container').slideDown(300);
-                $('#attachment_alasan_reject_inline').prop('required', true);
+
+                $form.find('.attachment-alasan-reject-container').slideDown(300);
+                $form.find('.attachment-alasan-reject-inline').prop('required', true);
             } else {
                 verifyField.prop('readonly', false).css({
                     'background-color': '#fff',
                     'border-color': '#333'
                 }).removeAttr('required');
                 row.css('background-color', '');
-                
-                const hasTidakSesuai = $('#attachment-detail-view-container .verify-checkbox-tidak-sesuai:checked').length > 0;
+
+                const hasTidakSesuai = $form.find('.verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
-                    $('#attachment-alasan-reject-container').slideUp(300);
-                    $('#attachment_alasan_reject_inline').prop('required', false).val('');
+                    $form.find('.attachment-alasan-reject-container').slideUp(300);
+                    $form.find('.attachment-alasan-reject-inline').prop('required', false).val('');
                 }
             }
-            checkAllAttachmentVerifiedInline();
+            checkAllAttachmentVerifiedInline($form);
         });
-        
-        // Event listener untuk input field "Real Lapangan"
-        $(document).on('input', '#attachment-detail-view-container .verify-field', function() {
+
+        $(document).on('input', '.attachment-inline-verify-form .verify-field', function() {
+            const $form = $(this).closest('form');
             const row = $(this).closest('tr');
             const verifyField = $(this);
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea');
@@ -129,11 +131,11 @@
             const realValue = verifyField.val() || '';
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
-            
+
             if (realValue.trim() !== dbValue.trim()) {
                 sesuaiCheckbox.prop('checked', false);
                 tidakSesuaiCheckbox.prop('checked', true);
-                
+
                 if (verifyField.is('select')) {
                     verifyField.prop('disabled', false);
                 } else {
@@ -144,18 +146,18 @@
                     'border-color': '#ef4444'
                 }).attr('required', true);
                 row.css('background-color', '#fef2f2');
-                
-                $('#attachment-alasan-reject-container').slideDown(300);
-                $('#attachment_alasan_reject_inline').prop('required', true);
+
+                $form.find('.attachment-alasan-reject-container').slideDown(300);
+                $form.find('.attachment-alasan-reject-inline').prop('required', true);
             } else {
-                const hasTidakSesuai = $('#attachment-detail-view-container .verify-checkbox-tidak-sesuai:checked').length > 0;
+                const hasTidakSesuai = $form.find('.verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
-                    $('#attachment-alasan-reject-container').slideUp(300);
-                    $('#attachment_alasan_reject_inline').prop('required', false).val('');
+                    $form.find('.attachment-alasan-reject-container').slideUp(300);
+                    $form.find('.attachment-alasan-reject-inline').prop('required', false).val('');
                 }
             }
-            
-            checkAllAttachmentVerifiedInline();
+
+            checkAllAttachmentVerifiedInline($form);
         });
     });
 
@@ -167,7 +169,7 @@
 
     // Load dropdown options from database
     function loadDropdownOptions() {
-        $('.verify-dropdown').each(function() {
+        $('.attachment-inline-verify-form .verify-dropdown').each(function() {
             const $dropdown = $(this);
             const dropdownType = $dropdown.data('dropdown-type');
             const currentValue = $dropdown.find('option:selected').val();
@@ -181,19 +183,18 @@
             
             // Add parent filter for cascading dropdowns
             if (cascadingParent && parentValue) {
+                const $ownerForm = $dropdown.closest('.attachment-inline-verify-form');
                 if (dropdownType === 'merk_attachment' && cascadingParent === 'tipe') {
                     requestData.tipe = parentValue;
                 } else if (dropdownType === 'model_attachment' && cascadingParent === 'merk') {
                     requestData.merk = parentValue;
-                    // Also need tipe if available
-                    const tipeValue = $('#verify_tipe').val();
+                    const tipeValue = $ownerForm.find('[data-dropdown-type="tipe_attachment"]').val();
                     if (tipeValue) requestData.tipe = tipeValue;
                 } else if (dropdownType === 'tipe_battery' && cascadingParent === 'merk') {
                     requestData.merk = parentValue;
                 } else if (dropdownType === 'jenis_battery' && cascadingParent === 'tipe') {
                     requestData.tipe = parentValue;
-                    // Also need merk if available
-                    const merkValue = $('#verify_merk').val();
+                    const merkValue = $ownerForm.find('[data-dropdown-type="merk_battery"]').val();
                     if (merkValue) requestData.merk = merkValue;
                 } else if (dropdownType === 'tipe_charger' && cascadingParent === 'merk') {
                     requestData.merk = parentValue;
@@ -247,9 +248,9 @@
         });
     }
     
-    // Event listener for dropdown change
-    $(document).on('change', '.verify-dropdown', function() {
+    $(document).on('change', '.attachment-inline-verify-form .verify-dropdown', function() {
         const $dropdown = $(this);
+        const $form = $dropdown.closest('.attachment-inline-verify-form');
         const fieldName = $dropdown.data('field-name');
         const row = $(this).closest('tr');
         const verifyField = $(this);
@@ -263,59 +264,53 @@
         const realValue = verifyField.val() || '';
         const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
         const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
-        
-        // Handle cascading dropdowns
+
         const dropdownType = $dropdown.data('dropdown-type');
-        
-        if (dropdownType === 'tipe_attachment' && fieldName === 'tipe') {
-            // Attachment: Tipe changed - update Merk dropdown
+
+        if (dropdownType === 'tipe_attachment' && fieldName === 'type') {
             const selectedTipe = realValue;
-            const $merkDropdown = $('#verify_merk');
-            if ($merkDropdown.length && $merkDropdown.data('dropdown-type') === 'merk_attachment') {
+            const $merkDropdown = $form.find('[data-dropdown-type="merk_attachment"]').first();
+            if ($merkDropdown.length) {
                 $merkDropdown.data('loaded', false);
                 $merkDropdown.data('parent-value', selectedTipe);
                 $merkDropdown.find('option:not(:first)').remove();
                 $merkDropdown.append('<option value="">Loading...</option>');
                 setTimeout(() => loadDropdownOptions(), 100);
             }
-        } else if (dropdownType === 'merk_attachment' && fieldName === 'merk') {
-            // Attachment: Merk changed - update Model dropdown
+        } else if (dropdownType === 'merk_attachment' && fieldName === 'brand') {
             const selectedMerk = realValue;
-            const $modelDropdown = $('#verify_model');
-            if ($modelDropdown.length && $modelDropdown.data('dropdown-type') === 'model_attachment') {
+            const $modelDropdown = $form.find('[data-dropdown-type="model_attachment"]').first();
+            if ($modelDropdown.length) {
                 $modelDropdown.data('loaded', false);
                 $modelDropdown.data('parent-value', selectedMerk);
                 $modelDropdown.find('option:not(:first)').remove();
                 $modelDropdown.append('<option value="">Loading...</option>');
                 setTimeout(() => loadDropdownOptions(), 100);
             }
-        } else if (dropdownType === 'merk_battery' && fieldName === 'merk') {
-            // Battery: Merk changed - update Tipe dropdown
+        } else if (dropdownType === 'merk_battery' && fieldName === 'brand') {
             const selectedMerk = realValue;
-            const $tipeDropdown = $('#verify_tipe');
-            if ($tipeDropdown.length && $tipeDropdown.data('dropdown-type') === 'tipe_battery') {
+            const $tipeDropdown = $form.find('[data-dropdown-type="tipe_battery"]').first();
+            if ($tipeDropdown.length) {
                 $tipeDropdown.data('loaded', false);
                 $tipeDropdown.data('parent-value', selectedMerk);
                 $tipeDropdown.find('option:not(:first)').remove();
                 $tipeDropdown.append('<option value="">Loading...</option>');
                 setTimeout(() => loadDropdownOptions(), 100);
             }
-        } else if (dropdownType === 'tipe_battery' && fieldName === 'tipe') {
-            // Battery: Tipe changed - update Jenis dropdown
+        } else if (dropdownType === 'tipe_battery' && fieldName === 'model') {
             const selectedTipe = realValue;
-            const $jenisDropdown = $('#verify_jenis');
-            if ($jenisDropdown.length && $jenisDropdown.data('dropdown-type') === 'jenis_battery') {
+            const $jenisDropdown = $form.find('[data-dropdown-type="jenis_battery"]').first();
+            if ($jenisDropdown.length) {
                 $jenisDropdown.data('loaded', false);
                 $jenisDropdown.data('parent-value', selectedTipe);
                 $jenisDropdown.find('option:not(:first)').remove();
                 $jenisDropdown.append('<option value="">Loading...</option>');
                 setTimeout(() => loadDropdownOptions(), 100);
             }
-        } else if (dropdownType === 'merk_charger' && fieldName === 'merk') {
-            // Charger: Merk changed - update Tipe dropdown
+        } else if (dropdownType === 'merk_charger' && fieldName === 'brand') {
             const selectedMerk = realValue;
-            const $tipeDropdown = $('#verify_tipe');
-            if ($tipeDropdown.length && $tipeDropdown.data('dropdown-type') === 'tipe_charger') {
+            const $tipeDropdown = $form.find('[data-dropdown-type="tipe_charger"]').first();
+            if ($tipeDropdown.length) {
                 $tipeDropdown.data('loaded', false);
                 $tipeDropdown.data('parent-value', selectedMerk);
                 $tipeDropdown.find('option:not(:first)').remove();
@@ -323,8 +318,7 @@
                 setTimeout(() => loadDropdownOptions(), 100);
             }
         }
-        
-        // Auto-check "Tidak Sesuai" if value changed
+
         if (realValue !== dbValue && realValue !== '') {
             tidakSesuaiCheckbox.prop('checked', true);
             sesuaiCheckbox.prop('checked', false);
@@ -334,8 +328,8 @@
             });
             row.css('background-color', '');
         }
-        
-        checkAllAttachmentVerifiedInline();
+
+        checkAllAttachmentVerifiedInline($form);
     });
 
     window.prepareAttachmentVerificationModal = function(element) {
@@ -554,33 +548,35 @@
         checkAllAttachmentVerified();
     };
 
-    function checkAllAttachmentVerifiedInline() {
+    function checkAllAttachmentVerifiedInline($form) {
+        if (!$form || !$form.length) {
+            $form = $('.attachment-inline-verify-form').first();
+        }
+        if (!$form || !$form.length) return;
+
         let allVerified = true;
-        let allRowsVerified = true;
-        
-        $('#attachmentVerificationFormInline tbody tr').each(function() {
+
+        $form.find('tbody tr').each(function() {
             const row = $(this);
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             const verifyField = row.find('.verify-field');
-            const isRequired = row.find('td:first').html().includes('<span class="text-danger">*</span>');
-            
+
             const isSesuaiChecked = sesuaiCheckbox.is(':checked');
             const isTidakSesuaiChecked = tidakSesuaiCheckbox.is(':checked');
-            
+
             if (!isSesuaiChecked && !isTidakSesuaiChecked) {
-                allRowsVerified = false;
                 allVerified = false;
                 return false;
             }
-            
+
             if (isTidakSesuaiChecked) {
                 if (!verifyField.val() || verifyField.val().trim() === '') {
                     allVerified = false;
                     return false;
                 }
             }
-            
+
             if (isSesuaiChecked) {
                 if (!verifyField.val() || verifyField.val().trim() === '') {
                     allVerified = false;
@@ -588,19 +584,20 @@
                 }
             }
         });
-        
-        const lokasiSelected = $('#attachment_lokasi_unit_inline').val() !== '';
-        $('#btn-submit-attachment-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
+
+        const lokasiSelected = $form.find('.attachment-lokasi-inline').val() !== '';
+        $form.find('.btn-submit-attachment-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
     }
 
-    function submitAttachmentVerificationInline() {
+    function submitAttachmentVerificationInline(e) {
         if (window._verifyingAttachment) return;
-        
-        const form = $('#attachmentVerificationFormInline');
+
+        const form = $(e.currentTarget).closest('form');
+        if (!form.length) return;
+
         const idItem = form.data('item-id');
         const poId = form.data('po-id');
-        const itemType = form.data('item-type');
-        const lokasiUnit = $('#attachment_lokasi_unit_inline').val();
+        const lokasiUnit = form.find('.attachment-lokasi-inline').val();
         
         if (!lokasiUnit) {
             OptimaNotify.warning('Please select a storage location first.', 'Storage Location Required');
@@ -674,22 +671,22 @@
         }
         
         if (finalStatus === 'Tidak Sesuai') {
-            const alasanReject = $('#attachment_alasan_reject_inline').val().trim();
+            const alasanReject = form.find('.attachment-alasan-reject-inline').val().trim();
             if (!alasanReject) {
                 OptimaNotify.warning(
                     'Please provide a reason for the reject/discrepancy found.',
                     'Reject Reason Required'
                 );
-                $('#attachment_alasan_reject_inline').focus();
+                form.find('.attachment-alasan-reject-inline').focus();
                 return;
             }
             fullNotes.unshift(`Reject Reason: ${alasanReject}`);
         }
-        
-        showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies);
+
+        showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies, form);
     }
-    
-    function showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies = []) {
+
+    function showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies = [], $form = null) {
         let summaryHTML = '<div style="text-align: left; margin-top: 15px;">';
         summaryHTML += '<div style="margin-bottom: 10px;"><strong>Verification Status:</strong> ';
         if (finalStatus === 'Sesuai') {
@@ -729,14 +726,17 @@
             cancelText: window.lang('cancel'),
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
             onConfirm: function() {
-                updateAttachmentStatusVerifikasi(idItem, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies);
+                updateAttachmentStatusVerifikasi(idItem, poId, finalStatus, snData, fullNotes.join('; '), lokasiUnit, discrepancies, $form);
             }
         });
     }
 
-    function createAttachmentDetailCard(data) {
+    function createAttachmentDetailCard(data, suffix = '', extra = {}) {
         const h = (str) => str ? String(str).replace(/</g, '&lt;') : "-";
-        
+        const sfx = suffix != null && String(suffix) !== '' ? String(suffix) : '';
+        const fp = sfx ? ('verify_' + sfx + '_') : 'verify_';
+        const whDel = extra.whDeliveryId != null && extra.whDeliveryId !== '' ? String(extra.whDeliveryId) : '';
+
         // Build specification details array (same format as unit verification)
         const specDetails = [];
         
@@ -761,9 +761,9 @@
         // Build table rows with editable fields (same format as unit)
         let tableRows = '';
         specDetails.forEach((spec, index) => {
-            const fieldId = `verify_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
-            const checkId = `check_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
-            const dbId = `db_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
+            const fieldId = `${fp}${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
+            const checkId = `check_${sfx ? sfx + '_' : ''}${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
+            const dbId = `db_${sfx ? sfx + '_' : ''}${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
             
             const dbValue = spec.value && spec.value !== '-' && spec.value !== 'Belum ada SN' ? spec.value : '';
             const realValue = dbValue;
@@ -879,8 +879,11 @@
             itemName = "Unknown Item";
         }
         
+        const formId = sfx ? `attachmentVerificationFormInline_${sfx}` : 'attachmentVerificationFormInline';
+        const lokasiId = sfx ? `attachment_lokasi_unit_inline_${sfx}` : 'attachment_lokasi_unit_inline';
+
         return `
-            <form id="attachmentVerificationFormInline" data-item-id="${data.id_po_attachment}" data-po-id="${data.po_id}" data-item-type="${data.item_type}">
+            <form class="attachment-inline-verify-form" id="${formId}" data-att-suffix="${sfx}" data-wh-delivery-id="${whDel}" data-item-id="${data.id_po_attachment}" data-po-id="${data.po_id}" data-item-type="${data.item_type}">
                 <div class="card table-card animate__animated animate__fadeIn">
                     <div class="card-header p-3" style="background-color: #f5f5f5; border-bottom: 1px solid #ccc;">
                         <div class="d-flex justify-content-between align-items-center">
@@ -917,10 +920,10 @@
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="attachment_lokasi_unit_inline" class="form-label fw-semibold">
+                                <label for="${lokasiId}" class="form-label fw-semibold">
                                     <i class="fas fa-map-marker-alt me-2"></i>Storage Location <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-select" id="attachment_lokasi_unit_inline" name="attachment_lokasi_unit" required>
+                                <select class="form-select attachment-lokasi-inline" id="${lokasiId}" name="attachment_lokasi_unit" required>
                                     <option value="">-- Select Storage Location --</option>
                                     <option value="POS 1">POS 1</option>
                                     <option value="POS 2">POS 2</option>
@@ -932,13 +935,12 @@
                             </div>
                         </div>
                         
-                        <div class="row mb-3" id="attachment-alasan-reject-container" style="display: none;">
+                        <div class="row mb-3 attachment-alasan-reject-container" style="display: none;">
                             <div class="col-12">
-                                <label for="attachment_alasan_reject_inline" class="form-label fw-semibold">
+                                <label class="form-label fw-semibold">
                                     <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Reason for Rejection <span class="text-danger">*</span>
                                 </label>
-                                <textarea class="form-control" 
-                                          id="attachment_alasan_reject_inline" 
+                                <textarea class="form-control attachment-alasan-reject-inline" 
                                           name="attachment_alasan_reject" 
                                           rows="3" 
                                           placeholder="Explain the reason for rejection/non-compliance found..."
@@ -951,7 +953,7 @@
                         </div>
                     </div>
                     <div class="card-footer text-center">
-                        <button type="button" class="btn btn-success" id="btn-submit-attachment-verification-inline" disabled>
+                        <button type="button" class="btn btn-success btn-submit-attachment-verification-inline" disabled>
                             <i class="fas fa-check-circle me-2"></i>Submit Verification
                         </button>
                     </div>
@@ -959,9 +961,13 @@
             </form>`;
     }
 
-    function updateAttachmentStatusVerifikasi(itemId, poId, status, snData = {}, catatan = '', lokasiUnit = '', discrepancies = []) {
+    window.checkAllAttachmentVerifiedInline = checkAllAttachmentVerifiedInline;
+    window.loadAttachmentVerificationDropdowns = loadDropdownOptions;
+    window.createAttachmentDetailCard = createAttachmentDetailCard;
+
+    function updateAttachmentStatusVerifikasi(itemId, poId, status, snData = {}, catatan = '', lokasiUnit = '', discrepancies = [], $form = null) {
         window._verifyingAttachment = true;
-        $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', true);
+        $('.btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', true);
         
         $.ajax({
             type: "POST",
@@ -980,24 +986,46 @@
             beforeSend: () => OptimaPro.showLoading('Verifying attachment...'),
             success: function(response) {
                 window._verifyingAttachment = false;
-                $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
+                $('.btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
                 OptimaPro.hideLoading();
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
                     OptimaNotify.success('Verification successful!', 'Success!');
-                    
-                    let sisaElem = $(`#lbl-remain-attachment-po-${poId}`);
-                    let sisaCount = parseInt(sisaElem.text()) - 1;
-                    sisaElem.text(`${sisaCount} Item`);
-                    
-                    $(`#list-attachment-item-${itemId}`).fadeOut(500, function() { 
-                        $(this).remove(); 
-                        if (sisaCount === 0) {
-                            $(`[data-po-id="${poId}"]`).fadeOut(500);
-                        }
-                    });
 
-                    $('#attachment-detail-view-container').html(`
+                    const whDel = $form && $form.length ? $form.data('whDeliveryId') : null;
+                    if (whDel) {
+                        $(`#orphan-line-d${whDel}-a${itemId}`).remove();
+                        const sisaPl = $(`#lbl-remain-pl-${whDel}`);
+                        let n = parseInt(sisaPl.text(), 10) || 0;
+                        if (n > 0) {
+                            sisaPl.text(n - 1);
+                        }
+                        const $blk = $form.closest('.wh-embed-att-block');
+                        if ($blk.length) {
+                            $blk.fadeOut(300, function() { $(this).remove(); });
+                        } else {
+                            $form.closest('.wh-orphan-verify-root').fadeOut(300, function() {
+                                $(this).remove();
+                                $('#wh-verification-detail-container').html(`
+                                    <div class="card table-card"><div class="card-body text-center p-5">
+                                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                        <h5 class="text-muted">Verifikasi berhasil. Pilih item lain dari daftar.</h5>
+                                    </div></div>`);
+                            });
+                        }
+                    } else {
+                        let sisaElem = $(`#lbl-remain-attachment-po-${poId}`);
+                        let sisaCount = parseInt(sisaElem.text(), 10) - 1;
+                        if (!isNaN(sisaCount)) sisaElem.text(`${sisaCount} Item`);
+
+                        $(`#list-attachment-item-${itemId}`).fadeOut(500, function() {
+                            $(this).remove();
+                            if (!isNaN(sisaCount) && sisaCount === 0) {
+                                $(`[data-po-id="${poId}"]`).fadeOut(500);
+                            }
+                        });
+
+                        $('#attachment-detail-view-container').html(`
                         <div class="card table-card">
                             <div class="card-body text-center p-5">
                                 <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
@@ -1005,13 +1033,14 @@
                             </div>
                         </div>
                     `);
+                    }
                 } else {
                     OptimaNotify.error(response.message || 'An error occurred.');
                 }
             },
             error: (xhr) => {
                 window._verifyingAttachment = false;
-                $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
+                $('.btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
                 OptimaNotify.error('An unexpected error occurred.');
                 console.error(xhr.responseText);
             }

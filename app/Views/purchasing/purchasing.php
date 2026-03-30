@@ -152,6 +152,15 @@ $can_export = $permissions['export'];
             table-layout: auto;
         }
     }
+
+    /* Panjang form PO: header & footer tetap, konten di modal-body di-scroll */
+    #itemDetailModal .modal-dialog.modal-dialog-scrollable,
+    #createPoModal .modal-dialog.modal-dialog-scrollable,
+    #assignSNModal .modal-dialog.modal-dialog-scrollable,
+    #viewPOModal .modal-dialog.modal-dialog-scrollable,
+    #createDeliveryModal .modal-dialog.modal-dialog-scrollable {
+        max-height: calc(100vh - 1.5rem);
+    }
 </style>
 
 <!-- Success/Error Messages -->
@@ -350,7 +359,7 @@ $can_export = $permissions['export'];
 
 <!-- Create Delivery Modal -->
 <div class="modal fade" id="createDeliveryModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Create Delivery Schedule</h5>
@@ -419,7 +428,7 @@ $can_export = $permissions['export'];
 
 <!-- Assign Serial Numbers Modal -->
 <div class="modal fade" id="assignSNModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -481,7 +490,7 @@ $can_export = $permissions['export'];
 
 <!-- View PO Detail Modal -->
 <div class="modal fade" id="viewPOModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
             <div class="modal-header" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); color: #2c3e50; border-bottom: 1px solid #e9ecef; border-radius: 12px 12px 0 0;">
                 <h5 class="modal-title" style="font-weight: 600;">
@@ -650,7 +659,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal Create PO (Unified - Unit, Attachment, Battery, Charger) -->
 <div class="modal fade" id="createPoModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title">
@@ -786,7 +795,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal for Item Details (Sub-Modal) -->
 <div class="modal fade" id="itemDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title" id="itemModalTitle">Add Item</h5>
@@ -2673,11 +2682,92 @@ function loadItemsForSNAssignment(poId, deliveryId) {
     });
 }
 
+function snEscapeAttr(val) {
+    if (val == null || val === '') return '';
+    return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+}
+
+/** Kumpulkan payload Assign SN dari input bertanda data-sn-delivery-item */
+function collectSnAssignmentPayload() {
+    const byId = {};
+    document.querySelectorAll('[data-sn-delivery-item]').forEach(function(el) {
+        const id = el.getAttribute('data-sn-delivery-item');
+        const typ = el.getAttribute('data-sn-type') || '';
+        const field = el.getAttribute('data-sn-field');
+        if (!id || !field) return;
+        if (!byId[id]) {
+            byId[id] = { id_delivery_item: parseInt(id, 10), type: typ };
+        }
+        byId[id][field] = el.value;
+    });
+    const serialNumbers = [];
+    Object.keys(byId).forEach(function(k) {
+        const row = byId[k];
+        const id = row.id_delivery_item;
+        const t = row.type;
+        if (t === 'unit') {
+            const snU = (row.serial_number || '').trim();
+            const snE = (row.sn_mesin_po || '').trim();
+            const snM = (row.sn_mast_po || '').trim();
+            if (snU || snE || snM) {
+                serialNumbers.push({
+                    id_delivery_item: id,
+                    type: 'unit',
+                    serial_number: row.serial_number || '',
+                    sn_mast_po: row.sn_mast_po || '',
+                    sn_mesin_po: row.sn_mesin_po || ''
+                });
+            }
+        } else if (t === 'attachment' || t === 'battery' || t === 'charger') {
+            const sn = (row.serial_number || '').trim();
+            if (sn) {
+                serialNumbers.push({
+                    id_delivery_item: id,
+                    type: t,
+                    serial_number: row.serial_number || ''
+                });
+            }
+        }
+    });
+    return serialNumbers;
+}
+
+function renderSnAccessoryBlock(title, iconClass, line, itemType) {
+    if (!line || !line.id_delivery_item) return '';
+    const id = line.id_delivery_item;
+    const v = snEscapeAttr(line.serial_number || '');
+    return `
+        <div class="border-top pt-2 mt-2">
+            <div class="d-flex align-items-center mb-2">
+                <i class="${iconClass} me-2 text-secondary"></i>
+                <strong class="small">${title}</strong>
+                <span class="ms-auto small text-muted text-truncate" style="max-width:55%" title="${snEscapeAttr(line.item_name || '')}">${line.item_name || ''}</span>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-6 col-lg-4">
+                    <label class="form-label small mb-0">SN</label>
+                    <input type="text" class="form-control form-control-sm"
+                           data-sn-delivery-item="${id}" data-sn-type="${itemType}" data-sn-field="serial_number"
+                           placeholder="Serial number" value="${v}">
+                </div>
+            </div>
+        </div>`;
+}
+
 function renderSNAssignmentForm(items) {
     let html = '';
-    
-    // Check if items exist
-    if (!items || (!items.units?.length && !items.attachments?.length && !items.batteries?.length && !items.chargers?.length)) {
+
+    const orphans = items && items.orphans ? items.orphans : {};
+    const hasOrphans = (orphans.batteries && orphans.batteries.length) ||
+        (orphans.chargers && orphans.chargers.length) ||
+        (orphans.attachments && orphans.attachments.length);
+    const hasBundles = items && items.unit_bundles && items.unit_bundles.length > 0;
+    const hasLegacy = items && (items.units?.length || items.attachments?.length || items.batteries?.length || items.chargers?.length);
+
+    if (!items || (!hasBundles && !hasLegacy && !hasOrphans)) {
         html = `
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle me-2"></i>
@@ -2687,14 +2777,71 @@ function renderSNAssignmentForm(items) {
         $('#snAssignmentContent').html(html);
         return;
     }
-    
-    // Compact card format
+
+    html += '<div class="alert alert-light border small mb-3 py-2">';
+    html += '<i class="fas fa-info-circle me-1 text-primary"></i> ';
+    html += '<strong>Unit + aksesoris berpasangan:</strong> Charger, Baterai, dan Attachment (jika ikut pengiriman) ditampilkan di bawah unit yang dipasangkan. ';
+    html += 'Item tambahan yang tidak terpasang ke unit ada di bagian bawah.';
+    html += '</div>';
+
     html += '<div class="row g-3">';
-    
-    // Units
-    if (items.units && items.units.length > 0) {
-        items.units.forEach((unit, index) => {
+
+    if (hasBundles) {
+        items.unit_bundles.forEach(function(bundle, bundleIndex) {
+            const unit = bundle.unit;
+            if (!unit || !unit.id_delivery_item) return;
+            const uid = unit.id_delivery_item;
+            const snMain = snEscapeAttr(unit.serial_number || unit.serial_number_po || '');
+            const snEng = snEscapeAttr(unit.sn_mesin_po || '');
+            const snMast = snEscapeAttr(unit.sn_mast_po || '');
+
             html += `
+                <div class="col-12">
+                    <div class="card border-primary shadow-sm">
+                        <div class="card-header bg-primary text-dark py-2">
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <i class="fas fa-truck me-2"></i>
+                                <strong>Paket Unit #${bundleIndex + 1}</strong>
+                                <span class="ms-md-auto small text-muted text-truncate" style="max-width:100%">${unit.item_name || 'Unit'}</span>
+                            </div>
+                        </div>
+                        <div class="card-body py-3">
+                            <div class="mb-1"><span class="badge bg-primary">Unit</span></div>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-0">SN Unit</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="serial_number"
+                                           placeholder="SN Unit" value="${snMain}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-0">SN Engine</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="sn_mesin_po"
+                                           placeholder="SN Engine" value="${snEng}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-0">SN Mast</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="sn_mast_po"
+                                           placeholder="SN Mast" value="${snMast}">
+                                </div>
+                            </div>
+                            ${renderSnAccessoryBlock('Charger', 'fas fa-plug', bundle.charger, 'charger')}
+                            ${renderSnAccessoryBlock('Baterai', 'fas fa-battery-full', bundle.battery, 'battery')}
+                            ${renderSnAccessoryBlock('Attachment', 'fas fa-puzzle-piece', bundle.attachment, 'attachment')}
+                        </div>
+                    </div>
+                </div>`;
+        });
+    } else {
+        if (items.units && items.units.length > 0) {
+            items.units.forEach(function(unit, index) {
+                const uid = unit.id_delivery_item;
+                const snMain = snEscapeAttr(unit.serial_number || unit.serial_number_po || '');
+                const snEng = snEscapeAttr(unit.sn_mesin_po || '');
+                const snMast = snEscapeAttr(unit.sn_mast_po || '');
+                html += `
                 <div class="col-12">
                     <div class="card border-primary">
                         <div class="card-header bg-primary text-dark py-2">
@@ -2708,38 +2855,37 @@ function renderSNAssignmentForm(items) {
                             <div class="row g-2">
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">SN Unit:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="serial_number_po_${index}" 
-                                           placeholder="Enter SN Unit"
-                                           value="${unit.serial_number_po || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="serial_number"
+                                           name="serial_number_po_${index}"
+                                           placeholder="Enter SN Unit" value="${snMain}">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">SN Engine:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="sn_engine_${index}" 
-                                           placeholder="Enter SN Engine"
-                                           value="${unit.sn_mesin_po || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="sn_mesin_po"
+                                           name="sn_engine_${index}"
+                                           placeholder="Enter SN Engine" value="${snEng}">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">SN Mast:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="sn_mast_${index}" 
-                                           placeholder="Enter SN Mast"
-                                           value="${unit.sn_mast_po || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${uid}" data-sn-type="unit" data-sn-field="sn_mast_po"
+                                           name="sn_mast_${index}"
+                                           placeholder="Enter SN Mast" value="${snMast}">
                                 </div>
-
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
-    }
-    
-    // Attachments
-    if (items.attachments && items.attachments.length > 0) {
-        items.attachments.forEach((attachment, index) => {
-            html += `
+                </div>`;
+            });
+        }
+
+        if (items.attachments && items.attachments.length > 0) {
+            items.attachments.forEach(function(attachment, index) {
+                const aid = attachment.id_delivery_item;
+                const v = snEscapeAttr(attachment.serial_number || '');
+                html += `
                 <div class="col-12">
                     <div class="card border-info">
                         <div class="card-header bg-info text-dark py-2">
@@ -2753,24 +2899,23 @@ function renderSNAssignmentForm(items) {
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Serial Number:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="sn_attachment_${index}" 
-                                           placeholder="Enter Serial Number"
-                                           value="${attachment.serial_number || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${aid}" data-sn-type="attachment" data-sn-field="serial_number"
+                                           name="sn_attachment_${index}"
+                                           placeholder="Enter Serial Number" value="${v}">
                                 </div>
-
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
-    }
-    
-    // Batteries
-    if (items.batteries && items.batteries.length > 0) {
-        items.batteries.forEach((battery, index) => {
-            html += `
+                </div>`;
+            });
+        }
+
+        if (items.batteries && items.batteries.length > 0) {
+            items.batteries.forEach(function(battery, index) {
+                const bid = battery.id_delivery_item;
+                const v = snEscapeAttr(battery.serial_number || '');
+                html += `
                 <div class="col-12">
                     <div class="card border-warning">
                         <div class="card-header bg-warning text-dark py-2">
@@ -2784,24 +2929,23 @@ function renderSNAssignmentForm(items) {
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Serial Number:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="sn_battery_${index}" 
-                                           placeholder="Enter Serial Number"
-                                           value="${battery.serial_number || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${bid}" data-sn-type="battery" data-sn-field="serial_number"
+                                           name="sn_battery_${index}"
+                                           placeholder="Enter Serial Number" value="${v}">
                                 </div>
-
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
-    }
-    
-    // Chargers
-    if (items.chargers && items.chargers.length > 0) {
-        items.chargers.forEach((charger, index) => {
-            html += `
+                </div>`;
+            });
+        }
+
+        if (items.chargers && items.chargers.length > 0) {
+            items.chargers.forEach(function(charger, index) {
+                const cid = charger.id_delivery_item;
+                const v = snEscapeAttr(charger.serial_number || '');
+                html += `
                 <div class="col-12">
                     <div class="card border-success">
                         <div class="card-header bg-success text-dark py-2">
@@ -2815,22 +2959,57 @@ function renderSNAssignmentForm(items) {
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold">Serial Number:</label>
-                                    <input type="text" class="form-control form-control-sm" 
-                                           name="sn_charger_${index}" 
-                                           placeholder="Enter Serial Number"
-                                           value="${charger.serial_number || ''}">
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${cid}" data-sn-type="charger" data-sn-field="serial_number"
+                                           name="sn_charger_${index}"
+                                           placeholder="Enter Serial Number" value="${v}">
                                 </div>
-
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
+                </div>`;
+            });
+        }
     }
-    
+
+    if (hasOrphans) {
+        html += '<div class="col-12 mt-2"><h6 class="text-secondary border-bottom pb-2"><i class="fas fa-box-open me-2"></i>Item tambahan (tidak terpasang ke unit di pengiriman ini)</h6></div>';
+        const renderOrphanList = function(rows, label, borderClass, headerBg, icon, typ) {
+            if (!rows || !rows.length) return;
+            rows.forEach(function(row, idx) {
+                const rid = row.id_delivery_item;
+                const v = snEscapeAttr(row.serial_number || '');
+                html += `
+                <div class="col-12">
+                    <div class="card ${borderClass}">
+                        <div class="card-header ${headerBg} py-2">
+                            <div class="d-flex align-items-center">
+                                <i class="${icon} me-2"></i>
+                                <strong>${label} #${idx + 1}</strong>
+                                <span class="ms-auto small text-muted">${row.item_name || label}</span>
+                            </div>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Serial Number:</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           data-sn-delivery-item="${rid}" data-sn-type="${typ}" data-sn-field="serial_number"
+                                           placeholder="SN" value="${v}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        };
+        renderOrphanList(orphans.chargers, 'Charger', 'border-success', 'bg-success text-dark', 'fas fa-plug', 'charger');
+        renderOrphanList(orphans.batteries, 'Baterai', 'border-warning', 'bg-warning text-dark', 'fas fa-battery-full', 'battery');
+        renderOrphanList(orphans.attachments, 'Attachment', 'border-info', 'bg-info text-dark', 'fas fa-puzzle-piece', 'attachment');
+    }
+
     html += '</div>';
-    
+
     $('#snAssignmentContent').html(html);
 }
 
@@ -3131,7 +3310,7 @@ function renderDeliveryItems(po, items) {
     html += `
                 <div class="mb-3">
             <strong>Select Items to be Delivered</strong>
-            <div class="form-text mb-3">Check the items you want to include in this delivery.</div>
+            <div class="form-text mb-3">Untuk <strong>unit per baris konfigurasi / PI</strong>, isi kolom <strong>Qty kirim ini</strong> (lebih dari 0). Untuk attachment, baterai, atau charger terpisah, centang item di daftar.</div>
                 </div>
     `;
     
@@ -3321,24 +3500,23 @@ function renderDeliveryItems(po, items) {
         html += `</div></div>`;
     }
     
-    html += `</div>`; // Close checklist section
-    
     // Summary
     html += `
         <div class="mt-3 p-3 bg-light rounded">
             <div class="row">
                 <div class="col-6">
-                    <strong>Total Items Selected:</strong>
+                    <strong>Total baris terpilih:</strong>
                     <span id="deliveryTotalSelected" class="badge badge-soft-blue ms-2">0</span>
                 </div>
                 <div class="col-6 text-end">
-                    <small class="text-muted">Check at least one item to deliver</small>
+                    <small class="text-muted">Minimal satu baris: qty kirim &gt; 0 (unit grup) atau centang item</small>
                 </div>
             </div>
         </div>
     `;
     
     $('#deliveryItemsList').html(html);
+    updateDeliverySelection();
 }
 
 // Helper functions for partial delivery
@@ -3600,6 +3778,7 @@ function openItemModal(itemType, index = -1) {
                 if (currentItemType === 'unit') {
                     $('#unit_jenis').prop('disabled', true).trigger('change.select2');
                     $('#unit_model').prop('disabled', true).trigger('change.select2');
+                    syncPurchasingUnitPkgBatteryChargerFromDepartemen();
                 } else if (currentItemType === 'attachment') {
                     $('#att_merk').prop('disabled', true).trigger('change.select2');
                     $('#att_model').prop('disabled', true).trigger('change.select2');
@@ -3631,7 +3810,8 @@ function populateFormForEdit(item) {
         if (item.tipe_unit_id) $('#unit_jenis').val(String(item.tipe_unit_id)).trigger('change');
     }, 200);
     setTimeout(() => {
-        if (item.merk_unit) $('#unit_merk').val(String(item.merk_unit)).trigger('change');
+        const mid = item.merk_unit_id || item.merk_unit;
+        if (mid) $('#unit_merk').val(String(mid)).trigger('change');
     }, 400);
     setTimeout(() => {
         if (item.model_unit_id) $('#unit_model').val(String(item.model_unit_id)).trigger('change');
@@ -3640,18 +3820,11 @@ function populateFormForEdit(item) {
     if (item.kapasitas_id) $('#unit_kapasitas').val(String(item.kapasitas_id)).trigger('change');
     if (item.kondisi_penjualan) $('#unit_kondisi').val(item.kondisi_penjualan);
     $('#unit_qty').val(item.qty || 1);
-    if ($('#unit_vendor_model_code').length) $('#unit_vendor_model_code').val(item.vendor_model_code || '');
     if ($('#unit_vendor_spec_text').length) $('#unit_vendor_spec_text').val(item.vendor_spec_text || '');
     if ($('#unit_keterangan').length) $('#unit_keterangan').val(item.keterangan || '');
     $('input[name="pkg_flags[]"]').prop('checked', false);
     if (Array.isArray(item.package_flags)) {
         item.package_flags.forEach(v => { $(`input[name="pkg_flags[]"][value="${v}"]`).prop('checked', true); });
-    }
-    $('.po-unit-acc').prop('checked', false);
-    if (item.unit_accessories) {
-        String(item.unit_accessories).split(',').map(s => s.trim()).filter(Boolean).forEach(v => {
-            $(`.po-unit-acc[value="${v}"]`).prop('checked', true);
-        });
     }
     if ($('#unit_baterai_id').length && item.baterai_id) $('#unit_baterai_id').val(String(item.baterai_id)).trigger('change');
     if ($('#unit_charger_id').length && item.charger_id) $('#unit_charger_id').val(String(item.charger_id)).trigger('change');
@@ -3661,6 +3834,9 @@ function populateFormForEdit(item) {
     if (item.ban_id) $('#unit_ban').val(String(item.ban_id)).trigger('change');
     if (item.roda_id) $('#unit_roda').val(String(item.roda_id)).trigger('change');
     if (item.valve_id) $('#unit_valve').val(String(item.valve_id)).trigger('change');
+    setTimeout(function() {
+        syncPurchasingUnitPkgBatteryChargerFromDepartemen();
+    }, 0);
 }
 
 // Collect data from modal form based on item type
@@ -3673,7 +3849,12 @@ function collectItemData() {
         // Collect unit data (simplified - no tipe)
         data.departemen_id = $('#unit_departemen').val();
         data.tipe_unit_id = $('#unit_jenis').val(); // This is actually jenis/tipe_unit_id
-        data.merk_unit = $('#unit_merk').val();
+        const merkOpt = $('#unit_merk option:selected');
+        data.merk_unit_id = $('#unit_merk').val() || '';
+        data.merk_unit = (merkOpt.attr('data-merk') || merkOpt.text() || '').trim();
+        if (!data.merk_unit && data.merk_unit_id) {
+            data.merk_unit = merkOpt.text().trim();
+        }
         data.model_unit_id = $('#unit_model').val();
         data.tahun_unit = $('#unit_tahun').val();
         data.kapasitas_id = $('#unit_kapasitas').val();
@@ -3694,20 +3875,25 @@ function collectItemData() {
         
         data.qty = $('#unit_qty').val();
         data.keterangan = $('#unit_keterangan').val();
-        data.vendor_model_code = ($('#unit_vendor_model_code').val() || '').trim();
         data.vendor_spec_text = ($('#unit_vendor_spec_text').val() || '').trim();
         data.po_line_group_id = window._currentPoLineGroupId || '';
+        const deptNameUpper = ($('#unit_departemen option:selected').text() || '').trim().toUpperCase();
+        const isDieselOrGasoline = deptNameUpper === 'DIESEL' || deptNameUpper === 'GASOLINE';
         const pkg = [];
         $('input[name="pkg_flags[]"]:checked').each(function () { pkg.push($(this).val()); });
-        data.package_flags = pkg;
-        const accSel = [];
-        $('.po-unit-acc:checked').each(function () { accSel.push($(this).val()); });
-        data.unit_accessories = accSel.join(', ');
+        data.package_flags = isDieselOrGasoline
+            ? pkg.filter(function (f) { return f !== 'battery' && f !== 'charger'; })
+            : pkg;
+        if (typeof editIndex !== 'undefined' && editIndex >= 0 && poItems[editIndex] && poItems[editIndex].item_type === 'unit' && poItems[editIndex].unit_accessories) {
+            data.unit_accessories = poItems[editIndex].unit_accessories;
+        } else {
+            data.unit_accessories = '';
+        }
         if ($('#unit_baterai_id').length) {
-            data.baterai_id = $('#unit_baterai_id').val() || '';
+            data.baterai_id = isDieselOrGasoline ? '' : ($('#unit_baterai_id').val() || '');
         }
         if ($('#unit_charger_id').length) {
-            data.charger_id = $('#unit_charger_id').val() || '';
+            data.charger_id = isDieselOrGasoline ? '' : ($('#unit_charger_id').val() || '');
         }
         if ($('#unit_attachment_id').length) {
             data.attachment_id = $('#unit_attachment_id').val() || '';
@@ -3724,7 +3910,7 @@ function collectItemData() {
         };
         
         // Validation — inti PO: jenis, brand, model, qty, kondisi
-        if (!data.tipe_unit_id || !data.merk_unit || !data.model_unit_id || !data.qty) {
+        if (!data.tipe_unit_id || !data.merk_unit_id || !data.model_unit_id || !data.qty) {
             return null;
         }
         
@@ -3821,9 +4007,6 @@ function updateItemsTable() {
         let description = '';
         if (item.item_type === 'unit') {
             description = `${item._display.merk_text} ${item._display.model_text} | ${item._display.departemen_text} - ${item._display.jenis_text} | ${item._display.kapasitas_text} | Tahun ${item.tahun_unit || '-'} (${item._display.kondisi_text})`;
-            if (item.vendor_model_code) {
-                description += `<br><small class="text-primary">PI code: ${item.vendor_model_code}</small>`;
-            }
             if (item.vendor_spec_text) {
                 const specShort = item.vendor_spec_text.length > 180 ? item.vendor_spec_text.substring(0, 180) + '…' : item.vendor_spec_text;
                 description += `<br><small class="text-muted">${specShort.replace(/</g, '&lt;')}</small>`;
@@ -3877,6 +4060,58 @@ function deleteItem(index) {
     });
 }
 
+/**
+ * DIESEL / GASOLINE: baterai & charger tidak relevan — disable checklist + clear master baterai/charger.
+ */
+function syncPurchasingUnitPkgBatteryChargerFromDepartemen() {
+    const $dept = $('#unit_departemen');
+    if (!$dept.length) {
+        return;
+    }
+
+    const upper = ($dept.find('option:selected').text() || '').trim().toUpperCase();
+    const isNonElectric = upper === 'DIESEL' || upper === 'GASOLINE';
+
+    const $bat = $('#pkg_battery');
+    const $chg = $('#pkg_charger');
+    if ($bat.length && $chg.length) {
+        if (isNonElectric) {
+            $bat.prop('checked', false).prop('disabled', true);
+            $chg.prop('checked', false).prop('disabled', true);
+            $bat.attr('title', 'Tidak berlaku untuk DIESEL / GASOLINE');
+            $chg.attr('title', 'Tidak berlaku untuk DIESEL / GASOLINE');
+            $bat.closest('.form-check').addClass('text-muted');
+            $chg.closest('.form-check').addClass('text-muted');
+        } else {
+            $bat.prop('disabled', false);
+            $chg.prop('disabled', false);
+            $bat.removeAttr('title');
+            $chg.removeAttr('title');
+            $bat.closest('.form-check').removeClass('text-muted');
+            $chg.closest('.form-check').removeClass('text-muted');
+        }
+    }
+
+    const $batSel = $('#unit_baterai_id');
+    const $chgSel = $('#unit_charger_id');
+    if ($batSel.length) {
+        if (isNonElectric) {
+            $batSel.val('').trigger('change');
+        }
+        $batSel.prop('disabled', isNonElectric);
+        $batSel.closest('.col-md-6').toggleClass('text-muted', isNonElectric);
+        reinitializeModalSelect2($batSel);
+    }
+    if ($chgSel.length) {
+        if (isNonElectric) {
+            $chgSel.val('').trigger('change');
+        }
+        $chgSel.prop('disabled', isNonElectric);
+        $chgSel.closest('.col-md-6').toggleClass('text-muted', isNonElectric);
+        reinitializeModalSelect2($chgSel);
+    }
+}
+
 // Unit form cascading dropdowns (simplified - no tipe)
 function initializeUnitDropdowns() {
     console.log(' Initializing Unit Dropdowns (Simplified)...');
@@ -3904,6 +4139,7 @@ function initializeUnitDropdowns() {
             if ($jenisActions.length) {
                 $jenisActions.prop('disabled', true);
             }
+            syncPurchasingUnitPkgBatteryChargerFromDepartemen();
             return;
         }
         
@@ -3949,10 +4185,12 @@ function initializeUnitDropdowns() {
                         $jenisActions.prop('disabled', true);
                     }
                 }
+                syncPurchasingUnitPkgBatteryChargerFromDepartemen();
             },
             error: function(xhr, status, error) {
                 console.error('Error loading jenis:', error);
                 $jenis.html('<option value="">Error loading data</option>');
+                syncPurchasingUnitPkgBatteryChargerFromDepartemen();
             }
         });
     });
@@ -4369,68 +4607,7 @@ function initializeChargerDropdowns() {
                 return;
             }
             
-            // Collect all serial numbers in array format
-            const serialNumbers = [];
-            
-            // Collect unit SNs
-            $('input[name^="sn_mast_"]').each(function() {
-                const index = $(this).attr('name').split('_')[2];
-                const snMast = $(this).val();
-                const snEngine = $(`input[name="sn_engine_${index}"]`).val();
-                const snUnit = $(`input[name="serial_number_po_${index}"]`).val();
-                
-                if (snMast || snEngine || snUnit) {
-                    serialNumbers.push({
-                        type: 'unit',
-                        index: index,
-                        sn_mast: snMast,
-                        sn_engine: snEngine,
-                        serial_number: snUnit  // Unit SN goes to serial_number
-                    });
-                }
-            });
-            
-            // Collect attachment SNs
-            $('input[name^="sn_attachment_"]').each(function() {
-                const index = $(this).attr('name').split('_')[2];
-                const serialNumber = $(this).val();
-                
-                if (serialNumber) {
-                    serialNumbers.push({
-                        type: 'attachment',
-                        index: index,
-                        serial_number: serialNumber
-                    });
-                }
-            });
-            
-            // Collect battery SNs
-            $('input[name^="sn_battery_"]').each(function() {
-                const index = $(this).attr('name').split('_')[2];
-                const serialNumber = $(this).val();
-                
-                if (serialNumber) {
-                    serialNumbers.push({
-                        type: 'battery',
-                        index: index,
-                        serial_number: serialNumber
-                    });
-                }
-            });
-            
-            // Collect charger SNs
-            $('input[name^="sn_charger_"]').each(function() {
-                const index = $(this).attr('name').split('_')[2];
-                const serialNumber = $(this).val();
-                
-                if (serialNumber) {
-                    serialNumbers.push({
-                        type: 'charger',
-                        index: index,
-                        serial_number: serialNumber
-                    });
-                }
-            });
+            const serialNumbers = collectSnAssignmentPayload();
             
             // Submit serial numbers
             $.ajax({
@@ -4522,20 +4699,36 @@ function initializeChargerDropdowns() {
     }
     
     function updateDeliverySelection() {
-        const selectedItems = $('.delivery-item-checkbox:checked');
-        const totalSelected = selectedItems.length;
-        
-        $('#deliveryTotalSelected').text(totalSelected);
-        
-        // Enable/disable submit button
+        let total = $('.delivery-item-checkbox:checked').length;
+        $('.delivery-group-qty').each(function() {
+            const q = parseInt($(this).val(), 10) || 0;
+            if (q > 0) {
+                total += 1;
+            }
+        });
+        $('#deliveryTotalSelected').text(total);
         const submitBtn = $('#createDeliveryForm button[type="submit"]');
-        if (totalSelected > 0) {
+        if (total > 0) {
             submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
         } else {
             submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
         }
     }
-    
+
+    $(document).on('input change', '.delivery-group-qty', function() {
+        const $inp = $(this);
+        let v = parseInt($inp.val(), 10);
+        if (Number.isNaN(v)) v = 0;
+        const max = parseInt($inp.attr('max'), 10);
+        if (!Number.isNaN(max) && v > max) {
+            $inp.val(max);
+        }
+        if (v < 0) {
+            $inp.val(0);
+        }
+        updateDeliverySelection();
+    });
+
     // Auto-open PO detail modal if coming from notification
     <?php if (isset($autoOpenPoId) && $autoOpenPoId): ?>
     document.addEventListener('DOMContentLoaded', function() {
