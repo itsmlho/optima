@@ -132,7 +132,7 @@ class WorkOrderController extends Controller
             }
             
             return $formatted;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return [];
         }
@@ -198,7 +198,7 @@ class WorkOrderController extends Controller
                 ]
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'results' => [],
@@ -354,7 +354,7 @@ class WorkOrderController extends Controller
                 'data' => $spareparts
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memuat data sparepart'
@@ -467,7 +467,7 @@ class WorkOrderController extends Controller
                 'data' => $staff
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memuat data staff'
@@ -573,7 +573,7 @@ class WorkOrderController extends Controller
                 ]
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memuat data staff area'
@@ -680,7 +680,7 @@ class WorkOrderController extends Controller
                 'data' => $formattedData
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Optimized WorkOrders DataTable Error: ' . $e->getMessage());
             
             // Fallback to standard method on error
@@ -1059,7 +1059,7 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->response->setJSON([
                 'success' => false, 
                 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
@@ -1194,7 +1194,7 @@ class WorkOrderController extends Controller
 
             return view('service/work_order_detail', $data);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'WorkOrder detail error: ' . $e->getMessage());
             return redirect()->to('/service/work-orders')
                 ->with('error', 'Terjadi kesalahan saat memuat detail work order.');
@@ -1215,7 +1215,7 @@ class WorkOrderController extends Controller
                     $input = $jsonInput;
                     log_message('debug', 'WO Store - Using JSON Input');
                 }
-            } catch (\Exception $jsonError) {
+            } catch (\Throwable $jsonError) {
                 log_message('debug', 'JSON parsing failed (expected for form data): ' . $jsonError->getMessage());
             }
             
@@ -1742,7 +1742,7 @@ class WorkOrderController extends Controller
                     ]);
                     
                     log_message('info', "WorkOrder created: {$woNumber} - Notification sent");
-                } catch (\Exception $notifError) {
+                } catch (\Throwable $notifError) {
                     log_message('error', 'Failed to send workorder creation notification: ' . $notifError->getMessage());
                 }
                 
@@ -1938,7 +1938,7 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Error in WorkOrderController::delete - ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
@@ -1977,7 +1977,7 @@ class WorkOrderController extends Controller
                 'data' => $subcategories
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2115,7 +2115,7 @@ class WorkOrderController extends Controller
                 'data' => $data
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Error in WorkOrderController::edit - ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
@@ -2168,7 +2168,7 @@ class WorkOrderController extends Controller
             
             return $query->getRowArray();
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
@@ -2294,7 +2294,7 @@ class WorkOrderController extends Controller
             
             return (string)$nextNumber;
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return (string)time(); // Fallback to timestamp
         }
@@ -2320,7 +2320,7 @@ class WorkOrderController extends Controller
                 'work_order_number' => (string)$nextNumber
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2371,7 +2371,7 @@ class WorkOrderController extends Controller
                 'data' => $units
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2412,7 +2412,7 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2454,7 +2454,7 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2494,7 +2494,7 @@ class WorkOrderController extends Controller
             
             return round($hours, 2);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
@@ -2528,7 +2528,7 @@ class WorkOrderController extends Controller
             
             return $this->workOrderModel->update($workOrderId, $data);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return false;
         }
@@ -2648,7 +2648,7 @@ class WorkOrderController extends Controller
                 'count' => count($units)
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             $errorMsg = $this->getMySQLError($db ?? null);
             return $this->response->setJSON([
@@ -2799,7 +2799,7 @@ class WorkOrderController extends Controller
                 try {
                     $this->workOrderAssignmentModel->assignEmployees($workOrderId, $assignments, $assignedBy);
                     log_message('info', 'Multiple assignments created successfully');
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     log_message('warning', 'Gagal memproses permintaan. Silakan coba lagi.');
                     // Continue anyway as main work order update succeeded
                 }
@@ -2818,12 +2818,12 @@ class WorkOrderController extends Controller
                     'message' => 'Karyawan berhasil ditugaskan ke Work Order'
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $db->transRollback();
                 throw $e;
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Error assigning employees. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2845,7 +2845,7 @@ class WorkOrderController extends Controller
                 'data' => $spareparts
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -2941,12 +2941,12 @@ class WorkOrderController extends Controller
                     'message' => 'Work Order berhasil diselesaikan'
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $db->transRollback();
                 throw $e;
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3021,7 +3021,7 @@ class WorkOrderController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3102,7 +3102,7 @@ class WorkOrderController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Gagal menyimpan data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3548,7 +3548,7 @@ class WorkOrderController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3584,7 +3584,7 @@ class WorkOrderController extends Controller
                     $mysqlErrno = mysqli_errno($connId);
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
@@ -3616,7 +3616,7 @@ class WorkOrderController extends Controller
                         return 'SQL State: ' . $sqlState;
                     }
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Ignore
             }
         }
@@ -3663,7 +3663,7 @@ class WorkOrderController extends Controller
                 'data' => $heights
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3736,7 +3736,7 @@ class WorkOrderController extends Controller
                 ]);
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -3842,7 +3842,7 @@ class WorkOrderController extends Controller
                     $oldUnitData['model_unit_name'] = $model ? ($model['model_unit'] ?? '') : '';
                 }
                 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
                 return $this->response->setJSON([
                     'success' => false,
@@ -4713,7 +4713,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'message' => 'Unit berhasil diverifikasi dan work order diselesaikan'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($db) && $db->transStatus() !== false) {
                 $db->transRollback();
             }
@@ -4780,7 +4780,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -4812,7 +4812,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'data' => $spareparts
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -5056,7 +5056,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'message' => 'Sparepart berhasil divalidasi dan work order ditutup'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'saveSparepartValidation error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'success' => false,
@@ -5103,7 +5103,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Error getting sparepart usage data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -5274,7 +5274,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'message' => 'Sparepart usage berhasil disimpan dan work order ditutup'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Gagal menyimpan data. Silakan coba lagi.');
             return $this->response->setJSON([
                 'success' => false,
@@ -5317,7 +5317,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 log_message('info', 'Gap alert generated for work order: ' . $workOrderId);
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
     }

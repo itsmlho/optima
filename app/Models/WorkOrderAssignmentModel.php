@@ -94,7 +94,7 @@ class WorkOrderAssignmentModel extends Model
 
             return true;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Error in WorkOrderAssignmentModel::assignStaff - ' . $e->getMessage());
             return false;
         }
