@@ -1025,17 +1025,17 @@ class WorkOrderController extends Controller
                     // Get WO details
                     $db = \Config\Database::connect();
                     $woQuery = $db->query('
-                        SELECT wo.wo_number, iu.no_unit, wos.status_name as old_status
+                        SELECT wo.work_order_number, iu.no_unit, wos.status_name as old_status
                         FROM work_orders wo
-                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_unit
+                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_inventory_unit
                         LEFT JOIN work_order_statuses wos ON wos.id = ?
                         WHERE wo.id = ?
                     ', [$fromStatusId, $id]);
-                    $woInfo = $woQuery->getRow();
+                    $woInfo = $woQuery ? $woQuery->getRow() : null;
                     
                     notify_workorder_status_changed([
                         'id' => $id,
-                        'wo_number' => $woInfo ? $woInfo->wo_number : 'Unknown WO',
+                        'wo_number' => $woInfo ? $woInfo->work_order_number : 'Unknown WO',
                         'unit_code' => $woInfo ? $woInfo->no_unit : 'Unknown Unit',
                         'old_status' => $woInfo ? $woInfo->old_status : 'Unknown',
                         'new_status' => $statusData['status_name'],
@@ -1044,7 +1044,7 @@ class WorkOrderController extends Controller
                     ]);
                     
                     log_message('info', "WorkOrder status updated: {$id} → {$status} - Notification sent");
-                } catch (\Exception $notifError) {
+                } catch (\Throwable $notifError) {
                     log_message('error', 'Failed to send workorder status notification: ' . $notifError->getMessage());
                 }
                 

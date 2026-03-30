@@ -1489,11 +1489,12 @@ $(document).ready(function() {
     // Function to update work order status directly without confirmation
     function updateWorkOrderStatusDirect(id, status, message) {
         // console.log('🚨 updateWorkOrderStatusDirect called with:', { id, status, message });
-        
+        const csrfData = window.getCsrfTokenData();
         $.ajax({
             url: '<?= base_url('service/work-orders/update-status') ?>',
             type: 'POST',
             data: {
+                [csrfData.tokenName]: csrfData.tokenValue,
                 id: id,
                 status: status,
                 notes: message
@@ -1537,10 +1538,12 @@ $(document).ready(function() {
                     return;
                 }
 
+                const csrfData2 = window.getCsrfTokenData();
                 $.ajax({
                     url: '<?= base_url('service/work-orders/update-status') ?>',
                     type: 'POST',
                     data: {
+                        [csrfData2.tokenName]: csrfData2.tokenValue,
                         id: id,
                         status: status,
                         notes: notes || ''
