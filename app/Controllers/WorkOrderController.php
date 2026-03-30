@@ -877,6 +877,10 @@ class WorkOrderController extends Controller
                 break;
                 
             case 'ON_HOLD':
+            case 'WAITING_SCHEDULE':
+            case 'WAITING_PERMIT':
+            case 'WAITING_TOOLS':
+            case 'OTHER_HOLD':
                 $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-resume" data-id="'.$woId.'"'.$woNumberAttr.'>Resume</button>';
                 $buttons[] = '<button type="button" class="btn btn-sm btn-danger btn-cancel" data-id="'.$woId.'"'.$woNumberAttr.'>Cancel</button>';
                 break;
@@ -993,11 +997,13 @@ class WorkOrderController extends Controller
                     }
                     break;
                 case 'WAITING_PARTS':
-                    // Waiting for spare parts - add hold date if needed
+                case 'WAITING_SCHEDULE':
+                case 'WAITING_PERMIT':
+                case 'WAITING_TOOLS':
+                case 'OTHER_HOLD':
                     $updateData['hold_date'] = date('Y-m-d H:i:s');
                     break;
                 case 'ON_HOLD':
-                    // On hold/pending - add hold date if needed
                     $updateData['hold_date'] = date('Y-m-d H:i:s');
                     break;
             }

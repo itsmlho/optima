@@ -1389,21 +1389,39 @@ $(document).ready(function() {
             confirmButtonColor: '#ffc107',
             html: `
                 <div class="text-start">
-                    <label class="form-label mb-2">Choose pause type</label>
+                    <label class="form-label mb-2">Pilih alasan pause</label>
                     <select id="optimaPauseTypeSelect" class="form-select">
-                        <option value="ON_HOLD" selected>Pending</option>
-                        <option value="WAITING_PARTS">Waiting for Sparepart</option>
+                        <option value="ON_HOLD">Menunggu Konfirmasi Customer</option>
+                        <option value="WAITING_PARTS">Menunggu Sparepart</option>
+                        <option value="WAITING_SCHEDULE">Menunggu Jadwal / Schedule</option>
+                        <option value="WAITING_PERMIT">Menunggu Izin / Permit Kerja</option>
+                        <option value="WAITING_TOOLS">Menunggu Alat / Tools Khusus</option>
+                        <option value="OTHER_HOLD">Lainnya</option>
                     </select>
                 </div>
             `,
             onConfirm: function() {
                 var el = document.getElementById('optimaPauseTypeSelect');
                 var val = el ? el.value : 'ON_HOLD';
-                if (val === 'ON_HOLD') {
-                    showStatusUpdateModal(id, 'ON_HOLD', 'Pending Work Order', 'Provide reason for pending');
-                } else {
-                    showStatusUpdateModal(id, 'WAITING_PARTS', 'Waiting for Sparepart', 'Provide details of the required spare parts');
-                }
+                var labelMap = {
+                    'ON_HOLD':          'Menunggu Konfirmasi Customer',
+                    'WAITING_PARTS':    'Menunggu Sparepart',
+                    'WAITING_SCHEDULE': 'Menunggu Jadwal / Schedule',
+                    'WAITING_PERMIT':   'Menunggu Izin / Permit Kerja',
+                    'WAITING_TOOLS':    'Menunggu Alat / Tools Khusus',
+                    'OTHER_HOLD':       'Lainnya'
+                };
+                var placeholderMap = {
+                    'ON_HOLD':          'Tuliskan detail konfirmasi yang ditunggu dari customer',
+                    'WAITING_PARTS':    'Tuliskan nama & jumlah sparepart yang dibutuhkan',
+                    'WAITING_SCHEDULE': 'Tuliskan jadwal atau waktu yang direncanakan',
+                    'WAITING_PERMIT':   'Tuliskan jenis izin / permit yang dibutuhkan',
+                    'WAITING_TOOLS':    'Tuliskan alat atau tools khusus yang dibutuhkan',
+                    'OTHER_HOLD':       'Jelaskan alasan pause secara detail'
+                };
+                var label = labelMap[val] || 'Pause Work Order';
+                var placeholder = placeholderMap[val] || 'Berikan keterangan';
+                showStatusUpdateModal(id, val, label, placeholder);
             }
         });
     });
@@ -1531,7 +1549,8 @@ $(document).ready(function() {
             onConfirm: function() {
                 var el = document.getElementById('optimaWorkOrderStatusNotes');
                 var notes = el ? (el.value || '').trim() : '';
-                var notesRequired = (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS');
+                var notesRequired = (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS'
+                    || status === 'WAITING_SCHEDULE' || status === 'WAITING_PERMIT' || status === 'WAITING_TOOLS' || status === 'OTHER_HOLD');
                 if (notesRequired && !notes) {
                     OptimaNotify.warning('Notes are required for this status', 'Validasi');
                     showStatusUpdateModal(id, status, title, placeholder);
