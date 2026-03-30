@@ -3803,7 +3803,26 @@ class WorkOrderController extends Controller
                     'message' => 'Unit tidak ditemukan'
                 ]);
             }
-            
+
+            // Validate session user_id BEFORE starting transaction
+            // changed_by/verified_by are NOT NULL FK → users.id — must be valid
+            $currentUserId = (int)session()->get('user_id');
+            if ($currentUserId <= 0) {
+                log_message('error', "[WorkOrder] saveUnitVerification rejected: user_id not in session for WO {$workOrderId}");
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Session tidak valid. Silakan login ulang sebelum menyimpan verifikasi.'
+                ]);
+            }
+            $userExists = $db->table('users')->where('id', $currentUserId)->countAllResults() > 0;
+            if (!$userExists) {
+                log_message('error', "[WorkOrder] saveUnitVerification rejected: user_id={$currentUserId} not found in users table for WO {$workOrderId}");
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => "User ID {$currentUserId} tidak ditemukan. Hubungi administrator."
+                ]);
+            }
+
             $db->transStart();
 
             // Get existing unit data for comparison (before update) - Simple query first
@@ -4618,11 +4637,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             log_message('info', "[WorkOrder] WO {$workOrderId} successfully updated to COMPLETED. Update result: " . json_encode($woUpdated));
 
             // Insert unit_verification_history
-            $verifiedBy = session()->get('user_id') ? (int)session()->get('user_id') : null;
             $verificationHistoryData = [
                 'unit_id' => $unitId,
                 'work_order_id' => $workOrderId,
-                'verified_by' => $verifiedBy,
+                'verified_by' => $currentUserId,
                 'verified_at' => date('Y-m-d H:i:s'),
                 'verification_data' => json_encode([
                     'unit_changes' => $allChanges,
@@ -4639,23 +4657,22 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             
             // Check if table exists before inserting
             if ($db->tableExists('unit_verification_history')) {
-                log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO={$workOrderId}, verified_by={$verifiedBy}");
+                log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO={$workOrderId}, verified_by={$currentUserId}");
                 $db->table('unit_verification_history')->insert($verificationHistoryData);
                 log_message('info', "[WorkOrder] Inserted unit_verification_history for unit {$unitId}, WO {$workOrderId}");
             }
             
             // Insert status history
-            $changedBy = session()->get('user_id') ? (int)session()->get('user_id') : null;
             $historyData = [
                 'work_order_id' => $workOrderId,
                 'from_status_id' => $fromStatusId,
                 'to_status_id' => $statusData['id'],
-                'changed_by' => $changedBy,
+                'changed_by' => $currentUserId,
                 'change_reason' => 'Work order completed with unit verification',
                 'changed_at' => date('Y-m-d H:i:s')
             ];
 
-            log_message('info', "[WorkOrder] Inserting status history: WO={$workOrderId}, from_status={$fromStatusId}, to_status={$statusData['id']}, changed_by={$changedBy}");
+            log_message('info', "[WorkOrder] Inserting status history: WO={$workOrderId}, from_status={$fromStatusId}, to_status={$statusData['id']}, changed_by={$currentUserId}");
             
             $db->table('work_order_status_history')->insert($historyData);
 
@@ -4664,7 +4681,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             // Check transaction status
             if ($db->transStatus() === false) {
                 $dbError = $this->getMySQLError($db);
-                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId}. DB error: " . ($dbError ?: '(empty)') . " | changed_by={$changedBy}, from_status={$fromStatusId}, to_status={$statusData['id']}");
+                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId}. DB error: " . ($dbError ?: '(empty)') . " | changed_by={$currentUserId}, from_status={$fromStatusId}, to_status={$statusData['id']}");
                 throw new \Exception('Gagal menyimpan perubahan status work order: ' . ($dbError ?: 'Periksa server log untuk detail error'));
             }
             
