@@ -886,12 +886,45 @@
                 const element = document.getElementById(item.id);
                 if (element) {
                     element.textContent = item.value || '-';
-                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
                 } else {
                     console.error(`❌ Element ${item.id} not found`);
                 }
             });
-            
+
+            // Populate Real Lapangan column — mirror Database values into the adjacent .real-field span
+            const realFieldMap = [
+                { dbId: 'db-no-unit',        value: unitData.no_unit },
+                { dbId: 'db-pelanggan',      value: unitData.pelanggan },
+                { dbId: 'db-lokasi',         value: unitData.lokasi },
+                { dbId: 'db-serial-number',  value: unitData.serial_number },
+                { dbId: 'db-tahun-unit',     value: unitData.tahun_unit },
+                { dbId: 'db-departemen',     value: unitData.departemen_name },
+                { dbId: 'db-tipe-unit',      value: unitData.tipe_unit_name },
+                { dbId: 'db-kapasitas-unit', value: unitData.kapasitas_name },
+                { dbId: 'db-model-unit',     value: unitData.model_unit_name },
+                { dbId: 'db-model-mesin',    value: unitData.model_mesin_name },
+                { dbId: 'db-sn-mesin',       value: unitData.sn_mesin },
+                { dbId: 'db-model-mast',     value: unitData.model_mast_name },
+                { dbId: 'db-sn-mast',        value: unitData.sn_mast },
+                { dbId: 'db-tinggi-mast',    value: unitData.tinggi_mast },
+                { dbId: 'db-keterangan',     value: unitData.keterangan },
+                { dbId: 'db-hour-meter',     value: unitData.hour_meter },
+                { dbId: 'db-attachment',     value: attachmentData.attachment_name },
+                { dbId: 'db-sn-attachment',  value: attachmentData.sn_attachment },
+                { dbId: 'db-baterai',        value: attachmentData.baterai_name },
+                { dbId: 'db-sn-baterai',     value: attachmentData.sn_baterai },
+                { dbId: 'db-charger',        value: attachmentData.charger_name },
+                { dbId: 'db-sn-charger',     value: attachmentData.sn_charger },
+            ];
+
+            realFieldMap.forEach(function(item) {
+                var dbEl = document.getElementById(item.dbId);
+                if (dbEl && dbEl.nextElementSibling) {
+                    var realSpan = dbEl.nextElementSibling.querySelector('.real-field');
+                    if (realSpan) realSpan.textContent = item.value || '-';
+                }
+            });
+
             // Populate Accessories
             // console.log('📝 Populating accessories...');
             populateAccessories(data.accessories || []);
