@@ -570,15 +570,37 @@ class UnitAudit extends BaseController
                     ->getResultArray();
 
                 if (is_array($fallbackLocations)) {
+                    $locIds = array_values(array_filter(array_column($fallbackLocations, 'id')));
+                    $countMap = [];
+                    if ($locIds !== []) {
+                        $countRows = \Config\Database::connect()
+                            ->table('kontrak_unit')
+                            ->select('customer_location_id, COUNT(*) AS cnt')
+                            ->whereIn('customer_location_id', $locIds)
+                            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE', 'Aktif'])
+                            ->where('(is_temporary IS NULL OR is_temporary = 0)', null, false)
+                            ->groupBy('customer_location_id')
+                            ->get()
+                            ->getResultArray();
+                        foreach ($countRows as $cr) {
+                            $countMap[(int) $cr['customer_location_id']] = (int) $cr['cnt'];
+                        }
+                    }
                     foreach ($fallbackLocations as &$loc) {
                         $loc['audit_status'] = null;
-                        $loc['total_units'] = 0;
+                        $lid = isset($loc['id']) ? (int) $loc['id'] : 0;
+                        $loc['total_units'] = $countMap[$lid] ?? 0;
+                        $loc['spare_units'] = 0;
                         $loc['no_kontrak_masked'] = '-';
                         $loc['no_po_masked'] = '-';
                         $loc['periode_text'] = '-';
                         $loc['periode_badge_text'] = '-';
+                        $loc['periode_status_text'] = '—';
+                        $loc['last_audit'] = null;
+                        $loc['due_for_reaudit'] = true;
                         $loc['is_pending_approval'] = false;
                     }
+                    unset($loc);
                     return $this->response->setJSON([
                         'success' => true,
                         'data' => $fallbackLocations,

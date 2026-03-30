@@ -67,6 +67,38 @@ class AuditLocationModel extends Model
         return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Older production DBs may omit marketing approval columns on customer_locations.
+     *
+     * @return list<string>
+     */
+    private function getCustomerLocationColumnNames(): array
+    {
+        static $names = null;
+        if ($names !== null) {
+            return $names;
+        }
+        $names = [];
+        try {
+            foreach ($this->db->getFieldData('customer_locations') as $f) {
+                if (is_object($f) && isset($f->name)) {
+                    $names[] = (string) $f->name;
+                } elseif (is_array($f) && isset($f['name'])) {
+                    $names[] = (string) $f['name'];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'AuditLocationModel getCustomerLocationColumnNames: {msg}', ['msg' => $e->getMessage()]);
+        }
+
+        return $names;
+    }
+
+    private function customerLocationHasColumn(string $column): bool
+    {
+        return in_array($column, $this->getCustomerLocationColumnNames(), true);
+    }
+
     // ── Data Retrieval ──────────────────────────────────
 
     /**
@@ -75,42 +107,68 @@ class AuditLocationModel extends Model
      */
     public function getLocationsForCustomer(int $customerId): array
     {
-        $rows = $this->db->table('customer_locations cl')
-            ->select('cl.id, cl.location_name, cl.address, cl.contact_person, cl.phone,
-                cl.approval_status, cl.requested_by, cl.area_id, a.area_name, a.area_code,
+        $hasApprovalStatus = $this->customerLocationHasColumn('approval_status');
+        $hasRequestedBy    = $this->customerLocationHasColumn('requested_by');
+
+        $select = 'cl.id, cl.location_name, cl.address, cl.contact_person, cl.phone';
+        if ($hasApprovalStatus) {
+            $select .= ', cl.approval_status';
+        }
+        if ($hasRequestedBy) {
+            $select .= ', cl.requested_by';
+        }
+        $select .= ', cl.area_id, a.area_name, a.area_code,
                 COUNT(ku.id) as total_units,
                 SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units,
                 MIN(k.tanggal_mulai) as periode_start,
                 MAX(k.tanggal_berakhir) as periode_end,
                 (SELECT k2.rental_type FROM kontrak_unit ku2
                  JOIN kontrak k2 ON k2.id = ku2.kontrak_id
-                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")
+                 AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
                  LIMIT 1) as rental_type,
                 (SELECT k2.no_kontrak FROM kontrak_unit ku2
                  JOIN kontrak k2 ON k2.id = ku2.kontrak_id
-                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")
+                 AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
                  LIMIT 1) as no_kontrak,
                 (SELECT k2.customer_po_number FROM kontrak_unit ku2
                  JOIN kontrak k2 ON k2.id = ku2.kontrak_id
-                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE")
-                 LIMIT 1) as customer_po_number')
+                 WHERE ku2.customer_location_id = cl.id AND ku2.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")
+                 AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
+                 LIMIT 1) as customer_po_number';
+
+        $builder = $this->db->table('customer_locations cl')
+            ->select($select)
             ->join('areas a', 'a.id = cl.area_id', 'left')
-            ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
-            ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status = "ACTIVE"', 'left')
+            ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)', 'left')
+            ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")', 'left')
             ->where('cl.customer_id', $customerId)
-            ->where('cl.is_active', 1)
-            ->groupStart()
+            ->where('cl.is_active', 1);
+
+        if ($hasApprovalStatus) {
+            $builder->groupStart()
                 ->where('cl.approval_status IS NULL')
                 ->orWhere('cl.approval_status', 'APPROVED')
                 ->orWhere('cl.approval_status', 'PENDING')
-            ->groupEnd()
-            ->groupBy('cl.id')
-            ->orderBy('cl.approval_status', 'DESC')
-            ->orderBy('cl.location_name', 'ASC')
+            ->groupEnd();
+        }
+
+        $builder->groupBy('cl.id');
+        if ($hasApprovalStatus) {
+            $builder->orderBy('cl.approval_status', 'DESC');
+        }
+        $rows = $builder->orderBy('cl.location_name', 'ASC')
             ->get()
             ->getResultArray();
 
         foreach ($rows as &$row) {
+            if (! $hasApprovalStatus) {
+                $row['approval_status'] = null;
+            }
+            if (! $hasRequestedBy) {
+                $row['requested_by'] = null;
+            }
             $row['no_kontrak_masked']   = $this->maskContractNumber($row['no_kontrak'] ?? null);
             $row['no_po_masked']        = $this->maskContractNumber($row['customer_po_number'] ?? null);
             $row['periode_text']        = $this->formatPeriode($row['periode_start'] ?? null, $row['periode_end'] ?? null);
@@ -120,12 +178,19 @@ class AuditLocationModel extends Model
             $row['periode_badge_text']  = (strtoupper((string) $rentalType) === 'PO_ONLY')
                 ? 'Bulanan'
                 : ($periodeEnd ? ('Valid s/d ' . date('d/m/Y', strtotime($periodeEnd))) : '—');
-            $lastAudit = $this->getLastAuditByLocation((int) $row['id']);
+            try {
+                $lastAudit = $this->getLastAuditByLocation((int) $row['id']);
+            } catch (\Throwable $e) {
+                log_message('error', 'getLastAuditByLocation failed for location {id}: {msg}', [
+                    'id' => $row['id'] ?? 0,
+                    'msg' => $e->getMessage(),
+                ]);
+                $lastAudit = null;
+            }
             $row['last_audit'] = $lastAudit;
             $row['due_for_reaudit'] = $lastAudit ? $this->isDueForReaudit($lastAudit) : true;
-            
-            // Add is_pending flag for UI
-            $row['is_pending_approval'] = ($row['approval_status'] === 'PENDING');
+
+            $row['is_pending_approval'] = (($row['approval_status'] ?? null) === 'PENDING');
         }
         return $rows;
     }
@@ -278,8 +343,8 @@ class AuditLocationModel extends Model
             ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
             ->join('kapasitas tc', 'tc.id_kapasitas = iu.kapasitas_unit_id', 'left')
             ->where('ku.customer_location_id', $locationId)
-            ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
-            ->where('ku.is_temporary', 0)
+            ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE', 'Aktif'])
+            ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)', null, false)
             ->orderBy('iu.no_unit', 'ASC')
             ->get()
             ->getResultArray();
@@ -294,8 +359,8 @@ class AuditLocationModel extends Model
             ->select('cl.*,
                 c.customer_name,
                 c.customer_code,
-                (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as total_units,
-                (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_spare = 1 AND ku.is_temporary = 0) as spare_units')
+                (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)) as total_units,
+                (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND ku.is_spare = 1 AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)) as spare_units')
             ->join('customers c', 'c.id = cl.customer_id', 'left')
             ->where('cl.id', $locationId)
             ->get()
@@ -312,8 +377,8 @@ class AuditLocationModel extends Model
                 COUNT(DISTINCT cl.id) as total_locations,
                 COUNT(DISTINCT ku.unit_id) as total_units')
             ->join('customer_locations cl', 'cl.customer_id = c.id AND cl.is_active = 1', 'left')
-            ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
-            ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status = "ACTIVE"', 'left')
+            ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)', 'left')
+            ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")', 'left')
             ->where('c.is_active', 1)
             ->groupBy('c.id')
             ->having('total_units >', 0)
@@ -496,7 +561,7 @@ class AuditLocationModel extends Model
                 ->select('ku.kontrak_id, k.no_kontrak')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                 ->where('ku.customer_location_id', $data['customer_location_id'])
-                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE', 'Aktif'])
                 ->get()
                 ->getRowArray();
 
