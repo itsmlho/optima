@@ -30,9 +30,6 @@ $can_edit = $permissions['edit'];
 $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 
-// Initialize Phase 3 optimization services
-$lazyService = new \App\Services\LazyLoadingService();
-$assetService = new \App\Services\AssetMinificationService();
 ?>
 
 <?= $this->section('content') ?>
@@ -773,9 +770,6 @@ $assetService = new \App\Services\AssetMinificationService();
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-<!-- Phase 3: Lazy loading JavaScript -->
-<?= $lazyService->getLazyLoadingScript() ?>
-<?= $lazyService->getLazyContentScript() ?>
 <script>
 // Global permission variables (accessible from all functions)
 const canViewService = <?= $can_view ? 'true' : 'false' ?>;
@@ -869,16 +863,7 @@ $(document).ready(function() {
         // Method 4: Reset modal attributes - only for unit verification modal
         $('#unitVerificationModal').attr('aria-hidden', 'true').css('display', 'none');
         
-        // Remove force hide CSS after cleanup
-        setTimeout(function() {
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .modal.show { display: block !important; }
-                body.modal-open { overflow: hidden !important; }
-                .modal-backdrop { display: block !important; }
-            `;
-            document.head.appendChild(style);
-        }, 500);
+
         
     }, 100);
     
@@ -4464,19 +4449,6 @@ $(document).ready(function() {
     // console.log('✅ Item management system loaded - Spareparts (dropdown/manual) & Tools (manual input)');
 });
 
-// Production asset optimization
-<?php if (ENVIRONMENT === 'production'): ?>
-document.addEventListener('DOMContentLoaded', function() {
-    // Load minified assets untuk production
-    const optimizedCSS = document.querySelector('link[href*="optima-pro.css"]');
-    if (optimizedCSS) {
-        const minifiedCSS = '<?= $assetService->getAsset('css', 'optima-pro.css') ?>';
-        if (minifiedCSS) {
-            optimizedCSS.href = '<?= base_url() ?>' + minifiedCSS;
-        }
-    }
-});
-<?php endif; ?>
 </script>
 
 <?php include 'sparepart_validation.php'; ?>
