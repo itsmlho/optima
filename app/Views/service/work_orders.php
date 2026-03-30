@@ -306,6 +306,8 @@ $assetService = new \App\Services\AssetMinificationService();
         </div>
     </div>
 </div>
+    </div>
+</div>
 
 <!-- Modals Section -->
 
