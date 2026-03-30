@@ -1375,53 +1375,70 @@ $(document).ready(function() {
         });
     });
     
-    // Pause Work - Show dropdown with options
+    // Pause Work - Show single modal dengan dropdown + textarea keterangan
     $(document).on('click', '.btn-pause', function() {
         let id = $(this).data('id');
         let woNumber = $(this).data('wo-number');
-        
+
         OptimaConfirm.generic({
-            title: 'Select Pause Type',
-            text: woNumber ? `Work Order ${woNumber}` : 'Select pause type for this work order',
+            title: woNumber ? `Pause WO ${woNumber}` : 'Pause Work Order',
             icon: 'question',
-            confirmText: 'Confirm',
+            confirmText: 'Simpan',
             cancelText: (typeof window.lang === 'function' ? window.lang('cancel') : 'Batal'),
             confirmButtonColor: '#ffc107',
             html: `
                 <div class="text-start">
-                    <label class="form-label mb-2">Pilih alasan pause</label>
-                    <select id="optimaPauseTypeSelect" class="form-select">
-                        <option value="ON_HOLD">Menunggu Konfirmasi Customer</option>
-                        <option value="WAITING_PARTS">Menunggu Sparepart</option>
-                        <option value="WAITING_SCHEDULE">Menunggu Jadwal / Schedule</option>
-                        <option value="WAITING_PERMIT">Menunggu Izin / Permit Kerja</option>
-                        <option value="WAITING_TOOLS">Menunggu Alat / Tools Khusus</option>
-                        <option value="OTHER_HOLD">Lainnya</option>
-                    </select>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold mb-1">Alasan Pause</label>
+                        <select id="optimaPauseTypeSelect" class="form-select">
+                            <option value="ON_HOLD">Menunggu Konfirmasi Customer</option>
+                            <option value="WAITING_PARTS">Menunggu Sparepart</option>
+                            <option value="WAITING_SCHEDULE">Menunggu Jadwal / Schedule</option>
+                            <option value="WAITING_PERMIT">Menunggu Izin / Permit Kerja</option>
+                            <option value="WAITING_TOOLS">Menunggu Alat / Tools Khusus</option>
+                            <option value="OTHER_HOLD">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold mb-1">Keterangan <span class="text-danger">*</span></label>
+                        <textarea id="optimaPauseNotes" class="form-control" rows="3" placeholder="Jelaskan detail alasan pause..."></textarea>
+                    </div>
                 </div>
             `,
             onConfirm: function() {
-                var el = document.getElementById('optimaPauseTypeSelect');
-                var val = el ? el.value : 'ON_HOLD';
-                var labelMap = {
-                    'ON_HOLD':          'Menunggu Konfirmasi Customer',
-                    'WAITING_PARTS':    'Menunggu Sparepart',
-                    'WAITING_SCHEDULE': 'Menunggu Jadwal / Schedule',
-                    'WAITING_PERMIT':   'Menunggu Izin / Permit Kerja',
-                    'WAITING_TOOLS':    'Menunggu Alat / Tools Khusus',
-                    'OTHER_HOLD':       'Lainnya'
-                };
-                var placeholderMap = {
-                    'ON_HOLD':          'Tuliskan detail konfirmasi yang ditunggu dari customer',
-                    'WAITING_PARTS':    'Tuliskan nama & jumlah sparepart yang dibutuhkan',
-                    'WAITING_SCHEDULE': 'Tuliskan jadwal atau waktu yang direncanakan',
-                    'WAITING_PERMIT':   'Tuliskan jenis izin / permit yang dibutuhkan',
-                    'WAITING_TOOLS':    'Tuliskan alat atau tools khusus yang dibutuhkan',
-                    'OTHER_HOLD':       'Jelaskan alasan pause secara detail'
-                };
-                var label = labelMap[val] || 'Pause Work Order';
-                var placeholder = placeholderMap[val] || 'Berikan keterangan';
-                showStatusUpdateModal(id, val, label, placeholder);
+                var typeEl  = document.getElementById('optimaPauseTypeSelect');
+                var notesEl = document.getElementById('optimaPauseNotes');
+                var val   = typeEl  ? typeEl.value             : 'ON_HOLD';
+                var notes = notesEl ? notesEl.value.trim()     : '';
+
+                if (!notes) {
+                    OptimaNotify.warning('Keterangan wajib diisi', 'Validasi');
+                    return false; // keep modal open
+                }
+
+                const csrfData = window.getCsrfTokenData();
+                $.ajax({
+                    url: '<?= base_url('service/work-orders/update-status') ?>',
+                    type: 'POST',
+                    data: {
+                        [csrfData.tokenName]: csrfData.tokenValue,
+                        id: id,
+                        status: val,
+                        notes: notes
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showAlert('success', response.message);
+                            reloadProgressTable();
+                            updateStatistics();
+                        } else {
+                            showAlert('error', response.message);
+                        }
+                    },
+                    error: function() {
+                        showAlert('error', 'Gagal memperbarui status work order');
+                    }
+                });
             }
         });
     });
