@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Form Verifikasi Unit — <?= esc($location['location_name'] ?? 'Lokasi') ?></title>
     <style>
-        @page { size: A4; margin: 1.5cm; }
+        /* Margin bawah lebih besar agar area konten tidak overlap footer cetak (position:fixed) */
+        @page { size: A4; margin: 12mm 12mm 26mm 12mm; }
         body { font-family: Arial, sans-serif; font-size: 9pt; line-height: 1.3; margin: 0; padding: 15px; color: #333; }
 
         /* Header mengikuti format print_verification / work_order */
@@ -65,27 +66,46 @@
         .note-block { border: 1px solid #ccc; padding: 8px; margin-bottom: 15px; min-height: 50px; }
 
         .page-break { page-break-before: always !important; break-before: page !important; }
-        /* Print footer (same pattern as DI / SPK) */
+        /* Print footer (same pattern as DI / SPK) — ditempatkan di zona margin bawah @page */
         .print-footer {
             position: fixed;
-            bottom: 3mm;
-            left: 8mm;
-            right: 8mm;
+            bottom: 5mm;
+            left: 10mm;
+            right: 10mm;
             text-align: center;
             font-size: 8px;
             color: #666;
             border-top: 1px solid #ddd;
             padding-top: 2mm;
-            background: white;
-            z-index: 1000;
+            padding-bottom: 1mm;
+            background: #fff;
             page-break-inside: avoid;
+            break-inside: avoid;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             display: none;
         }
 
         @media print {
-            .print-footer { display: block !important; }
+            body {
+                padding: 0 8px 0 8px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .print-footer {
+                display: block !important;
+                z-index: 0;
+            }
+            /* Hindari baris tabel terbelah di ujung halaman lalu bertabrakan dengan footer */
+            .unit-table tbody tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            .signature-row,
+            .note-block {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
         }
     </style>
 </head>

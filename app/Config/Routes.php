@@ -614,6 +614,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('unit-audit/getVerificationGrouped', 'UnitAudit::getVerificationGrouped', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getVerificationGroupedFromAudits', 'UnitAudit::getVerificationGroupedFromAudits', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationsWithAuditStatus/(:num)', 'UnitAudit::getLocationsWithAuditStatus/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/search-inventory-units', 'UnitAudit::searchInventoryUnits', ['filter' => 'permission:service.unit_audit.view']);
     $routes->post('unit-audit/createAuditVerification', 'UnitAudit::createAuditVerification', ['filter' => 'permission:service.unit_audit.create']);
     $routes->get('unit-audit/printLocationForm/(:num)/(:num)', 'UnitAudit::printLocationForm/$1/$2', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:service.unit_audit.view']);

@@ -219,6 +219,43 @@ class UnitAudit extends BaseController
     }
 
     /**
+     * Select2 AJAX: cari unit tanpa memuat seluruh fleet (Unit Audit — Tambah Unit / Verifikasi Unit Berbeda).
+     * GET: q (min 1 char, kecuali id), purpose = add_location | unit_swap, id = preload satu baris.
+     */
+    public function searchInventoryUnits()
+    {
+        try {
+            helper('auth');
+            $scope   = get_user_area_department_scope();
+            $deptIds = null;
+            if (is_array($scope) && ! empty($scope['departments'])) {
+                $deptIds = array_map('intval', $scope['departments']);
+            }
+
+            $q       = trim((string) $this->request->getGet('q'));
+            $purpose = (string) $this->request->getGet('purpose');
+            if (! in_array($purpose, ['add_location', 'unit_swap'], true)) {
+                $purpose = 'unit_swap';
+            }
+
+            $onlyId = $this->request->getGet('id');
+            $onlyId = ($onlyId !== null && $onlyId !== '') ? (int) $onlyId : null;
+
+            $units = $this->unitModel->searchForUnitAuditPicker($q, $purpose, $onlyId, $deptIds, 35);
+
+            return $this->response->setJSON(['success' => true, 'data' => $units]);
+        } catch (\Throwable $e) {
+            log_message('error', 'UnitAudit searchInventoryUnits: {msg}', ['msg' => $e->getMessage()]);
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mencari unit',
+                'data'    => [],
+            ]);
+        }
+    }
+
+    /**
      * Get active customers
      */
     public function getCustomers()

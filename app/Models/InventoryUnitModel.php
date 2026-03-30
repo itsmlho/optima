@@ -571,6 +571,122 @@ class InventoryUnitModel extends Model
     }
 
     /**
+     * Search units for Unit Audit Select2 (AJAX) — small result set, not full fleet.
+     *
+     * @param string      $query         Min 1 char when $onlyId is null
+     * @param string      $purpose       add_location: exclude units on active kontrak; unit_swap: allow contracted units
+     * @param int|null    $onlyId        Load exactly this id (for Select2 preselection)
+     * @param list<int>|null $departmentIds Scope from get_user_area_department_scope(); null = no dept filter
+     */
+    public function searchForUnitAuditPicker(
+        string $query,
+        string $purpose = 'unit_swap',
+        ?int $onlyId = null,
+        ?array $departmentIds = null,
+        int $limit = 35
+    ): array {
+        $db     = $this->db;
+        $query  = trim($query);
+        $byId   = $onlyId !== null && $onlyId > 0;
+
+        // Satu karakter saja valid (mis. no unit "1"–"9"); hanya tolak string kosong.
+        if (! $byId && $query === '') {
+            return [];
+        }
+
+        $like = '%' . $db->escapeLikeString($query) . '%';
+
+        $bindings = [];
+
+        $sql = "SELECT
+                    iu.id_inventory_unit AS id,
+                    iu.no_unit,
+                    iu.serial_number,
+                    COALESCE(c.customer_name, 'Belum Ada Kontrak') AS pelanggan,
+                    COALESCE(cl.location_name, 'N/A') AS lokasi,
+                    tu.jenis AS jenis,
+                    kp.kapasitas_unit AS kapasitas,
+                    mu.merk_unit AS merk,
+                    mu.model_unit,
+                    tu.tipe AS tipe,
+                    su.status_unit AS status
+                FROM inventory_unit iu
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
+                    AND ku.status IN ('ACTIVE','TEMP_ACTIVE','Aktif')
+                    AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
+                LEFT JOIN kontrak k ON k.id = ku.kontrak_id
+                LEFT JOIN customers c ON c.id = k.customer_id
+                LEFT JOIN customer_locations cl ON cl.id = ku.customer_location_id
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                LEFT JOIN kapasitas kp ON iu.kapasitas_unit_id = kp.id_kapasitas
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
+                WHERE iu.no_unit IS NOT NULL
+                  AND iu.status_unit_id NOT IN (10, 11, 13)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM work_orders wo_check
+                    JOIN work_order_statuses wos_check ON wo_check.status_id = wos_check.id
+                    WHERE wo_check.unit_id = iu.id_inventory_unit
+                      AND wo_check.deleted_at IS NULL
+                      AND wos_check.status_code NOT IN ('CLOSED','COMPLETED')
+                  )";
+
+        if ($departmentIds !== null && $departmentIds !== []) {
+            $ids = array_map('intval', $departmentIds);
+            $ids = array_filter($ids, static fn ($x) => $x > 0);
+            if ($ids !== []) {
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $sql .= " AND iu.departemen_id IN ({$placeholders})";
+                $bindings   = array_merge($bindings, $ids);
+            }
+        }
+
+        if ($purpose === 'add_location') {
+            $sql .= " AND NOT EXISTS (
+                SELECT 1 FROM kontrak_unit ku_busy
+                WHERE ku_busy.unit_id = iu.id_inventory_unit
+                  AND ku_busy.status IN ('ACTIVE','TEMP_ACTIVE','Aktif')
+                  AND (ku_busy.is_temporary IS NULL OR ku_busy.is_temporary = 0)
+            )";
+        }
+
+        if ($byId) {
+            $sql .= ' AND iu.id_inventory_unit = ?';
+            $bindings[] = $onlyId;
+        } else {
+            $sql .= " AND (
+                iu.no_unit LIKE ?
+                OR iu.serial_number LIKE ?
+                OR mu.merk_unit LIKE ?
+                OR mu.model_unit LIKE ?
+                OR tu.tipe LIKE ?
+                OR tu.jenis LIKE ?
+                OR COALESCE(c.customer_name, '') LIKE ?
+            )";
+            for ($i = 0; $i < 7; $i++) {
+                $bindings[] = $like;
+            }
+        }
+
+        $sql .= ' ORDER BY iu.no_unit ASC LIMIT ' . (int) max(1, min(80, $limit));
+
+        $rows = $db->query($sql, $bindings)->getResultArray();
+
+        foreach ($rows as &$unit) {
+            $unit['pelanggan'] = $unit['pelanggan'] ?? 'Belum Ada Kontrak';
+            $unit['lokasi']    = $unit['lokasi'] ?? 'N/A';
+            $unit['jenis']     = $unit['jenis'] ?? '';
+            $unit['kapasitas'] = $unit['kapasitas'] ?? '';
+            $unit['merk']      = $unit['merk'] ?? '';
+            $unit['model_unit'] = $unit['model_unit'] ?? '';
+            $unit['status']    = $unit['status'] ?? '';
+            $unit['tipe']      = $unit['tipe'] ?? '';
+        }
+
+        return $rows;
+    }
+
+    /**
      * Get unit detail with contract info for work orders
      * 
      * Updated: Uses kontrak_unit junction table instead of redundant iu.kontrak_id

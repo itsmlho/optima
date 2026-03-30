@@ -345,7 +345,7 @@ helper('ui');
                     <select class="form-select" id="tuUnitSelect">
                         <option value="">-- Pilih Unit --</option>
                     </select>
-                    <div class="form-text">Unit yang tersedia (belum dalam kontrak aktif)</div>
+                    <div class="form-text">Unit yang tersedia (belum dalam kontrak aktif). Cari by No Unit, SN, model, atau merk — ketik minimal 1 karakter (nomor tunggal 1–9 juga bisa); data tidak dimuat sekaligus.</div>
                     </div>
 
                 <div class="mt-2 d-flex align-items-center">
@@ -494,6 +494,92 @@ helper('ui');
 <?= $this->section('javascript') ?>
 <script>
 const BASE = '<?= base_url() ?>';
+
+/** Select2 AJAX — Unit Audit: tidak memuat seluruh inventory sekaligus */
+function formatAuditUnitAjaxOption(item) {
+    if (item.loading) {
+        return item.text;
+    }
+    if (!item.id) {
+        return item.text;
+    }
+    const status = item.status || '';
+    const statusBadge = $('<span class="badge badge-soft-green me-1"></span>').text(status || '—');
+    const $container = $('<div class="d-flex flex-column"></div>');
+    const id = item.id;
+    const no = item.no_unit || item.text || '';
+    const jenis = item.jenis || '';
+    const kapasitas = item.kapasitas || '';
+    const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
+    const line1 = $('<div class="fw-semibold"></div>').text('[' + id + '] ' + no + (jenis ? ' ' + jenis : '') + (kapasitas ? ' ' + kapasitas : ''));
+    const line2 = $('<div class="small text-muted"></div>').append(statusBadge).append($('<span></span>').text(' 📍 ' + (item.lokasi || '')));
+    $container.append(line1);
+    if (mm || item.serial_number) {
+        const bits = [];
+        if (mm) bits.push(mm);
+        if (item.serial_number) bits.push('SN: ' + item.serial_number);
+        $container.append($('<div class="small"></div>').text(bits.join(' • ')));
+    }
+    $container.append(line2);
+    return $container;
+}
+
+function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
+    purpose = purpose === 'add_location' ? 'add_location' : 'unit_swap';
+    return {
+        dropdownParent: $dropdownParent,
+        width: '100%',
+        minimumInputLength: 1,
+        allowClear: true,
+        placeholder: purpose === 'add_location'
+            ? 'No unit, SN, model, merk… (min. 1 huruf/angka)'
+            : 'No unit, SN, model, merk… (min. 1 huruf/angka)',
+        language: {
+            inputTooShort: function () { return 'Ketik minimal 1 karakter (no unit bisa 1 digit)'; }
+        },
+        ajax: {
+            url: BASE + 'service/unit-audit/search-inventory-units',
+            dataType: 'json',
+            delay: 300,
+            data: function (params) {
+                return { q: params.term || '', purpose: purpose };
+            },
+            processResults: function (res) {
+                if (!res || !res.success || !Array.isArray(res.data)) {
+                    return { results: [] };
+                }
+                const out = [];
+                res.data.forEach(function (u) {
+                    if (String(u.status || '').toUpperCase() === 'JUAL') {
+                        return;
+                    }
+                    const no = u.no_unit || ('UNIT-' + u.id);
+                    out.push({
+                        id: String(u.id),
+                        text: no,
+                        no_unit: no,
+                        serial_number: u.serial_number || '',
+                        jenis: u.jenis || '',
+                        kapasitas: u.kapasitas || '',
+                        merk: u.merk || '',
+                        model_unit: u.model_unit || '',
+                        status: u.status || '',
+                        pelanggan: u.pelanggan || '',
+                        lokasi: u.lokasi || ''
+                    });
+                });
+                return { results: out };
+            },
+            cache: true
+        },
+        templateResult: formatAuditUnitAjaxOption,
+        templateSelection: function (item) {
+            if (!item.id) return item.text;
+            return item.no_unit || item.text;
+        }
+    };
+}
+
 let selectedCustomerId  = null;
 let selectedLocationId  = null;
 let selectedLocationData = {};
@@ -942,67 +1028,17 @@ function onVfAlasanReasonChange() {
             $sel.select2('destroy');
         }
         $sel.empty().append('<option value="">-- Pilih Unit --</option>');
-        // Load semua unit inventory sekali via units-dropdown
-        $.get(BASE + 'service/work-orders/units-dropdown', function(res) {
-            if (!res.success || !Array.isArray(res.data)) return;
-            res.data.forEach(function(unit) {
-                const id = unit.id;
-                const noUnit = unit.no_unit || unit.nomor_unit || ('UNIT-' + id);
-                const jenis = unit.jenis || unit.tipe || '';
-                const kapasitas = unit.kapasitas || '';
-                const status = unit.status || '';
-                const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
-                const lokasi = unit.lokasi || 'N/A';
-                // Simpan info lengkap di data-* agar bisa dipakai templateResult
-                const text = noUnit;
-                const opt = $('<option>')
-                    .val(id)
-                    .text(text)
-                    .attr('data-no', noUnit)
-                    .attr('data-jenis', jenis)
-                    .attr('data-kapasitas', kapasitas)
-                    .attr('data-status', status)
-                    .attr('data-pelanggan', pelanggan)
-                    .attr('data-lokasi', lokasi);
-                $sel.append(opt);
-            });
+        $sel.select2(buildAuditUnitSelect2AjaxConfig('unit_swap', $('#vfAlasanModal')));
 
-            $sel.select2({
-                dropdownParent: $('#vfAlasanModal'),
-                width: '100%',
-                placeholder: '-- Pilih Unit --',
-                templateResult: function (opt) {
-                    if (!opt.id) return opt.text;
-                    const $o = $(opt.element);
-                    const no = $o.data('no') || opt.text;
-                    const jenis = $o.data('jenis') || '';
-                    const kapasitas = $o.data('kapasitas') || '';
-                    const status = $o.data('status') || '';
-                    const pelanggan = $o.data('pelanggan') || '';
-                    const lokasi = $o.data('lokasi') || '';
-                    const statusLabel = status || 'UNKNOWN';
-                    const statusBadge = $('<span class="badge badge-soft-green me-1"></span>').text(statusLabel);
-                    const locSpan = $('<span></span>').text('📍 ' + lokasi);
-                    const $container = $('<div class="d-flex flex-column"></div>');
-                    const line1 = $('<div class="fw-semibold"></div>').text('[' + opt.id + '] ' + no + (jenis ? ' ' + jenis : '') + (kapasitas ? ' ' + kapasitas : ''));
-                    const line2 = $('<div class="small text-muted"></div>').append(statusBadge).append(locSpan);
-                    $container.append(line1).append(line2);
-                    return $container;
-                },
-                templateSelection: function (opt) {
-                    if (!opt.id) return opt.text;
-                    const $o = $(opt.element);
-                    const no = $o.data('no') || opt.text;
-                    const jenis = $o.data('jenis') || '';
-                    const kapasitas = $o.data('kapasitas') || '';
-                    return '[' + opt.id + '] ' + no + (jenis ? ' ' + jenis : '') + (kapasitas ? ' ' + kapasitas : '');
-                }
+        if (vfAlasanExtraCache.target_unit_id) {
+            const uid = String(vfAlasanExtraCache.target_unit_id);
+            $.get(BASE + 'service/unit-audit/search-inventory-units', { id: uid, purpose: 'unit_swap' }, function (res) {
+                if (!res.success || !res.data || !res.data.length) return;
+                const u = res.data[0];
+                const no = u.no_unit || ('UNIT-' + u.id);
+                $sel.append(new Option(no, String(u.id), true, true)).trigger('change');
             });
-
-            if (vfAlasanExtraCache.target_unit_id) {
-                $sel.val(String(vfAlasanExtraCache.target_unit_id)).trigger('change');
-            }
-        });
+        }
     } else if (reason === 'MARK_SPARE') {
         $('#vfAlasanInfoWrapper').removeClass('d-none');
         $('#vfAlasanInfoText').text('Unit ini akan diajukan sebagai spare sehingga tidak dihitung ke harga sewa kontrak.');
@@ -1270,107 +1306,11 @@ function openTambahUnit(locationId) {
     if ($tuUnit.hasClass('select2-hidden-accessible')) {
         $tuUnit.select2('destroy');
     }
-    $tuUnit.html('<option value="">-- Memuat unit... --</option>');
+    $tuUnit.empty().append('<option value="">-- Pilih Unit --</option>');
     $('#tuIsSpare').prop('checked', false);
     $('#tuNotes').val('');
 
-    // Load available units (reuse units-dropdown like Alasan Ketidaksesuaian)
-    $.get(BASE + 'service/work-orders/units-dropdown', function(res) {
-        if (res.success) {
-            const $sel = $tuUnit;
-            $sel.empty().append('<option value="">-- Pilih Unit --</option>');
-            (res.data || []).forEach(function(unit) {
-                // Skip units with status JUAL
-                const rawStatus = unit.status || unit.status_unit || unit.status_text || '';
-                if (String(rawStatus).toUpperCase() === 'JUAL') {
-                    return;
-                }
-                const id = unit.id;
-                const noUnit = unit.no_unit || unit.nomor_unit || ('UNIT-' + id);
-                const jenis = unit.jenis || unit.tipe || '';
-                const kapasitas = unit.kapasitas || '';
-                const status = rawStatus || '';
-                const pelanggan = unit.pelanggan || unit.customer_name || 'Belum Ada Kontrak';
-                const lokasi = unit.lokasi || unit.location_name || 'N/A';
-                const sn = unit.serial_number || unit.sn || '';
-                const opt = $('<option>')
-                    .val(id)
-                    .text(noUnit)
-                    .attr('data-no', noUnit)
-                    .attr('data-merk', jenis)
-                    .attr('data-model', '')
-                    .attr('data-sn', sn)
-                    .attr('data-kapasitas', kapasitas)
-                    .attr('data-status', status)
-                    .attr('data-pelanggan', pelanggan)
-                    .attr('data-lokasi', lokasi);
-                $sel.append(opt);
-            });
-
-            $sel.select2({
-                dropdownParent: $('#tambahUnitModal'),
-                width: '100%',
-                placeholder: '-- Pilih Unit --',
-                templateResult: function (opt) {
-                    if (!opt.id) return opt.text;
-                    const $o = $(opt.element);
-                    const no = $o.data('no') || opt.text;
-                    const merk = $o.data('merk') || '';
-                    const model = $o.data('model') || '';
-                    const sn = $o.data('sn') || '';
-                    const kapasitas = $o.data('kapasitas') || '';
-                    const status = $o.data('status') || '';
-                    const pelanggan = $o.data('pelanggan') || '';
-                    const lokasi = $o.data('lokasi') || '';
-                    const $container = $('<div class="d-flex flex-column"></div>');
-
-                    // Baris utama: hanya no_unit
-                    const line1 = $('<div class="fw-semibold"></div>').text(no);
-
-                    // Baris kedua: merk / model / SN
-                    const line2 = $('<div class="small"></div>');
-                    let merkModel = (merk || model) ? (merk + (model ? ' ' + model : '')) : '';
-                    if (kapasitas) {
-                        merkModel = (merkModel ? merkModel + ' • ' : '') + kapasitas;
-                    }
-                    const snText = sn ? 'SN: ' + sn : '';
-                    const mmSn = [merkModel, snText].filter(Boolean).join(' • ');
-                    if (mmSn) {
-                        line2.text(mmSn);
-                    }
-
-                    // Baris ketiga: status (jika ada) + lokasi/pelanggan
-                    const line3 = $('<div class="small text-muted"></div>');
-                    if (status) {
-                        const statusBadge = $('<span class="badge badge-soft-green me-1"></span>').text(status);
-                        line3.append(statusBadge);
-                    }
-                    const locText = lokasi || '';
-                    const pelText = pelanggan || '';
-                    if (locText || pelText) {
-                        const locSpan = $('<span></span>').text(
-                            (locText ? '📍 ' + locText : '') +
-                            (locText && pelText ? ' • ' : '') +
-                            (!locText && pelText ? pelText : (locText && pelText ? pelText : ''))
-                        );
-                        line3.append(locSpan);
-                    }
-
-                    $container.append(line1);
-                    if (line2.text().trim() !== '') $container.append(line2);
-                    if (line3.text().trim() !== '') $container.append(line3);
-                    return $container;
-                },
-                templateSelection: function (opt) {
-                    if (!opt.id) return opt.text;
-                    const $o = $(opt.element);
-                    const no = $o.data('no') || opt.text;
-                    // Saat sudah dipilih, cukup tampilkan no_unit saja
-                    return no;
-                }
-            });
-        }
-    });
+    $tuUnit.select2(buildAuditUnitSelect2AjaxConfig('add_location', $('#tambahUnitModal')));
 
     // Try to get kontrak_id for location
     $.get(BASE + 'service/unit-audit/getLocationDetails/' + locationId, function(res) {
