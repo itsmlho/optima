@@ -88,14 +88,14 @@ helper('permission_helper');
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Service</span></li>
-                    <?php if (canNavigateTo('service', 'workorder')): ?>
+                    <?php if (canNavigateTo('service', 'work_order') || canNavigateTo('service', 'spk_service')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/spk_service') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">build_circle</span><span class="drop-label">SPK Service</span></a></li>
                     <li class="nav-item"><a href="<?= base_url('/service/work-orders') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">work</span><span class="drop-label">Work Orders</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'pmps')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/pmps') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">checklist</span><span class="drop-label">PMPS</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('service', 'workorder')): ?>
+                    <?php if (canNavigateTo('service', 'unit_audit')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/unit-audit') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">fact_check</span><span class="drop-label">Unit Audit</span></a></li>
                     <li class="nav-item"><a href="<?= base_url('/service/unit-verification') ?>" class="nav-link dropdown-link"><i class="fas fa-clipboard-check drop-icon" aria-hidden="true"></i><span class="drop-label">Unit Verification</span></a></li>
                     <?php endif; ?>
