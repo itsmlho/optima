@@ -1738,7 +1738,8 @@ $(document).ready(function() {
         
         // Serialize form data and append CSRF token
         let formData = $('#unitVerificationForm').serialize();
-        formData += '&<?= csrf_token() ?>=' + encodeURIComponent('<?= csrf_hash() ?>');
+        const csrfVerif = window.getCsrfTokenData();
+        formData += '&' + encodeURIComponent(csrfVerif.tokenName) + '=' + encodeURIComponent(csrfVerif.tokenValue);
         console.log('📋 Form data being sent:', formData);
         
         $.ajax({

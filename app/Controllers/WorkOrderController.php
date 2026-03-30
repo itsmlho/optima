@@ -4656,8 +4656,9 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             
             // Check transaction status
             if ($db->transStatus() === false) {
-                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId} status update");
-                throw new \Exception('Gagal menyimpan perubahan status work order');
+                $dbError = $this->getMySQLError($db);
+                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId} status update. DB error: " . $dbError);
+                throw new \Exception('Gagal menyimpan perubahan status work order: ' . $dbError);
             }
             
             log_message('info', "[WorkOrder] Transaction completed successfully for WO {$workOrderId}");
