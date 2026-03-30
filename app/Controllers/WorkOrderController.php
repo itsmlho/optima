@@ -272,7 +272,7 @@ class WorkOrderController extends Controller
             $builder->join('areas a', 'iu.area_id = a.id', 'left');
             $builder->join('departemen d', 'a.departemen_id = d.id_departemen', 'left');
             $builder->join('area_employee_assignments aea', 'a.id = aea.area_id AND aea.is_active = 1', 'left');
-            $builder->join('work_order_staff_backup_final s', 'aea.employee_id = s.id AND s.staff_role = "FOREMAN" AND s.is_active = 1', 'left');
+            $builder->join('employees s', 'aea.employee_id = s.id AND s.staff_role = "FOREMAN" AND s.is_active = 1', 'left');
             $builder->where('iu.id_inventory_unit', $unitId);
             
             $result = $builder->get()->getRowArray();
@@ -320,7 +320,8 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            log_message('error', 'WorkOrderController::getUnitArea - [' . get_class($e) . '] ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memuat informasi area'
@@ -1718,10 +1719,10 @@ class WorkOrderController extends Controller
                     
                     // Get created WO details
                     $woQuery = $db->query('
-                        SELECT wo.wo_number, iu.no_unit, wo.order_type, 
+                        SELECT wo.work_order_number, iu.no_unit, wo.order_type, 
                                p.priority_name, c.category_name, wo.complaint_description
                         FROM work_orders wo
-                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_unit
+                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_inventory_unit
                         LEFT JOIN work_order_priorities p ON wo.priority_id = p.id
                         LEFT JOIN work_order_categories c ON wo.category_id = c.id
                         WHERE wo.id = ?
@@ -1769,13 +1770,13 @@ class WorkOrderController extends Controller
                     ]
                 ]);
                 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $db->transRollback();
                 throw $e;
             }
             
-        } catch (\Exception $e) {
-            log_message('error', 'Error in WorkOrderController::store - ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'Error in WorkOrderController::store - [' . get_class($e) . '] ' . $e->getMessage());
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
@@ -2263,14 +2264,14 @@ class WorkOrderController extends Controller
                     aea.assignment_type,
                     aea.is_active
                 FROM area_employee_assignments aea
-                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                JOIN employees s ON aea.employee_id = s.id
                 WHERE aea.area_id = ? AND aea.is_active = 1 AND s.is_active = 1
                 ORDER BY s.staff_role, s.staff_name
             ", [$areaId]);
             
             return $query->getResultArray();
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
             return null;
         }
@@ -2356,7 +2357,7 @@ class WorkOrderController extends Controller
                 ->like('iu.no_unit', $query)
                 ->orLike('c.customer_name', $query)
                 ->orLike('iu.serial_number', $query)
-                ->orLike('tu.jenis', $query)
+                ->orLike('tu.tipe', $query) // Unit type (tipe_unit.tipe)
                 ->orLike('mu.model_unit', $query)
                 ->orLike('mu.merk_unit', $query)
             ->groupEnd();

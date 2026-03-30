@@ -115,7 +115,7 @@ class WorkOrderAssignmentModel extends Model
         // Get staff names separately
         if (!empty($assignments)) {
             $staffIds = array_unique(array_column($assignments, 'staff_id'));
-            $staffData = $this->db->table('work_order_staff_backup_final')
+            $staffData = $this->db->table('employees')
                 ->whereIn('id', $staffIds)
                 ->get()
                 ->getResultArray();
@@ -151,7 +151,7 @@ class WorkOrderAssignmentModel extends Model
         // Get staff names separately
         if (!empty($mechanics)) {
             $staffIds = array_unique(array_column($mechanics, 'staff_id'));
-            $staffData = $this->db->table('work_order_staff_backup_final')
+            $staffData = $this->db->table('employees')
                 ->whereIn('id', $staffIds)
                 ->get()
                 ->getResultArray();
@@ -187,7 +187,7 @@ class WorkOrderAssignmentModel extends Model
         // Get staff names separately
         if (!empty($helpers)) {
             $staffIds = array_unique(array_column($helpers, 'staff_id'));
-            $staffData = $this->db->table('work_order_staff_backup_final')
+            $staffData = $this->db->table('employees')
                 ->whereIn('id', $staffIds)
                 ->get()
                 ->getResultArray();
