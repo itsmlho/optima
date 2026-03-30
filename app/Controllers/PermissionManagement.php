@@ -237,11 +237,11 @@ class PermissionManagement extends BaseController
         }
 
         // Get users
-        $users = $this->db->table('user u')
+        $users = $this->db->table('users u')
             ->select('u.id, u.username, u.email, r.name as role_name')
             ->join('user_roles ur', 'ur.user_id = u.id', 'left')
             ->join('roles r', 'r.id = ur.role_id', 'left')
-            ->where('u.status', 'active')
+            ->where('u.is_active', 1)
             ->orderBy('u.username')
             ->get()
             ->getResultArray();

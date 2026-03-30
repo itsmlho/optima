@@ -12,4 +12,11 @@
 # Or run in one step (loads kodes from DB): python generate_sparepart_usage_import.py --execute --mysql-database optima_ci
 # Optional: --skip-existing  --with-usage-table  (see python generate_sparepart_usage_import.py --help)
 #
+# Hapus semua impor CSV lalu input ulang: jalankan clear_csv_sparepart_import.sql lalu import_sparepart_usage.sql
+#
 # Dry-run (no codes file needed): python generate_sparepart_usage_import.py --dry-run
+#
+# Jika phpMyAdmin error "Unknown column 'source_type'":
+#   A) Jalankan migrasi: databases/migrations/20260330_add_work_order_spareparts_source_columns_if_missing.sql
+#   ATAU
+#   B) Generate SQL tanpa kolom itu: python generate_sparepart_usage_import.py --legacy-schema -o import_sparepart_usage_legacy.sql

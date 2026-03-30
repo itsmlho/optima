@@ -142,6 +142,7 @@ def emit_insert_sql(
     source_type: str,
     quantity_used: float,
     skip_existing: bool,
+    legacy_schema: bool,
 ) -> None:
     notes_sql = sql_str(notes) if notes else "NULL"
     skip_clause = ""
@@ -150,6 +151,32 @@ def emit_insert_sql(
             " AND NOT EXISTS (SELECT 1 FROM `work_order_spareparts` e "
             "WHERE e.`work_order_id` = wo.`id`)"
         )
+    if legacy_schema:
+        # DB tanpa kolom source_type / source_unit_id / source_notes (gunakan is_from_warehouse saja)
+        out.write(
+            "INSERT INTO `work_order_spareparts` ("
+            "`work_order_id`,`sparepart_code`,`sparepart_name`,`item_type`,"
+            "`quantity_brought`,`satuan`,`notes`,`created_at`,`updated_at`,"
+            "`quantity_used`,`is_additional`,`is_from_warehouse`,"
+            "`sparepart_validated`,"
+            "`quantity_returned`,`return_status`,`return_confirmed_by`,`return_confirmed_at`"
+            ")\n"
+            "SELECT wo.`id`,"
+            f"{sql_str(sparepart_code)},{sql_str(sparepart_name)},{sql_str(item_type)},"
+            f"{int(quantity_brought)},{sql_str(satuan)},{notes_sql},"
+            "NOW(),NOW(),"
+            f"{quantity_used:.2f},"
+            "0,"
+            f"{int(is_from_warehouse)},"
+            "1,"
+            "0,'NONE',NULL,NULL\n"
+            "FROM `work_orders` wo\n"
+            f"WHERE wo.`work_order_number` = {sql_str(wo_number)} "
+            "AND wo.`deleted_at` IS NULL"
+            f"{skip_clause}\n"
+            "LIMIT 1;\n"
+        )
+        return
     out.write(
         "INSERT INTO `work_order_spareparts` ("
         "`work_order_id`,`sparepart_code`,`sparepart_name`,`item_type`,"
@@ -205,6 +232,11 @@ def main() -> int:
     ap.add_argument("--with-usage-table", action="store_true",
                     help="Also insert work_order_sparepart_usage (INT qty = round(qty), skip if 0)")
     ap.add_argument("--batch-commit", type=int, default=500, help="Commit every N rows (--execute)")
+    ap.add_argument(
+        "--legacy-schema",
+        action="store_true",
+        help="Omit source_type, source_unit_id, source_notes (for DB without migration 20260314_add_sparepart_source_tracking)",
+    )
     args = ap.parse_args()
 
     pymysql = try_pymysql() if args.execute else None
@@ -327,6 +359,8 @@ def main() -> int:
         w(f"-- Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         w(f"-- Source: {os.path.basename(args.input)}\n")
         w("-- HM column ignored. Unknown code -> BEKAS.\n")
+        if args.legacy_schema:
+            w("-- legacy-schema: no source_type / source_unit_id / source_notes (BEKAS = is_from_warehouse=0).\n")
         if args.skip_existing:
             w("-- skip-existing: each INSERT uses NOT EXISTS on work_order_spareparts.\n")
             w("-- Omitted: bulk UPDATE work_orders.sparepart_validated (run --execute or update manually).\n")
@@ -362,6 +396,7 @@ def main() -> int:
                 source_type,
                 quantity_used,
                 args.skip_existing,
+                args.legacy_schema,
             )
             stats["inserts"] += 1
 
@@ -442,31 +477,57 @@ def run_execute(
                         quantity_used,
                     ) = vals
 
-                    sql = (
-                        "INSERT INTO `work_order_spareparts` ("
-                        "`work_order_id`,`sparepart_code`,`sparepart_name`,`item_type`,"
-                        "`quantity_brought`,`satuan`,`notes`,`created_at`,`updated_at`,"
-                        "`quantity_used`,`is_additional`,`is_from_warehouse`,`source_type`,"
-                        "`source_unit_id`,`source_notes`,`sparepart_validated`,"
-                        "`quantity_returned`,`return_status`,`return_confirmed_by`,`return_confirmed_at`"
-                        ") VALUES ("
-                        "%s,%s,%s,%s,%s,%s,%s,NOW(),NOW(),%s,0,%s,%s,NULL,NULL,1,0,'NONE',NULL,NULL)"
-                    )
-                    cur.execute(
-                        sql,
-                        (
-                            wo_id,
-                            sparepart_code,
-                            sparepart_name,
-                            item_type,
-                            quantity_brought,
-                            satuan,
-                            notes or None,
-                            quantity_used,
-                            is_from_wh,
-                            source_type,
-                        ),
-                    )
+                    if args.legacy_schema:
+                        sql = (
+                            "INSERT INTO `work_order_spareparts` ("
+                            "`work_order_id`,`sparepart_code`,`sparepart_name`,`item_type`,"
+                            "`quantity_brought`,`satuan`,`notes`,`created_at`,`updated_at`,"
+                            "`quantity_used`,`is_additional`,`is_from_warehouse`,"
+                            "`sparepart_validated`,"
+                            "`quantity_returned`,`return_status`,`return_confirmed_by`,`return_confirmed_at`"
+                            ") VALUES ("
+                            "%s,%s,%s,%s,%s,%s,%s,NOW(),NOW(),%s,0,%s,1,0,'NONE',NULL,NULL)"
+                        )
+                        cur.execute(
+                            sql,
+                            (
+                                wo_id,
+                                sparepart_code,
+                                sparepart_name,
+                                item_type,
+                                quantity_brought,
+                                satuan,
+                                notes or None,
+                                quantity_used,
+                                is_from_wh,
+                            ),
+                        )
+                    else:
+                        sql = (
+                            "INSERT INTO `work_order_spareparts` ("
+                            "`work_order_id`,`sparepart_code`,`sparepart_name`,`item_type`,"
+                            "`quantity_brought`,`satuan`,`notes`,`created_at`,`updated_at`,"
+                            "`quantity_used`,`is_additional`,`is_from_warehouse`,`source_type`,"
+                            "`source_unit_id`,`source_notes`,`sparepart_validated`,"
+                            "`quantity_returned`,`return_status`,`return_confirmed_by`,`return_confirmed_at`"
+                            ") VALUES ("
+                            "%s,%s,%s,%s,%s,%s,%s,NOW(),NOW(),%s,0,%s,%s,NULL,NULL,1,0,'NONE',NULL,NULL)"
+                        )
+                        cur.execute(
+                            sql,
+                            (
+                                wo_id,
+                                sparepart_code,
+                                sparepart_name,
+                                item_type,
+                                quantity_brought,
+                                satuan,
+                                notes or None,
+                                quantity_used,
+                                is_from_wh,
+                                source_type,
+                            ),
+                        )
                     new_id = cur.lastrowid
                     stats["inserts"] += 1
                     wo_ids_touched.add(wo_id)
