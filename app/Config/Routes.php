@@ -17,6 +17,11 @@ $routes->get('/', function() {
 // Welcome page - requires authentication
 $routes->get('welcome', 'Welcome::index');
 
+// CSRF token refresh endpoint — returns fresh token for AJAX callers whose
+// session-based token has expired. Requires auth filter (no csrf filter needed
+// because this GET endpoint is used to OBTAIN a fresh token, not submit data).
+$routes->get('csrf-refresh', 'CsrfController::refresh', ['filter' => 'auth']);
+
 $routes->get('/comingsoon', '::index');
 
 // ===== LANGUAGE SWITCHING ROUTES =====

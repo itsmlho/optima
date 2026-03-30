@@ -83,8 +83,16 @@ class Session extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * How many seconds between CI regenerating the session ID.
+     *
+     * OPTIMA: Set to 0 to DISABLE session ID regeneration.
+     * Reason: With csrfProtection='session', frequent session ID regeneration
+     * causes race conditions on concurrent AJAX requests (multiple simultaneous
+     * calls during the regeneration window). Since CSRF token itself does not
+     * regenerate per-request (Security::$regenerate = false), session ID
+     * regeneration adds no extra CSRF security benefit and only causes 403 errors.
+     * Session fixation risk is minimal post-authentication.
      */
-    public int $timeToUpdate = 300;
+    public int $timeToUpdate = 0;
 
     /**
      * --------------------------------------------------------------------------

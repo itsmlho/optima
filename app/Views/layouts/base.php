@@ -232,14 +232,55 @@ $currentLang = service('request')->getLocale();
         // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
 
         /**
+         * Silently refresh the CSRF token from the server, then call onSuccess(newTokenValue)
+         * or onFail() if the session has truly expired (server returns 401/non-200).
+         */
+        window.refreshCsrfToken = function(onSuccess, onFail) {
+            $.ajax({
+                url: <?= json_encode(base_url('csrf-refresh')) ?>,
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    if (data && data.success && data.tokenValue) {
+                        // Update meta tag so all subsequent calls use the new token
+                        const meta = document.querySelector('meta[name="csrf-token"]');
+                        if (meta) meta.setAttribute('content', data.tokenValue);
+                        // Update legacy globals
+                        window.csrfTokenValue = data.tokenValue;
+                        window.csrfToken = data.tokenValue;
+                        console.info('🔄 CSRF token refreshed silently');
+                        if (typeof onSuccess === 'function') onSuccess(data.tokenValue);
+                    } else {
+                        if (typeof onFail === 'function') onFail();
+                    }
+                },
+                error: function() {
+                    // csrf-refresh returned 401 or network error — session truly expired
+                    if (typeof onFail === 'function') onFail();
+                }
+            });
+        };
+
+        /**
          * Global AJAX HTTP error handler utility.
          * Call from local error: callbacks to get proper 401/403 handling.
          * Returns true if the error was handled (caller should suppress their own message).
          * Returns false if caller should show its own default error message.
          *
-         * Usage: error: function(xhr) { if (!window.handleHttpError(xhr)) showAlert('error','...'); }
+         * On CSRF 403: silently refreshes token and retries the original request once.
+         * The caller will NOT see an error message for transparent CSRF recovery.
+         *
+         * Usage: error: function(xhr, status, err, originalAjaxOptions) {
+         *            if (!window.handleHttpError(xhr, originalAjaxOptions)) showAlert('error','...');
+         *        }
+         *
+         * To enable auto-retry, pass the original $.ajax settings object as second param:
+         *        error: function(xhr) {
+         *            if (!window.handleHttpError(xhr, this)) showAlert('error','...');
+         *        }
+         * Note: inside $.ajax error callback, `this` refers to the ajaxSettings object.
          */
-        window.handleHttpError = function(xhr) {
+        window.handleHttpError = function(xhr, originalSettings) {
             if (xhr.status === 401) {
                 const r = xhr.responseJSON || {};
                 if (window.OptimaAuth) {
@@ -267,16 +308,58 @@ $currentLang = service('request')->getLocale();
                     }
                     return true;
                 }
-                // Non-JSON 403 or other 403 without ACCESS_DENIED = CSRF expiry (CI4 returns HTML on CSRF fail)
-                console.warn('🔐 CSRF token expired or session timeout (HTTP 403)');
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'warning', title: 'Sesi Berakhir',
-                        text: 'Token keamanan telah kedaluwarsa. Halaman perlu di-refresh untuk melanjutkan.',
-                        confirmButtonText: 'Refresh Sekarang', allowOutsideClick: false,
-                    }).then(() => { window.location.reload(); });
+                // Non-JSON 403 = CSRF token mismatch (CI4 returns HTML on CSRF fail).
+                // Strategy: silently refresh token, then retry original request ONCE.
+                // Only show reload dialog if the session itself has truly expired.
+                console.warn('🔐 CSRF 403 — attempting silent token refresh');
+                if (originalSettings && !originalSettings._csrfRetried) {
+                    window.refreshCsrfToken(
+                        function(newToken) {
+                            // Token refreshed — update the data payload and retry
+                            const tokenName = <?= json_encode(csrf_token()) ?>;
+                            const retrySettings = $.extend(true, {}, originalSettings, {
+                                _csrfRetried: true,  // prevent infinite retry loop
+                                data: (function() {
+                                    // Rebuild data with the new CSRF token
+                                    let d = originalSettings.data || {};
+                                    if (typeof d === 'string') {
+                                        // URL-encoded string — replace token param
+                                        d = d.replace(new RegExp('(?:^|&)' + tokenName + '=[^&]*'), '');
+                                        d += (d ? '&' : '') + encodeURIComponent(tokenName) + '=' + encodeURIComponent(newToken);
+                                    } else if (typeof d === 'object') {
+                                        d = $.extend({}, d);
+                                        d[tokenName] = newToken;
+                                    }
+                                    return d;
+                                })(),
+                            });
+                            console.info('🔄 Retrying request with refreshed CSRF token');
+                            $.ajax(retrySettings);
+                        },
+                        function() {
+                            // csrf-refresh itself failed — session truly expired
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning', title: 'Sesi Berakhir',
+                                    text: 'Sesi Anda telah berakhir. Silakan login kembali.',
+                                    confirmButtonText: 'Login', allowOutsideClick: false,
+                                }).then(() => { window.location.href = <?= json_encode(base_url('auth/login')) ?>; });
+                            } else {
+                                window.location.href = <?= json_encode(base_url('auth/login')) ?>;
+                            }
+                        }
+                    );
                 } else {
-                    if (confirm('Sesi Anda telah berakhir. Refresh halaman sekarang?')) { window.location.reload(); }
+                    // No originalSettings provided OR already retried — show reload dialog
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning', title: 'Sesi Berakhir',
+                            text: 'Token keamanan telah kedaluwarsa. Halaman perlu di-refresh untuk melanjutkan.',
+                            confirmButtonText: 'Refresh Sekarang', allowOutsideClick: false,
+                        }).then(() => { window.location.reload(); });
+                    } else {
+                        if (confirm('Sesi Anda telah berakhir. Refresh halaman sekarang?')) { window.location.reload(); }
+                    }
                 }
                 return true;
             }
