@@ -186,6 +186,14 @@ class Service extends BaseController
             return $this->response->setJSON(['success' => true, 'message' => 'Sparepart berhasil disimpan']);
         }
 
+        $validationErrors = $sparepartModel->errors();
+        if (!empty($validationErrors)) {
+            $errDetail = implode('; ', $validationErrors);
+            log_message('error', 'saveSparepartRequest validation errors for SPK #' . $id . ': ' . $errDetail);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan sparepart: ' . $errDetail]);
+        }
+
+        log_message('error', 'saveSparepartRequest unknown failure for SPK #' . $id . ' — items: ' . json_encode($items));
         return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan sparepart, periksa kembali data yang diisi']);
     }
 
