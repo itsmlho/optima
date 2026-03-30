@@ -496,6 +496,36 @@ helper('ui');
 const BASE = '<?= base_url() ?>';
 
 /** Select2 AJAX — Unit Audit: tidak memuat seluruh inventory sekaligus */
+/** Baris 1 = tampilan terpilih: No unit · Merk Model · Kapasitas (tanpa id DB) */
+function formatAuditUnitLine1(item) {
+    if (!item || item.loading) {
+        return (item && item.text) ? item.text : '';
+    }
+    if (!item.id) {
+        return item.text || '';
+    }
+    const no = (item.no_unit || item.text || '').trim();
+    const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
+    const kap = (item.kapasitas || '').trim();
+    const jenis = (item.jenis || '').trim();
+    const parts = [no];
+    if (mm) {
+        parts.push(mm);
+    } else if (jenis) {
+        parts.push(jenis);
+    }
+    if (kap) {
+        parts.push(kap);
+    }
+    return parts.join(' · ');
+}
+
+/**
+ * Dropdown 3 baris (sama struktur untuk Tambah Unit & Verifikasi):
+ * 1) 306 · KOMATSU FD25C · 2.5 TON
+ * 2) COUNTER BALANCE · SN : 123
+ * 3) AVAILABLE_STOCK | N/A
+ */
 function formatAuditUnitAjaxOption(item) {
     if (item.loading) {
         return item.text;
@@ -503,25 +533,34 @@ function formatAuditUnitAjaxOption(item) {
     if (!item.id) {
         return item.text;
     }
-    const status = item.status || '';
-    const statusBadge = $('<span class="badge badge-soft-green me-1"></span>').text(status || '—');
-    const $container = $('<div class="d-flex flex-column"></div>');
-    const id = item.id;
-    const no = item.no_unit || item.text || '';
-    const jenis = item.jenis || '';
-    const kapasitas = item.kapasitas || '';
+    const $container = $('<div class="d-flex flex-column lh-sm"></div>');
+    $container.append($('<div class="fw-semibold"></div>').text(formatAuditUnitLine1(item)));
+
+    const jenis = (item.jenis || '').trim();
+    const sn = (item.serial_number || '').trim();
     const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
-    const line1 = $('<div class="fw-semibold"></div>').text('[' + id + '] ' + no + (jenis ? ' ' + jenis : '') + (kapasitas ? ' ' + kapasitas : ''));
-    const line2 = $('<div class="small text-muted"></div>').append(statusBadge).append($('<span></span>').text(' 📍 ' + (item.lokasi || '')));
-    $container.append(line1);
-    if (mm || item.serial_number) {
-        const bits = [];
-        if (mm) bits.push(mm);
-        if (item.serial_number) bits.push('SN: ' + item.serial_number);
-        $container.append($('<div class="small"></div>').text(bits.join(' • ')));
+    const line2Parts = [];
+    if (mm && jenis) {
+        line2Parts.push(jenis);
     }
-    $container.append(line2);
+    if (sn) {
+        line2Parts.push('SN : ' + sn);
+    }
+    const $line2 = $('<div class="small"></div>');
+    $line2.text(line2Parts.length ? line2Parts.join(' · ') : '—');
+
+    const status = (item.status || '—').trim();
+    const loc = (item.lokasi && String(item.lokasi).trim()) ? String(item.lokasi).trim() : 'N/A';
+    $container.append($line2, $('<div class="small text-muted"></div>').text(status + ' | ' + loc));
+
     return $container;
+}
+
+function formatAuditUnitAjaxSelection(item) {
+    if (!item.id) {
+        return item.text;
+    }
+    return formatAuditUnitLine1(item);
 }
 
 function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
@@ -553,7 +592,10 @@ function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
                     if (String(u.status || '').toUpperCase() === 'JUAL') {
                         return;
                     }
-                    const no = u.no_unit || ('UNIT-' + u.id);
+                    const no = (u.no_unit || '').trim();
+                    if (!no) {
+                        return;
+                    }
                     out.push({
                         id: String(u.id),
                         text: no,
@@ -573,10 +615,7 @@ function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
             cache: true
         },
         templateResult: formatAuditUnitAjaxOption,
-        templateSelection: function (item) {
-            if (!item.id) return item.text;
-            return item.no_unit || item.text;
-        }
+        templateSelection: formatAuditUnitAjaxSelection
     };
 }
 
@@ -1035,8 +1074,17 @@ function onVfAlasanReasonChange() {
             $.get(BASE + 'service/unit-audit/search-inventory-units', { id: uid, purpose: 'unit_swap' }, function (res) {
                 if (!res.success || !res.data || !res.data.length) return;
                 const u = res.data[0];
-                const no = u.no_unit || ('UNIT-' + u.id);
-                $sel.append(new Option(no, String(u.id), true, true)).trigger('change');
+                const label = formatAuditUnitLine1({
+                    id: u.id,
+                    text: u.no_unit,
+                    no_unit: (u.no_unit || '').trim(),
+                    merk: u.merk || '',
+                    model_unit: u.model_unit || '',
+                    kapasitas: u.kapasitas || '',
+                    jenis: u.jenis || ''
+                });
+                if (!label) return;
+                $sel.append(new Option(label, String(u.id), true, true)).trigger('change');
             });
         }
     } else if (reason === 'MARK_SPARE') {
