@@ -1,6 +1,6 @@
 <!-- Complete Work Order Modal -->
 <div class="modal fade" id="completeWorkOrderModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-success text-muted">
                 <h5 class="modal-title">
