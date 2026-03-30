@@ -1436,9 +1436,7 @@ $(document).ready(function() {
                         }
                     },
                     error: function(xhr) {
-                        if (!window.handleHttpError(xhr, this)) {
-                            showAlert('error', 'Gagal memperbarui status work order');
-                        }
+                        showAlert('error', 'Gagal memperbarui status work order');
                     }
                 });
             }
@@ -1546,9 +1544,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                if (!window.handleHttpError(xhr, this)) {
-                    showAlert('error', 'Failed to update work order status');
-                }
+                showAlert('error', 'Failed to update work order status');
             }
         });
     }
@@ -1598,9 +1594,7 @@ $(document).ready(function() {
                         }
                     },
                     error: function(xhr) {
-                        if (!window.handleHttpError(xhr, this)) {
-                            showAlert('error', 'Failed to update work order status');
-                        }
+                        showAlert('error', 'Failed to update work order status');
                     }
                 });
             }

@@ -1336,6 +1336,7 @@ $currentLang = service('request')->getLocale();
         // and handles the case where CDN jQuery is replaced by local fallback
         (function applyAjaxCsrfSetup() {
             function setup() {
+                // ── 1. Inject CSRF header on every request ────────────────────
                 $.ajaxSetup({
                     beforeSend: function(xhr, settings) {
                         // Always read the latest CSRF token before sending
@@ -1347,88 +1348,43 @@ $currentLang = service('request')->getLocale();
                             xhr.setRequestHeader('X-CSRF-TOKEN', token);
                         }
                         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                    },
-                    error: function(xhr, status, error) {
-                        // Global AJAX error handler
-                        // Only auto-handle 401/403 auth errors (don't interfere with module-specific handlers)
-                        
-                        // 401 Unauthorized - Session Expired
-                        if (xhr.status === 401) {
-                            const response = xhr.responseJSON || {};
-                            console.warn('🔐 Session Expired (code:', response.code, ')');
-                            if (window.OptimaAuth) {
-                                window.OptimaAuth.handleSessionExpired(response);
-                            } else if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Sesi Berakhir',
-                                    text: 'Sesi Anda telah berakhir. Silakan login kembali.',
-                                    confirmButtonText: 'Login',
-                                    allowOutsideClick: false,
-                                }).then(() => {
-                                    window.location.href = <?= json_encode(base_url('auth/login')) ?>;
-                                });
-                            } else {
-                                alert('Sesi Anda telah berakhir. Silakan login kembali.');
-                                window.location.href = <?= json_encode(base_url('auth/login')) ?>;
-                            }
-                            return false;
-                        }
-                        
-                        // 403 Forbidden - Access Denied or CSRF Token Expired
-                        if (xhr.status === 403) {
-                            const response = xhr.responseJSON || {};
-                            const message = response.message || '';
-                            
-                            // ACCESS_DENIED from PermissionFilter
-                            if (response.code === 'ACCESS_DENIED') {
-                                console.warn('🔐 Access Denied');
-                                if (window.OptimaAuth) {
-                                    window.OptimaAuth.handleAccessDenied(response);
-                                } else if (typeof Swal !== 'undefined') {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Akses Ditolak',
-                                        text: message || 'Anda tidak memiliki akses ke fitur ini.',
-                                    });
-                                } else {
-                                    alert(message || 'Anda tidak memiliki akses ke fitur ini.');
-                                }
-                                return false;
-                            }
-                            
-                            // Detect CSRF token mismatch/expiry
-                            // CI4 returns HTML (not JSON) on CSRF failure — so responseJSON is null.
-                            // ACCESS_DENIED is already handled above, so any non-JSON 403 here = CSRF expiry.
-                            const isCsrfError = !xhr.responseJSON || 
-                                message.includes('not allowed') || 
-                                message.includes('CSRF') || 
-                                response.type === 'CodeIgniter\\Security\\Exceptions\\SecurityException';
-                            if (isCsrfError) {
-                                
-                                console.warn('🔐 CSRF Token Expired - Session timeout detected');
-                                
-                                if (typeof Swal !== 'undefined') {
-                                    Swal.fire({
-                                        icon: 'warning',
-                                        title: 'Sesi Berakhir',
-                                        text: 'Token keamanan telah kedaluwarsa. Halaman perlu di-refresh.',
-                                        confirmButtonText: 'Refresh Sekarang',
-                                        allowOutsideClick: false,
-                                    }).then(() => { window.location.reload(); });
-                                } else {
-                                    if (confirm('Sesi Anda telah berakhir. Refresh halaman sekarang?')) {
-                                        window.location.reload();
-                                    }
-                                }
-                                
-                                return false;
-                            }
-                        }
-                        
-                        // For other errors, continue to module-specific handlers
-                        // (Don't prevent default behavior)
                     }
+                });
+
+                // ── 2. Global 401 / 403 handler via $.ajaxPrefilter ──────────
+                //
+                // WHY prefilter instead of $.ajaxSetup({ error: ... }):
+                //   $.ajaxSetup error is a DEFAULT — it is silently REPLACED by
+                //   any per-request error: callback defined in individual pages.
+                //   $.ajaxPrefilter runs before EVERY request and WRAPS the
+                //   per-request error callback, so our global logic always fires
+                //   FIRST, before the local callback gets a chance to run.
+                //   This covers ALL pages/modules without touching them individually.
+                //
+                // Retry logic (CSRF recovery):
+                //   On 403, we call window.handleHttpError(xhr, options).
+                //   handleHttpError will silently GET /csrf-refresh, update the token,
+                //   then re-fire the original $.ajax options with the new token.
+                //   The _csrfRetried flag prevents infinite retry loops.
+                $.ajaxPrefilter(function(options) {
+                    // Skip requests that are already a CSRF retry
+                    if (options._csrfRetried) return;
+
+                    const originalError = options.error;
+
+                    options.error = function(xhr, status, error) {
+                        if ((xhr.status === 401 || xhr.status === 403) && window.handleHttpError) {
+                            // Pass options so handleHttpError can retry with refreshed token
+                            if (window.handleHttpError(xhr, options)) {
+                                // Handled globally — suppress the local error callback
+                                return;
+                            }
+                        }
+                        // Not handled — delegate to the page's own error callback
+                        if (typeof originalError === 'function') {
+                            originalError.apply(this, arguments);
+                        }
+                    };
                 });
             }
             // Try immediately (if jQuery already loaded)
