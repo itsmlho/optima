@@ -369,9 +369,9 @@ $(document).ready(function() {
     loadMovements();
     loadUnitsForSelect();
 
-    // Inisialisasi Select2 untuk semua dropdown di modal create
+    // Select2 di modal create (#unitSelect diisi & di-init di loadUnitsForSelect dengan template Optima)
     if ($.fn.select2) {
-        $('#componentTypeSelect, #unitSelect, #componentIdSelect, #originTypeSelect, #destinationTypeSelect').select2({
+        $('#componentTypeSelect, #componentIdSelect, #originTypeSelect, #destinationTypeSelect').select2({
             dropdownParent: $('#createModal'),
             width: '100%'
         });
@@ -488,7 +488,11 @@ function onComponentTypeChange() {
 
     // For ATTACHMENT / CHARGER / BATTERY: show component dropdown, hide unit select
     unitCol.hide();
-    $('#unitSelect').val('');
+    const $u = $('#unitSelect');
+    $u.val('');
+    if ($u.hasClass('select2-hidden-accessible')) {
+        $u.trigger('change');
+    }
     row.show();
 
     const labels = { 'ATTACHMENT': 'Pilih Attachment', 'CHARGER': 'Pilih Charger', 'BATTERY': 'Pilih Baterai' };
@@ -543,22 +547,65 @@ function showCreateModal() {
 }
 
 function loadUnitsForSelect() {
+    const $sel = $('#unitSelect');
+    if ($sel.hasClass('select2-hidden-accessible')) {
+        try {
+            $sel.select2('destroy');
+        } catch (e) { /* ignore */ }
+    }
     $.ajax({
         url: _movementBaseUrl + 'warehouse/movements/getAvailableUnits',
         type: 'GET',
         success: function(res) {
-            if (res.success) {
-                let html = '<option value="">-- Unit Utama (Opsional) --</option>';
-                res.data.forEach(unit => {
-                    const labelNoUnit = unit.no_unit || unit.no_unit_na || ('UNIT-' + unit.id_inventory_unit);
-                    const labelMerkModel = (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
-                    const sn = unit.serial_number ? (' | SN: ' + unit.serial_number) : '';
-                    const cap = unit.tipe ? (' | ' + unit.tipe) : ''; // tipe biasanya berisi tipe+jenis/kategori kapasitas
-                    html += '<option value="' + unit.id_inventory_unit + '">' +
-                            labelNoUnit + ' - ' + labelMerkModel + sn + cap +
-                            '</option>';
+            if (res.success && res.data) {
+                $sel.empty().append($('<option value=""></option>').text('-- Unit Utama (Opsional) --'));
+                const Ou = window.OptimaUnitSelect2;
+                const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
+                res.data.forEach(function (unit) {
+                    const id = unit.id_inventory_unit;
+                    const row = {
+                        id: id,
+                        id_inventory_unit: id,
+                        no_unit: unit.no_unit || unit.no_unit_na,
+                        serial_number: unit.serial_number || '',
+                        merk: unit.merk_unit || '',
+                        model_unit: unit.model_unit || '',
+                        jenis: unit.tipe || '',
+                        kapasitas: '',
+                        status: '',
+                        lokasi: unit.lokasi || unit.lokasi_unit || '',
+                        pelanggan: unit.pelanggan || ''
+                    };
+                    if (useOu) {
+                        const attrs = Ou.optionDataAttributes(row);
+                        const label = Ou.line1FromRow(Ou.normalizeRow(row));
+                        const $opt = $('<option></option>').val(String(id)).text(label);
+                        Object.keys(attrs).forEach(function (k) {
+                            const v = attrs[k];
+                            if (v !== '' && v != null && v !== false) {
+                                $opt.attr(k, v);
+                            }
+                        });
+                        $sel.append($opt);
+                    } else {
+                        const labelNoUnit = unit.no_unit || unit.no_unit_na || ('UNIT-' + id);
+                        const labelMerkModel = (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
+                        $sel.append($('<option></option>').val(String(id)).text((labelNoUnit + ' - ' + labelMerkModel).trim()));
+                    }
                 });
-                $('#unitSelect').html(html);
+                if ($.fn.select2 && useOu) {
+                    $sel.select2({
+                        dropdownParent: $('#createModal'),
+                        width: '100%',
+                        placeholder: '-- Unit Utama (Opsional) --',
+                        allowClear: true,
+                        minimumResultsForSearch: 0,
+                        theme: 'bootstrap-5',
+                        templateResult: function (i) { return Ou.templateResult(i, {}); },
+                        templateSelection: function (i) { return Ou.templateSelection(i, {}); },
+                        escapeMarkup: function (m) { return m; }
+                    });
+                }
             }
         }
     });

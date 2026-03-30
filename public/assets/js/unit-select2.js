@@ -371,6 +371,123 @@
         return parts.join('');
     }
 
+    /**
+     * Map row from GET service/data-unit/simple (JSON) for normalizeRow / Select2 AJAX.
+     */
+    function mapDataUnitSimpleApiRow(x) {
+        if (!x) {
+            return null;
+        }
+        return normalizeRow({
+            id: x.id,
+            id_inventory_unit: x.id,
+            no_unit: x.no_unit,
+            serial_number: x.serial_number,
+            merk: x.merk_unit,
+            model_unit: x.model_unit,
+            jenis: x.tipe_unit,
+            kapasitas: x.kapasitas_unit,
+            status: x.status_name,
+            lokasi: x.location_name,
+            departemen: x.departemen_name,
+            departemen_id: x.departemen_id,
+            is_assigned_in_spk: x.is_assigned_in_spk,
+            needs_no_unit: x.needs_no_unit
+        });
+    }
+
+    /**
+     * Select2 AJAX for GET service/data-unit/simple — option id = id_inventory_unit.
+     * @param {Object} cfg
+     * @param {string} cfg.url — full URL to data-unit/simple
+     * @param {function():Object} [cfg.extraAjaxParams] — e.g. exclude_spk_id, spk_department
+     * @param {string[]|null} [cfg.allowedStatuses] — filter by status_name; null = no filter
+     * @param {boolean} [cfg.disableAssigned=true] — disable is_assigned_in_spk rows
+     */
+    function buildServiceDataUnitSimpleSelect2Config(cfg) {
+        cfg = cfg || {};
+        var url = cfg.url || '';
+        var extraParams = cfg.extraAjaxParams || function () {
+            return {};
+        };
+        var allowedStatuses = cfg.allowedStatuses;
+        var disableAssigned = cfg.disableAssigned !== false;
+        var templateOpts = $.extend({ extraSpkRow: cfg.extraSpkRow !== false }, cfg.templateOpts || {});
+
+        return {
+            placeholder: cfg.placeholder || '- Select Unit -',
+            allowClear: cfg.allowClear !== false,
+            width: cfg.width || '100%',
+            dropdownParent: cfg.dropdownParent,
+            minimumInputLength: cfg.minimumInputLength != null ? cfg.minimumInputLength : 0,
+            ajax: {
+                url: url,
+                type: 'GET',
+                dataType: 'json',
+                delay: cfg.delay != null ? cfg.delay : 250,
+                data: function (params) {
+                    return $.extend({ q: params.term || '' }, extraParams());
+                },
+                processResults: function (res) {
+                    if (!res || !res.success || !Array.isArray(res.data)) {
+                        return { results: [] };
+                    }
+                    var out = [];
+                    res.data.forEach(function (x) {
+                        if (allowedStatuses && allowedStatuses.length &&
+                            allowedStatuses.indexOf(x.status_name) === -1) {
+                            return;
+                        }
+                        var row = mapDataUnitSimpleApiRow(x);
+                        if (!row) {
+                            return;
+                        }
+                        var assigned = !!x.is_assigned_in_spk;
+                        var dis = disableAssigned && assigned;
+                        out.push({
+                            id: String(x.id),
+                            text: row.no_unit || String(x.id),
+                            disabled: dis,
+                            no_unit: row.no_unit,
+                            serial_number: row.serial_number,
+                            merk: row.merk,
+                            model_unit: row.model_unit,
+                            jenis: row.jenis,
+                            kapasitas: row.kapasitas,
+                            status: row.status,
+                            lokasi: row.lokasi,
+                            departemen: row.departemen,
+                            departemen_id: x.departemen_id,
+                            id_inventory_unit: x.id,
+                            needs_no_unit: x.needs_no_unit,
+                            status_unit_id: x.status_unit_id,
+                            is_assigned_in_spk: assigned
+                        });
+                    });
+                    return { results: out };
+                },
+                cache: cfg.cache !== false
+            },
+            templateResult: function (item) {
+                if (item.loading) {
+                    return item.text;
+                }
+                if (item.disabled) {
+                    var $d = templateResult(item, templateOpts);
+                    if ($d && $d.jquery) {
+                        $d.css('opacity', '0.55');
+                    }
+                    return $d;
+                }
+                return templateResult(item, templateOpts);
+            },
+            templateSelection: function (item) {
+                return templateSelection(item, templateOpts);
+            },
+            language: cfg.language || {}
+        };
+    }
+
     function buildAjaxConfig(cfg) {
         cfg = cfg || {};
         var baseUrl = (cfg.baseUrl != null ? cfg.baseUrl : global.baseUrl) || '';
@@ -446,6 +563,8 @@
         optionDataAttributes: optionDataAttributes,
         optionAttrsHtml: attrsHtml,
         buildAjaxConfig: buildAjaxConfig,
-        buildWorkOrderSearchUnitsSelect2Config: buildWorkOrderSearchUnitsSelect2Config
+        buildWorkOrderSearchUnitsSelect2Config: buildWorkOrderSearchUnitsSelect2Config,
+        buildServiceDataUnitSimpleSelect2Config: buildServiceDataUnitSimpleSelect2Config,
+        mapDataUnitSimpleApiRow: mapDataUnitSimpleApiRow
     };
 })(window, window.jQuery);

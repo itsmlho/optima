@@ -2026,8 +2026,16 @@ class AttachmentInventoryController extends BaseController
         try {
             $db = \Config\Database::connect();
             $units = $db->table('inventory_unit iu')
-                ->select('iu.id_inventory_unit as id, iu.no_unit as nomor_unit, mu.merk_unit as merk, mu.model_unit as model')
+                ->select('iu.id_inventory_unit as id, COALESCE(iu.no_unit, iu.no_unit_na) as nomor_unit, iu.serial_number')
+                ->select('mu.merk_unit as merk, mu.model_unit as model')
+                ->select("COALESCE(TRIM(CONCAT(COALESCE(tu.tipe, ''), ' ', COALESCE(tu.jenis, ''))), '') AS jenis", false)
+                ->select('COALESCE(kap.kapasitas_unit, "") AS kapasitas')
+                ->select('COALESCE(su.status_unit, "") AS status')
+                ->select('COALESCE(iu.lokasi_unit, "") AS lokasi')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                ->join('kapasitas kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
                 ->orderBy('iu.no_unit', 'ASC')
                 ->get()
                 ->getResultArray();

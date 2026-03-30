@@ -1012,6 +1012,26 @@ function renderUnitCheckboxes(units) {
     
     units.forEach(function(unit) {
         const isChecked = checkedUnits.includes(String(unit.id));
+        let displayText = unit.label;
+        if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+            const Ou = OptimaUnitSelect2;
+            const r = Ou.normalizeRow({
+                id: unit.id,
+                no_unit: unit.no_unit,
+                serial_number: unit.serial_number || '',
+                merk: unit.merk_unit,
+                model_unit: unit.model_unit,
+                jenis: unit.jenis_display || '',
+                kapasitas: (unit.kapasitas_unit && unit.kapasitas_unit !== 'N/A') ? unit.kapasitas_unit : '',
+                status: unit.status_name || '',
+                lokasi: unit.lokasi_display || '',
+                pelanggan: unit.nama_perusahaan || ''
+            });
+            displayText = Ou.line1FromRow(r);
+            if (unit.nama_perusahaan && unit.nama_perusahaan !== 'N/A') {
+                displayText += ' · ' + unit.nama_perusahaan;
+            }
+        }
         const checkbox = $('<div class="form-check mb-2">')
             .append($('<input>', {
                 type: 'checkbox',
@@ -1024,7 +1044,7 @@ function renderUnitCheckboxes(units) {
             .append($('<label>', {
                 class: 'form-check-label',
                 for: 'unit_' + unit.id,
-                text: unit.label
+                text: displayText
             }));
         container.append(checkbox);
     });

@@ -240,10 +240,15 @@ class Perizinan extends BaseController
         try {
             $db = \Config\Database::connect();
             $builder = $db->table('inventory_unit iu');
-            $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number,
+            $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit,
                 c.customer_name as nama_perusahaan,
+                cl.location_name,
+                tu.tipe as tipe_unit,
                 tu.jenis as jenis_unit,
                 k.kapasitas_unit,
+                mu.merk_unit,
+                mu.model_unit,
+                su.status_unit as status_name,
                 d.nama_departemen as departemen');
             $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
             $builder->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left');
@@ -251,6 +256,8 @@ class Perizinan extends BaseController
             $builder->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
 
             // Exclude units dengan status JUAL / SOLD (status_unit_id = 13),
@@ -273,13 +280,21 @@ class Perizinan extends BaseController
                     $namaPerusahaan = $unit['nama_perusahaan'] ?? 'N/A';
                     
                     $label = $unit['no_unit'] . ' - ' . $namaPerusahaan . ' (' . $sn . ' - ' . $jenis . ' - ' . $kapasitas . ' - ' . $departemen . ')';
-                    
+                    $jenisFull = trim(($unit['tipe_unit'] ?? '') . ' ' . ($unit['jenis_unit'] ?? ''));
+                    $lokasiDisp = $unit['location_name'] ?? $unit['lokasi_unit'] ?? '';
+
                     $availableUnits[] = [
                         'id' => $unit['id_inventory_unit'],
                         'no_unit' => $unit['no_unit'],
                         'serial_number' => $unit['serial_number'],
                         'nama_perusahaan' => $namaPerusahaan,
-                        'label' => $label
+                        'merk_unit' => $unit['merk_unit'] ?? '',
+                        'model_unit' => $unit['model_unit'] ?? '',
+                        'status_name' => $unit['status_name'] ?? '',
+                        'jenis_display' => $jenisFull !== '' ? $jenisFull : $jenis,
+                        'kapasitas_unit' => $kapasitas,
+                        'lokasi_display' => $lokasiDisp,
+                        'label' => $label,
                     ];
                 }
             }

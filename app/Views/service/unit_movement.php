@@ -340,6 +340,68 @@ $(document).ready(function() {
     $('input[name="movement_date"]').val(now.toISOString().slice(0, 16));
 });
 
+/**
+ * Populate #unitSelect with shared Optima template (layouts/base loads unit-select2.js).
+ */
+function rebuildUnitSelectWithOptima(units) {
+    const $sel = $('#unitSelect');
+    if (!$sel.length) {
+        return;
+    }
+    if ($sel.hasClass('select2-hidden-accessible')) {
+        try {
+            $sel.select2('destroy');
+        } catch (e) { /* ignore */ }
+    }
+    $sel.empty().append($('<option value=""></option>').text('-- Unit Utama (Opsional) --'));
+    const Ou = window.OptimaUnitSelect2;
+    const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
+    (units || []).forEach(function (unit) {
+        const id = unit.id_inventory_unit;
+        const row = {
+            id: id,
+            id_inventory_unit: id,
+            no_unit: unit.no_unit || unit.no_unit_na,
+            serial_number: unit.serial_number || '',
+            merk: unit.merk_unit || '',
+            model_unit: unit.model_unit || '',
+            jenis: unit.tipe || '',
+            kapasitas: '',
+            status: '',
+            lokasi: unit.lokasi || unit.lokasi_unit || '',
+            pelanggan: unit.pelanggan || ''
+        };
+        if (useOu) {
+            const attrs = Ou.optionDataAttributes(row);
+            const label = Ou.line1FromRow(Ou.normalizeRow(row));
+            const $opt = $('<option></option>').val(String(id)).text(label);
+            Object.keys(attrs).forEach(function (k) {
+                const v = attrs[k];
+                if (v !== '' && v != null && v !== false) {
+                    $opt.attr(k, v);
+                }
+            });
+            $sel.append($opt);
+        } else {
+            const t = (unit.no_unit || unit.no_unit_na || ('UNIT-' + id)) + ' — ' + (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
+            $sel.append($('<option></option>').val(String(id)).text(t.trim()));
+        }
+    });
+    if ($.fn.select2 && useOu) {
+        $sel.select2({
+            dropdownParent: $('#createModal'),
+            width: '100%',
+            placeholder: '-- Unit Utama (Opsional) --',
+            allowClear: true,
+            minimumResultsForSearch: 0,
+            theme: 'bootstrap-5',
+            templateResult: function (i) { return Ou.templateResult(i, {}); },
+            templateSelection: function (i) { return Ou.templateSelection(i, {}); },
+            escapeMarkup: function (m) { return m; }
+        });
+    }
+}
+
 function loadMovements() {
     const status = $('#filterStatus').val();
     const originType = $('#filterOrigin').val();
@@ -425,15 +487,8 @@ function loadUnitsForSelect() {
         url: BASE_URL + 'unit_audit/getAvailableUnits',
         type: 'GET',
         success: function(res) {
-            if (res.success) {
-                let html = '<option value="">-- Unit Utama (Opsional) --</option>';
-                res.data.forEach(unit => {
-                    html += '<option value="' + unit.id_inventory_unit + '">' +
-                            (unit.no_unit || unit.no_unit_na || 'UNIT-' + unit.id_inventory_unit) +
-                            ' - ' + (unit.merk_unit || '') + ' ' + (unit.model_unit || '') +
-                            '</option>';
-                });
-                $('#unitSelect').html(html);
+            if (res.success && res.data) {
+                rebuildUnitSelectWithOptima(res.data);
             }
         }
     });
@@ -461,9 +516,9 @@ function submitMovement() {
                 loadMovements();
 
                 // Set datetime again
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-[name="movement_date"]').val(now                $('input.toISOString().slice(0, 16));
+                const now2 = new Date();
+                now2.setMinutes(now2.getMinutes() - now2.getTimezoneOffset());
+                $('input[name="movement_date"]').val(now2.toISOString().slice(0, 16));
 
                 if (window.OptimaNotify) OptimaNotify.success('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
                 else alert('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));

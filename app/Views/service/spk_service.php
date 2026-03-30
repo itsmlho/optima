@@ -155,9 +155,9 @@ $can_export = true;
 						<input type="hidden" name="spk_id" id="assignSpkId">
 						<div class="mb-2">
 							<label class="form-label"><?= lang('Service.select_unit_asset') ?></label>
-							<input type="text" class="form-control" id="unitSearch" placeholder="<?= lang('Service.search_unit_serial') ?>" autocomplete="off">
+							<input type="text" class="form-control d-none" id="unitSearch" placeholder="<?= lang('Service.search_unit_serial') ?>" autocomplete="off" tabindex="-1" aria-hidden="true">
 							<select class="form-select mt-2" id="unitPick" name="unit_id"></select>
-							<div class="form-text">Type to search, then select from list.</div>
+							<div class="form-text">Cari di dropdown unit (tampilan standar inventory).</div>
 						</div>
 						<div class="mb-2">
 							<label class="form-label"><?= lang('Service.select_attachment_optional') ?></label>
@@ -271,7 +271,7 @@ $can_export = true;
 							</select>
 							<div class="mb-3">
 								<label class="form-label">Pilih Unit Baru <span class="text-danger">*</span></label>
-								<input type="text" class="form-control mb-2" id="rollbackUnitSearch" placeholder="Cari unit berdasarkan merk/model/SN..." autocomplete="off">
+								<input type="text" class="form-control mb-2 d-none" id="rollbackUnitSearch" placeholder="Cari unit berdasarkan merk/model/SN..." autocomplete="off" tabindex="-1" aria-hidden="true">
 								<select class="form-select" id="rollbackUnitSelect" name="unit_id">
 									<option value="">-- Pilih Unit Baru --</option>
 								</select>
@@ -1239,8 +1239,30 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.getElementById('assignSpkId').value = spkId;
 		document.getElementById('unitSearch').value = '';
 		document.getElementById('attSearch').value = '';
-		document.getElementById('unitPick').innerHTML = '';
 		document.getElementById('attPick').innerHTML = '<option value="">- (Opsional) -</option>';
+
+		const $unitPick = $('#unitPick');
+		if ($unitPick.hasClass('select2-hidden-accessible')) {
+			$unitPick.select2('destroy');
+		}
+		$unitPick.empty().append($('<option value=""></option>'));
+		const assignUnitUrl = '<?= base_url('service/data-unit/simple') ?>';
+		if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+			$unitPick.select2($.extend({}, OptimaUnitSelect2.buildServiceDataUnitSimpleSelect2Config({
+				url: assignUnitUrl,
+				placeholder: '- Select Unit -',
+				dropdownParent: $('#assignItemsModal'),
+				minimumInputLength: 0,
+				extraSpkRow: true,
+				allowedStatuses: null,
+				disableAssigned: false,
+				extraAjaxParams: function () { return {}; }
+			}), {
+				escapeMarkup: function (markup) { return markup; }
+			}));
+		} else {
+			$unitPick.append($('<option value="">- Select Unit -</option>'));
+		}
 		
 		// Show modal with proper configuration
 		const modalElement = document.getElementById('assignItemsModal');
@@ -1253,16 +1275,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		modal.show();
 		console.log('Modal assignItemsModal shown');
 	}
-	const searchBox = document.getElementById('unitSearch');
-	searchBox.addEventListener('input', function(){
-		const q = this.value.trim();
-		const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-		if (q) url.searchParams.set('q', q);
-		fetch(url).then(r=>r.json()).then(j=>{
-			const sel = document.getElementById('unitPick');
-			sel.innerHTML = '<option value="">- Select Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
-		});
-	});
 	const attSearch = document.getElementById('attSearch');
 	attSearch.addEventListener('input', function(){
 		const q = this.value.trim();
@@ -1292,6 +1304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	let currentApprovalStage = '';
 	let currentApprovalSpkId = null;
 	let currentEditingUnitIndex = null; // For multi-unit SPK editing
+	/** Query string extras for service/data-unit/simple (exclude_spk_id, spk_department) */
+	var getApprovalUnitSimpleExtraAjax = function () { return {}; };
 	
 	window.openApprovalModal = (stage, stageTitle, spkId, unitIndex = null) => {
 		currentApprovalStage = stage;
@@ -1766,189 +1780,64 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 		return OptimaUnitSelect2.templateSelection(unit, {});
 	}
-	
-	function setupIndividualUnitSearch(suffix, unitIndex) {
-		console.log('Setting up unit Select2 with suffix:', suffix, 'unitIndex:', unitIndex);
-		const unitPickId = `approvalUnitPick${suffix}`;
-		const unitPick = document.getElementById(unitPickId);
-		
-		if (!unitPick) {
-			console.error('Unit select element not found:', unitPickId);
-			return;
-		}
-		
-		console.log('Loading initial units...');
-		
-		// First, get SPK department to filter units accordingly
-		if (!currentApprovalSpkId) {
-			console.warn('⚠️ No SPK ID available for department filtering');
-			loadUnitsWithoutDepartmentFilter();
-			return;
-		}
-		
-		const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
-		console.log('🔍 Fetching SPK department from:', spkDepartmentUrl);
-		
-		fetch(spkDepartmentUrl)
-			.then(response => {
-				if (!response.ok) {
-					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-				}
-				return response.json();
-			})
-			.then(deptData => {
-				console.log('🎯 SPK Department Info:', deptData);
-				
-				// Load initial units with department filtering
-				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-				if (currentApprovalSpkId) {
-					url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
-				}
-				
-				// Add SPK department filter for precise unit matching
-				if (deptData.success && deptData.department) {
-					url.searchParams.set('spk_department', deptData.department);
-					console.log(`🔍 Filtering units to match SPK department: ${deptData.department}`);
-				} else {
-					console.warn('⚠️ SPK department not found, loading all units');
-				}
-				
-				return fetch(url);
-			})
-			.catch(error => {
-				console.error('❌ Error fetching SPK department:', error);
-				console.log('🔄 Falling back to load units without department filtering');
-				loadUnitsWithoutDepartmentFilter();
-				return null;
-			})
-			.then(r => {
-				if (r === null) return null;
-				return r.json();
-			})
-			.then(j => {
-				if (j === null || j === undefined) return;
-				
-				console.log('🚗 Units loaded from API:', j.data?.length || 0, 'units');
-				
-				if (j.data && j.data.length > 0) {
-					const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
-					console.log('🎯 Departments represented in filtered units:', departments);
-				}
-				
-				processUnitsDisplay(j, suffix);
-			})
-			.catch(error => {
-				console.error('❌ Error loading units:', error);
-				processUnitsDisplay({data: []}, suffix);
-			});
-		
-		// Function to load units without department filtering (fallback)
-		function loadUnitsWithoutDepartmentFilter() {
-			console.log('🔄 Loading units without department filtering...');
-			const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-			if (currentApprovalSpkId) {
-				url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
-			}
-			
-			fetch(url)
-				.then(r => r.json())
-				.then(j => {
-					console.log('🚗 Units loaded from API (no dept filter):', j.data?.length || 0, 'units');
-					
-					if (j.data && j.data.length > 0) {
-						const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
-						console.log('🎯 All departments in units:', departments);
-					}
-					
-					processUnitsDisplay(j, suffix);
-				})
-				.catch(error => {
-					console.error('❌ Error loading units (fallback):', error);
-					processUnitsDisplay({data: []}, suffix);
-				});
-		}
-		
-		// Function to process and display units with Select2
-		function processUnitsDisplay(j, suffix) {
-			const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
-			if (!currentUnitPick) return;
-			
-			// Clear existing options
-			currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>';
-			
-			// Populate options with data attributes for badges
-			if (j.data && Array.isArray(j.data)) {
-				// Only allow specific unit statuses for Unit Preparation.
-				// This prevents unwanted statuses (e.g. RENTAL_INACTIVE, RETURNED) from showing up.
-				const allowedStatuses = ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'];
-				const filteredData = j.data.filter(x => allowedStatuses.includes(x.status_name));
 
-				filteredData.forEach(x => {
-					const isAssigned = x.is_assigned_in_spk;
-					const option = document.createElement('option');
-					option.value = x.id;
-					
-					const label =
-						x.label ||
-						`${x.no_unit || ''} - ${x.merk_unit || x.merk || ''} ${x.model_unit || x.model || ''}`.trim();
-					const serialInfo = x.serial_info || '';
-					// Put searchable tokens into option.textContent:
-					// - SN token comes from serial_info ("SN: ...")
-					// - tipe token also comes from serial_info (it may include tipe first)
-					option.textContent = [label, serialInfo].filter(Boolean).join(' | ');
-					option.disabled = isAssigned;
-					
-					// Add data attributes for badges
-					option.setAttribute('data-no-unit', x.no_unit || '');
-					option.setAttribute('data-status-name', x.status_name || '');
-					option.setAttribute('data-location-name', x.location_name || '');
-					option.setAttribute('data-merk-unit', x.merk_unit || '');
-					option.setAttribute('data-model-unit', x.model_unit || '');
-					// Keep '-' when serial is missing, so the UI still shows "detail SN"
-					option.setAttribute('data-serial-number', x.serial_number || '-');
-					option.setAttribute('data-tipe-unit', x.tipe_unit || '');
-					option.setAttribute('data-needs-no-unit', x.needs_no_unit || false);
-					option.setAttribute('data-status-unit', x.status_unit_id || '');
-					option.setAttribute('data-departemen-id', x.departemen_id || '');
-					option.setAttribute('data-departemen', x.departemen_name || '');
-					option.setAttribute('data-kapasitas', x.kapasitas_unit || '');
-					option.setAttribute('data-is-assigned', isAssigned || false);
-					
-					currentUnitPick.appendChild(option);
-				});
-			}
-			
-			// Initialize or reinitialize Select2
-			const $unitPick = $(currentUnitPick);
-			if ($unitPick.hasClass('select2-hidden-accessible')) {
-				$unitPick.select2('destroy');
-			}
-			
-			$unitPick.select2({
+	function initApprovalUnitPickAjaxSelect2(suffix) {
+		const unitPickId = 'approvalUnitPick' + suffix;
+		const el = document.getElementById(unitPickId);
+		if (!el) {
+			return;
+		}
+		const $unitPick = $(el);
+		if ($unitPick.hasClass('select2-hidden-accessible')) {
+			$unitPick.select2('destroy');
+		}
+		$unitPick.empty().append($('<option value=""></option>'));
+		const dataUrl = '<?= base_url('service/data-unit/simple') ?>';
+		var baseCfg;
+		if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+			baseCfg = OptimaUnitSelect2.buildServiceDataUnitSimpleSelect2Config({
+				url: dataUrl,
 				placeholder: '🔍 Search by unit number, SN, brand/model, or unit type...',
-				allowClear: true,
 				dropdownParent: $('#approvalStageModal .modal-content'),
-				width: '100%',
 				minimumInputLength: 0,
-				language: {
-					noResults: function() { return 'No units found'; },
-					searching: function() { return 'Searching...'; }
-				},
-				templateResult: formatUnitOption,
-				templateSelection: formatUnitSelection,
-				escapeMarkup: function(markup) { return markup; }
+				extraSpkRow: true,
+				allowedStatuses: ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'],
+				disableAssigned: true,
+				extraAjaxParams: function () {
+					return typeof getApprovalUnitSimpleExtraAjax === 'function' ? getApprovalUnitSimpleExtraAjax() : {};
+				}
 			});
-			
-			// Add change event listener
-			$unitPick.off('select2:select').on('select2:select', function(e){
-				const selectedOption = e.params.data.element;
-				if (selectedOption && selectedOption.value) {
-					const noUnit = selectedOption.getAttribute('data-no-unit');
-					const needsNoUnit = selectedOption.getAttribute('data-needs-no-unit');
-					const statusUnit = selectedOption.getAttribute('data-status-unit');
-					const departemenId = selectedOption.getAttribute('data-departemen-id');
-					const departemenName = selectedOption.getAttribute('data-departemen');
-					const unitId = selectedOption.value;
+		} else {
+			baseCfg = {
+				placeholder: '🔍 Search unit…',
+				allowClear: true,
+				width: '100%',
+				dropdownParent: $('#approvalStageModal .modal-content'),
+				minimumInputLength: 0
+			};
+		}
+		$unitPick.select2($.extend({}, baseCfg, {
+			language: {
+				noResults: function () { return 'No units found'; },
+				searching: function () { return 'Searching...'; }
+			},
+			escapeMarkup: function (markup) { return markup; }
+		}));
+
+		$unitPick.off('select2:select.optimaUnit').on('select2:select.optimaUnit', function (e) {
+				const d = e.params.data || {};
+				const elOpt = d.element;
+				const unitId = elOpt && elOpt.value ? String(elOpt.value) : (d.id != null ? String(d.id) : '');
+				if (!unitId) {
+					return;
+				}
+				const noUnit = elOpt ? (elOpt.getAttribute('data-no-unit') || '') : (d.no_unit != null ? String(d.no_unit) : '');
+				const needsNoUnitRaw = elOpt ? elOpt.getAttribute('data-needs-no-unit') : d.needs_no_unit;
+				const needsNoUnitBool = needsNoUnitRaw === true || needsNoUnitRaw === 'true';
+				const statusUnit = elOpt ? (elOpt.getAttribute('data-status-unit') || '') : (d.status_unit_id != null ? String(d.status_unit_id) : '');
+				const departemenId = elOpt ? (elOpt.getAttribute('data-departemen-id') || '') : (d.departemen_id != null ? String(d.departemen_id) : '');
+				const departemenName = elOpt ? (elOpt.getAttribute('data-departemen') || '') : (d.departemen || '');
+				const displayText = elOpt ? String(elOpt.textContent || '').trim() : String(d.text || '').trim();
 					
 					// Reset noUnitProcessed flag when changing to a different unit
 					if (window.lastSelectedUnitId && window.lastSelectedUnitId !== unitId) {
@@ -2138,19 +2027,63 @@ document.addEventListener('DOMContentLoaded', () => {
 						applyDepartmentalRulesAfterUIGeneration(unitData, suffix);
 					});
 					
-					if ((statusUnit === '1' || statusUnit === '2') && (needsNoUnit === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
+					if ((statusUnit === '1' || statusUnit === '2') && (needsNoUnitBool || needsNoUnitRaw === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
 						window.noUnitProcessed = window.noUnitProcessed || {};
-						if (!window.noUnitProcessed[selectedOption.value]) {
-							showNoUnitConfirmation(selectedOption.value, selectedOption.text, statusUnit);
+						if (!window.noUnitProcessed[unitId]) {
+							showNoUnitConfirmation(unitId, displayText, statusUnit);
 						} else {
-							console.log('Unit No Unit already processed for unit:', selectedOption.value);
+							console.log('Unit No Unit already processed for unit:', unitId);
 						}
 					} else {
-						console.log('Unit already has no_unit or status not eligible:', selectedOption.text, 'Status:', statusUnit, 'No Unit:', noUnit);
+						console.log('Unit already has no_unit or status not eligible:', displayText, 'Status:', statusUnit, 'No Unit:', noUnit);
 					}
-				}
-			});
+		});
+	}
+
+	function setupIndividualUnitSearch(suffix, unitIndex) {
+		console.log('Setting up unit Select2 with suffix:', suffix, 'unitIndex:', unitIndex);
+		const unitPickId = `approvalUnitPick${suffix}`;
+		const unitPick = document.getElementById(unitPickId);
+		if (!unitPick) {
+			console.error('Unit select element not found:', unitPickId);
+			return;
 		}
+		function applyExtraAndInit(extra) {
+			extra = extra || {};
+			getApprovalUnitSimpleExtraAjax = function () { return extra; };
+			initApprovalUnitPickAjaxSelect2(suffix);
+		}
+		if (!currentApprovalSpkId) {
+			console.warn('⚠️ No SPK ID available for department filtering');
+			applyExtraAndInit({});
+			return;
+		}
+		const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
+		fetch(spkDepartmentUrl)
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(String(response.status));
+				}
+				return response.json();
+			})
+			.then(deptData => {
+				const extra = {};
+				if (currentApprovalSpkId) {
+					extra.exclude_spk_id = currentApprovalSpkId;
+				}
+				if (deptData.success && deptData.department) {
+					extra.spk_department = deptData.department;
+				}
+				applyExtraAndInit(extra);
+			})
+			.catch(error => {
+				console.error('❌ Error fetching SPK department:', error);
+				const extra = {};
+				if (currentApprovalSpkId) {
+					extra.exclude_spk_id = currentApprovalSpkId;
+				}
+				applyExtraAndInit(extra);
+			});
 	}
 	
 	function setupUnitSearchWithElectric() {
@@ -2667,7 +2600,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			// Only reset selection if modal was closed without confirmation (cancel button)
 			// If confirmation was done, selection should remain
 			if (!window.noUnitConfirmed) {
-				document.getElementById('approvalUnitPick').value = '';
+				const $ap = $('#approvalUnitPick');
+				if ($ap.length && $ap.hasClass('select2-hidden-accessible')) {
+					$ap.val(null).trigger('change');
+				} else {
+					const el = document.getElementById('approvalUnitPick');
+					if (el) el.value = '';
+				}
 			}
 			window.noUnitConfirmed = false; // Reset flag
 			this.remove();
@@ -4413,40 +4352,38 @@ document.addEventListener('DOMContentLoaded', () => {
 			.catch(error => console.log('Error loading SPK units:', error));
 	}
 
-	// Load available units for edit
+	function initRollbackUnitSelect2() {
+		const $sel = $('#rollbackUnitSelect');
+		if (!$sel.length) return;
+		if ($sel.hasClass('select2-hidden-accessible')) {
+			$sel.select2('destroy');
+		}
+		$sel.empty().append($('<option value="">-- Select New Unit --</option>'));
+		const rbUrl = '<?= base_url('service/data-unit/simple') ?>';
+		if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+			$sel.select2($.extend({}, OptimaUnitSelect2.buildServiceDataUnitSimpleSelect2Config({
+				url: rbUrl,
+				placeholder: '-- Select New Unit --',
+				dropdownParent: $('#rollbackModal .modal-content'),
+				minimumInputLength: 0,
+				extraSpkRow: true,
+				allowedStatuses: null,
+				disableAssigned: false,
+				extraAjaxParams: function () { return {}; }
+			}), {
+				escapeMarkup: function (m) { return m; }
+			}));
+		}
+	}
+
+	// Load available units for edit (rollback ganti unit)
 	function loadAvailableUnitsForEdit() {
-		const searchInput = document.getElementById('rollbackUnitSearch');
-		const selectElement = document.getElementById('rollbackUnitSelect');
-		
-		// Load initial units
-		fetch('<?= base_url('service/data-unit/simple') ?>')
-			.then(response => response.json())
-			.then(data => {
-				if (data.success && data.data) {
-					const options = data.data.map(unit => 
-						`<option value="${unit.id}">${unit.label}</option>`
-					).join('');
-					selectElement.innerHTML = '<option value="">-- Select New Unit --</option>' + options;
-				}
-			})
-			.catch(error => console.log('Error loading units:', error));
-		
-		// Search functionality
-		searchInput.addEventListener('input', function() {
-			const query = this.value.trim();
-			if (query.length >= 2) {
-				fetch(`<?= base_url('service/data-unit/simple') ?>?q=${encodeURIComponent(query)}`)
-					.then(response => response.json())
-					.then(data => {
-						if (data.success && data.data) {
-							const options = data.data.map(unit => 
-								`<option value="${unit.id}">${unit.label}</option>`
-							).join('');
-							selectElement.innerHTML = '<option value="">-- Select New Unit --</option>' + options;
-						}
-					})
-					.catch(error => console.log('Error searching units:', error));
-			}
+		initRollbackUnitSelect2();
+	}
+
+	if (document.getElementById('rollbackModal')) {
+		$('#rollbackModal').on('show.bs.modal', function () {
+			initRollbackUnitSelect2();
 		});
 	}
 	

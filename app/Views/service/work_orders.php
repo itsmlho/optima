@@ -1183,9 +1183,14 @@ $(document).ready(function() {
     
     // Function to reset custom dropdowns
     function resetCustomDropdowns() {
-        // Reset Unit dropdown
+        // Reset Unit (Select2 + hidden native select)
         $('#unitSelectedText').text('-- Select Unit --');
-        $('#unit_id').val('');
+        const $uid = $('#unit_id');
+        if ($uid.hasClass('select2-hidden-accessible')) {
+            $uid.val(null).trigger('change');
+        } else {
+            $uid.val('');
+        }
         $('#unitDropdownList').empty();
         
         // Reset Staff dropdowns
@@ -2582,75 +2587,8 @@ $(document).ready(function() {
     // Load Unit Verification Data - Defined in unit_verification.php (included at bottom)
     // No wrapper needed - window.loadUnitVerificationData is globally available
     
-    // Unit search functionality
-    let unitSearchTimeout;
-    $('#unit_search').on('input', function() {
-        let query = $(this).val().trim();
-        clearTimeout(unitSearchTimeout);
-        
-        if (query.length >= 2) {
-            unitSearchTimeout = setTimeout(function() {
-                searchUnits(query);
-            }, 300);
-        } else {
-            $('#unit_search_results').hide();
-        }
-    });
-
-    function searchUnits(query) {
-        $.ajax({
-            url: '<?= base_url('service/work-orders/search-units') ?>',
-            type: 'POST',
-            data: { query: query },
-            beforeSend: function() {
-                $('#unit_search_results').html('<div class="list-group-item"><i class="fas fa-spinner fa-spin"></i> Searching...</div>').show();
-            },
-            success: function(response) {
-                if (response.success && response.data.length > 0) {
-                    let html = '';
-                    response.data.forEach(function(unit) {
-                        html += `<div class="list-group-item list-group-item-action unit-result" 
-                                    data-unit-id="${unit.id_inventory_unit}" 
-                                    data-unit-info="${unit.no_unit} - ${unit.pelanggan} (${unit.merk_unit} ${unit.model_unit})">
-                                    <div class="fw-bold">${unit.no_unit}</div>
-                                    <div class="text-muted small">${unit.pelanggan} | ${unit.merk_unit || 'N/A'} ${unit.model_unit || ''}</div>
-                                    <div class="text-primary small">SN: ${unit.serial_number || 'N/A'} | Lokasi: ${unit.lokasi}</div>
-                                </div>`;
-                    });
-                    $('#unit_search_results').html(html).show();
-                } else {
-                    $('#unit_search_results').html('<div class="list-group-item text-muted">No units found</div>').show();
-                }
-            },
-            error: function() {
-                $('#unit_search_results').html('<div class="list-group-item text-danger">Error searching units</div>').show();
-            }
-        });
-    }
-
-    // Unit selection
-    $(document).on('click', '.unit-result', function() {
-        let unitId = $(this).data('unit-id');
-        let unitInfo = $(this).data('unit-info');
-        
-        $('#unit_id').val(unitId);
-        $('#unit_search').val(unitInfo);
-        $('#unit_search_results').hide();
-    });
-
-    // Clear unit search
-    $('#btn_clear_unit').on('click', function() {
-        $('#unit_search').val('');
-        $('#unit_id').val('');
-        $('#unit_search_results').hide();
-    });
-
-    // Hide search results when clicking outside
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('#unit_search, #unit_search_results').length) {
-            $('#unit_search_results').hide();
-        }
-        // Also hide staff search results
+    // Unit picker: hanya #unit_id + Select2 (loadUnitsDropdown). Legacy #unit_search dihapus.
+    $(document).on('click', function() {
         $('.list-group[id$="_search_results"]').hide();
     });
 

@@ -1776,12 +1776,56 @@
             success: function(response) {
                 if (response.success && response.data) {
                     const $select = $('#new-unit-id');
+                    if ($select.hasClass('select2-hidden-accessible')) {
+                        try {
+                            $select.select2('destroy');
+                        } catch (e) { /* ignore */ }
+                    }
                     $select.empty().append('<option value="">Select Unit (Optional)</option>');
-                    
-                    response.data.forEach(function(unit) {
-                        $select.append(`<option value="${unit.id}">${unit.nomor_unit} - ${unit.merk} ${unit.model}</option>`);
+                    const Ou = window.OptimaUnitSelect2;
+                    const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
+                    response.data.forEach(function (unit) {
+                        const row = {
+                            id: unit.id,
+                            id_inventory_unit: unit.id,
+                            no_unit: unit.nomor_unit,
+                            serial_number: unit.serial_number || '',
+                            merk: unit.merk || '',
+                            model_unit: unit.model || '',
+                            jenis: unit.jenis || '',
+                            kapasitas: unit.kapasitas || '',
+                            status: unit.status || '',
+                            lokasi: unit.lokasi || ''
+                        };
+                        if (useOu) {
+                            const attrs = Ou.optionDataAttributes(row);
+                            const label = Ou.line1FromRow(Ou.normalizeRow(row));
+                            const $opt = $('<option></option>').val(unit.id).text(label);
+                            Object.keys(attrs).forEach(function (k) {
+                                const v = attrs[k];
+                                if (v !== '' && v != null && v !== false) {
+                                    $opt.attr(k, v);
+                                }
+                            });
+                            $select.append($opt);
+                        } else {
+                            $select.append($('<option></option>').val(unit.id).text(
+                                (unit.nomor_unit || '') + ' - ' + (unit.merk || '') + ' ' + (unit.model || '')
+                            ));
+                        }
                     });
-                    
+                    if ($.fn.select2 && useOu) {
+                        $select.select2({
+                            theme: 'bootstrap-5',
+                            placeholder: 'Select Unit (Optional)',
+                            allowClear: true,
+                            width: '100%',
+                            dropdownParent: $('#addItemModal'),
+                            templateResult: function (i) { return Ou.templateResult(i, {}); },
+                            templateSelection: function (i) { return Ou.templateSelection(i, {}); },
+                            escapeMarkup: function (m) { return m; }
+                        });
+                    }
                     console.log(`✅ Units data loaded: ${response.data.length} items`);
                 }
             },
