@@ -833,12 +833,34 @@ $(document).ready(function() {
             // Populate unit dropdown if not yet populated
             if ($srcUnit.children().length <= 1) {
                 if (window.unitsData && Array.isArray(window.unitsData) && window.unitsData.length > 0) {
+                    const Ov = window.OptimaUnitSelect2;
+                    const useTpl = typeof Ov !== 'undefined' && typeof Ov.optionDataAttributes === 'function';
                     window.unitsData.forEach(function(unit) {
-                        const unitNumber = unit.no_unit || unit.unit_number;
-                        const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
-                        $srcUnit.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                        const row = Object.assign({}, unit, {
+                            id: unit.id_inventory_unit || unit.id,
+                            id_inventory_unit: unit.id_inventory_unit,
+                            no_unit: unit.no_unit || unit.unit_number,
+                            merk: unit.merk_unit || unit.merk,
+                            pelanggan: unit.pelanggan || unit.customer_name
+                        });
+                        if (useTpl) {
+                            const attrs = Ov.optionDataAttributes(row);
+                            const label = Ov.line1FromRow(Ov.normalizeRow(row));
+                            const $opt = $('<option></option>').val(unit.id_inventory_unit).text(label);
+                            Object.keys(attrs).forEach(function (k) {
+                                const v = attrs[k];
+                                if (v !== '' && v != null && v !== false) {
+                                    $opt.attr(k, v);
+                                }
+                            });
+                            $srcUnit.append($opt);
+                        } else {
+                            const unitNumber = unit.no_unit || unit.unit_number;
+                            const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
+                            $srcUnit.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                        }
                     });
-                    $srcUnit.select2({
+                    const vcfg = {
                         placeholder: '-- Pilih Unit Sumber --',
                         allowClear: true,
                         width: '100%',
@@ -847,7 +869,12 @@ $(document).ready(function() {
                             noResults:  function() { return 'Unit tidak ditemukan'; },
                             searching:  function() { return 'Mencari...'; }
                         }
-                    });
+                    };
+                    if (useTpl) {
+                        vcfg.templateResult = function (item) { return Ov.templateResult(item, {}); };
+                        vcfg.templateSelection = function (item) { return Ov.templateSelection(item, {}); };
+                    }
+                    $srcUnit.select2(vcfg);
                 } else {
                     console.warn('⚠️ window.unitsData kosong — unit tidak dapat dimuat');
                 }

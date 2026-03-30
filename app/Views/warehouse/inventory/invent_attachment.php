@@ -1439,30 +1439,62 @@
             success: function(response) {
                 if (response.success) {
                     const select = $(targetSelector);
+                    const unitList = response.units || [];
+                    if (select.hasClass('select2-hidden-accessible')) {
+                        try {
+                            select.select2('destroy');
+                        } catch (e) { /* ignore */ }
+                    }
                     select.empty();
                     select.append('<option value="">Select Unit...</option>');
                     
-                    response.units.forEach(unit => {
-                        // Add data attributes for existing attachments check
-                        const option = $('<option></option>')
-                            .val(unit.id_inventory_unit)
-                            .text(`Unit ${unit.no_unit} - ${unit.model_unit || ''} (${unit.status_unit_name || ''})`)
-                            .data('hasAttachment', unit.has_attachment || false)
-                            .data('hasBattery', unit.has_battery || false)
-                            .data('hasCharger', unit.has_charger || false);
-                        
-                        select.append(option);
+                    const Ou = window.OptimaUnitSelect2;
+                    const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
+                    unitList.forEach(unit => {
+                        const row = {
+                            id: unit.id_inventory_unit,
+                            id_inventory_unit: unit.id_inventory_unit,
+                            no_unit: unit.no_unit,
+                            serial_number: unit.serial_number || '',
+                            merk: '',
+                            model_unit: unit.model_unit || '',
+                            status: unit.status_unit_name || '',
+                            lokasi: 'N/A'
+                        };
+                        var $opt;
+                        if (useOu) {
+                            const attrs = Ou.optionDataAttributes(row);
+                            $opt = $('<option></option>').val(unit.id_inventory_unit).text(Ou.line1FromRow(Ou.normalizeRow(row)));
+                            Object.keys(attrs).forEach(function (k) {
+                                const v = attrs[k];
+                                if (v !== '' && v != null && v !== false) {
+                                    $opt.attr(k, v);
+                                }
+                            });
+                        } else {
+                            $opt = $('<option></option>')
+                                .val(unit.id_inventory_unit)
+                                .text(`Unit ${unit.no_unit} - ${unit.model_unit || ''} (${unit.status_unit_name || ''})`);
+                        }
+                        $opt.attr('data-has-attachment', (unit.has_attachment || 0) ? '1' : '0')
+                            .attr('data-has-battery', (unit.has_battery || 0) ? '1' : '0')
+                            .attr('data-has-charger', (unit.has_charger || 0) ? '1' : '0');
+                        select.append($opt);
                     });
                     
-                    // Initialize Select2 with search
                     if (!select.hasClass('select2-hidden-accessible')) {
-                        select.select2({
+                        const s2 = {
                             theme: 'bootstrap-5',
                             placeholder: 'Search for a unit...',
                             allowClear: true,
                             width: '100%',
                             dropdownParent: select.closest('.modal')
-                        });
+                        };
+                        if (useOu) {
+                            s2.templateResult = function (item) { return Ou.templateResult(item, {}); };
+                            s2.templateSelection = function (item) { return Ou.templateSelection(item, {}); };
+                        }
+                        select.select2(s2);
                     }
                     
                     // Add change event to show warning if unit has existing attachment
@@ -1474,7 +1506,9 @@
                 }
             },
             error: function() {
-                OptimaNotify.error('Unable to connect to the server', 'Error');
+                if (window.OptimaNotify) {
+                    OptimaNotify.error('Unable to connect to the server', 'Error');
+                }
             }
         });
     }
@@ -1502,13 +1536,13 @@
         let hasExisting = false;
         let existingTypeName = '';
         
-        if (itemType === 'attachment' && selectedOption.data('hasAttachment')) {
+        if (itemType === 'attachment' && selectedOption.attr('data-has-attachment') === '1') {
             hasExisting = true;
             existingTypeName = 'Attachment';
-        } else if (itemType === 'battery' && selectedOption.data('hasBattery')) {
+        } else if (itemType === 'battery' && selectedOption.attr('data-has-battery') === '1') {
             hasExisting = true;
             existingTypeName = 'Battery';
-        } else if (itemType === 'charger' && selectedOption.data('hasCharger')) {
+        } else if (itemType === 'charger' && selectedOption.attr('data-has-charger') === '1') {
             hasExisting = true;
             existingTypeName = 'Charger';
         }

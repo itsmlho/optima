@@ -1746,108 +1746,25 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	}
 	
-	// Custom template for unit dropdown (3-line format: [no] Merk Model [SN] / [status] [location] / [kapasitas] [dept])
+	// Unit dropdown: sama dengan unit-select2.js + baris ekstra kapasitas/dept/USED IN SPK
 	function formatUnitOption(unit) {
-		if (!unit.id) return unit.text;
-		
-		const $option = $(unit.element);
-		const noUnit = $option.data('no-unit') || '';
-		const statusName = $option.data('status-name') || '';
-		const locationName = $option.data('location-name') || '';
-		const isAssigned = $option.data('is-assigned') || false;
-		const merkUnit = $option.data('merk-unit') || '';
-		const modelUnit = $option.data('model-unit') || '';
-		const kapasitas = $option.data('kapasitas') || '';
-		const departemen = ($option.data('departemen') || '').toUpperCase();
-		// Use data attribute first (more reliable than parsing from unit.text)
-		const serialNumber =
-			($option.data('serial-number') || '') ||
-			(unit.text && unit.text.includes('SN:')
-				? unit.text.split('SN:')[1]?.split('|')[0]?.trim()
-				: '');
-		
-		// Build 3-line display
-		let html = '<div style="line-height:1.3; padding:4px 0; border-bottom:1px solid #e9ecef">';
-		
-		// Line 1: [No Unit] Merk Model [SN]
-		html += '<div style="margin-bottom:3px">';
-		if (noUnit) {
-			html += `<span class="badge badge-soft-blue me-1" style="font-size:0.75rem">${noUnit}</span>`;
+		if (!unit.id) {
+			return unit.text;
 		}
-		html += `<strong style="font-size:0.9rem">${merkUnit} ${modelUnit}</strong>`;
-		if (serialNumber) {
-			html += `<small class="text-muted ms-1" style="font-size:0.75rem">[SN: ${serialNumber}]</small>`;
+		if (typeof window.OptimaUnitSelect2 === 'undefined') {
+			return unit.text;
 		}
-		html += '</div>';
-		
-		// Line 2: [Status] [Location] (smaller badges)
-		html += '<div style="margin-bottom:2px">';
-		if (statusName) {
-			let statusColor = 'secondary'; // default
-			const statusUpper = statusName.toUpperCase();
-			
-			// Map status to badge colors
-			if (statusUpper.includes('AVAILABLE')) {
-				statusColor = 'success';
-			} else if (statusUpper.includes('RETURNED')) {
-				statusColor = 'cyan';
-			} else if (statusUpper.includes('BOOKED')) {
-				statusColor = 'warning';
-			} else if (statusUpper.includes('SPARE')) {
-				statusColor = 'purple';
-			} else if (statusUpper.includes('NON_ASSET') || statusUpper.includes('NON ASSET')) {
-				statusColor = 'info';
-			} else if (statusUpper.includes('RENTAL') || statusUpper.includes('RENTED')) {
-				statusColor = 'orange';
-			} else if (statusUpper.includes('PREPARATION') || statusUpper.includes('READY')) {
-				statusColor = 'indigo';
-			} else if (statusUpper.includes('MAINTENANCE') || statusUpper.includes('REPAIR')) {
-				statusColor = 'danger';
-			}
-			
-			html += `<span class="badge badge-soft-${statusColor} me-1" style="font-size:0.65rem; padding:2px 6px">${statusName}</span>`;
-		}
-		if (locationName && locationName !== '-') {
-			html += `<span class="badge badge-soft-cyan me-1" style="font-size:0.65rem; padding:2px 6px"><i class="fas fa-map-marker-alt me-1"></i>${locationName}</span>`;
-		}
-		if (isAssigned) {
-			html += `<span class="badge badge-soft-danger me-1" style="font-size:0.65rem; padding:2px 6px">USED IN SPK</span>`;
-		}
-		html += '</div>';
-		
-		// Line 3: [Kapasitas] [Department]
-		html += '<div>';
-		if (kapasitas && kapasitas !== '-') {
-			html += `<span class="badge badge-soft-orange me-1" style="font-size:0.65rem; padding:2px 6px">${kapasitas}</span>`;
-		}
-		if (departemen) {
-			const deptColor = departemen === 'ELECTRIC' ? 'green' : (departemen === 'GASOLINE' ? 'orange' : (departemen === 'DIESEL' ? 'blue' : 'gray'));
-			html += `<span class="badge badge-soft-${deptColor} me-1" style="font-size:0.65rem; padding:2px 6px">${departemen}</span>`;
-		}
-		html += '</div>';
-		
-		html += '</div>';
-		return $(html);
+		return OptimaUnitSelect2.templateResult(unit, { extraSpkRow: true });
 	}
-	
+
 	function formatUnitSelection(unit) {
-		if (!unit.id) return unit.text;
-		
-		const $option = $(unit.element);
-		const noUnit = $option.data('no-unit') || '';
-		const merkUnit = $option.data('merk-unit') || '';
-		const modelUnit = $option.data('model-unit') || '';
-		const serialNumber = $option.data('serial-number') || '';
-		
-		if (noUnit) {
-			const base = `${noUnit} - ${merkUnit} ${modelUnit}`.trim();
-			return serialNumber ? `${base} (SN: ${serialNumber})` : base;
+		if (!unit.id) {
+			return unit.text;
 		}
-		
-		const base = `${merkUnit} ${modelUnit}`.trim();
-		// Fallback to unit.text if base is empty (defensive)
-		if (!base) return unit.text;
-		return serialNumber ? `${base} (SN: ${serialNumber})` : base;
+		if (typeof window.OptimaUnitSelect2 === 'undefined') {
+			return unit.text;
+		}
+		return OptimaUnitSelect2.templateSelection(unit, {});
 	}
 	
 	function setupIndividualUnitSearch(suffix, unitIndex) {
@@ -5956,45 +5873,55 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			$notes.addClass('d-none');
 			// Init Select2 AJAX for unit dropdown if not yet done
 			if (!$unitSel.hasClass('select2-hidden-accessible')) {
-				$unitSel.select2({
-					placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
-					allowClear: true,
-					width: '100%',
-					dropdownParent: $('#spkInputSparepartModal'),
-					minimumInputLength: 1,
-					ajax: {
+				if (typeof window.OptimaUnitSelect2 !== 'undefined' && typeof OptimaUnitSelect2.buildWorkOrderSearchUnitsSelect2Config === 'function') {
+					$unitSel.select2(OptimaUnitSelect2.buildWorkOrderSearchUnitsSelect2Config({
 						url: '<?= base_url('service/work-orders/search-units') ?>',
-						type: 'POST',
-						dataType: 'json',
-						delay: 300,
-						data: function(params) {
-							return {
-								[window.csrfTokenName]: window.csrfTokenValue,
-								query: params.term
-							};
+						dropdownParent: $('#spkInputSparepartModal'),
+						csrfTokenName: window.csrfTokenName,
+						csrfTokenValue: window.csrfTokenValue,
+						language: {
+							inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+							searching: function() { return 'Mencari unit...'; },
+							noResults: function() { return 'Unit tidak ditemukan'; }
+						}
+					}));
+				} else {
+					console.warn('unit-select2.js tidak termuat — kanibal unit memakai tampilan teks polos.');
+					$unitSel.select2({
+						placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
+						allowClear: true,
+						width: '100%',
+						dropdownParent: $('#spkInputSparepartModal'),
+						minimumInputLength: 1,
+						ajax: {
+							url: '<?= base_url('service/work-orders/search-units') ?>',
+							type: 'POST',
+							dataType: 'json',
+							delay: 300,
+							data: function(params) {
+								return {
+									[window.csrfTokenName]: window.csrfTokenValue,
+									query: params.term
+								};
+							},
+							processResults: function(data) {
+								if (!data.success) return { results: [] };
+								return {
+									results: data.data.map(u => ({
+										id: u.no_unit,
+										text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '') + (u.merk_unit ? ' (' + u.merk_unit + ')' : '')
+									}))
+								};
+							},
+							cache: true
 						},
-						processResults: function(data) {
-							if (!data.success) return { results: [] };
-							return {
-								results: data.data.map(u => ({
-									id: u.no_unit,
-									text:
-										u.no_unit
-										+ (u.pelanggan ? ' – ' + u.pelanggan : '')
-										+ (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
-										+ (u.serial_number ? ' | SN: ' + u.serial_number : '')
-										+ (u.unit_type ? ' | Tipe: ' + u.unit_type : '')
-								}))
-							};
-						},
-						cache: true
-					},
-					language: {
-						inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
-						searching: function() { return 'Mencari unit...'; },
-						noResults: function() { return 'Unit tidak ditemukan'; }
-					}
-				});
+						language: {
+							inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+							searching: function() { return 'Mencari unit...'; },
+							noResults: function() { return 'Unit tidak ditemukan'; }
+						}
+					});
+				}
 			}
 		} else {
 			$kanibal.addClass('d-none');
@@ -6380,42 +6307,51 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			$kanibal.removeClass('d-none');
 			$notes.addClass('d-none');
 			if (!$unitSel.hasClass('select2-hidden-accessible')) {
-				$unitSel.select2({
-					placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
-					allowClear: true,
-					width: '100%',
-					dropdownParent: $('#spkSparepartValidationModal'),
-					minimumInputLength: 1,
-					ajax: {
+				if (typeof window.OptimaUnitSelect2 !== 'undefined' && typeof OptimaUnitSelect2.buildWorkOrderSearchUnitsSelect2Config === 'function') {
+					$unitSel.select2(OptimaUnitSelect2.buildWorkOrderSearchUnitsSelect2Config({
 						url: '<?= base_url('service/work-orders/search-units') ?>',
-						type: 'POST',
-						dataType: 'json',
-						delay: 300,
-						data: function(params) {
-							return { [window.csrfTokenName]: window.csrfTokenValue, query: params.term };
+						dropdownParent: $('#spkSparepartValidationModal'),
+						csrfTokenName: window.csrfTokenName,
+						csrfTokenValue: window.csrfTokenValue,
+						language: {
+							inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+							searching:     function() { return 'Mencari unit...'; },
+							noResults:     function() { return 'Unit tidak ditemukan'; }
+						}
+					}));
+				} else {
+					$unitSel.select2({
+						placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
+						allowClear: true,
+						width: '100%',
+						dropdownParent: $('#spkSparepartValidationModal'),
+						minimumInputLength: 1,
+						ajax: {
+							url: '<?= base_url('service/work-orders/search-units') ?>',
+							type: 'POST',
+							dataType: 'json',
+							delay: 300,
+							data: function(params) {
+								return { [window.csrfTokenName]: window.csrfTokenValue, query: params.term };
+							},
+							processResults: function(data) {
+								if (!data.success) return { results: [] };
+								return {
+									results: data.data.map(u => ({
+										id: u.no_unit,
+										text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '')
+									}))
+								};
+							},
+							cache: true
 						},
-						processResults: function(data) {
-							if (!data.success) return { results: [] };
-							return {
-								results: data.data.map(u => ({
-									id: u.no_unit,
-									text:
-										u.no_unit
-										+ (u.pelanggan ? ' – ' + u.pelanggan : '')
-										+ (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
-										+ (u.serial_number ? ' | SN: ' + u.serial_number : '')
-										+ (u.unit_type ? ' | Tipe: ' + u.unit_type : '')
-								}))
-							};
-						},
-						cache: true
-					},
-					language: {
-						inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
-						searching:     function() { return 'Mencari unit...'; },
-						noResults:     function() { return 'Unit tidak ditemukan'; }
-					}
-				});
+						language: {
+							inputTooShort: function() { return 'Ketik minimal 1 karakter...'; },
+							searching:     function() { return 'Mencari unit...'; },
+							noResults:     function() { return 'Unit tidak ditemukan'; }
+						}
+					});
+				}
 			}
 		} else {
 			$kanibal.addClass('d-none');

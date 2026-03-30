@@ -495,163 +495,26 @@ helper('ui');
 <script>
 const BASE = '<?= base_url() ?>';
 
-/** Select2 AJAX unit audit — ringan, tidak memuat seluruh inventory. */
-
-/** Hapus [12] / [id] di depan no unit (data kotor atau cache). */
-function cleanAuditUnitNoUnitLabel(raw, id) {
-    let s = (raw == null ? '' : String(raw)).trim();
-    if (!s) {
-        return s;
-    }
-    if (id != null && id !== '') {
-        const idEsc = String(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        s = s.replace(new RegExp('^\\[' + idEsc + '\\]\\s*', 'i'), '');
-    }
-    let prev;
-    do {
-        prev = s;
-        s = s.replace(/^\[[\d\s]+\]\s*/, '');
-        s = s.replace(/^\s*[·•]\s*/, '');
-    } while (s !== prev);
-    return s.trim();
-}
-
-/** Baris terpilih / baris 1 dropdown: No · Merk Model · Kapasitas */
-function formatAuditUnitLine1(item) {
-    if (!item || item.loading) {
-        return (item && item.text) ? item.text : '';
-    }
-    if (!item.id) {
-        return item.text || '';
-    }
-    let rawNo = (item.no_unit != null && String(item.no_unit).trim() !== '') ? String(item.no_unit).trim() : '';
-    if (!rawNo) {
-        const t = String(item.text || '').trim();
-        const sep = ' · ';
-        const j = t.indexOf(sep);
-        rawNo = j === -1 ? t : t.slice(0, j).trim();
-    }
-    const no = cleanAuditUnitNoUnitLabel(rawNo, item.id);
-    const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
-    const kap = (item.kapasitas || '').trim();
-    const jenis = (item.jenis || '').trim();
-    const parts = [no];
-    if (mm) {
-        parts.push(mm);
-    } else if (jenis) {
-        parts.push(jenis);
-    }
-    if (kap) {
-        parts.push(kap);
-    }
-    return parts.join(' · ');
-}
-
-/** Template hasil Select2: 3 baris (info unit + badge status + lokasi). */
-function formatAuditUnitAjaxOption(item) {
-    if (item.loading) {
-        return item.text;
-    }
-    if (!item.id) {
-        return item.text;
-    }
-    const $container = $('<div class="d-flex flex-column lh-sm"></div>');
-    $container.append($('<div class="fw-semibold"></div>').text(formatAuditUnitLine1(item)));
-
-    const jenis = (item.jenis || '').trim();
-    const sn = (item.serial_number || '').trim();
-    const mm = [item.merk, item.model_unit].filter(Boolean).join(' ');
-    const line2Parts = [];
-    if (mm && jenis) {
-        line2Parts.push(jenis);
-    }
-    if (sn) {
-        line2Parts.push('SN : ' + sn);
-    }
-    const $line2 = $('<div class="small"></div>');
-    $line2.text(line2Parts.length ? line2Parts.join(' · ') : '—');
-
-    const status = (item.status || '—').trim();
-    const loc = (item.lokasi && String(item.lokasi).trim()) ? String(item.lokasi).trim() : 'N/A';
-    const su = status.toUpperCase();
-    let badgeCls = 'badge-soft-gray';
-    if (su.includes('AVAILABLE') || su.includes('NON_ASSET') || su.includes('BOOKED')) {
-        badgeCls = 'badge-soft-green';
-    } else if (su.includes('RETURN')) {
-        badgeCls = 'badge-soft-blue';
-    } else if (su.includes('RENTAL')) {
-        badgeCls = 'badge-soft-cyan';
-    } else if (su.includes('INACTIVE') || su.includes('JUAL')) {
-        badgeCls = 'badge-soft-red';
-    }
-    const $line3 = $('<div class="small text-muted d-flex align-items-center flex-wrap gap-2 mt-1"></div>');
-    $line3.append($('<span class="badge ' + badgeCls + '"></span>').text(status));
-    const $loc = $('<span class="d-inline-flex align-items-center"></span>');
-    $loc.append($('<i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>'));
-    $loc.append(document.createTextNode(loc));
-    $line3.append($loc);
-    $container.append($line2, $line3);
-
-    return $container;
-}
-
+/** Unit audit Select2 — OptimaUnitSelect2 (unit-select2.js). */
 function buildAuditUnitSelect2AjaxConfig(purpose, $dropdownParent) {
     purpose = purpose === 'add_location' ? 'add_location' : 'unit_swap';
-    return {
+    if (typeof window.OptimaUnitSelect2 === 'undefined' || typeof OptimaUnitSelect2.buildAjaxConfig !== 'function') {
+        console.error('[unit-audit] unit-select2.js tidak termuat. Hard refresh (Ctrl+F5).');
+        return {
+            dropdownParent: $dropdownParent,
+            width: '100%',
+            placeholder: 'Error: muat ulang halaman'
+        };
+    }
+    return OptimaUnitSelect2.buildAjaxConfig({
+        baseUrl: BASE,
+        searchPath: 'service/unit-audit/search-inventory-units',
+        purpose: purpose,
         dropdownParent: $dropdownParent,
-        width: '100%',
-        minimumInputLength: 1,
-        allowClear: true,
-        placeholder: purpose === 'add_location'
-            ? 'No unit, SN, model, merk… (min. 1 huruf/angka)'
-            : 'No unit, SN, model, merk… (min. 1 huruf/angka)',
-        language: {
-            inputTooShort: function () { return 'Ketik minimal 1 karakter (no unit bisa 1 digit)'; }
-        },
-        ajax: {
-            url: BASE + 'service/unit-audit/search-inventory-units',
-            dataType: 'json',
-            delay: 300,
-            data: function (params) {
-                return { q: params.term || '', purpose: purpose };
-            },
-            processResults: function (res) {
-                if (!res || !res.success || !Array.isArray(res.data)) {
-                    return { results: [] };
-                }
-                const out = [];
-                res.data.forEach(function (u) {
-                    if (String(u.status || '').toUpperCase() === 'JUAL') {
-                        return;
-                    }
-                    const no = cleanAuditUnitNoUnitLabel((u.no_unit || '').trim(), u.id);
-                    if (!no) {
-                        return;
-                    }
-                    const row = {
-                        id: String(u.id),
-                        no_unit: no,
-                        serial_number: u.serial_number || '',
-                        jenis: u.jenis || '',
-                        kapasitas: u.kapasitas || '',
-                        merk: u.merk || '',
-                        model_unit: u.model_unit || '',
-                        status: u.status || '',
-                        pelanggan: u.pelanggan || '',
-                        lokasi: u.lokasi || ''
-                    };
-                    row.text = no;
-                    out.push(row);
-                });
-                return { results: out };
-            },
-            cache: true
-        },
-        templateResult: formatAuditUnitAjaxOption,
-        templateSelection: function (item) {
-            return item.id ? formatAuditUnitLine1(item) : item.text;
+        filterRow: function (u) {
+            return String(u.status || '').toUpperCase() !== 'JUAL';
         }
-    };
+    });
 }
 
 let selectedCustomerId  = null;
@@ -1109,15 +972,8 @@ function onVfAlasanReasonChange() {
             $.get(BASE + 'service/unit-audit/search-inventory-units', { id: uid, purpose: 'unit_swap' }, function (res) {
                 if (!res.success || !res.data || !res.data.length) return;
                 const u = res.data[0];
-                const label = formatAuditUnitLine1({
-                    id: u.id,
-                    text: u.no_unit,
-                    no_unit: (u.no_unit || '').trim(),
-                    merk: u.merk || '',
-                    model_unit: u.model_unit || '',
-                    kapasitas: u.kapasitas || '',
-                    jenis: u.jenis || ''
-                });
+                if (typeof window.OptimaUnitSelect2 === 'undefined') return;
+                const label = OptimaUnitSelect2.line1FromRow(OptimaUnitSelect2.normalizeRow(u));
                 if (!label) return;
                 $sel.append(new Option(label, String(u.id), true, true)).trigger('change');
             });

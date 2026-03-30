@@ -2357,7 +2357,8 @@ class WorkOrderController extends Controller
             $db = \Config\Database::connect();
             $builder = $db->table('inventory_unit iu');
             $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, 
-                            c.customer_name as pelanggan, cl.location_name as lokasi, tu.tipe as unit_type, mu.model_unit, mu.merk_unit');
+                            c.customer_name as pelanggan, cl.location_name as lokasi, tu.tipe as unit_type, tu.jenis as jenis,
+                            mu.model_unit, mu.merk_unit, kp.kapasitas_unit as kapasitas, su.status_unit as status');
             // Updated: JOIN via kontrak_unit junction table (source of truth)
             $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
             $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
@@ -2365,6 +2366,8 @@ class WorkOrderController extends Controller
             $builder->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
             $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
             $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
+            $builder->join('kapasitas kp', 'iu.kapasitas_unit_id = kp.id_kapasitas', 'left');
+            $builder->join('status_unit su', 'iu.status_unit_id = su.id_status', 'left');
             $builder->groupStart()
                 ->like('iu.no_unit', $query)
                 ->orLike('c.customer_name', $query)

@@ -219,31 +219,53 @@ function initUnitSelect2() {
     });
 }
 
-// Format Select2 result item
+// Format Select2 result: blok kiri = unit-select2.js; kanan = kontrak / harga
 function formatUnitResult(item) {
-    if (item.loading) return $('<span>Loading...</span>');
-    if (!item.unit) return item.text;
+    if (item.loading) {
+        return $('<span>Loading...</span>');
+    }
+    if (!item.unit) {
+        return item.text;
+    }
 
     var u = item.unit;
-    var html = '<div class="d-flex justify-content-between align-items-center">';
-    html += '<div>';
-    html += '<strong>' + u.no_unit + '</strong>';
-    if (u.serial_number) html += ' <small class="text-muted">(' + u.serial_number + ')</small>';
-    html += '<br><small class="text-muted">' + u.merk + ' ' + u.model + '</small>';
-    if (u.kapasitas) html += ' <small class="text-muted">| ' + u.kapasitas + '</small>';
-    html += '</div>';
-    html += '<div class="text-end">';
+    var statusLabel = u.status || u.status_name || (u.is_same_contract ? 'In contract' : (u.is_contracted ? 'Contracted' : 'Available'));
+    var lokasi = u.current_location || u.lokasi || u.location_name || 'N/A';
+    var $left = null;
+    if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+        $left = OptimaUnitSelect2.templateResult({
+            id: String(item.id),
+            no_unit: u.no_unit,
+            merk: u.merk,
+            model_unit: u.model || u.model_unit,
+            jenis: u.jenis || u.unit_type,
+            kapasitas: u.kapasitas,
+            serial_number: u.serial_number,
+            status: statusLabel,
+            lokasi: lokasi
+        }, {});
+    }
+    if (!$left || !$left.length) {
+        $left = $('<div class="small"></div>').text(item.text || '');
+    }
+
+    var html = '<div class="d-flex justify-content-between align-items-start gap-2 w-100">';
+    html += '<div class="flex-grow-1 min-w-0"></div>';
+    html += '<div class="text-end flex-shrink-0">';
 
     if (u.is_same_contract) {
         html += '<span class="badge bg-secondary">Already in Contract</span>';
     } else if (u.is_contracted) {
         html += '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>' + (u.current_kontrak_no || 'Active') + '</span>';
-        // Show customer & location for contracted units
         if (u.current_customer || u.current_location) {
             html += '<br><small class="text-muted" style="font-size:0.7rem">';
-            if (u.current_customer) html += '<i class="fas fa-building me-1"></i>' + u.current_customer;
+            if (u.current_customer) {
+                html += '<i class="fas fa-building me-1"></i>' + u.current_customer;
+            }
             if (u.current_location) {
-                if (u.current_customer) html += ' • ';
+                if (u.current_customer) {
+                    html += ' • ';
+                }
                 html += '<i class="fas fa-map-marker-alt me-1"></i>' + u.current_location;
             }
             html += '</small>';
@@ -255,13 +277,28 @@ function formatUnitResult(item) {
     html += '<br><small>' + rupiah(u.harga_sewa_bulanan || 0) + '/month</small>';
     html += '</div></div>';
 
-    return $(html);
+    var $row = $(html);
+    $row.children('.flex-grow-1').first().append($left);
+    return $row;
 }
 
-// Format Select2 selected item
 function formatUnitSelection(item) {
-    if (!item.unit) return item.text;
-    return item.unit.no_unit + ' - ' + item.unit.merk + ' ' + item.unit.model;
+    if (!item.unit) {
+        return item.text;
+    }
+    var u = item.unit;
+    if (typeof window.OptimaUnitSelect2 !== 'undefined') {
+        return OptimaUnitSelect2.line1FromRow(OptimaUnitSelect2.normalizeRow({
+            id: item.id,
+            no_unit: u.no_unit,
+            merk: u.merk,
+            model_unit: u.model || u.model_unit,
+            kapasitas: u.kapasitas,
+            jenis: u.jenis,
+            serial_number: u.serial_number
+        }));
+    }
+    return u.no_unit + ' - ' + u.merk + ' ' + u.model;
 }
 
 // Update harga inline
