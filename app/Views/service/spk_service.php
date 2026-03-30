@@ -1759,7 +1759,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		const modelUnit = $option.data('model-unit') || '';
 		const kapasitas = $option.data('kapasitas') || '';
 		const departemen = ($option.data('departemen') || '').toUpperCase();
-		const serialNumber = unit.text.includes('SN:') ? unit.text.split('SN:')[1]?.split('|')[0]?.trim() : '';
+		// Use data attribute first (more reliable than parsing from unit.text)
+		const serialNumber =
+			($option.data('serial-number') || '') ||
+			(unit.text && unit.text.includes('SN:')
+				? unit.text.split('SN:')[1]?.split('|')[0]?.trim()
+				: '');
 		
 		// Build 3-line display
 		let html = '<div style="line-height:1.3; padding:4px 0; border-bottom:1px solid #e9ecef">';
@@ -1832,12 +1837,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		const noUnit = $option.data('no-unit') || '';
 		const merkUnit = $option.data('merk-unit') || '';
 		const modelUnit = $option.data('model-unit') || '';
+		const serialNumber = $option.data('serial-number') || '';
 		
 		if (noUnit) {
-			return `${noUnit} - ${merkUnit} ${modelUnit}`.trim();
+			const base = `${noUnit} - ${merkUnit} ${modelUnit}`.trim();
+			return serialNumber ? `${base} (SN: ${serialNumber})` : base;
 		}
 		
-		return unit.text;
+		const base = `${merkUnit} ${modelUnit}`.trim();
+		// Fallback to unit.text if base is empty (defensive)
+		if (!base) return unit.text;
+		return serialNumber ? `${base} (SN: ${serialNumber})` : base;
 	}
 	
 	function setupIndividualUnitSearch(suffix, unitIndex) {
@@ -1951,11 +1961,24 @@ document.addEventListener('DOMContentLoaded', () => {
 			
 			// Populate options with data attributes for badges
 			if (j.data && Array.isArray(j.data)) {
-				j.data.forEach(x => {
+				// Only allow specific unit statuses for Unit Preparation.
+				// This prevents unwanted statuses (e.g. RENTAL_INACTIVE, RETURNED) from showing up.
+				const allowedStatuses = ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'];
+				const filteredData = j.data.filter(x => allowedStatuses.includes(x.status_name));
+
+				filteredData.forEach(x => {
 					const isAssigned = x.is_assigned_in_spk;
 					const option = document.createElement('option');
 					option.value = x.id;
-					option.textContent = x.label || `${x.no_unit} - ${x.merk} ${x.model}`;
+					
+					const label =
+						x.label ||
+						`${x.no_unit || ''} - ${x.merk_unit || x.merk || ''} ${x.model_unit || x.model || ''}`.trim();
+					const serialInfo = x.serial_info || '';
+					// Put searchable tokens into option.textContent:
+					// - SN token comes from serial_info ("SN: ...")
+					// - tipe token also comes from serial_info (it may include tipe first)
+					option.textContent = [label, serialInfo].filter(Boolean).join(' | ');
 					option.disabled = isAssigned;
 					
 					// Add data attributes for badges
@@ -1964,6 +1987,9 @@ document.addEventListener('DOMContentLoaded', () => {
 					option.setAttribute('data-location-name', x.location_name || '');
 					option.setAttribute('data-merk-unit', x.merk_unit || '');
 					option.setAttribute('data-model-unit', x.model_unit || '');
+					// Keep '-' when serial is missing, so the UI still shows "detail SN"
+					option.setAttribute('data-serial-number', x.serial_number || '-');
+					option.setAttribute('data-tipe-unit', x.tipe_unit || '');
 					option.setAttribute('data-needs-no-unit', x.needs_no_unit || false);
 					option.setAttribute('data-status-unit', x.status_unit_id || '');
 					option.setAttribute('data-departemen-id', x.departemen_id || '');
@@ -1982,7 +2008,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			
 			$unitPick.select2({
-				placeholder: '🔍 Search by unit number, serial, brand, or model...',
+				placeholder: '🔍 Search by unit number, SN, brand/model, or unit type...',
 				allowClear: true,
 				dropdownParent: $('#approvalStageModal .modal-content'),
 				width: '100%',
@@ -4650,7 +4676,21 @@ document.addEventListener('DOMContentLoaded', () => {
 								// Create option for existing unit
 								const option = document.createElement('option');
 								option.value = unitInfo.id_inventory_unit;
-								option.textContent = `${unitInfo.no_unit} - ${unitInfo.merk_unit} ${unitInfo.model_unit}`;
+								
+								const serialNumber = unitInfo.serial_number || '-';
+								const tipeUnit = unitInfo.tipe_unit || unitInfo.tipe || '';
+								const label = `${unitInfo.no_unit || ''} - ${unitInfo.merk_unit || ''} ${unitInfo.model_unit || ''}`.trim();
+								
+								option.setAttribute('data-no-unit', unitInfo.no_unit || '');
+								option.setAttribute('data-merk-unit', unitInfo.merk_unit || '');
+								option.setAttribute('data-model-unit', unitInfo.model_unit || '');
+								option.setAttribute('data-serial-number', serialNumber);
+								option.setAttribute('data-tipe-unit', tipeUnit);
+								
+								const tokens = [label];
+								if (serialNumber) tokens.push(`SN: ${serialNumber}`);
+								if (tipeUnit) tokens.push(tipeUnit);
+								option.textContent = tokens.filter(Boolean).join(' | ');
 								option.selected = true;
 								unitSelect.appendChild(option);
 								
@@ -5917,7 +5957,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			// Init Select2 AJAX for unit dropdown if not yet done
 			if (!$unitSel.hasClass('select2-hidden-accessible')) {
 				$unitSel.select2({
-					placeholder: '-- Cari No. Unit --',
+					placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
 					allowClear: true,
 					width: '100%',
 					dropdownParent: $('#spkInputSparepartModal'),
@@ -5938,7 +5978,12 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 							return {
 								results: data.data.map(u => ({
 									id: u.no_unit,
-									text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '') + (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+									text:
+										u.no_unit
+										+ (u.pelanggan ? ' – ' + u.pelanggan : '')
+										+ (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+										+ (u.serial_number ? ' | SN: ' + u.serial_number : '')
+										+ (u.unit_type ? ' | Tipe: ' + u.unit_type : '')
 								}))
 							};
 						},
@@ -6336,7 +6381,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			$notes.addClass('d-none');
 			if (!$unitSel.hasClass('select2-hidden-accessible')) {
 				$unitSel.select2({
-					placeholder: '-- Cari No. Unit --',
+					placeholder: '-- Cari No. Unit / SN / Model / Tipe --',
 					allowClear: true,
 					width: '100%',
 					dropdownParent: $('#spkSparepartValidationModal'),
@@ -6354,7 +6399,12 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 							return {
 								results: data.data.map(u => ({
 									id: u.no_unit,
-									text: u.no_unit + (u.pelanggan ? ' – ' + u.pelanggan : '') + (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+									text:
+										u.no_unit
+										+ (u.pelanggan ? ' – ' + u.pelanggan : '')
+										+ (u.merk_unit ? ' (' + u.merk_unit + (u.model_unit ? ' ' + u.model_unit : '') + ')' : '')
+										+ (u.serial_number ? ' | SN: ' + u.serial_number : '')
+										+ (u.unit_type ? ' | Tipe: ' + u.unit_type : '')
 								}))
 							};
 						},

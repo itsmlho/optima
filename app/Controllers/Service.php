@@ -3257,7 +3257,13 @@ EOF;
             ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
             ->select('d.nama_departemen, iu.departemen_id, tu.tipe')
             ->select('su.status_unit as status_unit_name, iu.lokasi_unit as location_name')
-            ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
+            // Use status names (not numeric ids) to avoid mismatches across environments.
+            // Expected statuses for Unit Preparation picker:
+            // - AVAILABLE_STOCK
+            // - NON_ASSET_STOCK
+            // - BOOKED
+            // - RENTAL_ACTIVE
+            ->whereIn('su.status_unit', ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'])
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
 

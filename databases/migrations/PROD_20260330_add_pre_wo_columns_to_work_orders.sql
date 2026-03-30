@@ -15,14 +15,4 @@ ALTER TABLE `work_orders`
     ADD COLUMN `pre_wo_status_unit_id` TINYINT UNSIGNED NULL DEFAULT NULL
         COMMENT 'Snapshot of inventory_unit.status_unit_id before WO creation';
 
--- Verify
-SELECT
-    COLUMN_NAME,
-    DATA_TYPE,
-    IS_NULLABLE,
-    COLUMN_COMMENT
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME   = 'work_orders'
-  AND COLUMN_NAME IN ('pre_wo_workflow_status', 'pre_wo_status_unit_id')
-ORDER BY COLUMN_NAME;
+-- To verify, run: SHOW COLUMNS FROM `work_orders` LIKE 'pre_wo%';
