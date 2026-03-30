@@ -231,6 +231,58 @@ $currentLang = service('request')->getLocale();
         window.csrfToken = window.csrfTokenValue; // Alias for backward compatibility
         // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
 
+        /**
+         * Global AJAX HTTP error handler utility.
+         * Call from local error: callbacks to get proper 401/403 handling.
+         * Returns true if the error was handled (caller should suppress their own message).
+         * Returns false if caller should show its own default error message.
+         *
+         * Usage: error: function(xhr) { if (!window.handleHttpError(xhr)) showAlert('error','...'); }
+         */
+        window.handleHttpError = function(xhr) {
+            if (xhr.status === 401) {
+                const r = xhr.responseJSON || {};
+                if (window.OptimaAuth) {
+                    window.OptimaAuth.handleSessionExpired(r);
+                } else if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning', title: 'Sesi Berakhir',
+                        text: 'Sesi Anda telah berakhir. Silakan login kembali.',
+                        confirmButtonText: 'Login', allowOutsideClick: false,
+                    }).then(() => { window.location.href = <?= json_encode(base_url('auth/login')) ?>; });
+                } else {
+                    window.location.href = <?= json_encode(base_url('auth/login')) ?>;
+                }
+                return true;
+            }
+            if (xhr.status === 403) {
+                const r = xhr.responseJSON || {};
+                if (r.code === 'ACCESS_DENIED') {
+                    if (window.OptimaAuth) {
+                        window.OptimaAuth.handleAccessDenied(r);
+                    } else if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: r.message || 'Anda tidak memiliki akses ke fitur ini.' });
+                    } else {
+                        alert(r.message || 'Anda tidak memiliki akses ke fitur ini.');
+                    }
+                    return true;
+                }
+                // Non-JSON 403 or other 403 without ACCESS_DENIED = CSRF expiry (CI4 returns HTML on CSRF fail)
+                console.warn('🔐 CSRF token expired or session timeout (HTTP 403)');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning', title: 'Sesi Berakhir',
+                        text: 'Token keamanan telah kedaluwarsa. Halaman perlu di-refresh untuk melanjutkan.',
+                        confirmButtonText: 'Refresh Sekarang', allowOutsideClick: false,
+                    }).then(() => { window.location.reload(); });
+                } else {
+                    if (confirm('Sesi Anda telah berakhir. Refresh halaman sekarang?')) { window.location.reload(); }
+                }
+                return true;
+            }
+            return false;
+        };
+
         // ============================================================
         // GLOBAL AJAX ERROR HANDLER - Handle session expiration
         // ============================================================
@@ -944,6 +996,8 @@ $currentLang = service('request')->getLocale();
 
     <!-- Select2 (deferred) -->
     <script defer src="<?= base_url('assets/js/select2.min.js') ?>"></script>
+    <!-- Inventory unit Select2 shared (setelah Select2) -->
+    <script defer src="<?= base_url('assets/js/unit-select2.js') ?>?v=<?= file_exists(FCPATH . 'assets/js/unit-select2.js') ? filemtime(FCPATH . 'assets/js/unit-select2.js') : time() ?>"></script>
     
     <!-- Global Consistent Sorting Headers JavaScript -->
     <script>
@@ -1261,9 +1315,13 @@ $currentLang = service('request')->getLocale();
                             }
                             
                             // Detect CSRF token mismatch/expiry
-                            if (message.includes('not allowed') || 
+                            // CI4 returns HTML (not JSON) on CSRF failure — so responseJSON is null.
+                            // ACCESS_DENIED is already handled above, so any non-JSON 403 here = CSRF expiry.
+                            const isCsrfError = !xhr.responseJSON || 
+                                message.includes('not allowed') || 
                                 message.includes('CSRF') || 
-                                response.type === 'CodeIgniter\\Security\\Exceptions\\SecurityException') {
+                                response.type === 'CodeIgniter\\Security\\Exceptions\\SecurityException';
+                            if (isCsrfError) {
                                 
                                 console.warn('🔐 CSRF Token Expired - Session timeout detected');
                                 

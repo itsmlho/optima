@@ -756,11 +756,19 @@ class WorkOrderModel extends Model
             log_message('debug', "addStatusHistory: fromStatusId was null, retrieved from DB: $fromStatusId");
         }
         
+        $changedBy = (int)session()->get('user_id');
+        if ($changedBy <= 0) {
+            // Fallback: try to find any valid user in the users table
+            $fallbackUser = $this->db->table('users')->select('id')->limit(1)->get()->getRowArray();
+            $changedBy = $fallbackUser ? (int)$fallbackUser['id'] : null;
+            log_message('warning', "addStatusHistory: session user_id empty, using fallback user_id={$changedBy} for WO {$workOrderId}");
+        }
+
         $data = [
             'work_order_id' => $workOrderId,
             'from_status_id' => $fromStatusId,
             'to_status_id' => $toStatusId,
-            'changed_by' => session()->get('user_id') ?: 1, // Fallback to user 1 if no session
+            'changed_by' => $changedBy,
             'change_reason' => $notes,
             'changed_at' => date('Y-m-d H:i:s')
         ];

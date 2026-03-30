@@ -1435,8 +1435,10 @@ $(document).ready(function() {
                             showAlert('error', response.message);
                         }
                     },
-                    error: function() {
-                        showAlert('error', 'Gagal memperbarui status work order');
+                    error: function(xhr) {
+                        if (!window.handleHttpError(xhr)) {
+                            showAlert('error', 'Gagal memperbarui status work order');
+                        }
                     }
                 });
             }
@@ -1543,8 +1545,10 @@ $(document).ready(function() {
                     showAlert('error', response.message);
                 }
             },
-            error: function() {
-                showAlert('error', 'Failed to update work order status');
+            error: function(xhr) {
+                if (!window.handleHttpError(xhr)) {
+                    showAlert('error', 'Failed to update work order status');
+                }
             }
         });
     }
@@ -1593,8 +1597,10 @@ $(document).ready(function() {
                             showAlert('error', response.message);
                         }
                     },
-                    error: function() {
-                        showAlert('error', 'Failed to update work order status');
+                    error: function(xhr) {
+                        if (!window.handleHttpError(xhr)) {
+                            showAlert('error', 'Failed to update work order status');
+                        }
                     }
                 });
             }
@@ -3149,19 +3155,38 @@ $(document).ready(function() {
                 // console.log('📦 Units response:', response);
                 
                 if (response.success && response.data) {
+                    if (unitSelect.hasClass('select2-hidden-accessible')) {
+                        unitSelect.select2('destroy');
+                    }
                     unitSelect.empty().append('<option value="">-- Select Unit --</option>');
                     
                     if (response.data.length > 0) {
+                        const O = window.OptimaUnitSelect2;
+                        const useShared = typeof O !== 'undefined' && typeof O.optionDataAttributes === 'function';
+                        if (!useShared) {
+                            console.warn('unit-select2.js tidak termuat — dropdown unit memakai label sederhana.');
+                        }
                         response.data.forEach(function(unit) {
-                            // Format: "1 - Counter Balance - 3.5 TON - [STATUS] (Kontrak / Lokasi)"
-                            const jenis = unit.jenis || 'N/A';
-                            const kapasitas = unit.kapasitas || 'N/A';
-                            const status = unit.status || 'N/A';
-                            const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
-                            const lokasi = unit.lokasi || 'N/A';
-                            
-                            const displayText = `${unit.no_unit} - ${jenis} - ${kapasitas} - [${status}] (${pelanggan} / ${lokasi})`;
-                            unitSelect.append(`<option value="${unit.id}">${displayText}</option>`);
+                            if (useShared) {
+                                const attrs = O.optionDataAttributes(unit);
+                                const label = O.line1FromRow(O.normalizeRow(unit));
+                                const $opt = $('<option></option>').val(unit.id).text(label);
+                                Object.keys(attrs).forEach(function (k) {
+                                    const v = attrs[k];
+                                    if (v !== '' && v != null && v !== false) {
+                                        $opt.attr(k, v);
+                                    }
+                                });
+                                unitSelect.append($opt);
+                            } else {
+                                const jenis = unit.jenis || 'N/A';
+                                const kapasitas = unit.kapasitas || 'N/A';
+                                const status = unit.status || 'N/A';
+                                const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
+                                const lokasi = unit.lokasi || 'N/A';
+                                const displayText = `${unit.no_unit} - ${jenis} - ${kapasitas} - [${status}] (${pelanggan} / ${lokasi})`;
+                                unitSelect.append(`<option value="${unit.id}">${displayText}</option>`);
+                            }
                         });
                         
                         // Store units globally for area auto-fill
@@ -3176,18 +3201,28 @@ $(document).ready(function() {
                     setTimeout(function() {
                         try {
                             // Always initialize (we already destroyed above if needed)
-                            unitSelect.select2({
+                            const O2 = window.OptimaUnitSelect2;
+                            const s2cfg = {
                                 placeholder: '-- Select Unit --',
                                 allowClear: true,
                                 width: '100%',
                                 dropdownParent: $('#workOrderModal'),
-                                minimumInputLength: 0, // Enable search immediately
-                                minimumResultsForSearch: 0, // Always show search box
+                                minimumInputLength: 0,
+                                minimumResultsForSearch: 0,
                                 language: {
                                     noResults: function() { return "No results found"; },
                                     searching: function() { return "Searching..."; }
                                 }
-                            });
+                            };
+                            if (typeof O2 !== 'undefined' && typeof O2.templateResult === 'function') {
+                                s2cfg.templateResult = function (item) {
+                                    return O2.templateResult(item, {});
+                                };
+                                s2cfg.templateSelection = function (item) {
+                                    return O2.templateSelection(item, {});
+                                };
+                            }
+                            unitSelect.select2(s2cfg);
                             // console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
                         } catch (e) {
                             console.error('❌ Error initializing Select2:', e);
@@ -4385,14 +4420,34 @@ $(document).ready(function() {
             if (sourceUnitSelect.children().length <= 1) {
                 // Populate with full unit data like main Unit field
                 if (window.unitsData && Array.isArray(window.unitsData) && window.unitsData.length > 0) {
+                    const Ok = window.OptimaUnitSelect2;
+                    const useKanibalTpl = typeof Ok !== 'undefined' && typeof Ok.optionDataAttributes === 'function';
                     window.unitsData.forEach(function(unit) {
-                        const unitNumber = unit.no_unit || unit.unit_number;
-                        const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
-                        sourceUnitSelect.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                        const row = Object.assign({}, unit, {
+                            id: unit.id_inventory_unit || unit.id,
+                            id_inventory_unit: unit.id_inventory_unit,
+                            no_unit: unit.no_unit || unit.unit_number,
+                            merk: unit.merk_unit || unit.merk,
+                            pelanggan: unit.pelanggan || unit.customer_name
+                        });
+                        if (useKanibalTpl) {
+                            const attrs = Ok.optionDataAttributes(row);
+                            const label = Ok.line1FromRow(Ok.normalizeRow(row));
+                            const $opt = $('<option></option>').val(unit.id_inventory_unit).text(label);
+                            Object.keys(attrs).forEach(function (k) {
+                                const v = attrs[k];
+                                if (v !== '' && v != null && v !== false) {
+                                    $opt.attr(k, v);
+                                }
+                            });
+                            sourceUnitSelect.append($opt);
+                        } else {
+                            const unitNumber = unit.no_unit || unit.unit_number;
+                            const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
+                            sourceUnitSelect.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
+                        }
                     });
-                    
-                    // Convert to Select2
-                    sourceUnitSelect.select2({
+                    const kcfg = {
                         placeholder: '-- Pilih Unit Sumber --',
                         allowClear: true,
                         width: '100%',
@@ -4402,7 +4457,12 @@ $(document).ready(function() {
                             noResults: function() { return "Unit tidak ditemukan"; },
                             searching: function() { return "Mencari..."; }
                         }
-                    });
+                    };
+                    if (useKanibalTpl) {
+                        kcfg.templateResult = function (item) { return Ok.templateResult(item, {}); };
+                        kcfg.templateSelection = function (item) { return Ok.templateSelection(item, {}); };
+                    }
+                    sourceUnitSelect.select2(kcfg);
                 }
             }
             
