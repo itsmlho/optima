@@ -107,19 +107,39 @@
 .page-section {
     background: #fff;
     border: 1px solid #e3e8f0;
-    padding: 14px 16px;
+    padding: 0;
     margin-bottom: 12px;
     border-radius: 6px;
+    overflow: hidden;
 }
 
-.page-section > h5 {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #4a5568;
-    margin-bottom: 10px !important;
+.page-section-header {
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f0f4ff;
+    border-bottom: 1px solid #d8e2f8;
+}
+
+.page-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1a347a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.page-section-title i {
+    color: #4f6fb8;
+    font-size: 0.75rem;
+}
+
+.page-section > .row {
+    padding: 10px 12px;
 }
 
 .permission-item {
@@ -293,11 +313,13 @@ function renderPermissions(data) {
 
             html += `
                 <div class="page-section" data-page="${page}">
-                    <h5>
-                        <i class="fas fa-file-alt text-secondary"></i>
-                        ${ucfirst(page.replace(/_/g, ' '))}
-                        <span class="badge badge-soft-gray ms-1">${pageGrantedCount}/${permissions.length}</span>
-                    </h5>
+                    <div class="page-section-header">
+                        <span class="page-section-title">
+                            <i class="fas fa-file-alt"></i>
+                            ${ucfirst(page.replace(/_/g, ' '))}
+                        </span>
+                        <span class="badge badge-soft-gray">${pageGrantedCount}/${permissions.length}</span>
+                    </div>
                     <div class="row g-1">
             `;
 

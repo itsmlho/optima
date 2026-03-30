@@ -140,6 +140,9 @@
     </div>
 </div>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('css') ?>
 <style>
 .permission-row {
     border-bottom: 1px solid #dee2e6;
@@ -184,6 +187,9 @@
 }
 </style>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('javascript') ?>
 <script>
 const base_url = '<?= base_url() ?>';
 let currentUserId = null;
