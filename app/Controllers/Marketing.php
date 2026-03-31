@@ -3048,14 +3048,8 @@ class Marketing extends BaseDataTableController
                         $fabrikasiData = $unitStages['fabrikasi'];
                         $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
                         
-                        // Debug logging
-                        error_log("DEBUG: Fabrikasi data for unit $unitIndex: " . json_encode($fabrikasiData));
-                        error_log("DEBUG: Attachment ID: " . ($attachmentId ?? 'NULL'));
-                        
                         if ($attachmentId) {
                             $attachmentDetails = $this->componentHelper->getAttachmentByInventoryId($attachmentId);
-                            
-                            error_log("DEBUG: Attachment details: " . json_encode($attachmentDetails));
                         }
                     }
                     
@@ -3095,7 +3089,7 @@ class Marketing extends BaseDataTableController
                             $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'];
                         }
                     } else {
-                        $jenisUnitFormatted = 'REACH TRUCK';
+                        $jenisUnitFormatted = '-';
                     }
                     
                     // Format Charger: [merk] [tipe] (SN: [sn])
@@ -3134,25 +3128,25 @@ class Marketing extends BaseDataTableController
                             $attachmentFormatted .= ' (SN: ' . $attachmentDetails['sn_attachment'] . ')';
                         }
                     } else {
-                        $attachmentFormatted = 'ATT-' . $unitId;
+                        $attachmentFormatted = '-';
                     }
                     
                     $preparedList[] = [
                         'unit_index' => $unitIndex,
                         'unit_id' => $unitId,
                         'no_unit' => $noUnitFormatted,
-                        'serial_number' => $unitDetails['serial_number'] ?? 'SN-' . $unitId,
+                        'serial_number' => $unitDetails['serial_number'] ?? '',
                         'jenis_unit' => $jenisUnitFormatted,
-                        'departemen_name' => $unitDetails['departemen_name'] ?? 'ELECTRIC',
-                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '15 Ton',
-                        'mast_name' => $unitDetails['mast_name'] ?? 'Triplex (3-stage FFL) - ZSM450',
-                        'roda_name' => $unitDetails['roda_name'] ?? '3-Wheel',
-                        'ban_name' => $unitDetails['ban_name'] ?? 'Cushion (Ban Bantal)',
-                        'valve_name' => $unitDetails['valve_name'] ?? '3 Valve',
+                        'departemen_name' => $unitDetails['departemen_name'] ?? '',
+                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '',
+                        'mast_name' => $unitDetails['mast_name'] ?? '',
+                        'roda_name' => $unitDetails['roda_name'] ?? '',
+                        'ban_name' => $unitDetails['ban_name'] ?? '',
+                        'valve_name' => $unitDetails['valve_name'] ?? '',
                         'baterai_sn' => $bateraiFormatted,
                         'charger_sn' => $chargerFormatted,
                         'attachment_sn' => $attachmentFormatted,
-                        'aksesoris' => $this->formatAksesoris($unitData['aksesoris_tersedia'] ?? 'LAMPU UTAMA, ROTARY LAMP, SENSOR PARKING, HORN SPEAKER, APAR 1 KG, BEACON'),
+                        'aksesoris' => $this->formatAksesoris($unitData['aksesoris_tersedia'] ?? ''),
                         'combined_notes' => implode(' | ', $combinedNotes),
                         'is_in_active_di' => $isInActiveDI,
                         'active_di_info' => $activeDIInfo

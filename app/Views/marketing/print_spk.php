@@ -530,12 +530,13 @@ if (!function_exists('resolvePrintSignerName')) {
                         <div>- Attachment</div>
                         <div>- Ban (Tire)</div>
                         <div>- Mast (Tinggi Angkat)</div>
+                        <div>- Fork / Garpu</div>
                     </div>
                 </td>
                 <td class="align-top">
                     <?php 
                         // Use quotation_specifications data for Equipment section (data permintaan marketing)
-                        $jumlahUnit = $k['jumlah_dibutuhkan'] ?? $spk['jumlah_unit'] ?? '';
+                        $jumlahUnit = $spk['jumlah_unit'] ?? '';
                         $merkUnit = $k['merk_unit'] ?? '';
                         $modelUnit = $k['model_unit'] ?? '';
                         $jenisUnit = $k['kontrak_jenis_unit'] ?? $k['jenis_unit'] ?? '';
@@ -547,6 +548,15 @@ if (!function_exists('resolvePrintSignerName')) {
                         
                         // Attachment dari quotation_specifications (bukan dari spesifikasi SPK)
                         $attachmentType = $k['attachment_tipe'] ?? $k['attachment_name'] ?? '';
+                        
+                        // Extract fork/garpu from aksesoris
+                        $forkItems = [];
+                        $aksArr = is_array($k['aksesoris']) ? $k['aksesoris'] : (json_decode($k['aksesoris'] ?? '[]', true) ?: []);
+                        $forkMap = ['forks' => 'Standar', 'laser_fork' => 'Laser Fork', 'fork_extension' => 'Fork Extension'];
+                        foreach ($forkMap as $forkVal => $forkLabel) {
+                            if (in_array($forkVal, (array)$aksArr)) $forkItems[] = $forkLabel;
+                        }
+                        $forkText = !empty($forkItems) ? implode(', ', $forkItems) : '-';
                         
                         // Notes untuk custom requirements (Battery, Charger, Valve custom, dll)
                         $customNotes = $k['notes'] ?? '';
@@ -571,6 +581,7 @@ if (!function_exists('resolvePrintSignerName')) {
                         <div class="val"><?= esc($attachmentType ?: '..............................') ?></div>
                         <div class="val"><?= esc($banName ?: '..............................') ?></div>
                         <div class="val"><?= esc($mastName ?: '..............................') ?></div>
+                        <div class="val"><?= esc($forkText) ?></div>
                     </div>
                 </td>
             </tr>

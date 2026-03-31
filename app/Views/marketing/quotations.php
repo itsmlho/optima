@@ -532,197 +532,9 @@ window.addEventListener('DOMContentLoaded', function() {
                             </button>
                         </div>
                         <div class="col-12">
-                            <div class="row g-2">
-                                <div class="col-12 mt-1">
-                                    <div class="fw-semibold text-success">Aksesori Standar (Bawaan Pabrik)</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="main_light" id="acc_main_light">
-                                        <label class="form-check-label" for="acc_main_light">Main Light Set (Headlight, Reverse, Signal, Stop Lamp)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="work_light" id="acc_work_light">
-                                        <label class="form-check-label" for="acc_work_light">Work Light (Lampu Sorot Depan/Tiang)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="rotary_lamp" id="acc_rotary_lamp">
-                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp (Lampu Peringatan Berputar)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="back_buzzer" id="acc_back_buzzer">
-                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer (Alarm Mundur)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_klason" id="acc_horn_klason">
-                                        <label class="form-check-label" for="acc_horn_klason">Horn / Klakson (Tipe Standar)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="mirror" id="acc_mirror">
-                                        <label class="form-check-label" for="acc_mirror">Mirror / Spion (Kiri & Kanan)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt" id="acc_safety_belt">
-                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Standar (Manual)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="load_backrest" id="acc_load_backrest">
-                                        <label class="form-check-label" for="acc_load_backrest">Load Backrest</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="forks" id="acc_forks">
-                                        <label class="form-check-label" for="acc_forks">Forks (Sepasang Garpu Standar)</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="overhead_guard" id="acc_overhead_guard">
-                                        <label class="form-check-label" for="acc_overhead_guard">Overhead Guard</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="document_holder" id="acc_document_holder">
-                                        <label class="form-check-label" for="acc_document_holder">Document Holder</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="tool_kit" id="acc_tool_kit">
-                                        <label class="form-check-label" for="acc_tool_kit">Tool Kit</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="apar_bracket" id="acc_apar_bracket">
-                                        <label class="form-check-label" for="acc_apar_bracket">APAR + Bracket</label>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 mt-3">
-                                    <div class="fw-semibold text-primary">Aksesori Tambahan (Optional / Safety Upgrade)</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="blue_spot" id="acc_blue_spot">
-                                        <label class="form-check-label" for="acc_blue_spot">Blue Spot</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="red_line" id="acc_red_line">
-                                        <label class="form-check-label" for="acc_red_line">Red Line</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera_ai" id="acc_camera_ai">
-                                        <label class="form-check-label" for="acc_camera_ai">Camera AI</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera" id="acc_camera">
-                                        <label class="form-check-label" for="acc_camera">Camera Monitor</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="sensor_parking" id="acc_sensor_parking">
-                                        <label class="form-check-label" for="acc_sensor_parking">Sensor Parking</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="speed_limiter" id="acc_speed_limiter">
-                                        <label class="form-check-label" for="acc_speed_limiter">Speed Limiter</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="laser_fork" id="acc_laser_fork">
-                                        <label class="form-check-label" for="acc_laser_fork">Laser Fork</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="voice_announcer" id="acc_voice_announcer">
-                                        <label class="form-check-label" for="acc_voice_announcer">Voice Announcer</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_speaker" id="acc_horn_speaker">
-                                        <label class="form-check-label" for="acc_horn_speaker">Horn Speaker</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="bio_metric" id="acc_bio_metric">
-                                        <label class="form-check-label" for="acc_bio_metric">Bio Metric</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt_interlock" id="acc_safety_belt_interlock">
-                                        <label class="form-check-label" for="acc_safety_belt_interlock">Safety Belt Interlock</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="spark_arrestor" id="acc_spark_arrestor">
-                                        <label class="form-check-label" for="acc_spark_arrestor">Spark Arrestor</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="anti_static_strap" id="acc_anti_static_strap">
-                                        <label class="form-check-label" for="acc_anti_static_strap">Anti-Static Strap</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="acrylic" id="acc_acrylic">
-                                        <label class="form-check-label" for="acc_acrylic">Acrylic Roof/Windshield</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="first_aid_kit" id="acc_first_aid_kit">
-                                        <label class="form-check-label" for="acc_first_aid_kit">First Aid Kit</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="wheel_stopper_chock" id="acc_wheel_stopper_chock">
-                                        <label class="form-check-label" for="acc_wheel_stopper_chock">Wheel Stopper / Chock</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="fork_extension" id="acc_fork_extension">
-                                        <label class="form-check-label" for="acc_fork_extension">Fork Extension</label>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="accGridQuotation"></div>
                         </div>
-                        
+
                         <!-- Notes Section -->
                         <div class="col-12"><hr><h6><i class="fas fa-sticky-note me-2"></i>Catatan & Custom Requirements</h6></div>
                         <div class="col-12">
@@ -1211,6 +1023,18 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <?= $this->section('javascript') ?>
 <?= $this->include('partials/accessory_js') ?>
+<script>
+// Render aksesoris grid (quotation form) — runs once; safe for modal reuse
+$(function() {
+    OptimaAccessory.renderGroupSections('#accGridQuotation',
+        ['quotationStandard', 'quotationExtra'], {
+        name: 'aksesoris[]',
+        idPrefix: 'acc_',
+        columnsClass: 'col-md-4 col-sm-6',
+        style: 'inline'
+    });
+});
+</script>
 <script>
 /**
  * Quotations Module - Using Optima Badge Standards (optima-pro.css)
@@ -3553,21 +3377,9 @@ const tr = (idText, enText) => isEnLocale ? enText : idText;
 function formatAccessoryLabel(value) {
     return window.OptimaAccessory ? window.OptimaAccessory.formatLabel(value) : String(value || '').trim();
 }
-const standardAccessories = [
-    'main_light',
-    'work_light',
-    'rotary_lamp',
-    'back_buzzer',
-    'horn_klason',
-    'safety_belt',
-    'mirror',
-    'load_backrest',
-    'forks',
-    'overhead_guard',
-    'document_holder',
-    'tool_kit',
-    'apar_bracket'
-];
+const standardAccessories = (window.OptimaAccessory && OptimaAccessory.getGroupItemCodes)
+    ? OptimaAccessory.getGroupItemCodes('quotationStandard')
+    : ['main_light','work_light','rotary_lamp','back_buzzer','horn_klason','mirror','safety_belt','load_backrest','forks','overhead_guard','document_holder','tool_kit','apar_bracket'];
 
 $(document).on('click', '#btnSetAksesoriStandar', function() {
     const accessoryInputs = $('[name="aksesoris[]"]');

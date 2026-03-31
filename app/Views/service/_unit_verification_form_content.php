@@ -20,6 +20,7 @@ $showHistoryBanner = $showHistoryBanner ?? true;
 $showPrintButton = $showPrintButton ?? false;
 $formIdPrefix = $formIdPrefix ?? 'verify';
 ?>
+<?= $this->include('partials/accessory_js') ?>
 
 <!-- Alert Instructions -->
 <div class="alert alert-info">
@@ -276,222 +277,8 @@ $formIdPrefix = $formIdPrefix ?? 'verify';
         <div class="alert alert-info">
             <small><strong>📋 Instruksi:</strong> Centang aksesoris yang <strong>terpasang dan berfungsi</strong> pada unit ini. Aksesoris yang sudah tercatat akan otomatis ter-checklist.</small>
         </div>
-        
-        <!-- Aksesoris Unit -->
-        <div class="mb-4">
-            <h6 class="text-primary mb-3"><i class="fas fa-truck me-2"></i>Aksesoris Unit</h6>
-            <div class="row">
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="LAMPU UTAMA" id="acc-lampu">
-                        <label class="form-check-label" for="acc-lampu">
-                            Lampu (Utama, Mundur, Sign, Stop)
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="ROTARY LAMP" id="acc-rotary">
-                        <label class="form-check-label" for="acc-rotary">
-                            Rotary Lamp
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SENSOR PARKING" id="acc-sensor">
-                        <label class="form-check-label" for="acc-sensor">
-                            Sensor Parking
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="HORN SPEAKER" id="acc-horn">
-                        <label class="form-check-label" for="acc-horn">
-                            Horn Speaker
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="APAR 1 KG" id="acc-apar1">
-                        <label class="form-check-label" for="acc-apar1">
-                            APAR 1 KG
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="APAR 3 KG" id="acc-apar3">
-                        <label class="form-check-label" for="acc-apar3">
-                            APAR 3 KG
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="BEACON" id="acc-beacon">
-                        <label class="form-check-label" for="acc-beacon">
-                            Beacon
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="TELEMATIC" id="acc-telematic">
-                        <label class="form-check-label" for="acc-telematic">
-                            Telematic
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Aksesoris Keamanan -->
-        <div class="mb-4">
-            <h6 class="text-success mb-3"><i class="fas fa-shield-alt me-2"></i>Aksesoris Keamanan</h6>
-            <div class="row">
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="BLUE SPOT" id="acc-blue-spot">
-                        <label class="form-check-label" for="acc-blue-spot">
-                            Blue Spot
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="RED LINE" id="acc-red-line">
-                        <label class="form-check-label" for="acc-red-line">
-                            Red Line
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="WORK LIGHT" id="acc-work-light">
-                        <label class="form-check-label" for="acc-work-light">
-                            Work Light
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="BACK BUZZER" id="acc-back-buzzer">
-                        <label class="form-check-label" for="acc-back-buzzer">
-                            Back Buzzer
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA AI" id="acc-camera-ai">
-                        <label class="form-check-label" for="acc-camera-ai">
-                            Camera AI
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="CAMERA MONITOR" id="acc-camera">
-                        <label class="form-check-label" for="acc-camera">
-                            Camera Monitor
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SPEED LIMITER" id="acc-speed-limiter">
-                        <label class="form-check-label" for="acc-speed-limiter">
-                            Speed Limiter
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="LASER FORK" id="acc-laser-fork">
-                        <label class="form-check-label" for="acc-laser-fork">
-                            Laser Fork
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="VOICE ANNOUNCER" id="acc-voice">
-                        <label class="form-check-label" for="acc-voice">
-                            Voice Announcer
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aksesoris Lainnya -->
-        <div class="mb-4">
-            <h6 class="text-warning mb-3"><i class="fas fa-plus-circle me-2"></i>Aksesoris Lainnya</h6>
-            <div class="row">
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="HORN KLASON" id="acc-klaxon">
-                        <label class="form-check-label" for="acc-klaxon">
-                            Horn Klason
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="BIO METRIC" id="acc-bio-metric">
-                        <label class="form-check-label" for="acc-bio-metric">
-                            Bio Metric
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="ACRYLIC" id="acc-acrylic">
-                        <label class="form-check-label" for="acc-acrylic">
-                            Acrylic
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="FIRST AID KIT" id="acc-p3k">
-                        <label class="form-check-label" for="acc-p3k">
-                            First Aid Kit
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SPARK ARRESTOR" id="acc-spars">
-                        <label class="form-check-label" for="acc-spars">
-                            Spark Arrestor
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT INTERLOCK" id="acc-safety-belt">
-                        <label class="form-check-label" for="acc-safety-belt">
-                            Safety Belt Interlock
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="MIRROR" id="acc-mirror"><label class="form-check-label" for="acc-mirror">Mirror / Spion</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="SAFETY BELT STANDAR" id="acc-safety-belt-std"><label class="form-check-label" for="acc-safety-belt-std">Safety Belt Standar</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="LOAD BACKREST" id="acc-load-backrest"><label class="form-check-label" for="acc-load-backrest">Load Backrest</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORKS" id="acc-forks"><label class="form-check-label" for="acc-forks">Forks</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="OVERHEAD GUARD" id="acc-overhead-guard"><label class="form-check-label" for="acc-overhead-guard">Overhead Guard</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="DOCUMENT HOLDER" id="acc-document-holder"><label class="form-check-label" for="acc-document-holder">Document Holder</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="TOOL KIT" id="acc-tool-kit"><label class="form-check-label" for="acc-tool-kit">Tool Kit</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="APAR BRACKET" id="acc-apar-bracket"><label class="form-check-label" for="acc-apar-bracket">APAR + Bracket</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="ANTI STATIC STRAP" id="acc-anti-static-strap"><label class="form-check-label" for="acc-anti-static-strap">Anti-Static Strap</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="WHEEL STOPPER CHOCK" id="acc-wheel-stopper-chock"><label class="form-check-label" for="acc-wheel-stopper-chock">Wheel Stopper / Chock</label></div></div>
-                <div class="col-md-3 col-sm-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="accessories[]" value="FORK EXTENSION" id="acc-fork-extension"><label class="form-check-label" for="acc-fork-extension">Fork Extension</label></div></div>
-            </div>
-        </div>
+        <div id="accGridVerificationContent"></div>
 
         <!-- Summary Aksesoris -->
         <div class="alert alert-light">
@@ -503,14 +290,30 @@ $formIdPrefix = $formIdPrefix ?? 'verify';
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-accessories">
                         <i class="fas fa-times me-1"></i>Clear All
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-select-common">
-                        <i class="fas fa-check me-1"></i>Select Common
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<script>
+(function () {
+    function renderAccGrid() {
+        if (!window.OptimaAccessory || !OptimaAccessory.renderGroupSections) return;
+        OptimaAccessory.renderGroupSections('#accGridVerificationContent',
+            ['verificationUnit', 'verificationSafety', 'verificationOther'], {
+            name: 'accessories[]',
+            idPrefix: 'acc_fc_',
+            columnsClass: 'col-md-3 col-sm-6 mb-2',
+            style: 'section'
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderAccGrid);
+    } else {
+        renderAccGrid();
+    }
+})();
+</script>
 
 <!-- Verification Info -->
 <div class="card mb-4">
