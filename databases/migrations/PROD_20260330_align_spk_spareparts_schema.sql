@@ -1,12 +1,17 @@
 -- ============================================================================
--- Migration: Align spk_spareparts schema to current dev schema
--- Date: 2026-03-30
+-- Migration: Align spk_spareparts schema + add stage_name
+-- Date: 2026-03-31 (revised from 2026-03-30)
 -- Applies to: PRODUCTION (Hostinger)
 -- Why: PROD_20260312_create_spk_spareparts.sql used old schema with unit_id NOT NULL
 --      and was missing columns: item_type, quantity_brought, source_type,
 --      source_unit_id, is_from_warehouse, is_additional, sparepart_validated.
 --      The new code (post 2026-03-14) cannot insert rows into the old schema,
 --      causing "Gagal menyimpan sparepart" errors on every save attempt.
+-- Added (2026-03-31):
+--   stage_name — records which workflow stage (persiapan/fabrikasi/painting/pdi)
+--               the sparepart was requested from. NULL = not specified.
+--   unit_id    — NULL at request time. Filled during PDI validation to map
+--               which specific unit the sparepart was actually installed on.
 -- Risk: Table should be empty in production (all inserts were failing).
 --       Verify with: SELECT COUNT(*) FROM spk_spareparts;
 -- ============================================================================
@@ -27,7 +32,8 @@ CREATE TABLE `spk_spareparts` (
     `spk_id` INT UNSIGNED NOT NULL COMMENT 'FK to spk.id',
 
     -- Sparepart identification
-    `unit_id` INT UNSIGNED NULL COMMENT 'FK to inventory_unit (nullable, for kanibal tracking)',
+    `unit_id` INT UNSIGNED NULL COMMENT 'FK to inventory_unit — NULL at request time, filled during PDI validation to map usage to specific unit',
+    `stage_name` ENUM('persiapan_unit','fabrikasi','painting','pdi') NULL COMMENT 'Workflow stage when sparepart was requested — NULL = not specified',
     `sparepart_code` VARCHAR(50) NULL COMMENT 'Official sparepart code (nullable for manual entries)',
     `sparepart_name` VARCHAR(255) NOT NULL COMMENT 'Sparepart name/description',
     `item_type` ENUM('sparepart','tool') DEFAULT 'sparepart' COMMENT 'Item classification',
@@ -54,6 +60,8 @@ CREATE TABLE `spk_spareparts` (
 
     -- Indexes
     INDEX `idx_spk_spareparts_spk` (`spk_id`),
+    INDEX `idx_spk_spareparts_stage` (`stage_name`),
+    INDEX `idx_spk_spareparts_unit` (`unit_id`),
     INDEX `idx_spk_spareparts_code` (`sparepart_code`),
     INDEX `idx_spk_spareparts_source` (`source_type`),
     INDEX `idx_spk_spareparts_validated` (`sparepart_validated`),
@@ -62,6 +70,8 @@ CREATE TABLE `spk_spareparts` (
     -- Foreign keys
     CONSTRAINT `fk_spk_spareparts_spk`
         FOREIGN KEY (`spk_id`) REFERENCES `spk`(`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_spk_spareparts_unit`
+        FOREIGN KEY (`unit_id`) REFERENCES `inventory_unit`(`id_inventory_unit`) ON DELETE SET NULL,
     CONSTRAINT `fk_spk_spareparts_source_unit`
         FOREIGN KEY (`source_unit_id`) REFERENCES `inventory_unit`(`id_inventory_unit`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -104,7 +114,7 @@ SELECT 'spk_spareparts' AS table_name, COUNT(*) AS row_count FROM spk_spareparts
 UNION ALL
 SELECT 'spk_sparepart_returns', COUNT(*) FROM spk_sparepart_returns;
 
-SHOW CREATE TABLE spk_spareparts\G
+SHOW CREATE TABLE spk_spareparts;
 -- ============================================================================
 -- End of Migration
 -- ============================================================================

@@ -857,10 +857,14 @@ $routes->group('warehouse', static function ($routes) {
             $routes->get('export/attachment',           'Warehouse\AttachmentInventoryController::exportAttachmentInventory');
             $routes->get('export/battery',              'Warehouse\AttachmentInventoryController::exportBatteryInventory');
             $routes->get('export/charger',              'Warehouse\AttachmentInventoryController::exportChargerInventory');
+            $routes->get('export/fork',                 'Warehouse\AttachmentInventoryController::exportAttachmentInventory');
             $routes->get('units',                       'Warehouse\AttachmentInventoryController::getUnits');
             $routes->get('master/attachment',           'Warehouse\AttachmentInventoryController::masterAttachment');
             $routes->get('master/baterai',              'Warehouse\AttachmentInventoryController::masterBaterai');
             $routes->get('master/charger',              'Warehouse\AttachmentInventoryController::masterCharger');
+            $routes->get('master/fork',                 'Warehouse\AttachmentInventoryController::masterForks');
+            $routes->get('fork-stocks',                'Warehouse\AttachmentInventoryController::forkStocks');
+            $routes->post('fork-stocks',               'Warehouse\AttachmentInventoryController::forkStocks');
             $routes->get('master-merk/(:segment)',      'Warehouse\AttachmentInventoryController::masterMerk/$1');
             $routes->get('master-tipe/(:segment)',      'Warehouse\AttachmentInventoryController::masterTipe/$1');
             $routes->get('master-jenis/(:segment)',     'Warehouse\AttachmentInventoryController::masterJenis/$1');

@@ -7,6 +7,7 @@ use App\Traits\ActivityLoggingTrait;
 use App\Models\InventoryAttachmentModel;
 use App\Models\InventoryBatteryModel;
 use App\Models\InventoryChargerModel;
+use App\Models\InventoryForkModel;
 use App\Services\ExportService;
 
 class AttachmentInventoryController extends BaseController
@@ -204,6 +205,9 @@ class AttachmentInventoryController extends BaseController
                     case 'charger':
                         $model = new InventoryChargerModel();
                         break;
+                    case 'fork':
+                        $model = new InventoryForkModel();
+                        break;
                     case 'attachment':
                     default:
                         $model = new InventoryAttachmentModel();
@@ -238,10 +242,12 @@ class AttachmentInventoryController extends BaseController
         $attachmentModel = new InventoryAttachmentModel();
         $batteryModel = new InventoryBatteryModel();
         $chargerModel = new InventoryChargerModel();
+        $forkModel = new InventoryForkModel();
 
         $attachmentStats = $attachmentModel->getStats();
         $batteryStats = $batteryModel->getStats();
         $chargerStats = $chargerModel->getStats();
+        $forkStats = $forkModel->getStats();
 
         // Send stats per type so JavaScript can update status counts dynamically
         $detailed_stats = [
@@ -249,12 +255,14 @@ class AttachmentInventoryController extends BaseController
                 'attachment' => $attachmentStats['total'],
                 'battery' => $batteryStats['total'],
                 'charger' => $chargerStats['total'],
-                'total' => $attachmentStats['total'] + $batteryStats['total'] + $chargerStats['total']
+                'fork' => $forkStats['total'],
+                'total' => $attachmentStats['total'] + $batteryStats['total'] + $chargerStats['total'] + $forkStats['total']
             ],
             // Stats per type for dynamic status filter updates
             'attachment' => $attachmentStats,
             'battery' => $batteryStats,
             'charger' => $chargerStats,
+            'fork' => $forkStats,
             // Default to attachment stats (initial selected type)
             'by_status' => [
                 'all' => $attachmentStats['total'],
@@ -287,7 +295,7 @@ class AttachmentInventoryController extends BaseController
         }
 
         try {
-            // Try to find in all 3 tables (with tipe_item to differentiate)
+            // Try to find in all tables (with tipe_item to differentiate)
             $attachment = null;
             $tipe = null;
 
@@ -318,6 +326,14 @@ class AttachmentInventoryController extends BaseController
                     $tipe = 'charger';
                 }
             }
+            if (!$attachment) {
+                $forkModel = new InventoryForkModel();
+                $attachment = $forkModel->getForkDetail($id);
+                if ($attachment) {
+                    $attachment['tipe_item'] = 'fork';
+                    $tipe = 'fork';
+                }
+            }
 
             if (!$attachment) {
                 return $this->response->setJSON([
@@ -341,6 +357,11 @@ class AttachmentInventoryController extends BaseController
                 $attachment['attachment_status'] = $attachment['status'] ?? '';
                 $attachment['id_inventory_unit'] = $attachment['inventory_unit_id'] ?? null;
             } elseif ($tipe === 'charger') {
+                $attachment['kondisi_fisik'] = $attachment['physical_condition'] ?? '';
+                $attachment['lokasi_penyimpanan'] = $attachment['storage_location'] ?? '';
+                $attachment['attachment_status'] = $attachment['status'] ?? '';
+                $attachment['id_inventory_unit'] = $attachment['inventory_unit_id'] ?? null;
+            } elseif ($tipe === 'fork') {
                 $attachment['kondisi_fisik'] = $attachment['physical_condition'] ?? '';
                 $attachment['lokasi_penyimpanan'] = $attachment['storage_location'] ?? '';
                 $attachment['attachment_status'] = $attachment['status'] ?? '';
@@ -388,6 +409,8 @@ class AttachmentInventoryController extends BaseController
                 $attachment = $componentHelper->getBatteryByInventoryId($id);
             } elseif ($componentType === 'charger') {
                 $attachment = $componentHelper->getChargerByInventoryId($id);
+            } elseif ($componentType === 'fork') {
+                $attachment = $componentHelper->getForkByInventoryId($id);
             } else {
                 $attachment = $componentHelper->getAttachmentByInventoryId($id);
             }
@@ -399,7 +422,7 @@ class AttachmentInventoryController extends BaseController
                 ])->setStatusCode(404);
             }
 
-            $sn         = $attachment['sn_attachment'] ?? $attachment['sn_baterai'] ?? $attachment['sn_charger'] ?? '-';
+            $sn         = $attachment['sn_attachment'] ?? $attachment['sn_baterai'] ?? $attachment['sn_charger'] ?? $attachment['sn_fork'] ?? '-';
             $tipeLabel  = ucfirst($componentType ?? 'item');
 
             // ===== REAL LOG EVENTS =====
@@ -475,6 +498,7 @@ class AttachmentInventoryController extends BaseController
                     'attachment' => 'ATTACHMENT',
                     'battery'    => 'BATTERY',
                     'charger'    => 'CHARGER',
+                    'fork'       => 'FORK',
                 ];
                 $auditComponentType = $auditTypeMap[$componentType] ?? null;
 
@@ -656,6 +680,7 @@ class AttachmentInventoryController extends BaseController
                 'attachment' => 'ATTACHMENT',
                 'battery'    => 'BATTERY',
                 'charger'    => 'CHARGER',
+                'fork'       => 'FORK',
             ];
             $movementComponentType = $movementTypeMap[$componentType] ?? null;
 
@@ -781,6 +806,9 @@ class AttachmentInventoryController extends BaseController
                 case 'charger':
                     $model = new InventoryChargerModel();
                     break;
+                case 'fork':
+                    $model = new InventoryForkModel();
+                    break;
                 default:
                     $model = new InventoryAttachmentModel();
                     $tipeItem = 'attachment';
@@ -841,10 +869,11 @@ class AttachmentInventoryController extends BaseController
         }
 
         try {
-            // Find the item across all 3 tables
+            // Find the item across all tables
             $attachmentModel = new InventoryAttachmentModel();
             $batteryModel    = new InventoryBatteryModel();
             $chargerModel    = new InventoryChargerModel();
+            $forkModel       = new InventoryForkModel();
 
             $item     = $attachmentModel->find($id);
             $tipeItem = 'attachment';
@@ -857,6 +886,10 @@ class AttachmentInventoryController extends BaseController
             if (!$item) {
                 $item = $chargerModel->find($id);
                 if ($item) { $tipeItem = 'charger'; $model = $chargerModel; }
+            }
+            if (!$item) {
+                $item = $forkModel->find($id);
+                if ($item) { $tipeItem = 'fork'; $model = $forkModel; }
             }
 
             if (!$item) {
@@ -955,6 +988,61 @@ class AttachmentInventoryController extends BaseController
                     'item_number'     => 'C' . str_pad($count, 4, '0', STR_PAD_LEFT),
                     'charger_type_id' => $typeId,
                     'serial_number'   => $this->request->getPost('sn_charger') ?: null,
+                ]);
+            } elseif ($tipeItem === 'fork') {
+                $typeId = (int)$this->request->getPost('fork_id');
+                $qtyPairs = max(1, (int)$this->request->getPost('qty_pairs'));
+                if (!$typeId) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Fork Type is required']);
+                }
+
+                $db = \Config\Database::connect();
+                $db->transStart();
+
+                $stockCount = (int)$db->table('inventory_fork_stocks')->countAllResults() + 1;
+                $stockItemNumber = 'FS' . str_pad((string)$stockCount, 4, '0', STR_PAD_LEFT);
+                $db->table('inventory_fork_stocks')->insert([
+                    'item_number' => $stockItemNumber,
+                    'fork_id' => $typeId,
+                    'qty_available_pairs' => $qtyPairs,
+                    'physical_condition' => $commonData['physical_condition'],
+                    'status' => $commonData['status'],
+                    'storage_location' => $commonData['storage_location'],
+                    'received_at' => $commonData['received_at'],
+                    'notes' => $commonData['notes'],
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $stockId = (int)$db->insertID();
+
+                $forkModel = new InventoryForkModel();
+                $base = (int)$forkModel->countAll() + 1;
+                for ($i = 0; $i < $qtyPairs; $i++) {
+                    $forkModel->insert([
+                        'item_number' => 'F' . str_pad((string)($base + $i), 4, '0', STR_PAD_LEFT),
+                        'fork_id' => $typeId,
+                        'fork_stock_id' => $stockId,
+                        'qty_pairs' => 1,
+                        'physical_condition' => $commonData['physical_condition'],
+                        'status' => 'AVAILABLE',
+                        'storage_location' => $commonData['storage_location'],
+                        'received_at' => $commonData['received_at'],
+                        'notes' => $commonData['notes'],
+                    ]);
+                }
+
+                $db->transComplete();
+                if ($db->transStatus() === false) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Failed to add fork stock']);
+                }
+
+                $this->logActivity('item_created', 'inventory_attachment', $stockId, "Fork stock added ({$qtyPairs} pair)", [
+                    'workflow_stage' => 'item_created',
+                    'relations' => ['inventory_attachment' => [$stockId]]
+                ]);
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Fork stock berhasil ditambahkan'
                 ]);
 
             } else {
@@ -1492,6 +1580,7 @@ class AttachmentInventoryController extends BaseController
                 ->select('(SELECT COUNT(*) FROM inventory_attachments WHERE inventory_unit_id = iu.id_inventory_unit) as has_attachment')
                 ->select('(SELECT COUNT(*) FROM inventory_batteries WHERE inventory_unit_id = iu.id_inventory_unit) as has_battery')
                 ->select('(SELECT COUNT(*) FROM inventory_chargers WHERE inventory_unit_id = iu.id_inventory_unit) as has_charger')
+                ->select('(SELECT COUNT(*) FROM inventory_forks WHERE inventory_unit_id = iu.id_inventory_unit AND detached_at IS NULL) as has_fork')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
                 ->orderBy('iu.no_unit', 'ASC')
@@ -1521,8 +1610,8 @@ class AttachmentInventoryController extends BaseController
         }
 
         try {
-            $attachmentModel = new InventoryAttachmentModel();
             $db = \Config\Database::connect();
+            $componentHelper = new \App\Models\InventoryComponentHelper();
 
             $attachmentId = $this->request->getPost('attachment_id');
             $unitId = $this->request->getPost('unit_id');
@@ -1535,16 +1624,14 @@ class AttachmentInventoryController extends BaseController
                 ]);
             }
 
-            // Get attachment type
-            $newAttachment = $attachmentModel->find($attachmentId);
-            if (!$newAttachment) {
+            // Get component type
+            $attachmentType = $componentHelper->detectComponentType($attachmentId);
+            if (!$attachmentType) {
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Attachment tidak ditemukan'
                 ]);
             }
-
-            $attachmentType = $newAttachment['tipe_item'];
 
             // Get unit number
             $unit = $db->table('inventory_unit')
@@ -1566,6 +1653,7 @@ class AttachmentInventoryController extends BaseController
                 'battery' => 'inventory_batteries',
                 'charger' => 'inventory_chargers',
                 'attachment' => 'inventory_attachments',
+                'fork' => 'inventory_forks',
                 default => null
             };
 
@@ -1584,12 +1672,29 @@ class AttachmentInventoryController extends BaseController
 
             if ($existingAttachment) {
                 // Auto-detach existing attachment
-                $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement');
+                $existingId = $existingAttachment['id'] ?? $existingAttachment['id_inventory_attachment'] ?? null;
+                if ($attachmentType === 'fork' && $existingId) {
+                    $db->table('inventory_forks')->where('id', $existingId)->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'detached_at' => date('Y-m-d H:i:s'),
+                        'storage_location' => 'Workshop',
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                    $stockId = $existingAttachment['fork_stock_id'] ?? null;
+                    $qty = (int)($existingAttachment['qty_pairs'] ?? 1);
+                    if ($stockId) {
+                        $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?', [$qty, $stockId]);
+                    }
+                } elseif ($existingId) {
+                    $attachmentModel = new InventoryAttachmentModel();
+                    $attachmentModel->detachFromUnit($existingId, 'Auto-detach karena ada replacement');
+                }
                 $message = "Attachment lama dilepas dan dipasang yang baru ke Unit {$unit['no_unit']}";
 
                 // Log detach
-                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari Unit {$unit['no_unit']} (auto)", [
-                    'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
+                $this->logActivity('auto_detach', 'inventory_attachment', (int)($existingAttachment['id'] ?? $existingAttachment['id_inventory_attachment'] ?? 0), "Attachment lama dilepas dari Unit {$unit['no_unit']} (auto)", [
+                    'old_attachment_id' => $existingAttachment['id'] ?? $existingAttachment['id_inventory_attachment'] ?? null,
                     'new_attachment_id' => $attachmentId,
                     'unit_id' => $unitId
                 ]);
@@ -1597,8 +1702,33 @@ class AttachmentInventoryController extends BaseController
                 $message = "Berhasil memasang attachment ke Unit {$unit['no_unit']}";
             }
 
-            // Attach new attachment (trigger akan auto-update status dan lokasi)
-            $result = $attachmentModel->attachToUnit($attachmentId, $unitId, $unit['no_unit']);
+            if ($attachmentType === 'fork') {
+                $fork = $db->table('inventory_forks')->where('id', $attachmentId)->get()->getRowArray();
+                if (!$fork) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Fork tidak ditemukan']);
+                }
+                $stockId = $fork['fork_stock_id'] ?? null;
+                $qty = (int)($fork['qty_pairs'] ?? 1);
+                if ($stockId) {
+                    $stock = $db->table('inventory_fork_stocks')->where('id', $stockId)->get()->getRowArray();
+                    if (!$stock || (int)$stock['qty_available_pairs'] < $qty) {
+                        return $this->response->setJSON(['success' => false, 'message' => 'Stok fork tidak mencukupi']);
+                    }
+                    $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs - ? WHERE id = ?', [$qty, $stockId]);
+                }
+                $result = $db->table('inventory_forks')->where('id', $attachmentId)->update([
+                    'inventory_unit_id' => $unitId,
+                    'status' => 'IN_USE',
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                    'detached_at' => null,
+                    'storage_location' => 'Installed in Unit ' . $unit['no_unit'],
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                $attachmentModel = new InventoryAttachmentModel();
+                // Attach new attachment (trigger akan auto-update status dan lokasi)
+                $result = $attachmentModel->attachToUnit($attachmentId, $unitId, $unit['no_unit']);
+            }
 
             if ($result) {
                 $db->transComplete();
@@ -1617,7 +1747,7 @@ class AttachmentInventoryController extends BaseController
 
                 // Send cross-division notification to Service
                 helper('notification');
-                if (function_exists('notify_attachment_attached')) {
+                if ($attachmentType !== 'fork' && function_exists('notify_attachment_attached')) {
                     // Get full attachment details with JOIN
                     $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
                     $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
@@ -1703,6 +1833,7 @@ class AttachmentInventoryController extends BaseController
                 'battery' => 'inventory_batteries',
                 'charger' => 'inventory_chargers',
                 'attachment' => 'inventory_attachments',
+                'fork' => 'inventory_forks',
                 default => null
             };
 
@@ -1744,17 +1875,34 @@ class AttachmentInventoryController extends BaseController
                 ->get()->getRowArray();
 
             if ($existingAttachment) {
-                log_message('info', '[AttachmentInventoryController::swapUnit] Found existing attachment, auto-detaching: ' . $existingAttachment['id_inventory_attachment']);
+                $existingId = $existingAttachment['id'] ?? $existingAttachment['id_inventory_attachment'] ?? null;
+                log_message('info', '[AttachmentInventoryController::swapUnit] Found existing attachment, auto-detaching: ' . $existingId);
                 // Auto-detach existing attachment from target unit
-                $detachResult = $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement (swap)');
+                if ($attachmentType === 'fork' && $existingId) {
+                    $detachResult = $db->table('inventory_forks')->where('id', $existingId)->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'detached_at' => date('Y-m-d H:i:s'),
+                        'storage_location' => 'Workshop',
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                    $stockId = $existingAttachment['fork_stock_id'] ?? null;
+                    $qty = (int)($existingAttachment['qty_pairs'] ?? 1);
+                    if ($stockId) {
+                        $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?', [$qty, $stockId]);
+                    }
+                } else {
+                    $attachmentModel = new InventoryAttachmentModel();
+                    $detachResult = $attachmentModel->detachFromUnit($existingId, 'Auto-detach karena ada replacement (swap)');
+                }
 
                 if (!$detachResult) {
                     log_message('error', '[AttachmentInventoryController::swapUnit] Failed to detach existing attachment');
                 }
 
                 // Log auto-detach
-                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari unit tujuan (auto swap)", [
-                    'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
+                $this->logActivity('auto_detach', 'inventory_attachment', (int)$existingId, "Attachment lama dilepas dari unit tujuan (auto swap)", [
+                    'old_attachment_id' => $existingId,
                     'moving_attachment_id' => $attachmentId,
                     'unit_id' => $toUnitId
                 ]);
@@ -1762,7 +1910,18 @@ class AttachmentInventoryController extends BaseController
 
             // Use swap method with ACTUAL from_unit_id
             log_message('info', '[AttachmentInventoryController::swapUnit] Calling swapAttachmentBetweenUnits');
-            $result = $attachmentModel->swapAttachmentBetweenUnits($attachmentId, $actualFromUnitId, $toUnitId, $reason);
+            if ($attachmentType === 'fork') {
+                $result = $db->table('inventory_forks')->where('id', $attachmentId)->update([
+                    'inventory_unit_id' => $toUnitId,
+                    'status' => 'IN_USE',
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                    'detached_at' => null,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                $attachmentModel = new InventoryAttachmentModel();
+                $result = $attachmentModel->swapAttachmentBetweenUnits($attachmentId, $actualFromUnitId, $toUnitId, $reason);
+            }
 
             log_message('info', '[AttachmentInventoryController::swapUnit] Swap result: ' . ($result ? 'true' : 'false'));
 
@@ -1799,7 +1958,7 @@ class AttachmentInventoryController extends BaseController
 
             // Send cross-division notification to Service
             helper('notification');
-            if (function_exists('notify_attachment_swapped')) {
+            if ($attachmentType !== 'fork' && function_exists('notify_attachment_swapped')) {
                 // Get full attachment details with JOIN
                 $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
 
@@ -1850,8 +2009,6 @@ class AttachmentInventoryController extends BaseController
         }
 
         try {
-            $attachmentModel = new InventoryAttachmentModel();
-
             $attachmentId = $this->request->getPost('attachment_id');
             $reason = $this->request->getPost('reason');
             $newLocation = $this->request->getPost('new_location');
@@ -1881,6 +2038,7 @@ class AttachmentInventoryController extends BaseController
                 'battery' => 'inventory_batteries',
                 'charger' => 'inventory_chargers',
                 'attachment' => 'inventory_attachments',
+                'fork' => 'inventory_forks',
                 default => null
             };
 
@@ -1890,8 +2048,25 @@ class AttachmentInventoryController extends BaseController
                 ->where('ia.id', $attachmentId)
                 ->get()->getRowArray();
 
-            // Detach from unit (trigger akan auto-update status dan lokasi)
-            $result = $attachmentModel->detachFromUnit($attachmentId, $reason);
+            if ($componentType === 'fork') {
+                $forkRow = $db->table('inventory_forks')->where('id', $attachmentId)->get()->getRowArray();
+                $result = $db->table('inventory_forks')->where('id', $attachmentId)->update([
+                    'inventory_unit_id' => null,
+                    'status' => 'AVAILABLE',
+                    'detached_at' => date('Y-m-d H:i:s'),
+                    'storage_location' => $newLocation ?: 'Workshop',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $stockId = $forkRow['fork_stock_id'] ?? null;
+                $qty = (int)($forkRow['qty_pairs'] ?? 1);
+                if ($result && $stockId) {
+                    $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?', [$qty, $stockId]);
+                }
+            } else {
+                $attachmentModel = new InventoryAttachmentModel();
+                // Detach from unit (trigger akan auto-update status dan lokasi)
+                $result = $attachmentModel->detachFromUnit($attachmentId, $reason);
+            }
 
             if ($result) {
                 // Update lokasi if custom location provided
@@ -1910,7 +2085,7 @@ class AttachmentInventoryController extends BaseController
 
                 // Send cross-division notification to Service
                 helper('notification');
-                if (function_exists('notify_attachment_detached')) {
+                if ($componentType !== 'fork' && function_exists('notify_attachment_detached')) {
                     // Get full attachment details with JOIN
                     $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
                     $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
@@ -2015,6 +2190,61 @@ class AttachmentInventoryController extends BaseController
                 'success' => false,
                 'message' => 'Gagal memuat data charger. Silakan coba lagi.'
             ]);
+        }
+    }
+
+    public function masterForks()
+    {
+        try {
+            $lookup = new \App\Services\MasterDataLookupService();
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $lookup->forkOptions()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[AttachmentInventoryController::masterForks] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data fork. Silakan coba lagi.'
+            ]);
+        }
+    }
+
+    public function forkStocks()
+    {
+        try {
+            $db = \Config\Database::connect();
+            if ($this->request->getMethod() === 'post') {
+                $forkId = (int)$this->request->getPost('fork_id');
+                $qty = max(1, (int)$this->request->getPost('qty_pairs'));
+                if (!$forkId) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'fork_id wajib']);
+                }
+                $count = (int)$db->table('inventory_fork_stocks')->countAllResults() + 1;
+                $db->table('inventory_fork_stocks')->insert([
+                    'item_number' => 'FS' . str_pad((string)$count, 4, '0', STR_PAD_LEFT),
+                    'fork_id' => $forkId,
+                    'qty_available_pairs' => $qty,
+                    'physical_condition' => $this->request->getPost('physical_condition') ?: 'GOOD',
+                    'status' => $this->request->getPost('status') ?: 'AVAILABLE',
+                    'storage_location' => $this->request->getPost('storage_location') ?: 'Workshop',
+                    'received_at' => date('Y-m-d'),
+                    'notes' => $this->request->getPost('notes') ?: null,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                return $this->response->setJSON(['success' => true, 'message' => 'Fork stock berhasil ditambah']);
+            }
+
+            $rows = $db->table('inventory_fork_stocks fs')
+                ->select('fs.*, f.name as fork_name, f.length_mm, f.fork_class')
+                ->join('fork f', 'f.id = fs.fork_id', 'left')
+                ->orderBy('fs.id', 'DESC')
+                ->get()->getResultArray();
+            return $this->response->setJSON(['success' => true, 'data' => $rows]);
+        } catch (\Exception $e) {
+            log_message('error', '[AttachmentInventoryController::forkStocks] Error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memuat fork stock']);
         }
     }
 

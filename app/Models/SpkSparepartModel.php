@@ -16,6 +16,7 @@ class SpkSparepartModel extends Model
     protected $allowedFields = [
         'spk_id',
         'unit_id',
+        'stage_name',
         'sparepart_code',
         'sparepart_name',
         'item_type',
@@ -46,7 +47,9 @@ class SpkSparepartModel extends Model
         'is_from_warehouse' => 'permit_empty|in_list[0,1]',
         'source_type' => 'permit_empty|in_list[WAREHOUSE,BEKAS,KANIBAL]',
         'source_unit_id' => 'permit_empty|integer',
-        'source_notes' => 'permit_empty|max_length[1000]'
+        'source_notes' => 'permit_empty|max_length[1000]',
+        'stage_name' => 'permit_empty|in_list[persiapan_unit,fabrikasi,painting,pdi]',
+        'unit_id' => 'permit_empty|integer'
     ];
 
     protected $validationMessages = [
@@ -81,6 +84,9 @@ class SpkSparepartModel extends Model
         ],
         'source_notes' => [
             'max_length' => 'Catatan sumber maksimal 1000 karakter'
+        ],
+        'stage_name' => [
+            'in_list' => 'Stage harus salah satu dari: persiapan_unit, fabrikasi, painting, pdi'
         ]
     ];
 
@@ -108,7 +114,7 @@ class SpkSparepartModel extends Model
      * @param string|null $notes General notes
      * @return bool
      */
-    public function addSpareparts($spkId, $spareparts, $notes = null)
+    public function addSpareparts($spkId, $spareparts, $notes = null, $stageName = null)
     {
         if (empty($spareparts) || !is_array($spareparts)) {
             return false;
@@ -126,7 +132,8 @@ class SpkSparepartModel extends Model
 
                 $data = [
                     'spk_id'             => $spkId,
-                    'unit_id'            => !empty($sparepart['unit_id']) ? (int)$sparepart['unit_id'] : null,
+                    'unit_id'            => null, // filled during PDI validation
+                    'stage_name'         => $stageName ?? ($sparepart['stage_name'] ?? null),
                     'sparepart_code'     => !empty($sparepart['sparepart_code']) ? $sparepart['sparepart_code'] : null,
                     'sparepart_name'     => $sparepart['sparepart_name'] ?? '',
                     'item_type'          => $sparepart['item_type'] ?? 'sparepart',

@@ -179,8 +179,9 @@ class Service extends BaseController
         }
 
         $sparepartModel = new \App\Models\SpkSparepartModel();
-        $notes  = $this->request->getPost('notes');
-        $result = $sparepartModel->addSpareparts($id, $items, $notes);
+        $notes     = $this->request->getPost('notes');
+        $stageName = $this->request->getPost('stage_name') ?: null;
+        $result    = $sparepartModel->addSpareparts($id, $items, $notes, $stageName);
 
         if ($result) {
             return $this->response->setJSON(['success' => true, 'message' => 'Sparepart berhasil disimpan']);
@@ -244,12 +245,31 @@ class Service extends BaseController
                     ->get()->getRowArray();
                 $item['source_unit_no'] = $unit['no_unit'] ?? '';
             }
+            $item['unit_no'] = '';
+            if (!empty($item['unit_id'])) {
+                $unit = $this->db->table('inventory_unit')
+                    ->select('no_unit')
+                    ->where('id_inventory_unit', $item['unit_id'])
+                    ->get()->getRowArray();
+                $item['unit_no'] = $unit['no_unit'] ?? '';
+            }
         }
         unset($item);
 
+        // Get units assigned to this SPK for validation unit selector
+        $units = $this->db->table('spk_unit_stages sus')
+            ->select('sus.unit_index, sus.unit_id, iu.no_unit')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = sus.unit_id', 'left')
+            ->where('sus.spk_id', $spkId)
+            ->where('sus.stage_name', 'persiapan_unit')
+            ->where('sus.unit_id IS NOT NULL', null, false)
+            ->orderBy('sus.unit_index')
+            ->get()->getResultArray();
+
         return $this->response->setJSON([
             'success'    => true,
-            'spareparts' => $spareparts
+            'spareparts' => $spareparts,
+            'units'      => $units
         ]);
     }
 
@@ -300,10 +320,14 @@ class Service extends BaseController
                 $quantityReturn = (int)$sp['quantity_brought'] - $quantityUsed;
 
                 // Update sparepart validation
-                $sparepartModel->update($sparepartId, [
+                $updateData = [
                     'quantity_used'       => $quantityUsed,
                     'sparepart_validated' => 1
-                ]);
+                ];
+                if (!empty($item['unit_id'])) {
+                    $updateData['unit_id'] = (int)$item['unit_id'];
+                }
+                $sparepartModel->update($sparepartId, $updateData);
                 $validatedCount++;
 
                 // Create return record if there is any leftover

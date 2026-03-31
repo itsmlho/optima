@@ -35,7 +35,8 @@ class InventoryComponentHelper extends Model
         $components = [
             'battery' => null,
             'charger' => null,
-            'attachment' => null
+            'attachment' => null,
+            'fork' => null,
         ];
 
         // Get battery info from inventory_batteries table
@@ -74,6 +75,18 @@ class InventoryComponentHelper extends Model
             $components['attachment'] = $attachment;
         }
 
+        $fork = $this->db->table('inventory_forks ifk')
+            ->select('ifk.id as id_inventory_attachment, ifk.fork_id, ifk.item_number as sn_fork, f.name as fork_name, f.fork_class')
+            ->join('fork f', 'f.id = ifk.fork_id', 'left')
+            ->where('ifk.inventory_unit_id', $unitId)
+            ->whereIn('ifk.status', ['IN_USE', 'SPARE'])
+            ->where('ifk.detached_at', null)
+            ->get()->getRowArray();
+
+        if ($fork) {
+            $components['fork'] = $fork;
+        }
+
         return $components;
     }
     
@@ -103,6 +116,19 @@ class InventoryComponentHelper extends Model
                 break;
                 
             case 'attachment':
+                $result = $this->db->table('inventory_attachments ia')
+                    ->select('ia.id as id_inventory_attachment, ia.serial_number as sn_attachment, ia.storage_location as lokasi_penyimpanan, a.tipe, a.merk, a.model')
+                    ->join('attachment a', 'ia.attachment_type_id = a.id_attachment', 'left')
+                    ->where('ia.id', $id)
+                    ->get()->getRowArray();
+                break;
+            case 'fork':
+                $result = $this->db->table('inventory_forks ifk')
+                    ->select('ifk.id as id_inventory_attachment, ifk.item_number as sn_fork, ifk.storage_location as lokasi_penyimpanan, f.name as fork_name, f.fork_class')
+                    ->join('fork f', 'ifk.fork_id = f.id', 'left')
+                    ->where('ifk.id', $id)
+                    ->get()->getRowArray();
+                break;
             default:
                 $result = $this->db->table('inventory_attachments ia')
                     ->select('ia.id as id_inventory_attachment, ia.serial_number as sn_attachment, ia.storage_location as lokasi_penyimpanan, a.tipe, a.merk, a.model')
@@ -162,6 +188,19 @@ class InventoryComponentHelper extends Model
                       a.tipe, a.merk, a.model')
             ->join('attachment a', 'ia.attachment_type_id = a.id_attachment', 'left')
             ->where('ia.id', $inventoryAttachmentId)
+            ->get()->getRowArray();
+    }
+
+    public function getForkByInventoryId($inventoryAttachmentId)
+    {
+        return $this->db->table('inventory_forks ifk')
+            ->select('ifk.id as id_inventory_attachment, ifk.fork_id, ifk.item_number as sn_fork,
+                      ifk.storage_location as lokasi_penyimpanan, ifk.inventory_unit_id as id_inventory_unit,
+                      ifk.status as attachment_status, ifk.physical_condition as kondisi_fisik,
+                      ifk.received_at as tanggal_masuk, ifk.created_at,
+                      f.name as fork_name, f.length_mm, f.width_mm, f.thickness_mm, f.fork_class, f.capacity_kg')
+            ->join('fork f', 'ifk.fork_id = f.id', 'left')
+            ->where('ifk.id', $inventoryAttachmentId)
             ->get()->getRowArray();
     }
     
@@ -237,6 +276,8 @@ class InventoryComponentHelper extends Model
                 return $this->db->table('inventory_batteries')->where('id', $id)->update($mappedData);
             case 'charger':
                 return $this->db->table('inventory_chargers')->where('id', $id)->update($mappedData);
+            case 'fork':
+                return $this->db->table('inventory_forks')->where('id', $id)->update($mappedData);
             case 'attachment':
             default:
                 return $this->db->table('inventory_attachments')->where('id', $id)->update($mappedData);
@@ -258,6 +299,9 @@ class InventoryComponentHelper extends Model
         }
         if ($this->db->table('inventory_chargers')->where('id', $id)->countAllResults() > 0) {
             return 'charger';
+        }
+        if ($this->db->table('inventory_forks')->where('id', $id)->countAllResults() > 0) {
+            return 'fork';
         }
         return null;
     }
@@ -297,6 +341,15 @@ class InventoryComponentHelper extends Model
         
         if ($attachment) {
             return $attachment;
+        }
+
+        // Try fork
+        $fork = $this->db->table('inventory_forks ifk')
+            ->select('ifk.fork_id as fork_id, "fork" as tipe_item')
+            ->where('ifk.id', $id)
+            ->get()->getRowArray();
+        if ($fork) {
+            return $fork;
         }
         
         return null;

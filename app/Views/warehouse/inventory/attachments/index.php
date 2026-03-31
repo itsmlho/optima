@@ -30,6 +30,7 @@
                         <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/attachment') ?>"><i class="fas fa-puzzle-piece me-2"></i>Attachment</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/battery') ?>"><i class="fas fa-battery-half me-2"></i>Battery</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/charger') ?>"><i class="fas fa-plug me-2"></i>Charger</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/fork') ?>"><i class="fas fa-grip-lines-vertical me-2"></i>Fork</a></li>
                     </ul>
                 </div>
                 <button type="button" class="btn btn-primary" id="btnTambahItem">
@@ -59,6 +60,13 @@
                     <i class="fas fa-plug me-1"></i>
                     Charger
                     <span class="badge badge-soft-yellow ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="fork-tab" type="button" onclick="applyTypeFilter('fork')">
+                    <i class="fas fa-grip-lines-vertical me-1"></i>
+                    Fork
+                    <span class="badge badge-soft-gray ms-1" id="count-fork"><?= $detailed_stats['by_type']['fork'] ?? 0 ?></span>
                 </button>
             </li>
         </ul>
@@ -522,6 +530,26 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Fork Fields -->
+                    <div id="fork-fields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fork Spec <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="new-fork-id" name="fork_id">
+                                        <option value="">Select Fork Spec</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Qty Pairs <span class="text-danger">*</span></label>
+                                    <input type="number" min="1" class="form-control" id="new-fork-qty-pairs" name="qty_pairs" value="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Common Fields -->
                     <div class="row">
@@ -619,7 +647,8 @@
     var typeStats = {
         attachment: <?= json_encode($detailed_stats['attachment'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>,
         battery: <?= json_encode($detailed_stats['battery'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>,
-        charger: <?= json_encode($detailed_stats['charger'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>
+        charger: <?= json_encode($detailed_stats['charger'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>,
+        fork: <?= json_encode($detailed_stats['fork'] ?? ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0]) ?>
     };
     
     // Helper to update CSRF token from response
@@ -692,6 +721,9 @@
         } else if (type === 'charger') {
             headerHtml += '<th>Brand</th>';
             headerHtml += '<th>Type</th>';
+        } else if (type === 'fork') {
+            headerHtml += '<th>Fork Spec</th>';
+            headerHtml += '<th>Class</th>';
         }
         
         // Common columns continued
@@ -721,7 +753,8 @@
                     const typeMap = {
                         'attachment': '<i class="fas fa-puzzle-piece me-1 text-primary"></i>Attachment',
                         'battery': '<i class="fas fa-battery-half me-1 text-success"></i>Battery',
-                        'charger': '<i class="fas fa-plug me-1 text-warning"></i>Charger'
+                        'charger': '<i class="fas fa-plug me-1 text-warning"></i>Charger',
+                        'fork': '<i class="fas fa-grip-lines-vertical me-1 text-secondary"></i>Fork'
                     };
                     
                     if (data && typeMap[data]) {
@@ -735,6 +768,8 @@
                         return '<i class="fas fa-battery-half me-1 text-success"></i>Battery';
                     } else if (row.sn_charger) {
                         return '<i class="fas fa-plug me-1 text-warning"></i>Charger';
+                    } else if (row.sn_fork || row.fork_spec_name) {
+                        return '<i class="fas fa-grip-lines-vertical me-1 text-secondary"></i>Fork';
                     }
                     
                     return '<i class="fas fa-question me-1 text-muted"></i>Unknown';
@@ -800,6 +835,21 @@
                     }
                 }
             );
+        } else if (type === 'fork') {
+            columns.push(
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        return row.fork_spec_name || row.fork_name || '-';
+                    }
+                },
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        return row.fork_class || '-';
+                    }
+                }
+            );
         }
         
         // Add common columns
@@ -816,6 +866,8 @@
                             return row.sn_baterai || '-';
                         case 'charger':
                             return row.sn_charger || '-';
+                        case 'fork':
+                            return row.sn_fork || row.item_number || '-';
                         default:
                             // Fallback: show any available SN
                             return row.sn_attachment || row.sn_baterai || row.sn_charger || '-';
@@ -950,6 +1002,8 @@
             $('#battery-tab').addClass('active');
         } else if (type === 'charger') {
             $('#charger-tab').addClass('active');
+        } else if (type === 'fork') {
+            $('#fork-tab').addClass('active');
         }
         
         // Update current filter
@@ -1491,6 +1545,8 @@
             return `Battery ${data.merk_baterai || ''} ${data.tipe_baterai || ''} (SN: ${data.sn_baterai || '-'})`;
         } else if (data.tipe_item === 'charger') {
             return `Charger ${data.merk_charger || ''} ${data.tipe_charger || ''} (SN: ${data.sn_charger || '-'})`;
+        } else if (data.tipe_item === 'fork') {
+            return `Fork ${data.fork_spec_name || data.fork_name || ''} (${data.item_number || '-'})`;
         }
         return 'Item';
     }
@@ -1546,7 +1602,8 @@
                         }
                         $opt.attr('data-has-attachment', (unit.has_attachment || 0) ? '1' : '0')
                             .attr('data-has-battery', (unit.has_battery || 0) ? '1' : '0')
-                            .attr('data-has-charger', (unit.has_charger || 0) ? '1' : '0');
+                            .attr('data-has-charger', (unit.has_charger || 0) ? '1' : '0')
+                            .attr('data-has-fork', (unit.has_fork || 0) ? '1' : '0');
                         select.append($opt);
                     });
                     
@@ -1616,6 +1673,9 @@
         } else if (itemType === 'charger' && selectedOption.attr('data-has-charger') === '1') {
             hasExisting = true;
             existingTypeName = 'Charger';
+        } else if (itemType === 'fork' && selectedOption.attr('data-has-fork') === '1') {
+            hasExisting = true;
+            existingTypeName = 'Fork';
         }
         
         if (hasExisting) {
@@ -1770,6 +1830,7 @@
             $('#attachment-fields').show();
             $('#battery-fields').hide();
             $('#charger-fields').hide();
+            $('#fork-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Attachment');
             // Load attachment master data
             loadMasterData('attachment', '#new-attachment-id');
@@ -1777,6 +1838,7 @@
             $('#attachment-fields').hide();
             $('#battery-fields').show();
             $('#charger-fields').hide();
+            $('#fork-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Battery');
             // Load baterai master data
             loadMasterData('baterai', '#new-baterai-id');
@@ -1784,9 +1846,17 @@
             $('#attachment-fields').hide();
             $('#battery-fields').hide();
             $('#charger-fields').show();
+            $('#fork-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Charger');
             // Load charger master data
             loadMasterData('charger', '#new-charger-id');
+        } else if (type === 'fork') {
+            $('#attachment-fields').hide();
+            $('#battery-fields').hide();
+            $('#charger-fields').hide();
+            $('#fork-fields').show();
+            $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Fork Stock');
+            loadMasterData('fork', '#new-fork-id');
         }
         
         // Reset form
@@ -1812,6 +1882,9 @@
                 break;
             case 'charger':
                 url = '<?= base_url('warehouse/inventory/attachments/master/charger') ?>';
+                break;
+            case 'fork':
+                url = '<?= base_url('warehouse/inventory/attachments/master/fork') ?>';
                 break;
         }
         
@@ -1948,6 +2021,14 @@
             } else if (!$('#new-sn-charger').val()) {
                 isValid = false;
                 errorMessage = 'Serial Number is required';
+            }
+        } else if (type === 'fork') {
+            if (!$('#new-fork-id').val()) {
+                isValid = false;
+                errorMessage = 'Fork Spec is required';
+            } else if (!$('#new-fork-qty-pairs').val() || parseInt($('#new-fork-qty-pairs').val(), 10) < 1) {
+                isValid = false;
+                errorMessage = 'Qty Pairs minimal 1';
             }
         }
         

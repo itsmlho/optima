@@ -289,10 +289,10 @@ $(document).ready(function() {
                         10: 'badge-soft-red',     // BREAKDOWN
                         11: 'badge-soft-red',     // MAINTENANCE   ← DI TARIK/service
                         12: 'badge-soft-gray',    // RETURNED
-                        13: 'badge-soft-dark',    // SOLD
+                        13: 'badge-soft-gray',    // SOLD
                         14: 'badge-soft-gray',    // RENTAL_INACTIVE
                         15: 'badge-soft-blue',    // SPARE
-                        16: 'badge-soft-dark',    // NONAKTIF (decommissioned/nonaktif)
+                        16: 'badge-soft-gray',    // NONAKTIF (decommissioned/nonaktif)
                     };
                     const cls = badgeMap[id] || 'badge-soft-gray';
                     return `<span class="badge ${cls} rounded-pill px-3 py-1 fw-medium shadow-sm">${label}</span>`;

@@ -300,10 +300,24 @@ $can_export = true;
 				</div>
 				<div class="modal-body">
 					<input type="hidden" id="inputSparepartSpkId" value="">
-					<input type="hidden" id="inputSparepartUnitId" value="">
-					<div class="mb-3">
-						<label class="form-label fw-semibold">Catatan Umum</label>
-						<textarea class="form-control form-control-sm" id="inputSparepartNotes" rows="2" placeholder="Catatan opsional untuk seluruh daftar..."></textarea>
+					<div class="row g-3 mb-3">
+						<div class="col-md-6">
+							<label class="form-label fw-semibold">Stage <span class="text-danger">*</span></label>
+							<div class="btn-group w-100" role="group" id="inputSparepartStageGroup">
+								<input type="radio" class="btn-check" name="sparepart_stage" id="stagePersiapan" value="persiapan_unit" checked>
+								<label class="btn btn-sm btn-outline-secondary" for="stagePersiapan">Persiapan</label>
+								<input type="radio" class="btn-check" name="sparepart_stage" id="stageFabrikasi" value="fabrikasi">
+								<label class="btn btn-sm btn-outline-secondary" for="stageFabrikasi">Fabrikasi</label>
+								<input type="radio" class="btn-check" name="sparepart_stage" id="stagePainting" value="painting">
+								<label class="btn btn-sm btn-outline-secondary" for="stagePainting">Painting</label>
+								<input type="radio" class="btn-check" name="sparepart_stage" id="stagePdi" value="pdi">
+								<label class="btn btn-sm btn-outline-secondary" for="stagePdi">PDI</label>
+							</div>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label fw-semibold">Catatan Umum</label>
+							<textarea class="form-control form-control-sm" id="inputSparepartNotes" rows="1" placeholder="Catatan opsional untuk seluruh daftar..."></textarea>
+						</div>
 					</div>
 					<div class="card shadow-sm mb-0">
 						<div class="card-header">
@@ -380,12 +394,13 @@ $can_export = true;
 											<th style="width: 90px;" class="text-center">Dibawa</th>
 											<th style="width: 110px;" class="text-center">Digunakan</th>
 											<th style="width: 90px;" class="text-center">Kembali</th>
+											<th style="width: 130px;">Unit</th>
 											<th style="width: 80px;">Satuan</th>
 											<th style="width: 110px;">Status</th>
 										</tr>
 									</thead>
 									<tbody id="sparepartValidationRows">
-										<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>
+										<tr><td colspan="9" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>
 									</tbody>
 								</table>
 							</div>
@@ -1175,6 +1190,29 @@ document.addEventListener('DOMContentLoaded', () => {
 					${validated > 0 ? `<span class="badge badge-soft-green">Validated: ${validated}/${totalItems}</span>` : `<span class="badge badge-soft-gray">Belum Divalidasi</span>`}
 				</div>`;
 
+				// Group by stage_name
+				const stageOrder = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi', null];
+				const stageLabels = {
+					persiapan_unit: '<i class="fas fa-wrench me-1"></i>Persiapan Unit',
+					fabrikasi:      '<i class="fas fa-industry me-1"></i>Fabrikasi',
+					painting:       '<i class="fas fa-paint-roller me-1"></i>Painting',
+					pdi:            '<i class="fas fa-clipboard-check me-1"></i>PDI',
+					null:           '<i class="fas fa-question-circle me-1"></i>Tidak Ditentukan'
+				};
+				const stageBadgeClass = {
+					persiapan_unit: 'badge-soft-blue',
+					fabrikasi:      'badge-soft-purple',
+					painting:       'badge-soft-orange',
+					pdi:            'badge-soft-green',
+					null:           'badge-soft-gray'
+				};
+				const grouped = {};
+				items.forEach(item => {
+					const key = item.stage_name || 'null';
+					if (!grouped[key]) grouped[key] = [];
+					grouped[key].push(item);
+				});
+
 				html += `<div class="table-responsive"><table class="table table-sm table-bordered mb-0">
 					<thead class="table-light">
 						<tr>
@@ -1184,42 +1222,59 @@ document.addEventListener('DOMContentLoaded', () => {
 							<th style="width:65px" class="text-center">Bawa</th>
 							<th style="width:65px" class="text-center">Pakai</th>
 							<th style="width:65px" class="text-center">Kembali</th>
+							<th style="width:100px">Unit</th>
 							<th style="width:75px" class="text-center">Status</th>
 						</tr>
 					</thead><tbody>`;
 
-				items.forEach(item => {
-					const typeBadge = item.item_type === 'tool'
-						? '<span class="badge badge-soft-gray" style="font-size:10px">🔧 Tool</span>'
-						: '<span class="badge badge-soft-blue" style="font-size:10px">⚙ Part</span>';
+				stageOrder.forEach(stage => {
+					const key = stage === null ? 'null' : stage;
+					if (!grouped[key] || grouped[key].length === 0) return;
 
-					const srcType = (item.source_type || '').toUpperCase();
-					let srcBadge;
-					if (srcType === 'KANIBAL') {
-						const kUnit = item.source_unit_no ? ` (${item.source_unit_no})` : '';
-						srcBadge = `<span class="badge badge-soft-orange" style="font-size:10px">♻ Kanibal${kUnit}</span>`;
-					} else if (parseInt(item.is_from_warehouse) === 0) {
-						srcBadge = '<span class="badge badge-soft-yellow" style="font-size:10px">♻ Bekas</span>';
-					} else {
-						srcBadge = '<span class="badge badge-soft-green" style="font-size:10px">🏪 WH</span>';
-					}
-
-					const qtyUsed   = parseInt(item.quantity_used)   || 0;
-					const qtyBrought = parseInt(item.quantity_brought) || 0;
-					const qtyReturn = Math.max(0, qtyBrought - qtyUsed);
-					const validBadge = parseInt(item.sparepart_validated) === 1
-						? '<span class="badge badge-soft-green" style="font-size:10px">✓</span>'
-						: '<span class="badge badge-soft-gray" style="font-size:10px">-</span>';
-
-					html += `<tr>
-						<td>${typeBadge}</td>
-						<td>${srcBadge}</td>
-						<td><strong style="font-size:12px">${item.sparepart_name}</strong>${item.sparepart_code ? `<br><small class="text-muted">${item.sparepart_code}</small>` : ''}</td>
-						<td class="text-center"><span class="badge badge-soft-cyan" style="font-size:11px">${qtyBrought}</span><br><small class="text-muted" style="font-size:10px">${item.satuan||'PCS'}</small></td>
-						<td class="text-center"><span class="badge badge-soft-green" style="font-size:11px">${qtyUsed}</span></td>
-						<td class="text-center">${qtyReturn > 0 ? `<span class="badge badge-soft-yellow" style="font-size:11px">${qtyReturn}</span>` : '<span class="text-muted">-</span>'}</td>
-						<td class="text-center">${validBadge}</td>
+					html += `<tr class="table-secondary">
+						<td colspan="8" class="py-1 px-2">
+							<span class="badge ${stageBadgeClass[key]} me-1">${stageLabels[key]}</span>
+							<small class="text-muted">${grouped[key].length} item</small>
+						</td>
 					</tr>`;
+
+					grouped[key].forEach(item => {
+						const typeBadge = item.item_type === 'tool'
+							? '<span class="badge badge-soft-gray" style="font-size:10px">🔧 Tool</span>'
+							: '<span class="badge badge-soft-blue" style="font-size:10px">⚙ Part</span>';
+
+						const srcType = (item.source_type || '').toUpperCase();
+						let srcBadge;
+						if (srcType === 'KANIBAL') {
+							const kUnit = item.source_unit_no ? ` (${item.source_unit_no})` : '';
+							srcBadge = `<span class="badge badge-soft-orange" style="font-size:10px">♻ Kanibal${kUnit}</span>`;
+						} else if (parseInt(item.is_from_warehouse) === 0) {
+							srcBadge = '<span class="badge badge-soft-yellow" style="font-size:10px">♻ Bekas</span>';
+						} else {
+							srcBadge = '<span class="badge badge-soft-green" style="font-size:10px">🏪 WH</span>';
+						}
+
+						const qtyUsed    = parseInt(item.quantity_used)    || 0;
+						const qtyBrought = parseInt(item.quantity_brought)  || 0;
+						const qtyReturn  = Math.max(0, qtyBrought - qtyUsed);
+						const validBadge = parseInt(item.sparepart_validated) === 1
+							? '<span class="badge badge-soft-green" style="font-size:10px">✓</span>'
+							: '<span class="badge badge-soft-gray" style="font-size:10px">-</span>';
+						const unitCell = item.unit_no
+							? `<span class="badge badge-soft-blue" style="font-size:10px">${item.unit_no}</span>`
+							: '<span class="text-muted small">-</span>';
+
+						html += `<tr>
+							<td>${typeBadge}</td>
+							<td>${srcBadge}</td>
+							<td><strong style="font-size:12px">${item.sparepart_name}</strong>${item.sparepart_code ? `<br><small class="text-muted">${item.sparepart_code}</small>` : ''}</td>
+							<td class="text-center"><span class="badge badge-soft-cyan" style="font-size:11px">${qtyBrought}</span><br><small class="text-muted" style="font-size:10px">${item.satuan||'PCS'}</small></td>
+							<td class="text-center"><span class="badge badge-soft-green" style="font-size:11px">${qtyUsed}</span></td>
+							<td class="text-center">${qtyReturn > 0 ? `<span class="badge badge-soft-yellow" style="font-size:11px">${qtyReturn}</span>` : '<span class="text-muted">-</span>'}</td>
+							<td>${unitCell}</td>
+							<td class="text-center">${validBadge}</td>
+						</tr>`;
+					});
 				});
 
 				html += '</tbody></table></div>';
@@ -5638,7 +5693,6 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 	window.openInputSparepart = function(id, nomor_spk, unit_id) {
 		_spkSpRowCount = 0;
 		document.getElementById('inputSparepartSpkId').value = id;
-		document.getElementById('inputSparepartUnitId').value = unit_id || '';
 		document.getElementById('inputSparepartSpkNumber').textContent = nomor_spk || ('#' + id);
 		document.getElementById('inputSparepartNotes').value = '';
 		document.getElementById('sparepartInputRows').innerHTML = '';
@@ -5961,13 +6015,9 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		if (!valid || items.length === 0) return;
 
 		const btn    = this;
-		const spkId  = document.getElementById('inputSparepartSpkId').value;
-		const unitId = document.getElementById('inputSparepartUnitId').value;
-		const notes  = document.getElementById('inputSparepartNotes').value.trim();
-		// Attach recipient unit_id to every item for kanibal dual-history tracking
-		if (unitId) {
-			items.forEach(item => { item.unit_id = unitId; });
-		}
+		const spkId     = document.getElementById('inputSparepartSpkId').value;
+		const notes     = document.getElementById('inputSparepartNotes').value.trim();
+		const stageName = document.querySelector('input[name="sparepart_stage"]:checked')?.value || 'persiapan_unit';
 
 		btn.disabled = true;
 		btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
@@ -5975,6 +6025,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		const fd = new FormData();
 		fd.append(window.csrfTokenName, window.csrfTokenValue);
 		fd.append('notes', notes);
+		fd.append('stage_name', stageName);
 		items.forEach((item, i) => {
 			Object.keys(item).forEach(key => fd.append(`items[${i}][${key}]`, item[key]));
 		});
@@ -6033,7 +6084,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 
 	function loadSparepartsForValidation(spkId) {
 		const tbody = document.getElementById('sparepartValidationRows');
-		tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>';
+		tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data...</td></tr>';
 
 		fetch(window.baseUrl + 'service/spk/get-spareparts/' + spkId, {
 			headers: {'X-Requested-With': 'XMLHttpRequest'}
@@ -6041,22 +6092,30 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		.then(r => r.json())
 		.then(res => {
 			if (res.success) {
-				populateValidationTable(res.spareparts);
+				populateValidationTable(res.spareparts, res.units || []);
 			} else {
-				tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3">Gagal memuat sparepart</td></tr>';
+				tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">Gagal memuat sparepart</td></tr>';
 			}
 		})
 		.catch(() => {
-			tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3">Error memuat data</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">Error memuat data</td></tr>';
 		});
 	}
 
-	function populateValidationTable(spareparts) {
+	function populateValidationTable(spareparts, units) {
 		const tbody = document.getElementById('sparepartValidationRows');
 		if (!spareparts || spareparts.length === 0) {
-			tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Tidak ada sparepart terdaftar</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">Tidak ada sparepart terdaftar</td></tr>';
 			return;
 		}
+		// Build unit options HTML once
+		const unitOptions = (units || []).map(u =>
+			`<option value="${u.unit_id}">${esc(u.no_unit || 'Unit ' + u.unit_index)}</option>`
+		).join('');
+		const unitSelectHtml = unitOptions
+			? `<select class="form-select form-select-sm unit-select"><option value="">- Pilih Unit -</option>${unitOptions}</select>`
+			: '<span class="text-muted small">-</span>';
+
 		tbody.innerHTML = '';
 		spareparts.forEach((sp, idx) => {
 			const isValidated = parseInt(sp.sparepart_validated) === 1;
@@ -6069,6 +6128,9 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			const typeLabel = sp.item_type === 'tool' ? '<span class="badge badge-soft-cyan">Tool</span>' : '<span class="badge badge-soft-blue">Sparepart</span>';
 			const sourceNote = sp.source_unit_no ? ` (${sp.source_unit_no})` : '';
 			const inputAttrs = isValidated ? `value="${usedVal}" readonly class="form-control form-control-sm text-center bg-light"` : `value="${brought}" min="0" max="${brought}" class="form-control form-control-sm text-center qty-used-input"`;
+			const unitCell   = isValidated
+				? `<span class="badge badge-soft-blue">${esc(sp.unit_no || '-')}</span>`
+				: unitSelectHtml;
 
 			tbody.innerHTML += `
 				<tr data-sparepart-id="${sp.id}" data-brought="${brought}" data-validated="${isValidated ? 1 : 0}">
@@ -6078,6 +6140,7 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 					<td class="text-center fw-bold text-primary">${brought}</td>
 					<td class="text-center"><input type="number" ${inputAttrs} oninput="calculateReturn(this)"></td>
 					<td class="text-center fw-bold return-qty" style="${returnVal > 0 ? 'color:#0d6efd;' : ''}">${isValidated ? returnVal : 0}</td>
+					<td>${unitCell}</td>
 					<td>${esc(sp.satuan)}</td>
 					<td>${statusBadge}</td>
 				</tr>`;
@@ -6343,13 +6406,16 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			const brought      = parseInt(row.dataset.brought) || 0;
 			const usedInput    = row.querySelector('.qty-used-input');
 			const quantityUsed = usedInput ? (parseInt(usedInput.value) || 0) : 0;
+			const unitSelect   = row.querySelector('.unit-select');
+			const unitId       = unitSelect ? (unitSelect.value || null) : null;
 			if (quantityUsed < 0 || quantityUsed > brought) {
 				hasError = true;
 			}
 			validationData.push({
 				sparepart_id:    sparepartId,
 				quantity_used:   quantityUsed,
-				quantity_return: brought - quantityUsed
+				quantity_return: brought - quantityUsed,
+				unit_id:         unitId
 			});
 		});
 
