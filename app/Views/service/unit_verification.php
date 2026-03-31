@@ -1040,7 +1040,7 @@ $(document).ready(function() {
     $('#btn-select-common').on('click', function() {
         const commonValues = (window.OptimaAccessory && OptimaAccessory.getGroupItemCodes)
             ? OptimaAccessory.getGroupItemCodes('verificationUnit')
-            : ['LAMPU UTAMA','ROTARY LAMP','SENSOR PARKING','HORN SPEAKER','APAR 1 KG','APAR 3 KG','BEACON','TELEMATIC'];
+            : ['LAMPU UTAMA','WORK LIGHT','ROTARY LAMP','BACK BUZZER','HORN KLASON','MIRROR','SAFETY BELT STANDAR','LOAD BACKREST','OVERHEAD GUARD','DOCUMENT HOLDER','TOOL KIT','APAR BRACKET'];
         commonValues.forEach(function(v) {
             $('input[name="accessories[]"][value="' + v + '"]').prop('checked', true);
         });
