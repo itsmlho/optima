@@ -119,18 +119,25 @@ function uvBadgeAuditStatus(st) {
     return `<span class="badge ${cls}">${uvEsc(st || '-')}</span>`;
 }
 
+function uvBadgeVerificationState(isVerified) {
+    return isVerified
+        ? '<span class="badge badge-soft-green">Sudah diverifikasi</span>'
+        : '<span class="badge badge-soft-gray">Belum diverifikasi</span>';
+}
+
 /** Isi tabel unit + tombol Verifikasi untuk satu lokasi */
 function uvHtmlLocationBody(loc) {
     const audit = loc.verification_audit;
     const units = loc.verification_units || [];
     if (audit && units.length) {
         let body = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr>';
-        body += '<th>No. Unit</th><th>Serial</th><th>Merk / Model</th><th class="text-end" style="min-width:155px">Aksi</th></tr></thead><tbody>';
+        body += '<th>No. Unit</th><th>Serial</th><th>Merk / Model</th><th>Status Verifikasi</th><th class="text-end" style="min-width:155px">Aksi</th></tr></thead><tbody>';
         units.forEach(u => {
             body += `<tr>
                 <td class="fw-semibold">${uvEsc(u.no_unit)}</td>
                 <td class="small">${uvEsc(u.serial_number || '—')}</td>
                 <td class="small">${uvEsc(u.merk_model || '—')}</td>
+                <td class="small">${uvBadgeVerificationState(!!u.is_verified)}</td>
                 <td class="text-end text-nowrap">
                     <button type="button" class="btn btn-sm btn-outline-secondary uv-btn-print-unit" title="Cetak FORM VERIFIKASI UNIT — unit ini saja"
                         data-audit-id="${u.audit_id}" data-unit-id="${u.unit_id}">
@@ -191,7 +198,7 @@ function uvRenderOverview(customers) {
                 const addr = uvEsc(loc.address || '');
                 const audit = loc.verification_audit;
                 const auditLine = audit
-                    ? `<div class="small text-muted mt-1">Audit: <strong>${uvEsc(audit.audit_number)}</strong> ${uvBadgeAuditStatus(audit.status)}</div>`
+                    ? `<div class="small text-muted mt-1">Audit: <strong>${uvEsc(audit.audit_number)}</strong> ${uvBadgeAuditStatus(audit.effective_status || audit.status)}${(audit.total_units > 0 ? ` <span class="badge badge-soft-blue ms-1">${audit.verified_units || 0}/${audit.total_units} unit diverifikasi</span>` : '')}</div>`
                     : '';
                 const unitList = loc.verification_units || [];
                 const nUnit = unitList.length;
@@ -207,7 +214,7 @@ function uvRenderOverview(customers) {
                         ${auditPk ? `<button type="button" class="btn btn-sm btn-outline-primary align-self-center ms-1 uv-btn-print-location flex-shrink-0" title="Cetak FORM VERIFIKASI UNIT — semua unit di lokasi (1 halaman per unit)"
                             data-audit-id="${auditPk}">
                             <i class="fas fa-print me-1"></i><span class="d-none d-sm-inline">Print Verification</span>
-                        </button>` : ''}
+                        </button>` : ''} 
                     </h3>
                     <div id="${accLoc}" class="accordion-collapse collapse" data-bs-parent="#${locParentId}">
                         <div class="accordion-body pt-0 bg-light">${uvHtmlLocationBody(loc)}</div>

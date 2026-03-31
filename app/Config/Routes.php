@@ -578,6 +578,7 @@ $routes->group('service', static function ($routes) {
     $routes->post('work-orders/get-unit-verification-history', 'WorkOrderController::getUnitVerificationHistory');
     $routes->post('work-orders/get-mast-heights', 'WorkOrderController::getMastHeights');
     $routes->post('work-orders/save-unit-verification', 'WorkOrderController::saveUnitVerification');
+    $routes->get('work-orders/debug-unit-verification-snapshot', 'WorkOrderController::debugUnitVerificationSnapshot', ['filter' => 'permission:service.work_order.view']);
     $routes->get('work-orders/print-verification', 'Service::printVerification');
     $routes->get('print-verification', 'Service::printVerification'); // Add direct route
     $routes->post('work-orders/get-sparepart-usage-data', 'WorkOrderController::getSparepartUsageData');

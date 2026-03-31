@@ -3270,6 +3270,9 @@ class WorkOrderController extends Controller
                     NULL as sn_baterai,
                     NULL as charger_id,
                     NULL as sn_charger,
+                    NULL as fork_id,
+                    NULL as sn_fork,
+                    NULL as fork_qty_pairs,
                     ia.physical_condition as kondisi_fisik,
                     ia.completeness as kelengkapan,
                     ia.notes as catatan_fisik,
@@ -3280,7 +3283,9 @@ class WorkOrderController extends Controller
                     NULL as merk_baterai,
                     NULL as jenis_baterai,
                     NULL as tipe_charger,
-                    NULL as merk_charger
+                    NULL as merk_charger,
+                    NULL as fork_name,
+                    NULL as fork_class
                 FROM inventory_attachments ia
                 LEFT JOIN attachment a ON ia.attachment_type_id = a.id_attachment
  WHERE ia.inventory_unit_id = ?
@@ -3294,6 +3299,9 @@ class WorkOrderController extends Controller
                     ib.serial_number as sn_baterai,
                     NULL as charger_id,
                     NULL as sn_charger,
+                    NULL as fork_id,
+                    NULL as sn_fork,
+                    NULL as fork_qty_pairs,
                     ib.physical_condition as kondisi_fisik,
                     NULL as kelengkapan,
                     ib.notes as catatan_fisik,
@@ -3304,7 +3312,9 @@ class WorkOrderController extends Controller
                     b.merk_baterai,
                     b.jenis_baterai,
                     NULL as tipe_charger,
-                    NULL as merk_charger
+                    NULL as merk_charger,
+                    NULL as fork_name,
+                    NULL as fork_class
                 FROM inventory_batteries ib
                 LEFT JOIN baterai b ON ib.battery_type_id = b.id
                 WHERE ib.inventory_unit_id = ?
@@ -3318,6 +3328,9 @@ class WorkOrderController extends Controller
                     NULL as sn_baterai,
                     ic.charger_type_id as charger_id,
                     ic.serial_number as sn_charger,
+                    NULL as fork_id,
+                    NULL as sn_fork,
+                    NULL as fork_qty_pairs,
                     ic.physical_condition as kondisi_fisik,
                     NULL as kelengkapan,
                     ic.notes as catatan_fisik,
@@ -3328,11 +3341,42 @@ class WorkOrderController extends Controller
                     NULL as merk_baterai,
                     NULL as jenis_baterai,
                     c.tipe_charger,
-                    c.merk_charger
+                    c.merk_charger,
+                    NULL as fork_name,
+                    NULL as fork_class
                 FROM inventory_chargers ic
                 LEFT JOIN charger c ON ic.charger_type_id = c.id_charger
                 WHERE ic.inventory_unit_id = ?
-            ", [$workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id']])->getResultArray();
+                UNION ALL
+                SELECT
+                    ifk.id as id_inventory_attachment,
+                    'fork' as tipe_item,
+                    NULL as attachment_id,
+                    NULL as sn_attachment,
+                    NULL as baterai_id,
+                    NULL as sn_baterai,
+                    NULL as charger_id,
+                    NULL as sn_charger,
+                    ifk.fork_id as fork_id,
+                    ifk.item_number as sn_fork,
+                    ifk.qty_pairs as fork_qty_pairs,
+                    ifk.physical_condition as kondisi_fisik,
+                    NULL as kelengkapan,
+                    ifk.notes as catatan_fisik,
+                    NULL as attachment_tipe,
+                    NULL as attachment_merk,
+                    NULL as attachment_model,
+                    NULL as tipe_baterai,
+                    NULL as merk_baterai,
+                    NULL as jenis_baterai,
+                    NULL as tipe_charger,
+                    NULL as merk_charger,
+                    f.name as fork_name,
+                    f.fork_class as fork_class
+                FROM inventory_forks ifk
+                LEFT JOIN fork f ON ifk.fork_id = f.id
+                WHERE ifk.inventory_unit_id = ? AND (ifk.detached_at IS NULL)
+            ", [$workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id']])->getResultArray();
             
             // Parse attachment data by type
             $attachment = [
@@ -3345,6 +3389,10 @@ class WorkOrderController extends Controller
                 'charger_id' => null,
                 'charger_name' => '',
                 'sn_charger' => '',
+                'fork_id' => null,
+                'fork_name' => '',
+                'sn_fork' => '',
+                'fork_qty_pairs' => null,
                 'kondisi_fisik' => '',
                 'kelengkapan' => ''
             ];
@@ -3369,6 +3417,12 @@ class WorkOrderController extends Controller
                     $attachment['charger_id'] = $row['id_inventory_attachment'];
                     $attachment['charger_name'] = trim(($row['merk_charger'] ?? '') . ' ' . ($row['tipe_charger'] ?? ''));
                     $attachment['sn_charger'] = $row['sn_charger'];
+                }
+                if ($row['tipe_item'] === 'fork' && !empty($row['fork_id'])) {
+                    $attachment['fork_id'] = $row['id_inventory_attachment'];
+                    $attachment['fork_name'] = trim(($row['fork_name'] ?? '') . (!empty($row['fork_class']) ? ' [' . $row['fork_class'] . ']' : ''));
+                    $attachment['sn_fork'] = $row['sn_fork'];
+                    $attachment['fork_qty_pairs'] = isset($row['fork_qty_pairs']) ? (int) $row['fork_qty_pairs'] : null;
                 }
             }
 
@@ -3467,6 +3521,22 @@ class WorkOrderController extends Controller
                 ORDER BY c.tipe_charger, c.merk_charger
             ")->getResultArray();
 
+            $forkOptions = $db->query("
+                SELECT
+                    ifk.id as id,
+                    CONCAT(f.name, IF(f.fork_class IS NOT NULL AND f.fork_class != '', CONCAT(' [', f.fork_class, ']'), ''), ' [ITEM: ', COALESCE(ifk.item_number, 'No Item'), '] [QTY: ', COALESCE(ifk.qty_pairs, 1), ']') as name,
+                    f.name as fork_name,
+                    f.fork_class,
+                    ifk.item_number as sn_fork,
+                    ifk.qty_pairs,
+                    ifk.fork_id as fork_id,
+                    ifk.status as attachment_status
+                FROM inventory_forks ifk
+                JOIN fork f ON ifk.fork_id = f.id
+                WHERE ifk.status = 'AVAILABLE'
+                ORDER BY f.name
+            ")->getResultArray();
+
             // Add currently assigned attachments to the options (if any)
             $currentAttachments = $db->query("
                 SELECT 
@@ -3517,10 +3587,27 @@ class WorkOrderController extends Controller
                 ORDER BY c.tipe_charger, c.merk_charger
             ", [$workOrder['unit_id']])->getResultArray();
 
+            $currentForks = $db->query("
+                SELECT
+                    ifk.id as id,
+                    CONCAT(f.name, IF(f.fork_class IS NOT NULL AND f.fork_class != '', CONCAT(' [', f.fork_class, ']'), ''), ' [ITEM: ', COALESCE(ifk.item_number, 'No Item'), '] [QTY: ', COALESCE(ifk.qty_pairs, 1), '] (Current)') as name,
+                    f.name as fork_name,
+                    f.fork_class,
+                    ifk.item_number as sn_fork,
+                    ifk.qty_pairs,
+                    ifk.fork_id as fork_id,
+                    ifk.status as attachment_status
+                FROM inventory_forks ifk
+                JOIN fork f ON ifk.fork_id = f.id
+                WHERE ifk.inventory_unit_id = ? AND ifk.detached_at IS NULL
+                ORDER BY f.name
+            ", [$workOrder['unit_id']])->getResultArray();
+
             // Merge current and available options
             $attachmentOptions = array_merge($currentAttachments, $attachmentOptions);
             $bateraiOptions = array_merge($currentBaterais, $bateraiOptions);
             $chargerOptions = array_merge($currentChargers, $chargerOptions);
+            $forkOptions = array_merge($currentForks, $forkOptions);
 
             // Get unit accessories from inventory_unit.aksesoris field (JSON format)
             $accessories = [];
@@ -3607,7 +3694,8 @@ class WorkOrderController extends Controller
                         'valve' => $valveOptions,
                         'attachment' => $attachmentOptions,
                         'baterai' => $bateraiOptions,
-                        'charger' => $chargerOptions
+                        'charger' => $chargerOptions,
+                        'fork' => $forkOptions
                     ],
                     'accessories' => $accessories,
                     'verified_by' => $verifiedBy
@@ -3819,6 +3907,112 @@ class WorkOrderController extends Controller
     }
 
     /**
+     * Debug helper: cek snapshot data verifikasi terakhir per unit.
+     * Query params: unit_id (required), audit_id (optional).
+     */
+    public function debugUnitVerificationSnapshot()
+    {
+        $unitId = (int) ($this->request->getGet('unit_id') ?? 0);
+        $auditId = (int) ($this->request->getGet('audit_id') ?? 0);
+
+        if ($unitId <= 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'unit_id wajib diisi',
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            $unit = $db->table('inventory_unit iu')
+                ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.tahun_unit, iu.hour_meter, iu.aksesoris, iu.updated_at,
+                    iu.departemen_id, iu.tipe_unit_id, iu.model_unit_id, iu.kapasitas_unit_id, iu.model_mesin_id, iu.model_mast_id,
+                    iu.sn_mesin, iu.sn_mast, iu.tinggi_mast, iu.keterangan')
+                ->where('iu.id_inventory_unit', $unitId)
+                ->get()
+                ->getRowArray();
+
+            if (!$unit) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak ditemukan',
+                ]);
+            }
+
+            $attachment = $db->table('inventory_attachments ia')
+                ->select('ia.id, ia.attachment_type_id, ia.serial_number, ia.status, ia.updated_at, a.tipe, a.merk, a.model')
+                ->join('attachment a', 'a.id_attachment = ia.attachment_type_id', 'left')
+                ->where('ia.inventory_unit_id', $unitId)
+                ->orderBy('ia.updated_at', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            $battery = $db->table('inventory_batteries ib')
+                ->select('ib.id, ib.battery_type_id, ib.serial_number, ib.status, ib.updated_at, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+                ->join('baterai b', 'b.id = ib.battery_type_id', 'left')
+                ->where('ib.inventory_unit_id', $unitId)
+                ->orderBy('ib.updated_at', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            $charger = $db->table('inventory_chargers ic')
+                ->select('ic.id, ic.charger_type_id, ic.serial_number, ic.status, ic.updated_at, c.merk_charger, c.tipe_charger')
+                ->join('charger c', 'c.id_charger = ic.charger_type_id', 'left')
+                ->where('ic.inventory_unit_id', $unitId)
+                ->orderBy('ic.updated_at', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            $historyBuilder = $db->table('unit_verification_history uvh')
+                ->select('uvh.id, uvh.unit_id, uvh.work_order_id, uvh.audit_id, uvh.verification_type, uvh.verified_by, uvh.verified_at, uvh.notes, uvh.verification_data')
+                ->where('uvh.unit_id', $unitId);
+            if ($auditId > 0) {
+                $historyBuilder->where('uvh.audit_id', $auditId);
+            }
+            $history = $historyBuilder
+                ->orderBy('uvh.verified_at', 'DESC')
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+
+            if (!empty($history['verification_data']) && is_string($history['verification_data'])) {
+                $decoded = json_decode($history['verification_data'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $history['verification_data'] = $decoded;
+                }
+            }
+
+            $accessoriesDecoded = [];
+            if (!empty($unit['aksesoris'])) {
+                $tmp = json_decode((string) $unit['aksesoris'], true);
+                if (is_array($tmp)) {
+                    $accessoriesDecoded = $tmp;
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'unit' => $unit,
+                    'accessories_decoded' => $accessoriesDecoded,
+                    'components' => [
+                        'attachment' => $attachment,
+                        'battery' => $battery,
+                        'charger' => $charger,
+                    ],
+                    'latest_history' => $history,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal membaca snapshot verifikasi: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Save unit verification and complete work order
      */
     public function saveUnitVerification()
@@ -3975,17 +4169,22 @@ class WorkOrderController extends Controller
                 ]);
             }
 
-            // Handle departemen - form sends name, need to get ID
-            $departemenId = null;
-            $departemenName = $this->request->getPost('departemen');
-            if ($departemenName) {
-                $dept = $db->table('departemen')
-                    ->select('id_departemen')
-                    ->where('nama_departemen', $departemenName)
-                    ->get();
-                if ($dept && $dept->getNumRows() > 0) {
-                    $departemenId = $dept->getRowArray()['id_departemen'];
+            // Departemen: prefer ID from form, fallback to legacy departemen name if any.
+            $departemenId = (int) ($this->request->getPost('departemen_id') ?? 0);
+            if ($departemenId <= 0) {
+                $departemenName = $this->request->getPost('departemen');
+                if ($departemenName) {
+                    $dept = $db->table('departemen')
+                        ->select('id_departemen')
+                        ->where('nama_departemen', $departemenName)
+                        ->get();
+                    if ($dept && $dept->getNumRows() > 0) {
+                        $departemenId = (int) ($dept->getRowArray()['id_departemen'] ?? 0);
+                    }
                 }
+            }
+            if ($departemenId <= 0) {
+                $departemenId = null;
             }
 
             // Validate and map post verification status (business decision output)
@@ -4103,6 +4302,7 @@ class WorkOrderController extends Controller
 $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is actually id_inventory_attachment
             $chargerInventoryId = $this->request->getPost('charger_id'); // This is actually id_inventory_attachment  
             $bateraiInventoryId = $this->request->getPost('baterai_id'); // This is actually id_inventory_attachment
+            $forkInventoryId = $this->request->getPost('fork_id'); // inventory_forks.id
             
             $componentHelper = new InventoryComponentHelper();
             
@@ -4129,6 +4329,13 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 ->get()->getResultArray();
             foreach ($existingAttachmentsTable as $att) {
                 $existingAttachments[] = array_merge($att, ['tipe_item' => 'attachment']);
+            }
+            $existingForks = $db->table('inventory_forks')
+                ->where('inventory_unit_id', $unitId)
+                ->where('detached_at', null)
+                ->get()->getResultArray();
+            foreach ($existingForks as $fk) {
+                $existingAttachments[] = array_merge($fk, ['tipe_item' => 'fork']);
             }
             
             // Create map of existing records by type
@@ -4377,6 +4584,36 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 
                 log_message('info', "[WorkOrder] Released attachment {$oldAtt['id']} from unit {$unitId}");
             }
+            // Release forks
+            $oldForks = $db->table('inventory_forks')
+                ->where('inventory_unit_id', $unitId)
+                ->where('detached_at', null)
+                ->get()
+                ->getResultArray();
+            foreach ($oldForks as $oldFk) {
+                $db->table('inventory_forks')
+                    ->where('id', $oldFk['id'])
+                    ->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'detached_at' => date('Y-m-d H:i:s'),
+                        'storage_location' => 'Workshop',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                $stockId = $oldFk['fork_stock_id'] ?? null;
+                $qty = (int) ($oldFk['qty_pairs'] ?? 1);
+                if (!empty($stockId)) {
+                    $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?', [$qty, $stockId]);
+                }
+                $auditService->logRemoval('FORK', $oldFk['id'], $unitId, [
+                    'work_order_id' => $componentLogWoId,
+                    'triggered_by' => 'UNIT_VERIFICATION',
+                    'reference_type' => $componentLogRefType,
+                    'reference_id' => $componentLogRefId,
+                    'notes' => 'Fork released during unit verification',
+                ]);
+                log_message('info', "[WorkOrder] Released fork {$oldFk['id']} from unit {$unitId}");
+            }
             
             // STEP 2: Attach NEW components to this unit
             // Handle attachment record if selected
@@ -4387,6 +4624,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     'battery' => 'inventory_batteries',
                     'charger' => 'inventory_chargers',
                     'attachment' => 'inventory_attachments',
+                    'fork' => 'inventory_forks',
                     default => null
                 };
                 
@@ -4398,6 +4636,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'storage_location' => 'Terpasang di Unit',
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
+                    $snAttachment = trim((string) ($this->request->getPost('sn_attachment') ?? ''));
+                    if ($snAttachment !== '') {
+                        $updateData['serial_number'] = $snAttachment;
+                    }
                     
                     $updateResult = $db->table($tableName)
                         ->where('id', $attachmentInventoryId)
@@ -4429,6 +4671,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     'battery' => 'inventory_batteries',
                     'charger' => 'inventory_chargers',
                     'attachment' => 'inventory_attachments',
+                    'fork' => 'inventory_forks',
                     default => null
                 };
                 
@@ -4440,6 +4683,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'storage_location' => 'Terpasang di Unit',
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
+                    $snCharger = trim((string) ($this->request->getPost('sn_charger') ?? ''));
+                    if ($snCharger !== '') {
+                        $updateData['serial_number'] = $snCharger;
+                    }
                     
                     $updateResult = $db->table($tableName)
                         ->where('id', $chargerInventoryId)
@@ -4471,6 +4718,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     'battery' => 'inventory_batteries',
                     'charger' => 'inventory_chargers',
                     'attachment' => 'inventory_attachments',
+                    'fork' => 'inventory_forks',
                     default => null
                 };
                 
@@ -4482,6 +4730,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         'storage_location' => 'Terpasang di Unit',
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
+                    $snBaterai = trim((string) ($this->request->getPost('sn_baterai') ?? ''));
+                    if ($snBaterai !== '') {
+                        $updateData['serial_number'] = $snBaterai;
+                    }
                     
                     $updateResult = $db->table($tableName)
                         ->where('id', $bateraiInventoryId)
@@ -4660,11 +4912,49 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     log_message('info', "[WorkOrder] Baterai {$bateraiInventoryId} attached to unit {$unitId} (no swap)");
                 }
             }
+
+            // Handle fork record if selected
+            if (!empty($forkInventoryId)) {
+                $forkRow = $db->table('inventory_forks')->where('id', $forkInventoryId)->get()->getRowArray();
+                if (!$forkRow) {
+                    throw new \Exception('Fork tidak ditemukan');
+                }
+                $stockId = $forkRow['fork_stock_id'] ?? null;
+                $qty = (int) ($forkRow['qty_pairs'] ?? 1);
+                if (!empty($stockId)) {
+                    $stock = $db->table('inventory_fork_stocks')->where('id', $stockId)->get()->getRowArray();
+                    if (!$stock || (int) ($stock['qty_available_pairs'] ?? 0) < $qty) {
+                        throw new \Exception('Stok fork tidak mencukupi');
+                    }
+                    $db->query('UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs - ? WHERE id = ?', [$qty, $stockId]);
+                }
+                $db->table('inventory_forks')
+                    ->where('id', $forkInventoryId)
+                    ->update([
+                        'inventory_unit_id' => $unitId,
+                        'status' => 'IN_USE',
+                        'assigned_at' => date('Y-m-d H:i:s'),
+                        'detached_at' => null,
+                        'storage_location' => 'Terpasang di Unit',
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                $auditService->logAssignment('FORK', $forkInventoryId, $unitId, [
+                    'work_order_id' => $componentLogWoId,
+                    'triggered_by' => 'UNIT_VERIFICATION',
+                    'reference_type' => $componentLogRefType,
+                    'reference_id' => $componentLogRefId,
+                    'notes' => 'Fork attached during unit verification',
+                ]);
+                log_message('info', "[WorkOrder] Attached fork {$forkInventoryId} to unit {$unitId}");
+            }
             }
 
             // Handle unit accessories and hour meter update
             $accessories = $this->request->getPost('accessories');
-            $hourMeter = $this->request->getPost('hm');
+            $hourMeter = $this->request->getPost('hour_meter');
+            if ($hourMeter === null || $hourMeter === '') {
+                $hourMeter = $this->request->getPost('hm');
+            }
             
             $inventoryUpdateData = [];
             
@@ -4723,7 +5013,9 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     'unit_verified'     => 1,
                     'unit_verified_at'  => date('Y-m-d H:i:s'),
                     'notes'             => $this->request->getPost('catatan_fisik'),
-                    'hm'                => $this->request->getPost('hm') ?: null,
+                    'hm'                => ($this->request->getPost('hour_meter') !== null && $this->request->getPost('hour_meter') !== '')
+                        ? $this->request->getPost('hour_meter')
+                        : ($this->request->getPost('hm') ?: null),
                     'updated_at'        => date('Y-m-d H:i:s'),
                 ];
 
@@ -4748,10 +5040,39 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'verification_data'   => json_encode([
                     'unit_changes' => $allChanges,
                     'audit_id'     => $isAuditVerification ? $auditIdSave : null,
+                    'submitted_form' => [
+                        'pelanggan'         => $this->request->getPost('pelanggan'),
+                        'lokasi'            => $this->request->getPost('lokasi'),
+                        'lokasi_manual'     => $this->request->getPost('lokasi_manual'),
+                        'serial_number'     => $this->request->getPost('serial_number'),
+                        'tahun_unit'        => $this->request->getPost('tahun_unit'),
+                        'departemen_id'     => $departemenId,
+                        'tipe_unit_id'      => $this->request->getPost('tipe_unit_id'),
+                        'model_unit_id'     => $this->request->getPost('model_unit_id'),
+                        'kapasitas_unit_id' => $this->request->getPost('kapasitas_unit_id'),
+                        'model_mesin_id'    => $this->request->getPost('model_mesin_id'),
+                        'sn_mesin'          => $this->request->getPost('sn_mesin'),
+                        'model_mast_id'     => $this->request->getPost('model_mast_id'),
+                        'sn_mast'           => $this->request->getPost('sn_mast'),
+                        'tinggi_mast'       => $this->request->getPost('tinggi_mast'),
+                        'keterangan'        => $this->request->getPost('keterangan'),
+                        'hour_meter'        => $hourMeter,
+                        'attachment_id'     => $attachmentInventoryId ?? null,
+                        'sn_attachment'     => $this->request->getPost('sn_attachment'),
+                        'baterai_id'        => $bateraiInventoryId ?? null,
+                        'sn_baterai'        => $this->request->getPost('sn_baterai'),
+                        'charger_id'        => $chargerInventoryId ?? null,
+                        'fork_id'           => $forkInventoryId ?? null,
+                        'sn_charger'        => $this->request->getPost('sn_charger'),
+                        'accessories'       => is_array($accessories) ? array_values($accessories) : [],
+                        'verified_by_input' => $this->request->getPost('verified_by'),
+                        'verification_date' => $this->request->getPost('verification_date'),
+                    ],
                     'components'   => [
                         'attachment_id' => $attachmentInventoryId ?? null,
                         'charger_id'    => $chargerInventoryId ?? null,
                         'battery_id'    => $bateraiInventoryId ?? null,
+                        'fork_id'       => $forkInventoryId ?? null,
                     ],
                     'old_data'     => $oldUnitData,
                     'new_data'     => $unitUpdateData,
@@ -4774,6 +5095,62 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
 
                 log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO=" . ($workOrderId ?? 'null') . ", audit=" . ($isAuditVerification ? $auditIdSave : '-') . ", verified_by={$currentUserId}");
                 $db->table('unit_verification_history')->insert($verificationHistoryData);
+            }
+
+            $auditProgress = null;
+            if ($isAuditVerification) {
+                $totalUnitsRow = $db->table('unit_audit_location_items')
+                    ->select('COUNT(DISTINCT unit_id) AS total_units')
+                    ->where('audit_location_id', $auditIdSave)
+                    ->where('unit_id IS NOT NULL', null, false)
+                    ->get()
+                    ->getRowArray();
+                $totalUnits = (int) ($totalUnitsRow['total_units'] ?? 0);
+
+                $verifiedUnits = 0;
+                if ($db->tableExists('unit_verification_history')) {
+                    $uvhFields = [];
+                    try {
+                        $uvhFields = $db->getFieldNames('unit_verification_history');
+                    } catch (\Throwable $e) {
+                        $uvhFields = [];
+                    }
+                    if (is_array($uvhFields) && in_array('audit_id', $uvhFields, true)) {
+                        $verifiedRow = $db->table('unit_verification_history')
+                            ->select('COUNT(DISTINCT unit_id) AS verified_units')
+                            ->where('audit_id', $auditIdSave)
+                            ->where('unit_id IS NOT NULL', null, false)
+                            ->get()
+                            ->getRowArray();
+                        $verifiedUnits = (int) ($verifiedRow['verified_units'] ?? 0);
+                    }
+                }
+
+                $currentAuditStatus = (string) ($auditHeaderSave['status'] ?? '');
+                $nextAuditStatus = null;
+                if (!in_array($currentAuditStatus, ['APPROVED', 'REJECTED'], true)) {
+                    $nextAuditStatus = ($totalUnits > 0 && $verifiedUnits >= $totalUnits)
+                        ? 'PENDING_APPROVAL'
+                        : 'IN_PROGRESS';
+                }
+                if ($nextAuditStatus !== null) {
+                    $db->table('unit_audit_locations')
+                        ->where('id', $auditIdSave)
+                        ->update([
+                            'status'     => $nextAuditStatus,
+                            'updated_at' => date('Y-m-d H:i:s'),
+                        ]);
+                } else {
+                    $nextAuditStatus = $currentAuditStatus;
+                }
+
+                $auditProgress = [
+                    'audit_id'        => $auditIdSave,
+                    'verified_units'  => $verifiedUnits,
+                    'total_units'     => $totalUnits,
+                    'status'          => $nextAuditStatus,
+                    'all_verified'    => ($totalUnits > 0 && $verifiedUnits >= $totalUnits),
+                ];
             }
 
             if (!$isAuditVerification && $statusData !== null) {
@@ -4856,6 +5233,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 'message' => $isAuditVerification
                     ? 'Unit berhasil diverifikasi (audit lokasi)'
                     : 'Unit berhasil diverifikasi dan work order diselesaikan',
+                'audit_progress' => $auditProgress,
             ]);
 
         } catch (\Throwable $e) {

@@ -299,6 +299,16 @@ class AuditLocationModel extends Model
     {
         $locations = $this->getLocationsForCustomer($customerId);
         $itemsModel = new AuditLocationItemModel();
+        $hasUvhTable = $this->db->tableExists('unit_verification_history');
+        $uvhHasAuditId = false;
+        if ($hasUvhTable) {
+            try {
+                $uvhFields = $this->db->getFieldNames('unit_verification_history');
+                $uvhHasAuditId = is_array($uvhFields) && in_array('audit_id', $uvhFields, true);
+            } catch (\Throwable $e) {
+                $uvhHasAuditId = false;
+            }
+        }
 
         foreach ($locations as &$loc) {
             $locId = (int) $loc['id'];
@@ -310,6 +320,23 @@ class AuditLocationModel extends Model
             }
             $auditId = (int) $audit['id'];
             $items   = $itemsModel->getByAuditLocation($auditId);
+            $verifiedRows = [];
+            if ($hasUvhTable && $uvhHasAuditId) {
+                $verifiedRows = $this->db->table('unit_verification_history')
+                    ->select('unit_id, MAX(verified_at) as verified_at')
+                    ->where('audit_id', $auditId)
+                    ->where('unit_id IS NOT NULL', null, false)
+                    ->groupBy('unit_id')
+                    ->get()
+                    ->getResultArray();
+            }
+            $verifiedMap = [];
+            foreach ($verifiedRows as $vr) {
+                $vuid = (int) ($vr['unit_id'] ?? 0);
+                if ($vuid > 0) {
+                    $verifiedMap[$vuid] = $vr['verified_at'] ?? null;
+                }
+            }
             $units   = [];
             foreach ($items as $it) {
                 $uid = (int) ($it['unit_id'] ?? 0);
@@ -332,13 +359,30 @@ class AuditLocationModel extends Model
                     'merk_model'     => trim($merk . ' ' . $model),
                     'audit_status'   => $audit['status'],
                     'audit_number'   => $audit['audit_number'],
+                    'is_verified'    => array_key_exists($uid, $verifiedMap),
+                    'verified_at'    => $verifiedMap[$uid] ?? null,
                 ];
+            }
+            $verifiedCount = 0;
+            foreach ($units as $u) {
+                if (!empty($u['is_verified'])) {
+                    $verifiedCount++;
+                }
+            }
+            $totalUnits = count($units);
+            $effectiveStatus = $audit['status'];
+            if ($totalUnits > 0 && $verifiedCount < $totalUnits && in_array($audit['status'], ['PENDING_APPROVAL', 'APPROVED'], true)) {
+                // Guard rail: jangan tampil "waiting approval/approved" sebelum semua unit selesai diverifikasi.
+                $effectiveStatus = 'IN_PROGRESS';
             }
             $loc['verification_audit'] = [
                 'id'           => $auditId,
                 'audit_number' => $audit['audit_number'],
                 'status'       => $audit['status'],
+                'effective_status' => $effectiveStatus,
                 'audit_date'   => $audit['audit_date'] ?? null,
+                'verified_units' => $verifiedCount,
+                'total_units'    => $totalUnits,
             ];
             $loc['verification_units'] = $units;
         }

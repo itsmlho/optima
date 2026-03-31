@@ -245,6 +245,26 @@
                                         <td><input type="text" class="form-control form-control-sm" id="verify-sn-charger" name="sn_charger" placeholder="SN charger real"></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-sn-charger"></td>
                                     </tr>
+                                    <tr>
+                                        <td>Fork</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-fork" readonly></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <select class="form-select form-select-sm" id="verify-fork" name="fork_id" style="min-width: 200px;">
+                                                    <option value="">Pilih Fork</option>
+                                                </select>
+                                            </div>
+                                            <div class="small text-muted mt-1" id="fork-qty-hint">Qty pair: -</div>
+                                            <div class="small mt-1 d-none" id="fork-stock-warning"></div>
+                                        </td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-fork"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Item Number Fork</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-sn-fork" readonly></td>
+                                        <td><input type="text" class="form-control form-control-sm" id="verify-sn-fork" name="sn_fork" readonly></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-sn-fork"></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -892,6 +912,8 @@ $(document).ready(function() {
         $('#db-sn-baterai').val(attachmentData.sn_baterai || '');
         $('#db-charger').val(attachmentData.charger_name || '');
         $('#db-sn-charger').val(attachmentData.sn_charger || '');
+        $('#db-fork').val(attachmentData.fork_name || '');
+        $('#db-sn-fork').val(attachmentData.sn_fork || '');
         
         // Pre-fill verification fields (verify-*) with database values
         // No Unit - always readonly and auto-filled from database
@@ -932,6 +954,12 @@ $(document).ready(function() {
         $('#verify-sn-attachment').val(attachmentData.sn_attachment || '');
         $('#verify-sn-baterai').val(attachmentData.sn_baterai || '');
         $('#verify-sn-charger').val(attachmentData.sn_charger || '');
+        $('#verify-sn-fork').val(attachmentData.sn_fork || '');
+        // Fork qty hint & current fork id for stock pre-check
+        window.uvCurrentForkId = attachmentData.fork_id ?? null;
+        const _forkQty = (attachmentData && Object.prototype.hasOwnProperty.call(attachmentData, 'fork_qty_pairs')) ? attachmentData.fork_qty_pairs : null;
+        $('#fork-qty-hint').text('Qty pair: ' + (_forkQty !== null && _forkQty !== undefined ? _forkQty : '-'));
+        window.uvForkStockCheck = { ok: true, reason: '' };
         
         // Populate dropdown options
         window.populateDropdownOptions(data.options);
@@ -1406,7 +1434,43 @@ $(document).ready(function() {
                 },
                 cache: false
             }
-        });        console.log('📝 Dropdown options populated successfully');
+        });
+        $('#verify-fork').select2({
+            placeholder: 'Cari berdasarkan item number/spec fork...',
+            allowClear: true,
+            dropdownParent: $('#unitVerificationModal'),
+            width: '250px',
+            minimumInputLength: 0,
+            ajax: {
+                url: '<?= base_url('service/data-attachment/simple') ?>',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term,
+                        type: 'fork'
+                    };
+                },
+                processResults: function (data) {
+                    if (data.success && data.data) {
+                        return {
+                            results: data.data.map(function(item) {
+                                let idText = item.sn_fork ? item.sn_fork : '(No Item)';
+                                let displayText = `${idText} - ${item.label}`;
+                                return {
+                                    id: item.id,
+                                    text: displayText,
+                                    data: item
+                                };
+                            })
+                        };
+                    }
+                    return { results: [] };
+                },
+                cache: false
+            }
+        });
+        console.log('📝 Dropdown options populated successfully');
     }
 
     // Handle Lokasi Dropdown - Toggle between dropdown and manual input
@@ -1543,6 +1607,10 @@ $(document).ready(function() {
         // Set charger
         if (attachmentData.charger_id) {
             $('#verify-charger').val(attachmentData.charger_id);
+        }
+        // Set fork
+        if (attachmentData.fork_id) {
+            $('#verify-fork').val(attachmentData.fork_id);
         }
         
         console.log('📝 Selected values set successfully');
@@ -1798,6 +1866,14 @@ $(document).ready(function() {
             showAlert('error', 'Data Work Order / Audit atau Unit tidak lengkap. Silakan tutup modal dan coba lagi.');
             return;
         }
+
+        // Frontend guard: pre-check fork stock so user doesn't waste time
+        if (window.uvForkStockCheck && window.uvForkStockCheck.ok === false) {
+            showAlert('error', window.uvForkStockCheck.reason || 'Stok fork tidak cukup untuk verifikasi ini.');
+            isSubmitting = false;
+            $('#btn-save-verification').prop('disabled', false).html('<i class="fas fa-check me-1"></i>Simpan & Complete');
+            return;
+        }
         
         // Disable button and set submitting flag
         isSubmitting = true;
@@ -2041,6 +2117,44 @@ $(document).ready(function() {
             }
             
             console.log(`📝 Charger selected: ${name} (SN: ${sn})`);
+        }
+    });
+    $('#verify-fork').on('select2:select', function(e) {
+        const selectedData = e.params.data;
+        if (selectedData && selectedData.data) {
+            const fork = selectedData.data;
+            const sn = fork.sn_fork;
+            const name = fork.label;
+            const qtyPairs = fork.qty_pairs ?? null;
+            const qtyAvail = fork.qty_available_pairs ?? null;
+            $('#db-fork').val(name);
+            $('#db-sn-fork').val(sn || '');
+            $('#verify-sn-fork').val(sn || '');
+            window.updateSimpleTooltip($('#db-fork'));
+            if (sn) {
+                window.updateSimpleTooltip($('#db-sn-fork'));
+            }
+            // Update qty hint & run pre-check logic
+            $('#fork-qty-hint').text('Qty pair: ' + (qtyPairs ?? '-'));
+            const currentForkId = window.uvCurrentForkId ? parseInt(window.uvCurrentForkId, 10) : null;
+            const selectedForkId = fork.id ? parseInt(fork.id, 10) : null;
+            const needsCheck = currentForkId && selectedForkId && currentForkId !== selectedForkId;
+            if (needsCheck && qtyAvail !== null && qtyPairs !== null) {
+                if (parseInt(qtyAvail, 10) < parseInt(qtyPairs, 10)) {
+                    window.uvForkStockCheck = {
+                        ok: false,
+                        reason: `Stok fork tidak cukup (butuh ${qtyPairs} pair, tersedia ${qtyAvail} pair).`
+                    };
+                    $('#fork-stock-warning').removeClass('d-none').text(window.uvForkStockCheck.reason);
+                } else {
+                    window.uvForkStockCheck = { ok: true, reason: '' };
+                    $('#fork-stock-warning').addClass('d-none').text('');
+                }
+            } else {
+                window.uvForkStockCheck = { ok: true, reason: '' };
+                $('#fork-stock-warning').addClass('d-none').text('');
+            }
+            console.log(`📝 Fork selected: ${name} (ITEM: ${sn})`);
         }
     });
     

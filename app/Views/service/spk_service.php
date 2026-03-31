@@ -348,6 +348,12 @@ $can_export = true;
 						</div>
 					</div>
 				</div>
+				<!-- History sparepart yang sudah tersimpan -->
+				<div id="existingSparepartHistory" class="px-3 pb-2" style="display:none">
+					<hr class="mt-0">
+					<h6 class="text-muted mb-2"><i class="fas fa-history me-1"></i>Sparepart Tersimpan Sebelumnya</h6>
+					<div id="existingSparepartHistoryBody"></div>
+				</div>
 				<div class="modal-footer d-flex justify-content-between">
 					<small class="text-muted"><i class="fas fa-info-circle me-1"></i>Fields dengan <span class="text-danger">*</span> wajib diisi</small>
 					<div class="d-flex gap-2">
@@ -5743,6 +5749,51 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		document.getElementById('inputSparepartNotes').value = '';
 		document.getElementById('sparepartInputRows').innerHTML = '';
 		_addSpkSparepartRow();
+
+		// Load & tampilkan history sparepart yang sudah tersimpan
+		const historySection = document.getElementById('existingSparepartHistory');
+		const historyBody = document.getElementById('existingSparepartHistoryBody');
+		historySection.style.display = 'none';
+		historyBody.innerHTML = '<div class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
+		fetch(`<?= base_url('service/spk/get-spareparts/') ?>${id}`, {
+			headers: {'X-Requested-With': 'XMLHttpRequest'}
+		}).then(r => r.json()).then(sp => {
+			if (sp.success && sp.spareparts && sp.spareparts.length > 0) {
+				const stageColors = {persiapan_unit:'primary', fabrikasi:'purple', painting:'orange', pdi:'success'};
+				const stageLabels = {persiapan_unit:'Persiapan', fabrikasi:'Fabrikasi', painting:'Painting', pdi:'PDI'};
+				let rows = sp.spareparts.map(item => {
+					const stageBadge = item.stage_name
+						? `<span class="badge badge-soft-${stageColors[item.stage_name]||'gray'}">${stageLabels[item.stage_name]||item.stage_name}</span>`
+						: '<span class="badge badge-soft-gray">-</span>';
+					const srcBadge = parseInt(item.is_from_warehouse) === 1
+						? '<span class="badge badge-soft-blue" style="font-size:10px">WH</span>'
+						: '<span class="badge badge-soft-yellow" style="font-size:10px">Non-WH</span>';
+					const validBadge = parseInt(item.is_validated) === 1
+						? '<span class="badge badge-soft-green" style="font-size:10px">✓ Valid</span>'
+						: '';
+					return `<tr>
+						<td class="small">${item.item_type||'-'}</td>
+						<td class="small fw-semibold">${item.item_name||'-'}</td>
+						<td class="small text-center">${item.quantity||'-'} ${item.unit||''}</td>
+						<td class="small">${srcBadge}</td>
+						<td class="small">${stageBadge}</td>
+						<td class="small">${validBadge}</td>
+					</tr>`;
+				}).join('');
+				historyBody.innerHTML = `<div class="table-responsive"><table class="table table-sm table-bordered mb-0">
+					<thead class="table-light"><tr>
+						<th class="small">Type</th><th class="small">Item</th><th class="small">Qty</th>
+						<th class="small">Source</th><th class="small">Stage</th><th class="small">Status</th>
+					</tr></thead>
+					<tbody>${rows}</tbody>
+				</table></div>
+				<p class="text-muted small mt-1 mb-0"><i class="fas fa-info-circle me-1"></i>Total ${sp.spareparts.length} item tersimpan. Form di atas untuk menambah item baru.</p>`;
+				historySection.style.display = 'block';
+			} else {
+				historySection.style.display = 'none';
+			}
+		}).catch(() => { historySection.style.display = 'none'; });
+
 		bootstrap.Modal.getOrCreateInstance(document.getElementById('spkInputSparepartModal')).show();
 	};
 

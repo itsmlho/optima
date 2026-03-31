@@ -3416,7 +3416,7 @@ EOF;
         $offset = ($page - 1) * $perPage;
         
         // Validate type
-        if (!in_array($type, ['attachment', 'battery', 'charger'])) {
+        if (!in_array($type, ['attachment', 'battery', 'charger', 'fork'])) {
             $type = 'attachment';
         }
         
@@ -3435,6 +3435,15 @@ EOF;
                 ->join('charger c', 'c.id_charger = ic.charger_type_id', 'left')
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = ic.inventory_unit_id', 'left')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+        } elseif ($type === 'fork') {
+            $qb = $this->db->table('inventory_forks ifk')
+                ->select('ifk.id, ifk.item_number as sn_fork, ifk.storage_location as lokasi_penyimpanan, ifk.status, ifk.inventory_unit_id, iu.no_unit, iu.serial_number as unit_serial_number, mu.merk_unit, mu.model_unit')
+                ->select('f.name as fork_name, f.fork_class, ifk.qty_pairs')
+                ->select('fs.qty_available_pairs as qty_available_pairs')
+                ->join('fork f', 'f.id = ifk.fork_id', 'left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ifk.inventory_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('inventory_fork_stocks fs', 'fs.id = ifk.fork_stock_id', 'left');
         } else { // attachment
             $qb = $this->db->table('inventory_attachments ia')
                 ->select('ia.id, ia.serial_number as sn_attachment, ia.storage_location as lokasi_penyimpanan, ia.status, ia.inventory_unit_id, iu.no_unit, iu.serial_number as unit_serial_number, mu.merk_unit, mu.model_unit')
@@ -3446,12 +3455,16 @@ EOF;
         
         // If no search query, prioritize AVAILABLE items first
         if (empty($q)) {
-            $qb->whereIn($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status'), ['AVAILABLE', 'IN_USE'])
-               ->orderBy("FIELD(" . ($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status')) . ", 'AVAILABLE', 'IN_USE')", '', false)
-               ->orderBy($type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : 'ia.id'), 'DESC');
+            $statusCol = $type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : ($type === 'fork' ? 'ifk.status' : 'ia.status'));
+            $idCol = $type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : ($type === 'fork' ? 'ifk.id' : 'ia.id'));
+            $qb->whereIn($statusCol, ['AVAILABLE', 'IN_USE'])
+               ->orderBy("FIELD(" . $statusCol . ", 'AVAILABLE', 'IN_USE')", '', false)
+               ->orderBy($idCol, 'DESC');
         } else {
             // With search query, show all matching items regardless of status
-            $qb->whereIn($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status'), ['AVAILABLE', 'IN_USE', 'MAINTENANCE'])
+            $statusCol = $type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : ($type === 'fork' ? 'ifk.status' : 'ia.status'));
+            $idCol = $type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : ($type === 'fork' ? 'ifk.id' : 'ia.id'));
+            $qb->whereIn($statusCol, ['AVAILABLE', 'IN_USE', 'MAINTENANCE'])
                ->groupStart();
             
             if ($type === 'attachment') {
@@ -3471,11 +3484,16 @@ EOF;
                    ->orLike('c.merk_charger', $q)
                    ->orLike('c.tipe_charger', $q)
                    ->orLike('ic.storage_location', $q);
+            } elseif ($type === 'fork') {
+                $qb->like('ifk.item_number', $q)
+                   ->orLike('f.name', $q)
+                   ->orLike('f.fork_class', $q)
+                   ->orLike('ifk.storage_location', $q);
             }
             
             $qb->groupEnd()
-               ->orderBy("FIELD(" . ($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status')) . ", 'AVAILABLE', 'IN_USE', 'MAINTENANCE')", '', false)
-               ->orderBy($type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : 'ia.id'), 'DESC');
+               ->orderBy("FIELD(" . $statusCol . ", 'AVAILABLE', 'IN_USE', 'MAINTENANCE')", '', false)
+               ->orderBy($idCol, 'DESC');
         }
         
         // Add pagination
@@ -3500,6 +3518,9 @@ EOF;
             } elseif ($type === 'charger') {
                 $label = trim(($r['merk_charger'] ?: '-') . ' ' . ($r['tipe_charger'] ?: ''));
                 $serialNumber = $r['sn_charger'];
+            } elseif ($type === 'fork') {
+                $label = trim(($r['fork_name'] ?: '-') . (!empty($r['fork_class']) ? ' [' . $r['fork_class'] . ']' : ''));
+                $serialNumber = $r['sn_fork'];
             }
             
             return [
@@ -3508,6 +3529,11 @@ EOF;
                 'sn_attachment' => $r['sn_attachment'] ?? null,
                 'sn_baterai' => $r['sn_baterai'] ?? null, 
                 'sn_charger' => $r['sn_charger'] ?? null,
+                'sn_fork' => $r['sn_fork'] ?? null,
+                'fork_name' => $r['fork_name'] ?? null,
+                'fork_class' => $r['fork_class'] ?? null,
+                'qty_pairs' => isset($r['qty_pairs']) ? (int) $r['qty_pairs'] : null,
+                'qty_available_pairs' => isset($r['qty_available_pairs']) ? (int) $r['qty_available_pairs'] : null,
                 'tipe_item' => $type,
                 'lokasi_penyimpanan' => $r['lokasi_penyimpanan'],
                 'attachment_status' => $r['status'], // Map status to old field name
