@@ -140,6 +140,9 @@ $can_export = $permissions['export'];
 
                         <input type="radio" class="btn-check" name="subFilter" id="sub-in-deliv" data-sub-status="6">
                         <label class="btn btn-sm btn-outline-primary" for="sub-in-deliv">In Delivery</label>
+
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="11">
+                        <label class="btn btn-sm btn-outline-danger" for="sub-maintenance">Maintenance</label>
                     </div>
                 </div>
                 <!-- Breakdown & Sold Filters -->
@@ -150,9 +153,6 @@ $can_export = $permissions['export'];
 
                         <input type="radio" class="btn-check" name="subFilter" id="sub-breakdown" data-sub-status="10">
                         <label class="btn btn-sm btn-outline-danger" for="sub-breakdown">Breakdown</label>
-
-                        <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="11">
-                        <label class="btn btn-sm btn-outline-warning" for="sub-maintenance">Maintenance</label>
 
                         <input type="radio" class="btn-check" name="subFilter" id="sub-sold" data-sub-status="13">
                         <label class="btn btn-sm btn-outline-secondary" for="sub-sold">Sold</label>
@@ -395,12 +395,12 @@ $(document).ready(function() {
         const rentalCount = (stats.rental_active||0) + (stats.rental_inactive||0) + (stats.rental_daily||0);
         $('#count-rental').text(rentalCount);
 
-        // Progress: SPK pipeline only (PREPARATION, READY_TO_DELIVER, IN_DELIVERY)
-        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0);
+        // Progress: SPK pipeline + MAINTENANCE (4, 5, 6, 11)
+        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0) + (stats.maintenance||0);
         $('#count-progress').text(progressCount);
 
-        // Breakdown & Sold: BREAKDOWN (10), MAINTENANCE (11), SOLD (13)
-        const breakdownSoldCount = (stats.under_repair||0) + (stats.maintenance||0) + (stats.sold||0);
+        // Breakdown & Sold: BREAKDOWN (10), SOLD (13)
+        const breakdownSoldCount = (stats.under_repair||0) + (stats.sold||0);
         $('#count-breakdown-sold').text(breakdownSoldCount);
     }
 });
