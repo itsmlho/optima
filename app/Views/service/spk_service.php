@@ -672,8 +672,8 @@ document.addEventListener('DOMContentLoaded', () => {
 							}
 						}
 
-						// Sparepart indicator: icon-only when alongside stage button, full text when alone
-						if (!row.has_spareparts && (row.status === 'IN_PROGRESS' || row.status === 'READY')) {
+						// Input Sparepart: only IN_PROGRESS and PDI not yet done
+						if (!row.has_spareparts && row.status === 'IN_PROGRESS' && !row.pdi_done) {
 							const hasStageBtn = actions.length > 0;
 							if (hasStageBtn) {
 							actions += `<button class="btn btn-sm btn-outline-warning" onclick="openInputSparepart(${row.id},'${row.nomor_spk || ''}',${row.persiapan_unit_id || ''});return false;" title="Add Sparepart"><i class="fas fa-tools"></i></button>`;
@@ -858,13 +858,17 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				actionButtons = `
 					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
-					${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
+					${pdiDone
+							? (hasSpareparts
+								? `<button class="btn btn-success btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>window.showSparepartValidationModal(${id},'${d.nomor_spk}'),300);"><i class="fas fa-clipboard-check me-1"></i>Validasi Sparepart</button>`
+								: '<span class="badge badge-soft-gray">Tidak ada sparepart</span>')
+							: `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a> ${hasSpareparts ? `<a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>${hasSpareparts ? ` <a class="btn btn-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-tools me-1"></i>Print Sparepart</a>` : ''}`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;
@@ -3743,8 +3747,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		// Add unit_index to form data (use 1 as default if not editing specific unit)
 		const unitIndex = currentEditingUnitIndex !== null ? currentEditingUnitIndex : 1;
 		fd.append('unit_index', unitIndex);
-		
-		fetch(apiUrl, {
+
+		// PDI stage: warn if no spareparts have been added yet
+		const _doApprovalFetch = () => {
+			fetch(apiUrl, {
 			method: 'POST',
 			headers: {'X-Requested-With': 'XMLHttpRequest'},
 			body: fd
@@ -3819,6 +3825,45 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.error('Fetch error:', error);
 			notify('Failed to send request to server', 'error');
 		});
+		}; // end _doApprovalFetch
+
+		// PDI stage: warn if no spareparts added yet (can't add after PDI is done)
+		if (currentApprovalStage === 'pdi') {
+			fetch(`<?= base_url('service/spk/get-spareparts/') ?>${currentApprovalSpkId}`, {
+				headers: {'X-Requested-With': 'XMLHttpRequest'}
+			}).then(r => r.json()).then(sp => {
+				const spCount = (sp.success && sp.spareparts) ? sp.spareparts.length : 0;
+				if (spCount === 0) {
+					let _pdiConfirmed = false;
+					const _confirmEl = document.getElementById('optimaConfirmModal');
+					const _onHidden = function() {
+						_confirmEl.removeEventListener('hidden.bs.modal', _onHidden);
+						if (!_pdiConfirmed) {
+							const approvalModal = bootstrap.Modal.getInstance(document.getElementById('approvalStageModal'));
+							if (approvalModal) approvalModal.hide();
+							setTimeout(() => openInputSparepart(currentApprovalSpkId), 400);
+						}
+					};
+					_confirmEl.addEventListener('hidden.bs.modal', _onHidden);
+					OptimaConfirm.generic({
+						title: 'Belum Ada Sparepart!',
+						html: 'SPK ini belum memiliki data sparepart.<br>Setelah PDI selesai, Anda <strong>tidak dapat</strong> menambahkan sparepart lagi.<br><br>Lanjutkan PDI tanpa sparepart?',
+						icon: 'warning',
+						confirmText: '<i class="fas fa-check me-1"></i>Lanjutkan PDI',
+						cancelText: '<i class="fas fa-tools me-1"></i>Tambah Sparepart',
+						confirmButtonColor: '#ffc107',
+						onConfirm: function() {
+							_pdiConfirmed = true;
+							_doApprovalFetch();
+						}
+					});
+				} else {
+					_doApprovalFetch();
+				}
+			}).catch(() => _doApprovalFetch());
+		} else {
+			_doApprovalFetch();
+		}
 	});
 
 	// ==========================================
