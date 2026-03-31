@@ -65,29 +65,29 @@ $currentLang = service('request')->getLocale();
     <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
-    <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-pro.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/optima-pro.css') ?>" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="<?= base_url('assets/css/plugins/select2.min.css') ?>" rel="stylesheet">
     <!-- Select2 Custom CSS -->
-    <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/select2-custom.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/plugins/select2-custom.css') ?>" rel="stylesheet">
     <!-- Dashboard Modern CSS -->
-    <link href="<?= base_url('assets/css/desktop/dashboard-modern.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/dashboard-modern.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/dashboard-modern.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/dashboard-modern.css') ?>" rel="stylesheet">
     <!-- Global Permission CSS -->
-    <link href="<?= base_url('assets/css/plugins/global-permission.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/global-permission.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/global-permission.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/plugins/global-permission.css') ?>" rel="stylesheet">
     <!-- Notification Popup CSS -->
-    <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/notification-popup.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/plugins/notification-popup.css') ?>" rel="stylesheet">
 
     <!-- OPTIMA DataTable CSS - Centralized Table Styling System -->
-    <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-datatable.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/optima-datatable.css') ?>" rel="stylesheet">
 
     <!-- OPTIMA Sidebar CodingNepal Style - Floating, expand/collapse -->
-    <link href="<?= base_url('assets/css/desktop/optima-sidebar-codingnepal.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-sidebar-codingnepal.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/optima-sidebar-codingnepal.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/optima-sidebar-codingnepal.css') ?>" rel="stylesheet">
 
     <!-- Material Symbols Rounded (sidebar icons) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" />
 
     <!-- Sidebar Scroll Management (deferred) -->
-    <script defer src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
+    <script defer src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/js/sidebar-scroll.js') ?>"></script>
    
     <!-- OPTIMA Command Palette Search Button — Header Styles -->
     <style>
