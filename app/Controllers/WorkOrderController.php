@@ -2862,10 +2862,11 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
+            // Log detailed error for debugging
+            log_message('error', '[getUnitVerificationData] Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ]);
         }
     }
@@ -2963,10 +2964,12 @@ class WorkOrderController extends Controller
             }
 
         } catch (\Throwable $e) {
-            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
+            $db = isset($db) ? $db : \Config\Database::connect();
+            $dbError = method_exists($this, 'getMySQLError') ? $this->getMySQLError($db) : '';
+            log_message('error', '[getUnitVerificationData] Error: ' . $e->getMessage() . ' | DB: ' . $dbError);
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ]);
         }
     }
@@ -3184,6 +3187,14 @@ class WorkOrderController extends Controller
                 if (is_object($workOrder)) {
                     $workOrder = (array) $workOrder;
                 }
+
+                // Safety: ensure work order is linked to a unit before proceeding
+                if (empty($workOrder['unit_id'])) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Work Order ini belum memiliki unit yang terhubung. Silakan pilih/assign unit terlebih dahulu sebelum melakukan verifikasi.'
+                    ]);
+                }
             }
 
             // Get unit details with all related data
@@ -3259,124 +3270,83 @@ class WorkOrderController extends Controller
                 $unit['lokasi']     = $auditHeader['location_name'] ?? $unit['lokasi'];
             }
 
-            // Get attachment data from NEW separate tables (UNION ALL approach)
-            $attachmentRows = $db->query("
+            // Get attachment / battery / charger / fork data per-unit (no UNION to avoid collation issues)
+            $hasForkTables = $db->tableExists('inventory_forks') && $db->tableExists('fork');
+
+            $attachmentRows = [];
+            
+            // Attachment
+            $attRows = $db->query("
                 SELECT 
                     ia.id as id_inventory_attachment,
                     'attachment' as tipe_item,
                     ia.attachment_type_id as attachment_id,
                     ia.serial_number as sn_attachment,
-                    NULL as baterai_id,
-                    NULL as sn_baterai,
-                    NULL as charger_id,
-                    NULL as sn_charger,
-                    NULL as fork_id,
-                    NULL as sn_fork,
-                    NULL as fork_qty_pairs,
                     ia.physical_condition as kondisi_fisik,
                     ia.completeness as kelengkapan,
                     ia.notes as catatan_fisik,
                     a.tipe as attachment_tipe,
                     a.merk as attachment_merk,
-                    a.model as attachment_model,
-                    NULL as tipe_baterai,
-                    NULL as merk_baterai,
-                    NULL as jenis_baterai,
-                    NULL as tipe_charger,
-                    NULL as merk_charger,
-                    NULL as fork_name,
-                    NULL as fork_class
+                    a.model as attachment_model
                 FROM inventory_attachments ia
                 LEFT JOIN attachment a ON ia.attachment_type_id = a.id_attachment
- WHERE ia.inventory_unit_id = ?
-                UNION ALL
+                WHERE ia.inventory_unit_id = ?
+            ", [$workOrder['unit_id']])->getResultArray();
+            
+            // Battery
+            $batRows = $db->query("
                 SELECT 
                     ib.id as id_inventory_attachment,
                     'battery' as tipe_item,
-                    NULL as attachment_id,
-                    NULL as sn_attachment,
                     ib.battery_type_id as baterai_id,
                     ib.serial_number as sn_baterai,
-                    NULL as charger_id,
-                    NULL as sn_charger,
-                    NULL as fork_id,
-                    NULL as sn_fork,
-                    NULL as fork_qty_pairs,
                     ib.physical_condition as kondisi_fisik,
-                    NULL as kelengkapan,
                     ib.notes as catatan_fisik,
-                    NULL as attachment_tipe,
-                    NULL as attachment_merk,
-                    NULL as attachment_model,
                     b.tipe_baterai,
                     b.merk_baterai,
-                    b.jenis_baterai,
-                    NULL as tipe_charger,
-                    NULL as merk_charger,
-                    NULL as fork_name,
-                    NULL as fork_class
+                    b.jenis_baterai
                 FROM inventory_batteries ib
                 LEFT JOIN baterai b ON ib.battery_type_id = b.id
                 WHERE ib.inventory_unit_id = ?
-                UNION ALL
+            ", [$workOrder['unit_id']])->getResultArray();
+            
+            // Charger
+            $chrRows = $db->query("
                 SELECT 
                     ic.id as id_inventory_attachment,
                     'charger' as tipe_item,
-                    NULL as attachment_id,
-                    NULL as sn_attachment,
-                    NULL as baterai_id,
-                    NULL as sn_baterai,
                     ic.charger_type_id as charger_id,
                     ic.serial_number as sn_charger,
-                    NULL as fork_id,
-                    NULL as sn_fork,
-                    NULL as fork_qty_pairs,
                     ic.physical_condition as kondisi_fisik,
-                    NULL as kelengkapan,
                     ic.notes as catatan_fisik,
-                    NULL as attachment_tipe,
-                    NULL as attachment_merk,
-                    NULL as attachment_model,
-                    NULL as tipe_baterai,
-                    NULL as merk_baterai,
-                    NULL as jenis_baterai,
                     c.tipe_charger,
-                    c.merk_charger,
-                    NULL as fork_name,
-                    NULL as fork_class
+                    c.merk_charger
                 FROM inventory_chargers ic
                 LEFT JOIN charger c ON ic.charger_type_id = c.id_charger
                 WHERE ic.inventory_unit_id = ?
-                UNION ALL
-                SELECT
-                    ifk.id as id_inventory_attachment,
-                    'fork' as tipe_item,
-                    NULL as attachment_id,
-                    NULL as sn_attachment,
-                    NULL as baterai_id,
-                    NULL as sn_baterai,
-                    NULL as charger_id,
-                    NULL as sn_charger,
-                    ifk.fork_id as fork_id,
-                    ifk.item_number as sn_fork,
-                    ifk.qty_pairs as fork_qty_pairs,
-                    ifk.physical_condition as kondisi_fisik,
-                    NULL as kelengkapan,
-                    ifk.notes as catatan_fisik,
-                    NULL as attachment_tipe,
-                    NULL as attachment_merk,
-                    NULL as attachment_model,
-                    NULL as tipe_baterai,
-                    NULL as merk_baterai,
-                    NULL as jenis_baterai,
-                    NULL as tipe_charger,
-                    NULL as merk_charger,
-                    f.name as fork_name,
-                    f.fork_class as fork_class
-                FROM inventory_forks ifk
-                LEFT JOIN fork f ON ifk.fork_id = f.id
-                WHERE ifk.inventory_unit_id = ? AND (ifk.detached_at IS NULL)
-            ", [$workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id'], $workOrder['unit_id']])->getResultArray();
+            ", [$workOrder['unit_id']])->getResultArray();
+            
+            // Fork (if tables exist)
+            $fkRows = [];
+            if ($hasForkTables) {
+                $fkRows = $db->query("
+                    SELECT
+                        ifk.id as id_inventory_attachment,
+                        'fork' as tipe_item,
+                        ifk.fork_id as fork_id,
+                        ifk.item_number as sn_fork,
+                        ifk.qty_pairs as fork_qty_pairs,
+                        ifk.physical_condition as kondisi_fisik,
+                        ifk.notes as catatan_fisik,
+                        f.name as fork_name,
+                        f.fork_class as fork_class
+                    FROM inventory_forks ifk
+                    LEFT JOIN fork f ON ifk.fork_id = f.id
+                    WHERE ifk.inventory_unit_id = ? AND (ifk.detached_at IS NULL)
+                ", [$workOrder['unit_id']])->getResultArray();
+            }
+
+            $attachmentRows = array_merge($attRows, $batRows, $chrRows, $fkRows);
             
             // Parse attachment data by type
             $attachment = [
@@ -3521,7 +3491,9 @@ class WorkOrderController extends Controller
                 ORDER BY c.tipe_charger, c.merk_charger
             ")->getResultArray();
 
-            $forkOptions = $db->query("
+            $forkOptions = [];
+            if ($hasForkTables) {
+                $forkOptions = $db->query("
                 SELECT
                     ifk.id as id,
                     CONCAT(f.name, IF(f.fork_class IS NOT NULL AND f.fork_class != '', CONCAT(' [', f.fork_class, ']'), ''), ' [ITEM: ', COALESCE(ifk.item_number, 'No Item'), '] [QTY: ', COALESCE(ifk.qty_pairs, 1), ']') as name,
@@ -3535,7 +3507,8 @@ class WorkOrderController extends Controller
                 JOIN fork f ON ifk.fork_id = f.id
                 WHERE ifk.status = 'AVAILABLE'
                 ORDER BY f.name
-            ")->getResultArray();
+                ")->getResultArray();
+            }
 
             // Add currently assigned attachments to the options (if any)
             $currentAttachments = $db->query("
@@ -3587,7 +3560,9 @@ class WorkOrderController extends Controller
                 ORDER BY c.tipe_charger, c.merk_charger
             ", [$workOrder['unit_id']])->getResultArray();
 
-            $currentForks = $db->query("
+            $currentForks = [];
+            if ($hasForkTables) {
+                $currentForks = $db->query("
                 SELECT
                     ifk.id as id,
                     CONCAT(f.name, IF(f.fork_class IS NOT NULL AND f.fork_class != '', CONCAT(' [', f.fork_class, ']'), ''), ' [ITEM: ', COALESCE(ifk.item_number, 'No Item'), '] [QTY: ', COALESCE(ifk.qty_pairs, 1), '] (Current)') as name,
@@ -3601,7 +3576,8 @@ class WorkOrderController extends Controller
                 JOIN fork f ON ifk.fork_id = f.id
                 WHERE ifk.inventory_unit_id = ? AND ifk.detached_at IS NULL
                 ORDER BY f.name
-            ", [$workOrder['unit_id']])->getResultArray();
+                ", [$workOrder['unit_id']])->getResultArray();
+            }
 
             // Merge current and available options
             $attachmentOptions = array_merge($currentAttachments, $attachmentOptions);
@@ -3703,10 +3679,12 @@ class WorkOrderController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
+            $db = isset($db) ? $db : \Config\Database::connect();
+            $dbError = method_exists($this, 'getMySQLError') ? $this->getMySQLError($db) : '';
+            log_message('error', '[getUnitVerificationData] Error: ' . $e->getMessage() . ' | DB: ' . $dbError);
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ]);
         }
     }
