@@ -83,6 +83,11 @@ $can_export = $permissions['export'];
                         In Progress <span class="badge badge-soft-cyan ms-1 shadow-sm" id="count-progress">0</span>
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill px-3 py-1 text-danger" id="breakdown-sold-tab" data-category="breakdown_sold" type="button" role="tab">
+                        Breakdown & Sold <span class="badge badge-soft-red ms-1 shadow-sm" id="count-breakdown-sold">0</span>
+                    </button>
+                </li>
             </ul>
         </div>
         
@@ -135,12 +140,22 @@ $can_export = $permissions['export'];
 
                         <input type="radio" class="btn-check" name="subFilter" id="sub-in-deliv" data-sub-status="6">
                         <label class="btn btn-sm btn-outline-primary" for="sub-in-deliv">In Delivery</label>
+                    </div>
+                </div>
+                <!-- Breakdown & Sold Filters -->
+                <div id="breakdown_soldSubFilters" class="sub-filter-group" style="display: none;">
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-all-bd-sold" data-sub-status="" checked>
+                        <label class="btn btn-sm btn-outline-danger" for="sub-all-bd-sold">All</label>
 
-                        <input type="radio" class="btn-check" name="subFilter" id="sub-under-repair" data-sub-status="10">
-                        <label class="btn btn-sm btn-outline-danger" for="sub-under-repair">Breakdown</label>
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-breakdown" data-sub-status="10">
+                        <label class="btn btn-sm btn-outline-danger" for="sub-breakdown">Breakdown</label>
 
                         <input type="radio" class="btn-check" name="subFilter" id="sub-maintenance" data-sub-status="11">
-                        <label class="btn btn-sm btn-outline-danger" for="sub-maintenance">Maintenance</label>
+                        <label class="btn btn-sm btn-outline-warning" for="sub-maintenance">Maintenance</label>
+
+                        <input type="radio" class="btn-check" name="subFilter" id="sub-sold" data-sub-status="13">
+                        <label class="btn btn-sm btn-outline-secondary" for="sub-sold">Sold</label>
                     </div>
                 </div>
             </div>
@@ -380,9 +395,13 @@ $(document).ready(function() {
         const rentalCount = (stats.rental_active||0) + (stats.rental_inactive||0) + (stats.rental_daily||0);
         $('#count-rental').text(rentalCount);
 
-        // Progress: SPK preparation/delivery pipeline + BREAKDOWN + MAINTENANCE
-        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0) + (stats.under_repair||0) + (stats.maintenance||0);
+        // Progress: SPK pipeline only (PREPARATION, READY_TO_DELIVER, IN_DELIVERY)
+        const progressCount = (stats.in_preparation||0) + (stats.ready_to_deliver||0) + (stats.in_delivery||0);
         $('#count-progress').text(progressCount);
+
+        // Breakdown & Sold: BREAKDOWN (10), MAINTENANCE (11), SOLD (13)
+        const breakdownSoldCount = (stats.under_repair||0) + (stats.maintenance||0) + (stats.sold||0);
+        $('#count-breakdown-sold').text(breakdownSoldCount);
     }
 });
 </script>

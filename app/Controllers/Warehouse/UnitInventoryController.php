@@ -60,9 +60,10 @@ class UnitInventoryController extends BaseController
             // 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=BREAKDOWN
             // 11=MAINTENANCE, 12=RETURNED, 13=SOLD, 14=RENTAL_INACTIVE, 15=SPARE, 16=NONAKTIF
             $categoryMap = [
-                'stock'    => '1,2,3,9,12,15',    // AVAILABLE_STOCK, NON_ASSET, BOOKED, TRIAL, RETURNED, SPARE
-                'rental'   => '7,8,14',            // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
-                'progress' => '4,5,6,10,11',       // PREPARATION, READY_TO_DELIVER, IN_DELIVERY, BREAKDOWN, MAINTENANCE
+                'stock'          => '1,2,3,9,12,15',  // AVAILABLE_STOCK, NON_ASSET, BOOKED, TRIAL, RETURNED, SPARE
+                'rental'         => '7,8,14',          // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
+                'progress'       => '4,5,6',           // PREPARATION, READY_TO_DELIVER, IN_DELIVERY (SPK pipeline only)
+                'breakdown_sold' => '10,11,13',        // BREAKDOWN, MAINTENANCE, SOLD
             ];
             // Sub-filter (statusFilter) takes priority over category
             if (!empty($category) && isset($categoryMap[$category]) && empty($statusFilter)) {
