@@ -328,6 +328,10 @@
             display: none;
         }
         
+        /* Multi-unit (audit lokasi): satu lembar per unit */
+        .print-unit-sheet { page-break-after: always; }
+        .print-unit-sheet:last-child { page-break-after: auto; }
+
         /* --- Lain-lain --- */
         @media print {
             @page {
@@ -354,6 +358,13 @@
     </style>
 </head>
 <body>
+<?php
+$printWorkOrderId = $printWorkOrderId ?? (isset($workOrderId) ? (int) $workOrderId : null);
+$printAuditId     = $printAuditId ?? null;
+$printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnitIds : [];
+?>
+    <div id="print-root"></div>
+    <template id="uv-print-page-tpl">
     <div class="print-container">
         
         <header class="document-header">
@@ -653,13 +664,46 @@
             </div>
         </div>
     </div>
-    
+    </template>
+
     <?= $this->include('partials/accessory_js') ?>
+    <script>
+        window.UV_PRINT_BOOTSTRAP = <?= json_encode([
+            'workOrderId' => $printWorkOrderId,
+            'auditId'     => $printAuditId,
+            'unitIds'     => $printUnitIds,
+        ]) ?>;
+    </script>
     <script>
         // Check if loaded in iframe or embedded mode
         const isInIframe = window.parent !== window;
         const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === '1';
-        
+
+        function idb(base, suffix) {
+            return base + suffix;
+        }
+
+        function mountPrintPage(suffix) {
+            const tpl = document.getElementById('uv-print-page-tpl');
+            const root = document.getElementById('print-root');
+            if (!tpl || !root) {
+                return null;
+            }
+            const frag = tpl.content.cloneNode(true);
+            const container = frag.querySelector('.print-container');
+            if (!container) {
+                return null;
+            }
+            container.querySelectorAll('[id]').forEach(function(el) {
+                el.id = el.id + suffix;
+            });
+            const sheet = document.createElement('div');
+            sheet.className = 'print-unit-sheet';
+            sheet.appendChild(container);
+            root.appendChild(sheet);
+            return container;
+        }
+
         // Auto print functionality like print_work_order.php
         function initiatePrint() {
             // Don't auto-print if in iframe or embedded mode (let parent handle printing)
@@ -681,128 +725,87 @@
             }, 1000);
         }
         
-        // Load verification data using same method as unit_verification.php
-        function loadVerificationData(workOrderId) {
-            // console.log('🔍 Loading unit verification data for WO:', workOrderId);
-            
-            // Use jQuery like unit_verification.php for consistency
-            if (typeof $ !== 'undefined') {
+        function loadVerificationDataWo(woId, suffix) {
+            return new Promise(function(resolve, reject) {
+                if (typeof $ === 'undefined') {
+                    reject(new Error('jQuery diperlukan'));
+                    return;
+                }
                 $.ajax({
                     url: '<?= base_url('service/work-orders/get-unit-verification-data') ?>',
                     type: 'POST',
                     data: {
-                        work_order_id: workOrderId,
+                        work_order_id: woId,
                         [window._csrfName]: window._csrfValue
                     },
                     success: function(response) {
-                        // console.log('📦 Unit verification data received:', response);
-                        // console.log('📦 Full response structure:', JSON.stringify(response, null, 2));
-                        
                         if (response.success && response.data) {
-                            let data = response.data;
-                            // console.log('📦 Data structure:', JSON.stringify(data, null, 2));
-                            // console.log('📦 Unit data:', data.unit);
-                            // console.log('📦 Work order data:', data.work_order);
-                            
-                            // Populate all verification fields
-                            populatePrintData(data);
+                            populatePrintData(response.data, suffix);
+                            resolve();
                         } else {
-                            console.error('Failed to load data:', response.message);
-                            if (window.OptimaNotify) OptimaNotify.error('Failed to load data: ' + (response.message || 'Unknown error'));
-                            else alert('Failed to load data: ' + (response.message || 'Unknown error'));
+                            reject(new Error(response.message || 'Gagal memuat data'));
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('❌ Error loading unit verification data:', error);
+                    error: function(xhr, status, err) {
+                        reject(new Error(err || status || 'Request gagal'));
                     }
                 });
-            } else {
-                // Fallback to fetch if jQuery not available
-                fetch('<?= base_url("service/work-orders/get-unit-verification-data") ?>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token-value"]') || {}).getAttribute('content') || ''
-                    },
-                    body: 'work_order_id=' + workOrderId
-                        + '&' + encodeURIComponent((document.querySelector('meta[name="csrf-token-name"]') || {}).getAttribute('content') || '_csrf')
-                        + '=' + encodeURIComponent((document.querySelector('meta[name="csrf-token-value"]') || {}).getAttribute('content') || '')
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        populatePrintData(data.data);
-                    } else {
-                        console.error('Failed to load data:', data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading verification data:', error);
-                });
-            }
+            });
         }
 
-        function populatePrintData(data) {
-            // console.log('📝 Populating print verification data:', data);
-            
-            // Extract data same as unit_verification.php
+        function loadVerificationDataAudit(auditId, unitId, suffix) {
+            return new Promise(function(resolve, reject) {
+                if (typeof $ === 'undefined') {
+                    reject(new Error('jQuery diperlukan'));
+                    return;
+                }
+                $.ajax({
+                    url: '<?= base_url('service/work-orders/get-unit-verification-data') ?>',
+                    type: 'POST',
+                    data: {
+                        audit_id: auditId,
+                        unit_id: unitId,
+                        [window._csrfName]: window._csrfValue
+                    },
+                    success: function(response) {
+                        if (response.success && response.data) {
+                            populatePrintData(response.data, suffix);
+                            resolve();
+                        } else {
+                            reject(new Error(response.message || 'Gagal memuat data'));
+                        }
+                    },
+                    error: function(xhr, status, err) {
+                        reject(new Error(err || status || 'Request gagal'));
+                    }
+                });
+            });
+        }
+
+        function populatePrintData(data, suffix) {
             let unitData = data.unit || {};
             let workOrderData = data.work_order || {};
             let attachmentData = data.attachment || {};
-            
-            // console.log('📝 Unit data extracted:', unitData);
-            // console.log('📝 Work order data extracted:', workOrderData);
-            // console.log('📝 Attachment data extracted:', attachmentData);
-            
-            // Debug: Check if elements exist before populating
-            // console.log('📝 Checking elements existence:');
-            // console.log('- print-wo-number:', document.getElementById('print-wo-number') ? 'EXISTS' : 'NOT FOUND');
-            // console.log('- print-unit-number:', document.getElementById('print-unit-number') ? 'EXISTS' : 'NOT FOUND');
-            // console.log('- info-no-unit:', document.getElementById('info-no-unit') ? 'EXISTS' : 'NOT FOUND');
-            // console.log('- db-no-unit:', document.getElementById('db-no-unit') ? 'EXISTS' : 'NOT FOUND');
-            
-            // Update page title
-            document.title = 'Unit Verification - ' + (workOrderData.work_order_number || workOrderData.wo_number || 'N/A');
-            
-            // Populate header - check both possible field names
+
+            const woLabel = workOrderData.work_order_number || workOrderData.wo_number || 'N/A';
+            document.title = 'Unit Verification - ' + woLabel;
+
             const woNumber = workOrderData.work_order_number || workOrderData.wo_number || '-';
-            // console.log('📝 WO Number to populate:', woNumber);
-            
-            const printWoElement = document.getElementById('print-wo-number');
-            const printUnitElement = document.getElementById('print-unit-number');
-            const footerWoElement = document.getElementById('footer-wo-number');
-            
+
+            const printWoElement = document.getElementById(idb('print-wo-number', suffix));
+            const printUnitElement = document.getElementById(idb('print-unit-number', suffix));
+            const footerWoElement = document.getElementById(idb('footer-wo-number', suffix));
+
             if (printWoElement) {
                 printWoElement.textContent = woNumber;
-                // console.log('📝 Updated print-wo-number to:', woNumber);
-            } else {
-                console.error('❌ print-wo-number element not found');
             }
-            
             if (printUnitElement) {
                 printUnitElement.textContent = unitData.no_unit || '-';
-                // console.log('📝 Updated print-unit-number to:', unitData.no_unit || '-');
-            } else {
-                console.error('❌ print-unit-number element not found');
             }
-            
             if (footerWoElement) {
                 footerWoElement.textContent = woNumber;
-                // console.log('📝 Updated footer-wo-number to:', woNumber);
-            } else {
-                console.error('❌ footer-wo-number element not found');
             }
-            
-            // Debug: List all available fields in unitData
-            // console.log('📝 Available fields in unitData:');
-            for (let key in unitData) {
-                // console.log(`   ${key}: ${unitData[key]}`);
-            }
-            
-            // Populate Unit Database values with debug logging
-            // console.log('📝 Populating database values...');
-            
+
             const dbElements = [
                 { id: 'db-no-unit', value: unitData.no_unit },
                 { id: 'db-pelanggan', value: unitData.pelanggan },
@@ -816,20 +819,14 @@
                 { id: 'db-keterangan', value: unitData.keterangan },
                 { id: 'db-hour-meter', value: unitData.hour_meter }
             ];
-            
-            dbElements.forEach(item => {
-                const element = document.getElementById(item.id);
+
+            dbElements.forEach(function(item) {
+                const element = document.getElementById(idb(item.id, suffix));
                 if (element) {
                     element.textContent = item.value || '-';
-                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
-                } else {
-                    console.error(`❌ Element ${item.id} not found`);
                 }
             });
-            
-            // Populate Machine Database values
-            // console.log('📝 Populating machine values...');
-            
+
             const machineElements = [
                 { id: 'db-model-mesin', value: unitData.model_mesin_name },
                 { id: 'db-sn-mesin', value: unitData.sn_mesin },
@@ -837,42 +834,23 @@
                 { id: 'db-sn-mast', value: unitData.sn_mast },
                 { id: 'db-tinggi-mast', value: unitData.tinggi_mast }
             ];
-            
-            machineElements.forEach(item => {
-                const element = document.getElementById(item.id);
+
+            machineElements.forEach(function(item) {
+                const element = document.getElementById(idb(item.id, suffix));
                 if (element) {
                     element.textContent = item.value || '-';
-                    // console.log(`📝 Updated ${item.id} to: ${item.value || '-'}`);
-                } else {
-                    console.error(`❌ Element ${item.id} not found`);
                 }
             });
-            
-            // Populate Attachment Database values
-            // console.log('📝 Populating attachment values...');
-            // console.log('📝 Attachment data available:', attachmentData);
-            
-            // Check if unit is ELECTRIC department
+
             const isElectricUnit = unitData.departemen_name === 'ELECTRIC';
-            // console.log('📝 Department Check:');
-            // console.log('📝 - Unit Data:', unitData);
-            // console.log('📝 - Department Name:', unitData.departemen_name);
-            // console.log('📝 - Is Electric Unit:', isElectricUnit);
-            // console.log('📝 - Comparison Result:', unitData.departemen_name === 'ELECTRIC');
-            
-            // Show/hide battery and charger rows based on department
-            const batteryRows = $('#battery-row, #battery-sn-row, #charger-row, #charger-sn-row');
-            // console.log('📝 Battery/Charger rows found:', batteryRows.length);
-            
+            const battSel = '#battery-row' + suffix + ', #battery-sn-row' + suffix + ', #charger-row' + suffix + ', #charger-sn-row' + suffix;
+            const batteryRows = $(battSel);
             if (isElectricUnit) {
                 batteryRows.show();
-                // console.log('📝 ✅ Showing battery and charger rows for ELECTRIC unit');
             } else {
                 batteryRows.hide();
-                // console.log('📝 ❌ Hiding battery and charger rows for non-ELECTRIC unit');
-                // console.log('📝 ❌ Department is:', unitData.departemen_name, '(not ELECTRIC)');
             }
-            
+
             const attachmentElements = [
                 { id: 'db-attachment', value: attachmentData.attachment_name },
                 { id: 'db-sn-attachment', value: attachmentData.sn_attachment },
@@ -881,41 +859,28 @@
                 { id: 'db-charger', value: attachmentData.charger_name },
                 { id: 'db-sn-charger', value: attachmentData.sn_charger }
             ];
-            
-            attachmentElements.forEach(item => {
-                const element = document.getElementById(item.id);
+
+            attachmentElements.forEach(function(item) {
+                const element = document.getElementById(idb(item.id, suffix));
                 if (element) {
                     element.textContent = item.value || '-';
-                } else {
-                    console.error(`❌ Element ${item.id} not found`);
                 }
             });
 
-            // Populate Accessories
-            // console.log('📝 Populating accessories...');
-            populateAccessories(data.accessories || []);
-            
-            // console.log('📝 Print data population completed');
-            
-            // Double-check battery/charger visibility after a short delay
+            populateAccessories(data.accessories || [], suffix);
+
             setTimeout(function() {
                 const departmentName = unitData.departemen_name || '';
                 const isElectric = departmentName === 'ELECTRIC';
-                const batteryRows = $('#battery-row, #battery-sn-row, #charger-row, #charger-sn-row');
-                
-                // console.log('📝 Final check - Department:', departmentName, 'Is Electric:', isElectric);
-                
+                const br = $(battSel);
                 if (isElectric) {
-                    batteryRows.show();
-                    // console.log('📝 ✅ Final: Showing battery/charger rows');
+                    br.show();
                 } else {
-                    batteryRows.hide();
-                    // console.log('📝 ❌ Final: Hiding battery/charger rows for department:', departmentName);
+                    br.hide();
                 }
             }, 100);
         }
-        
-        // Populate Accessories function
+
         function normalizeAccessoryValue(value) {
             if (window.OptimaAccessory && typeof window.OptimaAccessory.normalizeCheckboxValue === 'function') {
                 return window.OptimaAccessory.normalizeCheckboxValue(value);
@@ -923,102 +888,118 @@
             return String(value || '').trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
         }
 
-        function populateAccessories(accessories) {
-            // console.log('🔧 Populating print accessories:', accessories);
-            
+        function populateAccessories(accessories, suffix) {
             let checkedCount = 0;
-            
-            // Clear all checkboxes first
-            document.querySelectorAll('.accessory-checkbox').forEach(checkbox => {
+            const summaryEl = document.getElementById(idb('accessories-summary', suffix));
+            const container = summaryEl ? summaryEl.closest('.print-container') : null;
+            if (!container) {
+                return;
+            }
+
+            container.querySelectorAll('.accessory-checkbox').forEach(function(checkbox) {
                 checkbox.textContent = '☐';
                 checkbox.classList.remove('checked');
             });
-            
-            // Check accessories that exist in database
+
             if (accessories && accessories.length > 0) {
                 accessories.forEach(function(accessory) {
                     let accessoryValue = normalizeAccessoryValue(accessory.name || accessory.accessory_name || accessory);
-                    // console.log('🔍 Looking for print accessory:', accessoryValue);
-                    
-                    // Find checkbox with matching data-accessory value
-                    let checkbox = document.querySelector(`[data-accessory="${accessoryValue}"]`);
+                    let checkbox = container.querySelector('[data-accessory="' + accessoryValue + '"]');
                     if (checkbox) {
                         checkbox.textContent = '✓';
                         checkbox.classList.add('checked');
                         checkedCount++;
-                        // console.log('✅ Found exact match for print:', accessoryValue);
-                    } else {
-                        // console.log('❌ No match found for print:', accessoryValue);
                     }
                 });
             }
-            
-            // Update summary
-            const summaryElement = document.getElementById('accessories-summary');
-            if (summaryElement) {
-                summaryElement.textContent = `${checkedCount} item`;
+
+            if (summaryEl) {
+                summaryEl.textContent = checkedCount + ' item';
             }
-            
-            // console.log(`📊 Print: Auto-checked ${checkedCount} accessories out of ${accessories.length}`);
         }
-        
-        // Initialize
-        if (document.readyState === 'complete') {
-            // Get work order ID from URL
+
+        async function runPrintBootstrap() {
+            const boot = window.UV_PRINT_BOOTSTRAP || {};
             const urlParams = new URLSearchParams(window.location.search);
-            const workOrderId = urlParams.get('wo_id');
-            
-            if (workOrderId) {
-                loadVerificationData(workOrderId);
+            const woIdRaw = boot.workOrderId || urlParams.get('wo_id');
+            const woId = woIdRaw ? parseInt(String(woIdRaw), 10) : 0;
+
+            let auditId = boot.auditId ? parseInt(String(boot.auditId), 10) : 0;
+            if (!auditId) {
+                auditId = parseInt(urlParams.get('audit_id') || '0', 10);
             }
-            
+
+            let unitIds = Array.isArray(boot.unitIds) ? boot.unitIds.map(function(u) { return parseInt(String(u), 10); }).filter(function(u) { return u > 0; }) : [];
+            const unitParam = parseInt(urlParams.get('unit_id') || '0', 10);
+            if (auditId > 0 && unitIds.length === 0 && unitParam > 0) {
+                unitIds = [unitParam];
+            }
+
+            const tasks = [];
+            if (woId > 0) {
+                tasks.push({ type: 'wo', woId: woId, suffix: '-p0' });
+            } else if (auditId > 0 && unitIds.length > 0) {
+                unitIds.forEach(function(uid, i) {
+                    tasks.push({ type: 'audit', auditId: auditId, unitId: uid, suffix: '-p' + i });
+                });
+            }
+
+            if (tasks.length === 0) {
+                console.error('UV print: tidak ada wo_id atau audit + unit');
+                return;
+            }
+
+            tasks.forEach(function(t) {
+                mountPrintPage(t.suffix);
+            });
+
+            try {
+                for (let i = 0; i < tasks.length; i++) {
+                    const t = tasks[i];
+                    if (t.type === 'wo') {
+                        await loadVerificationDataWo(t.woId, t.suffix);
+                    } else {
+                        await loadVerificationDataAudit(t.auditId, t.unitId, t.suffix);
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Gagal memuat form cetak: ' + (e.message || e));
+                return;
+            }
+
             initiatePrint();
-        } else {
-            window.addEventListener('load', function() {
-                // Get work order ID from URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const workOrderId = urlParams.get('wo_id');
-                
-                if (workOrderId) {
-                    loadVerificationData(workOrderId);
-                }
-                
-                initiatePrint();
-            });
-            
-            document.addEventListener('DOMContentLoaded', function() {
-                // Get work order ID from URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const workOrderId = urlParams.get('wo_id');
-                
-                if (workOrderId) {
-                    loadVerificationData(workOrderId);
-                }
-            });
         }
-        
-        // Show footer when printing
-        window.addEventListener('beforeprint', () => {
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'block';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            runPrintBootstrap();
         });
         
-        window.addEventListener('afterprint', () => {
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'none';
-            
-            // Only auto close if not in iframe or embedded mode
+        function forEachPrintFooter(fn) {
+            document.querySelectorAll('[id^="printFooter"]').forEach(fn);
+        }
+
+        window.addEventListener('beforeprint', function() {
+            forEachPrintFooter(function(footer) {
+                footer.style.display = 'block';
+            });
+        });
+
+        window.addEventListener('afterprint', function() {
+            forEachPrintFooter(function(footer) {
+                footer.style.display = 'none';
+            });
             if (!isInIframe && !isEmbedded) {
                 setTimeout(function() {
                     window.close();
                 }, 100);
             }
         });
-        
-        // Auto print on load
-        window.addEventListener('load', () => {
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'block';
+
+        window.addEventListener('load', function() {
+            forEachPrintFooter(function(footer) {
+                footer.style.display = 'block';
+            });
         });
     </script>
 </body>

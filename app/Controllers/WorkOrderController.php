@@ -14,6 +14,7 @@ use App\Models\InventoryAttachmentModel;
 use App\Models\InventoryBatteryModel;
 use App\Models\InventoryChargerModel;
 use App\Models\InventoryComponentHelper;
+use App\Models\AuditLocationModel;
 use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\Controller;
 
@@ -3136,21 +3137,53 @@ class WorkOrderController extends Controller
         }
 
         $workOrderId = $this->request->getPost('work_order_id');
-        
-        if (!$workOrderId) {
+        $auditId     = (int) ($this->request->getPost('audit_id') ?? 0);
+        $unitIdPost  = (int) ($this->request->getPost('unit_id') ?? 0);
+        $isAuditContext = $auditId > 0;
+        $auditHeader    = null;
+
+        if ($isAuditContext) {
+            if ($unitIdPost <= 0) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit ID wajib untuk verifikasi audit']);
+            }
+            $auditLocModel = new AuditLocationModel();
+            $auditHeader   = $auditLocModel->getWithDetails($auditId);
+            if (!$auditHeader) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Audit tidak ditemukan']);
+            }
+            $inAudit = false;
+            foreach ($auditHeader['items'] ?? [] as $row) {
+                if ((int) ($row['unit_id'] ?? 0) === $unitIdPost) {
+                    $inAudit = true;
+                    break;
+                }
+            }
+            if (!$inAudit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak termasuk dalam audit ini']);
+            }
+            $workOrder = [
+                'id'                  => null,
+                'unit_id'             => $unitIdPost,
+                'work_order_number'   => $auditHeader['audit_number'] ?? 'AUDIT',
+                'wo_number'           => $auditHeader['audit_number'] ?? 'AUDIT',
+                'unit_code'           => '',
+                'mechanic_id'         => null,
+                'helper_id'           => null,
+                '_audit_mechanic_name'=> $auditHeader['mechanic_name'] ?? null,
+            ];
+        } elseif (!$workOrderId) {
             return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
         }
 
         try {
-            // Get work order info
-            $workOrder = $this->workOrderModel->find($workOrderId);
-            if (!$workOrder) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Work Order not found']);
-            }
-
-            // Convert to array if it's an object
-            if (is_object($workOrder)) {
-                $workOrder = (array) $workOrder;
+            if (!$isAuditContext) {
+                $workOrder = $this->workOrderModel->find($workOrderId);
+                if (!$workOrder) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Work Order not found']);
+                }
+                if (is_object($workOrder)) {
+                    $workOrder = (array) $workOrder;
+                }
             }
 
             // Get unit details with all related data
@@ -3221,6 +3254,10 @@ class WorkOrderController extends Controller
             // Add customer data to unit
             $unit['pelanggan'] = $customerData['pelanggan'] ?? 'N/A';
             $unit['lokasi'] = $customerData['lokasi'] ?? 'N/A';
+            if ($isAuditContext && $auditHeader) {
+                $unit['pelanggan'] = $auditHeader['customer_name'] ?? $unit['pelanggan'];
+                $unit['lokasi']     = $auditHeader['location_name'] ?? $unit['lokasi'];
+            }
 
             // Get attachment data from NEW separate tables (UNION ALL approach)
             $attachmentRows = $db->query("
@@ -3522,26 +3559,40 @@ class WorkOrderController extends Controller
             }
 
             // Get assigned staff names for verified by
-            $assignedStaff = [];
-            if (!empty($workOrder['mechanic_id'])) {
-                $mechanic = $db->table('employees')->select('staff_name')->where('id', $workOrder['mechanic_id'])->get()->getRowArray();
-                if ($mechanic) $assignedStaff[] = $mechanic['staff_name'];
-            }
-            if (!empty($workOrder['helper_id'])) {
-                $helper = $db->table('employees')->select('staff_name')->where('id', $workOrder['helper_id'])->get()->getRowArray();
-                if ($helper) $assignedStaff[] = $helper['staff_name'];
-            }   
-            $verifiedBy = implode(' & ', $assignedStaff);
-            
-            // If no staff assigned, use current user or default
-            if (empty($verifiedBy)) {
-                $verifiedBy = 'Mekanik Belum Ditentukan';
+            if ($isAuditContext && $auditHeader) {
+                $verifiedBy = trim((string) ($auditHeader['mechanic_name'] ?? ''));
+                if ($verifiedBy === '') {
+                    $verifiedBy = trim((string) ($auditHeader['submitter_name'] ?? ''));
+                }
+                if ($verifiedBy === '') {
+                    $verifiedBy = 'Audit lokasi';
+                }
+            } else {
+                $assignedStaff = [];
+                if (!empty($workOrder['mechanic_id'])) {
+                    $mechanic = $db->table('employees')->select('staff_name')->where('id', $workOrder['mechanic_id'])->get()->getRowArray();
+                    if ($mechanic) {
+                        $assignedStaff[] = $mechanic['staff_name'];
+                    }
+                }
+                if (!empty($workOrder['helper_id'])) {
+                    $helper = $db->table('employees')->select('staff_name')->where('id', $workOrder['helper_id'])->get()->getRowArray();
+                    if ($helper) {
+                        $assignedStaff[] = $helper['staff_name'];
+                    }
+                }
+                $verifiedBy = implode(' & ', $assignedStaff);
+                if (empty($verifiedBy)) {
+                    $verifiedBy = 'Mekanik Belum Ditentukan';
+                }
             }
 
             return $this->response->setJSON([
                 'success' => true,
                 'data' => [
                     'work_order' => $workOrder,
+                    'verification_context' => $isAuditContext ? 'audit' : 'work_order',
+                    'audit_id' => $isAuditContext ? $auditId : null,
                     'unit' => $unit,
                     'attachment' => $attachment,
                     'options' => [
@@ -3710,15 +3761,16 @@ class WorkOrderController extends Controller
 
             $db = \Config\Database::connect();
 
-            // Query the most recent verification history for this unit
+            // Query the most recent verification history for this unit (WO or standalone/audit)
             $query = "
                 SELECT 
                     uvh.verified_at,
                     wo.work_order_number as wo_number,
-                    e.staff_name as mechanic_name
+                    e.staff_name as mechanic_name,
+                    uvh.work_order_id
                 FROM unit_verification_history uvh
-                JOIN work_orders wo ON wo.id = uvh.work_order_id
-                JOIN employees e ON e.id = uvh.verified_by
+                LEFT JOIN work_orders wo ON wo.id = uvh.work_order_id
+                LEFT JOIN employees e ON e.id = uvh.verified_by
                 WHERE uvh.unit_id = ?
             ";
 
@@ -3726,7 +3778,7 @@ class WorkOrderController extends Controller
 
             // Exclude current work order if provided
             if (!empty($currentWorkOrderId)) {
-                $query .= " AND uvh.work_order_id != ?";
+                $query .= " AND (uvh.work_order_id IS NULL OR uvh.work_order_id != ?)";
                 $params[] = $currentWorkOrderId;
             }
 
@@ -3735,13 +3787,19 @@ class WorkOrderController extends Controller
             $history = $db->query($query, $params)->getRowArray();
 
             if ($history) {
+                $refLabel = !empty($history['wo_number'])
+                    ? ('WO ' . $history['wo_number'])
+                    : 'Verifikasi audit/mandiri';
+                $mechName = $history['mechanic_name'] ?: '—';
+
                 return $this->response->setJSON([
                     'success' => true,
                     'data' => [
                         'has_history' => true,
                         'verified_at' => date('d M Y H:i', strtotime($history['verified_at'])),
-                        'mechanic_name' => $history['mechanic_name'],
-                        'wo_number' => $history['wo_number']
+                        'mechanic_name' => $mechName,
+                        'wo_number' => $history['wo_number'],
+                        'reference_label' => $refLabel,
                     ]
                 ]);
             } else {
@@ -3769,14 +3827,43 @@ class WorkOrderController extends Controller
             return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.']);
         }
 
-        $workOrderId = $this->request->getPost('work_order_id');
-        $unitId = $this->request->getPost('unit_id');
+        $workOrderIdRaw = $this->request->getPost('work_order_id');
+        $unitId         = (int) $this->request->getPost('unit_id');
+        $auditIdSave    = (int) ($this->request->getPost('audit_id') ?? 0);
+        $isAuditVerification = $auditIdSave > 0;
+        $auditHeaderSave     = null;
 
-        if (!$workOrderId || !$unitId) {
-            return $this->response->setJSON([
-                'success' => false, 
-                'message' => 'Data tidak lengkap - Work Order ID atau Unit ID tidak ditemukan'
-            ]);
+        if ($isAuditVerification) {
+            if ($unitId <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Data tidak lengkap - Unit ID tidak ditemukan',
+                ]);
+            }
+            $auditLocModel = new AuditLocationModel();
+            $auditHeaderSave = $auditLocModel->getWithDetails($auditIdSave);
+            if (!$auditHeaderSave) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Audit tidak ditemukan']);
+            }
+            $inAudit = false;
+            foreach ($auditHeaderSave['items'] ?? [] as $row) {
+                if ((int) ($row['unit_id'] ?? 0) === $unitId) {
+                    $inAudit = true;
+                    break;
+                }
+            }
+            if (!$inAudit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak termasuk dalam audit ini']);
+            }
+            $workOrderId = null;
+        } else {
+            $workOrderId = $workOrderIdRaw;
+            if (!$workOrderId || !$unitId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Data tidak lengkap - Work Order ID atau Unit ID tidak ditemukan',
+                ]);
+            }
         }
 
         try {
@@ -3786,27 +3873,27 @@ class WorkOrderController extends Controller
             $formData = $this->request->getPost();
             log_message('debug', 'Unit Verification Form Data: ' . json_encode($formData));
             
-            // Validate work order and unit exist
-            $woExists = $db->table('work_orders')->where('id', $workOrderId)->countAllResults() > 0;
-            if (!$woExists) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Work order tidak ditemukan'
-                ]);
-            }
-            
-            // VALIDASI: Pastikan repair_description sudah diisi
-            $workOrder = $db->table('work_orders')
-                ->select('repair_description, notes')
-                ->where('id', $workOrderId)
-                ->get()
-                ->getRowArray();
-            
-            if (empty($workOrder['repair_description'])) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Analysis & Repair harus diisi terlebih dahulu. Silakan klik tombol Complete untuk melengkapi data.'
-                ]);
+            if (!$isAuditVerification) {
+                $woExists = $db->table('work_orders')->where('id', $workOrderId)->countAllResults() > 0;
+                if (!$woExists) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Work order tidak ditemukan',
+                    ]);
+                }
+
+                $workOrder = $db->table('work_orders')
+                    ->select('repair_description, notes')
+                    ->where('id', $workOrderId)
+                    ->get()
+                    ->getRowArray();
+
+                if (empty($workOrder['repair_description'])) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Analysis & Repair harus diisi terlebih dahulu. Silakan klik tombol Complete untuk melengkapi data.',
+                    ]);
+                }
             }
             
             $unitExists = $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->countAllResults() > 0;
@@ -3837,6 +3924,10 @@ class WorkOrderController extends Controller
             }
 
             $db->transStart();
+
+            $componentLogWoId    = $isAuditVerification ? null : (int) $workOrderId;
+            $componentLogRefType = $isAuditVerification ? 'location_audit' : 'work_order';
+            $componentLogRefId   = $isAuditVerification ? $auditIdSave : (int) $workOrderId;
 
             // Get existing unit data for comparison (before update) - Simple query first
             try {
@@ -4221,10 +4312,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 
                 // Log to component_audit_log
                 $auditService->logRemoval('BATTERY', $oldBat['id'], $unitId, [
-                    'work_order_id' => $workOrderId,
+                    'work_order_id' => $componentLogWoId,
                     'triggered_by' => 'UNIT_VERIFICATION',
-                    'reference_type' => 'work_order',
-                    'reference_id' => $workOrderId,
+                    'reference_type' => $componentLogRefType,
+                    'reference_id' => $componentLogRefId,
                     'notes' => 'Battery released during unit verification',
                 ]);
                 
@@ -4249,10 +4340,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 
                 // Log to component_audit_log
                 $auditService->logRemoval('CHARGER', $oldChr['id'], $unitId, [
-                    'work_order_id' => $workOrderId,
+                    'work_order_id' => $componentLogWoId,
                     'triggered_by' => 'UNIT_VERIFICATION',
-                    'reference_type' => 'work_order',
-                    'reference_id' => $workOrderId,
+                    'reference_type' => $componentLogRefType,
+                    'reference_id' => $componentLogRefId,
                     'notes' => 'Charger released during unit verification',
                 ]);
                 
@@ -4277,10 +4368,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 
                 // Log to component_audit_log
                 $auditService->logRemoval('ATTACHMENT', $oldAtt['id'], $unitId, [
-                    'work_order_id' => $workOrderId,
+                    'work_order_id' => $componentLogWoId,
                     'triggered_by' => 'UNIT_VERIFICATION',
-                    'reference_type' => 'work_order',
-                    'reference_id' => $workOrderId,
+                    'reference_type' => $componentLogRefType,
+                    'reference_id' => $componentLogRefId,
                     'notes' => 'Attachment released during unit verification',
                 ]);
                 
@@ -4319,10 +4410,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     
                     // Log to component_audit_log
                     $auditService->logAssignment(strtoupper($componentType), $attachmentInventoryId, $unitId, [
-                        'work_order_id' => $workOrderId,
+                        'work_order_id' => $componentLogWoId,
                         'triggered_by' => 'UNIT_VERIFICATION',
-                        'reference_type' => 'work_order',
-                        'reference_id' => $workOrderId,
+                        'reference_type' => $componentLogRefType,
+                        'reference_id' => $componentLogRefId,
                         'notes' => ucfirst($componentType) . ' attached during unit verification',
                     ]);
                     
@@ -4361,10 +4452,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     
                     // Log to component_audit_log
                     $auditService->logAssignment(strtoupper($componentType), $chargerInventoryId, $unitId, [
-                        'work_order_id' => $workOrderId,
+                        'work_order_id' => $componentLogWoId,
                         'triggered_by' => 'UNIT_VERIFICATION',
-                        'reference_type' => 'work_order',
-                        'reference_id' => $workOrderId,
+                        'reference_type' => $componentLogRefType,
+                        'reference_id' => $componentLogRefId,
                         'notes' => ucfirst($componentType) . ' attached during unit verification',
                     ]);
                     
@@ -4403,10 +4494,10 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                     
                     // Log to component_audit_log
                     $auditService->logAssignment(strtoupper($componentType), $bateraiInventoryId, $unitId, [
-                        'work_order_id' => $workOrderId,
+                        'work_order_id' => $componentLogWoId,
                         'triggered_by' => 'UNIT_VERIFICATION',
-                        'reference_type' => 'work_order',
-                        'reference_id' => $workOrderId,
+                        'reference_type' => $componentLogRefType,
+                        'reference_id' => $componentLogRefId,
                         'notes' => ucfirst($componentType) . ' attached during unit verification',
                     ]);
                     
@@ -4601,154 +4692,170 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 }
             }
             
-            // Get current status before update for history
-            $currentWorkOrder = $db->table('work_orders')
-                ->where('id', $workOrderId)
-                ->get()
-                ->getRowArray();
-            
-            $fromStatusId = $currentWorkOrder['status_id'] ?? null;
+            $fromStatusId = null;
+            $statusData   = null;
 
-            // Get COMPLETED status
-            $statusData = $db->table('work_order_statuses')
-                ->where('status_code', 'COMPLETED')
-                ->where('is_active', 1)
-                ->get()
-                ->getRowArray();
-                
-            if (!$statusData) {
-                log_message('error', 'Status COMPLETED tidak ditemukan di database');
-                throw new \Exception('Status COMPLETED tidak ditemukan');
+            if (!$isAuditVerification) {
+                $currentWorkOrder = $db->table('work_orders')
+                    ->where('id', $workOrderId)
+                    ->get()
+                    ->getRowArray();
+
+                $fromStatusId = $currentWorkOrder['status_id'] ?? null;
+
+                $statusData = $db->table('work_order_statuses')
+                    ->where('status_code', 'COMPLETED')
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getRowArray();
+
+                if (!$statusData) {
+                    log_message('error', 'Status COMPLETED tidak ditemukan di database');
+                    throw new \Exception('Status COMPLETED tidak ditemukan');
+                }
+
+                log_message('info', "[WorkOrder] Found COMPLETED status with ID: {$statusData['id']}");
+                log_message('info', "[WorkOrder] Updating WO {$workOrderId} to COMPLETED status (ID: {$statusData['id']})");
+
+                $woUpdateData = [
+                    'status_id'         => $statusData['id'],
+                    'completion_date'   => date('Y-m-d H:i:s'),
+                    'unit_verified'     => 1,
+                    'unit_verified_at'  => date('Y-m-d H:i:s'),
+                    'notes'             => $this->request->getPost('catatan_fisik'),
+                    'hm'                => $this->request->getPost('hm') ?: null,
+                    'updated_at'        => date('Y-m-d H:i:s'),
+                ];
+
+                $woUpdated = $db->table('work_orders')
+                    ->where('id', $workOrderId)
+                    ->update($woUpdateData);
+
+                if ($woUpdated === false) {
+                    $errorMsg = $this->getMySQLError($db);
+                    log_message('error', 'Failed to update work order. Error: ' . $errorMsg);
+                    throw new \Exception('Gagal update work order: ' . $errorMsg);
+                }
+
+                log_message('info', "[WorkOrder] WO {$workOrderId} successfully updated to COMPLETED. Update result: " . json_encode($woUpdated));
             }
-            
-            log_message('info', "[WorkOrder] Found COMPLETED status with ID: {$statusData['id']}");
-            log_message('info', "[WorkOrder] Updating WO {$workOrderId} to COMPLETED status (ID: {$statusData['id']})");
 
-            $woUpdateData = [
-                'status_id' => $statusData['id'],
-                'completion_date' => date('Y-m-d H:i:s'),
-                'unit_verified' => 1,
-                'unit_verified_at' => date('Y-m-d H:i:s'),
-                'notes' => $this->request->getPost('catatan_fisik'),
-                'hm' => $this->request->getPost('hm') ?: null,
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-
-            log_message('info', "[WorkOrder] Update data: " . json_encode($woUpdateData));
-
-            // Update work order
-            $woUpdated = $db->table('work_orders')
-                ->where('id', $workOrderId)
-                ->update($woUpdateData);
-            
-            if ($woUpdated === false) {
-                $errorMsg = $this->getMySQLError($db);
-                log_message('error', 'Failed to update work order. Error: ' . $errorMsg);
-                throw new \Exception('Gagal update work order: ' . $errorMsg);
-            }
-            
-            log_message('info', "[WorkOrder] WO {$workOrderId} successfully updated to COMPLETED. Update result: " . json_encode($woUpdated));
-
-            // Insert unit_verification_history
             $verificationHistoryData = [
-                'unit_id' => $unitId,
-                'work_order_id' => $workOrderId,
-                'verified_by' => $currentUserId,
-                'verified_at' => date('Y-m-d H:i:s'),
-                'verification_data' => json_encode([
+                'unit_id'             => $unitId,
+                'work_order_id'       => $isAuditVerification ? null : $workOrderId,
+                'verified_by'         => $currentUserId,
+                'verified_at'         => date('Y-m-d H:i:s'),
+                'verification_data'   => json_encode([
                     'unit_changes' => $allChanges,
-                    'components' => [
+                    'audit_id'     => $isAuditVerification ? $auditIdSave : null,
+                    'components'   => [
                         'attachment_id' => $attachmentInventoryId ?? null,
-                        'charger_id' => $chargerInventoryId ?? null,
-                        'battery_id' => $bateraiInventoryId ?? null,
+                        'charger_id'    => $chargerInventoryId ?? null,
+                        'battery_id'    => $bateraiInventoryId ?? null,
                     ],
-                    'old_data' => $oldUnitData,
-                    'new_data' => $unitUpdateData,
-                ]),
-                'created_at' => date('Y-m-d H:i:s'),
-            ];
-            
-            // Check if table exists before inserting
-            if ($db->tableExists('unit_verification_history')) {
-                log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO={$workOrderId}, verified_by={$currentUserId}");
-                $db->table('unit_verification_history')->insert($verificationHistoryData);
-                log_message('info', "[WorkOrder] Inserted unit_verification_history for unit {$unitId}, WO {$workOrderId}");
-            }
-            
-            // Insert status history
-            $historyData = [
-                'work_order_id' => $workOrderId,
-                'from_status_id' => $fromStatusId,
-                'to_status_id' => $statusData['id'],
-                'changed_by' => $currentUserId,
-                'change_reason' => 'Work order completed with unit verification',
-                'changed_at' => date('Y-m-d H:i:s')
+                    'old_data'     => $oldUnitData,
+                    'new_data'     => $unitUpdateData,
+                ], JSON_UNESCAPED_UNICODE),
+                'created_at'          => date('Y-m-d H:i:s'),
             ];
 
-            log_message('info', "[WorkOrder] Inserting status history: WO={$workOrderId}, from_status={$fromStatusId}, to_status={$statusData['id']}, changed_by={$currentUserId}");
-            
-            $db->table('work_order_status_history')->insert($historyData);
+            if ($db->tableExists('unit_verification_history')) {
+                try {
+                    $uvhFields = $db->getFieldNames('unit_verification_history');
+                    if (is_array($uvhFields) && in_array('verification_type', $uvhFields, true)) {
+                        $verificationHistoryData['verification_type'] = $isAuditVerification ? 'STANDALONE' : 'WO';
+                    }
+                    if (is_array($uvhFields) && in_array('notes', $uvhFields, true) && $isAuditVerification && $auditHeaderSave) {
+                        $verificationHistoryData['notes'] = 'Audit lokasi: ' . ($auditHeaderSave['audit_number'] ?? (string) $auditIdSave);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore optional columns
+                }
+
+                log_message('info', "[WorkOrder] Inserting unit_verification_history: unit={$unitId}, WO=" . ($workOrderId ?? 'null') . ", audit=" . ($isAuditVerification ? $auditIdSave : '-') . ", verified_by={$currentUserId}");
+                $db->table('unit_verification_history')->insert($verificationHistoryData);
+            }
+
+            if (!$isAuditVerification && $statusData !== null) {
+                $historyData = [
+                    'work_order_id'  => $workOrderId,
+                    'from_status_id' => $fromStatusId,
+                    'to_status_id'   => $statusData['id'],
+                    'changed_by'     => $currentUserId,
+                    'change_reason'  => 'Work order completed with unit verification',
+                    'changed_at'     => date('Y-m-d H:i:s'),
+                ];
+                $db->table('work_order_status_history')->insert($historyData);
+            }
 
             $db->transComplete();
-            
-            // Check transaction status
+
             if ($db->transStatus() === false) {
                 $dbError = $this->getMySQLError($db);
-                log_message('error', "[WorkOrder] Transaction failed for WO {$workOrderId}. DB error: " . ($dbError ?: '(empty)') . " | changed_by={$currentUserId}, from_status={$fromStatusId}, to_status={$statusData['id']}");
-                throw new \Exception('Gagal menyimpan perubahan status work order: ' . ($dbError ?: 'Periksa server log untuk detail error'));
+                $ctx = $isAuditVerification ? "audit {$auditIdSave}" : "WO {$workOrderId}";
+                log_message('error', "[WorkOrder] Transaction failed for {$ctx}. DB error: " . ($dbError ?: '(empty)'));
+                throw new \Exception('Gagal menyimpan verifikasi: ' . ($dbError ?: 'Periksa server log untuk detail error'));
             }
-            
-            log_message('info', "[WorkOrder] Transaction completed successfully for WO {$workOrderId}");
-            
-            // Get work order details for notification
-            $workOrder = $db->table('work_orders')
-                ->where('id', $workOrderId)
-                ->get()
-                ->getRowArray();
-            
-            log_message('info', "[WorkOrder] Current WO status after update: status_id = " . ($workOrder['status_id'] ?? 'NULL'));
-            
-            // Send notification - unit verification saved
-            if (function_exists('notify_unit_verification_saved') && $workOrder) {
-                notify_unit_verification_saved([
-                    'id' => $workOrderId,
-                    'wo_number' => $workOrder['work_order_number'] ?? '',
-                    'unit_code' => $workOrder['unit_code'] ?? '',
-                    'verification_status' => 'COMPLETED',
-                    'verified_by' => session('username') ?? session('user_id'),
-                    'verification_date' => date('Y-m-d H:i:s'),
-                    'url' => base_url('/service/work-orders/view/' . $workOrderId)
-                ]);
-            }
-            
-            // Send notification if there are ANY changes during verification
-            if (!empty($allChanges)) {
-                $unitNo = $oldUnitData['no_unit'] ?? "ID {$unitId}";
-                
-                // Build detailed change list
-                $changesList = implode("\n- ", $allChanges);
-                
-                // Log changes
-                log_message('info', "[WorkOrder Verification] Unit {$unitNo} (WO: {$workOrder['work_order_number']}): " . count($allChanges) . " perubahan data");
-                
-                // Send notification for work order unit verification changes
-                if (function_exists('notify_work_order_unit_verified')) {
-                    notify_work_order_unit_verified([
-                        'work_order_id' => $workOrderId,
-                        'wo_number' => $workOrder['work_order_number'] ?? '',
-                        'unit_code' => $unitNo,
-                        'changes_count' => count($allChanges),
-                        'changes_list' => $changesList,
-                        'created_by' => session('username') ?? session('user_id'),
-                        'verified_at' => date('Y-m-d H:i:s'),
-                        'url' => base_url('/service/work-orders/view/' . $workOrderId)
+
+            log_message('info', $isAuditVerification
+                ? "[WorkOrder] Audit unit verification transaction OK unit={$unitId} audit={$auditIdSave}"
+                : "[WorkOrder] Transaction completed successfully for WO {$workOrderId}");
+
+            if (!$isAuditVerification) {
+                $workOrder = $db->table('work_orders')
+                    ->where('id', $workOrderId)
+                    ->get()
+                    ->getRowArray();
+
+                log_message('info', "[WorkOrder] Current WO status after update: status_id = " . ($workOrder['status_id'] ?? 'NULL'));
+
+                if (function_exists('notify_unit_verification_saved') && $workOrder) {
+                    notify_unit_verification_saved([
+                        'id'                  => $workOrderId,
+                        'wo_number'           => $workOrder['work_order_number'] ?? '',
+                        'unit_code'           => $workOrder['unit_code'] ?? '',
+                        'verification_status' => 'COMPLETED',
+                        'verified_by'         => session('username') ?? session('user_id'),
+                        'verification_date'   => date('Y-m-d H:i:s'),
+                        'url'                 => base_url('/service/work-orders/view/' . $workOrderId),
                     ]);
                 }
+
+                if (!empty($allChanges)) {
+                    $unitNo = $oldUnitData['no_unit'] ?? "ID {$unitId}";
+                    $changesList = implode("\n- ", $allChanges);
+                    log_message('info', "[WorkOrder Verification] Unit {$unitNo} (WO: {$workOrder['work_order_number']}): " . count($allChanges) . " perubahan data");
+                    if (function_exists('notify_work_order_unit_verified')) {
+                        notify_work_order_unit_verified([
+                            'work_order_id' => $workOrderId,
+                            'wo_number'     => $workOrder['work_order_number'] ?? '',
+                            'unit_code'     => $unitNo,
+                            'changes_count' => count($allChanges),
+                            'changes_list'  => $changesList,
+                            'created_by'    => session('username') ?? session('user_id'),
+                            'verified_at'   => date('Y-m-d H:i:s'),
+                            'url'           => base_url('/service/work-orders/view/' . $workOrderId),
+                        ]);
+                    }
+                }
+            } elseif (function_exists('notify_unit_verification_saved')) {
+                $unitNo = $oldUnitData['no_unit'] ?? "ID {$unitId}";
+                notify_unit_verification_saved([
+                    'id'                  => 0,
+                    'wo_number'           => $auditHeaderSave['audit_number'] ?? 'AUDIT',
+                    'unit_code'           => $unitNo,
+                    'verification_status' => 'AUDIT_SAVED',
+                    'verified_by'         => session('username') ?? session('user_id'),
+                    'verification_date'   => date('Y-m-d H:i:s'),
+                    'url'                 => base_url('/service/unit-verification'),
+                ]);
             }
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Unit berhasil diverifikasi dan work order diselesaikan'
+                'message' => $isAuditVerification
+                    ? 'Unit berhasil diverifikasi (audit lokasi)'
+                    : 'Unit berhasil diverifikasi dan work order diselesaikan',
             ]);
 
         } catch (\Throwable $e) {

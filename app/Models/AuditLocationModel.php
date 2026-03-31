@@ -271,6 +271,131 @@ class AuditLocationModel extends Model
     }
 
     /**
+     * Audit statuses where admin may run inventory unit verification (modal) for units on that audit.
+     */
+    private const VERIFY_ELIGIBLE_AUDIT_STATUSES = ['PRINTED', 'IN_PROGRESS', 'RESULTS_ENTERED', 'PENDING_APPROVAL', 'APPROVED'];
+
+    /**
+     * Latest location audit eligible for per-unit verification (newest by id).
+     */
+    public function getLatestVerifiableAuditForLocation(int $customerLocationId): ?array
+    {
+        $row = $this->db->table('unit_audit_locations ual')
+            ->select('ual.id, ual.audit_number, ual.status, ual.audit_date, ual.mechanic_name, ual.customer_id, ual.customer_location_id')
+            ->where('ual.customer_location_id', $customerLocationId)
+            ->whereIn('ual.status', self::VERIFY_ELIGIBLE_AUDIT_STATUSES)
+            ->orderBy('ual.id', 'DESC')
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+
+        return $row ?: null;
+    }
+
+    /**
+     * Locations for customer with verification_audit + verification_units (per latest eligible audit per location).
+     */
+    public function getVerificationLocationsBundleForCustomer(int $customerId): array
+    {
+        $locations = $this->getLocationsForCustomer($customerId);
+        $itemsModel = new AuditLocationItemModel();
+
+        foreach ($locations as &$loc) {
+            $locId = (int) $loc['id'];
+            $loc['verification_audit']   = null;
+            $loc['verification_units']   = [];
+            $audit = $this->getLatestVerifiableAuditForLocation($locId);
+            if (!$audit) {
+                continue;
+            }
+            $auditId = (int) $audit['id'];
+            $items   = $itemsModel->getByAuditLocation($auditId);
+            $units   = [];
+            foreach ($items as $it) {
+                $uid = (int) ($it['unit_id'] ?? 0);
+                if ($uid <= 0) {
+                    continue;
+                }
+                $noUnit = $it['actual_no_unit'] ?: $it['expected_no_unit'] ?: null;
+                if ($noUnit === null || $noUnit === '') {
+                    $noUnit = '-';
+                }
+                $serial = $it['actual_serial'] ?: $it['expected_serial'] ?: ($it['serial_number'] ?? '');
+                $merk   = $it['actual_merk'] ?: $it['expected_merk'] ?: ($it['merk_unit'] ?? '');
+                $model  = $it['actual_model'] ?: $it['expected_model'] ?: ($it['model_unit'] ?? '');
+                $units[] = [
+                    'audit_id'       => $auditId,
+                    'audit_item_id'  => (int) $it['id'],
+                    'unit_id'        => $uid,
+                    'no_unit'        => $noUnit,
+                    'serial_number'  => $serial,
+                    'merk_model'     => trim($merk . ' ' . $model),
+                    'audit_status'   => $audit['status'],
+                    'audit_number'   => $audit['audit_number'],
+                ];
+            }
+            $loc['verification_audit'] = [
+                'id'           => $auditId,
+                'audit_number' => $audit['audit_number'],
+                'status'       => $audit['status'],
+                'audit_date'   => $audit['audit_date'] ?? null,
+            ];
+            $loc['verification_units'] = $units;
+        }
+        unset($loc);
+
+        return $locations;
+    }
+
+    /**
+     * All customers that have at least one unit_audit_locations row in a verification-eligible status,
+     * with locations filtered to those that have a latest eligible audit (for Unit Verification index).
+     *
+     * @return list<array{id:int,customer_name:string,customer_code:string,locations:array}>
+     */
+    public function getVerificationOverviewForService(): array
+    {
+        $rows = $this->db->table('unit_audit_locations ual')
+            ->select('ual.customer_id')
+            ->whereIn('ual.status', self::VERIFY_ELIGIBLE_AUDIT_STATUSES)
+            ->groupBy('ual.customer_id')
+            ->get()
+            ->getResultArray();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $cid = (int) ($row['customer_id'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $bundle = $this->getVerificationLocationsBundleForCustomer($cid);
+            $withAudit = array_values(array_filter($bundle, static function (array $loc): bool {
+                return !empty($loc['verification_audit']);
+            }));
+            if ($withAudit === []) {
+                continue;
+            }
+            $customerRow = $this->db->table('customers')
+                ->select('id, customer_name, customer_code')
+                ->where('id', $cid)
+                ->get()
+                ->getRowArray();
+            $out[] = [
+                'id'             => $cid,
+                'customer_name'  => $customerRow['customer_name'] ?? ('Customer #' . $cid),
+                'customer_code'  => $customerRow['customer_code'] ?? '',
+                'locations'      => $withAudit,
+            ];
+        }
+
+        usort($out, static function (array $a, array $b): int {
+            return strcasecmp((string) ($a['customer_name'] ?? ''), (string) ($b['customer_name'] ?? ''));
+        });
+
+        return $out;
+    }
+
+    /**
      * Get last completed audit for a location (APPROVED or RESULTS_ENTERED with no discrepancy)
      */
     public function getLastAuditByLocation(int $customerLocationId): ?array

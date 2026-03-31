@@ -36,7 +36,8 @@
                 </div>
                 
                 <form id="unitVerificationForm">
-                    <input type="hidden" id="verify-work-order-id" name="work_order_id">
+                    <input type="hidden" id="verify-work-order-id" name="work_order_id" value="">
+                    <input type="hidden" id="verify-audit-id" name="audit_id" value="">
                     <input type="hidden" id="verify-unit-id" name="unit_id">
                     
                     <!-- Verifikasi Data Unit -->
@@ -706,7 +707,8 @@ window.loadUnitVerificationData = function(workOrderId, woNumber) {
                     $('#unitVerificationModal').find('.modal-title').html(`<i class="fas fa-clipboard-check me-2"></i>Verifikasi Unit - WO: ${actualWoNumber} | Unit: ${unitNumber}`);
                     $('#wo-number-display').text(actualWoNumber);
                     
-                    // Store work order ID
+                    // Store work order ID (audit context cleared)
+                    $('#verify-audit-id').val('');
                     $('#verify-work-order-id').val(workOrderId);
                     
                     // Populate all verification fields
@@ -737,6 +739,62 @@ window.loadUnitVerificationData = function(workOrderId, woNumber) {
     });
 };
 
+/**
+ * Unit Verification dari halaman audit lokasi (tanpa work order).
+ */
+window.loadUnitVerificationDataForAudit = function(auditId, unitId, titleLabel) {
+    if (typeof $ === 'undefined') {
+        setTimeout(function() { window.loadUnitVerificationDataForAudit(auditId, unitId, titleLabel); }, 100);
+        return;
+    }
+    $(function() {
+        if (typeof window.resetUnitVerificationModal === 'function') {
+            window.resetUnitVerificationModal();
+        }
+        const label = titleLabel || ('Audit ' + auditId);
+        $('#unitVerificationModal').find('.modal-title').html(`<i class="fas fa-clipboard-check me-2"></i>Verifikasi Unit — ${label}`);
+        $('#verify-work-order-id').val('');
+        $('#verify-audit-id').val(auditId);
+        $('#verify-unit-id').val(unitId);
+        $('#wo-number-display').text(label);
+
+        $.ajax({
+            url: '<?= base_url('service/work-orders/get-unit-verification-data') ?>',
+            type: 'POST',
+            data: {
+                audit_id: auditId,
+                unit_id: unitId,
+                <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+            },
+            success: function(response) {
+                if (response.success && response.data) {
+                    let data = response.data;
+                    let hdr = data.work_order?.work_order_number || data.work_order?.wo_number || label;
+                    let unitNumber = data.unit?.no_unit || 'N/A';
+                    $('#unitVerificationModal').find('.modal-title').html(`<i class="fas fa-clipboard-check me-2"></i>Verifikasi Unit — ${hdr} | Unit: ${unitNumber}`);
+                    $('#wo-number-display').text(hdr);
+                    if (typeof window.populateUnitVerificationFields === 'function') {
+                        window.populateUnitVerificationFields(data);
+                    }
+                    if (data.unit && data.unit.id_inventory_unit && typeof window.loadVerificationHistory === 'function') {
+                        window.loadVerificationHistory(data.unit.id_inventory_unit, null);
+                    }
+                    $('#unitVerificationModal').modal('show');
+                } else {
+                    if (typeof showAlert === 'function') {
+                        showAlert('error', response.message || 'Gagal memuat data unit');
+                    }
+                }
+            },
+            error: function() {
+                if (typeof showAlert === 'function') {
+                    showAlert('error', 'Terjadi kesalahan saat memuat data unit');
+                }
+            }
+        });
+    });
+};
+
 // Load Verification History - GLOBAL function
 // Called from loadUnitVerificationData to display previous verification info
 window.loadVerificationHistory = function(unitId, currentWorkOrderId) {
@@ -757,8 +815,8 @@ window.loadVerificationHistory = function(unitId, currentWorkOrderId) {
                 let history = response.data;
                 
                 if (history.has_history) {
-                    // Show history banner - unit pernah diverifikasi
-                    let historyHtml = `<strong>Unit ini terakhir diverifikasi pada ${history.verified_at}</strong> oleh <strong>${history.mechanic_name}</strong> di <strong>WO ${history.wo_number}</strong>`;
+                    let refLabel = history.reference_label || (history.wo_number ? ('WO ' + history.wo_number) : 'Verifikasi');
+                    let historyHtml = `<strong>Unit ini terakhir diverifikasi pada ${history.verified_at}</strong> oleh <strong>${history.mechanic_name}</strong> — <strong>${refLabel}</strong>`;
                     
                     $('#verification-history-text').html(historyHtml);
                     $('#verification-history-banner').removeClass('d-none');
@@ -1072,6 +1130,8 @@ $(document).ready(function() {
         
         // Reset all form fields
         $('#unitVerificationForm')[0].reset();
+        $('#verify-audit-id').val('');
+        $('#verify-work-order-id').val('');
         
         // Reset all checkboxes to unchecked (except no-unit which stays checked)
         $('input[id^="check-"]').prop('checked', false);
@@ -1689,11 +1749,17 @@ $(document).ready(function() {
 
     // Print Verification button
     $('#btn-print-verification').on('click', function() {
+        let auditId = $('#verify-audit-id').val();
+        let unitId = $('#verify-unit-id').val();
+        if (auditId && unitId) {
+            window.open('<?= base_url('service/work-orders/print-verification') ?>?audit_id=' + encodeURIComponent(auditId) + '&unit_id=' + encodeURIComponent(unitId), '_blank');
+            return;
+        }
         let workOrderId = $('#verify-work-order-id').val();
         if (workOrderId) {
             window.open('<?= base_url('service/work-orders/print-verification') ?>?wo_id=' + workOrderId, '_blank');
         } else {
-            showAlert('error', 'Work Order ID tidak ditemukan');
+            showAlert('error', 'Work Order / Audit tidak ditemukan');
         }
     });
 
@@ -1723,12 +1789,13 @@ $(document).ready(function() {
         
         // Validate required fields before sending
         let workOrderId = $('#verify-work-order-id').val();
+        let auditId = $('#verify-audit-id').val();
         let unitId = $('#verify-unit-id').val();
         
-        console.log('🔍 Form validation - WO ID:', workOrderId, 'Unit ID:', unitId);
+        console.log('🔍 Form validation - WO ID:', workOrderId, 'Audit ID:', auditId, 'Unit ID:', unitId);
         
-        if (!workOrderId || !unitId) {
-            showAlert('error', 'Data Work Order atau Unit tidak lengkap. Silakan tutup modal dan coba lagi.');
+        if (!unitId || (!workOrderId && !auditId)) {
+            showAlert('error', 'Data Work Order / Audit atau Unit tidak lengkap. Silakan tutup modal dan coba lagi.');
             return;
         }
         
@@ -1749,8 +1816,11 @@ $(document).ready(function() {
             success: function(response) {
                 console.log('✅ Server response:', response);
                 if (response.success) {
-                    showAlert('success', 'Verifikasi berhasil disimpan');
+                    showAlert('success', response.message || 'Verifikasi berhasil disimpan');
                     $('#unitVerificationModal').modal('hide');
+                    if (typeof window.uvReloadLocationsAfterVerify === 'function') {
+                        window.uvReloadLocationsAfterVerify();
+                    }
                     
                     // Refresh work orders table - check which tab is active and refresh accordingly
                     setTimeout(function() {

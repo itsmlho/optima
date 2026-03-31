@@ -858,11 +858,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				actionButtons = `
 					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i>Print PDF</a>
+					${hasSpareparts ? `<a class="btn btn-outline-success btn-sm" href="<?= base_url('service/spk/print-sparepart/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-print me-1"></i>Print Sparepart</a>` : ''}
 					${pdiDone
 							? (hasSpareparts
 								? `<button class="btn btn-success btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>window.showSparepartValidationModal(${id},'${d.nomor_spk}'),300);"><i class="fas fa-clipboard-check me-1"></i>Validasi Sparepart</button>`
 								: '<span class="badge badge-soft-gray">Tidak ada sparepart</span>')
-							: `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>Input Sparepart</button>`}
+							: `<button class="btn btn-warning btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide(); setTimeout(()=>openInputSparepart(${id},'${d.nomor_spk}',${d.persiapan_unit_id||''}),300);"><i class="fas fa-tools me-1"></i>${hasSpareparts ? 'Tambah Sparepart' : 'Input Sparepart'}</button>`}
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}

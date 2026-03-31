@@ -313,7 +313,40 @@ class UnitAudit extends BaseController
     {
         $data['title'] = 'Unit Verification';
         $data['stats'] = $this->auditLocationModel->getStats();
-        return view('service/unit_verification', $data);
+
+        return view('service/unit_verification_index', $data);
+    }
+
+    /**
+     * Locations + units under latest verifiable audit per location (for Unit Verification page UI).
+     */
+    public function getVerificationLocationsForCustomer($customerId)
+    {
+        try {
+            $data = $this->auditLocationModel->getVerificationLocationsBundleForCustomer((int) $customerId);
+
+            return $this->response->setJSON(['success' => true, 'data' => $data]);
+        } catch (\Exception $e) {
+            log_message('error', 'getVerificationLocationsForCustomer: ' . $e->getMessage());
+
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+        }
+    }
+
+    /**
+     * Customers + lokasi yang punya audit lokasi eligible (tanpa pilih customer di UI).
+     */
+    public function getVerificationOverview()
+    {
+        try {
+            $data = $this->auditLocationModel->getVerificationOverviewForService();
+
+            return $this->response->setJSON(['success' => true, 'data' => $data]);
+        } catch (\Exception $e) {
+            log_message('error', 'getVerificationOverview: ' . $e->getMessage());
+
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+        }
     }
 
     /**
@@ -903,71 +936,12 @@ class UnitAudit extends BaseController
             if ($index > $totalUnits) $index = $totalUnits;
 
             $currentItem = $items[$index - 1];
-
-            // Load unit components (attachment, battery, charger) for this unit if available
-            $components = [
-                'battery'    => null,
-                'charger'    => null,
-                'attachment' => null,
-            ];
-            $unitDetail = null;
-            if (!empty($currentItem['unit_id'])) {
-                $helper = new InventoryComponentHelper();
-                $components = $helper->getUnitComponents((int) $currentItem['unit_id']);
-
-                // Fetch full unit details (tahun, departemen, tipe, kapasitas, mesin, mast, aksesoris, etc.)
-                $db = \Config\Database::connect();
-                $unitDetail = $db->query("
-                    SELECT
-                        iu.id_inventory_unit, iu.no_unit, iu.serial_number,
-                        iu.tahun_unit, iu.keterangan, iu.tinggi_mast, iu.sn_mast,
-                        iu.sn_mesin, iu.hour_meter, iu.aksesoris,
-                        tu.tipe AS tipe_unit_name,
-                        mu.merk_unit, mu.model_unit,
-                        k.kapasitas_unit AS kapasitas_name,
-                        tm.tipe_mast AS model_mast_name,
-                        me.model_mesin AS model_mesin_name, me.merk_mesin,
-                        d.nama_departemen AS departemen_name
-                    FROM inventory_unit iu
-                    LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
-                    LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
-                    LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
-                    LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
-                    LEFT JOIN mesin me ON me.id = iu.model_mesin_id
-                    LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
-                    WHERE iu.id_inventory_unit = ?
-                ", [(int) $currentItem['unit_id']])->getRowArray();
-
-                // Parse accessories JSON
-                if ($unitDetail && !empty($unitDetail['aksesoris'])) {
-                    $raw = $unitDetail['aksesoris'];
-                    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
-                    if (is_array($decoded)) {
-                        $unitDetail['aksesoris_list'] = array_map(function ($a) {
-                            if (is_string($a)) return strtoupper($a);
-                            return strtoupper($a['name'] ?? $a['value'] ?? (string)$a);
-                        }, $decoded);
-                    } else {
-                        $unitDetail['aksesoris_list'] = [];
-                    }
-                } elseif ($unitDetail) {
-                    $unitDetail['aksesoris_list'] = [];
-                }
+            $uid         = (int) ($currentItem['unit_id'] ?? 0);
+            if ($uid > 0) {
+                return redirect()->to('/service/unit-verification?audit=' . $auditId . '&unit=' . $uid);
             }
 
-            $data = [
-                'title'       => 'Verifikasi Unit Audit',
-                'audit'       => $audit,
-                'item'        => $currentItem,
-                'index'       => $index,
-                'totalUnits'  => $totalUnits,
-                'hasPrev'     => $index > 1,
-                'hasNext'     => $index < $totalUnits,
-                'components'  => $components,
-                'unitDetail'  => $unitDetail,
-            ];
-
-            return view('service/unit_verification_unit', $data);
+            return redirect()->to('/service/unit-verification')->with('error', 'Baris audit ini tidak memiliki unit terkait');
         } catch (\Exception $e) {
             return redirect()->to('/service/unit-verification')->with('error', $e->getMessage());
         }

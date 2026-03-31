@@ -610,6 +610,8 @@ $routes->group('service', static function ($routes) {
     // ── Unit Verification (satu halaman verifikasi unit di lokasi; Audit per Lokasi digabung ke sini) ──
     $routes->get('unit-audit/location', 'UnitAudit::redirectToVerification', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-verification', 'UnitAudit::verificationIndex', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getVerificationLocationsForCustomer/(:num)', 'UnitAudit::getVerificationLocationsForCustomer/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getVerificationOverview', 'UnitAudit::getVerificationOverview', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:service.unit_audit.view']);

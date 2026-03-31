@@ -46,34 +46,74 @@ class Service extends BaseController
     }
 
     /**
-     * Print verification page
+     * Print verification page (FORM VERIFIKASI UNIT).
+     * Work order: ?wo_id=… | Audit lokasi: ?audit_id=… [&unit_id=…] (tanpa unit_id = semua unit di audit).
      */
     public function printVerification($workOrderId = null)
     {
-        // Check permission for viewing service verification
+        $auditIdGet = (int) ($this->request->getGet('audit_id') ?? 0);
+        $unitIdGet  = (int) ($this->request->getGet('unit_id') ?? 0);
+
+        $data = [
+            'printWorkOrderId' => null,
+            'printAuditId'     => null,
+            'printUnitIds'     => [],
+        ];
+
+        if ($auditIdGet > 0) {
+            if (!$this->hasPermission('service.unit_audit.view') && !$this->hasPermission('service.work_order.view')) {
+                return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
+            }
+
+            $auditLocModel = new \App\Models\AuditLocationModel();
+            $audit         = $auditLocModel->getWithDetails($auditIdGet);
+            if (!$audit) {
+                return redirect()->to(base_url('service/unit-verification'))->with('error', 'Audit tidak ditemukan');
+            }
+
+            $unitIds = [];
+            if ($unitIdGet > 0) {
+                $unitIds = [$unitIdGet];
+            } else {
+                foreach ($audit['items'] ?? [] as $it) {
+                    $uid = (int) ($it['unit_id'] ?? 0);
+                    if ($uid > 0) {
+                        $unitIds[] = $uid;
+                    }
+                }
+                $unitIds = array_values(array_unique($unitIds));
+            }
+
+            if ($unitIds === []) {
+                return redirect()->to(base_url('service/unit-verification'))->with('error', 'Tidak ada unit di audit ini');
+            }
+
+            $data['printAuditId'] = $auditIdGet;
+            $data['printUnitIds'] = $unitIds;
+
+            return view('service/print_verification', $data);
+        }
+
         if (!$this->hasPermission('service.work_order.view')) {
             return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
-        
-        $data = [];
-        
-        // Get work order ID from parameter or GET request
+
         if (!$workOrderId) {
             $workOrderId = $this->request->getGet('wo_id');
         }
-        
+
         if ($workOrderId) {
-            // Load WorkOrderModel untuk mendapatkan data work order
             $workOrderModel = new \App\Models\WorkOrderModel();
-            $workOrder = $workOrderModel->getDetailWorkOrder($workOrderId);
-            
+            $workOrder      = $workOrderModel->getDetailWorkOrder($workOrderId);
+
             if ($workOrder) {
                 $data['workOrder'] = $workOrder;
-                // Also pass work order ID for JavaScript
                 $data['workOrderId'] = $workOrderId;
             }
         }
-        
+
+        $data['printWorkOrderId'] = $workOrderId ? (int) $workOrderId : null;
+
         return view('service/print_verification', $data);
     }
 
