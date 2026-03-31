@@ -1969,6 +1969,7 @@ class Service extends BaseController
         $estimasi_selesai = $this->request->getPost('estimasi_selesai');
         $attachment_id = $this->request->getPost('attachment_inventory_attachment_id');
         $transfer_attachment = $this->request->getPost('transfer_attachment') === 'true';
+        $fork_id = $this->request->getPost('fork_id');
 
         // Extract multi-mechanic data
         $mechanicsDataJson = $this->request->getPost('mechanics_data');
@@ -2017,6 +2018,7 @@ class Service extends BaseController
             'estimasi_mulai' => $estimasi_mulai,
             'estimasi_selesai' => $estimasi_selesai,
             'attachment_id' => $attachment_id,
+            'fork_id' => $fork_id,
             'transfer_attachment' => $transfer_attachment
         ];
     }
@@ -2541,6 +2543,11 @@ class Service extends BaseController
             if ($approvalData['stage'] === 'fabrikasi' && $approvalData['attachment_id']) {
                 $this->handleFabrikasiAttachment($stageData, $approvalData);
             }
+
+            // Handle fork updates for fabrikasi stage
+            if ($approvalData['stage'] === 'fabrikasi' && !empty($approvalData['fork_id'])) {
+                $this->handleFabrikasiFork($stageData, $approvalData);
+            }
             
             // Send notification: Attachment Uploaded on Stage
             if (!empty($approvalData['attachment_id']) && in_array($approvalData['stage'], ['fabrikasi', 'painting', 'persiapan_unit', 'pdi'])) {
@@ -2670,6 +2677,7 @@ class Service extends BaseController
         // Handle fabrikasi specific logic
         if ($approvalData['stage'] === 'fabrikasi') {
             $this->validateFabrikasiAttachment($stageData, $approvalData);
+            $this->validateFabrikasiFork($stageData, $approvalData);
         }
     }
 
@@ -2711,6 +2719,132 @@ class Service extends BaseController
     }
 
     /**
+     * Get quotation/unit accessories for SPK.
+     * Used to decide whether forks should be required in fabrikasi stage.
+     */
+    private function getKontrakSpecAksesorisForSpk(int $spkId): array
+    {
+        $spk = $this->db->table('spk')
+            ->where('id', $spkId)
+            ->get()
+            ->getRowArray();
+
+        if (!$spk) {
+            return [];
+        }
+
+        $quotationSpecId = $spk['quotation_specification_id'] ?? null;
+        if (!$quotationSpecId) {
+            return [];
+        }
+
+        $qs = $this->db->table('quotation_specifications')
+            ->where('id_specification', (int)$quotationSpecId)
+            ->get()
+            ->getRowArray();
+
+        if (!$qs) {
+            return [];
+        }
+
+        $raw = $qs['unit_accessories'] ?? null;
+        if ($raw === null) {
+            return [];
+        }
+
+        $accessoriesRaw = trim((string)$raw);
+        if ($accessoriesRaw === '') {
+            return [];
+        }
+
+        // Try JSON first
+        $decoded = json_decode($accessoriesRaw, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        // Fallback: treat as CSV string
+        return array_map('trim', explode(',', $accessoriesRaw));
+    }
+
+    /**
+     * Validate fabrikasi fork selection (based on quotation accessories).
+     */
+    private function validateFabrikasiFork($stageData, $approvalData)
+    {
+        $forkId = (int)($approvalData['fork_id'] ?? 0);
+        $spkId = (int)($stageData['spk_id'] ?? 0);
+
+        $aksesoris = $this->getKontrakSpecAksesorisForSpk($spkId);
+        $aksLower = array_values(array_filter(array_map(function($v) {
+            return strtolower(trim((string)$v));
+        }, $aksesoris)));
+
+        // Marketing uses: "forks", "laser_fork", "fork_extension"
+        $forkRequired = in_array('forks', $aksLower, true) || in_array('laser_fork', $aksLower, true) || in_array('fork_extension', $aksLower, true);
+
+        // Determine target unit (from persiapan stage), then check if unit already has a fork.
+        $targetUnitStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+        $targetUnitId = (int)($targetUnitStage['unit_id'] ?? 0);
+        $hasForkAttached = false;
+        if ($targetUnitId > 0) {
+            $hasForkAttached = $this->db->table('inventory_forks')
+                ->where('inventory_unit_id', $targetUnitId)
+                ->where('detached_at', null)
+                ->countAllResults() > 0;
+        }
+
+        // If spec requires a fork, but user didn't select one:
+        // - allow if unit already has an attached fork
+        // - otherwise block approval
+        if ($forkRequired && !$forkId) {
+            if (!$hasForkAttached) {
+                throw new \Exception('Fork harus dipilih');
+            }
+            return;
+        }
+
+        if (!$forkId) {
+            return;
+        }
+
+        // Validate fork existence + (best-effort) stock availability.
+        $forkRow = $this->db->table('inventory_forks')
+            ->where('id', $forkId)
+            ->get()
+            ->getRowArray();
+
+        if (!$forkRow) {
+            throw new \Exception('Fork tidak ditemukan');
+        }
+
+        $stockId = $forkRow['fork_stock_id'] ?? null;
+        $qty = (int)($forkRow['qty_pairs'] ?? 1);
+
+        // If fork is currently attached to another unit, we will transfer it during handling,
+        // so stock availability should be validated after releasing from its current unit.
+
+        $ownerUnitId = $forkRow['inventory_unit_id'] ?? null;
+        $ownerUnitIdInt = $ownerUnitId !== null ? (int)$ownerUnitId : null;
+
+        // If stockId missing, we can't reliably attach.
+        if (empty($stockId)) {
+            throw new \Exception('Stok fork tidak tersedia');
+        }
+
+        if ($ownerUnitIdInt === null || $ownerUnitIdInt === $targetUnitId) {
+            $stock = $this->db->table('inventory_fork_stocks')
+                ->where('id', $stockId)
+                ->get()
+                ->getRowArray();
+
+            if (!$stock || (int)($stock['qty_available_pairs'] ?? 0) < $qty) {
+                throw new \Exception('Stok fork tidak mencukupi');
+            }
+        }
+    }
+
+    /**
      * Handle fabrikasi attachment update
      */
     private function handleFabrikasiAttachment($stageData, $approvalData)
@@ -2741,6 +2875,170 @@ class Service extends BaseController
                 // Don't throw exception as main approval already succeeded
             }
         }
+    }
+
+    /**
+     * Handle fork assignment update for fabrikasi stage.
+     * - Release any existing fork(s) on target unit
+     * - If selected fork is attached to another unit, release it (transfer)
+     * - Deduct/add qty pairs from inventory_fork_stocks accordingly
+     */
+    private function handleFabrikasiFork($stageData, $approvalData)
+    {
+        $forkId = (int)($approvalData['fork_id'] ?? 0);
+        if (!$forkId) {
+            return;
+        }
+
+        $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+        if (!$persiapanStage || empty($persiapanStage['unit_id'])) {
+            return;
+        }
+
+        $unitId = (int)$persiapanStage['unit_id'];
+        $now = date('Y-m-d H:i:s');
+
+        $auditService = new \App\Services\ComponentAuditService($this->db);
+
+        $this->db->transStart();
+        try {
+            // Release all forks currently attached to target unit
+            $oldForks = $this->db->table('inventory_forks')
+                ->where('inventory_unit_id', $unitId)
+                ->where('detached_at', null)
+                ->get()
+                ->getResultArray();
+
+            foreach ($oldForks as $oldFk) {
+                $oldFkId = (int)($oldFk['id'] ?? 0);
+                if (!$oldFkId) continue;
+
+                $stockId = $oldFk['fork_stock_id'] ?? null;
+                $qty = (int)($oldFk['qty_pairs'] ?? 1);
+
+                $this->db->table('inventory_forks')
+                    ->where('id', $oldFkId)
+                    ->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'detached_at' => $now,
+                        'storage_location' => 'Workshop',
+                        'updated_at' => $now
+                    ]);
+
+                if (!empty($stockId)) {
+                    $this->db->query(
+                        'UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?',
+                        [$qty, (int)$stockId]
+                    );
+                }
+
+                $auditService->logRemoval('FORK', $oldFkId, $unitId, [
+                    'spk_id' => $stageData['spk_id'],
+                    'stage_name' => $approvalData['stage'],
+                    'triggered_by' => 'FABRIKASI',
+                    'notes' => 'Fork released during fabrikasi'
+                ]);
+            }
+
+            // If selected fork is attached to a different unit, release it (transfer support)
+            $selectedForkRow = $this->db->table('inventory_forks')
+                ->where('id', $forkId)
+                ->get()
+                ->getRowArray();
+
+            if ($selectedForkRow) {
+                $ownerUnitId = $selectedForkRow['inventory_unit_id'] ?? null;
+                $ownerUnitIdInt = $ownerUnitId !== null ? (int)$ownerUnitId : null;
+
+                if ($ownerUnitIdInt !== null && $ownerUnitIdInt !== $unitId) {
+                    $stockId = $selectedForkRow['fork_stock_id'] ?? null;
+                    $qty = (int)($selectedForkRow['qty_pairs'] ?? 1);
+
+                    $this->db->table('inventory_forks')
+                        ->where('id', $forkId)
+                        ->update([
+                            'inventory_unit_id' => null,
+                            'status' => 'AVAILABLE',
+                            'detached_at' => $now,
+                            'storage_location' => 'Workshop',
+                            'updated_at' => $now
+                        ]);
+
+                    if (!empty($stockId)) {
+                        $this->db->query(
+                            'UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs + ? WHERE id = ?',
+                            [$qty, (int)$stockId]
+                        );
+                    }
+
+                    $auditService->logRemoval('FORK', $forkId, $ownerUnitIdInt, [
+                        'spk_id' => $stageData['spk_id'],
+                        'stage_name' => $approvalData['stage'],
+                        'triggered_by' => 'FABRIKASI',
+                        'notes' => 'Fork transferred (released from previous unit) during fabrikasi'
+                    ]);
+                }
+            }
+
+            // Re-fetch fork data after releases
+            $forkRow = $this->db->table('inventory_forks')
+                ->where('id', $forkId)
+                ->get()
+                ->getRowArray();
+
+            if (!$forkRow) {
+                throw new \Exception('Fork tidak ditemukan saat attach');
+            }
+
+            $stockId = $forkRow['fork_stock_id'] ?? null;
+            $qty = (int)($forkRow['qty_pairs'] ?? 1);
+
+            if (empty($stockId)) {
+                throw new \Exception('Stok fork tidak tersedia');
+            }
+
+            $stock = $this->db->table('inventory_fork_stocks')
+                ->where('id', (int)$stockId)
+                ->get()
+                ->getRowArray();
+
+            if (!$stock || (int)($stock['qty_available_pairs'] ?? 0) < $qty) {
+                throw new \Exception('Stok fork tidak mencukupi');
+            }
+
+            // Deduct stock
+            $this->db->query(
+                'UPDATE inventory_fork_stocks SET qty_available_pairs = qty_available_pairs - ? WHERE id = ?',
+                [$qty, (int)$stockId]
+            );
+
+            // Attach fork to target unit
+            $this->db->table('inventory_forks')
+                ->where('id', $forkId)
+                ->update([
+                    'inventory_unit_id' => $unitId,
+                    'status' => 'IN_USE',
+                    'assigned_at' => $now,
+                    'detached_at' => null,
+                    'storage_location' => 'Terpasang di Unit',
+                    'updated_at' => $now
+                ]);
+
+            $auditService->logAssignment('FORK', $forkId, $unitId, [
+                'spk_id' => $stageData['spk_id'],
+                'stage_name' => $approvalData['stage'],
+                'triggered_by' => 'FABRIKASI',
+                'notes' => 'Fork attached during fabrikasi'
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Fork fabrikasi update failed: ' . $e->getMessage());
+            // Keep stage approval status stable; validation should prevent common failures.
+            $this->db->transRollback();
+            return;
+        }
+
+        $this->db->transComplete();
     }
 
     /**

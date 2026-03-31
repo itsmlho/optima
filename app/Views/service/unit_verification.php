@@ -872,6 +872,7 @@ $(document).ready(function() {
     // Populate Unit Verification Fields - GLOBAL function
     window.populateUnitVerificationFields = function(data) {
         console.log('📝 Populating verification fields with data:', data);
+        data = data || {};
         
         // Extract unit data from response
         let unitData = data.unit || {};
@@ -962,10 +963,10 @@ $(document).ready(function() {
         window.uvForkStockCheck = { ok: true, reason: '' };
         
         // Populate dropdown options
-        window.populateDropdownOptions(data.options);
+        window.populateDropdownOptions(data.options || {});
         
         // Populate Lokasi dropdown based on customer
-        window.populateLokasiDropdown(data.customer_locations, unitData.lokasi, unitData.pelanggan);
+        window.populateLokasiDropdown(Array.isArray(data.customer_locations) ? data.customer_locations : [], unitData.lokasi, unitData.pelanggan);
         
         // Set selected values for dropdowns
         window.setSelectedDropdownValues(unitData, attachmentData);
@@ -1257,6 +1258,7 @@ $(document).ready(function() {
     }
     
     window.populateDropdownOptions = function(options) {
+        options = options || {};
         console.log('📝 Populating dropdown options:', options);
         
         // Populate Departemen dropdown

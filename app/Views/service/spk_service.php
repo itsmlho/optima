@@ -300,6 +300,19 @@ $can_export = true;
 				</div>
 				<div class="modal-body">
 					<input type="hidden" id="inputSparepartSpkId" value="">
+
+					<!-- History sparepart tersimpan — collapsible, di atas form -->
+					<div id="existingSparepartHistory" style="display:none" class="mb-3">
+						<button class="btn btn-sm btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+								type="button" data-bs-toggle="collapse" data-bs-target="#existingSparepartHistoryCollapse" aria-expanded="false">
+							<span><i class="fas fa-history me-1"></i>Sparepart Tersimpan Sebelumnya <span id="existingSparepartCount" class="badge badge-soft-blue ms-1"></span></span>
+							<i class="fas fa-chevron-down"></i>
+						</button>
+						<div class="collapse" id="existingSparepartHistoryCollapse">
+							<div id="existingSparepartHistoryBody" class="border rounded-bottom p-2" style="max-height:220px; overflow-y:auto; background:#f8f9fa;"></div>
+						</div>
+					</div>
+
 					<div class="row g-3 mb-3">
 						<div class="col-md-6">
 							<label class="form-label fw-semibold">Stage <span class="text-danger">*</span></label>
@@ -347,12 +360,6 @@ $can_export = true;
 							</div>
 						</div>
 					</div>
-				</div>
-				<!-- History sparepart yang sudah tersimpan -->
-				<div id="existingSparepartHistory" class="px-3 pb-2" style="display:none">
-					<hr class="mt-0">
-					<h6 class="text-muted mb-2"><i class="fas fa-history me-1"></i>Sparepart Tersimpan Sebelumnya</h6>
-					<div id="existingSparepartHistoryBody"></div>
 				</div>
 				<div class="modal-footer d-flex justify-content-between">
 					<small class="text-muted"><i class="fas fa-info-circle me-1"></i>Fields dengan <span class="text-danger">*</span> wajib diisi</small>
@@ -1678,10 +1685,18 @@ document.addEventListener('DOMContentLoaded', () => {
 					</div>
 					<div class="form-text">Specifically for fabrication attachments. Data from inventory_attachment.</div>
 				</div>
+				<div class="mb-3" id="fabrikasiForkSection">
+					<label class="form-label">Fork Management</label>
+					<div id="fabrikasiForkContent">
+						<div class="text-muted">Loading fork requirements...</div>
+					</div>
+					<div class="form-text">Fork depends on quotation specification accessories.</div>
+				</div>
 			`;
 			
 			// Setup enhanced attachment management
 			setupFabrikasiAttachmentManagement();
+			setupFabrikasiForkManagement();
 			
 			// If editing, load existing fabrikasi data
 			if (currentEditingUnitIndex !== null) {
@@ -2790,6 +2805,145 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 	}
 	
+	// Fork selection management based on quotation accessories (kontrak_spec)
+	function setupFabrikasiForkManagement() {
+		const contentDiv = document.getElementById('fabrikasiForkContent');
+		if (!contentDiv) return;
+		
+		// Default: ok
+		window.spkForkStockCheck = { ok: true, reason: '' };
+		
+		contentDiv.innerHTML = '<div class="text-muted">Loading fork requirements...</div>';
+		
+		fetch(`<?= base_url('service/spk/detail') ?>/${currentApprovalSpkId}`)
+			.then(response => {
+				if (response.status === 401) {
+					notify('Session expired. Please login again.', 'error');
+					window.location.href = '<?= base_url('auth/login') ?>';
+					return Promise.reject('Unauthorized');
+				}
+				return response.json();
+			})
+			.then(data => {
+				const ks = data?.kontrak_spec || {};
+				const aks = Array.isArray(ks.aksesoris) ? ks.aksesoris : [];
+				
+				// Normalize accessories for case-insensitive comparison
+				const aksLower = aks.map(v => String(v).trim().toLowerCase()).filter(Boolean);
+				
+				// Marketing uses: "forks", "laser_fork", "fork_extension"
+				const forkRequired = aksLower.includes('forks') || aksLower.includes('laser_fork') || aksLower.includes('fork_extension');
+				
+				if (!forkRequired) {
+					contentDiv.innerHTML = `
+						<div class="alert alert-info mb-0">
+							<i class="fas fa-info-circle me-2"></i>
+							Fork tidak diminta oleh spesifikasi (kontrak_spec).
+						</div>
+					`;
+					return;
+				}
+				
+				// Best-effort narrowing: try parse mm from attachment spec text
+				const attachmentSpec = String(ks.attachment_id_name || ks.attachment_tipe || '');
+				const mmMatch = attachmentSpec.match(/(\d{3,4})\s*mm/i);
+				const autoForkQuery = mmMatch ? mmMatch[1] : '';
+				const wantsLaser = aksLower.includes('laser_fork');
+				const ajaxDefaultQuery = wantsLaser ? (autoForkQuery ? autoForkQuery + ' laser' : 'laser') : autoForkQuery;
+				
+				contentDiv.innerHTML = `
+					<div class="mb-2">
+						<label class="form-label">Select Fork <span class="text-danger">*</span></label>
+						<select class="form-select" id="fabrikasiForkPick" name="fork_id" style="width:100%"></select>
+						<div class="form-text">Search by item number/spec fork, fork class, or SN.</div>
+					</div>
+					<div class="small text-muted mt-2" id="fabrikasiForkQtyHint">Qty pair: -</div>
+					<div class="small mt-1 d-none" id="fabrikasiForkStockWarning"></div>
+				`;
+				
+				const $forkSelect = $('#fabrikasiForkPick');
+				
+				if ($forkSelect.hasClass('select2-hidden-accessible')) {
+					$forkSelect.select2('destroy');
+				}
+				
+				$forkSelect.select2({
+					placeholder: 'Cari berdasarkan item number/spec fork...',
+					allowClear: true,
+					dropdownParent: $('#approvalStageModal .modal-content'),
+					width: '100%',
+					minimumInputLength: 0,
+					ajax: {
+						url: '<?= base_url('service/data-attachment/simple') ?>',
+						dataType: 'json',
+						delay: 250,
+						data: function (params) {
+							return {
+								q: params.term ? params.term : (ajaxDefaultQuery || ''),
+								type: 'fork'
+							};
+						},
+						processResults: function (data) {
+							if (data.success && data.data) {
+								return {
+									results: data.data.map(function(item) {
+										const idText = item.sn_fork ? item.sn_fork : '(No Item)';
+										const displayText = `${idText} - ${item.label}`;
+										
+										return {
+											id: item.id,
+											text: displayText,
+											data: item
+										};
+									})
+								};
+							}
+							return { results: [] };
+						},
+						cache: false
+					}
+				});
+				
+				$forkSelect.on('select2:select', function(e) {
+					const selectedData = e.params.data;
+					if (!selectedData || !selectedData.data) return;
+					
+					const fork = selectedData.data;
+					const qtyPairs = fork?.qty_pairs ?? null;
+					const qtyAvail = fork?.qty_available_pairs ?? null;
+					const isUsed = fork?.is_used === true;
+					
+					$('#fabrikasiForkQtyHint').text('Qty pair: ' + (qtyPairs !== null && qtyPairs !== undefined ? qtyPairs : '-'));
+					
+					// Fail fast only for AVAILABLE forks with insufficient stock.
+					if (!isUsed && qtyPairs !== null && qtyAvail !== null && parseInt(qtyPairs, 10) > parseInt(qtyAvail, 10)) {
+						window.spkForkStockCheck = {
+							ok: false,
+							reason: `Stok fork tidak cukup (butuh ${qtyPairs} pair, tersedia ${qtyAvail} pair).`
+						};
+						$('#fabrikasiForkStockWarning').removeClass('d-none').text(window.spkForkStockCheck.reason);
+					} else {
+						window.spkForkStockCheck = { ok: true, reason: '' };
+						$('#fabrikasiForkStockWarning').addClass('d-none').text('');
+					}
+				});
+				
+				$forkSelect.on('select2:clear', function() {
+					window.spkForkStockCheck = { ok: true, reason: '' };
+					$('#fabrikasiForkQtyHint').text('Qty pair: -');
+					$('#fabrikasiForkStockWarning').addClass('d-none').text('');
+				});
+			})
+			.catch(err => {
+				console.log('Error loading fork requirements:', err);
+				contentDiv.innerHTML = `
+					<div class="alert alert-warning mb-0">
+						Gagal memuat fork requirements.
+					</div>
+				`;
+			});
+	}
+	
 	// Generate attachment UI similar to battery/charger management
 	function generateFabrikasiAttachmentUI(existingAttachment, unitId) {
 		const contentDiv = document.getElementById('fabrikasiAttachmentContent');
@@ -3745,6 +3899,19 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (transferAttachment || transferFromInput) {
 					fd.append('transfer_attachment', 'true');
 				}
+			}
+		}
+		
+		// Handle fabrikasi stage fork selection
+		if (currentApprovalStage === 'fabrikasi') {
+			const forkPick = document.getElementById('fabrikasiForkPick');
+			if (forkPick) {
+				// Frontend guard: fail fast only if pre-check says stock insufficient.
+				if (window.spkForkStockCheck && window.spkForkStockCheck.ok === false) {
+					notify('Stok fork tidak mencukupi: ' + (window.spkForkStockCheck.reason || ''), 'error');
+					return;
+				}
+				// NOTE: fork_id already included in FormData because the select has name="fork_id".
 			}
 		}
 		
@@ -5753,8 +5920,12 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		// Load & tampilkan history sparepart yang sudah tersimpan
 		const historySection = document.getElementById('existingSparepartHistory');
 		const historyBody = document.getElementById('existingSparepartHistoryBody');
+		const historyCount = document.getElementById('existingSparepartCount');
+		const historyCollapse = document.getElementById('existingSparepartHistoryCollapse');
 		historySection.style.display = 'none';
-		historyBody.innerHTML = '<div class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
+		// Reset collapse ke tertutup dulu
+		bootstrap.Collapse.getOrCreateInstance(historyCollapse, {toggle: false}).hide();
+		historyBody.innerHTML = '<div class="text-muted small p-1"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
 		fetch(`<?= base_url('service/spk/get-spareparts/') ?>${id}`, {
 			headers: {'X-Requested-With': 'XMLHttpRequest'}
 		}).then(r => r.json()).then(sp => {
@@ -5780,15 +5951,17 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 						<td class="small">${validBadge}</td>
 					</tr>`;
 				}).join('');
-				historyBody.innerHTML = `<div class="table-responsive"><table class="table table-sm table-bordered mb-0">
+				historyBody.innerHTML = `<table class="table table-sm table-bordered mb-0">
 					<thead class="table-light"><tr>
 						<th class="small">Type</th><th class="small">Item</th><th class="small">Qty</th>
 						<th class="small">Source</th><th class="small">Stage</th><th class="small">Status</th>
 					</tr></thead>
 					<tbody>${rows}</tbody>
-				</table></div>
-				<p class="text-muted small mt-1 mb-0"><i class="fas fa-info-circle me-1"></i>Total ${sp.spareparts.length} item tersimpan. Form di atas untuk menambah item baru.</p>`;
+				</table>`;
+				historyCount.textContent = sp.spareparts.length;
 				historySection.style.display = 'block';
+				// Expand otomatis supaya langsung terlihat
+				bootstrap.Collapse.getOrCreateInstance(historyCollapse).show();
 			} else {
 				historySection.style.display = 'none';
 			}
