@@ -150,6 +150,24 @@
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-tinggi-mast"></td>
                                     </tr>
                                     <tr>
+                                        <td>Valve</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-valve" readonly></td>
+                                        <td><input type="text" class="form-control form-control-sm" id="verify-valve" name="valve" placeholder="Valve real"></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-valve"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ban</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-ban" readonly></td>
+                                        <td><input type="text" class="form-control form-control-sm" id="verify-ban" name="ban" placeholder="Ban real"></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-ban"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Wheel Type / Jenis Roda</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-wheel-type" readonly></td>
+                                        <td><input type="text" class="form-control form-control-sm" id="verify-wheel-type" name="wheel_type" placeholder="Wheel type / jenis roda real"></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-wheel-type"></td>
+                                    </tr>
+                                    <tr>
                                         <td>Keterangan Unit</td>
                                         <td><textarea class="form-control form-control-sm" id="db-keterangan" readonly rows="2"></textarea></td>
                                         <td><textarea class="form-control form-control-sm" id="verify-keterangan" name="keterangan" rows="2" placeholder="Keterangan real"></textarea></td>
@@ -691,6 +709,65 @@ window.loadUnitVerificationData = function(workOrderId, woNumber) {
     
     // Ensure DOM is ready
     $(function() {
+    // Centralized accessories list so all pages can share
+    window.ACCESSORIES_MASTER_LIST = [
+        'LAMPU UTAMA',
+        'ROTARY LAMP',
+        'SENSOR PARKING',
+        'HORN SPEAKER',
+        'APAR AF31 (1 KG)',
+        'APAR AF31 (3 KG)',
+        'BEACON',
+        'TELEMATIC',
+        'BLUE SPOT',
+        'RED LINE',
+        'WORK LIGHT',
+        'BACK BUZZER',
+        'CAMERA AI',
+        'CAMERA MONITOR',
+        'SPEED LIMITER',
+        'LASER FORK',
+        'VOICE ANNOUNCER',
+        'HORN KLASON',
+        'BIO METRIC',
+        'ACRYLIC',
+        'AKRILIK DEPAN',
+        'AKRILIK ATAS',
+        'AKRILIK BELAKANG',
+        'FIRST AID KIT',
+        'KOTAK P3K',
+        'SPARK ARRESTOR',
+        'SAFETY BELT INTERLOCK',
+        'MIRROR',
+        'SAFETY BELT STANDAR',
+        'LOAD BACKREST',
+        'FORKS',
+        'OVERHEAD GUARD',
+        'DOCUMENT HOLDER',
+        'TOOL KIT',
+        'APAR BRACKET',
+        'ANTI STATIC STRAP',
+        'WHEEL STOPPER CHOCK',
+        'FORK EXTENSION'
+    ];
+
+    // Default common list (can be overridden globally)
+    window.ACCESSORIES_COMMON_LIST = window.ACCESSORIES_COMMON_LIST || [
+        'LAMPU UTAMA',
+        'WORK LIGHT',
+        'ROTARY LAMP',
+        'BACK BUZZER',
+        'HORN KLASON',
+        'MIRROR',
+        'SAFETY BELT STANDAR',
+        'LOAD BACKREST',
+        'FORKS',
+        'OVERHEAD GUARD',
+        'DOCUMENT HOLDER',
+        'TOOL KIT',
+        'APAR AF31 (1 KG)',
+        'APAR BRACKET'
+    ];
         // Reset modal first
         if (typeof window.resetUnitVerificationModal === 'function') {
             window.resetUnitVerificationModal();
@@ -904,6 +981,9 @@ $(document).ready(function() {
         $('#db-sn-mesin').val(unitData.sn_mesin || '');
         $('#db-model-mast').val(unitData.model_mast_name || '');
         $('#db-sn-mast').val(unitData.sn_mast || '');
+        $('#db-valve').val(unitData.valve_name || unitData.valve || '');
+        $('#db-ban').val(unitData.ban_name || unitData.ban || '');
+        $('#db-wheel-type').val(unitData.wheel_type_name || unitData.wheel_type || unitData.jenis_roda || '');
         $('#db-tinggi-mast').val(unitData.tinggi_mast || '');
         
         // Attachment Information
@@ -937,6 +1017,9 @@ $(document).ready(function() {
         // SN fields - auto-fill with database values
         $('#verify-sn-mesin').val(unitData.sn_mesin || '');
         $('#verify-sn-mast').val(unitData.sn_mast || '');
+        $('#verify-valve').val(unitData.valve_name || unitData.valve || '');
+        $('#verify-ban').val(unitData.ban_name || unitData.ban || '');
+        $('#verify-wheel-type').val(unitData.wheel_type_name || unitData.wheel_type || unitData.jenis_roda || '');
 
         // Post-verification status default:
         // keep explicit choice when possible, and auto-default RETURNED -> AVAILABLE_STOCK.
@@ -1000,6 +1083,23 @@ $(document).ready(function() {
         // Populate Aksesoris from database - IMPORTANT: This should auto-check existing accessories
         console.log('🔧 About to populate accessories:', data.accessories);
         window.populateUnitAccessories(data.accessories || []);
+
+        // Jika fork component sudah terpasang, matikan opsi aksesoris "FORKS" agar tidak dobel
+        try {
+            const attachmentBlock = data.attachment || {};
+            const hasForkComponent =
+                (Array.isArray(attachmentBlock.forks) && attachmentBlock.forks.length > 0) ||
+                Boolean(attachmentBlock.fork_id || attachmentBlock.fork_name || attachmentBlock.sn_fork);
+            
+            const forkAccessory = $('input[name="accessories[]"][value="FORKS"]');
+            if (hasForkComponent && forkAccessory.length) {
+                forkAccessory.prop('checked', false).prop('disabled', true);
+            } else if (forkAccessory.length) {
+                forkAccessory.prop('disabled', false);
+            }
+        } catch (e) {
+            console.warn('Fork/accessories sync warning:', e);
+        }
         
         // Setup tooltips for database fields
         if (typeof window.setupDatabaseFieldTooltips === 'function') {
@@ -1129,7 +1229,7 @@ $(document).ready(function() {
     // Select Common Accessories
     $('#btn-select-common').on('click', function() {
         // Select commonly used accessories (sama dengan Marketing/Kontrak)
-        let commonAccessories = [
+        let commonAccessories = window.ACCESSORIES_COMMON_LIST || [
             'LAMPU UTAMA',
             'WORK LIGHT',
             'ROTARY LAMP',

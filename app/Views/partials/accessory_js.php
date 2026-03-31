@@ -2,6 +2,7 @@
 if (!window.OptimaAccessory) {
     window.OptimaAccessory = (() => {
         const map = {
+            // Kode utama sesuai spesifikasi terbaru
             main_light: 'Main Light Set',
             work_light: 'Work Light',
             rotary_lamp: 'Rotary Lamp',
@@ -10,13 +11,14 @@ if (!window.OptimaAccessory) {
             mirror: 'Mirror / Spion',
             safety_belt: 'Safety Belt Standar',
             load_backrest: 'Load Backrest',
-            forks: 'Forks',
             overhead_guard: 'Overhead Guard',
             document_holder: 'Document Holder',
             tool_kit: 'Tool Kit',
             apar_bracket: 'APAR + Bracket',
             blue_spot: 'Blue Spot',
+            red_spot: 'Red Spot',
             red_line: 'Red Line',
+            blue_line: 'Blue Line',
             camera_ai: 'Camera AI',
             camera: 'Camera Monitor',
             sensor_parking: 'Sensor Parking',
@@ -28,17 +30,29 @@ if (!window.OptimaAccessory) {
             safety_belt_interlock: 'Safety Belt Interlock',
             spark_arrestor: 'Spark Arrestor',
             anti_static_strap: 'Anti-Static Strap',
-            acrylic: 'Acrylic Roof/Windshield',
-            first_aid_kit: 'First Aid Kit',
+            acrylic_roof: 'Acrylic Roof/Windshield',
+            acrylic_side: 'Acrylic Side',
+            acrylic_front: 'Acrylic Front',
+            p3k: 'P3K / First Aid Kit',
             wheel_stopper_chock: 'Wheel Stopper / Chock',
             fork_extension: 'Fork Extension',
-            // Backward compatibility aliases
+            fire_ext_powder_1kg: 'APAR 1 KG (Powder)',
+            fire_ext_powder_3kg: 'APAR 3 KG (Powder)',
+            fire_ext_lithium_af31: 'APAR Lithium AF31',
+            load_weight_indicator: 'Load Weight Indicator / Timbangan',
+            impact_sensor: 'Impact / Shock Sensor',
+            battery_watering_sys: 'Battery Watering System',
+            panoramic_mirror: 'Panoramic Mirror',
+
+            // Backward compatibility aliases (normalize key lama)
+            forks: 'Forks',
+            acrylic: 'Acrylic Roof/Windshield',
+            first_aid_kit: 'First Aid Kit',
             lampu_sorot: 'Work Light',
             fire_ext: 'APAR + Bracket',
             horn: 'Horn / Klakson',
             strobe_light: 'Rotary Lamp',
-            main_light_set: 'Main Light Set',
-            p3k: 'First Aid Kit'
+            main_light_set: 'Main Light Set'
         };
 
         const checkboxAlias = {

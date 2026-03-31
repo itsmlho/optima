@@ -508,6 +508,24 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
                                 <td class="text-center"><span class="checkbox-symbol">☐</span></td>
                             </tr>
                             <tr>
+                                <td>Valve</td>
+                                <td id="db-valve">-</td>
+                                <td><span class="real-field"></span></td>
+                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                            </tr>
+                            <tr>
+                                <td>Ban</td>
+                                <td id="db-ban">-</td>
+                                <td><span class="real-field"></span></td>
+                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                            </tr>
+                            <tr>
+                                <td>Wheel Type / Jenis Roda</td>
+                                <td id="db-wheel-type">-</td>
+                                <td><span class="real-field"></span></td>
+                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                            </tr>
+                            <tr>
                                 <td>Hour Meter (HM)</td>
                                 <td id="db-hour-meter">-</td>
                                 <td><span class="real-field"></span></td>
@@ -832,7 +850,10 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
                 { id: 'db-sn-mesin', value: unitData.sn_mesin },
                 { id: 'db-model-mast', value: unitData.model_mast_name },
                 { id: 'db-sn-mast', value: unitData.sn_mast },
-                { id: 'db-tinggi-mast', value: unitData.tinggi_mast }
+                { id: 'db-tinggi-mast', value: unitData.tinggi_mast },
+                { id: 'db-valve', value: unitData.valve_name || unitData.valve },
+                { id: 'db-ban', value: unitData.ban_name || unitData.ban },
+                { id: 'db-wheel-type', value: unitData.wheel_type_name || unitData.wheel_type || unitData.jenis_roda }
             ];
 
             machineElements.forEach(function(item) {
