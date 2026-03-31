@@ -4095,6 +4095,7 @@ class WorkOrderController extends Controller
                 ]);
             }
 
+            $db->transException(true);
             $db->transStart();
 
             $componentLogWoId    = $isAuditVerification ? null : (int) $workOrderId;
