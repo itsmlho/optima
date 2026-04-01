@@ -133,7 +133,7 @@
                     <!-- Filter Controls -->
                     <div class="row mb-2">
                         <div class="col-md-3">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="filter-status-all"><?= lang('Common.status') ?></label>
                                 <select id="filter-status-all" class="form-select form-select-sm">
                                     <option value=""><?= lang('App.all_statuses') ?></option>
@@ -158,7 +158,7 @@
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="filter-expired-all"><?= lang('App.filter_expired') ?></label>
                                 <select id="filter-expired-all" class="form-select form-select-sm">
                                     <option value=""><?= lang('Common.all') ?></option>
@@ -212,7 +212,7 @@
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="filter-expired-sudah-ada">Filter Expired</label>
                                 <select id="filter-expired-sudah-ada" class="form-select form-select-sm">
                                     <option value="">All</option>
@@ -512,8 +512,8 @@
 <?= $this->section('javascript') ?>
 <!-- DataTables CSS & JS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+
 
 <!-- SweetAlert2 -->
 

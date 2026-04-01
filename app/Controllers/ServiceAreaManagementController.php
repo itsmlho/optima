@@ -189,30 +189,28 @@ class ServiceAreaManagementController extends BaseController
             log_message('debug', 'User ID from session: ' . session()->get('user_id'));
             
             // Build query with scope filtering
-            $whereClause = "";
+            $whereClause = " WHERE areas.is_active = 1";
             $params = [];
             
             // Apply role-based scope filtering
             if ($scope !== null && !empty($scope['areas'])) {
-                $whereClause = " WHERE id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
+                $whereClause .= " AND areas.id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
                 $params = $scope['areas'];
                 log_message('debug', 'Applied area filtering: ' . implode(',', $scope['areas']));
             }
             
             // Add search condition
             if ($searchValue) {
-                $searchWhere = $whereClause ? " AND " : " WHERE ";
-                $whereClause .= $searchWhere . "(area_name LIKE ? OR area_code LIKE ? OR area_description LIKE ?)";
+                $whereClause .= " AND (areas.area_name LIKE ? OR areas.area_code LIKE ? OR areas.area_description LIKE ?)";
                 $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%"]);
             }
             
-            // Count total records (with scope, without search)
-            $totalSql = "SELECT COUNT(*) as total FROM areas";
+            // Count total records (with scope, without search) — active areas only
             if ($scope !== null && !empty($scope['areas'])) {
-                $totalSql .= " WHERE id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
+                $totalSql = "SELECT COUNT(*) as total FROM areas WHERE areas.is_active = 1 AND areas.id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
                 $totalResult = $this->db->query($totalSql, $scope['areas']);
             } else {
-                $totalResult = $this->db->query($totalSql);
+                $totalResult = $this->db->query("SELECT COUNT(*) as total FROM areas WHERE is_active = 1");
             }
             $totalRecords = $totalResult->getRow()->total;
             

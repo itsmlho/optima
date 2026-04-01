@@ -161,7 +161,7 @@
             <form action="<?= base_url('auth/send-reset-link') ?>" method="POST" id="forgotPasswordForm">
                 <?= csrf_field() ?>
                 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="email" class="form-label">
                         <i class="fas fa-envelope me-1"></i> Email
                     </label>

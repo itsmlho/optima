@@ -157,7 +157,7 @@ $can_export = $permissions['export'];
                 <!-- Filter Controls for Progress -->
                 <div class="row mb-4">
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-status-progress" class="fw-semibold"><i class="fas fa-filter text-primary me-1"></i><?= lang('Common.status') ?></label>
                             <select id="filter-status-progress" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_status') ?></option>
@@ -170,7 +170,7 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-priority-progress" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
                             <select id="filter-priority-progress" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_priority') ?></option>
@@ -181,13 +181,13 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-start-date-progress">Start Date</label>
                             <input type="date" id="filter-start-date-progress" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-end-date-progress">End Date</label>
                             <input type="date" id="filter-end-date-progress" class="form-control form-control-sm">
                         </div>
@@ -228,7 +228,7 @@ $can_export = $permissions['export'];
                 <!-- Filter Controls for Closed -->
                 <div class="row mb-4">
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-priority-closed" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
                             <select id="filter-priority-closed" class="form-select form-select-sm">
                                 <option value=""><?= lang('App.all_priority') ?></option>
@@ -239,19 +239,19 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-start-date-closed">Start Date</label>
                             <input type="date" id="filter-start-date-closed" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-end-date-closed">End Date</label>
                             <input type="date" id="filter-end-date-closed" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="filter-month-closed">Filter Month</label>
                             <select id="filter-month-closed" class="form-select form-select-sm">
                                 <option value="">All Months</option>

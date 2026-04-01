@@ -516,7 +516,7 @@
             <form action="<?= base_url('auth/attempt-login') ?>" method="POST" id="loginForm">
                 <?= csrf_field() ?>
                 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="username" class="form-label">
                         <i class="fas fa-user me-1"></i> Username or Email
                     </label>
@@ -532,7 +532,7 @@
                     >
                 </div>
                 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="password" class="form-label">
                         <i class="fas fa-lock me-1"></i> Password
                     </label>

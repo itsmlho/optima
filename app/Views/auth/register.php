@@ -270,7 +270,7 @@
                 <!-- Personal Information -->
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="first_name" class="form-label">
                                 <i class="fas fa-user me-1"></i> First Name <span class="required">*</span>
                             </label>
@@ -286,7 +286,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="last_name" class="form-label">
                                 Last Name <span class="required">*</span>
                             </label>
@@ -306,7 +306,7 @@
                 <!-- Contact Information -->
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="email" class="form-label">
                                 <i class="fas fa-envelope me-1"></i> Email <span class="required">*</span>
                             </label>
@@ -322,7 +322,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="phone" class="form-label">
                                 <i class="fas fa-phone me-1"></i> Phone Number
                             </label>
@@ -339,7 +339,7 @@
                 </div>
                 
                 <!-- Username -->
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="username" class="form-label">
                         <i class="fas fa-at me-1"></i> Username <span class="required">*</span>
                     </label>
@@ -358,7 +358,7 @@
                 <!-- Password -->
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="password" class="form-label">
                                 <i class="fas fa-lock me-1"></i> Password <span class="required">*</span>
                             </label>
@@ -383,7 +383,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="password_confirm" class="form-label">
                                 Confirm Password <span class="required">*</span>
                             </label>
@@ -409,7 +409,7 @@
                 <!-- Division & Role -->
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="division" class="form-label">
                                 <i class="fas fa-building me-1"></i> Division <span class="required">*</span>
                             </label>
@@ -426,7 +426,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="role" class="form-label">
                                 <i class="fas fa-user-tag me-1"></i> Role <span class="required">*</span>
                             </label>
@@ -438,7 +438,7 @@
                 </div>
                 
                 <!-- Terms & Conditions -->
-                <div class="form-group">
+                <div class="mb-3">
                     <div class="form-check">
                         <input 
                             type="checkbox" 

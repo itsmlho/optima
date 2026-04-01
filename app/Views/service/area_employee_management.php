@@ -299,23 +299,23 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Add New Area</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="addAreaForm">
         <?= csrf_field() ?>
         <div class="modal-body">
           <div class="form-errors text-danger small mb-3" style="display: none;"></div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Code <span class="text-danger">*</span></label>
             <input type="text" name="area_code" class="form-control" required maxlength="10" placeholder="Enter area code">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Name <span class="text-danger">*</span></label>
             <input type="text" name="area_name" class="form-control" required maxlength="255" placeholder="Enter area name">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Type <span class="text-danger">*</span></label>
             <select name="area_type" id="add_area_type" class="form-control" required>
               <option value="MILL">MILL - Site / Plant Location</option>
@@ -326,7 +326,7 @@
               <strong>CENTRAL:</strong> Area kantor pusat/HQ — karyawan fokus pada departemen tertentu (DIESEL/ELECTRIC)
             </small>
           </div>
-          <div class="form-group" id="add_dept_group" style="display:none;">
+          <div class="mb-3" id="add_dept_group" style="display:none;">
             <label>Department <span class="text-danger">*</span></label>
             <select name="departemen_id" id="add_departemen_id" class="form-control">
               <option value="">-- Pilih Departemen --</option>
@@ -339,13 +339,13 @@
             </select>
             <small class="form-text text-muted">Pilih departemen yang ditangani area CENTRAL ini</small>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Description</label>
             <textarea name="area_description" class="form-control" rows="3" placeholder="Enter area description (optional)"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Area</button>
         </div>
       </form>
@@ -359,24 +359,24 @@
     <div class="modal-content">
       <div class="modal-header bg-light">
         <h5 class="modal-title"><i class="fas fa-user-plus text-primary"></i> Add New Employee</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="addEmployeeForm">
         <?= csrf_field() ?>
         <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
           <div class="form-errors alert alert-danger" style="display: none;"></div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Staff Code <span class="text-danger">*</span></label>
             <input type="text" name="staff_code" id="staff_code" class="form-control" required maxlength="20" readonly>
             <small class="form-text text-muted">Auto-generated based on role</small>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Staff Name <span class="text-danger">*</span></label>
             <input type="text" name="staff_name" class="form-control" required maxlength="255">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Role <span class="text-danger">*</span></label>
             <select name="staff_role" id="staff_role" class="form-control" required onchange="updateJobDescriptionOptions(); generateStaffCode();">
               <option value="">-- Select Role --</option>
@@ -391,14 +391,14 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="mb-3">
             <label>Job Description <span class="text-danger">*</span></label>
             <textarea name="job_description" id="job_description" class="form-control" rows="3" required 
                       placeholder="Describe the main responsibilities and tasks for this position"></textarea>
             <small class="form-text text-muted">Will auto-populate based on role selection, but you can customize it.</small>
           </div>
           
-          <div class="form-group">
+          <div class="mb-3">
             <label>Work Location <span class="text-danger">*</span></label>
             <select name="work_location" class="form-control" required>
               <option value="">-- Select Work Location --</option>
@@ -407,7 +407,7 @@
               <option value="BOTH">Both (Flexible)</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Department</label>
             <select name="departemen_id" class="form-control">
               <option value="">-- Select Department --</option>
@@ -416,21 +416,21 @@
               <option value="3">GASOLINE</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Phone</label>
             <input type="text" name="phone" class="form-control" maxlength="20">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Email</label>
             <input type="email" name="email" class="form-control" maxlength="100">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Address</label>
             <textarea name="address" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
           <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Employee</button>
         </div>
       </form>
@@ -444,8 +444,8 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Create Area Assignment</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="addAssignmentForm">
@@ -454,7 +454,7 @@
           <div id="assignment_area_info" class="alert alert-light border py-2 mb-2" style="display:none;">
             <small>Area Type: <strong id="assignment_area_type_badge"></strong></small>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area <span class="text-danger">*</span></label>
             <select name="area_id" id="assignment_area_id" class="form-control" required onchange="loadAvailableEmployeesForAssignment()">
               <option value="">-- Select Area --</option>
@@ -463,7 +463,7 @@
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Role Filter</label>
             <select id="assignment_role_filter" class="form-control" onchange="loadAvailableEmployeesForAssignment()">
               <option value="">All Roles</option>
@@ -474,13 +474,13 @@
               <option value="HELPER">Helper</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Employee <span class="text-danger">*</span></label>
             <select name="staff_id" id="assignment_staff_id" class="form-control" required>
               <option value="">-- Select Employee --</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Assignment Type <span class="text-danger">*</span></label>
             <select name="assignment_type" class="form-control" required>
               <option value="PRIMARY">PRIMARY</option>
@@ -488,7 +488,7 @@
               <option value="TEMPORARY">TEMPORARY</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Department Scope <span class="text-danger">*</span></label>
             <select name="department_scope" id="assignment_dept_scope" class="form-control" required>
               <option value="ALL">ALL - All Departments</option>
@@ -502,21 +502,21 @@
               <strong>Specific:</strong> Untuk area CENTRAL (fokus DIESEL atau ELECTRIC saja)
             </small>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Start Date <span class="text-danger">*</span></label>
             <input type="date" name="start_date" class="form-control" required value="<?= date('Y-m-d') ?>">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>End Date (optional)</label>
             <input type="date" name="end_date" class="form-control">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Notes</label>
             <textarea name="notes" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Assignment</button>
         </div>
       </form>
@@ -530,13 +530,13 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Area Details</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <div class="modal-body" id="areaDetailsContent"></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -547,13 +547,13 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Employee Details</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <div class="modal-body" id="employeeDetailsContent"></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -565,29 +565,29 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Area</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="editAreaForm">
         <input type="hidden" name="id" id="edit_area_id">
         <div class="modal-body">
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Code <span class="text-danger">*</span></label>
             <input type="text" name="area_code" id="edit_area_code" class="form-control" required maxlength="10">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Name <span class="text-danger">*</span></label>
             <input type="text" name="area_name" id="edit_area_name" class="form-control" required maxlength="255">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area Type <span class="text-danger">*</span></label>
             <select name="area_type" id="edit_area_type" class="form-control" required>
               <option value="MILL">MILL - Site / Plant Location</option>
               <option value="CENTRAL">CENTRAL - Head Office / Department Specific</option>
             </select>
           </div>
-          <div class="form-group" id="edit_dept_group" style="display:none;">
+          <div class="mb-3" id="edit_dept_group" style="display:none;">
             <label>Department <span class="text-danger">*</span></label>
             <select name="departemen_id" id="edit_departemen_id" class="form-control">
               <option value="">-- Pilih Departemen --</option>
@@ -600,13 +600,13 @@
             </select>
             <small class="form-text text-muted">Pilih departemen yang ditangani area CENTRAL ini</small>
           </div>
-            <div class="form-group">
+            <div class="mb-3">
             <label>Description</label>
             <textarea name="area_description" id="edit_area_description" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Update Area</button>
         </div>
       </form>
@@ -620,22 +620,22 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Employee</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="editEmployeeForm">
         <input type="hidden" name="id" id="edit_staff_id">
         <div class="modal-body">
-          <div class="form-group">
+          <div class="mb-3">
             <label>Staff Code <span class="text-danger">*</span></label>
             <input type="text" name="staff_code" id="edit_staff_code" class="form-control" required maxlength="20">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Staff Name <span class="text-danger">*</span></label>
             <input type="text" name="staff_name" id="edit_staff_name" class="form-control" required maxlength="255">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Role <span class="text-danger">*</span></label>
             <select name="staff_role" id="edit_staff_role" class="form-control" required onchange="updateEditJobDescription()">
               <option value="">-- Select Role --</option>
@@ -649,13 +649,13 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="mb-3">
             <label>Job Description <span class="text-danger">*</span></label>
             <textarea name="job_description" id="edit_job_description" class="form-control" rows="3" required 
                       placeholder="Describe the main responsibilities and tasks for this position"></textarea>
           </div>
           
-          <div class="form-group">
+          <div class="mb-3">
             <label>Work Location <span class="text-danger">*</span></label>
             <select name="work_location" id="edit_work_location" class="form-control" required>
               <option value="">-- Select Work Location --</option>
@@ -665,7 +665,7 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="mb-3">
             <label>Department</label>
             <select name="departemen_id" id="edit_staff_departemen_id" class="form-control">
               <option value="">-- Select Department --</option>
@@ -676,7 +676,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Update Employee</button>
         </div>
       </form>
@@ -690,26 +690,26 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Assignment</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <form id="editAssignmentForm">
         <input type="hidden" name="id" id="edit_assignment_id">
         <div class="modal-body">
-          <div class="form-group">
+          <div class="mb-3">
             <label>Area</label>
             <input type="text" id="edit_assignment_area" class="form-control" readonly>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Employee</label>
             <input type="text" id="edit_assignment_staff" class="form-control" readonly>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Role</label>
             <input type="text" id="edit_assignment_role" class="form-control" readonly>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Assignment Type <span class="text-danger">*</span></label>
             <select name="assignment_type" id="edit_assignment_type" class="form-control" required>
               <option value="PRIMARY">PRIMARY</option>
@@ -717,28 +717,28 @@
               <option value="TEMPORARY">TEMPORARY</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Start Date <span class="text-danger">*</span></label>
             <input type="date" name="start_date" id="edit_assignment_start" class="form-control" required>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>End Date</label>
             <input type="date" name="end_date" id="edit_assignment_end" class="form-control">
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Status Active</label>
             <select name="is_active" id="edit_assignment_active" class="form-control">
               <option value="1">Active</option>
               <option value="0">Inactive</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-3">
             <label>Notes</label>
             <textarea name="notes" id="edit_assignment_notes" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Update Assignment</button>
         </div>
       </form>
@@ -752,8 +752,8 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Detail Employee</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <div class="modal-body">
@@ -812,7 +812,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-warning" onclick="editEmployeeFromDetail()" id="editEmployeeFromDetailBtn">
           <i class="fas fa-edit"></i> Edit Employee
         </button>
@@ -830,8 +830,8 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Detail Area</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+
         </button>
       </div>
       <div class="modal-body">
@@ -884,7 +884,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-warning" onclick="editAreaFromDetail()" id="editAreaFromDetailBtn">
           <i class="fas fa-edit"></i> Edit Area
         </button>
@@ -902,7 +902,6 @@
 <style>
 /* DataTables Search Styling */
 .dataTables_wrapper .dataTables_filter {
-    float: right;
     text-align: right;
     margin-bottom: 1rem;
 }
@@ -923,7 +922,6 @@
 }
 
 .dataTables_wrapper .dataTables_length {
-    float: left;
     margin-bottom: 1rem;
 }
 
@@ -941,7 +939,6 @@
 }
 
 .dataTables_wrapper .dataTables_paginate {
-    float: right;
     text-align: right;
     padding-top: 0.25em;
 }
@@ -1019,11 +1016,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.3/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.bootstrap4.min.js"></script>
 <script>
 let areasTable, employeesTable;
 let employeesByRoleChart, assignmentsByAreaChart;
@@ -1071,43 +1063,22 @@ $(document).ready(function() {
     }
   });
   
-  // Modal close button functionality
-  $(document).on('click', '.modal .close, .modal [data-dismiss="modal"]', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $(this).closest('.modal').modal('hide');
-  });
   
-  // Fix modal backdrop click
-  $(document).on('click', '.modal', function(e) {
-    if (e.target === this) {
-      $(this).modal('hide');
-    }
-  });
+  // Bootstrap 5 handles [data-bs-dismiss="modal"] natively.
+  // ESC key and backdrop click are also handled by Bootstrap 5 natively.
+  // Keep only the jQuery fallback for any programmatic hides.
   
-  // Fix ESC key to close modal
-  $(document).on('keydown', function(e) {
-    if (e.keyCode === 27) { // ESC key
-      $('.modal.show').modal('hide');
-    }
-  });
-  
-  // Additional modal close handlers
-  $(document).on('click', 'button[data-dismiss="modal"]', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const modal = $(this).closest('.modal');
-    if (modal.length) modal.modal('hide');
-  });
-  
-  // Cancel button handler
-  $(document).on('click', '.btn-secondary', function(e) {
-    const modal = $(this).closest('.modal');
-    const text = $(this).text().toLowerCase();
-    if (modal.length && (text.includes('cancel') || text.includes('close') || text.includes('tutup'))) {
-      e.preventDefault();
-      e.stopPropagation();
-      modal.modal('hide');
+  // Cancel button handler (fallback for btn-secondary inside modals without data-bs-dismiss)
+  $(document).on('click', '.modal .btn-secondary', function(e) {
+    const $btn = $(this);
+    if ($btn.attr('data-bs-dismiss') || $btn.attr('type') === 'submit') return;
+    const text = $btn.text().toLowerCase().trim();
+    if (text.includes('cancel') || text.includes('close') || text.includes('tutup')) {
+      const modalEl = $btn.closest('.modal')[0];
+      if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        bsModal.hide();
+      }
     }
   });
   

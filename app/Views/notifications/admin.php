@@ -177,13 +177,13 @@
         </div>
         <form id="ruleForm">
             <div class="modal-body">
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label" for="ruleName">Rule Name *</label>
                     <input type="text" class="form-control" id="ruleName" name="name" required 
                            placeholder="e.g., SPK Approval Notification">
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label" for="triggerEvent">Trigger Event *</label>
                     <select class="form-control form-select" id="triggerEvent" name="trigger_event" required>
                         <option value="">Select trigger event...</option>
@@ -193,20 +193,20 @@
                     </select>
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label" for="titleTemplate">Title Template *</label>
                     <input type="text" class="form-control" id="titleTemplate" name="title_template" required
                            placeholder="e.g., SPK #{spk_id} requires your approval">
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label" for="messageTemplate">Message Template *</label>
                     <textarea class="form-control" id="messageTemplate" name="message_template" rows="3" required
                               placeholder="e.g., SPK #{spk_id} created by {created_by} is pending your approval."></textarea>
                 </div>
 
                 <!-- Auto Include Superadmin -->
-                <div class="form-group">
+                <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="autoIncludeSuperadmin" name="auto_include_superadmin" checked>
                         <label class="form-check-label" for="autoIncludeSuperadmin">
@@ -217,7 +217,7 @@
                 </div>
 
                 <!-- Targeting Mode -->
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label">Targeting Mode</label>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="targeting_mode" id="legacyMode" value="legacy" checked>
@@ -235,7 +235,7 @@
 
                 <!-- Legacy Single Target -->
                 <div id="legacyTargeting" class="targeting-section">
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label class="form-label" for="targetType">Target Type *</label>
                         <select class="form-control form-select" id="targetType" name="target_type">
                             <option value="">Select target type...</option>
@@ -247,7 +247,7 @@
                         </select>
                     </div>
 
-                    <div class="form-group" id="targetValuesGroup" style="display: none;">
+                    <div class="mb-3" id="targetValuesGroup" style="display: none;">
                         <label class="form-label" for="targetValues">Target Values</label>
                         <select class="form-control form-select" id="targetValues" name="target_values[]" multiple>
                             <!-- Options will be populated based on target type -->
@@ -265,7 +265,7 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label class="form-label" for="multiDivisions">Divisions</label>
                                 <select class="form-control form-select" id="multiDivisions" name="multi_divisions[]" multiple>
                                     <option value="Marketing">Marketing</option>
@@ -279,7 +279,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label class="form-label" for="multiRoles">Roles</label>
                                 <select class="form-control form-select" id="multiRoles" name="multi_roles[]" multiple>
                                     <option value="manager">Manager</option>
@@ -295,7 +295,7 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label class="form-label" for="multiDepartments">Departments</label>
                                 <select class="form-control form-select" id="multiDepartments" name="multi_departments[]" multiple>
                                     <option value="DIESEL">Diesel</option>
@@ -307,7 +307,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label class="form-label" for="multiUsers">Specific Users</label>
                                 <select class="form-control form-select" id="multiUsers" name="multi_users[]" multiple>
                                     <!-- Will be populated via AJAX -->
@@ -318,7 +318,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label class="form-label" for="priority">Priority</label>
                     <select class="form-control form-select" id="priority" name="priority">
                         <option value="0">Low</option>
@@ -327,7 +327,7 @@
                     </select>
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
                         <label class="form-check-label" for="isActive">

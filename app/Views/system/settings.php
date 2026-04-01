@@ -37,21 +37,21 @@
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="app_name">Application Name</label>
                                         <input type="text" class="form-control" id="app_name" 
                                                value="OPTIMA - Asset Management System">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="app_version">Version</label>
                                         <input type="text" class="form-control" id="app_version" 
                                                value="1.0.0" readonly>
                                     </div>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="app_description">Description</label>
                                 <textarea class="form-control" id="app_description" rows="3">
 Professional Asset Management System for PT Sarana Mitra Luas Tbk
@@ -68,21 +68,21 @@ Professional Asset Management System for PT Sarana Mitra Luas Tbk
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="company_name">Company Name</label>
                                         <input type="text" class="form-control" id="company_name" 
                                                value="PT Sarana Mitra Luas Tbk">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="company_email">Company Email</label>
                                         <input type="email" class="form-control" id="company_email" 
                                                value="info@saranamitraluas.co.id">
                                     </div>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="company_address">Company Address</label>
                                 <textarea class="form-control" id="company_address" rows="3">
 Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
@@ -90,14 +90,14 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                             </div>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="company_phone">Phone</label>
                                         <input type="text" class="form-control" id="company_phone" 
                                                value="+62 21 461 0808">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="company_website">Website</label>
                                         <input type="url" class="form-control" id="company_website" 
                                                value="https://www.saranamitraluas.co.id">
@@ -115,7 +115,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="timezone">Timezone</label>
                                         <select class="form-control" id="timezone">
                                             <option value="Asia/Jakarta" selected>Asia/Jakarta (WIB)</option>
@@ -125,7 +125,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="date_format">Date Format</label>
                                         <select class="form-control" id="date_format">
                                             <option value="d/m/Y" selected>DD/MM/YYYY</option>
@@ -137,7 +137,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                             </div>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="currency">Currency</label>
                                         <select class="form-control" id="currency">
                                             <option value="IDR" selected>Indonesian Rupiah (IDR)</option>
@@ -147,7 +147,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="language">Language</label>
                                         <select class="form-control" id="language">
                                             <option value="id" selected>Bahasa Indonesia</option>
@@ -167,7 +167,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="items_per_page">Items Per Page</label>
                                         <select class="form-control" id="items_per_page">
                                             <option value="10">10</option>
@@ -178,7 +178,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="session_timeout">Session Timeout (minutes)</label>
                                         <select class="form-control" id="session_timeout">
                                             <option value="30">30</option>
@@ -200,7 +200,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="max_login_attempts">Max Login Attempts</label>
                                         <select class="form-control" id="max_login_attempts">
                                             <option value="3">3</option>
@@ -210,7 +210,7 @@ Jalan Raya Bekasi Km. 21, Jakarta Timur, DKI Jakarta 13920
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="mb-3">
                                         <label for="password_expiry">Password Expiry (days)</label>
                                         <select class="form-control" id="password_expiry">
                                             <option value="30">30</option>

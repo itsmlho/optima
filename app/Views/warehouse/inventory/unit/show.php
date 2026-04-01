@@ -34,9 +34,19 @@ $aksesorisItems = [];
 if ($aksesorisRaw) {
     $decoded = json_decode($aksesorisRaw, true);
     if (is_array($decoded)) {
+        // Check if associative object {"rotary_lamp": true} vs sequential array ["rotary_lamp", ...]
+        $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
         foreach ($decoded as $k => $v) {
-            if ($v) {
-                $aksesorisItems[] = format_accessory_label($k);
+            if ($isAssoc) {
+                // Object format: key = accessory slug, value = bool/truthy
+                if ($v) {
+                    $aksesorisItems[] = format_accessory_label($k);
+                }
+            } else {
+                // Array format: value = accessory slug or label string
+                if ($v && !is_bool($v)) {
+                    $aksesorisItems[] = format_accessory_label($v);
+                }
             }
         }
     } else {

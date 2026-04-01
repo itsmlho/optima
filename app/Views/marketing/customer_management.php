@@ -393,18 +393,18 @@ $can_export = $permissions['export'];
                 <?= csrf_field() ?>
                 <input type="hidden" id="edit_customer_id" name="customer_id">
                 <div class="modal-body">
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="edit_customer_code">Customer Code <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="edit_customer_code" name="customer_code" required maxlength="20" readonly>
                         <small class="form-text text-muted">Customer code cannot be changed</small>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="edit_customer_name">Company Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="edit_customer_name" name="customer_name" required maxlength="255">
                     </div>
                     
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="edit_is_active">Status <span class="text-danger">*</span></label>
                         <select class="form-control" id="edit_is_active" name="is_active" required>
                             <option value="1">ACTIVE</option>
@@ -521,7 +521,7 @@ $can_export = $permissions['export'];
                         </h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="customer_code">Customer Code <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="customer_code" name="customer_code" required maxlength="20" placeholder="e.g., CUST-0001">
@@ -533,7 +533,7 @@ $can_export = $permissions['export'];
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="customer_name">Company Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="customer_name" name="customer_name" required maxlength="255" placeholder="e.g., PT Maju Jaya">
                                     <small class="form-text text-muted">Legal company name</small>
@@ -541,7 +541,7 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="default_billing_method">Default Billing Method</label>
                             <select class="form-control" id="default_billing_method" name="default_billing_method">
                                 <option value="CYCLE" selected>30-Day Rolling Cycle</option>
@@ -561,14 +561,14 @@ $can_export = $permissions['export'];
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="location_name">Location Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="location_name" name="location_name" value="Head Office" required maxlength="100" placeholder="e.g., Head Office">
                                     <small class="form-text text-muted">Primary location name</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="primary_location_code">Location Code</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="primary_location_code" name="primary_location_code" maxlength="50" placeholder="Auto-generated">
@@ -581,33 +581,33 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="address">Address <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="address" name="address" rows="2" maxlength="500" required placeholder="Complete address including street name, building number, etc."></textarea>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-4">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="city">City <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="city" name="city" maxlength="100" required placeholder="e.g., Jakarta">
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="province">Province <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="province" name="province" maxlength="100" required placeholder="e.g., DKI Jakarta">
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="postal_code">Postal Code</label>
                                     <input type="text" class="form-control" id="postal_code" name="postal_code" maxlength="10" placeholder="e.g., 12345">
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="area_id">Service Area <span class="text-danger">*</span></label>
                             <select class="form-control" id="area_id" name="area_id" required>
                                 <option value="">-- Select Service Area --</option>
@@ -624,13 +624,13 @@ $can_export = $permissions['export'];
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="contact_person">Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="contact_person" name="contact_person" maxlength="255" required placeholder="e.g., Budi Santoso">
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="phone">Phone <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="phone" name="phone" maxlength="20" required placeholder="e.g., 021-1234567 or 08123456789">
                                 </div>
@@ -639,7 +639,7 @@ $can_export = $permissions['export'];
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="email">Email</label>
                                     <input type="email" class="form-control" id="email" name="email" maxlength="100" placeholder="e.g., contact@company.com">
                                 </div>
@@ -647,7 +647,7 @@ $can_export = $permissions['export'];
                         </div>
                     
                     <!-- Additional Notes -->
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="notes">
                             <i class="bi bi-journal-text me-1"></i>Additional Notes
                         </label>
@@ -770,13 +770,13 @@ $can_export = $permissions['export'];
                     <input type="hidden" name="customer_id" id="locationCustomerId">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_location_name">Location Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="loc_location_name" name="location_name" required maxlength="255">
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_location_code">Location Code</label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="loc_location_code" name="location_code" maxlength="50">
@@ -790,7 +790,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_area_id">Area <span class="text-danger">*</span></label>
                                 <select class="form-control" id="loc_area_id" name="area_id" required>
                                     <option value="">Select Area</option>
@@ -798,7 +798,7 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_contact_person">Contact Person</label>
                                 <input type="text" class="form-control" id="loc_contact_person" name="contact_person" maxlength="255">
                             </div>
@@ -806,47 +806,47 @@ $can_export = $permissions['export'];
                     </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_phone">Phone</label>
                                 <input type="text" class="form-control" id="loc_phone" name="phone" maxlength="20">
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_email">Email</label>
                                 <input type="email" class="form-control" id="loc_email" name="email" maxlength="128">
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="loc_address">Address <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="loc_address" name="address" rows="3" maxlength="500" required></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-4">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_city">City <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="loc_city" name="city" required maxlength="100">
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_province">Province <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="loc_province" name="province" required maxlength="100">
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="form-group">
+                            <div class="mb-3">
                                 <label for="loc_postal_code">Postal Code</label>
                                 <input type="text" class="form-control" id="loc_postal_code" name="postal_code" maxlength="10">
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="mb-3">
                         <label for="loc_notes">Notes</label>
                         <textarea class="form-control" id="loc_notes" name="notes" rows="2" maxlength="255"></textarea>
                     </div>
-                    <div class="form-group">
+                    <div class="mb-3">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="loc_is_primary" name="is_primary" value="1">
                             <label class="form-check-label" for="loc_is_primary">Set as Primary Location</label>
