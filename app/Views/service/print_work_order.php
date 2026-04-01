@@ -153,10 +153,10 @@
         }
 
         
-        /* --- Print Footer --- */
+        /* --- Print Footer (fixed, muncul di semua halaman) --- */
         .print-footer {
             position: fixed;
-            bottom: 3mm;
+            bottom: 1mm; /* sedikit lebih ke bawah */
             left: 8mm;
             right: 8mm;
             text-align: center;
@@ -415,22 +415,20 @@
             </div>
         </div>
     </div>
-        
-        <!-- Print Footer -->
-        <div class="print-footer" id="printFooter">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="text-align: left; font-size: 8px;">
-                    <strong>PT SARANA MITRA LUAS Tbk</strong><br>
-                    <span style="color: #888;">Sistem OPTIMA - Work Order Management</span>
-                </div>
-                <div style="text-align: center; font-size: 8px;">
-                    <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
-                    <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
-                </div>
-                <div style="text-align: right; font-size: 8px;">
-                    <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
-                    <span style="color: #888;">WO No: <?= htmlspecialchars($workOrder['work_order_number'] ?? 'Unknown') ?></span>
-                </div>
+
+    <!-- Global print footer: fixed, muncul di semua halaman -->
+    <div class="print-footer" id="printFooter">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="text-align: left; font-size: 8px;">
+                <strong>PT SARANA MITRA LUAS Tbk</strong><br>
+                <span style="color: #888;">Sistem OPTIMA - Work Order Management</span>
+            </div>
+            <div style="text-align: center; font-size: 8px;">
+                <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
+                <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
+            </div>
+            <div style="text-align: right; font-size: 8px;">
+                <span style="color: #888;">WO No: <?= htmlspecialchars($workOrder['work_order_number'] ?? 'Unknown') ?></span>
             </div>
         </div>
     </div>
@@ -492,21 +490,53 @@
             })
             .then(html => {
                 console.log('HTML received, length:', html.length);
-                // Extract body content from verification page
+                // Extract content from verification page
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 
-                // Get all content from verification page
-                const bodyContent = doc.body.innerHTML;
-                console.log('Body content extracted, length:', bodyContent.length);
-                
-                // Insert into verification container
                 const container = document.getElementById('verification-content');
-                if (container) {
-                    container.innerHTML = bodyContent;
-                    console.log('Content inserted into container');
-                } else {
+                if (!container) {
                     console.error('verification-content container not found');
+                    return;
+                }
+
+                // Prefer rendering directly from the template used in print_verification.php
+                // so that IDs match what populateVerificationData expects.
+                const tpl = doc.getElementById('uv-print-page-tpl');
+                if (tpl && tpl.content) {
+                    console.log('Using uv-print-page-tpl from verification HTML');
+                    const frag = tpl.content.cloneNode(true);
+                    const printPage = frag.querySelector('.print-container');
+                    if (printPage) {
+                        container.innerHTML = '';
+                        container.appendChild(printPage);
+                        console.log('Template content inserted into container');
+
+                        // Render accessories grid using global OptimaAccessory (scripts from
+                        // print_verification.php are not executed in this combined view).
+                        try {
+                            if (window.OptimaAccessory && typeof window.OptimaAccessory.getGroups === 'function') {
+                                const accessoriesHost = container.querySelector('#uv-accessories-grid');
+                                if (accessoriesHost) {
+                                    console.log('Rendering accessories grid in combined print view');
+                                    renderAccessoriesGridCombined(accessoriesHost);
+                                }
+                            } else {
+                                console.warn('OptimaAccessory not available in combined print view');
+                            }
+                        } catch (e) {
+                            console.error('Error rendering accessories grid in combined print view:', e);
+                        }
+                    } else {
+                        console.warn('print-container not found inside template, falling back to body content');
+                        const bodyContent = doc.body.innerHTML;
+                        container.innerHTML = bodyContent;
+                    }
+                } else {
+                    // Fallback: use full body content as before
+                    const bodyContent = doc.body.innerHTML;
+                    console.log('Template not found, using body content, length:', bodyContent.length);
+                    container.innerHTML = bodyContent;
                 }
                 
                 // Copy ALL styles from verification page
@@ -680,6 +710,62 @@
             }, 100);
         }
 
+        // Render accessories grid for the combined Work Order + Verification print view
+        function renderAccessoriesGridCombined(container) {
+            if (!container) return;
+            if (!window.OptimaAccessory || typeof window.OptimaAccessory.getGroups !== 'function') {
+                return;
+            }
+
+            const groups = window.OptimaAccessory.getGroups();
+            const order = ['verificationUnit', 'verificationSafety', 'verificationOther'];
+            const seen = {};
+            const codes = [];
+
+            order.forEach(function(key) {
+                const group = groups[key];
+                if (group && Array.isArray(group.items)) {
+                    group.items.forEach(function(item) {
+                        const code = item.code;
+                        if (!code || seen[code]) return;
+                        seen[code] = true;
+                        codes.push(code);
+                    });
+                }
+            });
+
+            if (codes.length === 0) return;
+
+            container.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+            grid.style.gap = '8px';
+            grid.style.fontSize = '8pt';
+
+            codes.forEach(function(code) {
+                const label = window.OptimaAccessory.formatLabel
+                    ? window.OptimaAccessory.formatLabel(code)
+                    : String(code).trim();
+                const normalized = window.OptimaAccessory.normalizeCheckboxValue
+                    ? window.OptimaAccessory.normalizeCheckboxValue(code)
+                    : String(label || code).trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+                const itemDiv = document.createElement('div');
+                const span = document.createElement('span');
+                span.className = 'accessory-checkbox';
+                span.dataset.accessory = normalized;
+                span.textContent = '☐';
+
+                itemDiv.appendChild(span);
+                itemDiv.appendChild(document.createTextNode(' ' + label));
+
+                grid.appendChild(itemDiv);
+            });
+
+            container.appendChild(grid);
+        }
+
         // Auto print functionality
         function initiatePrint() {
             if (window.matchMedia && window.matchMedia('print').matches) {
@@ -747,28 +833,10 @@
             });
         }
         
-        // Show footer when printing
-        window.addEventListener('beforeprint', () => {
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'block';
-        });
-        
-        window.addEventListener('afterprint', () => {
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'none';
-            
-            // Auto close after print
-            setTimeout(function() {
-                window.close();
-            }, 100);
-        });
-        
-        // Auto print on load
+        // Auto print on load + pastikan footer terlihat
         window.addEventListener('load', () => {
             const woNumber = '<?= str_replace('/', '-', htmlspecialchars($workOrder['work_order_number'] ?? 'Unknown')) ?>';
             document.title = 'WO-' + woNumber + ' - Complaint Form & Verification';
-            const footer = document.getElementById('printFooter');
-            if (footer) footer.style.display = 'block';
         });
     </script>
 </body>

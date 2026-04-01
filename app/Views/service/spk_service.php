@@ -5754,14 +5754,17 @@ function attachDuplicateValidationListeners() {
 		// Check if it's an attachment/battery/charger select
 		if (target.matches('select[name*="attachment_id"], select[id*="attachmentPick"]')) {
 			if (!validateDuplicateSelection(target, 'attachment')) return;
+			showComponentStatusWarning(target, 'attachment');
 			updateAllDropdownAvailability('attachment');
 		}
 		else if (target.matches('select[name*="battery_id"], select[id*="batteryPick"]')) {
 			if (!validateDuplicateSelection(target, 'battery')) return;
+			showComponentStatusWarning(target, 'battery');
 			updateAllDropdownAvailability('battery');
 		}
 		else if (target.matches('select[name*="charger_id"], select[id*="chargerPick"]')) {
 			if (!validateDuplicateSelection(target, 'charger')) return;
+			showComponentStatusWarning(target, 'charger');
 			updateAllDropdownAvailability('charger');
 		}
 	});
@@ -5777,6 +5780,50 @@ function updateAllDropdownAvailability(type) {
 	allSelects.forEach(select => {
 		updateDropdownAvailability(select, type);
 	});
+}
+
+/**
+ * Tampilkan warning ketika user memilih komponen dengan status tertentu
+ * (BROKEN / RESERVED / SPARE) di picker SPK.
+ */
+function showComponentStatusWarning(selectElement, type) {
+	if (!selectElement || !selectElement.value) return;
+
+	const selectedOption = selectElement.options[selectElement.selectedIndex];
+	if (!selectedOption) return;
+
+	// Status komponen bisa diletakkan di data-status, atau dibaca dari text.
+	const rawStatus = (selectedOption.getAttribute('data-status') || '').toUpperCase();
+	let status = rawStatus;
+
+	// Jika belum ada data-status, coba deteksi kasar dari text option
+	if (!status) {
+		const text = (selectedOption.textContent || '').toUpperCase();
+		if (text.includes('BROKEN')) status = 'BROKEN';
+		else if (text.includes('RESERVED')) status = 'RESERVED';
+		else if (text.includes('SPARE')) status = 'SPARE';
+	}
+
+	if (!status || ['AVAILABLE', 'IN_USE'].includes(status)) {
+		return;
+	}
+
+	let message = '';
+	if (status === 'BROKEN') {
+		message = 'Item ini berstatus BROKEN (rusak).\n\nPastikan item sudah diperbaiki dan layak pakai sebelum digunakan untuk SPK ini.';
+	} else if (status === 'RESERVED') {
+		message = 'Item ini berstatus RESERVED (sudah dibooking).\n\nPastikan ini memang komponen yang dibooking untuk SPK / kontrak ini.';
+	} else if (status === 'SPARE') {
+		message = 'Item ini berstatus SPARE (stok cadangan).\n\nPastikan penggunaan item ini sudah disetujui sebelum melanjutkan.';
+	}
+
+	if (!message) return;
+
+	const ok = window.confirm(message + '\n\nLanjutkan menggunakan item ini?');
+	if (!ok) {
+		// Batalkan pilihan jika user tidak setuju
+		selectElement.value = '';
+	}
 }
 
 // Initialize duplicate validation when document is ready

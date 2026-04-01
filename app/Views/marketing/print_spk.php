@@ -522,15 +522,23 @@ if (!function_exists('resolvePrintSignerName')) {
             <tr>
                 <td class="text-center align-top">2.</td>
                 <td class="align-top"><strong>Equipment :</strong>
+                    <?php
+                        // Determine which component row to show: fork OR attachment (not both)
+                        $hasFork = !empty($k['fork_name']) || !empty($k['fork_id']);
+                        $hasAttachment = !empty($k['attachment_tipe']) || !empty($k['attachment_id']);
+                        // Fork takes priority if both somehow set
+                        $showForkRow = $hasFork;
+                        $showAttachmentRow = !$hasFork && $hasAttachment;
+                    ?>
                     <div class="mt-2">
                         <div>- Total Unit</div>
                         <div>- Merk & Jenis Unit</div>
                         <div>- Departemen</div>
                         <div>- Kapasitas</div>
-                        <div>- Attachment</div>
+                        <?php if ($showAttachmentRow): ?><div>- Attachment</div><?php endif; ?>
                         <div>- Ban (Tire)</div>
                         <div>- Mast (Tinggi Angkat)</div>
-                        <div>- Fork / Garpu</div>
+                        <?php if ($showForkRow): ?><div>- Fork / Garpu</div><?php endif; ?>
                     </div>
                 </td>
                 <td class="align-top">
@@ -546,18 +554,23 @@ if (!function_exists('resolvePrintSignerName')) {
                         $mastName = $k['kontrak_mast_name'] ?? $k['mast_name'] ?? '';
                         $banName = $k['kontrak_ban_name'] ?? $k['ban_name'] ?? '';
                         
-                        // Attachment dari quotation_specifications (bukan dari spesifikasi SPK)
-                        $attachmentType = $k['attachment_tipe'] ?? $k['attachment_name'] ?? '';
-                        
-                        // Extract fork/garpu from aksesoris
-                        $forkItems = [];
-                        $aksArr = is_array($k['aksesoris']) ? $k['aksesoris'] : (json_decode($k['aksesoris'] ?? '[]', true) ?: []);
-                        $forkMap = ['forks' => 'Standar', 'laser_fork' => 'Laser Fork', 'fork_extension' => 'Fork Extension'];
-                        foreach ($forkMap as $forkVal => $forkLabel) {
-                            if (in_array($forkVal, (array)$aksArr)) $forkItems[] = $forkLabel;
+                        // Attachment dari quotation_specifications
+                        $attachmentParts = array_filter([
+                            $k['attachment_tipe'] ?? '',
+                            $k['attachment_merk'] ?? '',
+                            $k['attachment_model'] ?? '',
+                        ]);
+                        $attachmentType = !empty($attachmentParts) ? trim(implode(' ', $attachmentParts)) : '';
+
+                        // Fork dari kolom fork_id (JOIN ke tabel fork)
+                        $forkText = '';
+                        if (!empty($k['fork_name'])) {
+                            $forkText = $k['fork_name'];
+                            if (!empty($k['fork_class'])) {
+                                $forkText .= ' (' . $k['fork_class'] . ')';
+                            }
                         }
-                        $forkText = !empty($forkItems) ? implode(', ', $forkItems) : '-';
-                        
+
                         // Notes untuk custom requirements (Battery, Charger, Valve custom, dll)
                         $customNotes = $k['notes'] ?? '';
                     ?>
@@ -578,10 +591,14 @@ if (!function_exists('resolvePrintSignerName')) {
                         </div>
                         <div class="val"><?= esc($departemenName ?: '..............................') ?></div>
                         <div class="val"><?= esc($kapasitasName ?: '..............................') ?></div>
+                        <?php if ($showAttachmentRow): ?>
                         <div class="val"><?= esc($attachmentType ?: '..............................') ?></div>
+                        <?php endif; ?>
                         <div class="val"><?= esc($banName ?: '..............................') ?></div>
                         <div class="val"><?= esc($mastName ?: '..............................') ?></div>
-                        <div class="val"><?= esc($forkText) ?></div>
+                        <?php if ($showForkRow): ?>
+                        <div class="val"><?= esc($forkText ?: '..............................') ?></div>
+                        <?php endif; ?>
                     </div>
                 </td>
             </tr>
@@ -596,47 +613,91 @@ if (!function_exists('resolvePrintSignerName')) {
                 <td class="text-center align-middle">3.</td>
                 <td class="align-middle"><strong>Aksesoris</strong></td>
                 <td class="val"><?php
-                    // Use aksesoris from quotation_specifications (data permintaan marketing)
-                    $aksText = '..............................';
-                    
-                    // Prioritaskan aksesoris dari quotation_specifications
+                    // Label map untuk aksesoris snake_case → human-readable
+                    $aksLabelMap = [
+                        'main_light'             => 'Lampu Utama',
+                        'work_light'             => 'Work Light',
+                        'rotary_lamp'            => 'Rotary Lamp',
+                        'back_buzzer'            => 'Back Buzzer',
+                        'horn_klason'            => 'Horn / Klason',
+                        'mirror'                 => 'Mirror / Spion',
+                        'safety_belt'            => 'Safety Belt Standar',
+                        'load_backrest'          => 'Load Backrest',
+                        'overhead_guard'         => 'Overhead Guard',
+                        'document_holder'        => 'Document Holder',
+                        'tool_kit'               => 'Tool Kit',
+                        'apar_bracket'           => 'APAR Bracket',
+                        'blue_spot'              => 'Blue Spot Light',
+                        'red_spot'               => 'Red Spot Light',
+                        'red_line'               => 'Red Line Light',
+                        'blue_line'              => 'Blue Line Light',
+                        'camera_ai'              => 'Camera AI',
+                        'camera'                 => 'Camera Monitor',
+                        'sensor_parking'         => 'Sensor Parking',
+                        'speed_limiter'          => 'Speed Limiter',
+                        'laser_fork'             => 'Laser Fork',
+                        'voice_announcer'        => 'Voice Announcer',
+                        'horn_speaker'           => 'Horn Speaker',
+                        'bio_metric'             => 'Bio Metric',
+                        'safety_belt_interlock'  => 'Safety Belt Interlock',
+                        'beacon'                 => 'Beacon',
+                        'telematic'              => 'Telematic',
+                        'spark_arrestor'         => 'Spark Arrestor',
+                        'anti_static_strap'      => 'Anti Static Strap',
+                        'acrylic_roof'           => 'Acrylic Roof/Windshield',
+                        'acrylic_side'           => 'Acrylic Side',
+                        'acrylic_front'          => 'Acrylic Front',
+                        'p3k'                    => 'P3K / First Aid Kit',
+                        'wheel_stopper_chock'    => 'Wheel Stopper / Chock',
+                        'fork_extension'         => 'Fork Extension',
+                        'fire_ext_powder_1kg'    => 'APAR 1 KG (Powder)',
+                        'fire_ext_powder_3kg'    => 'APAR 3 KG (Powder)',
+                        'fire_ext_lithium_af31'  => 'APAR Lithium AF31',
+                        'load_weight_indicator'  => 'Load Weight Indicator',
+                        'impact_sensor'          => 'Impact / Shock Sensor',
+                        'battery_watering_sys'   => 'Battery Watering System',
+                        'panoramic_mirror'       => 'Panoramic Mirror',
+                    ];
+
+                    // Helper to format a list of keys into readable labels
+                    $formatAksesoris = function(array $keys) use ($aksLabelMap): string {
+                        $labels = [];
+                        foreach ($keys as $key) {
+                            $key = trim($key);
+                            if ($key === '') continue;
+                            $labels[] = $aksLabelMap[$key] ?? ucwords(str_replace('_', ' ', $key));
+                        }
+                        return implode(', ', $labels);
+                    };
+
+                    // Helper to parse raw accessories value (JSON array, plain array, or comma-string)
+                    $parseAksesoris = function($raw): array {
+                        if (is_array($raw)) return $raw;
+                        if (!is_string($raw) || trim($raw) === '') return [];
+                        $decoded = json_decode($raw, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) return $decoded;
+                        // comma-separated plain string (e.g. "main_light, work_light, ...")
+                        return array_map('trim', explode(',', $raw));
+                    };
+
+                    $aksKeys = [];
                     if (!empty($k['aksesoris'])) {
-                        if (is_array($k['aksesoris'])) {
-                            $aksText = implode(', ', $k['aksesoris']);
-                        } else if (is_string($k['aksesoris'])) {
-                            // Try to parse JSON string
-                            try {
-                                $aksArray = json_decode($k['aksesoris'], true);
-                                if (is_array($aksArray) && !empty($aksArray)) {
-                                    $aksText = implode(', ', $aksArray);
-                                } else {
-                                    $aksText = $k['aksesoris']; // Use as-is if not an array
-                                }
-                            } catch (Exception $e) {
-                                $aksText = $k['aksesoris']; // Use as-is if parsing fails
-                            }
-                        }
+                        $aksKeys = $parseAksesoris($k['aksesoris']);
+                    } elseif (!empty($k['unit_accessories'])) {
+                        $aksKeys = $parseAksesoris($k['unit_accessories']);
                     } elseif (!empty($s['aksesoris'])) {
-                        // Fallback ke spesifikasi jika quotation_specifications tidak ada
-                        if (is_array($s['aksesoris'])) {
-                            $aksText = implode(', ', $s['aksesoris']);
-                        } else if (is_string($s['aksesoris'])) {
-                            try {
-                                $aksArray = json_decode($s['aksesoris'], true);
-                                if (is_array($aksArray) && !empty($aksArray)) {
-                                    $aksText = implode(', ', $aksArray);
-                                } else {
-                                    $aksText = $s['aksesoris'];
-                                }
-                            } catch (Exception $e) {
-                                $aksText = $s['aksesoris'];
-                            }
-                        }
+                        $aksKeys = $parseAksesoris($s['aksesoris']);
                     } elseif (!empty($spk['persiapan_aksesoris_tersedia'])) {
-                        $aksText = $spk['persiapan_aksesoris_tersedia'];
+                        // Already human-readable string from prepared unit
+                        echo esc($spk['persiapan_aksesoris_tersedia']);
+                        $aksKeys = [];
                     }
-                    
-                    echo esc($aksText);
+
+                    if (!empty($aksKeys)) {
+                        echo esc($formatAksesoris($aksKeys));
+                    } elseif (empty($spk['persiapan_aksesoris_tersedia'])) {
+                        echo '-';
+                    }
                 ?></td>
             </tr>
         </tbody>

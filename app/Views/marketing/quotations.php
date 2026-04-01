@@ -492,12 +492,33 @@ window.addEventListener('DOMContentLoaded', function() {
                                 <option value=""><?= lang('Marketing.select_brand') ?></option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= lang('Marketing.attachment_type') ?></label>
-                            <select class="form-select" name="attachment_id" id="specAttachmentTipe">
-                                <option value="">Pilih Attachment (Opsional)</option>
-                            </select>
-                            <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
+                        <div class="col-md-6" id="specForkAttachmentWrapper">
+                            <label class="form-label">Fork / Attachment</label>
+                            <!-- Toggle: Fork or Attachment -->
+                            <div class="btn-group w-100 mb-2" role="group" id="forkAttachToggle">
+                                <input type="radio" class="btn-check" name="fork_attach_type" id="optNone" value="none" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="optNone">Tidak Ada</label>
+
+                                <input type="radio" class="btn-check" name="fork_attach_type" id="optFork" value="fork" autocomplete="off">
+                                <label class="btn btn-outline-primary btn-sm" for="optFork"><i class="fas fa-tools me-1"></i>Fork Standar</label>
+
+                                <input type="radio" class="btn-check" name="fork_attach_type" id="optAttachment" value="attachment" autocomplete="off">
+                                <label class="btn btn-outline-success btn-sm" for="optAttachment"><i class="fas fa-paperclip me-1"></i>Attachment</label>
+                            </div>
+                            <!-- Fork dropdown -->
+                            <div id="specForkSection" style="display:none;">
+                                <select class="form-select" name="fork_id" id="specForkId">
+                                    <option value="">-- Pilih Jenis Fork --</option>
+                                </select>
+                                <small class="text-muted">Ukuran fork standar</small>
+                            </div>
+                            <!-- Attachment dropdown -->
+                            <div id="specAttachSection" style="display:none;">
+                                <select class="form-select" name="attachment_id" id="specAttachmentTipe">
+                                    <option value="">-- Pilih Jenis Attachment --</option>
+                                </select>
+                                <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
+                            </div>
                         </div>
                         
                         <div class="col-md-3">
@@ -2943,10 +2964,23 @@ function proceedWithSpecificationModal() {
     loadTipeUnitForSpecification(); // This will load data but not populate options until dept is selected
     loadKapasitasForSpecification();
     loadAttachmentTypesForSpecification();
+    loadForkTypesForSpecification();
     loadValvesForSpecification();
     loadMastModelsForSpecification();
     loadTiresForSpecification();
     loadWheelsForSpecification();
+
+    // Reset fork/attachment toggle
+    $('input[name="fork_attach_type"][value="none"]').prop('checked', true);
+    $('#specForkSection, #specAttachSection').hide();
+    $('#specForkId').val('');
+    $('#specAttachmentTipe').val('');
+
+    // Reset fork/attachment toggle on open
+    $('input[name="fork_attach_type"][value="none"]').prop('checked', true);
+    $('#specForkSection, #specAttachSection').hide();
+    $('#specForkId').val('');
+    $('#specAttachmentTipe').val('');
 
     // Unit Brand must follow selected department to prevent cross-department selection
     $('#specMerkUnit')
@@ -3251,6 +3285,30 @@ function loadBatteriesForSpecification() {
         $('#specJenisBaterai').html('<option value="">Error loading batteries</option>');
     });
 }
+
+function loadForkTypesForSpecification() {
+    return $.get('<?= base_url('marketing/forks') ?>', function(response) {
+        let options = '<option value="">-- Pilih Jenis Fork --</option>';
+        if (response.success && response.data) {
+            response.data.forEach(f => {
+                options += `<option value="${f.id}">${f.name}</option>`;
+            });
+        }
+        $('#specForkId').html(options);
+    }).fail(function() {
+        $('#specForkId').html('<option value="">Error loading forks</option>');
+    });
+}
+
+// Toggle Fork/Attachment visibility
+$(document).on('change', 'input[name="fork_attach_type"]', function() {
+    const val = $(this).val();
+    $('#specForkSection').toggle(val === 'fork');
+    $('#specAttachSection').toggle(val === 'attachment');
+    // Clear values when switching
+    if (val !== 'fork') $('#specForkId').val('');
+    if (val !== 'attachment') $('#specAttachmentTipe').val('');
+});
 
 function loadAttachmentTypesForSpecification() {
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe', function(response) {
@@ -3901,6 +3959,7 @@ function editSpecification(specId) {
                 loadKapasitasForSpecification(),
                 loadUnitBrandsForSpecification(),
                 loadAttachmentTypesForSpecification(),
+                loadForkTypesForSpecification(),
                 loadValvesForSpecification(),
                 loadMastModelsForSpecification(),
                 loadTiresForSpecification(),
@@ -4033,6 +4092,24 @@ function editSpecification(specId) {
                     });
                     
                     console.log('Ã¢Å“â€¦ Accessories loaded:', accessories);
+                }
+                
+                // Handle fork / attachment toggle
+                if (spec.fork_id) {
+                    $('input[name="fork_attach_type"][value="fork"]').prop('checked', true);
+                    $('#specForkSection').show();
+                    $('#specAttachSection').hide();
+                    $('#specForkId').val(spec.fork_id);
+                } else if (spec.attachment_id) {
+                    $('input[name="fork_attach_type"][value="attachment"]').prop('checked', true);
+                    $('#specAttachSection').show();
+                    $('#specForkSection').hide();
+                    $('#specAttachmentTipe').val(spec.attachment_id);
+                } else {
+                    $('input[name="fork_attach_type"][value="none"]').prop('checked', true);
+                    $('#specForkSection, #specAttachSection').hide();
+                    $('#specForkId').val('');
+                    $('#specAttachmentTipe').val('');
                 }
                 
                 // Show modal after ALL data is loaded and set

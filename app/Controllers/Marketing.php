@@ -2514,6 +2514,7 @@ class Marketing extends BaseDataTableController
                 ->select('mu.merk_unit, mu.model_unit')
                 ->select('att.tipe as attachment_tipe, att.merk as attachment_merk, att.model as attachment_model')
                 ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
+                ->select('fk.name as fork_name, fk.fork_class as fork_class')
                 ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
                 ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
                 ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
@@ -2525,6 +2526,7 @@ class Marketing extends BaseDataTableController
                 ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
                 ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
                 ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
+                ->join('fork fk', 'fk.id = qs.fork_id', 'left')
                 ->where('qs.id_specification', $row['quotation_specification_id'])
                 ->get()
                 ->getRowArray();
@@ -4105,7 +4107,23 @@ class Marketing extends BaseDataTableController
         }
         
         // Apply pagination
-        $data = $builder->limit($length, $start)->get()->getResultArray();
+        $query = $builder->limit($length, $start)->get();
+        if ($query === false) {
+            // Jangan lempar fatal error di production, log saja lalu kembalikan data kosong
+            $dbError = $this->db->error();
+            log_message(
+                'error',
+                'Marketing::diData - gagal mengeksekusi query DataTable DI. Error: {code} {message}',
+                [
+                    'code'    => $dbError['code'] ?? 'N/A',
+                    'message' => $dbError['message'] ?? 'Unknown database error',
+                ]
+            );
+
+            $data = [];
+        } else {
+            $data = $query->getResultArray();
+        }
         
         // Add items information for each DI
         foreach ($data as &$row) {
@@ -5632,6 +5650,33 @@ class Marketing extends BaseDataTableController
             ->limit(200);
         $rows = $builder->get()->getResultArray();
         return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+    }
+
+    /**
+     * Get fork list for quotation spec modal
+     * Route: GET marketing/forks
+     */
+    public function getForks()
+    {
+        try {
+            $rows = $this->db->table('fork')
+                ->select('id, name, length_mm, fork_class, capacity_kg')
+                ->orderBy('name', 'ASC')
+                ->get()->getResultArray();
+
+            $data = array_map(function ($r) {
+                $label = $r['name'];
+                if (!empty($r['capacity_kg'])) {
+                    $label .= ' (' . $r['capacity_kg'] . 'kg)';
+                }
+                return ['id' => $r['id'], 'name' => $label];
+            }, $rows);
+
+            return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+        } catch (\Exception $e) {
+            log_message('error', 'getForks error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'data' => [], 'csrf_hash' => csrf_hash()]);
+        }
     }
 
     /**

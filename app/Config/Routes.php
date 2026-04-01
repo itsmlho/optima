@@ -310,6 +310,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('spk/stats', 'Marketing::spkStats'); // Statistics endpoint
     $routes->get('spk/kontrak-options', 'Marketing::kontrakOptions');
     $routes->get('spk/spec-options', 'Marketing::specOptions');
+    $routes->get('forks', 'Marketing::getForks'); // Fork types for spec modal
     $routes->get('spk/monitoring', 'Marketing::spkMonitoring');
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');

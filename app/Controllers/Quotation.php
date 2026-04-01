@@ -619,6 +619,7 @@ class Quotation extends BaseController
                 'battery_id' => $this->request->getPost('battery_id') ?: null,
                 'charger_id' => $this->request->getPost('charger_id') ?: null,
                 'attachment_id' => $this->request->getPost('attachment_id') ?: null,
+                'fork_id' => $this->request->getPost('fork_id') ?: null,
                 'valve_id' => $this->request->getPost('valve_id') ?: null,
                 'mast_id' => $this->request->getPost('mast_id') ?: null,
                 'ban_id' => $this->request->getPost('ban_id') ?: null,

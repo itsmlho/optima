@@ -3619,13 +3619,22 @@ EOF;
             ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
             ->select('d.nama_departemen, iu.departemen_id, tu.tipe')
             ->select('su.status_unit as status_unit_name, iu.lokasi_unit as location_name')
-            // Use status names (not numeric ids) to avoid mismatches across environments.
-            // Expected statuses for Unit Preparation picker:
-            // - AVAILABLE_STOCK
-            // - NON_ASSET_STOCK
-            // - BOOKED
-            // - RENTAL_ACTIVE
-            ->whereIn('su.status_unit', ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'])
+            /**
+             * HANYA status yang layak untuk persiapan unit:
+             * - AVAILABLE_STOCK      : unit stok siap dipakai
+             * - NON_ASSET_STOCK     : unit non asset di gudang
+             * - BOOKED              : sudah dibooking untuk kontrak ini
+             * - PREPARATION         : sedang proses persiapan
+             * - READY_TO_DELIVER    : siap kirim ke pelanggan
+             *
+             * Status lain seperti RENTAL_ACTIVE, BREAKDOWN, SOLD, RETURNED, TRIAL,
+             * RENTAL_DAILY, MAINTENANCE sengaja tidak dimunculkan di picker ini.
+             */
+            ->whereIn('su.status_unit', [
+                'AVAILABLE_STOCK',
+                'NON_ASSET_STOCK',
+                'BOOKED',
+            ])
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
 
@@ -3751,18 +3760,32 @@ EOF;
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
         }
         
-        // If no search query, prioritize AVAILABLE items first
+        // Status yang boleh dipilih untuk persiapan unit:
+        // - AVAILABLE    : stok bebas di gudang
+        // - IN_USE       : sudah terpasang di unit (boleh dipilih untuk dipindahkan / attach-detach)
+        // - SPARE        : stok cadangan
+        // - BROKEN       : rusak (boleh dipilih tetapi akan diberi peringatan di UI)
+        // - RESERVED     : sudah dipesan (boleh dipilih tetapi akan diberi peringatan di UI)
+        // MAINTENANCE dan SOLD tidak ditampilkan, supaya item yang sedang diproses SPK lain
+        // ataupun yang sudah terjual tidak bisa dipilih lagi.
+        $statusCol = $type === 'battery' ? 'ib.status'
+                   : ($type === 'charger' ? 'ic.status'
+                   : ($type === 'fork' ? 'ifk.status' : 'ia.status'));
+        $idCol = $type === 'battery' ? 'ib.id'
+               : ($type === 'charger' ? 'ic.id'
+               : ($type === 'fork' ? 'ifk.id' : 'ia.id'));
+
+        $allowedStatuses = ['AVAILABLE', 'IN_USE', 'SPARE', 'BROKEN', 'RESERVED'];
+
         if (empty($q)) {
-            $statusCol = $type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : ($type === 'fork' ? 'ifk.status' : 'ia.status'));
-            $idCol = $type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : ($type === 'fork' ? 'ifk.id' : 'ia.id'));
-            $qb->whereIn($statusCol, ['AVAILABLE', 'IN_USE'])
-               ->orderBy("FIELD(" . $statusCol . ", 'AVAILABLE', 'IN_USE')", '', false)
+            // Tanpa pencarian: tampilkan semua status yang diizinkan,
+            // dengan prioritas AVAILABLE di atas, lalu lainnya.
+            $qb->whereIn($statusCol, $allowedStatuses)
+               ->orderBy("FIELD(" . $statusCol . ", 'AVAILABLE','IN_USE','SPARE','BROKEN','RESERVED')", '', false)
                ->orderBy($idCol, 'DESC');
         } else {
-            // With search query, show all matching items regardless of status
-            $statusCol = $type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : ($type === 'fork' ? 'ifk.status' : 'ia.status'));
-            $idCol = $type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : ($type === 'fork' ? 'ifk.id' : 'ia.id'));
-            $qb->whereIn($statusCol, ['AVAILABLE', 'IN_USE', 'MAINTENANCE'])
+            // Dengan pencarian: tetap batasi ke status yang diizinkan
+            $qb->whereIn($statusCol, $allowedStatuses)
                ->groupStart();
             
             if ($type === 'attachment') {
@@ -3790,7 +3813,6 @@ EOF;
             }
             
             $qb->groupEnd()
-               ->orderBy("FIELD(" . $statusCol . ", 'AVAILABLE', 'IN_USE', 'MAINTENANCE')", '', false)
                ->orderBy($idCol, 'DESC');
         }
         

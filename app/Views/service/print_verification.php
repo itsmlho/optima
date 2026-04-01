@@ -115,7 +115,7 @@
         /* --- Panel Konten --- */
         .content-panel {
             border: 1px solid #ccc;
-            margin-bottom: 5px;
+            margin-bottom: 6px; /* jarak antar section lebih lega */
             page-break-inside: avoid;
         }
         
@@ -129,7 +129,7 @@
             color: #000;
         }
         
-        .panel-body { padding: 4px; }
+        .panel-body { padding: 5px 6px; }
         
         /* Info Grid */
         .info-grid {
@@ -309,23 +309,14 @@
             text-align: center;
         }
         
-        /* --- Print Footer --- */
-        .print-footer {
-            position: fixed;
-            bottom: 3mm;
-            left: 8mm;
-            right: 8mm;
-            text-align: center;
+        /* --- Print Footer (local, in-flow, no fixed position) --- */
+        .uv-print-footer {
+            margin-top: 6px;
+            padding: 2mm 0 0 0;
+            border-top: 1px solid #ddd;
             font-size: 8px;
             color: #666;
-            border-top: 1px solid #ddd;
-            padding-top: 2mm;
-            background: white;
-            z-index: 1000;
             page-break-inside: avoid;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            display: none;
         }
         
         /* Multi-unit (audit lokasi): satu lembar per unit */
@@ -335,7 +326,7 @@
         /* --- Lain-lain --- */
         @media print {
             @page {
-                margin: 10mm 8mm 15mm 8mm;
+                margin: 10mm 8mm 22mm 8mm; /* extra bottom margin for fixed footer */
                 size: A4;
                 @top-left { content: ""; }
                 @top-center { content: ""; }
@@ -403,142 +394,167 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
         </div>
 
         <main>
-            <!-- Unit Verification Section -->
+            <!-- Unit Verification Section (dua kolom agar lebih hemat tinggi) -->
             <div class="content-panel">
                 <div class="panel-title">VERIFIKASI DATA UNIT</div>
                 <div class="panel-body">
-                    <table class="verification-table">
-                        <thead>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <!-- Kolom kiri -->
+                        <table class="verification-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Database</th>
+                                    <th>Real Lapangan</th>
+                                    <th>Sesuai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>No Unit <span class="required">*</span></td>
+                                    <td id="db-no-unit">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Pelanggan <span class="required">*</span></td>
+                                    <td id="db-pelanggan">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Lokasi</td>
+                                    <td id="db-lokasi">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Departemen <span class="required">*</span></td>
+                                    <td id="db-departemen">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Serial Number <span class="required">*</span></td>
+                                    <td id="db-serial-number">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Kapasitas Unit <span class="required">*</span></td>
+                                    <td id="db-kapasitas-unit">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Tahun Unit</td>
+                                    <td id="db-tahun-unit">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Valve</td>
+                                    <td id="db-valve">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Hour Meter (HM)</td>
+                                    <td id="db-hour-meter">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Kolom kanan -->
+                        <table class="verification-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Database</th>
+                                    <th>Real Lapangan</th>
+                                    <th>Sesuai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                             <tr>
-                                <th>Item</th>
-                                <th>Database</th>
-                                <th>Real Lapangan</th>
-                                <th>Sesuai</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>No Unit <span class="required">*</span></td>
-                                <td id="db-no-unit">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Pelanggan <span class="required">*</span></td>
-                                <td id="db-pelanggan">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Lokasi</td>
-                                <td id="db-lokasi">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Serial Number <span class="required">*</span></td>
-                                <td id="db-serial-number">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Tahun Unit</td>
-                                <td id="db-tahun-unit">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Departemen <span class="required">*</span></td>
-                                <td id="db-departemen">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Tipe Unit <span class="required">*</span></td>
-                                <td id="db-tipe-unit">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Kapasitas Unit <span class="required">*</span></td>
-                                <td id="db-kapasitas-unit">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Model Unit <span class="required">*</span></td>
-                                <td id="db-model-unit">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Model Mesin <span class="required">*</span></td>
-                                <td id="db-model-mesin">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>SN Mesin <span class="required">*</span></td>
-                                <td id="db-sn-mesin">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Model Mast <span class="required">*</span></td>
-                                <td id="db-model-mast">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>SN Mast <span class="required">*</span></td>
-                                <td id="db-sn-mast">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Tinggi Mast <span class="required">*</span></td>
-                                <td id="db-tinggi-mast">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Keterangan Unit <span class="required">*</span></td>
-                                <td id="db-keterangan">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Valve</td>
-                                <td id="db-valve">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Ban</td>
-                                <td id="db-ban">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Wheel Type / Jenis Roda</td>
-                                <td id="db-wheel-type">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                            <tr>
-                                <td>Hour Meter (HM)</td>
-                                <td id="db-hour-meter">-</td>
-                                <td><span class="real-field"></span></td>
-                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                    <td>Tipe Unit <span class="required">*</span></td>
+                                    <td id="db-tipe-unit">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Model Unit <span class="required">*</span></td>
+                                    <td id="db-model-unit">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Model Mesin <span class="required">*</span></td>
+                                    <td id="db-model-mesin">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>SN Mesin <span class="required">*</span></td>
+                                    <td id="db-sn-mesin">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Model Mast <span class="required">*</span></td>
+                                    <td id="db-model-mast">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>SN Mast <span class="required">*</span></td>
+                                    <td id="db-sn-mast">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Tinggi Mast <span class="required">*</span></td>
+                                    <td id="db-tinggi-mast">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Ban</td>
+                                    <td id="db-ban">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Wheel Type / Jenis Roda</td>
+                                    <td id="db-wheel-type">-</td>
+                                    <td><span class="real-field"></span></td>
+                                    <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Keterangan Unit: satu baris penuh di bawah, tidak dibagi kolom -->
+                    <div style="margin-top: 4px;">
+                        <table class="verification-table">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 18%;">Keterangan Unit <span class="required">*</span></td>
+                                    <td id="db-keterangan">-</td>
+                                    <td style="width: 43%;"><span class="real-field"></span></td>
+                                    <td style="width: 6%; text-align: center;"><span class="checkbox-symbol">☐</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             
-            
+            </br>
             <!-- Attachment Verification Section -->
-            <div class="content-panel">
+            <div class="content-panel" style="margin-top: 4px;">
                 <div class="panel-title">VERIFIKASI DATA ATTACHMENT</div>
                 <div class="panel-body">
                     <table class="verification-table">
@@ -591,53 +607,19 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
                     </table>
                 </div>
             </div>
-            </br>
+            
+           </br>
             <!-- Unit Accessories Verification Section -->
-            <div class="content-panel">
+            <div class="content-panel" style="margin-top: 4px;">
                 <div class="panel-title">VERIFIKASI AKSESORIS UNIT</div>
                 <div class="panel-body">
                     <div style="font-size: 6pt; color: #666; margin-bottom: 8px;">
                         ✓ = Terpasang dan berfungsi | ✗ = Tidak ada / rusak | - = Tidak dibutuhkan
                     </div>
                     
-                    <!-- Unit Accessories -->
-                    <div style="margin-bottom: 15px;">
-                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 8pt;">
-                            <div><span class="accessory-checkbox" data-accessory="LAMPU UTAMA">☐</span> Lampu (Utama, Mundur, Sign, Stop)</div>
-                            <div><span class="accessory-checkbox" data-accessory="ROTARY LAMP">☐</span> Rotary Lamp</div>
-                            <div><span class="accessory-checkbox" data-accessory="SENSOR PARKING">☐</span> Sensor Parking</div>
-                            <div><span class="accessory-checkbox" data-accessory="HORN SPEAKER">☐</span> Horn Speaker</div>
-                            <div><span class="accessory-checkbox" data-accessory="APAR 1 KG">☐</span> APAR 1 KG</div>
-                            <div><span class="accessory-checkbox" data-accessory="APAR 3 KG">☐</span> APAR 3 KG</div>
-                            <div><span class="accessory-checkbox" data-accessory="BEACON">☐</span> Beacon</div>
-                            <div><span class="accessory-checkbox" data-accessory="TELEMATIC">☐</span> Telematic</div>
-                            <div><span class="accessory-checkbox" data-accessory="BLUE SPOT">☐</span> Blue Spot</div>
-                            <div><span class="accessory-checkbox" data-accessory="RED LINE">☐</span> Red Line</div>
-                            <div><span class="accessory-checkbox" data-accessory="WORK LIGHT">☐</span> Work Light</div>
-                            <div><span class="accessory-checkbox" data-accessory="BACK BUZZER">☐</span> Back Buzzer</div>
-                            <div><span class="accessory-checkbox" data-accessory="CAMERA AI">☐</span> Camera AI</div>
-                            <div><span class="accessory-checkbox" data-accessory="CAMERA MONITOR">☐</span> Camera Monitor</div>
-                            <div><span class="accessory-checkbox" data-accessory="SPEED LIMITER">☐</span> Speed Limiter</div>
-                            <div><span class="accessory-checkbox" data-accessory="LASER FORK">☐</span> Laser Fork</div>
-                            <div><span class="accessory-checkbox" data-accessory="VOICE ANNOUNCER">☐</span> Voice Announcer</div>
-                            <div><span class="accessory-checkbox" data-accessory="HORN KLASON">☐</span> Horn Klason</div>
-                            <div><span class="accessory-checkbox" data-accessory="BIO METRIC">☐</span> Bio Metric</div>
-                            <div><span class="accessory-checkbox" data-accessory="ACRYLIC">☐</span> Acrylic</div>
-                            <div><span class="accessory-checkbox" data-accessory="FIRST AID KIT">☐</span> First Aid Kit</div>
-                            <div><span class="accessory-checkbox" data-accessory="SPARK ARRESTOR">☐</span> Spark Arrestor</div>
-                            <div><span class="accessory-checkbox" data-accessory="SAFETY BELT INTERLOCK">☐</span> Safety Belt Interlock</div>
-                            <div><span class="accessory-checkbox" data-accessory="MIRROR">☐</span> Mirror / Spion</div>
-                            <div><span class="accessory-checkbox" data-accessory="SAFETY BELT STANDAR">☐</span> Safety Belt Standar</div>
-                            <div><span class="accessory-checkbox" data-accessory="LOAD BACKREST">☐</span> Load Backrest</div>
-                            <div><span class="accessory-checkbox" data-accessory="FORKS">☐</span> Forks</div>
-                            <div><span class="accessory-checkbox" data-accessory="OVERHEAD GUARD">☐</span> Overhead Guard</div>
-                            <div><span class="accessory-checkbox" data-accessory="DOCUMENT HOLDER">☐</span> Document Holder</div>
-                            <div><span class="accessory-checkbox" data-accessory="TOOL KIT">☐</span> Tool Kit</div>
-                            <div><span class="accessory-checkbox" data-accessory="APAR BRACKET">☐</span> APAR + Bracket</div>
-                            <div><span class="accessory-checkbox" data-accessory="ANTI STATIC STRAP">☐</span> Anti-Static Strap</div>
-                            <div><span class="accessory-checkbox" data-accessory="WHEEL STOPPER CHOCK">☐</span> Wheel Stopper / Chock</div>
-                            <div><span class="accessory-checkbox" data-accessory="FORK EXTENSION">☐</span> Fork Extension</div>
-                        </div>
+                    <!-- Unit Accessories - generated from OptimaAccessory JS -->
+                    <div id="uv-accessories-grid" style="margin-bottom: 15px;">
+                        <!-- Accessories checkboxes will be rendered here by JS for consistency -->
                     </div>
                     
                     <!-- Summary Row -->
@@ -647,8 +629,9 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
                 </div>
             </div>
             </br>
+            </br>
             <!-- Simple Signature Section -->
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 8px; font-size: 7pt;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 4px; font-size: 7pt; page-break-inside: avoid;">
                 <div style="text-align: center;">
                     <div style="font-size: 7pt; margin-bottom: 3px;">Tgl: ___/___/_____</div>
                     <div style="font-weight: bold; margin-bottom: 15px;">Diverifikasi Oleh</div>
@@ -659,28 +642,30 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
                     <div style="font-size: 7pt; margin-bottom: 3px;">Tgl: ___/___/_____</div>
                     <div style="font-weight: bold; margin-bottom: 15px;">Disahkan Oleh</div>
                     <div style="border-bottom: 1px solid #000; width: 120px; margin: 0 auto 3px; height: 15px;"></div>
-                    <div>Supervisor</div>
+                    <div>Head / Supervisor Service</div>
                 </div>
             </div>
         </main>
         
-        <!-- Print Footer -->
-        <div class="print-footer" id="printFooter">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="text-align: left; font-size: 8px;">
-                    <strong>PT SARANA MITRA LUAS Tbk</strong><br>
-                    <span style="color: #888;">Sistem OPTIMA - Unit Verification</span>
-                </div>
-                <div style="text-align: center; font-size: 8px;">
-                    <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
-                    <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
-                </div>
-                <div style="text-align: right; font-size: 8px;">
-                    <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
-                    <span style="color: #888;">WO No: <span id="footer-wo-number">Unknown</span></span>
+        <?php if (empty($_GET['embedded'])): ?>
+            <!-- Print Footer (local for standalone verification page only) -->
+            <div class="uv-print-footer" id="uvPrintFooter">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="text-align: left; font-size: 8px;">
+                        <strong>PT SARANA MITRA LUAS Tbk</strong><br>
+                        <span style="color: #888;">Sistem OPTIMA - Unit Verification</span>
+                    </div>
+                    <div style="text-align: center; font-size: 8px;">
+                        <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
+                        <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
+                    </div>
+                    <div style="text-align: right; font-size: 8px;">
+                        <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
+                        <span style="color: #888;">WO No: <span id="footer-wo-number">Unknown</span></span>
+                    </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
     </template>
 
@@ -701,6 +686,61 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
             return base + suffix;
         }
 
+        function renderAccessoriesGrid(container, suffix) {
+            if (!container) return;
+            if (!window.OptimaAccessory || typeof window.OptimaAccessory.getGroups !== 'function') {
+                return;
+            }
+
+            const groups = window.OptimaAccessory.getGroups();
+            const order = ['verificationUnit', 'verificationSafety', 'verificationOther'];
+            const seen = {};
+            const codes = [];
+
+            order.forEach(function(key) {
+                const group = groups[key];
+                if (group && Array.isArray(group.items)) {
+                    group.items.forEach(function(item) {
+                        const code = item.code;
+                        if (!code || seen[code]) return;
+                        seen[code] = true;
+                        codes.push(code);
+                    });
+                }
+            });
+
+            if (codes.length === 0) return;
+
+            container.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+            grid.style.gap = '8px';
+            grid.style.fontSize = '8pt';
+
+            codes.forEach(function(code) {
+                const label = window.OptimaAccessory.formatLabel
+                    ? window.OptimaAccessory.formatLabel(code)
+                    : String(code).trim();
+                const normalized = window.OptimaAccessory.normalizeCheckboxValue
+                    ? window.OptimaAccessory.normalizeCheckboxValue(code)
+                    : String(label || code).trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+                const itemDiv = document.createElement('div');
+                const span = document.createElement('span');
+                span.className = 'accessory-checkbox';
+                span.dataset.accessory = normalized;
+                span.textContent = '☐';
+
+                itemDiv.appendChild(span);
+                itemDiv.appendChild(document.createTextNode(' ' + label));
+
+                grid.appendChild(itemDiv);
+            });
+
+            container.appendChild(grid);
+        }
+
         function mountPrintPage(suffix) {
             const tpl = document.getElementById('uv-print-page-tpl');
             const root = document.getElementById('print-root');
@@ -715,6 +755,13 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
             container.querySelectorAll('[id]').forEach(function(el) {
                 el.id = el.id + suffix;
             });
+
+            // Render accessories grid from global OptimaAccessory config
+            const accessoriesHost = container.querySelector('#uv-accessories-grid' + suffix);
+            if (accessoriesHost) {
+                renderAccessoriesGrid(accessoriesHost, suffix);
+            }
+
             const sheet = document.createElement('div');
             sheet.className = 'print-unit-sheet';
             sheet.appendChild(container);
@@ -993,34 +1040,19 @@ $printUnitIds     = isset($printUnitIds) && is_array($printUnitIds) ? $printUnit
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            runPrintBootstrap();
-        });
-        
-        function forEachPrintFooter(fn) {
-            document.querySelectorAll('[id^="printFooter"]').forEach(fn);
-        }
-
-        window.addEventListener('beforeprint', function() {
-            forEachPrintFooter(function(footer) {
-                footer.style.display = 'block';
-            });
-        });
-
-        window.addEventListener('afterprint', function() {
-            forEachPrintFooter(function(footer) {
-                footer.style.display = 'none';
-            });
-            if (!isInIframe && !isEmbedded) {
-                setTimeout(function() {
-                    window.close();
-                }, 100);
+            // Jika halaman ini dibuka standalone, jalankan bootstrap normal.
+            // Jika sedang di-embed ke print_work_order.php (embedded=1),
+            // kita hanya butuh template dan kontennya, footer lokal disembunyikan.
+            if (isEmbedded) {
+                const localFooter = document.getElementById('uvPrintFooter');
+                if (localFooter) {
+                    localFooter.style.display = 'none';
+                }
+                // Jangan auto-print, biarkan parent (print_work_order) yang handle.
+                runPrintBootstrap();
+            } else {
+                runPrintBootstrap();
             }
-        });
-
-        window.addEventListener('load', function() {
-            forEachPrintFooter(function(footer) {
-                footer.style.display = 'block';
-            });
         });
     </script>
 </body>
