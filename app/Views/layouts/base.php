@@ -366,6 +366,82 @@ $currentLang = service('request')->getLocale();
             return false;
         };
 
+        /**
+         * Wrapper around window.fetch that automatically injects the current CSRF token
+         * and transparently retries once on CSRF 403 by calling refreshCsrfToken().
+         *
+         * Usage:
+         *   csrfFetch(url, { method: 'POST', body: formData })
+         *     .then(r => r.json())
+         *     .then(...);
+         */
+        window.csrfFetch = function(url, options) {
+            options = options || {};
+            const tokenName  = window.csrfTokenName;
+            const tokenValue = window.csrfTokenValue;
+
+            // Clone options to avoid mutating caller's object
+            const baseOptions = Object.assign({}, options);
+
+            // Normalize headers
+            baseOptions.headers = baseOptions.headers || {};
+            if (!baseOptions.headers['X-Requested-With']) {
+                baseOptions.headers['X-Requested-With'] = 'XMLHttpRequest';
+            }
+
+            // Helper: inject CSRF into body (FormData / string / plain object)
+            function withCsrfBody(opts, value) {
+                const o = Object.assign({}, opts);
+                if (!tokenName || !value) return o;
+
+                if (o.body instanceof FormData) {
+                    if (!o.body.has(tokenName)) {
+                        o.body.append(tokenName, value);
+                    }
+                } else if (typeof o.body === 'string') {
+                    const re = new RegExp('(?:^|&)' + encodeURIComponent(tokenName) + '=[^&]*');
+                    if (re.test(o.body)) {
+                        o.body = o.body.replace(re, '');
+                    }
+                    o.body += (o.body ? '&' : '') + encodeURIComponent(tokenName) + '=' + encodeURIComponent(value);
+                    if (!o.headers['Content-Type']) {
+                        o.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+                    }
+                } else if (o.body && typeof o.body === 'object') {
+                    const bodyClone = Object.assign({}, o.body);
+                    bodyClone[tokenName] = value;
+                    o.body = JSON.stringify(bodyClone);
+                    if (!o.headers['Content-Type']) {
+                        o.headers['Content-Type'] = 'application/json; charset=UTF-8';
+                    }
+                }
+                return o;
+            }
+
+            const firstOptions = withCsrfBody(baseOptions, tokenValue);
+
+            function doFetch(opts, retried) {
+                return window.fetch(url, opts).then(function(response) {
+                    if (response.status === 403 && !retried && typeof window.refreshCsrfToken === 'function') {
+                        console.warn('🔐 CSRF 403 on fetch — attempting silent token refresh');
+                        return new Promise(function(resolve, reject) {
+                            window.refreshCsrfToken(function(newToken) {
+                                const retryOpts = withCsrfBody(baseOptions, newToken);
+                                console.info('🔄 Retrying fetch with refreshed CSRF token');
+                                window.fetch(url, retryOpts).then(resolve).catch(reject);
+                            }, function() {
+                                // csrf-refresh failed — session truly expired
+                                reject(new Error('CSRF token expired and session has ended. Please reload the page.'));
+                            });
+                        });
+                    }
+                    return response;
+                });
+            }
+
+            return doFetch(firstOptions, false);
+        };
+
         // ============================================================
         // GLOBAL AJAX ERROR HANDLER - Handle session expiration
         // ============================================================

@@ -2277,7 +2277,7 @@ $can_export = $permissions['export'];
                 fd.append('kontrak_spesifikasi_id', spekId);
             }
             
-            fetch('<?= base_url('marketing/spk/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
+            (window.csrfFetch || window.fetch)('<?= base_url('marketing/spk/create') ?>',{method:'POST', body:fd})
                 .then(r=>r.json()).then(j=>{ 
                     if(j.success){ 
                         e.target.reset(); 
@@ -2336,7 +2336,7 @@ $can_export = $permissions['export'];
             }
             // spk_id already set; backend enforces COMPLETED status
             
-            fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
+            (window.csrfFetch || window.fetch)('<?= base_url('marketing/di/create') ?>',{method:'POST', body:fd})
                 .then(r=>r.json()).then(j=>{
                     if (j && j.success) {
                         bootstrap.Modal.getInstance(document.getElementById('diModal')).hide();

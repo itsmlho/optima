@@ -1788,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.log(`  ${key}: ${value}`);
     }
     
-    fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body: fd})
+    (window.csrfFetch || window.fetch)('<?= base_url('marketing/di/create') ?>',{method:'POST', body: fd})
       .then(r=>r.json()).then(j=>{
         console.log('Enhanced DI Create Response:', j);  // Debug log
         if (j && j.success){
@@ -1817,9 +1817,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.log(`  ${key}: ${value}`);
     }
     
-    fetch(`<?= base_url('marketing/di/update/') ?>${diId}`, {
-      method: 'PUT',
-      headers: {'X-Requested-With': 'XMLHttpRequest'},
+    (window.csrfFetch || window.fetch)(`<?= base_url('marketing/di/update/') ?>${diId}`, {
+      method: 'POST', // treat as POST for CSRF; backend will accept or route accordingly
       body: fd
     }).then(r => r.json()).then(j => {
       console.log('DI Edit Response:', j);
@@ -1880,13 +1879,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
         title: 'Hapus Delivery Instruction',
         text: 'Apakah Anda yakin ingin menghapus DI ini? Tindakan ini tidak dapat dibatalkan.',
         onConfirm: function() {
-            fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
+            (window.csrfFetch || window.fetch)(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
       method: 'POST',
       headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
-      }
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
     }).then(r => r.json()).then(j => {
       if (j && j.success) {
         loadDI();
@@ -2083,7 +2081,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     OptimaPro.showLoading('Linking DI to contract...');
     
     try {
-      const response = await fetch('<?= base_url('marketing/di/link-to-contract') ?>', {
+      const response = await (window.csrfFetch || window.fetch)('<?= base_url('marketing/di/link-to-contract') ?>', {
         method: 'POST',
         body: formData
       });

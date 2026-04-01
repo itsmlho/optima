@@ -6816,11 +6816,10 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			fd.append('additional_spareparts', JSON.stringify(additionalSpareparts));
 			fd.append('notes', notes);
 
-			fetch(window.baseUrl + 'service/spk/validate-spareparts/' + spkId, {
-				method:  'POST',
-				headers: {'X-Requested-With': 'XMLHttpRequest'},
-				body:    fd
-			})
+		(window.csrfFetch || window.fetch)(window.baseUrl + 'service/spk/validate-spareparts/' + spkId, {
+			method:  'POST',
+			body:    fd
+		})
 			.then(r => r.json())
 			.then(res => {
 				btn.disabled = false;

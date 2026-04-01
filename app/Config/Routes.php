@@ -902,17 +902,24 @@ $routes->group('warehouse', static function ($routes) {
 
         // Unit Inventory (SPA + CRUD)
         $routes->group('unit', function($routes) {
-            $routes->get('/',                    'Warehouse\UnitInventoryController::index');
-            $routes->post('datatable',           'Warehouse\UnitInventoryController::datatable');
-            $routes->get('create',               'Warehouse\UnitInventoryController::create');
-            $routes->post('store',               'Warehouse\UnitInventoryController::store');
-            $routes->get('(:num)',               'Warehouse\UnitInventoryController::show/$1');
-            $routes->post('(:num)/destroy',      'Warehouse\UnitInventoryController::destroy/$1');
-            $routes->get('(:num)/timeline',      'Warehouse\UnitInventoryController::getTimeline/$1');
-            $routes->get('(:num)/activity',      'Warehouse\UnitInventoryController::getActivity/$1');
-            $routes->get('(:num)/movements',     'Warehouse\UnitInventoryController::getMovementHistory/$1');
-            $routes->get('(:num)/print',         'Warehouse\UnitInventoryController::printUnit/$1');
-            $routes->post('(:num)/inline-update','Warehouse\UnitInventoryController::inlineUpdate/$1');
+            $routes->get('/',                       'Warehouse\UnitInventoryController::index');
+            $routes->post('datatable',              'Warehouse\UnitInventoryController::datatable');
+            $routes->get('create',                  'Warehouse\UnitInventoryController::create');
+            $routes->post('store',                  'Warehouse\UnitInventoryController::store');
+            // API search endpoints — must be before (:num) to avoid pattern conflict
+            $routes->get('api/customers',           'Warehouse\UnitInventoryController::apiSearchCustomers');
+            $routes->get('api/quotations',          'Warehouse\UnitInventoryController::apiSearchQuotations');
+            // Unit detail & actions
+            $routes->get('(:num)',                  'Warehouse\UnitInventoryController::show/$1');
+            $routes->post('(:num)/destroy',         'Warehouse\UnitInventoryController::destroy/$1');
+            $routes->get('(:num)/timeline',         'Warehouse\UnitInventoryController::getTimeline/$1');
+            $routes->get('(:num)/activity',         'Warehouse\UnitInventoryController::getActivity/$1');
+            $routes->get('(:num)/movements',        'Warehouse\UnitInventoryController::getMovementHistory/$1');
+            $routes->get('(:num)/print',            'Warehouse\UnitInventoryController::printUnit/$1');
+            $routes->post('(:num)/inline-update',   'Warehouse\UnitInventoryController::inlineUpdate/$1');
+            $routes->post('(:num)/book',            'Warehouse\UnitInventoryController::bookUnit/$1');
+            $routes->post('(:num)/scrap',           'Warehouse\UnitInventoryController::scrapUnit/$1');
+            $routes->post('(:num)/change-status',   'Warehouse\UnitInventoryController::changeStatus/$1');
         });
         $routes->get('get-unit-detail/(:num)', 'Warehouse::getUnitDetail/$1');
         $routes->get('get-unit-full-detail/(:num)', 'Warehouse::getUnitFullDetail/$1'); // Full detail with all joins

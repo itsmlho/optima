@@ -133,6 +133,15 @@ class UnitInventoryController extends BaseController
                 'su.status_unit AS status_unit_name',
                 'cl.location_name AS customer_location_name, cl.city AS customer_city, cl.address AS customer_address',
                 'c.customer_name, c.customer_code',
+                // Contract summary fields
+                'k.id AS kontrak_id',
+                'k.no_kontrak',
+                'k.rental_type AS kontrak_rental_type',
+                'k.tanggal_berakhir AS kontrak_end_date',
+                'k.customer_po_number',
+                'ku.tanggal_mulai AS ku_start_date',
+                'ku.tanggal_selesai AS ku_end_date',
+                'ku.is_spare AS ku_is_spare',
             ];
 
             // Only join optional tables when safe
@@ -141,6 +150,7 @@ class UnitInventoryController extends BaseController
             $hasKapasitas = $db->tableExists('kapasitas');
             $hasJenisRoda = $db->tableExists('jenis_roda');
             $hasTipeBan   = $db->tableExists('tipe_ban');
+            $hasValve     = $db->tableExists('valve');
 
             // model_unit stores ban_depan & ban_belakang — always join if mu exists
             $selectParts[] = 'mu.ban_depan, mu.ban_belakang';
@@ -154,6 +164,7 @@ class UnitInventoryController extends BaseController
             if ($hasKapasitas) $selectParts[] = 'kap.kapasitas_unit AS kapasitas_display';
             if ($hasJenisRoda) $selectParts[] = 'r.tipe_roda AS jenis_roda';
             if ($hasTipeBan)   $selectParts[] = 'tb.tipe_ban';
+            if ($hasValve)     $selectParts[] = 'vl.jumlah_valve';
 
             $builder = $db->table('inventory_unit iu')
                 ->select(implode(', ', $selectParts))
@@ -175,6 +186,7 @@ class UnitInventoryController extends BaseController
             if ($hasKapasitas) $builder->join('kapasitas kap','kap.id_kapasitas = iu.kapasitas_unit_id', 'left');
             if ($hasJenisRoda) $builder->join('jenis_roda r', 'r.id_roda        = iu.roda_id',           'left');
             if ($hasTipeBan)   $builder->join('tipe_ban tb',  'tb.id_ban        = iu.ban_id',            'left');
+            if ($hasValve)     $builder->join('valve vl',     'vl.id_valve      = iu.valve_id',          'left');
 
             $unit = $builder->where('iu.id_inventory_unit', (int)$id)->get()->getRowArray();
         } catch (\Throwable $e) {
@@ -248,13 +260,18 @@ class UnitInventoryController extends BaseController
         try {
             $rental_history = $db->table('kontrak_unit ku')
                 ->select('k.no_kontrak       as contract_no,
+                          k.id              as kontrak_id,
+                          k.rental_type     as rental_type,
                           c.customer_name   as customer,
                           cl.location_name  as location,
+                          cl.city           as location_city,
                           ku.tanggal_mulai  as start_date,
                           ku.tanggal_selesai as end_date,
+                          ku.is_spare       as is_spare,
                           ku.status')
-                ->join('kontrak k',             'k.id  = ku.kontrak_id',            'left')
-                ->join('customers c',           'c.id  = k.customer_id',            'left')
+                ->join('kontrak k',              'k.id   = ku.kontrak_id',              'left')
+                ->join('customers c',            'c.id   = k.customer_id',              'left')
+                ->join('customer_locations cl',  'cl.id  = ku.customer_location_id',   'left')
                 ->where('ku.unit_id', (int)$id)
                 ->orderBy('ku.tanggal_mulai', 'DESC')
                 ->get()->getResultArray();
@@ -289,6 +306,27 @@ class UnitInventoryController extends BaseController
             log_message('warning', 'UnitInventoryController::show current_components: ' . $e->getMessage());
         }
 
+        // ── Active Booking ─────────────────────────────────────────────────
+        $active_booking = null;
+        try {
+            if ($db->tableExists('unit_bookings')) {
+                $active_booking = $db->table('unit_bookings ub')
+                    ->select('ub.*, c.customer_name, c.customer_code,
+                              q.quotation_number, q.prospect_name AS quotation_prospect,
+                              CONCAT(IFNULL(u.first_name,""), " ", IFNULL(u.last_name,"")) AS booked_by_name')
+                    ->join('customers c',   'c.id = ub.customer_id',         'left')
+                    ->join('quotations q',  'q.id_quotation = ub.quotation_id', 'left')
+                    ->join('users u',       'u.id = ub.booked_by_user_id',   'left')
+                    ->where('ub.unit_id', (int)$id)
+                    ->where('ub.status', 'ACTIVE')
+                    ->orderBy('ub.booked_at', 'DESC')
+                    ->limit(1)
+                    ->get()->getRowArray();
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::show active_booking: ' . $e->getMessage());
+        }
+
         // Lookup data for inline edit
         $lookup = $this->getLookupData();
 
@@ -305,6 +343,9 @@ class UnitInventoryController extends BaseController
             'mesin'            => $lookup['mesin']           ?? [],
             'tipe_ban'         => $lookup['ban']             ?? [],
             'kapasitas'        => $lookup['kapasitas_unit']  ?? [],
+            'jenis_roda'       => $lookup['roda']            ?? [],
+            'valve'            => $lookup['valve']           ?? [],
+            'active_booking'   => $active_booking,
         ]);
     }
 
@@ -325,8 +366,10 @@ class UnitInventoryController extends BaseController
         $allowed = [
             'model_mast_id', 'tinggi_mast', 'sn_mast',
             'model_mesin_id', 'sn_mesin',
-            'ban_id', 'kapasitas_unit_id',
+            'ban_id', 'roda_id', 'valve_id',
+            'kapasitas_unit_id',
             'fuel_type', 'ownership_status',
+            'hour_meter',
             'keterangan',
         ];
 
@@ -1014,6 +1057,382 @@ class UnitInventoryController extends BaseController
             'mesin'          => $get('mesin',          'id, merk_mesin, model_mesin',          'model_mesin'),
             'roda'           => $get('jenis_roda',     'id_roda, tipe_roda',                   'tipe_roda'),
             'ban'            => $get('tipe_ban',       'id_ban, tipe_ban',                     'tipe_ban'),
+            'valve'          => $get('valve',          'id_valve, jumlah_valve',               'jumlah_valve'),
         ];
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  BOOK UNIT
+    // ──────────────────────────────────────────────────────
+
+    public function bookUnit($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        $permissions = get_global_permission('warehouse');
+        if (!$permissions['edit']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.', 'csrf_hash' => csrf_hash()])->setStatusCode(403);
+        }
+
+        $unitId = (int)$id;
+        $db     = Database::connect();
+
+        // Validate unit exists and is in a bookable status
+        $unit = $db->table('inventory_unit iu')
+            ->select('iu.id_inventory_unit, iu.status_unit_id, su.status_unit AS status_unit_name')
+            ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+            ->where('iu.id_inventory_unit', $unitId)
+            ->get()->getRowArray();
+
+        if (!$unit) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.', 'csrf_hash' => csrf_hash()]);
+        }
+
+        $bookableStatuses = [1, 2, 9, 12, 15]; // AVAILABLE_STOCK, NON_ASSET_STOCK, TRIAL, RETURNED, SPARE
+        if (!in_array((int)$unit['status_unit_id'], $bookableStatuses)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Unit dengan status "' . $unit['status_unit_name'] . '" tidak dapat di-booking.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        $customerId          = $this->request->getPost('customer_id') ?: null;
+        $quotationId         = $this->request->getPost('quotation_id') ?: null;
+        $customerNameManual  = trim($this->request->getPost('customer_name_manual') ?? '');
+        $notes               = trim($this->request->getPost('notes') ?? '');
+
+        if (empty($customerId) && empty($quotationId) && $customerNameManual === '') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Pilih customer, quotation, atau isi nama customer manual.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        $userId = (int)(session()->get('user_id') ?? 1);
+        $now    = date('Y-m-d H:i:s');
+
+        $db->transStart();
+        try {
+            // Insert booking record
+            $db->table('unit_bookings')->insert([
+                'unit_id'              => $unitId,
+                'customer_id'          => $customerId ? (int)$customerId : null,
+                'quotation_id'         => $quotationId ? (int)$quotationId : null,
+                'customer_name_manual' => $customerNameManual ?: null,
+                'notes'                => $notes ?: null,
+                'status'               => 'ACTIVE',
+                'booked_by_user_id'    => $userId,
+                'booked_at'            => $now,
+                'created_at'           => $now,
+                'updated_at'           => $now,
+            ]);
+
+            // Update unit status to BOOKED (3)
+            $oldStatusName = $unit['status_unit_name'];
+            $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update(['status_unit_id' => 3, 'updated_at' => $now]);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Transaction failed.');
+            }
+
+            // Log to unit timeline
+            try {
+                $timelineService = new \App\Services\UnitTimelineService();
+                $forLabel = !empty($customerNameManual)
+                    ? $customerNameManual
+                    : (!empty($customerId) ? 'Customer ID:' . $customerId : 'Quotation');
+                $timelineService->recordStatusChange(
+                    $unitId,
+                    $oldStatusName,
+                    'BOOKED',
+                    'Booking untuk: ' . $forLabel . ($notes ? '. ' . $notes : ''),
+                    $userId
+                );
+            } catch (\Throwable $e) {
+                log_message('warning', 'bookUnit timeline: ' . $e->getMessage());
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Unit berhasil di-booking.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'bookUnit #' . $unitId . ': ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan. Silakan coba lagi.', 'csrf_hash' => csrf_hash()]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  SCRAP UNIT
+    // ──────────────────────────────────────────────────────
+
+    public function scrapUnit($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        $permissions = get_global_permission('warehouse');
+        if (!$permissions['edit']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.', 'csrf_hash' => csrf_hash()])->setStatusCode(403);
+        }
+
+        $unitId = (int)$id;
+        $db     = Database::connect();
+
+        $unit = $db->table('inventory_unit iu')
+            ->select('iu.id_inventory_unit, iu.status_unit_id, iu.no_unit, su.status_unit AS status_unit_name')
+            ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+            ->where('iu.id_inventory_unit', $unitId)
+            ->get()->getRowArray();
+
+        if (!$unit) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.', 'csrf_hash' => csrf_hash()]);
+        }
+
+        if ((int)$unit['status_unit_id'] !== 10) { // Only BREAKDOWN
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Unit hanya bisa di-scrab dari status BREAKDOWN. Status saat ini: "' . $unit['status_unit_name'] . '".',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        $reason         = trim($this->request->getPost('reason') ?? '');
+        $estimatedValue = $this->request->getPost('estimated_value');
+        $notes          = trim($this->request->getPost('notes') ?? '');
+
+        if ($reason === '') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Alasan scrab wajib diisi.', 'csrf_hash' => csrf_hash()]);
+        }
+
+        $userId = (int)(session()->get('user_id') ?? 1);
+        $now    = date('Y-m-d H:i:s');
+
+        $db->transStart();
+        try {
+            $db->table('unit_scrap_records')->insert([
+                'unit_id'             => $unitId,
+                'reason'              => $reason,
+                'estimated_value'     => ($estimatedValue !== null && $estimatedValue !== '') ? (float)$estimatedValue : null,
+                'notes'               => $notes ?: null,
+                'scrapped_by_user_id' => $userId,
+                'scrapped_at'         => $now,
+                'created_at'          => $now,
+            ]);
+
+            // Update unit status to SOLD (13)
+            $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update(['status_unit_id' => 13, 'updated_at' => $now]);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Transaction failed.');
+            }
+
+            // Log to timeline
+            try {
+                $timelineService = new \App\Services\UnitTimelineService();
+                $timelineService->recordStatusChange($unitId, 'BREAKDOWN', 'SOLD', 'SCRAB: ' . $reason, $userId);
+            } catch (\Throwable $e) {
+                log_message('warning', 'scrapUnit timeline: ' . $e->getMessage());
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Unit berhasil di-scrab. Status diubah ke SOLD.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'scrapUnit #' . $unitId . ': ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan. Silakan coba lagi.', 'csrf_hash' => csrf_hash()]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  CHANGE STATUS
+    // ──────────────────────────────────────────────────────
+
+    public function changeStatus($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        $permissions = get_global_permission('warehouse');
+        if (!$permissions['edit']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.', 'csrf_hash' => csrf_hash()])->setStatusCode(403);
+        }
+
+        $unitId = (int)$id;
+        $db     = Database::connect();
+
+        $unit = $db->table('inventory_unit iu')
+            ->select('iu.id_inventory_unit, iu.status_unit_id, su.status_unit AS status_unit_name')
+            ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+            ->where('iu.id_inventory_unit', $unitId)
+            ->get()->getRowArray();
+
+        if (!$unit) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.', 'csrf_hash' => csrf_hash()]);
+        }
+
+        $allowedStatuses = [1, 3, 12]; // AVAILABLE_STOCK, BOOKED, RETURNED
+        $currentStatusId = (int)$unit['status_unit_id'];
+
+        if (!in_array($currentStatusId, $allowedStatuses)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Status "' . $unit['status_unit_name'] . '" tidak dapat diubah melalui fitur ini.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        $newStatusId = (int)$this->request->getPost('new_status_id');
+        $reason      = trim($this->request->getPost('reason') ?? '');
+
+        if (!in_array($newStatusId, $allowedStatuses)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Status tujuan tidak valid.', 'csrf_hash' => csrf_hash()]);
+        }
+        if ($newStatusId === $currentStatusId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Status tujuan sama dengan status saat ini.', 'csrf_hash' => csrf_hash()]);
+        }
+        if ($reason === '') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Alasan perubahan status wajib diisi.', 'csrf_hash' => csrf_hash()]);
+        }
+
+        $newStatusName = $db->table('status_unit')->select('status_unit')->where('id_status', $newStatusId)->get()->getRowArray()['status_unit'] ?? $newStatusId;
+        $userId        = (int)(session()->get('user_id') ?? 1);
+        $now           = date('Y-m-d H:i:s');
+
+        $db->transStart();
+        try {
+            // If moving away from BOOKED (3): cancel the active booking
+            if ($currentStatusId === 3 && $db->tableExists('unit_bookings')) {
+                $db->table('unit_bookings')
+                    ->where('unit_id', $unitId)
+                    ->where('status', 'ACTIVE')
+                    ->update([
+                        'status'               => 'CANCELLED',
+                        'cancelled_by_user_id' => $userId,
+                        'cancelled_at'         => $now,
+                        'cancel_reason'        => $reason,
+                        'updated_at'           => $now,
+                    ]);
+            }
+
+            $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update(['status_unit_id' => $newStatusId, 'updated_at' => $now]);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Transaction failed.');
+            }
+
+            // Log to timeline
+            try {
+                $timelineService = new \App\Services\UnitTimelineService();
+                $timelineService->recordStatusChange($unitId, $unit['status_unit_name'], $newStatusName, $reason, $userId);
+            } catch (\Throwable $e) {
+                log_message('warning', 'changeStatus timeline: ' . $e->getMessage());
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Status unit berhasil diubah ke ' . $newStatusName . '.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'changeStatus #' . $unitId . ': ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan. Silakan coba lagi.', 'csrf_hash' => csrf_hash()]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  API: SEARCH CUSTOMERS (for booking modal)
+    // ──────────────────────────────────────────────────────
+
+    public function apiSearchCustomers()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false])->setStatusCode(400);
+        }
+
+        $q  = trim($this->request->getGet('q') ?? '');
+        $db = Database::connect();
+
+        try {
+            $builder = $db->table('customers')
+                ->select('id, customer_name, customer_code')
+                ->where('is_active', 1)
+                ->orderBy('customer_name', 'ASC')
+                ->limit(30);
+
+            if ($q !== '') {
+                $builder->groupStart()
+                    ->like('customer_name', $q)
+                    ->orLike('customer_code', $q)
+                    ->groupEnd();
+            }
+
+            $rows = $builder->get()->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $rows]);
+        } catch (\Throwable $e) {
+            log_message('error', 'apiSearchCustomers: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'data' => []]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  API: SEARCH QUOTATIONS (for booking modal)
+    // ──────────────────────────────────────────────────────
+
+    public function apiSearchQuotations()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false])->setStatusCode(400);
+        }
+
+        $q  = trim($this->request->getGet('q') ?? '');
+        $db = Database::connect();
+
+        try {
+            $builder = $db->table('quotations')
+                ->select('id_quotation, quotation_number, prospect_name, stage')
+                ->whereIn('stage', ['DRAFT', 'SENT', 'ACCEPTED'])
+                ->orderBy('quotation_date', 'DESC')
+                ->limit(30);
+
+            if ($q !== '') {
+                $builder->groupStart()
+                    ->like('prospect_name', $q)
+                    ->orLike('quotation_number', $q)
+                    ->groupEnd();
+            }
+
+            $rows = $builder->get()->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $rows]);
+        } catch (\Throwable $e) {
+            log_message('error', 'apiSearchQuotations: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'data' => []]);
+        }
     }
 }
