@@ -1237,125 +1237,105 @@ function initializeAreaTable() {
 }
 
 function initializeEmployeeTable() {
-  // Destroy existing instance if any
   if ($.fn.DataTable.isDataTable('#employeesTable')) {
     $('#employeesTable').DataTable().destroy();
   }
-  
-  employeesTable = $('#employeesTable').DataTable({
-    processing: false, // DISABLED - Data kecil, tidak perlu loading indicator
-    serverSide: true,
-    destroy: true,
-    searching: true,
-    searchDelay: 500,
-    dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-    ajax: {
-      url: '<?= base_url('service/area-management/getEmployees') ?>',
-      type: 'POST',
-      timeout: 30000, // 30 second timeout
-      data: function(d) {
-        d[window.csrfTokenName] = window.getCsrfToken();
-        return d;
+
+  try {
+    employeesTable = $('#employeesTable').DataTable({
+      processing: false,
+      serverSide: false, // Client-side processing — data kecil, lebih reliable untuk search & pagination
+      dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+      ajax: {
+        url: '<?= base_url('service/area-management/getEmployees') ?>',
+        type: 'POST',
+        data: function(d) {
+          d[window.csrfTokenName] = window.getCsrfToken();
+          return d;
+        },
+        dataSrc: function(json) {
+          if (!json) { return []; }
+          if (json.error) {
+            console.error('Server error:', json.message);
+            if (window.OptimaNotify) OptimaNotify.error('Error loading employees: ' + json.message);
+            return [];
+          }
+          return json.data || [];
+        },
+        error: function(xhr, error, thrown) {
+          console.error('Employees AJAX error:', error, xhr.responseText);
+          if (window.OptimaNotify) {
+            OptimaNotify.error(error === 'timeout'
+              ? 'Request timeout. Coba refresh halaman.'
+              : 'Error loading employees: ' + error);
+          }
+        }
       },
-      dataSrc: function(json) {
-        console.log('Employees response:', json);
-        if (!json) {
-          console.error('No response from server');
-          return [];
+      columns: [
+        { data: 'staff_code', render: d => `<span class="employee-code">${d}</span>` },
+        { data: 'staff_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
+        {
+          data: 'staff_role',
+          render: function(data, type, row) {
+            if (!data) return '<span class="text-muted">N/A</span>';
+            return `<strong class="text-${roleBadgeColor(data)}">${data}</strong>`;
+          }
+        },
+        {
+          data: 'work_location',
+          render: function(data, type, row) {
+            if (!data || data === '-') return '<span class="text-muted">-</span>';
+            return `<strong class="text-${locationBadgeColor(data)}">${data}</strong>`;
+          }
+        },
+        { data: 'departemen', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
+        {
+          data: 'area_assignments',
+          orderable: false,
+          searchable: false,
+          render: function(data, type, row) {
+            if (!data || data.length === 0) {
+              return '<span class="text-warning">⚠️ Unassigned</span>';
+            }
+            const central = data.filter(a => a.area_type === 'CENTRAL');
+            const mill = data.filter(a => a.area_type === 'MILL');
+            let output = [];
+            if (central.length > 0) output.push(`<strong class="text-primary">${central.length} Central</strong>`);
+            if (mill.length > 0) output.push(`<strong class="text-success">${mill.length} Mill</strong>`);
+            return output.join(' | ');
+          }
         }
-        if (json.error) {
-          console.error('Server error:', json.message);
-          OptimaNotify.error('Error loading employees: ' + json.message);
-          return [];
-        }
-        return (json && json.data) ? json.data : [];
+      ],
+      order: [[1, 'asc']],
+      pageLength: 25,
+      language: {
+        emptyTable: "No employees found",
+        info: "Showing _START_ to _END_ of _TOTAL_ employees",
+        infoEmpty: "Showing 0 to 0 of 0 employees",
+        search: "Search:",
+        searchPlaceholder: "Search employees...",
+        lengthMenu: "Show _MENU_ entries"
       },
-      error: function(xhr, error, thrown) {
-        console.error('Employees AJAX error:', error, xhr.responseText);
-        if (error === 'timeout') {
-          OptimaNotify.error('Request timeout loading employees. Coba refresh halaman.');
-        } else {
-          OptimaNotify.error('Error loading employees: ' + error);
-        }
-        return [];
+      drawCallback: function(settings) {
+        $('#employeesTable tbody').off('click', 'tr').on('click', 'tr', function() {
+          const data = employeesTable.row(this).data();
+          if (data && data.id) viewEmployeeDetail(data.id);
+        });
+        $('#employeesTable tbody tr').hover(
+          function() { $(this).addClass('table-hover-row'); },
+          function() { $(this).removeClass('table-hover-row'); }
+        );
       }
-    },
-    columns: [
-      { data: 'staff_code', render: d => `<span class="employee-code">${d}</span>` },
-      { data: 'staff_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
-      { 
-        data: 'staff_role', 
-        render: function(data, type, row) {
-          if (!data) return '<span class="text-muted">N/A</span>';
-          return `<strong class="text-${roleBadgeColor(data)}">${data}</strong>`;
-        }
-      },
-      { 
-        data: 'work_location',
-        render: function(data, type, row) {
-          if (!data || data === '-') return '<span class="text-muted">-</span>';
-          return `<strong class="text-${locationBadgeColor(data)}">${data}</strong>`;
-        }
-      },
-      { data: 'departemen', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
-      { 
-        data: 'area_assignments',
-        orderable: false,
-        render: function(data, type, row) {
-          if (!data || data.length === 0) {
-            return '<span class="text-warning">⚠️ Unassigned</span>';
-          }
-          const central = data.filter(a => a.area_type === 'CENTRAL');
-          const mill = data.filter(a => a.area_type === 'MILL');
-          
-          let output = [];
-          if (central.length > 0) {
-            output.push(`<strong class="text-primary">${central.length} Central</strong>`);
-          }
-          if (mill.length > 0) {
-            output.push(`<strong class="text-success">${mill.length} Mill</strong>`);
-          }
-          return output.join(' | ');
-        }
-      }
-    ],
-    order: [[1,'asc']],
-    pageLength: 25,
-    language: {
-      emptyTable: "No employees found",
-      info: "Showing _START_ to _END_ of _TOTAL_ employees",
-      infoEmpty: "Showing 0 to 0 of 0 employees",
-      search: "Search:",
-      searchPlaceholder: "Search employees...",
-      lengthMenu: "Show _MENU_ entries"
-    },
-    drawCallback: function(settings) {
-      console.log('📊 Employees table draw completed');
-      // Add click event to table rows
-      $('#employeesTable tbody').off('click', 'tr').on('click', 'tr', function() {
-        const data = employeesTable.row(this).data();
-        if (data && data.id) {
-          viewEmployeeDetail(data.id);
-        }
-      });
-      // Add hover effect
-      $('#employeesTable tbody tr').hover(
-        function() { $(this).addClass('table-hover-row'); },
-        function() { $(this).removeClass('table-hover-row'); }
-      );
-    }
-  });
-  
-  // Add search event listener for debugging
-  $('#employeesTable').on('search.dt', function() {
-    const searchValue = employeesTable.search();
-    console.log('Employees table search triggered:', searchValue);
-  });
-  
-  // Ensure search input is properly bound
-  setTimeout(function() {
-    $('#employeesTable_wrapper div.dataTables_filter input').attr('placeholder', 'Search employees...');
-  }, 100);
+    });
+
+    setTimeout(function() {
+      $('#employeesTable_wrapper div.dataTables_filter input').attr('placeholder', 'Search employees...');
+    }, 100);
+
+  } catch (error) {
+    console.error('Error initializing Employees DataTable:', error);
+    $('#employeesTable').html('<div class="alert alert-danger">Error loading employees data. Please refresh the page.</div>');
+  }
 }
 
 /* ===================== CHARTS ===================== */
