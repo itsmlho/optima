@@ -680,7 +680,8 @@ if (!function_exists('getUserServiceAccess')) {
                     'departments' => [],
                     'has_full_access' => false,
                     'area_type' => $userAccess['area_type'] ?? 'ALL',
-                    'department_scope' => $userAccess['department_scope'] ?? 'ALL'
+                    'department_scope' => $userAccess['department_scope'] ?? 'ALL',
+                    'filter_mode' => ($userAccess['area_type'] ?? 'ALL') === 'BRANCH' ? 'BRANCH' : 'CENTRAL'
                 ];
                 
                 // Handle area filtering for service users with branch consideration
@@ -777,7 +778,8 @@ if (!function_exists('getDefaultServiceAccess')) {
         $scope = [
             'areas' => [],
             'departments' => [],
-            'has_full_access' => false
+            'has_full_access' => false,
+            'filter_mode' => ($accessType === 'MILL') ? 'BRANCH' : (($accessType === 'CENTRAL') ? 'CENTRAL' : 'ALL')
         ];
         
         try {

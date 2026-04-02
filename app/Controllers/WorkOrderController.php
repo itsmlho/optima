@@ -230,10 +230,20 @@ class WorkOrderController extends Controller
         // Exclude SOLD units (status_unit_id = 13)
         $builder->where('iu.status_unit_id !=', 13);
         
-        // Apply department scope filtering
+        // Apply scope filtering: BRANCH users filter by area_id, CENTRAL by departemen_id
         $scope = get_user_area_department_scope();
-        if ($scope !== null && !empty($scope['departments'])) {
-            $builder->whereIn('iu.departemen_id', array_map('intval', $scope['departments']));
+        if ($scope !== null) {
+            $filterMode = $scope['filter_mode'] ?? 'CENTRAL';
+            if ($filterMode === 'BRANCH') {
+                if (!empty($scope['areas'])) {
+                    $builder->whereIn('iu.area_id', array_map('intval', $scope['areas']));
+                } else {
+                    // BRANCH user with no assigned areas — see nothing
+                    $builder->where('iu.area_id', 0);
+                }
+            } elseif (!empty($scope['departments'])) {
+                $builder->whereIn('iu.departemen_id', array_map('intval', $scope['departments']));
+            }
         }
         
         $builder->orderBy('iu.no_unit', 'ASC');

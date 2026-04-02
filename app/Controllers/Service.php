@@ -926,6 +926,15 @@ class Service extends BaseController
     {
         try {
             $userId = session()->get('user_id');
+
+            // Block BRANCH (Service Area) users — SPK hanya untuk Service Pusat (CENTRAL)
+            $areaScope = get_user_area_department_scope();
+            if ($areaScope !== null && isset($areaScope['filter_mode']) && $areaScope['filter_mode'] === 'BRANCH') {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'success' => false,
+                    'message' => 'Akses SPK hanya untuk Service Pusat (CENTRAL). Service Area tidak memiliki akses ke modul SPK.'
+                ]);
+            }
             
             // SIMPLE FILTER: Cek divisi user
             // Service Diesel (division_id = 1) -> hanya lihat DIESEL (1) & GASOLINE (3)
@@ -1021,6 +1030,18 @@ class Service extends BaseController
         $length = $request->getPost('length') ?? 25;
         $search = $request->getPost('search')['value'] ?? '';
         $statusFilter = $request->getPost('status_filter') ?? 'all';
+
+        // Block BRANCH (Service Area) users — SPK hanya untuk Service Pusat (CENTRAL)
+        $areaScope = get_user_area_department_scope();
+        if ($areaScope !== null && isset($areaScope['filter_mode']) && $areaScope['filter_mode'] === 'BRANCH') {
+            return $this->response->setJSON([
+                'draw' => intval($draw),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Akses SPK hanya untuk Service Pusat (CENTRAL).'
+            ]);
+        }
 
         // Get division-based department filtering
         $allowedDeptIds = get_user_division_departments();

@@ -70,6 +70,12 @@ class SiloModel extends Model
             }
 
             $builder = $this->db->table($this->table . ' s');
+
+            // Be tolerant to schema differences between environments:
+            // some DBs might not have kontrak.customer_location_id.
+            $hasCustomerLocationId = $this->db->fieldExists('customer_location_id', 'kontrak');
+
+            if ($hasCustomerLocationId) {
                 $builder->select('s.*,
                     COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
                     iu.serial_number,
@@ -78,14 +84,33 @@ class SiloModel extends Model
                     c.customer_name as nama_perusahaan,
                     cl.address as alamat,
                     d.nama_departemen as departemen');
-            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
-            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
-            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
-            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
-            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+
+                $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+                $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+                $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+                $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+                $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+                $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+                $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+                $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            } else {
+                $builder->select('s.*,
+                    COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
+                    iu.serial_number,
+                    CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                    c.customer_name as nama_perusahaan,
+                    NULL as alamat,
+                    d.nama_departemen as departemen');
+
+                $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+                $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+                $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+                $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+                $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+                $builder->join('customers c', 'c.id = ktr.customer_id', 'left');
+                $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            }
 
             // Apply filters
             if (!empty($filters['status'])) {
@@ -138,7 +163,20 @@ class SiloModel extends Model
 
             $builder->orderBy('s.created_at', 'DESC');
 
-            return $builder->get()->getResultArray();
+            $query = $builder->get();
+            if ($query === false) {
+                $dbError = $this->db->error();
+                $code    = $dbError['code'] ?? 'N/A';
+                $message = $dbError['message'] ?? 'Unknown database error';
+
+                log_message(
+                    'error',
+                    "SiloModel::getAllWithUnit - Gagal mengeksekusi query. Kode: {$code}, Pesan DB: {$message}"
+                );
+                return [];
+            }
+
+            return $query->getResultArray();
         } catch (\Exception $e) {
             log_message('error', 'SiloModel::getAllWithUnit Error: ' . $e->getMessage());
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
@@ -164,20 +202,39 @@ class SiloModel extends Model
             
             // First, get all units
             $builder = $this->db->table('inventory_unit iu');
-            $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number, 
-                NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
-                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit, 
-                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
-                c.customer_name as nama_perusahaan,
-                cl.address as alamat,
-                d.nama_departemen as departemen');
-            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
-            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
-            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
-            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+
+            $hasCustomerLocationId = $this->db->fieldExists('customer_location_id', 'kontrak');
+
+            if ($hasCustomerLocationId) {
+                $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number, 
+                    NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
+                    CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit, 
+                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                    c.customer_name as nama_perusahaan,
+                    cl.address as alamat,
+                    d.nama_departemen as departemen');
+                $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+                $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+                $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+                $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+                $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+                $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+                $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            } else {
+                $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number, 
+                    NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
+                    CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit, 
+                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                    c.customer_name as nama_perusahaan,
+                    NULL as alamat,
+                    d.nama_departemen as departemen');
+                $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+                $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+                $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+                $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+                $builder->join('customers c', 'c.id = ktr.customer_id', 'left');
+                $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            }
 
             // Exclude units with status JUAL / SOLD (status_unit_id = 13), but keep NULL/other statuses
             $builder->groupStart();
@@ -264,33 +321,78 @@ class SiloModel extends Model
     public function getByIdWithUnit($siloId)
     {
         $builder = $this->db->table($this->table . ' s');
-        $builder->select('s.*, 
-            iu.no_unit, 
-            iu.serial_number,
-            iu.tahun_unit,
-            iu.lokasi_unit,
-            tu.tipe as tipe_unit,
-            tu.jenis as jenis_unit,
-            CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
-            CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit_full,
-            k.kapasitas_unit,
-            d.nama_departemen as departemen,
-            c.customer_name as nama_perusahaan,
-            cl.address as alamat,
-            cl.city as kota,
-            cl.province as provinsi');
-        $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
-        $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
-        $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
-        $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
-        $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
-        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
-        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
-        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+
+        $hasCustomerLocationId = $this->db->fieldExists('customer_location_id', 'kontrak');
+
+        if ($hasCustomerLocationId) {
+            $builder->select('s.*, 
+                iu.no_unit, 
+                iu.serial_number,
+                iu.tahun_unit,
+                iu.lokasi_unit,
+                tu.tipe as tipe_unit,
+                tu.jenis as jenis_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit_full,
+                k.kapasitas_unit,
+                d.nama_departemen as departemen,
+                c.customer_name as nama_perusahaan,
+                cl.address as alamat,
+                cl.city as kota,
+                cl.province as provinsi');
+
+            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        } else {
+            $builder->select('s.*, 
+                iu.no_unit, 
+                iu.serial_number,
+                iu.tahun_unit,
+                iu.lokasi_unit,
+                tu.tipe as tipe_unit,
+                tu.jenis as jenis_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit_full,
+                k.kapasitas_unit,
+                d.nama_departemen as departemen,
+                c.customer_name as nama_perusahaan,
+                NULL as alamat,
+                NULL as kota,
+                NULL as provinsi');
+
+            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customers c', 'c.id = ktr.customer_id', 'left');
+        }
+
         $builder->where('s.id_silo', $siloId);
 
-        return $builder->get()->getRowArray();
+        $query = $builder->get();
+        if ($query === false) {
+            $dbError = $this->db->error();
+            $code    = $dbError['code'] ?? 'N/A';
+            $message = $dbError['message'] ?? 'Unknown database error';
+
+            log_message(
+                'error',
+                "SiloModel::getByIdWithUnit - Gagal mengeksekusi query. Kode: {$code}, Pesan DB: {$message}"
+            );
+            return null;
+        }
+
+        return $query->getRowArray();
     }
 
     /**
