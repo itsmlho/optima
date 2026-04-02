@@ -327,25 +327,64 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'invoice_number' },
-            { data: 'customer_name' },
-            { data: 'contract_number' },
+            { 
+                data: 'invoice_number',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
+            { 
+                data: 'customer_name',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
+            { 
+                data: 'contract_number',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
             { 
                 data: 'total_amount',
-                render: function(data) {
-                    return 'Rp ' + new Intl.NumberFormat('id-ID').format(data);
+                render: function(data, type, row, meta) {
+                    let s = 'Rp ' + new Intl.NumberFormat('id-ID').format(data);
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             { 
                 data: 'issue_date',
-                render: function(data) {
-                    return new Date(data).toLocaleDateString('id-ID');
+                render: function(data, type, row, meta) {
+                    let s = new Date(data).toLocaleDateString('id-ID');
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             { 
                 data: 'due_date',
-                render: function(data) {
-                    return new Date(data).toLocaleDateString('id-ID');
+                render: function(data, type, row, meta) {
+                    let s = new Date(data).toLocaleDateString('id-ID');
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             { 
@@ -356,9 +395,13 @@ $(document).ready(function() {
             },
             { 
                 data: 'status',
-                render: function(data) {
+                render: function(data, type, row, meta) {
                     const label = invI18n.statusLabels[data] || data;
-                    return `<span class="status-badge status-${data.toLowerCase()}">${label}</span>`;
+                    let lab = label;
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        lab = OptimaSearch.highlightForMeta(meta, String(lab));
+                    }
+                    return `<span class="status-badge status-${data.toLowerCase()}">${lab}</span>`;
                 }
             },
             { 

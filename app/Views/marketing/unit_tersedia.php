@@ -164,13 +164,58 @@ function initMarketingTable(){
                 },
                 order:[[0,'asc']],
                 columns:[
-                        {data:'no_unit', render:d=> d? `<strong>${d}</strong>`:'-'},
-                        {data:'serial_number'},
-                        {data:null, render:r=>`<div class='brand-cell'><span class='brand'>${r.brand||'-'}</span><span class='model'>${r.model||''}</span></div>`},
-                        {data:'type_full'},
-                        {data:'capacity'},
-                        {data:'lokasi_unit'},
-                        {data:'nama_departemen', render:d=> d||'-'},
+                        {data:'no_unit', render:function(d,type,r,meta){
+                                if(!d) return '-';
+                                let lab = String(d);
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    lab = OptimaSearch.highlightForMeta(meta, lab);
+                                }
+                                return `<strong>${lab}</strong>`;
+                        }},
+                        {data:'serial_number', render:function(d,type,r,meta){
+                                let t = d || '';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:null, render:function(data,type,row,meta){
+                                let b = row.brand||'-';
+                                let m = row.model||'';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    b = OptimaSearch.highlightForMeta(meta, b);
+                                    m = OptimaSearch.highlightForMeta(meta, m);
+                                }
+                                return `<div class='brand-cell'><span class='brand'>${b}</span><span class='model'>${m}</span></div>`;
+                        }},
+                        {data:'type_full', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:'capacity', render:function(d,type,r,meta){
+                                let t = d != null && d !== '' ? String(d) : '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:'lokasi_unit', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:'nama_departemen', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
                         {data:'status_id', orderable:false, render:id=> statusBadge(id)},
                         {data:null, orderable:false, searchable:false, render:r=> actionMenu(r.id)}
                 ],

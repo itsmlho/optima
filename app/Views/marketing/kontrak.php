@@ -632,25 +632,51 @@ function initializeContractsTable() {
         columns: [
             { 
                 data: 'contract_number',
-                render: function(data, type, row) {
-                    const customerName = row.client_name || '—';
-                    const contractNo = data || '—';
-                    const poNo = row.po ? `<br><small class="text-muted"><i class="fas fa-file-invoice me-1"></i>PO: ${row.po}</small>` : '';
+                render: function(data, type, row, meta) {
+                    let customerName = row.client_name || '—';
+                    let contractNo   = data || '—';
+                    let poLabel      = row.po ? `PO: ${row.po}` : '';
+
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        customerName = OptimaSearch.highlightForMeta(meta, customerName);
+                        contractNo   = OptimaSearch.highlightForMeta(meta, contractNo);
+                        if (poLabel) {
+                            poLabel = OptimaSearch.highlightForMeta(meta, poLabel);
+                        }
+                    }
+
+                    const poNo = poLabel
+                        ? `<br><small class="text-muted"><i class="fas fa-file-invoice me-1"></i>${poLabel}</small>`
+                        : '';
+
                     return `<div class="fw-semibold">${customerName}</div>
                             <small class="text-muted font-monospace">${contractNo}</small>${poNo}`;
                 }
             },
-            { data: 'rental_type' },
+            { 
+                data: 'rental_type',
+                render: function(data, type, row, meta) {
+                    let label = data || '—';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        label = OptimaSearch.highlightForMeta(meta, label);
+                    }
+                    return label;
+                }
+            },
             { 
                 data: 'jenis_sewa',
-                render: function(data) {
+                render: function(data, type, row, meta) {
                     const map = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
-                    return map[data] || data || '—';
+                    let label = map[data] || data || '—';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        label = OptimaSearch.highlightForMeta(meta, label);
+                    }
+                    return label;
                 }
             },
             { 
                 data: 'period',
-                render: function(data, type, row) {
+                render: function(data, type, row, meta) {
                     // Fix invalid dates (year <= 0 or null)
                     function safeDate(str) {
                         if (!str) return null;
@@ -662,8 +688,8 @@ function initializeContractsTable() {
                     const endStr   = row.end_date   || null;
                     const start = safeDate(startStr);
                     const end   = safeDate(endStr);
-                    const startLabel = start ? start.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '—';
-                    const endLabel   = end   ? end.toLocaleDateString('id-ID',   {day:'2-digit', month:'short', year:'numeric'}) : 'Open-ended';
+                    let startLabel = start ? start.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+                    let endLabel   = end   ? end.toLocaleDateString('id-ID',   {day:'2-digit', month:'short', year:'numeric'}) : 'Open-ended';
                     
                     let daysHtml = '';
                     if (end && row.status === 'ACTIVE') {
@@ -679,6 +705,10 @@ function initializeContractsTable() {
                             daysHtml = `<br><span class="badge badge-soft-cyan">${days}h lagi</span>`;
                         }
                     }
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        startLabel = OptimaSearch.highlightForMeta(meta, startLabel);
+                        endLabel   = OptimaSearch.highlightForMeta(meta, endLabel);
+                    }
                     return `<small>${startLabel} – ${endLabel}</small>${daysHtml}`;
                 }
             },
@@ -692,9 +722,13 @@ function initializeContractsTable() {
             { 
                 data: 'value', 
                 className: 'text-end',
-                render: function(data, type, row) {
+                render: function(data, type, row, meta) {
                     if (!data || data === '—') return '—';
-                    return `<span class="text-success fw-semibold">${data}</span>`;
+                    let v = String(data);
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        v = OptimaSearch.highlightForMeta(meta, v);
+                    }
+                    return `<span class="text-success fw-semibold">${v}</span>`;
                 }
             },
             { data: 'status' },

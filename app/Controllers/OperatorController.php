@@ -102,6 +102,7 @@ class OperatorController extends BaseController
             // Build query with search
             $builder = $this->operatorModel->builder();
             $builder->select('operators.*');
+            $builder->where('operators.deleted_at IS NULL', null, false);
             
             if (!empty($searchValue)) {
                 $builder->groupStart()
@@ -118,6 +119,7 @@ class OperatorController extends BaseController
             // Rebuild query for actual data (needed because get() consumes the builder)
             $builder = $this->operatorModel->builder();
             $builder->select('operators.*');
+            $builder->where('operators.deleted_at IS NULL', null, false);
             
             if (!empty($searchValue)) {
                 $builder->groupStart()

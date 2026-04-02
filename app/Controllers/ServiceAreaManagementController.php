@@ -840,6 +840,7 @@ class ServiceAreaManagementController extends BaseController
             $assignmentBuilder->select('aea.*, a.area_name, a.area_code');
             $assignmentBuilder->join('areas a', 'aea.area_id = a.id');
             $assignmentBuilder->where('aea.employee_id', $id);
+            $assignmentBuilder->where('aea.deleted_at IS NULL', null, false);
             $assignmentBuilder->orderBy('aea.assignment_type', 'ASC');
             
             $assignments = $assignmentBuilder->get()->getResultArray();

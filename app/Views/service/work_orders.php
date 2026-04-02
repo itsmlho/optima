@@ -1771,6 +1771,7 @@ $(document).ready(function() {
                 $.ajax({
                     url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
+                    data: {[window.csrfTokenName]: window.getCsrfToken()},
                     success: function(response) {
                         // console.log('✅ Delete response:', response);
                         if (response.success) {
@@ -1808,6 +1809,7 @@ $(document).ready(function() {
                 $.ajax({
                     url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
+                    data: {[window.csrfTokenName]: window.getCsrfToken()},
                     success: function(response) {
                         if (response.success) {
                             showAlert('success', response.message);

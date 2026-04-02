@@ -476,14 +476,59 @@ function initSvc(){
                 },
                 order:[[0,'asc']],
                 columns:[
-                        {data:'no_unit', render:d=> d?`<strong>${d}</strong>`:'-'},
-                        {data:'serial_number'},
-                        {data:null, render:r=>`<div class='small'><span class='fw-semibold'>${r.merk_unit||'-'}</span><br><span class='text-muted'>${r.model_unit||''}</span></div>`},
-                        {data:'tipe_full'},
-                        {data:'kapasitas_unit'},
+                        {data:'no_unit', render:function(d,type,r,meta){
+                                if(!d) return '-';
+                                let lab = String(d);
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    lab = OptimaSearch.highlightForMeta(meta, lab);
+                                }
+                                return `<strong>${lab}</strong>`;
+                        }},
+                        {data:'serial_number', render:function(d,type,r,meta){
+                                let t = d || '';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:null, render:function(data, type, row, meta){
+                                let merk = row.merk_unit || '-';
+                                let model = row.model_unit || '';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    merk = OptimaSearch.highlightForMeta(meta, merk);
+                                    model = OptimaSearch.highlightForMeta(meta, model);
+                                }
+                                return `<div class='small'><span class='fw-semibold'>${merk}</span><br><span class='text-muted'>${model}</span></div>`;
+                        }},
+                        {data:'tipe_full', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:'kapasitas_unit', render:function(d,type,r,meta){
+                                let t = d != null && d !== '' ? String(d) : '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
                         {data:null, render:r=>svcStatusBadge(r.status_unit_id,r.status_unit_name)},
-                        {data:'lokasi_unit'},
-                        {data:'nama_departemen'},
+                        {data:'lokasi_unit', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
+                        {data:'nama_departemen', render:function(d,type,r,meta){
+                                let t = d || '-';
+                                if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                                    t = OptimaSearch.highlightForMeta(meta, t);
+                                }
+                                return t;
+                        }},
                         {data:null, orderable:false, searchable:false, render:r=>svcActions(r.id)}
                 ],
                 dom:'rtip'

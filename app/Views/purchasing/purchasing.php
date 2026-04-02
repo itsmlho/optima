@@ -3143,6 +3143,7 @@ function deletePO(poId, event) {
             $.ajax({
                 type: 'DELETE',
                 url: '<?= base_url('/purchasing/delete-po/') ?>' + poId,
+                data: {[window.csrfTokenName]: window.getCsrfToken()},
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {

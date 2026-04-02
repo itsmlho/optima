@@ -283,8 +283,21 @@
             return item.text;
         }
 
+        var term = '';
+        try {
+            var $search = $('.select2-container--open .select2-search__field:focus');
+            term = ($search.val() || '').trim();
+        } catch (e) {
+            term = '';
+        }
+
+        var line1 = line1FromRow(row);
+        if (global.OptimaSearch && typeof global.OptimaSearch.highlightText === 'function' && term) {
+            line1 = global.OptimaSearch.highlightText(line1, term);
+        }
+
         var $container = $('<div class="d-flex flex-column lh-sm"></div>');
-        $container.append($('<div class="fw-semibold"></div>').text(line1FromRow(row)));
+        $container.append($('<div class="fw-semibold"></div>').html(line1));
 
         var jenis = (row.jenis || '').trim();
         var sn = (row.serial_number || '').trim();
@@ -296,8 +309,11 @@
         if (sn) {
             line2Parts.push('SN : ' + sn);
         }
-        var $line2 = $('<div class="small"></div>');
-        $line2.text(line2Parts.length ? line2Parts.join(' · ') : '—');
+        var line2Text = line2Parts.length ? line2Parts.join(' · ') : '—';
+        if (global.OptimaSearch && typeof global.OptimaSearch.highlightText === 'function' && term) {
+            line2Text = global.OptimaSearch.highlightText(line2Text, term);
+        }
+        var $line2 = $('<div class="small"></div>').html(line2Text);
 
         var status = (row.status || '—').trim();
         var loc = (row.lokasi && String(row.lokasi).trim()) ? String(row.lokasi).trim() : 'N/A';
@@ -306,7 +322,12 @@
         $line3.append($('<span class="badge ' + badgeCls + '"></span>').text(status));
         var $loc = $('<span class="d-inline-flex align-items-center"></span>');
         $loc.append($('<i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>'));
-        $loc.append(document.createTextNode(loc));
+        if (global.OptimaSearch && typeof global.OptimaSearch.highlightText === 'function' && term) {
+            loc = global.OptimaSearch.highlightText(loc, term);
+            $loc.append($('<span></span>').html(loc));
+        } else {
+            $loc.append(document.createTextNode(loc));
+        }
         $line3.append($loc);
         $container.append($line2, $line3);
 

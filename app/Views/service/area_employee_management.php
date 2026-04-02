@@ -642,6 +642,7 @@
               <option value="ADMIN">Admin</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="FOREMAN">Foreman</option>
+              <option value="MECHANIC">Mechanic</option>
               <option value="MECHANIC_SERVICE_AREA">Mechanic - Service Area</option>
               <option value="MECHANIC_UNIT_PREP">Mechanic - Unit Preparation</option>
               <option value="MECHANIC_FABRICATION">Mechanic - Fabrication</option>
@@ -1143,8 +1144,26 @@ function initializeAreaTable() {
         }
       },
     columns: [
-      { data: 'area_code', render: d => `<span class="employee-code">${d}</span>` },
-      { data: 'area_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
+      { 
+        data: 'area_code',
+        render: function(d, type, row, meta) {
+          let label = d || '';
+          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+            label = OptimaSearch.highlightForMeta(meta, label);
+          }
+          return `<span class="employee-code">${label}</span>`;
+        }
+      },
+      { 
+        data: 'area_name',
+        render: function(d, type, row, meta) {
+          let label = d || '';
+          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+            label = OptimaSearch.highlightForMeta(meta, label);
+          }
+          return `<span class="text-dark font-weight-medium">${label}</span>`;
+        }
+      },
       { 
         data: 'area_type', 
         render: function(data, type, row) {
@@ -1168,8 +1187,30 @@ function initializeAreaTable() {
           return typeBadge + deptBadge;
         }
       },
-      { data: 'description', render: d => d ? (d.length > 50 ? `<span class="text-dark">${d.substring(0,50)}</span><span class="text-muted">…</span>` : `<span class="text-dark">${d}</span>`) : '<span class="text-muted">-</span>' },
-      { data: 'customers_count', render: d => `<strong class="text-dark">${d || 0}</strong>` },
+      { 
+        data: 'description',
+        render: function(d, type, row, meta) {
+          if (!d) return '<span class="text-muted">-</span>';
+          let short = d.length > 50 ? d.substring(0,50) : d;
+          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+            short = OptimaSearch.highlightForMeta(meta, short);
+          }
+          if (d.length > 50) {
+            return `<span class="text-dark">${short}</span><span class="text-muted">…</span>`;
+          }
+          return `<span class="text-dark">${short}</span>`;
+        }
+      },
+      { 
+        data: 'customers_count',
+        render: function(d, type, row, meta) {
+          let label = String(d || 0);
+          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+            label = OptimaSearch.highlightForMeta(meta, label);
+          }
+          return `<strong class="text-dark">${label}</strong>`;
+        }
+      },
       { 
         data: null, 
         orderable: false,
@@ -1272,8 +1313,26 @@ function initializeEmployeeTable() {
         }
       },
       columns: [
-        { data: 'staff_code', render: d => `<span class="employee-code">${d}</span>` },
-        { data: 'staff_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
+        { 
+          data: 'staff_code',
+          render: function(d, type, row, meta) {
+            let label = d || '';
+            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+              label = OptimaSearch.highlightForMeta(meta, label);
+            }
+            return `<span class="employee-code">${label}</span>`;
+          }
+        },
+        { 
+          data: 'staff_name',
+          render: function(d, type, row, meta) {
+            let label = d || '';
+            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+              label = OptimaSearch.highlightForMeta(meta, label);
+            }
+            return `<span class="text-dark font-weight-medium">${label}</span>`;
+          }
+        },
         {
           data: 'staff_role',
           render: function(data, type, row) {
@@ -1283,12 +1342,26 @@ function initializeEmployeeTable() {
         },
         {
           data: 'work_location',
-          render: function(data, type, row) {
+          render: function(data, type, row, meta) {
             if (!data || data === '-') return '<span class="text-muted">-</span>';
-            return `<strong class="text-${locationBadgeColor(data)}">${data}</strong>`;
+            let label = data;
+            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+              label = OptimaSearch.highlightForMeta(meta, label);
+            }
+            return `<strong class="text-${locationBadgeColor(data)}">${label}</strong>`;
           }
         },
-        { data: 'departemen', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
+        { 
+          data: 'departemen',
+          render: function(d, type, row, meta) {
+            if (!d) return '<span class="text-muted">-</span>';
+            let label = d;
+            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+              label = OptimaSearch.highlightForMeta(meta, label);
+            }
+            return `<span class="text-dark">${label}</span>`;
+          }
+        },
         {
           data: 'area_assignments',
           orderable: false,
@@ -1495,7 +1568,7 @@ function bindForms() {
     const $errorDiv = $form.find('.form-errors');
     $errorDiv.html('').hide();
     
-    $.post('<?= base_url('service/area-management/saveArea') ?>', $form.serialize(), function(resp){
+    $.post('<?= base_url('service/area-management/saveArea') ?>', $form.serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken(), function(resp){
       if (resp.success) {
         $('#addAreaModal').modal('hide');
         notify('Area created successfully','success');
@@ -1524,7 +1597,7 @@ function bindForms() {
     
     $form.find('.form-errors').html('').hide();
     
-    $.post('<?= base_url('service/area-management/saveEmployee') ?>', $form.serialize(), function(resp){
+    $.post('<?= base_url('service/area-management/saveEmployee') ?>', $form.serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken(), function(resp){
       if (resp.success) {
         // Success: close modal, show notification, refresh table
         $('#addEmployeeModal').modal('hide');
@@ -1631,7 +1704,7 @@ function bindForms() {
   });
   
   function submitAssignmentForm($form) {
-    $.post('<?= base_url('service/area-management/storeAssignment') ?>', $form.serialize(), function(resp){
+    $.post('<?= base_url('service/area-management/storeAssignment') ?>', $form.serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken(), function(resp){
       if (resp.success) {
         $('#addAssignmentModal').modal('hide');
         notify('Assignment created','success');
@@ -1723,6 +1796,7 @@ function deleteArea(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
     type: 'DELETE',
+    data: {[window.csrfTokenName]: window.getCsrfToken()},
     success: function(resp){
       if (resp.success) {
         notify('Area berhasil dihapus','success');
@@ -1773,6 +1847,7 @@ function deleteEmployee(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
     type: 'DELETE',
+    data: {[window.csrfTokenName]: window.getCsrfToken()},
     success: function(resp){
       if (resp.success) {
         notify('Karyawan berhasil dinonaktifkan','success');
@@ -1959,6 +2034,7 @@ function removeAssignment(id) {
   $.ajax({
     url: `<?= base_url('service/area-management/deleteAssignment') ?>/${id}`,
     type: 'DELETE',
+    data: {[window.csrfTokenName]: window.getCsrfToken()},
     success: function(resp){
       console.log('🗑️ Delete assignment response:', resp);
       if (resp.success) {
@@ -2087,12 +2163,10 @@ function editEmployee(id) {
     $('#edit_staff_id').val(e.id);
     $('#edit_staff_code').val(e.staff_code);
     $('#edit_staff_name').val(e.staff_name);
-    $('#edit_staff_role').val(e.role);
+    $('#edit_staff_role').val(e.role); // 'role' = alias for staff_role from showEmployee
+    $('#edit_job_description').val(e.description || ''); // 'description' = alias for job_description
+    $('#edit_work_location').val(e.work_location || '');
     $('#edit_staff_departemen_id').val(e.departemen_id || '');
-    $('#edit_staff_phone').val(e.phone || '');
-    $('#edit_staff_email').val(e.email || '');
-    $('#edit_staff_address').val(e.address || '');
-    $('#edit_staff_description').val(e.description || '');
     $('#editEmployeeModal').modal('show');
   });
 }
@@ -2121,7 +2195,7 @@ function editAssignment(id) {
 $('#editAreaForm').on('submit', function(e){
   e.preventDefault();
   const id = $('#edit_area_id').val();
-  const formData = $(this).serialize();
+  const formData = $(this).serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken();
   
   $.post(`<?= base_url('service/area-management/updateArea') ?>/${id}`, formData, function(resp){
     if(resp.success){
@@ -2148,7 +2222,7 @@ $('#editAreaForm').on('submit', function(e){
 $('#editEmployeeForm').on('submit', function(e){
   e.preventDefault();
   const id = $('#edit_staff_id').val();
-  const formData = $(this).serialize();
+  const formData = $(this).serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken();
   
   $.post(`<?= base_url('service/area-management/updateEmployee') ?>/${id}`, formData, function(resp){
     if(resp.success){
@@ -2175,7 +2249,7 @@ $('#editEmployeeForm').on('submit', function(e){
 $('#editAssignmentForm').on('submit', function(e){
   e.preventDefault();
   const id = $('#edit_assignment_id').val();
-  $.post(`<?= base_url('service/area-management/updateAssignment') ?>/${id}`, $(this).serialize(), function(resp){
+  $.post(`<?= base_url('service/area-management/updateAssignment') ?>/${id}`, $(this).serialize() + '&' + window.csrfTokenName + '=' + window.getCsrfToken(), function(resp){
     if(resp.success){
       notify('Assignment updated','success');
       $('#editAssignmentModal').modal('hide');
@@ -2362,11 +2436,9 @@ function editEmployeeFromDetail() {
       $('#edit_staff_code').val(emp.staff_code || '');
       $('#edit_staff_name').val(emp.staff_name || '');
       $('#edit_staff_role').val(emp.staff_role || '');
+      $('#edit_job_description').val(emp.job_description || '');
+      $('#edit_work_location').val(emp.work_location || '');
       $('#edit_staff_departemen_id').val(emp.departemen_id || '');
-      $('#edit_staff_phone').val(emp.phone || '');
-      $('#edit_staff_email').val(emp.email || '');
-      $('#edit_staff_address').val(emp.address || '');
-      $('#edit_staff_description').val(emp.description || '');
       
       // Show edit modal
       $('#editEmployeeModal').modal('show');

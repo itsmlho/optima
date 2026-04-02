@@ -152,8 +152,12 @@ $(document).ready(function() {
         columns: [
             { 
                 data: 'sparepart_name',
-                render: function(data, type, row) {
-                    return `<strong>${escapeHtml(data)}</strong>`;
+                render: function(data, type, row, meta) {
+                    let inner = escapeHtml(data || '');
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        inner = OptimaSearch.highlightForMeta(meta, inner);
+                    }
+                    return `<strong>${inner}</strong>`;
                 }
             },
             { 
@@ -183,14 +187,22 @@ $(document).ready(function() {
             },
             { 
                 data: 'first_used',
-                render: function(data) {
-                    return data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                render: function(data, type, row, meta) {
+                    let s = data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             { 
                 data: 'last_used',
-                render: function(data) {
-                    return data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                render: function(data, type, row, meta) {
+                    let s = data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             {

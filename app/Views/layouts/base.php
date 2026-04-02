@@ -2449,6 +2449,20 @@ $currentLang = service('request')->getLocale();
             const term = getTableSearch(table);
             return highlightText(text, term);
         };
+        /**
+         * Use inside DataTables column render(data, type, row, meta) so search term is correct
+         * even on the first draw (table variable may not be assigned yet).
+         */
+        window.OptimaSearch.highlightForMeta = function(meta, text) {
+            const t = text == null ? '' : String(text);
+            try {
+                if (meta && meta.settings && window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
+                    const api = new jQuery.fn.dataTable.Api(meta.settings);
+                    return highlightText(t, getTableSearch(api));
+                }
+            } catch (e) { /* ignore */ }
+            return highlightText(t, '');
+        };
         window.OptimaSearch.highlightInElement = function(rootEl, term, selector) {
             if (!rootEl || !term) return;
             const elements = selector ? rootEl.querySelectorAll(selector) : [rootEl];
@@ -2459,12 +2473,117 @@ $currentLang = service('request')->getLocale();
     })();
     </script>
 
-    <!-- Global DataTables search highlight hook (text-only cells) -->
+    <!-- Global DataTables search highlight hook -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (!window.OptimaSearch || typeof OptimaSearch.highlightText !== 'function') {
             return;
         }
+
+        /**
+         * Safe post-draw highlighting for common DataTables cell shapes:
+         *   1. Plain text td
+         *   2. One child DIV/SPAN that only contains BR + text leaves (SPAN/SMALL/STRONG/A)
+         *   3. One text leaf (span/strong/div/...) with no element children
+         *   4. Multiple top-level text leaves (e.g. div + small) with no icons inside
+         */
+        var TEXT_TAGS = { SPAN: true, STRONG: true, SMALL: true, DIV: true, A: true };
+
+        function isSkipClass(cls) {
+            return /\bbtn\b/.test(cls) || /\bbadge\b/.test(cls);
+        }
+
+        function tryHighlightCell(td, term) {
+            // Column render already applied OptimaSearch (e.g. highlightForMeta) — do not post-process
+            if (term && td.querySelector && td.querySelector('.optima-search-highlight')) {
+                return;
+            }
+            // Case 1: plain text, no child elements
+            if (td.children.length === 0) {
+                var raw = td.textContent || '';
+                if (!term) {
+                    td.textContent = raw;
+                } else {
+                    td.innerHTML = OptimaSearch.highlightText(raw, term);
+                }
+                return;
+            }
+
+            if (td.children.length === 1) {
+                var root = td.children[0];
+                // Case 2b: single DIV/SPAN container with only BR + plain text element leaves (brand/model rows)
+                if (root.tagName === 'DIV' || root.tagName === 'SPAN') {
+                    var leaves = [];
+                    var okLeaves = true;
+                    for (var i = 0; i < root.children.length; i++) {
+                        var el = root.children[i];
+                        if (el.tagName === 'BR') continue;
+                        if (!TEXT_TAGS[el.tagName] || el.children.length > 0) {
+                            okLeaves = false;
+                            break;
+                        }
+                        if (isSkipClass(el.className || '')) {
+                            okLeaves = false;
+                            break;
+                        }
+                        leaves.push(el);
+                    }
+                    if (okLeaves && leaves.length > 0) {
+                        leaves.forEach(function(ch) {
+                            var rawText = ch.textContent || '';
+                            if (!term) {
+                                ch.textContent = rawText;
+                            } else {
+                                ch.innerHTML = OptimaSearch.highlightText(rawText, term);
+                            }
+                        });
+                        return;
+                    }
+                }
+                // Case 2a: single text leaf, no sub-elements
+                if (TEXT_TAGS[root.tagName] && root.children.length === 0) {
+                    if (isSkipClass(root.className || '')) return;
+                    var rawText2 = root.textContent || '';
+                    if (!term) {
+                        root.textContent = rawText2;
+                    } else {
+                        root.innerHTML = OptimaSearch.highlightText(rawText2, term);
+                    }
+                    return;
+                }
+                return;
+            }
+
+            // Case 2c: multiple top-level text leaves (no icons/badges in those nodes)
+            if (td.children.length >= 2) {
+                var parts = [];
+                var okMulti = true;
+                for (var j = 0; j < td.children.length; j++) {
+                    var c2 = td.children[j];
+                    if (c2.tagName === 'BR') continue;
+                    if (!TEXT_TAGS[c2.tagName] || c2.children.length > 0) {
+                        okMulti = false;
+                        break;
+                    }
+                    if (isSkipClass(c2.className || '')) {
+                        okMulti = false;
+                        break;
+                    }
+                    parts.push(c2);
+                }
+                if (okMulti && parts.length > 0) {
+                    parts.forEach(function(ch) {
+                        var rt = ch.textContent || '';
+                        if (!term) {
+                            ch.textContent = rt;
+                        } else {
+                            ch.innerHTML = OptimaSearch.highlightText(rt, term);
+                        }
+                    });
+                }
+            }
+        }
+
         // Apply highlight on every DataTables draw event
         $(document).on('draw.dt', function(e, settings) {
             try {
@@ -2473,22 +2592,21 @@ $currentLang = service('request')->getLocale();
                 var wrapper = $(tableEl).closest('.dataTables_wrapper');
                 var input = wrapper.find('.dataTables_filter input[type="search"]');
                 var term = (input.val() || '').trim();
+                if (!term && settings && settings.oPreviousSearch && settings.oPreviousSearch.sSearch) {
+                    term = String(settings.oPreviousSearch.sSearch || '').trim();
+                }
 
-                var cells = tableEl.querySelectorAll('tbody td');
-                cells.forEach(function(td) {
-                    // Only touch simple text cells (no nested elements) to avoid breaking badges/buttons
-                    if (td.children.length > 0) return;
-                    var rawText = td.textContent || '';
-                    if (!term) {
-                        // Clear previous highlight by resetting to plain text
-                        td.textContent = rawText;
-                    } else {
-                        td.innerHTML = OptimaSearch.highlightText(rawText, term);
-                    }
+                tableEl.querySelectorAll('tbody td').forEach(function(td) {
+                    tryHighlightCell(td, term);
                 });
             } catch (err) {
                 console.error('DataTable highlight error:', err);
             }
+        });
+
+        // Also apply on DataTables search event (for instant feedback)
+        $(document).on('search.dt', function(e, settings) {
+            // draw.dt fires after search.dt, so no need to duplicate — handled above
         });
     });
     </script>

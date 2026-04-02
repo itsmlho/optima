@@ -247,17 +247,34 @@ $(document).ready(function() {
             { 
                 data: 'no_unit',
                 className: 'ps-3 fw-bold',
-                render: function(data, type, row) {
+                render: function(data, type, row, meta) {
                     if (!data) return '<span class="badge badge-soft-gray">TEMP-' + row.id_inventory_unit + '</span>';
-                    return `<a href="<?= base_url('warehouse/inventory/unit/') ?>${row.id_inventory_unit}" class="text-decoration-none text-success">${data}</a>`;
+                    let label = String(data);
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        label = OptimaSearch.highlightForMeta(meta, label);
+                    }
+                    return `<a href="<?= base_url('warehouse/inventory/unit/') ?>${row.id_inventory_unit}" class="text-decoration-none text-success">${label}</a>`;
                 }
             },
-            { data: 'serial_number' },
+            { 
+                data: 'serial_number',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
             { 
                 data: null,
-                render: function(data, type, row) {
+                render: function(data, type, row, meta) {
                     let brand = row.merk_unit || '-';
                     let model = row.model_unit || '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        brand = OptimaSearch.highlightForMeta(meta, brand);
+                        model = OptimaSearch.highlightForMeta(meta, model);
+                    }
                     return `
                         <div class="d-flex flex-column">
                             <span class="fw-semibold text-dark">${brand}</span>
@@ -266,7 +283,16 @@ $(document).ready(function() {
                     `;
                 }
             },
-            { data: 'nama_departemen', render: data => data || '-' },
+            { 
+                data: 'nama_departemen',
+                render: function(data, type, row, meta) {
+                    let t = data || '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
             { 
                 data: 'status_unit_name',
                 render: function(data, type, row) {
@@ -300,28 +326,38 @@ $(document).ready(function() {
             },
             { 
                 data: 'lokasi_unit', 
-                render: function(data, type, row) {
+                render: function(data, type, row, meta) {
                     const sid = parseInt(row.status_unit_id, 10);
+                    const hl = function(txt) {
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            return OptimaSearch.highlightForMeta(meta, String(txt));
+                        }
+                        return String(txt);
+                    };
                     if (sid === 7 && data) {
-                        return '<div class="text-success fw-bold"><i class="fas fa-building me-1"></i> Rented Area</div><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>' + data + '</small>';
+                        return '<div class="text-success fw-bold"><i class="fas fa-building me-1"></i> ' + hl('Rented Area') + '</div><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>' + hl(data) + '</small>';
                     }
                     if (sid === 10) {
-                        return '<div class="text-danger"><i class="fas fa-tools me-2"></i>' + (data || 'Workshop') + '</div>';
+                        return '<div class="text-danger"><i class="fas fa-tools me-2"></i>' + hl(data || 'Workshop') + '</div>';
                     }
                     if (sid === 11) {
-                        return '<div class="text-danger"><i class="fas fa-wrench me-2"></i>' + (data || 'Workshop') + '</div>';
+                        return '<div class="text-danger"><i class="fas fa-wrench me-2"></i>' + hl(data || 'Workshop') + '</div>';
                     }
                     if (sid === 16) {
-                        return '<div class="text-muted"><i class="fas fa-ban me-2"></i>' + (data || '-') + '</div>';
+                        return '<div class="text-muted"><i class="fas fa-ban me-2"></i>' + hl(data || '-') + '</div>';
                     }
-                    return '<div class="d-flex align-items-center"><i class="fas fa-warehouse text-muted me-2"></i> ' + (data || 'HQ Internal Warehouse') + '</div>';
+                    return '<div class="d-flex align-items-center"><i class="fas fa-warehouse text-muted me-2"></i> ' + hl(data || 'HQ Internal Warehouse') + '</div>';
                 }
             },
             { 
                 data: 'created_at',
-                render: function(data) {
+                render: function(data, type, row, meta) {
                     if(!data) return '-';
-                    return moment(data).format('DD MMM YYYY');
+                    let f = moment(data).format('DD MMM YYYY');
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        f = OptimaSearch.highlightForMeta(meta, f);
+                    }
+                    return f;
                 }
             },
             {

@@ -573,6 +573,7 @@ $can_export = $permissions['export'];
                 $.ajax({
                     type: 'DELETE',
                     url: '<?= base_url('/purchasing/delete-po-unit/') ?>' + id,
+                    data: {[window.csrfTokenName]: window.getCsrfToken()},
                     success: function(data) {
                         if (data.success) {
                             OptimaNotify.success('PO has been successfully deleted.');

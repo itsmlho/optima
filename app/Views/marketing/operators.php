@@ -460,14 +460,41 @@ function initializeDataTable() {
             }
         },
         columns: [
-            { data: 'operator_code' },
-            { data: 'operator_name' },
+            { 
+                data: 'operator_code',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
+            { 
+                data: 'operator_name',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
             { 
                 data: 'cert_badge',
                 orderable: false,
                 searchable: false
             },
-            { data: 'monthly_rate_formatted' },
+            { 
+                data: 'monthly_rate_formatted',
+                render: function(data, type, row, meta) {
+                    let t = data || '';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        t = OptimaSearch.highlightForMeta(meta, t);
+                    }
+                    return t;
+                }
+            },
             { 
                 data: 'status_badge',
                 orderable: false,
@@ -475,8 +502,12 @@ function initializeDataTable() {
             },
             { 
                 data: 'created_at',
-                render: function(data) {
-                    return data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                render: function(data, type, row, meta) {
+                    let s = data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                        s = OptimaSearch.highlightForMeta(meta, s);
+                    }
+                    return s;
                 }
             },
             { 
@@ -672,6 +703,7 @@ function deleteOperator(id) {
             $.ajax({
                 url: `<?= base_url('marketing/operators/delete') ?>/${id}`,
                 type: 'DELETE',
+                data: {[window.csrfTokenName]: window.getCsrfToken()},
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {

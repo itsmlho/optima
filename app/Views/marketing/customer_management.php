@@ -1197,38 +1197,74 @@ function initializeCustomerTable() {
             columns: [
                 { 
                     data: 'customer_code',
-                    render: (data) => data || '-'
+                    render: (data, type, row, meta) => {
+                        let t = data || '-';
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
                 },
-                { data: 'customer_name' },
+                { 
+                    data: 'customer_name',
+                    render: (data, type, row, meta) => {
+                        let t = data || '';
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
+                },
                 { 
                     data: 'locations_count',
                     className: 'text-center',
                     orderable: false,
-                    render: (data) => data || 0
+                    render: (data, type, row, meta) => {
+                        let t = String(data || 0);
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
                 },
                 { 
                     data: 'contracts_count',
                     className: 'text-center',
                     orderable: false,
-                    render: (data) => data || 0
+                    render: (data, type, row, meta) => {
+                        let t = String(data || 0);
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
                 },
                 { 
                     data: 'active_contracts_count',
                     className: 'text-center',
                     orderable: false,
-                    render: (data) => {
-                        if (data > 0) {
-                            return `<span class="badge badge-soft-green">${data}</span>`;
-                        } else {
-                            return `<span class="badge badge-soft-gray">0</span>`;
+                    render: (data, type, row, meta) => {
+                        let inner = String(data > 0 ? data : 0);
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            inner = OptimaSearch.highlightForMeta(meta, inner);
                         }
+                        if (data > 0) {
+                            return `<span class="badge badge-soft-green">${inner}</span>`;
+                        }
+                        return `<span class="badge badge-soft-gray">${inner}</span>`;
                     }
                 },
                 { 
                     data: 'total_units',
                     className: 'text-center',
                     orderable: false,
-                    render: (data) => data || 0
+                    render: (data, type, row, meta) => {
+                        let t = String(data || 0);
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
                 },
                 { 
                     data: 'is_active',
@@ -1243,7 +1279,13 @@ function initializeCustomerTable() {
                 },
                 { 
                     data: 'created_at',
-                    render: (data) => data ? new Date(data).toLocaleDateString('id-ID') : '-'
+                    render: (data, type, row, meta) => {
+                        let t = data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                        if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
+                            t = OptimaSearch.highlightForMeta(meta, t);
+                        }
+                        return t;
+                    }
                 }
             ],
             rowCallback: function(row, data) {
