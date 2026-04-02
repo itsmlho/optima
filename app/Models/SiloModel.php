@@ -236,10 +236,17 @@ class SiloModel extends Model
                 $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
             }
 
-            // Exclude units with status JUAL / SOLD (status_unit_id = 13), but keep NULL/other statuses
+            // Join status_unit to filter by human-readable status name (SOLD, BREAKDOWN, etc.)
+            $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
+
+            // Exclude units with status SOLD or BREAKDOWN, but keep NULL/other statuses
             $builder->groupStart();
+            // Allow units without status
             $builder->where('iu.status_unit_id IS NULL');
-            $builder->orWhere('iu.status_unit_id !=', 13);
+            // Or units whose status name is not SOLD/BREAKDOWN
+            $builder->orGroupStart();
+            $builder->whereNotIn('su.status_unit', ['SOLD', 'BREAKDOWN']);
+            $builder->groupEnd();
             $builder->groupEnd();
             
             // Check if silo table exists

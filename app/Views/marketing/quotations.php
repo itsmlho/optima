@@ -6608,20 +6608,46 @@ function searchCustomers() {
         success: function(response) {
             if (response.success && response.data.length > 0) {
                 let html = '<div class="list-group mt-2">';
+                const term = $('#customerSearchInput').val().trim();
                 response.data.forEach(function(customer) {
-                    const locationDetails = customer.primary_location ? 
+                    const locationDetailsRaw = customer.primary_location ? 
                         `<i class="fas fa-map-marker-alt me-1"></i>${customer.primary_location}` : 
                         `<i class="fas fa-building me-1"></i>${customer.location_count} location(s)`;
                     
-                    const contactInfo = customer.primary_contact ? 
+                    const contactInfoRaw = customer.primary_contact ? 
                         `<i class="fas fa-user me-1"></i>${customer.primary_contact}` + 
                         (customer.primary_phone ? ` <i class="fas fa-phone ms-2 me-1"></i>${customer.primary_phone}` : '') : '';
                     
-                    const addressPreview = customer.primary_address ? 
-                        `<small class="d-block text-muted mt-1"><i class="fas fa-home me-1"></i>${customer.primary_address.length > 80 ? customer.primary_address.substring(0, 80) + '...' : customer.primary_address}</small>` : '';
+                    const addressText = customer.primary_address
+                        ? (customer.primary_address.length > 80 ? customer.primary_address.substring(0, 80) + '...' : customer.primary_address)
+                        : '';
                     
-                    const locationsPreview = customer.locations_summary ? 
-                        `<small class="d-block text-primary mt-1"><i class="fas fa-list me-1"></i>Locations: ${customer.locations_summary}</small>` : '';
+                    const locationsSummaryText = customer.locations_summary || '';
+
+                    // Apply global highlight helper where available
+                    let nameHtml = customer.customer_name;
+                    let codeHtml = customer.customer_code;
+                    let locationDetailsHtml = locationDetailsRaw;
+                    let contactInfoHtml = contactInfoRaw;
+                    let addressHtml = addressText;
+                    let locationsSummaryHtml = locationsSummaryText;
+
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightText === 'function' && term) {
+                        nameHtml = OptimaSearch.highlightText(nameHtml, term);
+                        codeHtml = OptimaSearch.highlightText(codeHtml, term);
+                        locationDetailsHtml = OptimaSearch.highlightText(locationDetailsHtml, term);
+                        contactInfoHtml = OptimaSearch.highlightText(contactInfoHtml, term);
+                        addressHtml = OptimaSearch.highlightText(addressHtml, term);
+                        locationsSummaryHtml = OptimaSearch.highlightText(locationsSummaryHtml, term);
+                    }
+                    
+                    const addressPreview = addressText
+                        ? `<small class="d-block text-muted mt-1"><i class="fas fa-home me-1"></i>${addressHtml}</small>`
+                        : '';
+                    
+                    const locationsPreview = locationsSummaryText
+                        ? `<small class="d-block text-primary mt-1"><i class="fas fa-list me-1"></i>Locations: ${locationsSummaryHtml}</small>`
+                        : '';
                     
                     html += `
                         <div class="list-group-item list-group-item-action customer-search-item" 
@@ -6629,11 +6655,11 @@ function searchCustomers() {
                              data-customer-name="${customer.customer_name}"
                              data-customer-code="${customer.customer_code}">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">${customer.customer_name}</h6>
-                                <small class="text-muted">${customer.customer_code}</small>
+                                <h6 class="mb-1">${nameHtml}</h6>
+                                <small class="text-muted">${codeHtml}</small>
                             </div>
-                            <p class="mb-1">${locationDetails}</p>
-                            ${contactInfo ? `<p class="mb-1 text-info">${contactInfo}</p>` : ''}
+                            <p class="mb-1">${locationDetailsHtml}</p>
+                            ${contactInfoHtml ? `<p class="mb-1 text-info">${contactInfoHtml}</p>` : ''}
                             ${addressPreview}
                             ${locationsPreview}
                         </div>

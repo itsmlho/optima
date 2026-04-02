@@ -57,6 +57,27 @@ function initSelect2(selector, options = {}) {
     
     const config = $.extend({}, defaults, options);
     
+    // Inject default highlight-aware templates if not provided
+    if (!config.templateResult) {
+        config.templateResult = function(data, container) {
+            if (!data || !data.text) return data.text || '';
+            const term = (data.element && data.element.dataset && data.element.dataset.searchTerm)
+                ? data.element.dataset.searchTerm
+                : (container && container.term) || '';
+            let label = data.text;
+            if (window.OptimaSearch && typeof OptimaSearch.highlightText === 'function' && term) {
+                label = OptimaSearch.highlightText(label, term);
+            }
+            const $span = $('<span>').html(label);
+            return $span;
+        };
+    }
+    if (!config.templateSelection) {
+        config.templateSelection = function(data) {
+            return data.text || '';
+        };
+    }
+    
     return $(selector).select2(config);
 }
 
@@ -143,6 +164,27 @@ function initSelect2Ajax(selector, url, options = {}) {
     delete customOptions.paramMapper;
     
     const config = $.extend(true, {}, defaults, customOptions);
+    
+    // Inject default highlight-aware templates if not provided
+    if (!config.templateResult) {
+        config.templateResult = function(data) {
+            if (!data || !data.text) return data.text || '';
+            // In AJAX mode, Select2 passes search term via params.term, but here we
+            // don't receive it directly. Rely on global search term if available.
+            const searchBox = $('.select2-search__field:focus');
+            const term = searchBox.length ? searchBox.val() : '';
+            let label = data.text;
+            if (window.OptimaSearch && typeof OptimaSearch.highlightText === 'function' && term) {
+                label = OptimaSearch.highlightText(label, term);
+            }
+            return $('<span>').html(label);
+        };
+    }
+    if (!config.templateSelection) {
+        config.templateSelection = function(data) {
+            return data.text || '';
+        };
+    }
     
     return $(selector).select2(config);
 }

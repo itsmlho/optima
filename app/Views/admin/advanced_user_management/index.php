@@ -338,6 +338,50 @@ helper('permission_helper');
                         </div>
                     </div>
                     
+                    <!-- Service Area & Branch Access (shown only for Service division) -->
+                    <div id="approveServiceAccessSection" class="card mb-3 d-none">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="fas fa-wrench me-2"></i>Service Area & Branch Access <small class="text-light">(Khusus Divisi Service)</small></h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="approveAreaType" class="form-label"><strong>Area Type</strong></label>
+                                    <select class="form-select" id="approveAreaType" name="area_type">
+                                        <option value="">Select Area Type</option>
+                                        <option value="CENTRAL">CENTRAL (Admin Service Pusat)</option>
+                                        <option value="BRANCH">BRANCH (Admin Service Area)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="approveCentralSection" style="display:none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="approveDepartmentScope" class="form-label">Department Scope</label>
+                                        <select class="form-select" id="approveDepartmentScope" name="department_scope">
+                                            <option value="">Select Department</option>
+                                            <option value="ELECTRIC">ELECTRIC</option>
+                                            <option value="DIESEL_GASOLINE">DIESEL + GASOLINE</option>
+                                            <option value="ALL">ALL DEPARTMENTS</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="approveBranchSection" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">Pilih service area untuk branch access</small>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="approveBtnSelectAreas">
+                                        <i class="fas fa-map-marked-alt me-1"></i>Select Areas
+                                    </button>
+                                </div>
+                                <div id="approveSelectedAreasDisplay" class="border rounded p-2 bg-light">
+                                    <span class="text-muted">No areas selected</span>
+                                </div>
+                                <input type="hidden" id="approveSelectedAreaIds" name="service_area_ids_json">
+                            </div>
+                        </div>
+                    </div>
+
                     <input type="hidden" id="approveUserId" name="user_id">
                 </div>
                 <div class="modal-footer">
@@ -349,6 +393,40 @@ helper('permission_helper');
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Service Areas Selection Modal for Approve (inside content section) -->
+<div class="modal fade" id="approveServiceAreasModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-map-marked-alt me-2"></i>Select Service Areas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="approveAreaSearch" placeholder="Search areas...">
+                    </div>
+                </div>
+                <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                    <div id="approveAreasList" class="row">
+                        <div class="text-center p-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2">Loading areas...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="approveSaveServiceAreas">
+                    <i class="fas fa-save me-2"></i>Save Selection
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -402,6 +480,16 @@ $(document).ready(function() {
             dataType: 'json',
             data: function() {
                 const d = { division_id: divisionId, role_id: roleId };
+                // Service area fields (only when Service division)
+                const areaType = $('#approveAreaType').val();
+                if (areaType) {
+                    d.area_type = areaType;
+                    if (areaType === 'CENTRAL') {
+                        d.department_scope = $('#approveDepartmentScope').val();
+                    } else if (areaType === 'BRANCH') {
+                        d.service_area_ids_json = JSON.stringify(approveSelectedServiceAreasIds);
+                    }
+                }
                 d['<?= csrf_token() ?>'] = getCsrfToken();
                 return d;
             }(),
@@ -646,6 +734,92 @@ const allRoles = <?= json_encode(array_values(array_map(function($r) {
     return ['id' => (string)$r['id'], 'name' => $r['name'], 'division_id' => (string)($r['division_id'] ?? '')];
 }, $roles ?? []))) ?>;
 
+// Approve modal: service area state
+let approveSelectedServiceAreasIds = [];
+let approveServiceAreasData = [];
+
+function loadApproveServiceAreas() {
+    $('#approveAreasList').html('<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2">Loading...</span></div>');
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/get-service-areas') ?>',
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success && response.data) {
+                approveServiceAreasData = response.data;
+                renderApproveServiceAreas(approveServiceAreasData);
+            } else {
+                $('#approveAreasList').html('<div class="col-12 text-center p-3"><span class="text-muted">No areas available</span></div>');
+            }
+        },
+        error: function() {
+            $('#approveAreasList').html('<div class="col-12 text-center p-3"><div class="alert alert-danger">Gagal memuat data areas</div></div>');
+        }
+    });
+}
+
+function renderApproveServiceAreas(areas) {
+    let html = '';
+    areas.forEach(area => {
+        const isChecked = approveSelectedServiceAreasIds.includes(area.id) ? 'checked' : '';
+        const selectedClass = isChecked ? 'border-primary bg-light' : '';
+        html += `<div class="col-md-6 mb-2"><div class="card ${selectedClass} approve-area-item" style="cursor:pointer;">
+            <div class="card-body p-3"><div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${area.id}" id="apprvArea_${area.id}" ${isChecked}>
+                <label class="form-check-label" for="apprvArea_${area.id}"><strong>${area.area_name}</strong><br><small class="text-muted">${area.area_code} — ${area.area_type}</small></label>
+            </div></div></div></div>`;
+    });
+    if (!html) html = '<div class="col-12 text-center p-3"><span class="text-muted">No areas found</span></div>';
+    $('#approveAreasList').html(html);
+    $('.approve-area-item').on('click', function() {
+        const cb = $(this).find('input[type="checkbox"]');
+        cb.prop('checked', !cb.prop('checked'));
+        $(this).toggleClass('border-primary bg-light', cb.prop('checked'));
+    });
+}
+
+function confirmApproveAreaSelection() {
+    const ids = [];
+    $('#approveAreasList input[type="checkbox"]:checked').each(function() {
+        ids.push(parseInt($(this).val()));
+    });
+    approveSelectedServiceAreasIds = ids;
+    const count = ids.length;
+    $('#approveSelectedAreasDisplay').html(count > 0
+        ? `<span class="badge bg-primary">${count} area(s) selected</span>`
+        : '<span class="text-muted">No areas selected</span>');
+    $('#approveSelectedAreaIds').val(JSON.stringify(ids));
+    bootstrap.Modal.getInstance(document.getElementById('approveServiceAreasModal')).hide();
+}
+
+$(document).on('click', '#approveBtnSelectAreas', function() {
+    loadApproveServiceAreas();
+    new bootstrap.Modal(document.getElementById('approveServiceAreasModal')).show();
+});
+
+$(document).on('click', '#approveSaveServiceAreas', confirmApproveAreaSelection);
+
+$(document).on('input', '#approveAreaSearch', function() {
+    const q = $(this).val().toLowerCase();
+    const filtered = approveServiceAreasData.filter(a =>
+        a.area_name.toLowerCase().includes(q) || a.area_code.toLowerCase().includes(q));
+    renderApproveServiceAreas(filtered);
+});
+
+$(document).on('change', '#approveAreaType', function() {
+    const val = $(this).val();
+    if (val === 'CENTRAL') {
+        $('#approveCentralSection').show();
+        $('#approveBranchSection').hide();
+    } else if (val === 'BRANCH') {
+        $('#approveCentralSection').hide();
+        $('#approveBranchSection').show();
+    } else {
+        $('#approveCentralSection, #approveBranchSection').hide();
+    }
+});
+
 // Function to update roles based on division (filter by division_id)
 function updateApprovalRoles(selectedDivision) {
     console.log('updateApprovalRoles called with division:', selectedDivision);
@@ -710,6 +884,29 @@ function approveUser(userId, userName) {
                 
                 // Reset role dropdown
                 $('#approveRoleId').empty().append('<option value="">Select Role</option>');
+
+                // Reset service area section
+                approveSelectedServiceAreasIds = [];
+                $('#approveServiceAccessSection').addClass('d-none');
+                $('#approveAreaType').val('');
+                $('#approveDepartmentScope').val('');
+                $('#approveCentralSection, #approveBranchSection').hide();
+                $('#approveSelectedAreasDisplay').html('<span class="text-muted">No areas selected</span>');
+
+                // Pre-populate service access if user already has it
+                if (response.user_service_access) {
+                    const sa = response.user_service_access;
+                    $('#approveAreaType').val(sa.area_type || '');
+                    if (sa.area_type === 'CENTRAL') {
+                        $('#approveDepartmentScope').val(sa.department_scope || '');
+                    } else if (sa.area_type === 'BRANCH' && response.user_branch_access && response.user_branch_access.branch_ids) {
+                        approveSelectedServiceAreasIds = response.user_branch_access.branch_ids.map(Number);
+                        const cnt = approveSelectedServiceAreasIds.length;
+                        $('#approveSelectedAreasDisplay').html(cnt > 0
+                            ? `<span class="badge bg-primary">${cnt} area(s) selected</span>`
+                            : '<span class="text-muted">No areas selected</span>');
+                    }
+                }
                 
                 // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('approveUserModal'));
@@ -730,6 +927,19 @@ $(document).on('change', '#approveDivisionId', function() {
     console.log('Approval division changed to:', $(this).val());
     const selectedDivision = $(this).val();
     updateApprovalRoles(selectedDivision);
+    // Show/hide service section based on selected division name
+    const divName = $(this).find('option:selected').text().toLowerCase();
+    if (divName.includes('service')) {
+        $('#approveServiceAccessSection').removeClass('d-none');
+        // Show sub-section based on already-selected area_type
+        const at = $('#approveAreaType').val();
+        if (at === 'CENTRAL') { $('#approveCentralSection').show(); $('#approveBranchSection').hide(); }
+        else if (at === 'BRANCH') { $('#approveCentralSection').hide(); $('#approveBranchSection').show(); }
+    } else {
+        $('#approveServiceAccessSection').addClass('d-none');
+        $('#approveAreaType').val('');
+        $('#approveCentralSection, #approveBranchSection').hide();
+    }
 });
 
 // Also handle when modal is shown (in case division is pre-selected)

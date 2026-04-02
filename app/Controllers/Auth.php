@@ -598,8 +598,29 @@ class Auth extends BaseController
         }
     }
 
-    public function attemptRegister()
+    /**
+     * Get service areas list (public — used in register form AJAX)
+     */
+    public function getServiceAreas()
     {
+        try {
+            $db = \Config\Database::connect();
+            if (!$db->tableExists('areas')) {
+                return $this->response->setJSON(['success' => true, 'data' => []]);
+            }
+            $areas = $db->table('areas')
+                ->select('id, area_code, area_name, area_type')
+                ->where('is_active', 1)
+                ->orderBy('area_name', 'ASC')
+                ->get()->getResultArray();
+            return $this->response->setJSON(['success' => true, 'data' => $areas]);
+        } catch (\Exception $e) {
+            log_message('error', 'Auth::getServiceAreas: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memuat data area.']);
+        }
+    }
+
+    public function attemptRegister()    {
         $rules = [
             'first_name' => 'required|min_length[2]|max_length[50]',
             'last_name' => 'required|min_length[2]|max_length[50]',
@@ -709,6 +730,40 @@ class Auth extends BaseController
                 }
                 log_message('error', 'User registration failed: ' . $errorMessage);
                 throw new \Exception($errorMessage);
+            }
+
+            // Save service area access if user registered under a Service division
+            $selectedDivisionId = $this->request->getPost('division_id');
+            if ($selectedDivisionId && $db->tableExists('areas') && $db->tableExists('user_area_access')) {
+                $divisionRow = $db->table('divisions')->select('name')->where('id', (int)$selectedDivisionId)->get()->getRowArray();
+                if ($divisionRow && stripos($divisionRow['name'], 'service') !== false) {
+                    $areaType = $this->request->getPost('area_type');
+                    if ($areaType && in_array($areaType, ['CENTRAL', 'BRANCH', 'ALL'])) {
+                        $areaData = [
+                            'user_id' => $userId,
+                            'area_type' => $areaType,
+                            'is_active' => 1,
+                            'created_at' => date('Y-m-d H:i:s')
+                        ];
+                        if ($areaType === 'CENTRAL') {
+                            $deptScope = $this->request->getPost('department_scope');
+                            if ($deptScope) $areaData['department_scope'] = $deptScope;
+                        }
+                        $db->table('user_area_access')->insert($areaData);
+                        if ($areaType === 'BRANCH' && $db->tableExists('user_branch_access')) {
+                            $idsJson = $this->request->getPost('service_area_ids_json');
+                            $areaIds = $idsJson ? json_decode($idsJson, true) : [];
+                            if (is_array($areaIds) && !empty($areaIds)) {
+                                $db->table('user_branch_access')->insert([
+                                    'user_id' => $userId,
+                                    'access_type' => 'SPECIFIC_BRANCHES',
+                                    'branch_ids' => json_encode(array_map('intval', $areaIds)),
+                                    'created_at' => date('Y-m-d H:i:s')
+                                ]);
+                            }
+                        }
+                    }
+                }
             }
 
             // Generate email verification token

@@ -372,7 +372,7 @@ class InventoryUnitModel extends Model
         return (bool)$this->update($unitId, $payload);
     }
 
-    public function getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter = null, $departemenFilter = null)
+    public function getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter = null, $departemenFilter = null, $scopeFilter = null)
     {
         try {
             $builder = $this->db->table($this->table . ' as iu');
@@ -432,6 +432,16 @@ class InventoryUnitModel extends Model
             if ($departemenFilter !== null && $departemenFilter !== '') {
                 $builder->where('iu.departemen_id', $departemenFilter);
             }
+            // Apply service area scope filter
+            if ($scopeFilter !== null) {
+                if ($scopeFilter['filter_mode'] === 'BRANCH' && !empty($scopeFilter['area_ids'])) {
+                    $builder->whereIn('iu.area_id', array_map('intval', $scopeFilter['area_ids']));
+                } elseif ($scopeFilter['filter_mode'] === 'CENTRAL' && !empty($scopeFilter['dept_ids'])) {
+                    $builder->whereIn('iu.departemen_id', array_map('intval', $scopeFilter['dept_ids']));
+                } elseif ($scopeFilter['filter_mode'] === 'BRANCH') {
+                    $builder->where('iu.area_id', 0); // BRANCH with no areas = see nothing
+                }
+            }
             // Whitelist order column to prevent SQL error
             // Kolom order disesuaikan: nama_tipe_unit tidak fisik -> gunakan tu.tipe sebagai fallback
             $allowedOrder = ['iu.no_unit','iu.id_inventory_unit','iu.serial_number','mu.merk_unit','mu.model_unit','tu.tipe','d.nama_departemen','su.status_unit','iu.lokasi_unit','iu.created_at'];
@@ -455,7 +465,7 @@ class InventoryUnitModel extends Model
         return $this->db->table($this->table)->countAllResults();
     }
 
-    public function countFiltered($searchValue, $statusFilter = null, $departemenFilter = null)
+    public function countFiltered($searchValue, $statusFilter = null, $departemenFilter = null, $scopeFilter = null)
     {
         try {
             $builder = $this->db->table($this->table . ' as iu');
@@ -496,6 +506,16 @@ class InventoryUnitModel extends Model
             $this->applyStatusFilter($builder, $statusFilter);
             if ($departemenFilter !== null && $departemenFilter !== '') {
                 $builder->where('iu.departemen_id', $departemenFilter);
+            }
+            // Apply service area scope filter
+            if ($scopeFilter !== null) {
+                if ($scopeFilter['filter_mode'] === 'BRANCH' && !empty($scopeFilter['area_ids'])) {
+                    $builder->whereIn('iu.area_id', array_map('intval', $scopeFilter['area_ids']));
+                } elseif ($scopeFilter['filter_mode'] === 'CENTRAL' && !empty($scopeFilter['dept_ids'])) {
+                    $builder->whereIn('iu.departemen_id', array_map('intval', $scopeFilter['dept_ids']));
+                } elseif ($scopeFilter['filter_mode'] === 'BRANCH') {
+                    $builder->where('iu.area_id', 0); // BRANCH with no areas = see nothing
+                }
             }
             return $builder->countAllResults();
         } catch (\Throwable $e) {

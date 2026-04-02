@@ -327,6 +327,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('customer_locations cl', 'cl.area_id = areas.id', 'left');
         $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->where('areas.id', $id);
+        $builder->where('areas.deleted_at IS NULL', null, false);
         $builder->groupBy('areas.id');
         
         $query = $builder->get();
@@ -1166,6 +1167,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('areas a', 'area_employee_assignments.area_id = a.id', 'inner');
         $builder->join('employees e', 'area_employee_assignments.employee_id = e.id', 'inner');
         $builder->where('area_employee_assignments.area_id', $areaId);
+        $builder->where('area_employee_assignments.deleted_at IS NULL', null, false);
         
         // Apply search filter
         if (isset($request['search']['value']) && !empty($request['search']['value'])) {
@@ -1267,6 +1269,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('areas a', 'area_employee_assignments.area_id = a.id', 'inner');
         $builder->join('employees e', 'area_employee_assignments.employee_id = e.id', 'inner');
         $builder->where('area_employee_assignments.id', $id);
+        $builder->where('area_employee_assignments.deleted_at IS NULL', null, false);
         
         $query = $builder->get();
         $assignment = $query->getRowArray();
@@ -1425,6 +1428,7 @@ class ServiceAreaManagementController extends BaseController
         $builder = $this->employeeModel->builder();
         $builder->select('employees.*');
         $builder->where('employees.is_active', 1);
+        $builder->where('employees.deleted_at IS NULL', null, false);
         
         if ($role) {
             // Support role subtypes (MECHANIC_*, HELPER_*)
@@ -1441,7 +1445,8 @@ class ServiceAreaManagementController extends BaseController
                 ->select('employee_id')
                 ->where('area_id', $areaId)
                 ->where('assignment_type', 'PRIMARY')
-                ->where('is_active', 1);
+                ->where('is_active', 1)
+                ->where('deleted_at IS NULL', null, false);
             
             $builder->whereNotIn('employees.id', $subquery, false);
         }
@@ -1499,6 +1504,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('employees e', 'area_employee_assignments.employee_id = e.id', 'inner');
         $builder->where('area_employee_assignments.area_id', $areaId);
         $builder->where('area_employee_assignments.is_active', 1);
+        $builder->where('area_employee_assignments.deleted_at IS NULL', null, false);
         $builder->where('e.staff_role', 'FOREMAN');
         $builder->orderBy('area_employee_assignments.assignment_type', 'ASC');
         $builder->limit(1);
@@ -1519,6 +1525,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('employees e', 'area_employee_assignments.employee_id = e.id', 'inner');
         $builder->where('area_employee_assignments.area_id', $areaId);
         $builder->where('area_employee_assignments.is_active', 1);
+        $builder->where('area_employee_assignments.deleted_at IS NULL', null, false);
         $builder->where('e.staff_role', 'MECHANIC');
         $builder->orderBy('area_employee_assignments.assignment_type', 'ASC');
         
@@ -1538,6 +1545,7 @@ class ServiceAreaManagementController extends BaseController
         $builder->join('employees e', 'area_employee_assignments.employee_id = e.id', 'inner');
         $builder->where('area_employee_assignments.area_id', $areaId);
         $builder->where('area_employee_assignments.is_active', 1);
+        $builder->where('area_employee_assignments.deleted_at IS NULL', null, false);
         $builder->where('e.staff_role', 'HELPER');
         $builder->orderBy('area_employee_assignments.assignment_type', 'ASC');
         

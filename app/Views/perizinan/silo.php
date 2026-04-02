@@ -435,13 +435,16 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="unit_ids" class="form-label">Select Unit <span class="text-danger">*</span></label>
-                        <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+                        <div class="border rounded p-2">
                             <input type="text" id="unit_search" class="form-control form-control-sm mb-2" placeholder="Search units...">
-                            <div id="unit_checkboxes">
-                                <!-- Units will be loaded here -->
+                            <div id="unit_checkboxes" style="max-height: 260px; overflow-y: auto;">
+                                <!-- Units will be loaded here (paged) -->
                             </div>
                         </div>
-                        <small class="text-muted">Only units without an active SILO are displayed. Multiple units can be selected.</small>
+                        <small class="text-muted">
+                            Only units without an active SILO are displayed. Search is performed on the server to keep this list fast.
+                            Multiple units can be selected.
+                        </small>
                     </div>
                     <div class="mb-3">
                         <label for="nama_pt_pjk3" class="form-label">Company<span class="text-danger">*</span></label>
@@ -534,25 +537,37 @@ function getColumnDefinitions(tableId) {
             { 
                 data: null,
                 render: function(data, type, row) {
-                    return '<div class="unit-info-compact">' +
+                    let html = '<div class="unit-info-compact">' +
                         '<div class="fw-bold text-primary" style="font-size: 0.9rem;">' + (row.no_unit || '-') + '</div>' +
                         '<small class="text-muted d-block">SN: ' + (row.serial_number || '-') + '</small>' +
                         '<small class="text-muted d-block">' + (row.tipe_unit || '-') + '</small>' +
                         '</div>';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                        html = OptimaSearch.highlightForTable($('#siloTable4').DataTable(), html);
+                    }
+                    return html;
                 }
             },
             { 
                 data: 'departemen',
                 render: function(data) {
-                    return '<span class="badge bg-secondary">' + (data || '-') + '</span>';
+                    let label = data || '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                        label = OptimaSearch.highlightForTable($('#siloTable4').DataTable(), label);
+                    }
+                    return '<span class="badge bg-secondary">' + label + '</span>';
                 }
             },
             { 
                 data: 'nama_perusahaan',
                 render: function(data, type, row) {
                     if (!data) return '-';
+                    let label = data;
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                        label = OptimaSearch.highlightForTable($('#siloTable4').DataTable(), label);
+                    }
                     return '<div class="customer-info-compact">' +
-                        '<div class="fw-bold" style="font-size: 0.85rem;">' + data + '</div>' +
+                        '<div class="fw-bold" style="font-size: 0.85rem;">' + label + '</div>' +
                         '</div>';
                 }
             },
@@ -572,25 +587,37 @@ function getColumnDefinitions(tableId) {
         { 
             data: null,
             render: function(data, type, row) {
-                return '<div class="unit-info-compact">' +
+                let html = '<div class="unit-info-compact">' +
                     '<div class="fw-bold text-primary" style="font-size: 0.9rem;">' + (row.no_unit || '-') + '</div>' +
                     '<small class="text-muted d-block">SN: ' + (row.serial_number || '-') + '</small>' +
                     '<small class="text-muted d-block">' + (row.tipe_unit || '-') + '</small>' +
                     '</div>';
+                if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                    html = OptimaSearch.highlightForTable($(tableId).DataTable(), html);
+                }
+                return html;
             }
         },
             { 
                 data: 'departemen',
                 render: function(data) {
-                    return '<span class="badge bg-secondary">' + (data || '-') + '</span>';
+                    let label = data || '-';
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                        label = OptimaSearch.highlightForTable($(tableId).DataTable(), label);
+                    }
+                    return '<span class="badge bg-secondary">' + label + '</span>';
                 }
             },
             { 
                 data: 'nama_perusahaan',
                 render: function(data, type, row) {
                     if (!data) return '-';
+                    let label = data;
+                    if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
+                        label = OptimaSearch.highlightForTable($(tableId).DataTable(), label);
+                    }
                     return '<div class="customer-info-compact">' +
-                        '<div class="fw-bold" style="font-size: 0.85rem;">' + data + '</div>' +
+                        '<div class="fw-bold" style="font-size: 0.85rem;">' + label + '</div>' +
                         '</div>';
                 }
             },
@@ -732,12 +759,9 @@ function initDataTable(tableId, searchInputId, status, filterStatusId = null, fi
             data: function(d) {
                 const requestData = {
                     status: status,
-                    search: ''
+                    // Ikutkan nilai pencarian global DataTables (jika ada)
+                    search: (d && d.search && typeof d.search.value === 'string') ? d.search.value : ''
                 };
-                
-                // Since serverSide: false, we don't use d.search.value
-                // Search is handled client-side by DataTable itself
-                // We only send filters to backend
                 
                 if (statusFilterId && $('#' + statusFilterId).length) {
                     const statusValue = $('#' + statusFilterId).val();
@@ -913,13 +937,15 @@ $(document).ready(function() {
         e.preventDefault();
         createSilo();
     });
-    
-    // Load units when modal is shown (only once)
-    $('#createModal').on('show.bs.modal', function() {
-        // Only load if checkboxes are empty
-        if ($('#unit_checkboxes').children().length === 0) {
-            loadAvailableUnits();
+
+    // Live search untuk daftar unit di modal (server-side, dengan debounce)
+    $('#unit_search').on('keyup', function() {
+        if (unitSearchTimer) {
+            clearTimeout(unitSearchTimer);
         }
+        unitSearchTimer = setTimeout(function() {
+            loadAvailableUnits();
+        }, 350);
     });
 });
 
@@ -961,8 +987,11 @@ function clearFiltersTab(tabName) {
 }
 
 let allAvailableUnits = [];
+let unitSearchTimer = null;
 
 function loadAvailableUnits() {
+    const search = $('#unit_search').val() || '';
+
     // Show loading
     $('#unit_checkboxes').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> <span class="ms-2">Loading units...</span></div>');
     
@@ -970,19 +999,14 @@ function loadAvailableUnits() {
         url: '<?= base_url('perizinan/get-available-units') ?>',
         type: 'GET',
         dataType: 'json',
+        data: {
+            search: search,
+            limit: 50
+        },
         success: function(response) {
             if (response.success && response.data) {
                 allAvailableUnits = response.data;
                 renderUnitCheckboxes(allAvailableUnits);
-                
-                // Search functionality
-                $('#unit_search').off('keyup').on('keyup', function() {
-                    const searchTerm = $(this).val().toLowerCase();
-                    const filtered = allAvailableUnits.filter(function(unit) {
-                        return unit.label.toLowerCase().includes(searchTerm);
-                    });
-                    renderUnitCheckboxes(filtered);
-                });
             } else {
                 $('#unit_checkboxes').html('<div class="text-danger text-center py-2">Failed to load units: ' + (response.message || 'Unknown error') + '</div>');
             }
@@ -1028,9 +1052,18 @@ function renderUnitCheckboxes(units) {
                 pelanggan: unit.nama_perusahaan || ''
             });
             displayText = Ou.line1FromRow(r);
+            if (r.serial_number) {
+                displayText += ' · SN: ' + r.serial_number;
+            }
             if (unit.nama_perusahaan && unit.nama_perusahaan !== 'N/A') {
                 displayText += ' · ' + unit.nama_perusahaan;
             }
+        }
+
+        // Highlight hasil pencarian (baik di no_unit, model, maupun SN) menggunakan helper global
+        const termRaw = ($('#unit_search').val() || '').trim();
+        if (window.OptimaSearch && typeof OptimaSearch.highlightText === 'function' && termRaw) {
+            displayText = OptimaSearch.highlightText(displayText, termRaw);
         }
         const checkbox = $('<div class="form-check mb-2">')
             .append($('<input>', {
@@ -1044,7 +1077,7 @@ function renderUnitCheckboxes(units) {
             .append($('<label>', {
                 class: 'form-check-label',
                 for: 'unit_' + unit.id,
-                text: displayText
+                html: displayText
             }));
         container.append(checkbox);
     });
@@ -1055,7 +1088,7 @@ function showCreateModal() {
     $('#unit_search').val('');
     $('#unit_checkboxes').empty();
     new bootstrap.Modal(document.getElementById('createModal')).show();
-    // Load units after modal is shown
+    // Load initial units after modal is shown
     setTimeout(function() {
         loadAvailableUnits();
     }, 300);
@@ -1071,12 +1104,13 @@ function createSiloForUnit(unitId) {
     
     // Load units after modal is shown, then check the checkbox
     setTimeout(function() {
+        $('#unit_search').val(''); // reset search so prefill unit tetap bisa ditemukan
         loadAvailableUnits();
         // Wait for units to load, then check the checkbox
         setTimeout(function() {
             $('#unit_' + unitId).prop('checked', true);
             $('#tanggal_pengajuan_pjk3').val(new Date().toISOString().split('T')[0]);
-        }, 500);
+        }, 600);
     }, 300);
 }
 

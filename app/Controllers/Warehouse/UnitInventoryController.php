@@ -16,7 +16,7 @@ class UnitInventoryController extends BaseController
     public function __construct()
     {
         $this->inventoryUnitModel = new InventoryUnitModel();
-        helper(['global_permission', 'simple_rbac', 'form']);
+        helper(['global_permission', 'simple_rbac', 'form', 'auth']);
     }
 
     // ──────────────────────────────────────────────────────
@@ -55,6 +55,18 @@ class UnitInventoryController extends BaseController
             $departemenFilter = $this->request->getPost('departemen_id')  ?: null;
             $category         = $this->request->getPost('category')       ?: null;
 
+            // Build scope filter for service area access control
+            $scopeFilter = null;
+            $scope = get_user_area_department_scope();
+            if ($scope !== null) {
+                $filterMode = $scope['filter_mode'] ?? 'CENTRAL';
+                if ($filterMode === 'BRANCH') {
+                    $scopeFilter = ['filter_mode' => 'BRANCH', 'area_ids' => $scope['areas'] ?? []];
+                } elseif (!empty($scope['departments'])) {
+                    $scopeFilter = ['filter_mode' => 'CENTRAL', 'dept_ids' => $scope['departments']];
+                }
+            }
+
             // Map broad categories to status ID groups (based on actual status_unit table):
             // 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED, 4=PREPARATION, 5=READY_TO_DELIVER
             // 6=IN_DELIVERY, 7=RENTAL_ACTIVE, 8=RENTAL_DAILY, 9=TRIAL, 10=BREAKDOWN
@@ -86,8 +98,8 @@ class UnitInventoryController extends BaseController
             $orderColumn      = $orderMap[$orderColumnIndex] ?? 'iu.created_at';
             $orderDir         = $this->request->getPost('order')[0]['dir'] ?? 'desc';
 
-            $data            = $this->inventoryUnitModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter, $departemenFilter);
-            $recordsFiltered = $this->inventoryUnitModel->countFiltered($searchValue, $statusFilter, $departemenFilter);
+            $data            = $this->inventoryUnitModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter, $departemenFilter, $scopeFilter);
+            $recordsFiltered = $this->inventoryUnitModel->countFiltered($searchValue, $statusFilter, $departemenFilter, $scopeFilter);
             $recordsTotal    = $this->inventoryUnitModel->countAllData();
             $dynamicStats    = $this->getDynamicStats($searchValue, $departemenFilter);
 
@@ -212,6 +224,25 @@ class UnitInventoryController extends BaseController
 
         if (!$unit) {
             return redirect()->to('/warehouse/inventory/unit')->with('error', 'Unit tidak ditemukan.');
+        }
+
+        // Service area access control — restrict what BRANCH/CENTRAL users can view
+        $scope = get_user_area_department_scope();
+        if ($scope !== null) {
+            $filterMode = $scope['filter_mode'] ?? 'CENTRAL';
+            if ($filterMode === 'BRANCH') {
+                $unitAreaId = (int)($unit['area_id'] ?? 0);
+                $allowedAreas = array_map('intval', $scope['areas'] ?? []);
+                if (empty($allowedAreas) || (!empty($allowedAreas) && !in_array($unitAreaId, $allowedAreas, true))) {
+                    return redirect()->to('/warehouse/inventory/unit')->with('error', 'Akses ditolak: Unit tidak berada di Service Area Anda.');
+                }
+            } elseif ($filterMode === 'CENTRAL') {
+                $unitDeptId = (int)($unit['departemen_id'] ?? 0);
+                $allowedDepts = array_map('intval', $scope['departments'] ?? []);
+                if (!empty($allowedDepts) && !in_array($unitDeptId, $allowedDepts, true)) {
+                    return redirect()->to('/warehouse/inventory/unit')->with('error', 'Akses ditolak: Unit tidak berada di Departemen Anda.');
+                }
+            }
         }
 
         // ── Work Orders ─────────────────────────────────────

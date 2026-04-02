@@ -238,6 +238,12 @@ class Perizinan extends BaseController
         }
 
         try {
+            $search = $this->request->getGet('search') ?? '';
+            $limit  = (int) ($this->request->getGet('limit') ?? 50);
+            if ($limit <= 0 || $limit > 200) {
+                $limit = 50;
+            }
+
             $db = \Config\Database::connect();
             $builder = $db->table('inventory_unit iu');
             $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit,
@@ -267,7 +273,19 @@ class Perizinan extends BaseController
             $builder->orWhere('iu.status_unit_id !=', 13);
             $builder->groupEnd();
 
-            $units = $builder->get()->getResultArray();
+            // Optional search filter (server-side) untuk menghindari load semua unit
+            if ($search !== '') {
+                $builder->groupStart();
+                $builder->like('iu.no_unit', $search);
+                $builder->orLike('iu.serial_number', $search);
+                $builder->orLike('c.customer_name', $search);
+                $builder->orLike('mu.model_unit', $search);
+                $builder->groupEnd();
+            }
+
+            $builder->orderBy('iu.no_unit', 'ASC');
+
+            $units = $builder->get($limit, 0)->getResultArray();
             $availableUnits = [];
 
             foreach ($units as $unit) {

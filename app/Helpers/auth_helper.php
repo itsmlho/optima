@@ -744,9 +744,10 @@ if (!function_exists('getUserServiceAccess')) {
                 // Handle department filtering for service
                 if ($userAccess['department_scope'] !== 'ALL') {
                     $departmentMap = [
-                        'DIESEL' => [1],
-                        'ELECTRIC' => [2], 
-                        'GASOLINE' => [3],
+                        'DIESEL'                   => [1],
+                        'ELECTRIC'                 => [2],
+                        'GASOLINE'                 => [3],
+                        'DIESEL_GASOLINE'          => [1, 3],
                         'DIESEL_ELECTRIC_GASOLINE' => [1, 2, 3]
                     ];
                     

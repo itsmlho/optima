@@ -437,6 +437,46 @@
                     </div>
                 </div>
                 
+                <!-- Service Area & Branch Access (visible only for Service division) -->
+                <div id="serviceAccessSection" class="d-none border border-success rounded p-3 mb-3 bg-light">
+                    <h6 class="text-success mb-3"><i class="fas fa-wrench me-2"></i>Service Area & Branch Access <small class="text-muted">(Khusus Divisi Service)</small></h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="reg_area_type" class="form-label"><strong>Area Type</strong></label>
+                            <select class="form-select" id="reg_area_type" name="area_type">
+                                <option value="">Select Area Type</option>
+                                <option value="CENTRAL">CENTRAL (Admin Service Pusat)</option>
+                                <option value="BRANCH">BRANCH (Admin Service Area)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="reg_centralSection" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="reg_department_scope" class="form-label">Department Scope</label>
+                                <select class="form-select" id="reg_department_scope" name="department_scope">
+                                    <option value="">Select Department</option>
+                                    <option value="ELECTRIC">ELECTRIC</option>
+                                    <option value="DIESEL_GASOLINE">DIESEL + GASOLINE</option>
+                                    <option value="ALL">ALL DEPARTMENTS</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reg_branchSection" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">Pilih service area untuk branch access</small>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="regBtnSelectAreas">
+                                <i class="fas fa-map-marked-alt me-1"></i>Select Areas
+                            </button>
+                        </div>
+                        <div id="regSelectedAreasDisplay" class="border rounded p-2 bg-white">
+                            <span class="text-muted">No areas selected</span>
+                        </div>
+                        <input type="hidden" id="reg_service_area_ids_json" name="service_area_ids_json">
+                    </div>
+                </div>
+
                 <!-- Terms & Conditions -->
                 <div class="mb-3">
                     <div class="form-check">
@@ -470,6 +510,40 @@
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Register: Service Areas Selection Modal -->
+    <div class="modal fade" id="regServiceAreasModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-map-marked-alt me-2"></i>Select Service Areas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="regAreaSearch" placeholder="Search areas...">
+                        </div>
+                    </div>
+                    <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                        <div id="regAreasList" class="row">
+                            <div class="text-center p-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                <span class="ms-2">Loading areas...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="regSaveAreas">
+                        <i class="fas fa-save me-2"></i>Save Selection
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <script>
 const registerI18n = {
@@ -614,6 +688,17 @@ const registerI18n = {
                         roleSelect.innerHTML = '<option value="">' + registerI18n.noRolesForDivision + '</option>';
                         roleSelect.disabled = true;
                     }
+                    // Show/hide service section based on division name
+                    const divText = document.getElementById('division').options[document.getElementById('division').selectedIndex]?.text?.toLowerCase() || '';
+                    const svcSection = document.getElementById('serviceAccessSection');
+                    if (divText.includes('service')) {
+                        svcSection.classList.remove('d-none');
+                    } else {
+                        svcSection.classList.add('d-none');
+                        document.getElementById('reg_area_type').value = '';
+                        document.getElementById('reg_centralSection').style.display = 'none';
+                        document.getElementById('reg_branchSection').style.display = 'none';
+                    }
                 })
                 .catch(function(error) {
                     console.error('Error loading positions:', error);
@@ -685,6 +770,86 @@ const registerI18n = {
             loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ' + registerI18n.pleaseWait;
             this.insertBefore(loadingDiv, submitBtn);
         });
+
+        // ========================================
+        // SERVICE AREA HANDLING
+        // ========================================
+        let regSelectedAreaIds = [];
+        let regAreasData = [];
+
+        document.getElementById('reg_area_type').addEventListener('change', function() {
+            const val = this.value;
+            document.getElementById('reg_centralSection').style.display = (val === 'CENTRAL') ? '' : 'none';
+            document.getElementById('reg_branchSection').style.display = (val === 'BRANCH') ? '' : 'none';
+        });
+
+        document.getElementById('regBtnSelectAreas').addEventListener('click', function() {
+            loadRegServiceAreas();
+            new bootstrap.Modal(document.getElementById('regServiceAreasModal')).show();
+        });
+
+        document.getElementById('regSaveAreas').addEventListener('click', function() {
+            const ids = [];
+            document.querySelectorAll('#regAreasList input[type="checkbox"]:checked').forEach(function(cb) {
+                ids.push(parseInt(cb.value));
+            });
+            regSelectedAreaIds = ids;
+            const cnt = ids.length;
+            document.getElementById('regSelectedAreasDisplay').innerHTML = cnt > 0
+                ? `<span class="badge bg-primary">${cnt} area(s) selected</span>`
+                : '<span class="text-muted">No areas selected</span>';
+            document.getElementById('reg_service_area_ids_json').value = JSON.stringify(ids);
+            bootstrap.Modal.getInstance(document.getElementById('regServiceAreasModal')).hide();
+        });
+
+        document.getElementById('regAreaSearch').addEventListener('input', function() {
+            const q = this.value.toLowerCase();
+            renderRegAreas(regAreasData.filter(a =>
+                a.area_name.toLowerCase().includes(q) || a.area_code.toLowerCase().includes(q)));
+        });
+
+        function loadRegServiceAreas() {
+            document.getElementById('regAreasList').innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2">Loading...</span></div>';
+            fetch('<?= base_url('auth/get-service-areas') ?>', {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success && data.data) {
+                    regAreasData = data.data;
+                    renderRegAreas(regAreasData);
+                } else {
+                    document.getElementById('regAreasList').innerHTML = '<div class="col-12 text-center p-3"><span class="text-muted">No areas available</span></div>';
+                }
+            })
+            .catch(function() {
+                document.getElementById('regAreasList').innerHTML = '<div class="col-12 text-center p-3"><div class="alert alert-danger">Gagal memuat data area</div></div>';
+            });
+        }
+
+        function renderRegAreas(areas) {
+            let html = '';
+            areas.forEach(function(area) {
+                const checked = regSelectedAreaIds.includes(area.id) ? 'checked' : '';
+                const cls = checked ? 'border-primary bg-light' : '';
+                html += `<div class="col-md-6 mb-2"><div class="card ${cls} reg-area-item" style="cursor:pointer;">
+                    <div class="card-body p-3"><div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${area.id}" id="regArea_${area.id}" ${checked}>
+                        <label class="form-check-label" for="regArea_${area.id}"><strong>${area.area_name}</strong><br><small class="text-muted">${area.area_code} \u2014 ${area.area_type}</small></label>
+                    </div></div></div></div>`;
+            });
+            if (!html) html = '<div class="col-12 text-center p-3"><span class="text-muted">No areas found</span></div>';
+            document.getElementById('regAreasList').innerHTML = html;
+            document.querySelectorAll('.reg-area-item').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    const cb = this.querySelector('input[type="checkbox"]');
+                    cb.checked = !cb.checked;
+                    this.classList.toggle('border-primary', cb.checked);
+                    this.classList.toggle('bg-light', cb.checked);
+                });
+            });
+        }
     </script>
 </body>
 </html>

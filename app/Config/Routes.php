@@ -94,6 +94,8 @@ $routes->group('auth', static function ($routes) {
     $routes->post('toggle-otp', 'Auth::toggleOtp');
     // Get positions by division (AJAX)
     $routes->post('get-positions-by-division', 'Auth::getPositionsByDivision');
+    // Get service areas list (public AJAX — used in register form)
+    $routes->get('get-service-areas', 'Auth::getServiceAreas');
 });
 
 // Users API endpoints

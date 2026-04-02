@@ -161,6 +161,13 @@ $currentLang = service('request')->getLocale();
     html[data-bs-theme="dark"] #header-search-btn .header-search-label {
         color: rgba(255,255,255,0.85);
     }
+
+    /* Global search highlight (used across DataTables, Select2, custom lists) */
+    .optima-search-highlight {
+        background-color: rgba(255, 193, 7, 0.35); /* yellow, transparent */
+        border-radius: 0.2rem;
+        padding: 0 2px;
+    }
     </style>
 
     <!-- Page Specific CSS -->
@@ -2405,6 +2412,85 @@ $currentLang = service('request')->getLocale();
             Swal.fire({ icon: 'error', title: 'Gagal Export', text: err.message || 'Terjadi kesalahan saat mengekspor data.' });
         }
     };
+    </script>
+
+    <!-- Global search highlight helper -->
+    <script>
+    (function() {
+        'use strict';
+
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightText(text, term) {
+            if (!text || typeof text !== 'string') return text || '';
+            if (!term || typeof term !== 'string' || term.trim() === '') return text;
+
+            const escaped = escapeRegex(term.trim());
+            const re = new RegExp('(' + escaped + ')', 'gi');
+            return text.replace(re, '<span class="optima-search-highlight">$1</span>');
+        }
+
+        function getTableSearch(table) {
+            try {
+                if (!table || !table.settings) return '';
+                const settings = table.settings()[0];
+                if (!settings || !settings.oPreviousSearch) return '';
+                return settings.oPreviousSearch.sSearch || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        window.OptimaSearch = window.OptimaSearch || {};
+        window.OptimaSearch.highlightText = highlightText;
+        window.OptimaSearch.highlightForTable = function(table, text) {
+            const term = getTableSearch(table);
+            return highlightText(text, term);
+        };
+        window.OptimaSearch.highlightInElement = function(rootEl, term, selector) {
+            if (!rootEl || !term) return;
+            const elements = selector ? rootEl.querySelectorAll(selector) : [rootEl];
+            elements.forEach(function(el) {
+                el.innerHTML = highlightText(el.textContent || '', term);
+            });
+        };
+    })();
+    </script>
+
+    <!-- Global DataTables search highlight hook (text-only cells) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!window.OptimaSearch || typeof OptimaSearch.highlightText !== 'function') {
+            return;
+        }
+        // Apply highlight on every DataTables draw event
+        $(document).on('draw.dt', function(e, settings) {
+            try {
+                var tableEl = settings.nTable;
+                if (!tableEl) return;
+                var wrapper = $(tableEl).closest('.dataTables_wrapper');
+                var input = wrapper.find('.dataTables_filter input[type="search"]');
+                var term = (input.val() || '').trim();
+
+                var cells = tableEl.querySelectorAll('tbody td');
+                cells.forEach(function(td) {
+                    // Only touch simple text cells (no nested elements) to avoid breaking badges/buttons
+                    if (td.children.length > 0) return;
+                    var rawText = td.textContent || '';
+                    if (!term) {
+                        // Clear previous highlight by resetting to plain text
+                        td.textContent = rawText;
+                    } else {
+                        td.innerHTML = OptimaSearch.highlightText(rawText, term);
+                    }
+                });
+            } catch (err) {
+                console.error('DataTable highlight error:', err);
+            }
+        });
+    });
     </script>
 
 </body>

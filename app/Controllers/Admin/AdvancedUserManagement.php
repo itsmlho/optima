@@ -2073,6 +2073,24 @@ class AdvancedUserManagement extends BaseController
         // Get all roles for cascading dropdown
         $allRoles = $this->roleModel->findAll();
 
+        // Get all service areas for the service access section
+        $areas = $this->db->table('areas')
+            ->select('id, area_code, area_name, area_type')
+            ->where('is_active', 1)
+            ->orderBy('area_name', 'ASC')
+            ->get()->getResultArray();
+
+        // Get user's existing service access (if any) for pre-population
+        $userServiceAccess = $this->db->table('user_area_access')
+            ->where('user_id', $userId)
+            ->get()->getRowArray();
+        $userBranchAccess = $this->db->table('user_branch_access')
+            ->where('user_id', $userId)
+            ->get()->getRowArray();
+        if ($userBranchAccess && !empty($userBranchAccess['branch_ids'])) {
+            $userBranchAccess['branch_ids'] = json_decode($userBranchAccess['branch_ids'], true);
+        }
+
         return $this->response->setJSON([
             'success' => true,
             'user' => [
@@ -2087,7 +2105,10 @@ class AdvancedUserManagement extends BaseController
                 'division_name' => $userDivisionName
             ],
             'divisions' => $divisions,
-            'roles' => $allRoles
+            'roles' => $allRoles,
+            'areas' => $areas,
+            'user_service_access' => $userServiceAccess ?: null,
+            'user_branch_access' => $userBranchAccess ?: null
         ]);
     }
 
@@ -2173,6 +2194,9 @@ class AdvancedUserManagement extends BaseController
             if ($this->db->transStatus() === false) {
                 throw new \Exception('Database transaction failed.');
             }
+
+            // Save service area access if this is a Service division user
+            $this->handleServiceAccess($userId, $divisionId);
 
             return $this->response->setJSON([
                 'success' => true,
