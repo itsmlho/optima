@@ -226,7 +226,26 @@ class SiloModel extends Model
 
             $builder->orderBy('iu.no_unit', 'ASC');
 
-            $result = $builder->get()->getResultArray();
+            $query = $builder->get();
+            if ($query === false) {
+                $dbError = $this->db->error();
+                $code    = $dbError['code'] ?? 'N/A';
+                $message = $dbError['message'] ?? 'Unknown database error';
+
+                log_message(
+                    'error',
+                    "SiloModel::getUnitsWithoutSilo - Gagal mengeksekusi query. Kode: {$code}, Pesan DB: {$message}"
+                );
+                // Beri konteks tambahan agar mudah debug di production
+                log_message(
+                    'error',
+                    'SiloModel::getUnitsWithoutSilo - Periksa kembali struktur tabel inventory_unit, status_unit, dan relasi departemen/kapasitas di database production.'
+                );
+
+                return [];
+            }
+
+            $result = $query->getResultArray();
             log_message('debug', 'SiloModel::getUnitsWithoutSilo - Found ' . count($result) . ' units without SILO');
             if (count($result) > 0) {
                 log_message('debug', 'SiloModel::getUnitsWithoutSilo - First unit: ' . json_encode($result[0]));
