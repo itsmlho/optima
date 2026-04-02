@@ -199,7 +199,7 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?= $this->section('javascript') ?>
 <script>
 let selectedCustomerId = null;
 let selectedLocationId = null;

@@ -642,8 +642,27 @@ $routes->group('service', static function ($routes) {
     $routes->post('unit-audit/submitToMarketing/(:num)', 'UnitAudit::submitToMarketing/$1', ['filter' => 'permission:service.unit_audit.create']);
     $routes->get('unit-audit/inputResults/(:num)', 'UnitAudit::inputAuditResults/$1', ['filter' => 'permission:service.unit_audit.create']);
 
-    // PMP and other service pages
+    // PMPS — Preventive Maintenance Planned Service
     $routes->get('pmps', 'Service::pmps');
+    $routes->get('pm-schedules', 'PmpsController::schedules');
+    $routes->get('pm-job/(:num)', 'PmpsController::jobDetail/$1');
+    // PMPS Dashboard API
+    $routes->get('pmps/stats', 'PmpsController::getStats');
+    $routes->get('pmps/getPmJobs', 'PmpsController::getPmJobs');
+    $routes->post('pmps/generate', 'PmpsController::generateJobs');
+    $routes->post('pmps/createWorkOrder/(:num)', 'PmpsController::createWorkOrder/$1');
+    $routes->post('pmps/complete/(:num)', 'PmpsController::completeJob/$1');
+    $routes->get('pmps/getChecklist/(:num)', 'PmpsController::getChecklist/$1');
+    $routes->post('pmps/saveChecklist/(:num)', 'PmpsController::saveChecklist/$1');
+    $routes->get('pmps/getJobDetail/(:num)', 'PmpsController::getJobDetail/$1');
+    // PM Schedules API
+    $routes->get('pm-schedules/getSchedules', 'PmpsController::getSchedules');
+    $routes->get('pm-schedules/get/(:num)', 'PmpsController::getSchedule/$1');
+    $routes->post('pm-schedules/store', 'PmpsController::storeSchedule');
+    $routes->post('pm-schedules/update/(:num)', 'PmpsController::updateSchedule/$1');
+    $routes->delete('pm-schedules/delete/(:num)', 'PmpsController::deleteSchedule/$1');
+    $routes->get('pm-schedules/getChecklistTemplates/(:num)', 'PmpsController::getChecklistTemplates/$1');
+    $routes->post('pm-schedules/saveChecklistTemplates/(:num)', 'PmpsController::saveChecklistTemplates/$1');
         $routes->get('data-unit', 'Service::dataUnit');
         $routes->get('areas', 'Service::areas');
         $routes->get('user-scope', 'Service::userScope'); // Debug endpoint for user scope
@@ -1018,6 +1037,7 @@ $routes->group('purchasing', static function ($routes) {
     $routes->post('verify-delivery-items', 'Purchasing::verifyDeliveryItems');
     $routes->get('api/get-item-form/(:any)', 'Purchasing::getItemForm/$1');
     $routes->get('api/get-model-units', 'Purchasing::getModelUnits');
+    $routes->get('api/get-unit-brands', 'Purchasing::getUnitBrands');
     $routes->get('api/get-tipe-units/(:num)', 'Purchasing::getTipeUnits/$1');
     $routes->get('api/get-jenis-units/(:num)', 'Purchasing::getJenisUnits/$1');
     $routes->get('api/get-attachment-merks', 'Purchasing::getAttachmentMerks');

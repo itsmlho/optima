@@ -128,7 +128,7 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
     let currentManualName = '';

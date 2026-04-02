@@ -1,262 +1,414 @@
 <?= $this->extend('layouts/base') ?>
-
-<?= $this->section('css') ?>
-<style>
-/* ==============================
-   COMING SOON STYLES
-   Professional coming soon page
-   ============================== */
-.coming-soon-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #ffffff;
-    padding: 2rem 1rem;
-}
-
-.coming-soon-card {
-    background: white;
-    border-radius: 20px;
-    padding: 3rem 2rem;
-    text-align: center;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    width: 100%;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #e9ecef;
-}
-
-.coming-soon-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #007bff, #00ac69);
-}
-
-.coming-soon-logos {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.coming-soon-logo {
-    height: 40px;
-    width: auto;
-}
-
-.logo-divider {
-    width: 2px;
-    height: 30px;
-    background: linear-gradient(180deg, #007bff, #00ac69);
-    border-radius: 1px;
-}
-
-.coming-soon-icon {
-    font-size: 4rem;
-    color: #007bff;
-    margin-bottom: 1.5rem;
-    animation: bounce 2s ease-in-out infinite;
-}
-
-@keyframes bounce {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.coming-soon-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 1rem;
-    line-height: 1.2;
-}
-
-.coming-soon-subtitle {
-    font-size: 1.2rem;
-    color: #6c757d;
-    margin-bottom: 1.5rem;
-    font-weight: 500;
-}
-
-.coming-soon-divider {
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(90deg, #007bff, #00ac69);
-    margin: 1.5rem auto;
-    border-radius: 2px;
-}
-
-.coming-soon-description {
-    font-size: 1rem;
-    color: #495057;
-    margin-bottom: 2.5rem;
-    line-height: 1.6;
-}
-
-.coming-soon-features {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin: 2rem 0;
-    flex-wrap: wrap;
-}
-
-.feature-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #6c757d;
-    font-size: 0.9rem;
-    padding: 0.5rem 1rem;
-    background: #f8f9fa;
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
-
-.feature-item:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-}
-
-.feature-item i {
-    color: #00ac69;
-    font-size: 1.2rem;
-}
-
-.back-btn {
-    margin-top: 2rem;
-    padding: 0.875rem 2rem;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 50px;
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    border: none;
-    color: #fff;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
-}
-
-.back-btn:hover {
-    background: linear-gradient(135deg, #0056b3, #004085);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
-    color: #fff;
-}
-
-/* Dark Mode Support */
-[data-bs-theme="dark"] .coming-soon-card {
-    background: #2c3034;
-    color: #e2e8f0;
-}
-
-[data-bs-theme="dark"] .coming-soon-title {
-    color: #e2e8f0;
-}
-
-[data-bs-theme="dark"] .coming-soon-subtitle {
-    color: #adb5bd;
-}
-
-[data-bs-theme="dark"] .coming-soon-description {
-    color: #adb5bd;
-}
-
-[data-bs-theme="dark"] .feature-item {
-    background: #343a40;
-    color: #adb5bd;
-}
-
-[data-bs-theme="dark"] .feature-item:hover {
-    background: #495057;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .coming-soon-container {
-        padding: 1rem;
-    }
-    
-    .coming-soon-card {
-        padding: 2rem 1.5rem;
-    }
-    
-    .coming-soon-title {
-        font-size: 2rem;
-    }
-    
-    .coming-soon-features {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .feature-item {
-        justify-content: center;
-    }
-}
-</style>
-<?= $this->endSection() ?>
+<?php
+/**
+ * PMPS Dashboard — Preventive Maintenance Planned Service
+ */
+helper('global_permission');
+$permissions = get_global_permission('service');
+$can_create  = $permissions['create'];
+$can_edit    = $permissions['edit'];
+?>
 
 <?= $this->section('content') ?>
-<div class="coming-soon-container">
-    <div class="coming-soon-card">
-        <!-- Company Logos -->
-        <div class="coming-soon-logos">
-            <img src="<?= base_url('assets/images/company-logo.svg') ?>" alt="PT Sarana Mitra Luas Logo" class="coming-soon-logo">
-            <div class="logo-divider"></div>
-            <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo" class="coming-soon-logo">
-        </div>
-        
-        <!-- Coming Soon Icon -->
-        <div class="coming-soon-icon">
-            <i class="fas fa-calendar-check"></i>
-        </div>
-        
-        <!-- Title -->
-        <h1 class="coming-soon-title"><?= lang('App.preventive_maintenance_pmps') ?></h1>
-        
-        <div class="coming-soon-divider"></div>
-        
-        <!-- Subtitle -->
-        <p class="coming-soon-subtitle"><?= lang('Service.preventive_maintenance_system') ?></p>
-        
-        <!-- Description -->
-        <p class="coming-soon-description">
-            <?= lang('Service.pmps_coming_soon_description') ?>
-        </p>
-        
-        <!-- Features Coming -->
-        <div class="coming-soon-features">
-            <div class="feature-item">
-                <i class="fas fa-calendar-alt"></i>
-                <span><?= lang('Service.maintenance_schedule') ?></span>
-            </div>
-            <div class="feature-item">
-                <i class="fas fa-wrench"></i>
-                <span><?= lang('Service.service_tracking') ?></span>
-            </div>
-            <div class="feature-item">
-                <i class="fas fa-chart-line"></i>
-                <span><?= lang('Service.performance_analysis') ?></span>
+
+<!-- ── Statistics Cards ──────────────────────────────────────────────────── -->
+<div class="row mt-3 mb-4">
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-calendar-check stat-icon text-primary"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-total">—</div>
+                    <div class="text-muted small">Total PM Jobs</div>
+                </div>
             </div>
         </div>
-        
-        <!-- Back Button -->
-        <a href="<?= base_url('/') ?>" class="back-btn">
-            <i class="fas fa-arrow-left me-2"></i><?= lang('App.back_to_dashboard') ?>
-        </a>
+    </div>
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-danger-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-exclamation-triangle stat-icon text-danger"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-overdue">—</div>
+                    <div class="text-muted small">Overdue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-clock stat-icon text-warning"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-due-week">—</div>
+                    <div class="text-muted small">Jatuh Tempo 7 Hari</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-gear stat-icon text-info"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-in-progress">—</div>
+                    <div class="text-muted small">Sedang Berjalan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-check-circle stat-icon text-success"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-completed">—</div>
+                    <div class="text-muted small">Selesai Bulan Ini</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card bg-secondary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-list-check stat-icon text-secondary"></i></div>
+                <div>
+                    <div class="stat-value" id="stat-schedules">—</div>
+                    <div class="text-muted small">Jadwal Aktif</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- ── PM Jobs Table ──────────────────────────────────────────────────────── -->
+<div class="card table-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-tools me-2 text-primary"></i>PM Jobs
+            </h5>
+            <p class="text-muted small mb-0">Daftar pekerjaan preventive maintenance terjadwal</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="<?= base_url('service/pm-schedules') ?>" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-calendar-plus me-1"></i>Kelola Jadwal PM
+            </a>
+            <?php if ($can_create): ?>
+            <button id="btn-generate-jobs" class="btn btn-success btn-sm">
+                <i class="bi bi-lightning me-1"></i>Generate PM Jobs
+            </button>
+            <?php endif; ?>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filters -->
+        <div class="row mb-3 g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1"><i class="fas fa-filter text-primary me-1"></i>Status</label>
+                <select id="filter-status" class="form-select form-select-sm">
+                    <option value="">Semua Status</option>
+                    <option value="SCHEDULED">Terjadwal</option>
+                    <option value="OVERDUE">Overdue</option>
+                    <option value="IN_PROGRESS">Sedang Berjalan</option>
+                    <option value="COMPLETED">Selesai</option>
+                    <option value="SKIPPED">Dilewati</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1"><i class="fas fa-calendar me-1 text-primary"></i>Bulan</label>
+                <input type="month" id="filter-month" class="form-control form-control-sm" value="<?= date('Y-m') ?>">
+            </div>
+            <div class="col-md-2">
+                <button id="btn-clear-filters" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-x-circle me-1"></i>Reset Filter
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="pm-jobs-table" class="table table-hover table-sm align-middle mb-0 w-100">
+                <thead class="table-light">
+                    <tr class="small text-uppercase">
+                        <th>PM Number</th>
+                        <th>Unit</th>
+                        <th>Lokasi / Customer</th>
+                        <th>Jadwal</th>
+                        <th>Due Date</th>
+                        <th>HM Due</th>
+                        <th>Status</th>
+                        <th>Work Order</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ── Complete PM Job Modal ──────────────────────────────────────────────── -->
+<div class="modal fade" id="completeJobModal" tabindex="-1" aria-labelledby="completeJobModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="completeJobModalLabel">
+                    <i class="bi bi-check-circle me-2 text-success"></i>Selesaikan PM Job
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="complete-job-id">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tanggal Pengerjaan <span class="text-danger">*</span></label>
+                    <input type="date" id="complete-actual-date" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Hour Meter Aktual (HM)</label>
+                    <input type="number" step="0.1" id="complete-actual-hm" class="form-control form-control-sm" placeholder="HM saat PM dikerjakan">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Catatan</label>
+                    <textarea id="complete-notes" class="form-control form-control-sm" rows="3" placeholder="Catatan hasil PM..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Bidang dengan <span class="text-danger">*</span> wajib diisi</small>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success btn-sm" id="btn-confirm-complete">
+                        <i class="bi bi-check-lg me-1"></i>Selesaikan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?= $this->endSection() ?>
+
+<?= $this->section('javascript') ?>
+<script>
+// CSRF — use window globals from base layout
+function getCsrf() {
+    return {
+        name: window.csrfTokenName,
+        hash: (typeof window.getCsrfToken === 'function') ? window.getCsrfToken() : window.csrfToken
+    };
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function loadStats() {
+    $.getJSON(BASE_URL + 'service/pmps/stats', function(res) {
+        if (!res.success) return;
+        const d = res.data;
+        $('#stat-total').text(d.total ?? 0);
+        $('#stat-overdue').text(d.overdue ?? 0);
+        $('#stat-due-week').text(d.due_this_week ?? 0);
+        $('#stat-in-progress').text(d.in_progress ?? 0);
+        $('#stat-completed').text(d.completed_this_month ?? 0);
+        $('#stat-schedules').text(d.active_schedules ?? 0);
+    });
+}
+
+// ── Status badge ───────────────────────────────────────────────────────────
+function statusBadge(status) {
+    const map = {
+        'SCHEDULED':   '<span class="badge badge-soft-blue">Terjadwal</span>',
+        'OVERDUE':     '<span class="badge badge-soft-red">Overdue</span>',
+        'IN_PROGRESS': '<span class="badge badge-soft-cyan">Berjalan</span>',
+        'COMPLETED':   '<span class="badge badge-soft-green">Selesai</span>',
+        'SKIPPED':     '<span class="badge badge-soft-gray">Dilewati</span>',
+    };
+    return map[status] || `<span class="badge badge-soft-gray">${status}</span>`;
+}
+
+// ── DataTable ──────────────────────────────────────────────────────────────
+let pmTable;
+function initTable() {
+    pmTable = $('#pm-jobs-table').DataTable({
+        processing: true,
+        serverSide: true,
+        scrollX: true,
+        pageLength: 25,
+        ajax: {
+            url: BASE_URL + 'service/pmps/getPmJobs',
+            type: 'GET',
+            data: function(d) {
+                d.status = $('#filter-status').val();
+                d.month  = $('#filter-month').val();
+                return d;
+            }
+        },
+        columns: [
+            {
+                data: 'pm_number', width: '130px',
+                render: (d, _, row) => `<a href="${BASE_URL}service/pm-job/${row.id}" class="fw-semibold text-primary text-decoration-none">${d}</a>`
+            },
+            {
+                data: 'no_unit',
+                render: (d, _, row) => `<strong>${d ?? '-'}</strong><br><small class="text-muted">${row.merk ?? ''} ${row.model ?? ''}</small>`
+            },
+            {
+                data: 'customer_name',
+                render: (d, _, row) => `${d ?? '<span class="text-muted fst-italic">Belum ada kontrak</span>'}<br><small class="text-muted">${row.location_name ?? ''}</small>`
+            },
+            {
+                data: 'schedule_name',
+                render: (d, _, row) => {
+                    const cls = row.trigger_type === 'HM' ? 'badge-soft-orange' : row.trigger_type === 'BOTH' ? 'badge-soft-purple' : 'badge-soft-blue';
+                    return `${d ?? '-'}<br><span class="badge ${cls} small">${row.trigger_type ?? ''}</span>`;
+                }
+            },
+            {
+                data: 'due_date',
+                render: d => {
+                    if (!d) return '<span class="text-muted">-</span>';
+                    const due = new Date(d), today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const diff = Math.floor((due - today) / 86400000);
+                    const cls  = diff < 0 ? 'text-danger fw-bold' : diff <= 7 ? 'text-warning fw-semibold' : '';
+                    return `<span class="${cls}">${d}</span>`;
+                }
+            },
+            { data: 'due_hm', render: d => d ? `<span class="badge badge-soft-blue">${d} HM</span>` : '<span class="text-muted">-</span>' },
+            { data: 'display_status', render: d => statusBadge(d) },
+            {
+                data: 'work_order_number',
+                render: (d, _, row) => d
+                    ? `<a href="${BASE_URL}service/work-orders/view/${row.work_order_id}" class="badge badge-soft-cyan text-decoration-none" target="_blank">${d}</a>`
+                    : '<span class="text-muted small">—</span>'
+            },
+            {
+                data: 'id', orderable: false, className: 'text-center',
+                render: (d, _, row) => {
+                    const status = row.display_status || row.status;
+                    let btns = `<a href="${BASE_URL}service/pm-job/${d}" class="btn btn-sm btn-outline-primary" title="Detail"><i class="bi bi-eye"></i></a> `;
+                    if (!row.work_order_id && ['SCHEDULED','OVERDUE'].includes(status)) {
+                        btns += `<button class="btn btn-sm btn-outline-success btn-create-wo" data-id="${d}" data-pm="${row.pm_number ?? ''}" title="Buat WO"><i class="bi bi-plus-circle"></i></button> `;
+                    }
+                    if (['SCHEDULED','OVERDUE','IN_PROGRESS'].includes(status)) {
+                        btns += `<button class="btn btn-sm btn-outline-warning btn-complete" data-id="${d}" data-hm="${row.current_hm ?? ''}" data-pm="${row.pm_number ?? ''}" title="Selesaikan"><i class="bi bi-check-lg"></i></button>`;
+                    }
+                    return btns;
+                }
+            },
+        ],
+        order: [[4, 'asc']],
+        language: {
+            processing:   'Memuat data…',
+            search:       'Cari:',
+            lengthMenu:   'Tampilkan _MENU_ data',
+            info:         'Menampilkan _START_–_END_ dari _TOTAL_ data',
+            infoEmpty:    'Tidak ada data',
+            infoFiltered: '(dari _MAX_ total)',
+            zeroRecords:  'Tidak ditemukan data yang sesuai',
+            emptyTable:   'Belum ada PM Job',
+            paginate:     { first: 'Pertama', previous: 'Sebelumnya', next: 'Selanjutnya', last: 'Terakhir' }
+        },
+    });
+}
+
+// ── Events ─────────────────────────────────────────────────────────────────
+$(document).ready(function() {
+    loadStats();
+    initTable();
+
+    // Filter
+    $('#filter-status, #filter-month').on('change', () => pmTable.ajax.reload());
+    $('#btn-clear-filters').on('click', function() {
+        $('#filter-status').val('');
+        $('#filter-month').val('<?= date('Y-m') ?>');
+        pmTable.ajax.reload();
+    });
+
+    // Generate PM Jobs
+    $('#btn-generate-jobs').on('click', function() {
+        OptimaConfirm.generic({
+            title: 'Generate PM Jobs',
+            html: '<p class="mb-1">Generate PM Job dari semua jadwal yang sudah jatuh tempo?</p><small class="text-muted">Jadwal yang sudah memiliki PM Job aktif akan dilewati.</small>',
+            icon: 'question',
+            confirmText: 'Generate',
+            cancelText: 'Batal',
+            confirmButtonColor: 'success',
+            onConfirm: function() {
+                const $btn = $('#btn-generate-jobs').prop('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i>Proses...');
+                const csrf = getCsrf();
+                $.post(BASE_URL + 'service/pmps/generate', { [csrf.name]: csrf.hash }, function(res) {
+                    if (res.success) {
+                        OptimaNotify.success(res.message);
+                        pmTable.ajax.reload();
+                        loadStats();
+                    } else {
+                        OptimaNotify.error(res.message || 'Gagal generate PM Jobs');
+                    }
+                }).fail(() => OptimaNotify.error('Gagal menghubungi server'))
+                  .always(() => $btn.prop('disabled', false).html('<i class="bi bi-lightning me-1"></i>Generate PM Jobs'));
+            }
+        });
+    });
+
+    // Buat Work Order
+    $(document).on('click', '.btn-create-wo', function() {
+        const id  = $(this).data('id');
+        const pm  = $(this).data('pm') || '#' + id;
+        const $btn = $(this);
+        OptimaConfirm.generic({
+            title: 'Buat Work Order PMPS',
+            html: `<p class="mb-0">Buat Work Order untuk <strong>${pm}</strong>?</p>`,
+            icon: 'question',
+            confirmText: 'Buat WO',
+            cancelText: 'Batal',
+            confirmButtonColor: 'success',
+            onConfirm: function() {
+                $btn.prop('disabled', true);
+                const csrf = getCsrf();
+                $.post(BASE_URL + 'service/pmps/createWorkOrder/' + id, { [csrf.name]: csrf.hash }, function(res) {
+                    if (res.success) {
+                        OptimaNotify.success(res.message);
+                        pmTable.ajax.reload();
+                        loadStats();
+                    } else {
+                        OptimaNotify.error(res.message || 'Gagal membuat Work Order');
+                    }
+                }).fail(() => OptimaNotify.error('Gagal menghubungi server'))
+                  .always(() => $btn.prop('disabled', false));
+            }
+        });
+    });
+
+    // Buka modal selesai
+    $(document).on('click', '.btn-complete', function() {
+        $('#complete-job-id').val($(this).data('id'));
+        $('#complete-actual-hm').val($(this).data('hm') || '');
+        $('#complete-actual-date').val('<?= date('Y-m-d') ?>');
+        $('#complete-notes').val('');
+        new bootstrap.Modal(document.getElementById('completeJobModal')).show();
+    });
+
+    // Konfirmasi selesai
+    $('#btn-confirm-complete').on('click', function() {
+        const jobId = $('#complete-job-id').val();
+        const date  = $('#complete-actual-date').val();
+        if (!date) { OptimaNotify.warning('Tanggal pengerjaan wajib diisi', 'Validasi'); return; }
+        const $btn = $(this).prop('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i>Menyimpan...');
+        const csrf = getCsrf();
+        $.post(BASE_URL + 'service/pmps/complete/' + jobId, {
+            [csrf.name]: csrf.hash,
+            actual_date: date,
+            actual_hm:   $('#complete-actual-hm').val(),
+            notes:       $('#complete-notes').val(),
+        }, function(res) {
+            if (res.success) {
+                OptimaNotify.success(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('completeJobModal')).hide();
+                pmTable.ajax.reload();
+                loadStats();
+            } else {
+                OptimaNotify.error(res.message || 'Gagal menyimpan');
+            }
+        }).fail(() => OptimaNotify.error('Gagal menghubungi server'))
+          .always(() => $btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>Selesaikan'));
+    });
+});
+</script>
 <?= $this->endSection() ?>

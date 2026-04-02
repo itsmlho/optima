@@ -142,7 +142,7 @@ $component_types = $component_types ?? [];
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetFilters()">
-                    <i class="fas fa-reset me-1"></i>Reset
+                    <i class="fas fa-sync me-1"></i>Reset
                 </button>
             </div>
         </div>
@@ -203,6 +203,7 @@ $component_types = $component_types ?? [];
                                     <option value="ATTACHMENT">Attachment</option>
                                     <option value="CHARGER">Charger</option>
                                     <option value="BATTERY">Baterai</option>
+                                    <option value="FORK">Fork</option>
                                     <option value="SPAREPART">Sparepart</option>
                                 </select>
                             </div>
@@ -425,13 +426,9 @@ function renderMovementTable(data) {
         // Build item label: unit or component
         let itemLabel = '<span class="text-muted">-</span>';
         if (item.no_unit || item.no_unit_na) {
-            itemLabel = (item.no_unit || item.no_unit_na) + '<br><small class="text-muted">' + (item.merk_unit || '') + '</small>';
-        } else if (item.attachment_item_number) {
-            itemLabel = item.attachment_item_number;
-        } else if (item.charger_item_number) {
-            itemLabel = item.charger_item_number;
-        } else if (item.battery_item_number) {
-            itemLabel = item.battery_item_number;
+            itemLabel = (item.no_unit_na || item.no_unit) + '<br><small class="text-muted">' + (item.merk_unit || '') + '</small>';
+        } else if (item.component_label) {
+            itemLabel = item.component_label;
         }
 
         html += '<tr>';
@@ -463,11 +460,12 @@ function getMovementStatusBadge(status) {
 
 function getComponentBadge(type) {
     const badges = {
-        'FORKLIFT': '<span class="badge badge-soft-blue">Forklift</span>',
+        'FORKLIFT':   '<span class="badge badge-soft-blue">Forklift</span>',
         'ATTACHMENT': '<span class="badge badge-soft-cyan">Attachment</span>',
-        'CHARGER': '<span class="badge badge-soft-yellow">Charger</span>',
-        'BATTERY': '<span class="badge badge-soft-green">Baterai</span>',
-        'SPAREPART': '<span class="badge badge-soft-purple">Sparepart</span>'
+        'CHARGER':    '<span class="badge badge-soft-yellow">Charger</span>',
+        'BATTERY':    '<span class="badge badge-soft-green">Baterai</span>',
+        'FORK':       '<span class="badge badge-soft-orange">Fork</span>',
+        'SPAREPART':  '<span class="badge badge-soft-purple">Sparepart</span>'
     };
     return badges[type] || type || '-';
 }
@@ -479,14 +477,15 @@ function onComponentTypeChange() {
     const label = $('#componentIdLabel');
     const unitCol = $('#unitSelectCol');
 
-    if (type === 'FORKLIFT' || type === 'SPAREPART' || !type) {
+    if (type === 'FORKLIFT' || !type) {
+        // Forklift: show unit selector (optionally link a unit), hide component dropdown
         row.hide();
         select.val('');
         unitCol.show();
         return;
     }
 
-    // For ATTACHMENT / CHARGER / BATTERY: show component dropdown, hide unit select
+    // For non-FORKLIFT types: hide unit select, show component dropdown
     unitCol.hide();
     const $u = $('#unitSelect');
     $u.val('');
@@ -495,7 +494,13 @@ function onComponentTypeChange() {
     }
     row.show();
 
-    const labels = { 'ATTACHMENT': 'Pilih Attachment', 'CHARGER': 'Pilih Charger', 'BATTERY': 'Pilih Baterai' };
+    const labels = {
+        'ATTACHMENT': 'Pilih Attachment',
+        'CHARGER':    'Pilih Charger',
+        'BATTERY':    'Pilih Baterai',
+        'FORK':       'Pilih Fork',
+        'SPAREPART':  'Pilih Sparepart'
+    };
     label.text(labels[type] || 'Pilih Komponen');
 
     select.html('<option value="">Memuat...</option>');
@@ -507,13 +512,20 @@ function onComponentTypeChange() {
         data: { type: type },
         success: function(res) {
             let html = '<option value="">-- Pilih --</option>';
-            if (res.success && res.data) {
+            if (res.success && res.data && res.data.length > 0) {
                 res.data.forEach(c => {
-                    html += `<option value="${c.id}">${c.label} — ${c.location} [${c.status}]</option>`;
+                    const loc = c.location ? ` — ${c.location}` : '';
+                    const status = c.status ? ` [${c.status}]` : '';
+                    html += `<option value="${c.id}">${c.label}${loc}${status}</option>`;
                 });
+            } else {
+                html = '<option value="">-- Tidak ada data --</option>';
             }
             select.html(html);
             select.prop('disabled', false);
+            if ($.fn.select2 && select.hasClass('select2-hidden-accessible')) {
+                select.trigger('change');
+            }
         },
         error: function() {
             select.html('<option value="">Error memuat data</option>');

@@ -93,7 +93,7 @@ class UnitMovementController extends BaseController
             'origin_type'           => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
             'destination_type'      => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
             'movement_date'         => 'required|valid_date',
-            'component_type'        => 'permit_empty|in_list[FORKLIFT,ATTACHMENT,CHARGER,BATTERY,SPAREPART]',
+            'component_type'        => 'permit_empty|in_list[FORKLIFT,ATTACHMENT,CHARGER,BATTERY,FORK,SPAREPART]',
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
@@ -303,8 +303,8 @@ class UnitMovementController extends BaseController
                 case 'ATTACHMENT':
                     if ($db->tableExists('inventory_attachments')) {
                         $rows = $db->table('inventory_attachments ia')
-                            ->select('ia.id_inventory_attachment as id, CONCAT(IFNULL(a.tipe,""), " ", IFNULL(a.merk,""), " ", IFNULL(a.model,"")) as label, IFNULL(ia.lokasi,"") as location, IFNULL(ia.status,"") as status')
-                            ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+                            ->select('ia.id, CONCAT(IFNULL(a.tipe,""), " ", IFNULL(a.merk,""), " ", IFNULL(a.model,""), " [", IFNULL(ia.item_number,""), "]") as label, IFNULL(ia.storage_location,"") as location, IFNULL(ia.status,"") as status')
+                            ->join('attachment a', 'a.id_attachment = ia.attachment_type_id', 'left')
                             ->get()->getResultArray();
                         $data = $rows;
                     }
@@ -312,7 +312,7 @@ class UnitMovementController extends BaseController
                 case 'CHARGER':
                     if ($db->tableExists('inventory_chargers')) {
                         $rows = $db->table('inventory_chargers ic')
-                            ->select('ic.id_inventory_charger as id, CONCAT(IFNULL(ic.merk,""), " ", IFNULL(ic.model,""), " SN:", IFNULL(ic.serial_number,"")) as label, IFNULL(ic.lokasi,"") as location, IFNULL(ic.status,"") as status')
+                            ->select('ic.id, CONCAT(IFNULL(ic.item_number,""), " SN:", IFNULL(ic.serial_number,""), " [", IFNULL(ic.input_voltage,""), "V/", IFNULL(ic.output_voltage,""), "V]") as label, IFNULL(ic.storage_location,"") as location, IFNULL(ic.status,"") as status')
                             ->get()->getResultArray();
                         $data = $rows;
                     }
@@ -320,15 +320,26 @@ class UnitMovementController extends BaseController
                 case 'BATTERY':
                     if ($db->tableExists('inventory_batteries')) {
                         $rows = $db->table('inventory_batteries ib')
-                            ->select('ib.id_inventory_battery as id, CONCAT(IFNULL(ib.merk,""), " ", IFNULL(ib.model,""), " SN:", IFNULL(ib.serial_number,"")) as label, IFNULL(ib.lokasi,"") as location, IFNULL(ib.status,"") as status')
+                            ->select('ib.id, CONCAT(IFNULL(ib.item_number,""), " SN:", IFNULL(ib.serial_number,""), " [", IFNULL(ib.voltage,""), "V ", IFNULL(ib.ampere_hour,""), "Ah]") as label, IFNULL(ib.storage_location,"") as location, IFNULL(ib.status,"") as status')
+                            ->get()->getResultArray();
+                        $data = $rows;
+                    }
+                    break;
+                case 'FORK':
+                    if ($db->tableExists('inventory_forks')) {
+                        $rows = $db->table('inventory_forks ifork')
+                            ->select('ifork.id, CONCAT(IFNULL(f.name,""), " [", IFNULL(ifork.item_number,""), "] (", IFNULL(ifork.qty_pairs,1), " pasang)") as label, IFNULL(ifork.storage_location,"") as location, IFNULL(ifork.status,"") as status')
+                            ->join('fork f', 'f.id = ifork.fork_id', 'left')
                             ->get()->getResultArray();
                         $data = $rows;
                     }
                     break;
                 case 'SPAREPART':
-                    if ($db->tableExists('inventory_spareparts')) {
-                        $rows = $db->table('inventory_spareparts')
-                            ->select('id, CONCAT(IFNULL(nama,""), " (", IFNULL(part_number,""), ")") as label, "" as location, "" as status')
+                    if ($db->tableExists('inventory_spareparts') && $db->tableExists('sparepart')) {
+                        $rows = $db->table('inventory_spareparts isp')
+                            ->select('isp.id, CONCAT(IFNULL(sp.kode,""), " - ", LEFT(IFNULL(sp.desc_sparepart,""), 60)) as label, IFNULL(isp.lokasi_rak,"") as location, "" as status')
+                            ->join('sparepart sp', 'sp.id_sparepart = isp.sparepart_id', 'left')
+                            ->where('isp.stok >', 0)
                             ->get()->getResultArray();
                         $data = $rows;
                     }

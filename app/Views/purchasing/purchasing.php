@@ -1977,50 +1977,76 @@ function renderSpecificationDetails(item, itemType) {
     const type = (itemType || item.item_type || 'Unit').toLowerCase();
     
     if (type === 'unit') {
+        // Parse package_flags — nilai sesuai checkbox: fork_standard, battery, charger, attachment, accessories
+        let flags = [];
+        try { flags = item.package_flags ? JSON.parse(item.package_flags) : []; } catch(e) {}
+        const flagMap = {
+            fork_standard: ['Fork',      'bg-secondary'],
+            battery:       ['Baterai',   'bg-warning text-dark'],
+            charger:       ['Charger',   'bg-info text-dark'],
+            attachment:    ['Attachment','bg-success'],
+            accessories:   ['Aksesori',  'bg-light text-dark border'],
+        };
+        const flagBadges = flags.length
+            ? flags.map(f => flagMap[f] ? `<span class="badge ${flagMap[f][1]} me-1">${flagMap[f][0]}</span>` : '').join('')
+            : '<span class="text-muted small">-</span>';
+
+        // Kondisi badge
+        const kondisiColor = {Baru:'bg-primary', Bekas:'bg-warning text-dark', Rekondisi:'bg-info text-dark'};
+        const kondisi = item.status_penjualan || '-';
+        const kondisiBadge = kondisiColor[kondisi]
+            ? `<span class="badge ${kondisiColor[kondisi]}">${kondisi}</span>`
+            : `<span class="text-muted">-</span>`;
+
+        // Aksesori
+        const aksesori = item.unit_accessories ? `<span class="text-dark">${item.unit_accessories}</span>` : '<span class="text-muted">-</span>';
+
+        // Vendor spec (tampilkan penuh)
+        const vendorSpec = item.vendor_spec_text
+            ? `<div class="p-2 bg-light rounded border" style="font-size:.85em;white-space:pre-wrap;word-break:break-word;">${item.vendor_spec_text}</div>`
+            : '<span class="text-muted small">-</span>';
+
+        // Optional component fields — only render if filled
+        const optionalFields = [
+            ['Mast Type',    item.tipe_mast],
+            ['Engine Type',  item.merk_mesin],
+            ['Tire Type',    item.tipe_ban],
+            ['Wheel Type',   item.tipe_roda],
+            ['Valve',        item.jumlah_valve],
+            ['Catatan',      item.keterangan],
+        ].filter(([, v]) => v && String(v).trim() !== '');
+
+        const optionalHtml = optionalFields.length
+            ? `<div class="col-md-6">${optionalFields.map(([label, val]) =>
+                `<div class="mb-2"><strong>${label}:</strong> ${val}</div>`
+              ).join('')}</div>`
+            : '';
+
         // Unit specifications
         return `
             <div class="row">
                 <div class="col-md-6">
-                    <div class="mb-2">
-                        <strong>Department:</strong> ${item.nama_departemen || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Unit Type:</strong> ${item.jenis_unit || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Brand:</strong> ${item.merk_unit || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Model:</strong> ${item.model_unit || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Year:</strong> ${item.tahun_po || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Capacity:</strong> ${item.kapasitas_unit || '-'}
-                    </div>
+                    <div class="mb-2"><strong>Departemen:</strong> ${item.nama_departemen || '-'}</div>
+                    <div class="mb-2"><strong>Unit Type:</strong> ${item.jenis_unit || '-'}</div>
+                    <div class="mb-2"><strong>Brand:</strong> ${item.merk_unit || '-'}</div>
+                    <div class="mb-2"><strong>Model:</strong> ${item.model_unit || '-'}</div>
+                    <div class="mb-2"><strong>Tahun:</strong> ${item.tahun_po || '-'}</div>
+                    <div class="mb-2"><strong>Kapasitas:</strong> ${item.kapasitas_unit || '-'}</div>
+                    <div class="mb-2"><strong>Kondisi:</strong> ${kondisiBadge}</div>
                 </div>
-                <div class="col-md-6">
-                    <div class="mb-2">
-                        <strong>Mast Type:</strong> ${item.tipe_mast || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Engine Type:</strong> ${item.merk_mesin || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Tire Type:</strong> ${item.tipe_ban || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Wheel Type:</strong> ${item.tipe_roda || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Valve:</strong> ${item.jumlah_valve || '-'}
-                    </div>
-                    <div class="mb-2">
-                        <strong>Notes:</strong> ${item.keterangan || '-'}
-                    </div>
-                </div>
+                ${optionalHtml}
             </div>
+            <div class="mt-2 pt-2 border-top">
+                <div class="mb-2">
+                    <strong>Paket Termasuk:</strong>&nbsp;${flagBadges}
+                </div>
+                ${item.unit_accessories ? `<div class="mb-2"><strong>Aksesori:</strong> ${aksesori}</div>` : ''}
+            </div>
+            ${item.vendor_spec_text ? `
+            <div class="mt-2 pt-2 border-top">
+                <div class="mb-1"><strong><i class="fas fa-file-alt me-1 text-secondary"></i>Spesifikasi Vendor (PI):</strong></div>
+                ${vendorSpec}
+            </div>` : ''}
         `;
     } else if (type === 'attachment') {
         // Attachment specifications
@@ -2109,48 +2135,54 @@ function renderSerialNumbers(items, specId) {
                 <h6 class="mb-2 text-secondary">
                     <i class="fas fa-barcode me-2"></i>Serial Numbers:
                 </h6>
-                <span class="text-muted small">No serial numbers available</span>
+                <span class="text-muted small fst-italic"><i class="fas fa-clock me-1"></i>Serial number belum diisi</span>
             </div>
         `;
     }
 
     const serialNumbers = items.map((item, index) => {
-        const serialNumber = item.serial_number_po || item.serial_number || item.sn_baterai || item.sn_charger || '-';
-        return {
-            index: index + 1,
-            serialNumber
-        };
+        const sn = item.serial_number_po || item.serial_number || item.sn_baterai || item.sn_charger || '';
+        return { index: index + 1, serialNumber: sn };
     });
+
+    // Check if ALL serial numbers are empty
+    const allEmpty = serialNumbers.every(s => !s.serialNumber || s.serialNumber.trim() === '');
+    if (allEmpty) {
+        return `
+            <div class="mt-3 pt-3 border-top" id="serial-group-${specId}">
+                <h6 class="mb-2 text-secondary">
+                    <i class="fas fa-barcode me-2"></i>Serial Numbers:
+                    <span class="badge bg-light text-dark border ms-1">${serialNumbers.length} unit</span>
+                </h6>
+                <span class="text-warning small fst-italic"><i class="fas fa-exclamation-circle me-1"></i>Serial number belum diisi untuk semua unit</span>
+            </div>
+        `;
+    }
 
     let serialNumbersHtml = '';
     const totalItems = serialNumbers.length;
     const totalRows = Math.ceil(totalItems / 2);
 
     for (let i = 0; i < totalRows; i++) {
-        const col1Index = i * 2;
-        const col2Index = i * 2 + 1;
+        const item1 = serialNumbers[i * 2];
+        const item2 = (i * 2 + 1) < totalItems ? serialNumbers[i * 2 + 1] : null;
 
-        const item1 = serialNumbers[col1Index];
-        const item2 = col2Index < totalItems ? serialNumbers[col2Index] : null;
+        const renderCell = (s) => {
+            const isEmpty = !s.serialNumber || s.serialNumber.trim() === '';
+            return `<div class="d-flex align-items-center">
+                <span class="badge bg-light text-dark me-2" style="min-width:35px;text-align:center;">${s.index}</span>
+                ${isEmpty
+                    ? `<span class="text-warning fst-italic small"><i class="fas fa-exclamation-circle me-1"></i>Belum diisi</span>`
+                    : `<code class="flex-grow-1 text-success" style="font-size:.9em;">${s.serialNumber}</code>`
+                }
+            </div>`;
+        };
 
         serialNumbersHtml += `
             <div class="row mb-2">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item1.index}</span>
-                        <code class="flex-grow-1 ${item1.serialNumber !== '-' ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item1.serialNumber}</code>
-                    </div>
-                </div>
-                ${item2 ? `
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item2.index}</span>
-                        <code class="flex-grow-1 ${item2.serialNumber !== '-' ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item2.serialNumber}</code>
-                    </div>
-                </div>
-                ` : '<div class="col-md-6"></div>'}
-            </div>
-        `;
+                <div class="col-md-6">${renderCell(item1)}</div>
+                ${item2 ? `<div class="col-md-6">${renderCell(item2)}</div>` : '<div class="col-md-6"></div>'}
+            </div>`;
     }
 
     return `
@@ -2194,72 +2226,92 @@ function renderPODetailNew(data) {
     $('#deliveryProgress').text(`${completedDeliveries}/${totalDeliveries}`);
     $('#totalItemsReceived').text(totalItemsReceived);
     $('#verifiedItems').text(verifiedItemsCount);
-    $('#itemsCount').text(totalItemsOrdered);
     $('#deliveriesCount').text(totalDeliveries);
+    // #itemsCount badge diset di dalam renderItemsTable (jumlah line-group)
 
     renderItemsTable(items, summary, deliveries);
     renderDeliveriesContent(deliveries, deliveryItems);
 }
 
 function renderItemsTable(items, summary = null, deliveries = []) {
-    // Group items by specification (item_name), not by type
+    // Group unit items by po_line_group_id (new POs) or item_name (old POs fallback)
+    // Non-unit items group by item_name+type
     const groupedBySpec = {};
-    items.forEach(item => {
-        const spec = item.item_name || 'Unknown';
-        if (!groupedBySpec[spec]) {
-            groupedBySpec[spec] = [];
+    items.forEach((item, idx) => {
+        let key;
+        if ((item.item_type || 'unit').toLowerCase() === 'unit') {
+            if (item.po_line_group_id) {
+                key = 'grp_' + item.po_line_group_id;
+            } else {
+                // Fallback: group by item_name (brand+model) like legacy behaviour
+                key = 'name_' + (item.item_name || (item.merk_unit || '') + '_' + (item.model_unit || ''));
+            }
+        } else {
+            key = (item.item_name || 'Unknown') + '_' + (item.item_type || '');
         }
-        groupedBySpec[spec].push(item);
+        if (!groupedBySpec[key]) groupedBySpec[key] = [];
+        groupedBySpec[key].push(item);
     });
-    
+
+    // Update items badge to number of line groups
+    $('#itemsCount').text(Object.keys(groupedBySpec).length || 0);
+
     // Get delivered count by type from summary
     const deliveredByType = summary ? summary.delivered_by_type || {} : {};
-    
+
     let itemsHtml = '';
-    
+
     if (Object.keys(groupedBySpec).length === 0) {
-        itemsHtml = '<div class="text-center p-4"><i class="fas fa-box-open fa-2x text-muted mb-3"></i><p class="text-muted">No items available</p></div>';
+        itemsHtml = '<div class="text-center p-4"><i class="fas fa-box-open fa-2x text-muted mb-3"></i><p class="text-muted">Belum ada item di PO ini</p></div>';
     } else {
-        // Create dropdown for each unique specification
-        Object.keys(groupedBySpec).forEach((spec, specIndex) => {
-            const specItems = groupedBySpec[spec];
-            const totalOrdered = specItems.length;
-            
-            // Get item type for badge and delivered count
-            const itemType = specItems[0].item_type || 'Unit';
+        Object.values(groupedBySpec).forEach((specItems, specIndex) => {
+            const first = specItems[0];
+            const itemType = first.item_type || 'Unit';
             const itemTypeLower = itemType.toLowerCase();
             const totalDelivered = deliveredByType[itemTypeLower] || 0;
-            
             const badgeClass = getItemTypeBadgeClass(itemType);
             const typeIcon = getItemTypeIcon(itemType);
-            
+            const safeId = 'grp_' + specIndex;
+
+            // Build header label
+            const baseLabel = first.item_name || (first.merk_unit ? first.merk_unit + ' ' + (first.model_unit || '') : 'Unknown');
+
+            // Extra info badges for unit
+            let extraBadges = '';
+            if (itemTypeLower === 'unit') {
+                if (first.nama_departemen) extraBadges += `<span class="badge bg-light text-dark border ms-1">${first.nama_departemen}</span>`;
+                if (first.kapasitas_unit) extraBadges += `<span class="badge bg-light text-dark border ms-1">${first.kapasitas_unit}</span>`;
+                const kondisiColor = {Baru:'bg-primary', Bekas:'bg-warning text-dark', Rekondisi:'bg-info text-dark'};
+                const k = first.status_penjualan;
+                if (k && kondisiColor[k]) extraBadges += `<span class="badge ${kondisiColor[k]} ms-1">${k}</span>`;
+            }
+
             itemsHtml += `
                 <div class="mb-3" style="border-radius: 8px; border: 1px solid #e9ecef; background: #f8f9fa;">
-                    <div class="p-3" style="cursor: pointer; border-radius: 8px;" onclick="toggleSpecGroup('${spec.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                    <div class="p-3" style="cursor: pointer; border-radius: 8px;" onclick="toggleSpecGroup('${safeId}')">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-chevron-down me-2" id="icon-${spec.replace(/[^a-zA-Z0-9]/g, '_')}" style="color: #6c757d;"></i>
-                                <i class="${typeIcon} me-2" style="color: #007bff;"></i>
-                                <strong>${spec}</strong>
-                                <span class="badge ${badgeClass} ms-2">${specItems.length} ${itemType}</span>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <i class="fas fa-chevron-down me-2" id="icon-${safeId}" style="color: #6c757d;"></i>
+                                <i class="${typeIcon} me-1" style="color: #007bff;"></i>
+                                <strong>${baseLabel.trim()}</strong>
+                                <span class="badge ${badgeClass} ms-1">${specItems.length} ${itemType}</span>
+                                ${extraBadges}
                             </div>
                             <div class="text-end">
-                                <small class="text-muted">
-                                    Delivered: ${totalDelivered}
-                                </small>
+                                <small class="text-muted">Delivered: ${totalDelivered}</small>
                             </div>
                         </div>
                     </div>
-                    <div class="collapse" id="group-${spec.replace(/[^a-zA-Z0-9]/g, '_')}">
+                    <div class="collapse" id="group-${safeId}">
                         <div class="px-3 pb-3">
                             <div class="border-top pt-3">
                                 <div class="p-3" style="background: white; border-radius: 6px; border: 1px solid #e9ecef;">
                                     <h6 class="mb-3 text-primary">Specification Details:</h6>
-                                    ${renderSpecificationDetails(specItems[0], itemType)}
-                                    
+                                    ${renderSpecificationDetails(first, itemType)}
+
                                     <!-- Serial Numbers Section -->
-                                    ${renderSerialNumbers(specItems, spec.replace(/[^a-zA-Z0-9]/g, '_'))}
-                                    
+                                    ${renderSerialNumbers(specItems, safeId)}
+
                                     <!-- Packing List Information -->
                                     <div class="mt-3 pt-3 border-top">
                                         <h6 class="mb-2 text-info">
@@ -2275,7 +2327,7 @@ function renderItemsTable(items, summary = null, deliveries = []) {
             `;
         });
     }
-    
+
     $('#poItemsContent').html(itemsHtml);
 }
 
@@ -4113,37 +4165,77 @@ function syncPurchasingUnitPkgBatteryChargerFromDepartemen() {
     }
 }
 
+/**
+ * Reload #unit_merk options filtered by departemen_id.
+ * Pass null/empty to load all brands.
+ */
+function loadBrandsForUnit(deptId) {
+    const $merk = $('#unit_merk');
+    const currentVal = $merk.val();
+    $merk.html('<option value="">Loading...</option>').prop('disabled', true);
+    $('#unit_model').html('<option value="">Select Brand First...</option>').prop('disabled', true);
+
+    const params = deptId ? { departemen_id: deptId } : {};
+    $.ajax({
+        url: '<?= base_url('purchasing/api/get-unit-brands') ?>',
+        method: 'GET',
+        data: params,
+        dataType: 'json',
+        success: function(res) {
+            $merk.html('<option value="">Select Brand...</option>');
+            $merk.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color:#f0f8ff;">➕ Add New Brand</option>');
+            $merk.append('<option disabled>─────────────</option>');
+            if (res.success && res.data && res.data.length) {
+                res.data.forEach(b => {
+                    $merk.append(`<option value="${b.id_model_unit}" data-merk="${b.merk_unit}">${b.merk_unit}</option>`);
+                });
+                $merk.prop('disabled', false);
+                // Restore previous selection if still available
+                if (currentVal) $merk.val(currentVal).trigger('change.select2');
+            } else {
+                $merk.html('<option value="">No brands available for this department</option>');
+            }
+            reinitializeModalSelect2($merk);
+        },
+        error: function() {
+            $merk.html('<option value="">Error loading brands</option>');
+        }
+    });
+}
+
 // Unit form cascading dropdowns (simplified - no tipe)
 function initializeUnitDropdowns() {
     console.log(' Initializing Unit Dropdowns (Simplified)...');
-    
+
     // Remove old handlers first to prevent duplicates
     $(document).off('change', '#unit_departemen');
     $(document).off('change', '#unit_jenis');
     $(document).off('change', '#unit_merk');
     
-    // Departemen -> Jenis cascading
+    // Departemen -> Jenis + Brand cascading
     $(document).on('change', '#unit_departemen', function() {
         console.log('📍 Departemen changed:', $(this).val());
         const deptId = $(this).val();
         const $jenis = $('#unit_jenis');
         const $jenisActions = $('#unit_jenis_actions');
-        
-        // Reset jenis dropdown
+
+        // Reset jenis & model
         $jenis.html('<option value="">Loading...</option>').prop('disabled', true);
-        if ($jenisActions.length) {
-            $jenisActions.prop('disabled', true);
-        }
-        
+        if ($jenisActions.length) $jenisActions.prop('disabled', true);
+        $('#unit_model').html('<option value="">Select Brand First...</option>').prop('disabled', true);
+
         if (!deptId) {
             $jenis.html('<option value="">Please select a Department first...</option>').prop('disabled', true);
-            if ($jenisActions.length) {
-                $jenisActions.prop('disabled', true);
-            }
+            if ($jenisActions.length) $jenisActions.prop('disabled', true);
+            // Reset brands to show all
+            loadBrandsForUnit(null);
             syncPurchasingUnitPkgBatteryChargerFromDepartemen();
             return;
         }
-        
+
+        // Load brands filtered by dept (parallel with jenis)
+        loadBrandsForUnit(deptId);
+
         // Fetch jenis based on departemen
         $.ajax({
             url: '<?= base_url('/purchasing/api/get-tipe-units') ?>',
@@ -4153,17 +4245,12 @@ function initializeUnitDropdowns() {
             success: function(response) {
                 console.log('✅ Jenis loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
-                    // Group by jenis (unique)
                     const jenisMap = {};
                     response.data.forEach(r => {
                         if (r.jenis && r.id_tipe_unit) {
-                            // Use jenis as key, keep first id_tipe_unit encountered
-                            if (!jenisMap[r.jenis]) {
-                                jenisMap[r.jenis] = r.id_tipe_unit;
-                            }
+                            if (!jenisMap[r.jenis]) jenisMap[r.jenis] = r.id_tipe_unit;
                         }
                     });
-                    
                     $jenis.html('<option value="">Select Unit Type...</option>');
                     $jenis.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Unit Type</option>');
                     $jenis.append('<option disabled>─────────────</option>');
@@ -4171,20 +4258,12 @@ function initializeUnitDropdowns() {
                         $jenis.append(`<option value="${jenisMap[jenisName]}">${jenisName}</option>`);
                     });
                     $jenis.prop('disabled', false);
-                    
-                    // Enable action button
-                    if ($jenisActions.length) {
-                        $jenisActions.prop('disabled', false);
-                    }
-                    
-                    // Re-initialize Select2 if available
+                    if ($jenisActions.length) $jenisActions.prop('disabled', false);
                     reinitializeModalSelect2($jenis);
                 } else {
                     console.warn('No jenis data found');
                     $jenis.html('<option value="">No data available</option>');
-                    if ($jenisActions.length) {
-                        $jenisActions.prop('disabled', true);
-                    }
+                    if ($jenisActions.length) $jenisActions.prop('disabled', true);
                 }
                 syncPurchasingUnitPkgBatteryChargerFromDepartemen();
             },
@@ -4195,8 +4274,8 @@ function initializeUnitDropdowns() {
             }
         });
     });
-    
-    // Merk -> Model cascading
+
+    // Merk -> Model cascading (filter by merk + departemen)
     $(document).on('change', '#unit_merk', function() {
         console.log('🏷️ Merk changed:', $(this).val());
         const merk = $(this).find('option:selected').data('merk');
@@ -4216,11 +4295,11 @@ function initializeUnitDropdowns() {
             return;
         }
         
-        // Load models based on merk
+        // Load models based on merk + departemen
         $.ajax({
             url: '<?= base_url('purchasing/api/get-model-units') ?>',
             method: 'GET',
-            data: { merk: merk },
+            data: { merk: merk, departemen_id: $('#unit_departemen').val() || '' },
             dataType: 'json',
             success: function(response) {
                 console.log('✅ Models loaded:', response);

@@ -511,7 +511,7 @@
 </style>
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?= $this->section('javascript') ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Financial Trend Chart

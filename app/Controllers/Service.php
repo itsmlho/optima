@@ -550,16 +550,11 @@ class Service extends BaseController
 
     public function pmps()
     {
-        $data = [
-            'title' => 'PMPS | OPTIMA',
-            'page_title' => 'Preventive Maintenance Planned Service',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/service/pmps' => 'PMPS'
-            ]
-        ];
-
-        return view('service/pmps', $data);
+        return view('service/pmps', [
+            'title'       => 'PMPS | OPTIMA',
+            'page_title'  => 'Preventive Maintenance Planned Service',
+            'breadcrumbs' => ['/' => 'Dashboard', '/service/pmps' => 'PMPS'],
+        ]);
     }
 
     public function exportWorkorder()

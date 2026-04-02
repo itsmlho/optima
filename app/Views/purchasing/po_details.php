@@ -49,7 +49,12 @@
                         <span class="badge <?= getStatusBadgeClass($po['status']) ?>"><?= esc($po['status']) ?></span>
                     </div>
                     <div class="col-md-6">
-                        <strong>Total Items:</strong> <?= $po['total_items'] ?? 0 ?>
+                        <strong>Total Unit Lines:</strong>
+                        <?= count($unitItems ?? []) ?> line
+                        <?php
+                            $totalQty = array_sum(array_column($unitItems ?? [], 'qty'));
+                        ?>
+                        (<?= $totalQty ?> unit)
                     </div>
                     <div class="col-md-6">
                         <strong>Total Value:</strong> 
@@ -131,48 +136,97 @@
         <div class="card mt-0">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <th>Type</th>
-                                <th>Item Name</th>
-                                <th>Qty Ordered</th>
-                                <th>Qty Received</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                                <th>Progress</th>
+                                <th style="width:3%">#</th>
+                                <th>Brand / Model</th>
+                                <th>Departemen / Tipe</th>
+                                <th>Tahun</th>
+                                <th>Kapasitas</th>
+                                <th>Kondisi</th>
+                                <th class="text-center">Qty</th>
+                                <th>Spesifikasi Vendor</th>
+                                <th>Paket</th>
+                                <th>Status Verifikasi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($items)): ?>
-                                <?php foreach ($items as $item): ?>
-                                    <tr>
-                                        <td>
-                                            <span class="badge <?= getItemTypeBadgeClass($item['item_type']) ?>">
-                                                <?= esc($item['item_type']) ?>
+                            <?php if (!empty($unitItems)): ?>
+                                <?php foreach ($unitItems as $idx => $item):
+                                    // Parse package_flags (JSON array)
+                                    $flags = [];
+                                    if (!empty($item['package_flags'])) {
+                                        $decoded = json_decode($item['package_flags'], true);
+                                        $flags = is_array($decoded) ? $decoded : [];
+                                    }
+                                    $flagLabels = [
+                                        'fork'       => ['Fork',       'bg-secondary'],
+                                        'baterai'    => ['Baterai',    'bg-warning text-dark'],
+                                        'charger'    => ['Charger',    'bg-info text-dark'],
+                                        'attachment' => ['Attachment', 'bg-success'],
+                                    ];
+                                    // Truncate vendor spec
+                                    $specFull = trim($item['vendor_spec_text'] ?? '');
+                                    $specShort = mb_strlen($specFull) > 80 ? mb_substr($specFull, 0, 80) . '…' : $specFull;
+                                    // Verifikasi badge
+                                    $vStatus = $item['status_verifikasi'] ?? 'Belum Dicek';
+                                    $vBadge = match($vStatus) {
+                                        'Sesuai'        => 'bg-success',
+                                        'Tidak Sesuai'  => 'bg-danger',
+                                        default         => 'bg-secondary',
+                                    };
+                                    // Kondisi badge
+                                    $kondisi = $item['status_penjualan'] ?? '-';
+                                    $kondisiBadge = match($kondisi) {
+                                        'Baru'      => 'bg-primary',
+                                        'Bekas'     => 'bg-warning text-dark',
+                                        'Rekondisi' => 'bg-info text-dark',
+                                        default     => 'bg-secondary',
+                                    };
+                                ?>
+                                <tr>
+                                    <td class="text-muted small"><?= $idx + 1 ?></td>
+                                    <td>
+                                        <div class="fw-semibold"><?= esc($item['merk_unit'] ?? '-') ?></div>
+                                        <div class="text-muted small"><?= esc($item['model_name'] ?? '-') ?></div>
+                                    </td>
+                                    <td>
+                                        <div><?= esc($item['dept_name'] ?? '-') ?></div>
+                                        <div class="text-muted small"><?= esc($item['tipe_name'] ?? '-') ?></div>
+                                    </td>
+                                    <td><?= $item['tahun_po'] ? esc($item['tahun_po']) : '-' ?></td>
+                                    <td><?= esc($item['kapasitas_name'] ?? '-') ?></td>
+                                    <td><span class="badge <?= $kondisiBadge ?>"><?= esc($kondisi) ?></span></td>
+                                    <td class="text-center fw-bold"><?= (int)($item['qty'] ?? 1) ?></td>
+                                    <td>
+                                        <?php if ($specShort): ?>
+                                            <span title="<?= esc($specFull) ?>" style="cursor:default;font-size:.82em;">
+                                                <?= esc($specShort) ?>
                                             </span>
-                                        </td>
-                                        <td><?= esc($item['item_name']) ?></td>
-                                        <td><?= $item['qty_ordered'] ?></td>
-                                        <td><?= $item['qty_received'] ?></td>
-                                        <td><?= number_format($item['harga_satuan'], 0, ',', '.') ?></td>
-                                        <td><?= number_format($item['total_harga'], 0, ',', '.') ?></td>
-                                        <td>
-                                            <?php 
-                                            $progress = $item['qty_ordered'] > 0 ? ($item['qty_received'] / $item['qty_ordered']) * 100 : 0;
-                                            ?>
-                                            <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar <?= $progress >= 100 ? 'bg-success' : ($progress > 0 ? 'bg-warning' : 'bg-secondary') ?>" 
-                                                     role="progressbar" style="width: <?= $progress ?>%">
-                                                    <?= number_format($progress, 1) ?>%
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php foreach ($flagLabels as $fKey => [$fLabel, $fClass]): ?>
+                                            <?php if (in_array($fKey, $flags)): ?>
+                                                <span class="badge <?= $fClass ?> me-1"><?= $fLabel ?></span>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                        <?php if (!empty($item['unit_accessories'])): ?>
+                                            <span class="badge bg-light text-dark border me-1" title="<?= esc($item['unit_accessories']) ?>">Aksesori</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><span class="badge <?= $vBadge ?>"><?= esc($vStatus) ?></span></td>
+                                </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">No items found</td>
+                                    <td colspan="10" class="text-center text-muted py-4">
+                                        <i class="fas fa-box-open fa-2x mb-2 opacity-50 d-block"></i>
+                                        Belum ada unit yang ditambahkan ke PO ini
+                                    </td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

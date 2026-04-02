@@ -328,7 +328,7 @@ $component_types = $component_types ?? [];
 
 <?= $this->section('javascript') ?>
 <script>
-const BASE_URL = '<?= base_url() ?>';
+// BASE_URL already declared as var by base layout — do not redeclare
 
 $(document).ready(function() {
     loadMovements();

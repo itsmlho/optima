@@ -2166,22 +2166,62 @@ class Purchasing extends BaseController
         }
         
         $supplier = $this->supplierModel->find($po['supplier_id']);
-        $items = $this->poItemsModel->where('po_id', $poId)->findAll();
+
+        // Ambil unit items dari po_units (data baru dari Add Forklift Unit)
+        $db = \Config\Database::connect();
+        $rawUnits = $db->query("
+            SELECT
+                pu.id_po_unit,
+                pu.po_line_group_id,
+                pu.merk_unit,
+                mo.model_unit       AS model_name,
+                CONCAT(tu.tipe, ' ', tu.jenis) AS tipe_name,
+                d.nama_departemen   AS dept_name,
+                pu.tahun_po,
+                ka.kapasitas_unit   AS kapasitas_name,
+                pu.status_penjualan,
+                pu.vendor_spec_text,
+                pu.package_flags,
+                pu.unit_accessories,
+                pu.keterangan,
+                pu.status_verifikasi
+            FROM po_units pu
+            LEFT JOIN model_unit  mo ON mo.id_model_unit  = pu.model_unit_id
+            LEFT JOIN tipe_unit   tu ON tu.id_tipe_unit   = pu.tipe_unit_id
+            LEFT JOIN departemen  d  ON d.id_departemen   = tu.id_departemen
+            LEFT JOIN kapasitas   ka ON ka.id_kapasitas   = pu.kapasitas_id
+            WHERE pu.po_id = ?
+            ORDER BY pu.po_line_group_id, pu.id_po_unit
+        ", [$poId])->getResultArray();
+
+        // Group berdasarkan po_line_group_id di PHP (aman untuk NULL)
+        $unitItems = [];
+        foreach ($rawUnits as $unit) {
+            $key = !empty($unit['po_line_group_id']) ? $unit['po_line_group_id'] : ('u_' . $unit['id_po_unit']);
+            if (!isset($unitItems[$key])) {
+                $unitItems[$key] = $unit;
+                $unitItems[$key]['qty'] = 1;
+            } else {
+                $unitItems[$key]['qty']++;
+            }
+        }
+        $unitItems = array_values($unitItems);
+
         $deliveries = $this->poDeliveryModel->getDeliveriesByPO($poId);
-        
+
         // Get delivery items for each delivery
         foreach ($deliveries as &$delivery) {
             $delivery['items'] = $this->deliveryItemModel->getDeliveryItemsWithDetails($delivery['id_delivery']);
         }
-        
+
         $data = [
-            'title' => 'PO Details | OPTIMA',
-            'po' => $po,
-            'supplier' => $supplier,
-            'items' => $items,
-            'deliveries' => $deliveries
+            'title'     => 'PO Details | OPTIMA',
+            'po'        => $po,
+            'supplier'  => $supplier,
+            'unitItems' => $unitItems,
+            'deliveries'=> $deliveries,
         ];
-        
+
         return view('purchasing/po_details', $data);
     }
 
@@ -2408,15 +2448,41 @@ class Purchasing extends BaseController
      */
     public function getModelUnits()
     {
-        $merk = $this->request->getGet('merk');
-        
+        $merk        = $this->request->getGet('merk');
+        $deptId      = $this->request->getGet('departemen_id');
+
         if (empty($merk)) {
             return $this->respond(['success' => false, 'data' => []]);
         }
-        
-        $models = $this->modelUnitModel->where('merk_unit', $merk)->findAll();
-        
+
+        $query = $this->modelUnitModel->where('merk_unit', $merk);
+        if (!empty($deptId)) {
+            $query->where('departemen_id', $deptId);
+        }
+
+        $models = $query->findAll();
         return $this->respond(['success' => true, 'data' => $models]);
+    }
+
+    /**
+     * Get distinct brands (merk_unit) filtered by departemen_id
+     */
+    public function getUnitBrands()
+    {
+        $deptId = $this->request->getGet('departemen_id');
+
+        $db = \Config\Database::connect();
+        $builder = $db->table('model_unit')
+            ->select('MIN(id_model_unit) as id_model_unit, merk_unit')
+            ->groupBy('merk_unit')
+            ->orderBy('merk_unit', 'ASC');
+
+        if (!empty($deptId)) {
+            $builder->where('departemen_id', $deptId);
+        }
+
+        $data = $builder->get()->getResultArray();
+        return $this->respond(['success' => true, 'data' => $data]);
     }
 
     /**

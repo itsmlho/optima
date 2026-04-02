@@ -281,7 +281,7 @@ $items = $audit['items'] ?? [];
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?= $this->section('javascript') ?>
 <script>
 const auditId = <?= $audit['id'] ?? 0 ?>;
 const auditStatus = '<?= $audit['status'] ?? 'DRAFT' ?>';

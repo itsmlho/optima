@@ -97,7 +97,7 @@ class UnitMovementModel extends Model
     }
 
     /**
-     * Get movements with unit info
+     * Get movements with unit and component info
      */
     public function getWithUnitInfo($filters = [])
     {
@@ -110,12 +110,35 @@ class UnitMovementModel extends Model
             mu.model_unit,
             tu.tipe as tipe_unit,
             CONCAT(creator.first_name, " ", COALESCE(creator.last_name, "")) as creator_name,
-            CONCAT(confirmer.first_name, " ", COALESCE(confirmer.last_name, "")) as confirmer_name');
+            CONCAT(confirmer.first_name, " ", COALESCE(confirmer.last_name, "")) as confirmer_name,
+            CASE
+                WHEN um.component_type = "ATTACHMENT"
+                    THEN CONCAT(COALESCE(att.tipe,""), " ", COALESCE(att.merk,""), " ", COALESCE(att.model,""), " [", COALESCE(ia.item_number,""), "]")
+                WHEN um.component_type = "CHARGER"
+                    THEN CONCAT("Charger ", COALESCE(ic.item_number,""), " SN:", COALESCE(ic.serial_number,""))
+                WHEN um.component_type = "BATTERY"
+                    THEN CONCAT("Battery ", COALESCE(ib.item_number,""), " SN:", COALESCE(ib.serial_number,""))
+                WHEN um.component_type = "FORK"
+                    THEN CONCAT(COALESCE(fk.name,""), " [", COALESCE(ifork.item_number,""), "]")
+                WHEN um.component_type = "SPAREPART"
+                    THEN CONCAT(COALESCE(sp.kode,""), " - ", LEFT(COALESCE(sp.desc_sparepart,""), 40))
+                ELSE ""
+            END as component_label');
+
         $builder->join('inventory_unit iu', 'um.unit_id = iu.id_inventory_unit', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
         $builder->join('users creator', 'um.created_by_user_id = creator.id', 'left');
         $builder->join('users confirmer', 'um.confirmed_by_user_id = confirmer.id', 'left');
+        // Component joins (conditional via matching component_type)
+        $builder->join('inventory_attachments ia', 'ia.id = um.component_id AND um.component_type = "ATTACHMENT"', 'left');
+        $builder->join('attachment att', 'att.id_attachment = ia.attachment_type_id', 'left');
+        $builder->join('inventory_chargers ic', 'ic.id = um.component_id AND um.component_type = "CHARGER"', 'left');
+        $builder->join('inventory_batteries ib', 'ib.id = um.component_id AND um.component_type = "BATTERY"', 'left');
+        $builder->join('inventory_forks ifork', 'ifork.id = um.component_id AND um.component_type = "FORK"', 'left');
+        $builder->join('fork fk', 'fk.id = ifork.fork_id', 'left');
+        $builder->join('inventory_spareparts isp', 'isp.id = um.component_id AND um.component_type = "SPAREPART"', 'left');
+        $builder->join('sparepart sp', 'sp.id_sparepart = isp.sparepart_id', 'left');
 
         if (!empty($filters['status'])) {
             $builder->where('um.status', $filters['status']);
@@ -190,30 +213,37 @@ class UnitMovementModel extends Model
 
         // Update component location if this is a component movement
         if (!empty($movement['component_id']) && !empty($movement['component_type'])) {
-            $dest = $movement['destination_location'];
+            $dest   = $movement['destination_location'];
             $compId = (int) $movement['component_id'];
-            $db = \Config\Database::connect();
+            $db     = \Config\Database::connect();
 
             switch (strtoupper($movement['component_type'])) {
                 case 'ATTACHMENT':
                     if ($db->tableExists('inventory_attachments')) {
                         $db->table('inventory_attachments')
-                            ->where('id_inventory_attachment', $compId)
-                            ->update(['lokasi' => $dest]);
+                            ->where('id', $compId)
+                            ->update(['storage_location' => $dest]);
                     }
                     break;
                 case 'CHARGER':
                     if ($db->tableExists('inventory_chargers')) {
                         $db->table('inventory_chargers')
-                            ->where('id_inventory_charger', $compId)
-                            ->update(['lokasi' => $dest]);
+                            ->where('id', $compId)
+                            ->update(['storage_location' => $dest]);
                     }
                     break;
                 case 'BATTERY':
                     if ($db->tableExists('inventory_batteries')) {
                         $db->table('inventory_batteries')
-                            ->where('id_inventory_battery', $compId)
-                            ->update(['lokasi' => $dest]);
+                            ->where('id', $compId)
+                            ->update(['storage_location' => $dest]);
+                    }
+                    break;
+                case 'FORK':
+                    if ($db->tableExists('inventory_forks')) {
+                        $db->table('inventory_forks')
+                            ->where('id', $compId)
+                            ->update(['storage_location' => $dest]);
                     }
                     break;
             }
@@ -278,6 +308,7 @@ class UnitMovementModel extends Model
             'ATTACHMENT' => 'Attachment',
             'CHARGER'    => 'Charger',
             'BATTERY'    => 'Baterai',
+            'FORK'       => 'Fork',
             'SPAREPART'  => 'Sparepart',
         ];
     }

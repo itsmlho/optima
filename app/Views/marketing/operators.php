@@ -427,7 +427,7 @@ $can_delete = $permissions['delete'];
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
+<?= $this->section('javascript') ?>
 <script>
 let operatorsTable;
 let currentOperatorId = null;
