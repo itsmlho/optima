@@ -19,9 +19,9 @@ if (!function_exists('get_global_permission')) {
             ];
         }
 
-        // Module-specific admin roles: bypass for their own module
+        // Module-specific admin roles: bypass for their own module (session-based)
         $moduleAdminRoles = [
-            'service'    => ['admin_service_pusat', 'admin_service_area', 'head_service', 'supervisor_service', 'manager-service-area'],
+            'service'    => ['admin_service_pusat', 'admin_service_area', 'head_service', 'supervisor_service', 'manager-service-area', 'staff_service'],
             'marketing'  => ['head_marketing', 'staff_marketing'],
             'purchasing' => ['head_purchasing', 'staff_purchasing'],
             'warehouse'  => ['head_warehouse', 'staff_warehouse'],
@@ -34,6 +34,34 @@ if (!function_exists('get_global_permission')) {
                 'delete' => true,
                 'export' => true
             ];
+        }
+
+        // DB-based fallback: check role slug directly in database (works even with stale session)
+        $userId = session()->get('user_id');
+        if ($userId && isset($moduleAdminRoles[$module])) {
+            try {
+                $db = \Config\Database::connect();
+                $slugs = $moduleAdminRoles[$module];
+                $inList = implode(',', array_map(fn($s) => "'" . str_replace("'", "''", $s) . "'", $slugs));
+                $row = $db->query("
+                    SELECT r.slug FROM user_roles ur
+                    JOIN roles r ON r.id = ur.role_id
+                    WHERE ur.user_id = ? AND ur.is_active = 1
+                    AND r.slug IN ({$inList})
+                    LIMIT 1
+                ", [$userId])->getRowArray();
+                if ($row) {
+                    return [
+                        'view'   => true,
+                        'create' => true,
+                        'edit'   => true,
+                        'delete' => true,
+                        'export' => true
+                    ];
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'get_global_permission DB fallback failed: ' . $e->getMessage());
+            }
         }
 
         $moduleKeyMap = [
