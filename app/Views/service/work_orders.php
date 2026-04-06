@@ -195,7 +195,7 @@ $can_export = $permissions['export'];
                 </div>
                 
                 <!-- Progress Table -->
-                <?php if (!can_view('service')): ?>
+                <?php if (!$can_view): ?>
                 <div class="alert alert-warning m-3">
                     <i class="fas fa-lock me-2"></i>
                     <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= strtolower(lang('Service.work_orders')) ?>. 
@@ -273,7 +273,7 @@ $can_export = $permissions['export'];
                 </div>
                 
                 <!-- Closed Table -->
-                <?php if (!can_view('service')): ?>
+                <?php if (!$can_view): ?>
                 <div class="alert alert-warning m-3">
                     <i class="fas fa-lock me-2"></i>
                     <strong>Access Denied:</strong> You do not have permission to view closed work orders. 
