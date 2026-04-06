@@ -371,20 +371,30 @@ class System extends BaseController
         $db = \Config\Database::connect();
         
         // Get division info
-        $divisionInfo = $db->table('users u')
-            ->select('d.name as division_name')
-            ->join('divisions d', 'd.id = u.division_id', 'left')
-            ->where('u.id', $userId)
-            ->get()
-            ->getRowArray();
-        
+        $divisionInfo = [];
+        try {
+            $divResult = $db->table('users u')
+                ->select('d.name as division_name')
+                ->join('divisions d', 'd.id = u.division_id', 'left')
+                ->where('u.id', $userId)
+                ->get();
+            $divisionInfo = $divResult ? ($divResult->getRowArray() ?? []) : [];
+        } catch (\Throwable $e) {
+            log_message('error', 'getUserProfile division query failed: ' . $e->getMessage());
+        }
+
         // Get role info
-        $roleInfo = $db->table('user_roles ur')
-            ->select('r.name as role_name')
-            ->join('roles r', 'r.id = ur.role_id', 'left')
-            ->where('ur.user_id', $userId)
-            ->get()
-            ->getRowArray();
+        $roleInfo = [];
+        try {
+            $roleResult = $db->table('user_roles ur')
+                ->select('r.name as role_name')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->get();
+            $roleInfo = $roleResult ? ($roleResult->getRowArray() ?? []) : [];
+        } catch (\Throwable $e) {
+            log_message('error', 'getUserProfile role query failed: ' . $e->getMessage());
+        }
         
         return [
             'id' => $user['id'],
@@ -420,7 +430,7 @@ class System extends BaseController
             }
             
             return $divisionMap;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Fallback to hardcoded divisions
             return [
                 'service' => 'Service Division',
@@ -459,11 +469,16 @@ class System extends BaseController
     private function getSupervisors()
     {
         try {
-            $userModel = new \App\Models\UserModel();
-            return $userModel->where('role', 'manager')
-                              ->orWhere('role', 'supervisor')
-                              ->findAll();
-        } catch (\Exception $e) {
+            $db = \Config\Database::connect();
+            return $db->table('user_roles ur')
+                ->select('u.id, u.first_name, u.last_name, u.email, r.name as role_name')
+                ->join('users u', 'u.id = ur.user_id')
+                ->join('roles r', 'r.id = ur.role_id')
+                ->whereIn('r.slug', ['manager', 'supervisor', 'head_service', 'head_marketing', 'head_purchasing'])
+                ->where('ur.is_active', 1)
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -483,7 +498,7 @@ class System extends BaseController
                       ->limit(50)
                       ->get()
                       ->getResultArray();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
