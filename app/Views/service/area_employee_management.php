@@ -1795,8 +1795,8 @@ function deleteArea(id) {
       onConfirm: function() {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
-    type: 'DELETE',
-    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
+    type: 'POST',
+    data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
     success: function(resp){
       if (resp.success) {
         notify('Area berhasil dihapus','success');
@@ -1805,8 +1805,8 @@ function deleteArea(id) {
         notify(resp.message,'error');
       }
     },
-    error: function() {
-      notify('Error deleting area', 'error');
+    error: function(xhr) {
+      notify('Error deleting area: ' + (xhr.responseJSON?.message || xhr.status), 'error');
     }
   });
       }
@@ -1846,8 +1846,8 @@ function deleteEmployee(id) {
       onConfirm: function() {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
-    type: 'DELETE',
-    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
+    type: 'POST',
+    data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
     success: function(resp){
       if (resp.success) {
         notify('Karyawan berhasil dinonaktifkan','success');
@@ -1856,8 +1856,8 @@ function deleteEmployee(id) {
         notify(resp.message,'error');
       }
     },
-    error: function() {
-      notify('Error menonaktifkan karyawan', 'error');
+    error: function(xhr) {
+      notify('Error menonaktifkan karyawan: ' + (xhr.responseJSON?.message || xhr.status), 'error');
     }
   });
       }
@@ -2033,8 +2033,8 @@ function removeAssignment(id) {
   
   $.ajax({
     url: `<?= base_url('service/area-management/deleteAssignment') ?>/${id}`,
-    type: 'DELETE',
-    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
+    type: 'POST',
+    data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
     success: function(resp){
       console.log('🗑️ Delete assignment response:', resp);
       if (resp.success) {
