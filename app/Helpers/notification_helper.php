@@ -258,8 +258,8 @@ if (!function_exists('notify_spk_created')) {
         $unitNo = $spkData['unit_no'] ?? $spkData['no_unit'] ?? '';
         $noUnit = $spkData['no_unit'] ?? $spkData['unit_no'] ?? '';
         $createdBy = $spkData['created_by']
-            ?? session()->get('user_name')
-            ?? session('username')
+            ?? session()->get('username')
+            ?? session()->get('first_name')
             ?? 'System';
 
         return send_notification('spk_created', [

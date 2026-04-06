@@ -5430,8 +5430,8 @@ class Marketing extends BaseDataTableController
             
             $spkId = $spkData['spk_id'] ?? $spkData['id'] ?? null;
             $createdBy = $spkData['created_by']
-                ?? session()->get('user_name')
-                ?? session('username')
+                ?? session()->get('username')
+                ?? session()->get('first_name')
                 ?? 'System';
 
             // Prepare event data for notification
@@ -7973,7 +7973,7 @@ class Marketing extends BaseDataTableController
 
         try {
             $quotationModel = new \App\Models\QuotationModel();
-            $quotation = $quotationModel->find($quotationId);
+            $quotation = $quotationModel->getQuotationDetail($quotationId);
 
             if (!$quotation) {
                 return $this->response->setJSON([
@@ -8018,7 +8018,7 @@ class Marketing extends BaseDataTableController
                         'customer_name' => $quotation['customer_name'] ?? '',
                         'customer_email' => $quotation['customer_email'] ?? '',
                         'sent_method' => 'email',
-                        'sent_by' => session()->get('user_name') ?? 'System',
+                        'sent_by' => session()->get('username') ?? session()->get('first_name') ?? 'System',
                         'sent_at' => date('Y-m-d H:i:s'),
                         'url' => base_url('/marketing/quotations/view/' . $quotationId)
                     ]);
