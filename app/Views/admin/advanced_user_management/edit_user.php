@@ -1818,21 +1818,16 @@ function initializeFormSubmission() {
             contentType: false,
             success: function(response) {
                 if (response.success) {
-                    showSuccessMessage('User updated successfully!');
-                    setTimeout(() => {
-                        window.location.href = USERS_LIST_URL;
-                    }, 1500);
+                    createOptimaToast({ type: 'success', title: 'Berhasil', message: response.message || 'User berhasil diperbarui', duration: 3000 });
+                    submitBtn.prop('disabled', false).html(originalText);
                 } else {
-                    showErrorMessage(response.message || 'Failed to update user');
+                    createOptimaToast({ type: 'error', title: 'Gagal', message: response.message || 'Gagal memperbarui user', duration: 4000 });
                     submitBtn.prop('disabled', false).html(originalText);
                 }
             },
             error: function(xhr) {
-                let errorMessage = 'Network error occurred';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                showErrorMessage(errorMessage);
+                const errorMessage = xhr.responseJSON?.message || 'Terjadi kesalahan jaringan';
+                createOptimaToast({ type: 'error', title: 'Error', message: errorMessage, duration: 4000 });
                 submitBtn.prop('disabled', false).html(originalText);
             }
         });
@@ -1887,32 +1882,11 @@ function clearFieldError(fieldName) {
 // 🎨 UI HELPERS
 // ========================================
 function showSuccessMessage(message) {
-    const alert = `
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-    
-    $('.container-fluid').prepend(alert);
-    
-    // Auto dismiss after 3 seconds
-    setTimeout(() => {
-        $('.alert-success').alert('close');
-    }, 3000);
+    createOptimaToast({ type: 'success', title: 'Berhasil', message: message, duration: 3000 });
 }
 
 function showErrorMessage(message) {
-    const alert = `
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-    
-    $('.container-fluid').prepend(alert);
-    
-    // Auto scroll to top
+    createOptimaToast({ type: 'error', title: 'Error', message: message, duration: 4000 });
     $('html, body').animate({ scrollTop: 0 }, 300);
 }
 
