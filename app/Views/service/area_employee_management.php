@@ -1796,7 +1796,7 @@ function deleteArea(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
     type: 'DELETE',
-    data: {[window.csrfTokenName]: window.getCsrfToken()},
+    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
     success: function(resp){
       if (resp.success) {
         notify('Area berhasil dihapus','success');
@@ -1847,7 +1847,7 @@ function deleteEmployee(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
     type: 'DELETE',
-    data: {[window.csrfTokenName]: window.getCsrfToken()},
+    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
     success: function(resp){
       if (resp.success) {
         notify('Karyawan berhasil dinonaktifkan','success');
@@ -2034,7 +2034,7 @@ function removeAssignment(id) {
   $.ajax({
     url: `<?= base_url('service/area-management/deleteAssignment') ?>/${id}`,
     type: 'DELETE',
-    data: {[window.csrfTokenName]: window.getCsrfToken()},
+    headers: {'X-CSRF-TOKEN': window.getCsrfToken()},
     success: function(resp){
       console.log('🗑️ Delete assignment response:', resp);
       if (resp.success) {
