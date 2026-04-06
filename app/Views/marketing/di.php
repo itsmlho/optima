@@ -1927,14 +1927,45 @@ document.addEventListener('DOMContentLoaded', ()=>{
       alertSwal('error', 'DI ID tidak ditemukan');
       return;
     }
+    const idToDelete = currentDiId;
     OptimaConfirm.danger({
         title: 'Hapus Delivery Instruction',
         text: 'PERINGATAN: Tindakan ini tidak dapat dibatalkan! Apakah Anda benar-benar yakin ingin menghapus DI ini?',
         icon: 'warning',
         onConfirm: function() {
-            const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));
-            if (detailModal) detailModal.hide();
-            deleteDI(currentDiId);
+            // Close detail modal first, then wait for hide animation before fetching
+            // to avoid Bootstrap modal reuse conflict (double-confirm race condition)
+            const detailModalEl = document.getElementById('diDetailModal');
+            const doDelete = function() {
+                (window.csrfFetch || window.fetch)(`<?= base_url('marketing/di/delete/') ?>${idToDelete}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                }).then(r => r.json()).then(j => {
+                    if (j && j.success) {
+                        loadDI();
+                        if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') OptimaPro.showNotification('DI berhasil dihapus', 'success');
+                        else notify('DI berhasil dihapus', 'success');
+                    } else {
+                        alertSwal('error', j.message || 'Gagal menghapus DI', 'Error');
+                    }
+                }).catch(function(error) {
+                    console.error('Delete DI Error:', error);
+                    alertSwal('error', 'Network error: ' + error.message);
+                });
+            };
+
+            if (detailModalEl && typeof bootstrap !== 'undefined') {
+                const instance = bootstrap.Modal.getInstance(detailModalEl);
+                if (instance) {
+                    detailModalEl.addEventListener('hidden.bs.modal', doDelete, { once: true });
+                    instance.hide();
+                } else {
+                    doDelete();
+                }
+            } else {
+                doDelete();
+            }
         }
     });
   };
