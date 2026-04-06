@@ -314,7 +314,7 @@ helper('permission_helper');
                                             <span class="text-muted">Loading current permissions...</span>
                                         </div>
                                         <input type="hidden" id="customPermissions" name="custom_permissions" 
-                                               value="<?= esc(json_encode($userPermissions ?? [])) ?>">
+                                               value="<?= esc(json_encode(array_column($userPermissions ?? [], 'id'))) ?>">
                                     </div>
                                 </div>
                             </div>
