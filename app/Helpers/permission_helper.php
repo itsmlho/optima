@@ -172,7 +172,25 @@ if (!function_exists('hasModuleAccess')) {
         }
 
         $db = \Config\Database::connect();
-        
+
+        // Direct role-slug bypass: does NOT depend on session role, works with stale sessions too
+        $moduleAdminSlugs = [
+            'service'    => "'admin_service_pusat','admin_service_area','head_service','supervisor_service','manager-service-area','staff_service'",
+            'marketing'  => "'head_marketing','staff_marketing'",
+            'purchasing' => "'head_purchasing','staff_purchasing'",
+            'warehouse'  => "'head_warehouse','staff_warehouse'",
+        ];
+        if (isset($moduleAdminSlugs[$module])) {
+            $slugRow = $db->query("
+                SELECT r.slug FROM user_roles ur
+                JOIN roles r ON r.id = ur.role_id
+                WHERE ur.user_id = ? AND ur.is_active = 1
+                AND r.slug IN ({$moduleAdminSlugs[$module]})
+                LIMIT 1
+            ", [$userId])->getRowArray();
+            if ($slugRow) return true;
+        }
+
         $moduleAccessQuery = $db->query("
             SELECT COUNT(*) as count 
             FROM role_permissions rp
@@ -181,6 +199,7 @@ if (!function_exists('hasModuleAccess')) {
             WHERE ur.user_id = ? 
             AND p.module = ?
             AND rp.granted = 1
+            AND ur.is_active = 1
         ", [$userId, $module]);
         
         $result = safe_get_row($moduleAccessQuery);

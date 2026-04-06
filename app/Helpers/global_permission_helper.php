@@ -4,8 +4,9 @@ if (!function_exists('get_global_permission')) {
     function get_global_permission($module) {
         helper('permission');
 
-        $username = $_SESSION['username'] ?? null;
-        $role = strtolower((string)($_SESSION['role'] ?? ''));
+        // Use CI4 session service (more reliable than $_SESSION with DB driver)
+        $username = session()->get('username') ?? ($_SESSION['username'] ?? null);
+        $role = strtolower((string)(session()->get('role') ?? ($_SESSION['role'] ?? '')));
 
         // Super admin style roles keep full access.
         if (in_array($role, ['super_admin', 'superadmin', 'administrator', 'admin'], true) || $username === 'super_admin') {
