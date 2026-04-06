@@ -203,8 +203,23 @@ if (!function_exists('hasModuleAccess')) {
         ", [$userId, $module]);
         
         $result = safe_get_row($moduleAccessQuery);
+        if ($result && isset($result['count']) && $result['count'] > 0) {
+            return true;
+        }
 
-        return $result && isset($result['count']) && $result['count'] > 0;
+        // Also check user-specific overrides (custom grants via user_permissions)
+        $userModuleQuery = $db->query("
+            SELECT COUNT(*) as count
+            FROM user_permissions up
+            INNER JOIN permissions p ON up.permission_id = p.id
+            WHERE up.user_id = ?
+            AND p.module = ?
+            AND up.granted = 1
+            AND (up.expires_at IS NULL OR up.expires_at > NOW())
+        ", [$userId, $module]);
+
+        $userResult = safe_get_row($userModuleQuery);
+        return $userResult && isset($userResult['count']) && $userResult['count'] > 0;
     }
 }
 
