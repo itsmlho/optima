@@ -48,7 +48,7 @@ if (!function_exists('hasPermission')) {
             ],
             'service.area_management.view' => [
                 'service.area_management.view',
-                'service.area.navigation'
+                'service.area_management.navigation'
             ],
             'marketing.customer.update' => [
                 'marketing.customer.edit'
@@ -253,11 +253,28 @@ if (!function_exists('hasPageAccess')) {
             AND p.module = ?
             AND p.page = ?
             AND rp.granted = 1
+            AND ur.is_active = 1
         ", [$userId, $module, $page]);
         
         $result = safe_get_row($pageAccessQuery);
+        if ($result && isset($result['count']) && $result['count'] > 0) {
+            return true;
+        }
 
-        return $result && isset($result['count']) && $result['count'] > 0;
+        // Also check user-specific overrides (custom grants via user_permissions)
+        $userPageQuery = $db->query("
+            SELECT COUNT(*) as count
+            FROM user_permissions up
+            INNER JOIN permissions p ON up.permission_id = p.id
+            WHERE up.user_id = ?
+            AND p.module = ?
+            AND p.page = ?
+            AND up.granted = 1
+            AND (up.expires_at IS NULL OR up.expires_at > NOW())
+        ", [$userId, $module, $page]);
+
+        $userResult = safe_get_row($userPageQuery);
+        return $userResult && isset($userResult['count']) && $userResult['count'] > 0;
     }
 }
 
