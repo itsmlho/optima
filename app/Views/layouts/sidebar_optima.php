@@ -68,7 +68,7 @@ helper('permission_helper');
                     <?php if (canNavigateTo('marketing', 'spk')): ?>
                     <li class="nav-item"><a href="<?= base_url('/marketing/spk') ?>" class="nav-link dropdown-link<?= $isMarketingSpk ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">assignment</span><span class="drop-label">SPK Marketing</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('marketing', 'delivery')): ?>
+                    <?php if (canNavigateTo('marketing', 'delivery_instructions')): ?>
                     <li class="nav-item"><a href="<?= base_url('/marketing/di') ?>" class="nav-link dropdown-link<?= $isMarketingDi ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">local_shipping</span><span class="drop-label">Delivery Instructions</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
@@ -99,7 +99,7 @@ helper('permission_helper');
                     <li class="nav-item"><a href="<?= base_url('/service/unit-audit') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">fact_check</span><span class="drop-label">Unit Audit</span></a></li>
                     <li class="nav-item"><a href="<?= base_url('/service/unit-verification') ?>" class="nav-link dropdown-link"><i class="fas fa-clipboard-check drop-icon" aria-hidden="true"></i><span class="drop-label">Unit Verification</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('service', 'area')): ?>
+                    <?php if (canNavigateTo('service', 'area_management')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area Management</span></a></li>
                     <?php endif; ?>
                 </ul>
@@ -116,7 +116,7 @@ helper('permission_helper');
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Operational</span></li>
-                    <?php if (canNavigateTo('operational', 'delivery')): ?>
+                    <?php if (canNavigateTo('operational', 'delivery_process')): ?>
                     <li class="nav-item"><a href="<?= base_url('/operational/delivery') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">delivery_truck_speed</span><span class="drop-label">Delivery Process</span></a></li>
                     <?php endif; ?>
                     <li class="nav-item"><a href="<?= base_url('/operational/tracking') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">pin_drop</span><span class="drop-label">Tracking</span></a></li>
@@ -138,7 +138,7 @@ helper('permission_helper');
                     <?php if (canNavigateTo('accounting', 'invoice')): ?>
                     <li class="nav-item"><a href="<?= base_url('/finance/invoices') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">receipt_long</span><span class="drop-label">Invoices</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('accounting', 'payment')): ?>
+                    <?php if (canNavigateTo('accounting', 'payment_validation')): ?>
                     <li class="nav-item"><a href="<?= base_url('/finance/payments') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">payments</span><span class="drop-label">Payments</span></a></li>
                     <?php endif; ?>
                     <li class="nav-item"><a href="<?= base_url('/finance/expenses') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">money_off</span><span class="drop-label">Expenses</span></a></li>
@@ -157,11 +157,11 @@ helper('permission_helper');
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Purchasing</span></li>
-                    <?php if (canNavigateTo('purchasing', 'po')): ?>
+                    <?php if (canNavigateTo('purchasing', 'purchasing')): ?>
                     <li class="nav-item"><a href="<?= base_url('/purchasing') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">shopping_cart</span><span class="drop-label">PO Unit & Attachment</span></a></li>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/purchase-orders/rejected-items') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">block</span><span class="drop-label">PO Reject</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('purchasing', 'supplier')): ?>
+                    <?php if (hasModuleAccess('purchasing')): ?>
                     <li class="nav-item"><a href="<?= base_url('/purchasing/supplier-management-page') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">business</span><span class="drop-label">Supplier Management</span></a></li>
                     <?php endif; ?>
                 </ul>
@@ -178,7 +178,7 @@ helper('permission_helper');
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item nav-item-flyout-title"><span class="nav-link dropdown-title" aria-hidden="true">Warehouse</span></li>
-                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <?php if (canNavigateTo('warehouse', 'inventory_unit')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/inventory/unit') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">inventory_2</span><span class="drop-label">Unit Inventory</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('warehouse', 'attachment_inventory')): ?>
@@ -193,10 +193,10 @@ helper('permission_helper');
                     <?php if (canNavigateTo('warehouse', 'po_verification')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/purchase-orders/wh-verification') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">fact_check</span><span class="drop-label">PO Verification</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <?php if (canNavigateTo('warehouse', 'inventory_unit')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/returned-verifications') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">assignment_turned_in</span><span class="drop-label">Returned Verifications</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <?php if (canNavigateTo('warehouse', 'movements')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/movements') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">swap_horiz</span><span class="drop-label">Surat Jalan</span></a></li>
                     <?php endif; ?>
                 </ul>
