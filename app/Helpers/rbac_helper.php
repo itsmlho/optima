@@ -125,9 +125,15 @@ if (!function_exists('get_permission_level')) {
 if (!function_exists('can_view')) {
     /**
      * Check if user can view (read-only access)
+     * Supports both module names ('service') and specific permission keys ('service.workorder.view')
      */
     function can_view($permission_key, $user_id = null, $division_id = null)
     {
+        // If it's a module name (no dots), delegate to hasModuleAccess
+        if (!str_contains((string)$permission_key, '.')) {
+            helper('permission');
+            return hasModuleAccess($permission_key, $user_id);
+        }
         $level = get_permission_level($permission_key, $user_id, $division_id);
         return in_array($level, ['view', 'edit', 'delete', 'manage']);
     }
