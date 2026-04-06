@@ -508,6 +508,23 @@ class Service extends BaseController
         $areaModel = new \App\Models\AreaModel();
         $sparepartModel = new \App\Models\SparepartModel();
 
+        // Wrap each model call individually to prevent one failing query from crashing the whole page
+        $statuses   = [];
+        $priorities = [];
+        $categories = [];
+        $staff      = [];
+        $units      = [];
+        $areas      = [];
+        $spareparts = [];
+
+        try { $statuses   = $statusModel->getActiveStatuses(); }   catch (\Throwable $e) { log_message('error', 'workOrders: getActiveStatuses failed - ' . $e->getMessage()); }
+        try { $priorities = $priorityModel->getActivePriorities(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActivePriorities failed - ' . $e->getMessage()); }
+        try { $categories = $categoryModel->getActiveCategories(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActiveCategories failed - ' . $e->getMessage()); }
+        try { $staff      = $staffModel->getStaffByRole(); }         catch (\Throwable $e) { log_message('error', 'workOrders: getStaffByRole failed - ' . $e->getMessage()); }
+        try { $units      = $inventoryModel->getUnitsForDropdown(); } catch (\Throwable $e) { log_message('error', 'workOrders: getUnitsForDropdown failed - ' . $e->getMessage()); }
+        try { $areas      = $areaModel->getActiveAreas(); }           catch (\Throwable $e) { log_message('error', 'workOrders: getActiveAreas failed - ' . $e->getMessage()); }
+        try { $spareparts = $sparepartModel->getActiveSpareparts(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActiveSpareparts failed - ' . $e->getMessage()); }
+
         $data = [
             'title' => 'Work Orders | OPTIMA',
             'page_title' => 'Work Orders',
@@ -517,14 +534,13 @@ class Service extends BaseController
             ],
             'mode' => 'active',
             'active_statuses' => ['OPEN', 'KENDALA', 'PENDING'],
-            // Required data for view
-            'statuses' => $statusModel->getActiveStatuses(),
-            'priorities' => $priorityModel->getActivePriorities(),
-            'categories' => $categoryModel->getActiveCategories(),
-            'staff' => $staffModel->getStaffByRole(),
-            'units' => $inventoryModel->getUnitsForDropdown(),
-            'areas' => $areaModel->getActiveAreas(),
-            'spareparts' => $sparepartModel->getActiveSpareparts()
+            'statuses'   => $statuses,
+            'priorities' => $priorities,
+            'categories' => $categories,
+            'staff'      => $staff,
+            'units'      => $units,
+            'areas'      => $areas,
+            'spareparts' => $spareparts,
         ];
 
         return view('service/work_orders', $data);
