@@ -18,6 +18,23 @@ if (!function_exists('get_global_permission')) {
             ];
         }
 
+        // Module-specific admin roles: bypass for their own module
+        $moduleAdminRoles = [
+            'service'    => ['admin_service_pusat', 'admin_service_area', 'head_service', 'supervisor_service', 'manager-service-area'],
+            'marketing'  => ['head_marketing', 'staff_marketing'],
+            'purchasing' => ['head_purchasing', 'staff_purchasing'],
+            'warehouse'  => ['head_warehouse', 'staff_warehouse'],
+        ];
+        if (isset($moduleAdminRoles[$module]) && in_array($role, $moduleAdminRoles[$module], true)) {
+            return [
+                'view'   => true,
+                'create' => true,
+                'edit'   => true,
+                'delete' => true,
+                'export' => true
+            ];
+        }
+
         $moduleKeyMap = [
             'marketing' => [
                 'view' => ['marketing.quotation.navigation', 'marketing.customer.navigation', 'marketing.spk.navigation', 'marketing.delivery.navigation'],

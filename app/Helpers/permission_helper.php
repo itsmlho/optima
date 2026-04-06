@@ -160,6 +160,17 @@ if (!function_exists('hasModuleAccess')) {
             return true;
         }
 
+        // ✅ BYPASS: Module-specific admin roles
+        $moduleAdminRoles = [
+            'service'    => ['admin_service_pusat', 'admin_service_area', 'head_service', 'supervisor_service', 'manager-service-area'],
+            'marketing'  => ['head_marketing', 'staff_marketing'],
+            'purchasing' => ['head_purchasing', 'staff_purchasing'],
+            'warehouse'  => ['head_warehouse', 'staff_warehouse'],
+        ];
+        if (isset($moduleAdminRoles[$module]) && !empty($userRole) && in_array(strtolower($userRole), $moduleAdminRoles[$module], true)) {
+            return true;
+        }
+
         $db = \Config\Database::connect();
         
         $moduleAccessQuery = $db->query("
