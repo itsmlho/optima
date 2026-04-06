@@ -1796,13 +1796,14 @@ function deleteArea(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
     type: 'POST',
+    dataType: 'json',
     data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
     success: function(resp){
-      if (resp.success) {
+      if (resp && resp.success) {
         notify('Area berhasil dihapus','success');
         refreshAreas();
       } else {
-        notify(resp.message,'error');
+        notify((resp && resp.message) || 'Gagal menghapus area','error');
       }
     },
     error: function(xhr) {
@@ -1847,13 +1848,14 @@ function deleteEmployee(id) {
           $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
     type: 'POST',
+    dataType: 'json',
     data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
     success: function(resp){
-      if (resp.success) {
+      if (resp && resp.success) {
         notify('Karyawan berhasil dinonaktifkan','success');
         refreshEmployees();
       } else {
-        notify(resp.message,'error');
+        notify((resp && resp.message) || 'Gagal menonaktifkan karyawan','error');
       }
     },
     error: function(xhr) {
@@ -2406,14 +2408,48 @@ function deleteAreaFromDetail() {
     return;
   }
   
+  const areaName = currentAreaData?.area_name || 'this area';
+  const idToDelete = currentAreaId;
+
   OptimaConfirm.danger({
     title: 'Hapus Area?',
-    text: `Area "${currentAreaData?.area_name || 'this area'}" akan dihapus. Tindakan ini tidak dapat dibatalkan.`,
+    text: `Area "${areaName}" akan dihapus. Tindakan ini tidak dapat dibatalkan.`,
     confirmText: 'Ya, Hapus!',
     cancelText: window.lang('cancel'),
     onConfirm: function() {
-      $('#areaDetailModal').modal('hide');
-      deleteArea(currentAreaId);
+      // Close the detail modal first, then wait for the animation to finish
+      // before sending the AJAX to avoid Bootstrap modal reuse conflicts
+      const detailModal = document.getElementById('areaDetailModal');
+      const doDelete = function() {
+        $.ajax({
+          url: `<?= base_url('service/area-management/deleteArea') ?>/${idToDelete}`,
+          type: 'POST',
+          data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
+          success: function(resp) {
+            if (resp && resp.success) {
+              notify('Area berhasil dihapus', 'success');
+              refreshAreas();
+            } else {
+              notify((resp && resp.message) || 'Gagal menghapus area', 'error');
+            }
+          },
+          error: function(xhr) {
+            notify('Error: ' + (xhr.responseJSON?.message || xhr.status), 'error');
+          }
+        });
+      };
+
+      if (detailModal && bootstrap) {
+        const instance = bootstrap.Modal.getInstance(detailModal);
+        if (instance) {
+          detailModal.addEventListener('hidden.bs.modal', doDelete, { once: true });
+          instance.hide();
+        } else {
+          doDelete();
+        }
+      } else {
+        doDelete();
+      }
     }
   });
 }
@@ -2455,15 +2491,46 @@ function deleteEmployeeFromDetail() {
     notify('Employee ID not available', 'error');
     return;
   }
-  
+
+  const idToDelete = currentEmployeeId;
+
   OptimaConfirm.danger({
     title: 'Hapus Karyawan?',
     text: 'Karyawan akan dinonaktifkan (bukan dihapus permanen).',
     confirmText: 'Ya, Hapus!',
     cancelText: window.lang('cancel'),
     onConfirm: function() {
-      $('#employeeDetailModal').modal('hide');
-      deleteEmployee(currentEmployeeId);
+      const detailModal = document.getElementById('employeeDetailModal');
+      const doDelete = function() {
+        $.ajax({
+          url: `<?= base_url('service/area-management/deleteEmployee') ?>/${idToDelete}`,
+          type: 'POST',
+          data: {[window.csrfTokenName]: window.getCsrfToken(), '_method': 'DELETE'},
+          success: function(resp) {
+            if (resp && resp.success) {
+              notify('Karyawan berhasil dinonaktifkan', 'success');
+              refreshEmployees();
+            } else {
+              notify((resp && resp.message) || 'Gagal menonaktifkan karyawan', 'error');
+            }
+          },
+          error: function(xhr) {
+            notify('Error: ' + (xhr.responseJSON?.message || xhr.status), 'error');
+          }
+        });
+      };
+
+      if (detailModal && bootstrap) {
+        const instance = bootstrap.Modal.getInstance(detailModal);
+        if (instance) {
+          detailModal.addEventListener('hidden.bs.modal', doDelete, { once: true });
+          instance.hide();
+        } else {
+          doDelete();
+        }
+      } else {
+        doDelete();
+      }
     }
   });
 }
