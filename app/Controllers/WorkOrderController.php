@@ -390,10 +390,11 @@ class WorkOrderController extends Controller
             if ($scope !== null) {
                 if (!empty($scope['departments'])) {
                     $departemenIds = $scope['departments'];
-                } elseif (!empty($scope['areas'])) {
-                    // MILL user: scope by area assignments
-                    $scopeAreaIds = $scope['areas'];
                 }
+                // NOTE: Do NOT apply area scope here — area filtering is for work order visibility,
+                // not for restricting which staff can be assigned. Only 2 of 71 mechanics have
+                // area_employee_assignments records, so area-based filtering would hide most mechanics.
+                // Department filtering (DIESEL/ELECTRIC) is the correct restriction for staff selection.
             }
         }
         

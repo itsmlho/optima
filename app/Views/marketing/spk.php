@@ -473,6 +473,15 @@ $can_export = $permissions['export'];
                                 <div class="form-text" id="diPickHelp">Check the units you want to include in this DI.</div>
                             </div>
                         </div>
+                        <!-- Customer Location - Required for DI -->
+                        <div class="mb-2">
+                            <label class="form-label">Customer Location <span class="text-danger">*</span></label>
+                            <select class="form-select" name="customer_location_id" id="customerLocationSelect" required disabled>
+                                <option value="">-- Select Location --</option>
+                            </select>
+                            <small class="text-muted">Select delivery location for this DI</small>
+                        </div>
+
                         <div class="row g-2">
                             <div class="col-6"><label class="form-label">Delivery Date</label><input type="date" class="form-control" name="tanggal_kirim"></div>
                             <div class="col-6 d-flex align-items-end"><span class="text-muted small">Optional</span></div>
@@ -1046,6 +1055,17 @@ $can_export = $permissions['export'];
                         const isAttachmentSpk = (spkType === 'ATTACHMENT');
                         const s = j.spesifikasi || {};
                         
+                        // Load customer locations if customer_id is available
+                        if (j.customer_id) {
+                            loadCustomerLocations(j.customer_id);
+                        } else {
+                            const locSel = document.getElementById('customerLocationSelect');
+                            if (locSel) {
+                                locSel.innerHTML = '<option value="">-- No locations (no contract linked) --</option>';
+                                locSel.disabled = true;
+                            }
+                        }
+                        
                         // Update labels based on SPK type
                         const pickLabel = $('#diPickLabel');
                         const pickHelp = $('#diPickHelp');
@@ -1470,8 +1490,9 @@ $can_export = $permissions['export'];
             if (!locationSelect) return;
             
             locationSelect.innerHTML = '<option value="">Loading locations...</option>';
+            locationSelect.disabled = true;
             
-            fetch(`<?= base_url('marketing/kontrak/locations/') ?>${customerId}`, {
+            fetch(`<?= base_url('marketing/kontrak/customer-locations/') ?>${customerId}`, {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -1494,13 +1515,16 @@ $can_export = $permissions['export'];
                             option.dataset.city = location.city || '';
                             locationSelect.appendChild(option);
                         });
+                        locationSelect.disabled = false;
                     } else {
                         locationSelect.innerHTML = '<option value="">No locations available</option>';
+                        locationSelect.disabled = true;
                     }
                 })
                 .catch(error => {
                     console.error('Error loading locations:', error);
                     locationSelect.innerHTML = '<option value="">Error loading locations</option>';
+                    locationSelect.disabled = true;
                 });
         }
         
@@ -2320,7 +2344,15 @@ $can_export = $permissions['export'];
                 return;
             }
             
-            // If unit checkboxes exist, append unit_ids[]
+            const customerLocationId = fd.get('customer_location_id');
+            if (!customerLocationId || customerLocationId.trim() === '') {
+                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+                    OptimaNotify.warning('Customer Location wajib dipilih.');
+                } else {
+                    window.alert('Customer Location wajib dipilih.');
+                }
+                return;
+            }
             const checks = document.querySelectorAll('.di-unit-check');
                 if (checks && checks.length) {
                     const picked = Array.from(checks).filter(ch=>ch.checked).map(ch=>ch.value);
@@ -2410,6 +2442,13 @@ $can_export = $permissions['export'];
                 // Reset submit button
                 const submitBtn = form.querySelector('[type="submit"]');
                 if (submitBtn) submitBtn.disabled = true;
+                
+                // Reset location select
+                const locSel = document.getElementById('customerLocationSelect');
+                if (locSel) {
+                    locSel.innerHTML = '<option value="">-- Select Location --</option>';
+                    locSel.disabled = true;
+                }
             }
         });
         

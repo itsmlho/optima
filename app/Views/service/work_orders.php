@@ -3053,6 +3053,63 @@ $(document).ready(function() {
             $(this).val('').trigger('change');
         }
     });
+
+    /**
+     * Sync selected Foreman as an option in mechanic dropdowns.
+     * When a foreman is selected, their name appears in mechanic_1/mechanic_2
+     * so the foreman can also act as a mechanic without needing a separate mechanic.
+     * The foreman option is marked with data-foreman="1" for easy removal on deselect.
+     */
+    function syncForemanToMechanicDropdowns() {
+        const foremanId   = $('#foreman_id').val();
+        const foremanName = $('#foreman_id').find('option:selected').text().trim();
+        const FOREMAN_ATTR = 'data-foreman';
+
+        // Remove any previously-injected foreman option from both mechanic dropdowns
+        $('#mechanic_1, #mechanic_2').each(function() {
+            const $sel = $(this);
+            const currentVal = $sel.val();
+            $sel.find('option[' + FOREMAN_ATTR + ']').remove();
+
+            // If the formerly-selected value was the foreman option, clear it
+            if (currentVal && currentVal === $sel.data('foreman-id-prev')) {
+                $sel.val('').trigger('change.select2');
+            }
+
+            // Refresh Select2 display
+            if ($sel.hasClass('select2-hidden-accessible')) {
+                $sel.trigger('change.select2');
+            }
+        });
+
+        if (!foremanId || foremanId === '0') {
+            $('#mechanic_1, #mechanic_2').removeData('foreman-id-prev');
+            return;
+        }
+
+        // Store current foreman id for cleanup on next change
+        $('#mechanic_1, #mechanic_2').data('foreman-id-prev', foremanId);
+
+        const optionHtml = `<option value="${foremanId}" ${FOREMAN_ATTR}="1">${foremanName} (Foreman)</option>`;
+
+        ['mechanic_1', 'mechanic_2'].forEach(function(id) {
+            const $sel = $('#' + id);
+            if (!$sel.length) return;
+
+            // Insert right after the placeholder option (index 0)
+            $sel.find('option:first').after(optionHtml);
+
+            // Refresh Select2
+            if ($sel.hasClass('select2-hidden-accessible')) {
+                $sel.trigger('change.select2');
+            }
+        });
+    }
+
+    // Wire up: call syncForemanToMechanicDropdowns whenever foreman_id changes
+    $(document).on('change', '#foreman_id', function() {
+        syncForemanToMechanicDropdowns();
+    });
     
     // Prevent duplicate helper selection
     $(document).on('change', '#helper_1, #helper_2', function() {
@@ -3333,6 +3390,11 @@ $(document).ready(function() {
                     });
                     
                     console.log(`✅ ${staffRole} loaded with Select2 for ${targetId}: ${response.data.length} items`);
+
+                    // Re-inject foreman as option after mechanic dropdown reloads
+                    if (staffRole === 'MECHANIC' && typeof syncForemanToMechanicDropdowns === 'function') {
+                        syncForemanToMechanicDropdowns();
+                    }
                 } else {
                     console.error(`❌ Error loading ${staffRole} staff:`, response.message || 'No data received');
                     
@@ -3781,6 +3843,11 @@ $(document).ready(function() {
                         dropdownParent: $('#workOrderModal'),
                         minimumInputLength: 0
                     });
+
+                    // Re-inject foreman as option after mechanic dropdown reloads
+                    if (staffRole === 'MECHANIC' && typeof syncForemanToMechanicDropdowns === 'function') {
+                        syncForemanToMechanicDropdowns();
+                    }
                     
                     console.log(`✅ Loaded ${response.data.length} ${staffRole} (dept scope)`);
                 } else {

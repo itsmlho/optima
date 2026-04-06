@@ -3599,9 +3599,40 @@ class Marketing extends BaseDataTableController
             }
         }
         
+        // Fetch customer_id from associated contract for DI creation
+        $customerId = null;
+        // 1. Try via kontrak_id (SPK linked to contract)
+        if (!empty($row['kontrak_id'])) {
+            $kontrakRow = $this->db->table('kontrak')->select('customer_id')->where('id', (int)$row['kontrak_id'])->get()->getRowArray();
+            if ($kontrakRow && !empty($kontrakRow['customer_id'])) {
+                $customerId = (int)$kontrakRow['customer_id'];
+            }
+        }
+        // 2. Fallback: try via po_kontrak_nomor
+        if (!$customerId && !empty($row['po_kontrak_nomor'])) {
+            $kontrakByNo = $this->db->table('kontrak')->select('customer_id')
+                ->where('no_kontrak', $row['po_kontrak_nomor'])
+                ->orWhere('customer_po_number', $row['po_kontrak_nomor'])
+                ->limit(1)->get()->getRowArray();
+            if ($kontrakByNo && !empty($kontrakByNo['customer_id'])) {
+                $customerId = (int)$kontrakByNo['customer_id'];
+            }
+        }
+        // 3. Fallback: try via pelanggan name
+        if (!$customerId && !empty($row['pelanggan'])) {
+            $customerByName = $this->db->table('customers')->select('id')
+                ->where('customer_name', $row['pelanggan'])
+                ->where('deleted_at IS NULL', null, false)
+                ->limit(1)->get()->getRowArray();
+            if ($customerByName) {
+                $customerId = (int)$customerByName['id'];
+            }
+        }
+
         return $this->response->setJSON([
             'success' => true,
             'data' => $row,
+            'customer_id' => $customerId, // For loading customer locations in DI modal
             'jenis_spk' => $row['jenis_spk'] ?? 'UNIT', // Explicitly include SPK type for frontend
             'spesifikasi' => $enriched,
             'prepared_units' => $preparedUnits,
@@ -6338,9 +6369,7 @@ class Marketing extends BaseDataTableController
             }
             $operatorMonthlySnapshot = ($locationRow['operator_monthly_rate'] ?? null);
             $operatorDailySnapshot = ($locationRow['operator_daily_rate'] ?? null);
-            if ($operatorRequired === 1 && $operatorMonthlySnapshot === null && $operatorDailySnapshot === null) {
-                throw new \Exception('Tarif operator pada customer location belum diisi. Isi tarif bulanan/harian terlebih dahulu.');
-            }
+            // Operator rates are optional - DI can be created without them
             $operatorSnapshotFields = [
                 'operator_required' => $operatorRequired,
                 'operator_quantity' => $operatorQuantity,
