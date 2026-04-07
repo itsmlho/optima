@@ -2,100 +2,138 @@
 
 <?= $this->section('content') ?>
 
-  <!-- Page Header -->
-  <div class="mb-3">
-      <h4 class="fw-bold mb-1">
-          <i class="bi bi-people me-2 text-primary"></i>
-          Service Area & Employee Management
-      </h4>
-      <p class="text-muted mb-0">Manage service areas, employees, and their assignments for operational coverage</p>
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PAGE HEADER                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+          <h4 class="fw-bold mb-1">
+              <span class="material-symbols-rounded me-2 align-middle text-primary" style="font-size:1.6rem">map</span>
+              <?= lang('App.area_management') ?>
+          </h4>
+          <p class="text-muted mb-0 small"><?= lang('App.area_management_subtitle') ?></p>
+      </div>
+      <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary" onclick="refreshCurrentTab()">
+              <i class="fas fa-sync-alt me-1"></i> <?= lang('Common.refresh') ?>
+          </button>
+          <a href="<?= base_url('service/export_area') ?>" class="btn btn-sm btn-outline-success">
+              <i class="fas fa-file-excel me-1"></i> <?= lang('Common.export') ?>
+          </a>
+      </div>
   </div>
 
-  <!-- Statistics Cards -->
-  <div class="row mt-3 mb-4">
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-primary-soft">
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- STAT CARDS — 2 rows, 3 cards each                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="row g-3 mb-4">
+
+      <!-- Row 1: Staff & Area -->
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-primary-soft h-100">
               <div class="d-flex align-items-center">
-                  <div class="me-3">
-                      <i class="bi bi-globe stat-icon text-primary"></i>
-                  </div>
+                  <div class="me-3"><i class="bi bi-globe stat-icon text-primary"></i></div>
                   <div>
                       <div class="stat-value"><?= $totalAreas ?></div>
-                      <div class="text-muted"><?= lang('App.total_areas') ?></div>
+                      <div class="text-muted small"><?= lang('App.total_areas') ?></div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-success-soft">
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-success-soft h-100">
               <div class="d-flex align-items-center">
-                  <div class="me-3">
-                      <i class="bi bi-people stat-icon text-success"></i>
-                  </div>
+                  <div class="me-3"><i class="bi bi-people stat-icon text-success"></i></div>
                   <div>
                       <div class="stat-value"><?= $totalEmployees ?></div>
-                      <div class="text-muted"><?= lang('App.total_employees') ?></div>
+                      <div class="text-muted small"><?= lang('App.total_employees') ?></div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-warning-soft">
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-warning-soft h-100">
               <div class="d-flex align-items-center">
-                  <div class="me-3">
-                      <i class="bi bi-link stat-icon text-warning"></i>
-                  </div>
+                  <div class="me-3"><i class="bi bi-link stat-icon text-warning"></i></div>
                   <div>
                       <div class="stat-value"><?= $totalAssignments ?></div>
-                      <div class="text-muted"><?= lang('App.active_assignments') ?></div>
+                      <div class="text-muted small"><?= lang('App.active_assignments') ?></div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-info-soft">
+
+      <!-- Row 1 continued: Unit Mapping -->
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-success-soft h-100">
               <div class="d-flex align-items-center">
-                  <div class="me-3">
-                      <i class="bi bi-pie-chart stat-icon text-info"></i>
-                  </div>
+                  <div class="me-3"><i class="bi bi-check-circle stat-icon text-success"></i></div>
                   <div>
-                      <div class="stat-value" id="roleDistribution">-</div>
-                      <div class="text-muted"><?= lang('App.role_distribution') ?></div>
+                      <div class="stat-value" id="statWithArea"><?= $unitStats['units_with_area'] ?? 0 ?></div>
+                      <div class="text-muted small"><?= lang('App.units_with_area') ?></div>
                   </div>
               </div>
           </div>
       </div>
-  </div>
-
-  <!-- Page Header -->
-  <div class="row">
-      <div class="col-12">
-          <!-- Page header removed as requested -->
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-danger-soft h-100">
+              <div class="d-flex align-items-center">
+                  <div class="me-3"><i class="bi bi-exclamation-circle stat-icon text-danger"></i></div>
+                  <div>
+                      <div class="stat-value" id="statWithoutArea"><?= $unitStats['units_without_area'] ?? 0 ?></div>
+                      <div class="text-muted small"><?= lang('App.units_without_area') ?></div>
+                  </div>
+              </div>
+          </div>
       </div>
+      <div class="col-xl-2 col-md-4 col-6">
+          <div class="stat-card bg-danger-soft h-100">
+              <div class="d-flex align-items-center">
+                  <div class="me-3"><i class="bi bi-geo-alt stat-icon text-danger"></i></div>
+                  <div>
+                      <div class="stat-value" id="statLocationsNoArea"><?= $unitStats['locations_without_area'] ?? 0 ?></div>
+                      <div class="text-muted small"><?= lang('App.locations_without_area') ?></div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
   </div>
 
-  <!-- Main Content Tabs -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MAIN TABBED CARD                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
   <div class="card table-card shadow mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center">
-          <ul class="nav nav-tabs flex-grow-1" role="tablist">
-              <li class="nav-item">
-                  <a class="nav-link active" id="areas-tab" data-bs-toggle="tab" href="#areasTab" role="tab" aria-controls="areasTab" aria-selected="true">
-                      <i class="fas fa-map-marked-alt mr-1"></i> <?= lang('App.service_areas') ?>
+      <div class="card-header p-0 border-bottom">
+          <ul class="nav nav-tabs flex-nowrap overflow-auto border-0 px-3 pt-2" role="tablist" id="mainTabs">
+              <li class="nav-item me-1">
+                  <a class="nav-link active d-flex align-items-center gap-1 py-2 px-3" id="areas-tab" data-bs-toggle="tab" href="#areasTab" role="tab">
+                      <i class="fas fa-map-marked-alt"></i>
+                      <span><?= lang('App.service_areas') ?></span>
+                  </a>
+              </li>
+              <li class="nav-item me-1">
+                  <a class="nav-link d-flex align-items-center gap-1 py-2 px-3" id="employees-tab" data-bs-toggle="tab" href="#employeesTab" role="tab">
+                      <i class="fas fa-users"></i>
+                      <span><?= lang('App.employees') ?></span>
+                  </a>
+              </li>
+              <li class="nav-item me-1">
+                  <a class="nav-link d-flex align-items-center gap-1 py-2 px-3" id="assignments-tab" data-bs-toggle="tab" href="#assignmentsTab" role="tab">
+                      <i class="fas fa-link"></i>
+                      <span><?= lang('App.assignments') ?></span>
+                  </a>
+              </li>
+              <li class="nav-item me-1">
+                  <a class="nav-link d-flex align-items-center gap-1 py-2 px-3" id="unitmap-tab" data-bs-toggle="tab" href="#unitMapTab" role="tab">
+                      <span class="material-symbols-rounded" style="font-size:1rem;line-height:1">pin_drop</span>
+                      <span><?= lang('App.unit_mapping') ?></span>
                   </a>
               </li>
               <li class="nav-item">
-                  <a class="nav-link" id="employees-tab" data-bs-toggle="tab" href="#employeesTab" role="tab" aria-controls="employeesTab" aria-selected="false">
-                      <i class="fas fa-users mr-1"></i> <?= lang('App.employees') ?>
-                  </a>
-              </li>
-              <li class="nav-item">
-                  <a class="nav-link" id="assignments-tab" data-bs-toggle="tab" href="#assignmentsTab" role="tab" aria-controls="assignmentsTab" aria-selected="false">
-                      <i class="fas fa-link mr-1"></i> <?= lang('App.assignments') ?>
-                  </a>
-              </li>
-              <li class="nav-item">
-                  <a class="nav-link" id="analytics-tab" data-bs-toggle="tab" href="#analyticsTab" role="tab" aria-controls="analyticsTab" aria-selected="false">
-                      <i class="fas fa-chart-bar mr-1"></i> <?= lang('App.analytics') ?>
+                  <a class="nav-link d-flex align-items-center gap-1 py-2 px-3" id="analytics-tab" data-bs-toggle="tab" href="#analyticsTab" role="tab">
+                      <i class="fas fa-chart-bar"></i>
+                      <span><?= lang('App.analytics') ?></span>
                   </a>
               </li>
           </ul>
@@ -134,6 +172,65 @@
                                   <tbody></tbody>
                               </table>
                           </div>
+
+                          <!-- ─── Area Summary (unit coverage per area) ──────────── -->
+                          <hr class="my-4">
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                              <div>
+                                  <h6 class="fw-semibold mb-0">
+                                      <i class="bi bi-bar-chart-steps text-primary me-1"></i>
+                                      <?= lang('App.area_summary') ?>
+                                  </h6>
+                                  <p class="text-muted small mb-0"><?= lang('App.area_summary_hint') ?></p>
+                              </div>
+                              <button class="btn btn-sm btn-outline-primary" id="btnRefreshSummary">
+                                  <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
+                              </button>
+                          </div>
+                          <div class="table-responsive">
+                              <table class="table table-hover align-middle" id="tableAreaSummary">
+                                  <thead class="table-light">
+                                      <tr>
+                                          <th><?= lang('App.area') ?></th>
+                                          <th><?= lang('Common.type') ?></th>
+                                          <th class="text-center"><?= lang('App.foreman') ?></th>
+                                          <th class="text-center"><?= lang('App.mechanic') ?></th>
+                                          <th class="text-center"><?= lang('App.customer_location') ?></th>
+                                          <th class="text-center"><?= lang('App.unit_count') ?></th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="bodyAreaSummary">
+                                      <tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> <?= lang('App.loading') ?? 'Loading...' ?></td></tr>
+                                  </tbody>
+                              </table>
+                          </div>
+
+                          <!-- Area unit drill-down panel -->
+                          <div id="panelAreaUnits" class="d-none mt-3">
+                              <div class="card border-primary">
+                                  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                                      <span id="panelAreaTitle"><i class="bi bi-list-ul me-1"></i> <?= lang('App.area_units_panel') ?></span>
+                                      <button class="btn btn-sm btn-outline-light" id="btnClosePanelUnits"><i class="bi bi-x-lg"></i></button>
+                                  </div>
+                                  <div class="card-body p-2">
+                                      <div class="table-responsive">
+                                          <table class="table table-sm table-striped mb-0" id="tableAreaUnits">
+                                              <thead class="table-light">
+                                                  <tr>
+                                                      <th><?= lang('App.unit_number') ?></th><th>Model</th><th><?= lang('Common.status') ?></th>
+                                                      <th>Customer</th><th><?= lang('App.customer_location') ?></th>
+                                                      <th><?= lang('App.contract_number') ?></th><th><?= lang('App.contract_end') ?></th>
+                                                  </tr>
+                                              </thead>
+                                              <tbody id="bodyAreaUnits">
+                                                  <tr><td colspan="7" class="text-center py-3 text-muted"><?= lang('App.select_area') ?></td></tr>
+                                              </tbody>
+                                          </table>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
                       </div>
 
                       <!-- Employees Tab -->
@@ -273,7 +370,7 @@
                                   </div>
                               </div>
                           </div>
-                          <div class="row">
+                          <div class="row mt-3">
                               <div class="col-md-12">
                                   <div class="card">
                                       <div class="card-header">
@@ -286,11 +383,105 @@
                               </div>
                           </div>
                       </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
+
+                      <!-- ═══════════════════════════════════════════════════════════ -->
+                      <!-- UNIT MAPPING TAB (fused from unit_area_mapping.php)         -->
+                      <!-- ═══════════════════════════════════════════════════════════ -->
+                      <div class="tab-pane fade" id="unitMapTab" role="tabpanel">
+
+                          <!-- Sub-tab navigation -->
+                          <div class="mb-3 border-bottom pb-0">
+                              <ul class="nav nav-pills gap-1 px-1 pt-1" id="unitMapSubTabs">
+                                  <li class="nav-item">
+                                      <a class="nav-link nav-link-sm active" data-bs-toggle="pill" href="#subtabLocations" id="subtabLocationsLink">
+                                          <i class="bi bi-building me-1"></i> <?= lang('App.input_area_per_location') ?>
+                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassignedLoc"><?= $unitStats['locations_without_area'] ?? 0 ?></span>
+                                      </a>
+                                  </li>
+                                  <li class="nav-item">
+                                      <a class="nav-link nav-link-sm" data-bs-toggle="pill" href="#subtabUnassigned" id="subtabUnassignedLink">
+                                          <i class="bi bi-question-circle me-1"></i> <?= lang('App.unassigned_units') ?>
+                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassigned"><?= $unitStats['units_without_area'] ?? 0 ?></span>
+                                      </a>
+                                  </li>
+                              </ul>
+                          </div>
+
+                          <div class="tab-content px-1 pb-3">
+
+                              <!-- ─── Sub-tab 1: Input Area per Lokasi ──────────────── -->
+                              <div class="tab-pane fade show active" id="subtabLocations">
+                                  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                      <div class="d-flex gap-2">
+                                          <select class="form-select form-select-sm" id="filterLocationArea" style="width:180px">
+                                              <option value="all"><?= lang('App.all_locations') ?></option>
+                                              <option value="unassigned" selected><?= lang('App.unassigned_area_label') ?></option>
+                                              <option value="assigned"><?= lang('App.assigned_area_label') ?></option>
+                                          </select>
+                                          <button class="btn btn-sm btn-outline-secondary" id="btnLoadLocations">
+                                              <i class="bi bi-funnel me-1"></i> <?= lang('Common.filter') ?>
+                                          </button>
+                                      </div>
+                                      <div class="d-flex gap-2">
+                                          <button class="btn btn-sm btn-success" id="btnSyncFromContracts">
+                                              <i class="bi bi-arrow-repeat me-1"></i> <?= lang('App.auto_sync_from_contracts') ?>
+                                          </button>
+                                          <button class="btn btn-sm btn-outline-info" id="btnRefreshLocations">
+                                              <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
+                                          </button>
+                                      </div>
+                                  </div>
+                                  <div class="alert alert-info border-0 py-2 small mb-3">
+                                      <i class="bi bi-lightbulb me-1"></i>
+                                      <strong><?= lang('App.input_area_label') ?></strong> <?= lang('App.input_area_hint') ?>
+                                  </div>
+                                  <div class="table-responsive">
+                                      <table class="table table-hover align-middle" id="tableLocations">
+                                          <thead class="table-light">
+                                              <tr>
+                                                  <th>Customer</th><th><?= lang('App.customer_location') ?></th><th><?= lang('App.location_code') ?></th>
+                                                  <th class="text-center"><?= lang('App.active_units') ?></th>
+                                                  <th style="min-width:200px"><?= lang('App.area') ?></th>
+                                                  <th class="text-center"><?= lang('Common.action') ?></th>
+                                              </tr>
+                                          </thead>
+                                          <tbody id="bodyLocations">
+                                              <tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+
+                              <!-- ─── Sub-tab 2: Unit Belum Ter-mapping ─────────────── -->
+                              <div class="tab-pane fade" id="subtabUnassigned">
+                                  <div class="d-flex justify-content-between align-items-center mb-3">
+                                      <p class="text-muted mb-0 small"><?= lang('App.unassigned_units_hint') ?></p>
+                                      <button class="btn btn-sm btn-outline-secondary" id="btnRefreshUnassigned">
+                                          <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
+                                      </button>
+                                  </div>
+                                  <div class="table-responsive">
+                                      <table class="table table-hover align-middle" id="tableUnassigned">
+                                          <thead class="table-light">
+                                              <tr>
+                                                  <th><?= lang('App.unit_number') ?></th><th>Model</th><th><?= lang('Common.status') ?></th>
+                                                  <th>Customer</th><th><?= lang('App.customer_location') ?></th><th><?= lang('App.contract_number') ?></th>
+                                                  <th style="min-width:180px"><?= lang('App.assign_area') ?></th>
+                                              </tr>
+                                          </thead>
+                                          <tbody id="bodyUnassigned">
+                                              <tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+
+                          </div><!-- /tab-content unit map -->
+                      </div><!-- /unitMapTab -->
+
+                  </div><!-- /tab-content main -->
+              </div><!-- /card-body -->
+          </div><!-- /card -->
 
 
 <!-- Add Area Modal -->
@@ -1033,6 +1224,7 @@ $(document).ready(function() {
   initializeCharts();
   bindForms();
   buildRoleCoverageMatrix();
+  loadAreaSummary(); // Load area summary on page load (shown in Area tab)
   
   // Restore tab if page was reloaded for refresh
   restoreActiveTab();
@@ -1056,9 +1248,16 @@ $(document).ready(function() {
       initializeEmployeeTable();
     }
     
+    // Lazy load unit mapping when that tab is opened
+    if (targetTab === 'unitMapTab') {
+      if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+    }
+
     // Adjust columns when switching tabs
     if (targetTab === 'areasTab' && areasTable) {
       areasTable.columns.adjust().responsive.recalc();
+      // Reload area summary if it hasn't loaded yet
+      if ($('#bodyAreaSummary tr td[colspan]').length) loadAreaSummary();
     } else if (targetTab === 'employeesTab' && employeesTable) {
       employeesTable.columns.adjust().responsive.recalc();
     }
@@ -2576,6 +2775,9 @@ function refreshCurrentTab() {
     case 'assignmentsTab':
       refreshAssignments();
       break;
+    case 'unitMapTab':
+      if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+      break;
     case 'analyticsTab':
       buildRoleCoverageMatrix();
       if (typeof initializeCharts === 'function') initializeCharts();
@@ -2665,6 +2867,290 @@ function restoreActiveTab() {
       localStorage.removeItem('area_management_active_tab');
     }, 500);
   }
+}
+
+/* ===================== UNIT MAPPING FUNCTIONS ===================== */
+
+const allAreas = <?= json_encode($areas) ?>;
+
+function buildAreaOptions(selectedId) {
+    let html = '<option value="">-- Tidak Ada --</option>';
+    allAreas.forEach(a => {
+        const sel = (selectedId && parseInt(selectedId) === a.id) ? ' selected' : '';
+        html += `<option value="${a.id}"${sel}>[${a.area_code}] ${a.area_name}</option>`;
+    });
+    return html;
+}
+
+function csrfData(extra) {
+    const d = {};
+    d[window.csrfTokenName] = window.getCsrfToken();
+    return Object.assign(d, extra);
+}
+
+// ----------------------------------------------------------------
+// Area Summary (shown in Area tab)
+// ----------------------------------------------------------------
+function loadAreaSummary() {
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaSummary', csrfData({}), function(resp) {
+        const tbody = $('#bodyAreaSummary');
+        tbody.empty();
+        if (!resp.success || !resp.data.length) {
+            tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Belum ada area aktif</td></tr>');
+            return;
+        }
+        resp.data.forEach(row => {
+            const unitBadge = row.unit_count > 0
+                ? `<span class="badge badge-soft-blue">${row.unit_count}</span>`
+                : `<span class="badge badge-soft-gray">0</span>`;
+            const typeBadge = row.area_type === 'MILL'
+                ? `<span class="badge badge-soft-cyan">${row.area_type}</span>`
+                : `<span class="badge badge-soft-purple">${row.area_type}</span>`;
+            const foremanHtml = row.foremans
+                ? `<small class="text-success">${row.foremans}</small>`
+                : `<small class="text-muted">-</small>`;
+            const mechHtml = row.mechanics
+                ? `<small class="text-primary">${row.mechanics}</small>`
+                : `<small class="text-muted">-</small>`;
+
+            tbody.append(`
+                <tr class="area-row" data-area-id="${row.id}" data-area-name="[${row.area_code}] ${row.area_name}" style="cursor:pointer">
+                    <td>
+                        <span class="fw-medium">${row.area_name}</span>
+                        <small class="text-muted ms-1">${row.area_code}</small>
+                    </td>
+                    <td>${typeBadge}</td>
+                    <td class="text-center">${row.foreman_count > 0 ? `<span class="badge badge-soft-green">${row.foreman_count}</span>` : '<span class="badge badge-soft-gray">0</span>'}<br>${foremanHtml}</td>
+                    <td class="text-center">${row.mechanic_count > 0 ? `<span class="badge badge-soft-blue">${row.mechanic_count}</span>` : '<span class="badge badge-soft-gray">0</span>'}<br>${mechHtml}</td>
+                    <td class="text-center"><span class="badge badge-soft-cyan">${row.location_count}</span></td>
+                    <td class="text-center">${unitBadge}</td>
+                </tr>
+            `);
+        });
+    });
+}
+
+$(document).on('click', '.area-row', function() {
+    const areaId   = $(this).data('area-id');
+    const areaName = $(this).data('area-name');
+    $('.area-row').removeClass('table-active');
+    $(this).addClass('table-active');
+
+    $('#panelAreaTitle').html(`<i class="bi bi-list-ul me-1"></i> Unit di ${areaName}`);
+    $('#bodyAreaUnits').html('<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>');
+    $('#panelAreaUnits').removeClass('d-none');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaUnits', csrfData({area_id: areaId}), function(resp) {
+        const tbody = $('#bodyAreaUnits');
+        tbody.empty();
+        if (!resp.success || !resp.data.length) {
+            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada unit di area ini</td></tr>');
+            return;
+        }
+        resp.data.forEach(u => {
+            tbody.append(`
+                <tr>
+                    <td><strong>${u.no_unit}</strong></td>
+                    <td>${u.model || '-'}</td>
+                    <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
+                    <td>${u.customer_name || '<span class="text-muted">-</span>'}</td>
+                    <td>${u.location_name || '<span class="text-muted">-</span>'}</td>
+                    <td><small>${u.no_kontrak || '-'}</small></td>
+                    <td><small>${u.tanggal_berakhir || '-'}</small></td>
+                </tr>
+            `);
+        });
+    });
+});
+
+$('#btnClosePanelUnits').on('click', function() {
+    $('#panelAreaUnits').addClass('d-none');
+    $('.area-row').removeClass('table-active');
+});
+
+$('#btnRefreshSummary').on('click', loadAreaSummary);
+
+// ----------------------------------------------------------------
+// Unit Mapping sub-tab 1: Customer Locations
+// ----------------------------------------------------------------
+function loadLocations() {
+    const filter = $('#filterLocationArea').val();
+    $('#bodyLocations').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations', csrfData({area_filter: filter}), function(resp) {
+        const tbody = $('#bodyLocations');
+        tbody.empty();
+        if (!resp.success || !resp.data.length) {
+            tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Tidak ada data</td></tr>');
+            return;
+        }
+        resp.data.forEach(loc => {
+            const currentAreaText = loc.area_id
+                ? `<span class="badge badge-soft-blue">[${loc.area_code}] ${loc.area_name}</span>`
+                : `<span class="text-muted small">Belum di-assign</span>`;
+
+            tbody.append(`
+                <tr>
+                    <td><strong>${loc.customer_name}</strong></td>
+                    <td>${loc.location_name}</td>
+                    <td><small class="text-muted">${loc.location_code || '-'}</small></td>
+                    <td class="text-center">
+                        ${loc.active_units > 0
+                            ? `<span class="badge badge-soft-green">${loc.active_units} unit</span>`
+                            : `<span class="text-muted">0</span>`}
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm loc-area-select" data-loc-id="${loc.id}">
+                            ${buildAreaOptions(loc.area_id)}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary btn-save-location" data-loc-id="${loc.id}">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+    });
+}
+
+$('#btnLoadLocations, #btnRefreshLocations').on('click', loadLocations);
+
+$(document).on('click', '.btn-save-location', function() {
+    const locId  = $(this).data('loc-id');
+    const areaId = $(`.loc-area-select[data-loc-id="${locId}"]`).val();
+    const btn    = $(this);
+
+    btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm"></div>');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/assignAreaToLocation',
+        csrfData({location_id: locId, area_id: areaId}),
+        function(resp) {
+            btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Save');
+            if (resp.success) {
+                btn.removeClass('btn-primary').addClass('btn-success');
+                setTimeout(() => btn.removeClass('btn-success').addClass('btn-primary'), 2000);
+                showToast('success', resp.message);
+                updateStats();
+            } else {
+                showToast('danger', resp.message || 'Gagal menyimpan');
+            }
+        }
+    );
+});
+
+$('#btnSyncFromContracts').on('click', function() {
+    if (!confirm('Sync area unit berdasarkan customer_location.area_id dari semua kontrak aktif?\n\nHanya unit yang lokasi kontraknya sudah memiliki area yang akan ter-update.')) return;
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm me-1"></div> Syncing...');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/syncFromContracts', csrfData({}), function(resp) {
+        btn.prop('disabled', false).html('<i class="bi bi-arrow-repeat me-1"></i> Auto-Sync dari Kontrak');
+        if (resp.success) {
+            showToast('success', resp.message);
+            loadAreaSummary();
+            updateStats();
+        } else {
+            showToast('danger', resp.message);
+        }
+    });
+});
+
+// ----------------------------------------------------------------
+// Unit Mapping sub-tab 2: Unassigned Units
+// ----------------------------------------------------------------
+function loadUnassigned() {
+    $('#bodyUnassigned').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getUnassignedUnits', csrfData({}), function(resp) {
+        const tbody = $('#bodyUnassigned');
+        tbody.empty();
+        if (!resp.success || !resp.data.length) {
+            tbody.html('<tr><td colspan="7" class="text-center py-3 text-success"><i class="bi bi-check-circle me-1"></i> Semua unit sudah ter-mapping ke area</td></tr>');
+            return;
+        }
+        resp.data.forEach(u => {
+            tbody.append(`
+                <tr>
+                    <td><strong>${u.no_unit}</strong></td>
+                    <td>${u.model || '-'}</td>
+                    <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
+                    <td>${u.customer_name || '<span class="text-muted">Tanpa Kontrak</span>'}</td>
+                    <td><small>${u.location_name || '-'}</small></td>
+                    <td><small>${u.no_kontrak || '-'}</small></td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <select class="form-select form-select-sm unit-area-select" data-unit-id="${u.id_inventory_unit}">
+                                ${buildAreaOptions(null)}
+                            </select>
+                            <button class="btn btn-outline-primary btn-assign-unit" data-unit-id="${u.id_inventory_unit}">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    });
+}
+
+$(document).on('click', '.btn-assign-unit', function() {
+    const unitId = $(this).data('unit-id');
+    const areaId = $(`.unit-area-select[data-unit-id="${unitId}"]`).val();
+
+    if (!areaId) { showToast('warning', 'Pilih area terlebih dahulu'); return; }
+
+    const btn = $(this);
+    btn.prop('disabled', true);
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/manualAssignUnit',
+        csrfData({unit_id: unitId, area_id: areaId}),
+        function(resp) {
+            if (resp.success) {
+                btn.closest('tr').fadeOut(300, function() { $(this).remove(); });
+                showToast('success', `Unit berhasil di-assign ke area`);
+                updateStats();
+            } else {
+                btn.prop('disabled', false);
+                showToast('danger', resp.message);
+            }
+        }
+    );
+});
+
+$('#btnRefreshUnassigned').on('click', loadUnassigned);
+
+// ----------------------------------------------------------------
+// Sub-tab lazy load triggers
+// ----------------------------------------------------------------
+$('#subtabLocationsLink').on('shown.bs.tab', function() {
+    if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+});
+$('#subtabUnassignedLink').on('shown.bs.tab', function() {
+    if ($('#bodyUnassigned tr td[colspan]').length) loadUnassigned();
+});
+
+// ----------------------------------------------------------------
+// Stats update helper
+// ----------------------------------------------------------------
+function updateStats() {
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaSummary', csrfData({}), function(resp) {
+        if (resp.success) loadAreaSummary();
+    });
+}
+
+// ----------------------------------------------------------------
+// Toast helper
+// ----------------------------------------------------------------
+function showToast(type, message) {
+    if (typeof Swal !== 'undefined') {
+        const iconMap = {success: 'success', danger: 'error', warning: 'warning', info: 'info'};
+        Swal.fire({ icon: iconMap[type] || 'info', text: message, timer: 3000, showConfirmButton: false, toast: true, position: 'top-end' });
+    } else {
+        alert(message);
+    }
 }
 
 function notify(msg, type='success'){

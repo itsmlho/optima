@@ -747,8 +747,8 @@ $routes->group('service', static function ($routes) {
         $routes->get('getAvailableEmployees/(:num)', 'ServiceAreaManagementController::getAvailableEmployees/$1');
         $routes->get('getAvailableEmployees/(:num)/(:segment)', 'ServiceAreaManagementController::getAvailableEmployees/$1/$2');
 
-        // Unit Area Mapping
-        $routes->get('unit-mapping', 'UnitAreaMappingController::index');
+        // Unit Area Mapping (GET page merged into area-management; keep AJAX POST endpoints active)
+        $routes->get('unit-mapping', 'ServiceAreaManagementController::index');
         $routes->post('unit-mapping/getAreaSummary', 'UnitAreaMappingController::getAreaSummary');
         $routes->post('unit-mapping/getAreaUnits', 'UnitAreaMappingController::getAreaUnits');
         $routes->post('unit-mapping/getCustomerLocations', 'UnitAreaMappingController::getCustomerLocations');

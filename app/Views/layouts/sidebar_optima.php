@@ -101,7 +101,6 @@ helper('permission_helper');
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'area_management')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area Management</span></a></li>
-                    <li class="nav-item"><a href="<?= base_url('/service/area-management/unit-mapping') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">pin_drop</span><span class="drop-label">Unit Area Mapping</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>

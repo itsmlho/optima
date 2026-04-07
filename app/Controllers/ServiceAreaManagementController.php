@@ -138,18 +138,32 @@ class ServiceAreaManagementController extends BaseController
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');
         }
         
+        // Unit Mapping stats (merged from UnitAreaMappingController)
+        $unitStats = [
+            'units_with_area'        => $db->table('inventory_unit')->where('area_id IS NOT NULL')->countAllResults(),
+            'units_without_area'     => $db->table('inventory_unit')->where('area_id IS NULL')->where('status_unit_id !=', 13)->countAllResults(),
+            'locations_without_area' => $db->table('customer_locations')->where('area_id IS NULL')->where('is_active', 1)->countAllResults(),
+            'active_contract_units'  => $db->query("
+                SELECT COUNT(DISTINCT ku.unit_id) as cnt
+                FROM kontrak_unit ku
+                JOIN kontrak k ON k.id = ku.kontrak_id
+                WHERE k.status = 'ACTIVE' AND ku.status = 'ACTIVE'
+            ")->getRowArray()['cnt'] ?? 0,
+        ];
+
         $data = [
             'title' => 'Area Management',
             'dashboardData' => $dashboardData,
             'totalAreas' => $dashboardData['totalAreas'],
             'totalEmployees' => $dashboardData['totalEmployees'],
             'totalAssignments' => $dashboardData['totalAssignments'],
+            'unitStats' => $unitStats,
             'areas' => $areas,
             'roleStats' => $roleStats,
             'employeesByRole' => $employeesByRole,
             'assignmentsByArea' => $assignmentsByArea,
-            'loadCharts' => true, // Enable Chart.js loading
-            'loadDataTables' => true, // Enable DataTables loading
+            'loadCharts' => true,
+            'loadDataTables' => true,
             'departemen' => $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray(),
         ];
         
