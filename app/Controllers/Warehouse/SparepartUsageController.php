@@ -666,37 +666,41 @@ class SparepartUsageController extends BaseController
             ";
 
             // --- SPK returns sub-query ---
-            $spkStatusWhere = $statusFilter !== 'ALL' ? "AND ssr.status = {$db->escape($statusFilter)}" : '';
+            // spk_sparepart_returns only has: id, spk_id, spk_sparepart_id, quantity_returned,
+            // return_reason, return_notes, confirmed_by, confirmed_at, created_at, updated_at
+            // Sparepart details (code/name/qty/satuan etc.) live in spk_spareparts (parent table)
+            $spkStatusWhere = $statusFilter !== 'ALL' ? "AND IF(ssr.confirmed_at IS NULL, 'PENDING', 'CONFIRMED') = {$db->escape($statusFilter)}" : '';
             $spkSearchWhere = '';
             if (!empty($search)) {
                 $spkSearchWhere = "AND (s.nomor_spk         LIKE '%{$searchEsc}%'
-                                    OR ssr.sparepart_name   LIKE '%{$searchEsc}%'
-                                    OR ssr.sparepart_code   LIKE '%{$searchEsc}%'
+                                    OR ssp.sparepart_name   LIKE '%{$searchEsc}%'
+                                    OR ssp.sparepart_code   LIKE '%{$searchEsc}%'
                                     OR s.pelanggan          LIKE '%{$searchEsc}%')";
             }
             $spkSql = "
                 SELECT
-                    'SPK'                                       AS source_type,
+                    'SPK'                                                       AS source_type,
                     ssr.id,
-                    s.nomor_spk                                 AS reference_number,
-                    ssr.sparepart_code,
-                    ssr.sparepart_name,
-                    ssr.item_type,
-                    ssr.is_from_warehouse,
-                    ssr.quantity_brought,
-                    ssr.quantity_used,
-                    ssr.quantity_return,
-                    ssr.satuan,
-                    ssr.status,
+                    s.nomor_spk                                                 AS reference_number,
+                    COALESCE(ssp.sparepart_code, '-')                           AS sparepart_code,
+                    COALESCE(ssp.sparepart_name, '-')                           AS sparepart_name,
+                    COALESCE(ssp.item_type, 'sparepart')                        AS item_type,
+                    COALESCE(ssp.is_from_warehouse, 1)                          AS is_from_warehouse,
+                    COALESCE(ssp.quantity_brought, 0)                           AS quantity_brought,
+                    COALESCE(ssp.quantity_used, 0)                              AS quantity_used,
+                    ssr.quantity_returned                                        AS quantity_return,
+                    COALESCE(ssp.satuan, 'PCS')                                 AS satuan,
+                    IF(ssr.confirmed_at IS NULL, 'PENDING', 'CONFIRMED')        AS status,
                     ssr.return_notes,
                     ssr.created_at,
                     ssr.confirmed_at,
-                    ''                                          AS mechanic_name,
-                    COALESCE(s.pelanggan, '-')                  AS customer_name,
-                    COALESCE(iu.no_unit, '-')                   AS unit_number,
-                    COALESCE(u.username, '-')                    AS confirmed_by_name,
-                    DATE(s.dibuat_pada)                         AS report_date
+                    ''                                                          AS mechanic_name,
+                    COALESCE(s.pelanggan, '-')                                  AS customer_name,
+                    COALESCE(iu.no_unit, '-')                                   AS unit_number,
+                    COALESCE(u.username, '-')                                   AS confirmed_by_name,
+                    DATE(s.dibuat_pada)                                         AS report_date
                 FROM spk_sparepart_returns ssr
+                LEFT JOIN spk_spareparts ssp      ON ssp.id = ssr.spk_sparepart_id
                 LEFT JOIN spk s                   ON s.id  = ssr.spk_id
                 LEFT JOIN kontrak k               ON k.id  = s.kontrak_id
                 LEFT JOIN kontrak_unit ku         ON ku.kontrak_id = k.id
@@ -1082,13 +1086,12 @@ class SparepartUsageController extends BaseController
                 return $this->response->setJSON(['success' => false, 'message' => 'SPK return record not found']);
             }
 
-            if ($record['status'] !== 'PENDING') {
-                return $this->response->setJSON(['success' => false, 'message' => 'Return sudah dikonfirmasi atau dibatalkan']);
+            if ($record['confirmed_at'] !== null) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Return sudah dikonfirmasi sebelumnya']);
             }
 
             $updated = $db->table('spk_sparepart_returns')->update(
                 [
-                    'status'       => 'CONFIRMED',
                     'confirmed_by' => $userId,
                     'confirmed_at' => date('Y-m-d H:i:s'),
                     'return_notes' => $notes ?? $record['return_notes'],
