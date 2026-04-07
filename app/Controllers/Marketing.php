@@ -2500,8 +2500,20 @@ class Marketing extends BaseDataTableController
         
         // Load quotation_specifications data (for Equipment section - data permintaan marketing)
         $kontrak_spec = null;
-        if (!empty($row['quotation_specification_id'])) {
-            $kontrak_spec = $this->db->table('quotation_specifications qs')
+        // Resolve spec ID: directly from spk.quotation_specification_id, or fallback via kontrak
+        $specId = (int)($row['quotation_specification_id'] ?? 0);
+        if (!$specId && !empty($row['kontrak_id'])) {
+            $specIdRow = $this->db->table('quotation_specifications qs')
+                ->select('qs.id_specification')
+                ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'inner')
+                ->where('qs.kontrak_id', $row['kontrak_id'])
+                ->where('qs.is_active', 1)
+                ->orderBy('qs.id_specification', 'DESC')
+                ->get()->getRowArray();
+            $specId = (int)($specIdRow['id_specification'] ?? 0);
+        }
+        if ($specId) {
+            $result = $this->db->table('quotation_specifications qs')
                 ->select('qs.*')
                 ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
                 ->select('k.kapasitas_unit as kontrak_kapasitas_name')
@@ -2527,9 +2539,9 @@ class Marketing extends BaseDataTableController
                 ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
                 ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
                 ->join('fork fk', 'fk.id = qs.fork_id', 'left')
-                ->where('qs.id_specification', $row['quotation_specification_id'])
+                ->where('qs.id_specification', $specId)
                 ->get();
-            $kontrak_spec = $kontrak_spec ? $kontrak_spec->getRowArray() : null;
+            $kontrak_spec = $result ? $result->getRowArray() : null;
 
             // Map quotation_specifications fields to expected kontrak_spesifikasi format
             if ($kontrak_spec) {
