@@ -3478,7 +3478,8 @@ $(document).ready(function() {
                 // console.log('📦 Area staff response:', response);
                 
                 if (response.success) {
-                    // Populate admin dropdown
+                    // Populate admin dropdown — clear first to prevent race-condition duplicates
+                    $('#admin_id').html('<option value="">-- Select Admin --</option>');
                     if (response.data.admins && response.data.admins.length > 0) {
                         response.data.admins.forEach(function(admin, index) {
                             $('#admin_id').append(`<option value="${admin.id}">${admin.staff_name}</option>`);
@@ -3505,7 +3506,8 @@ $(document).ready(function() {
                         $('#admin_id').trigger('change.select2');
                     }
                     
-                    // Populate foreman dropdown
+                    // Populate foreman dropdown — clear first to prevent race-condition duplicates
+                    $('#foreman_id').html('<option value="">-- Select Foreman --</option>');
                     if (response.data.foremans && response.data.foremans.length > 0) {
                         response.data.foremans.forEach(function(foreman, index) {
                             $('#foreman_id').append(`<option value="${foreman.id}">${foreman.staff_name}</option>`);
