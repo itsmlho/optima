@@ -746,6 +746,16 @@ $routes->group('service', static function ($routes) {
         // Availability
         $routes->get('getAvailableEmployees/(:num)', 'ServiceAreaManagementController::getAvailableEmployees/$1');
         $routes->get('getAvailableEmployees/(:num)/(:segment)', 'ServiceAreaManagementController::getAvailableEmployees/$1/$2');
+
+        // Unit Area Mapping
+        $routes->get('unit-mapping', 'UnitAreaMappingController::index');
+        $routes->post('unit-mapping/getAreaSummary', 'UnitAreaMappingController::getAreaSummary');
+        $routes->post('unit-mapping/getAreaUnits', 'UnitAreaMappingController::getAreaUnits');
+        $routes->post('unit-mapping/getCustomerLocations', 'UnitAreaMappingController::getCustomerLocations');
+        $routes->post('unit-mapping/assignAreaToLocation', 'UnitAreaMappingController::assignAreaToLocation');
+        $routes->post('unit-mapping/syncFromContracts', 'UnitAreaMappingController::syncFromContracts');
+        $routes->post('unit-mapping/manualAssignUnit', 'UnitAreaMappingController::manualAssignUnit');
+        $routes->post('unit-mapping/getUnassignedUnits', 'UnitAreaMappingController::getUnassignedUnits');
     });
 
     // Export routes
