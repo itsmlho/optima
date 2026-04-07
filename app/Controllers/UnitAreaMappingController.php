@@ -293,6 +293,110 @@ class UnitAreaMappingController extends BaseController
     // AJAX: Unassigned units (Tab 3)
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // POST: Batch assign many locations to one area
+    // -------------------------------------------------------------------------
+
+    public function batchAssignLocations()
+    {
+        $locationIds = $this->request->getPost('location_ids');
+        $areaId      = $this->request->getPost('area_id');
+
+        if (!$locationIds || !$areaId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'location_ids dan area_id wajib diisi']);
+        }
+
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true);
+        }
+
+        $locationIds = array_values(array_filter(array_map('intval', (array) $locationIds)));
+        $areaId      = (int) $areaId;
+
+        if (empty($locationIds)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada lokasi yang dipilih']);
+        }
+
+        try {
+            $this->db->transStart();
+
+            $this->db->table('customer_locations')
+                ->whereIn('id', $locationIds)
+                ->update(['area_id' => $areaId]);
+
+            $placeholders = implode(',', array_fill(0, count($locationIds), '?'));
+            $this->db->query("
+                UPDATE inventory_unit iu
+                JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+                SET iu.area_id = ?, iu.updated_at = NOW()
+                WHERE ku.customer_location_id IN ({$placeholders})
+            ", array_merge([$areaId], $locationIds));
+
+            $this->db->transComplete();
+
+            if (!$this->db->transStatus()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Transaksi gagal']);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => count($locationIds) . ' lokasi berhasil diassign ke area.',
+                'count'   => count($locationIds),
+            ]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'batchAssignLocations error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // POST: Batch assign many units to one area
+    // -------------------------------------------------------------------------
+
+    public function batchAssignUnits()
+    {
+        $unitIds = $this->request->getPost('unit_ids');
+        $areaId  = $this->request->getPost('area_id');
+
+        if (!$unitIds || !$areaId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'unit_ids dan area_id wajib diisi']);
+        }
+
+        if (is_string($unitIds)) {
+            $unitIds = json_decode($unitIds, true);
+        }
+
+        $unitIds = array_values(array_filter(array_map('intval', (array) $unitIds)));
+        $areaId  = (int) $areaId;
+
+        if (empty($unitIds)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada unit yang dipilih']);
+        }
+
+        try {
+            $this->db->table('inventory_unit')
+                ->whereIn('id_inventory_unit', $unitIds)
+                ->update(['area_id' => $areaId, 'updated_at' => date('Y-m-d H:i:s')]);
+
+            $affected = $this->db->affectedRows();
+
+            return $this->response->setJSON([
+                'success'  => true,
+                'message'  => $affected . ' unit berhasil di-assign ke area.',
+                'affected' => $affected,
+            ]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'batchAssignUnits error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Unassigned units (Tab 3)
+    // -------------------------------------------------------------------------
+
     public function getUnassignedUnits()
     {
         $rows = $this->db->query("

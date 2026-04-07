@@ -756,6 +756,8 @@ $routes->group('service', static function ($routes) {
         $routes->post('unit-mapping/syncFromContracts', 'UnitAreaMappingController::syncFromContracts');
         $routes->post('unit-mapping/manualAssignUnit', 'UnitAreaMappingController::manualAssignUnit');
         $routes->post('unit-mapping/getUnassignedUnits', 'UnitAreaMappingController::getUnassignedUnits');
+        $routes->post('unit-mapping/batchAssignLocations', 'UnitAreaMappingController::batchAssignLocations');
+        $routes->post('unit-mapping/batchAssignUnits', 'UnitAreaMappingController::batchAssignUnits');
     });
 
     // Export routes
