@@ -411,7 +411,7 @@ class WorkOrderController extends Controller
             if ($departemenId || !empty($departemenIds)) {
                 // Filter by department(s) (DIESEL/ELECTRIC/multi)
                 $builder = $db->table('employees e');
-                $builder->select('e.id, e.staff_name, e.staff_role, e.staff_code, e.employee_code');
+                $builder->select('e.id, e.staff_name, e.staff_role, e.staff_code');
                 
                 // Handle MECHANIC and HELPER role matching
                 if ($staffRole === 'MECHANIC') {
