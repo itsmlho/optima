@@ -2513,35 +2513,54 @@ class Marketing extends BaseDataTableController
             $specId = (int)($specIdRow['id_specification'] ?? 0);
         }
         if ($specId) {
-            $result = $this->db->table('quotation_specifications qs')
-                ->select('qs.*')
-                ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
-                ->select('k.kapasitas_unit as kontrak_kapasitas_name')
-                ->select('d.nama_departemen as kontrak_departemen_name')
-                ->select('tm.tipe_mast as kontrak_mast_name')
-                ->select('jr.tipe_roda as kontrak_roda_name')
-                ->select('tb.tipe_ban as kontrak_ban_name')
-                ->select('v.jumlah_valve as kontrak_valve_name')
-                ->select('chr.merk_charger as kontrak_merk_charger, chr.tipe_charger as kontrak_tipe_charger')
-                ->select('mu.merk_unit, mu.model_unit')
-                ->select('att.tipe as attachment_tipe, att.merk as attachment_merk, att.model as attachment_model')
-                ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
-                ->select('fk.name as fork_name, fk.fork_class as fork_class')
-                ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
-                ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
-                ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
-                ->join('tipe_mast tm', 'tm.id_mast = qs.mast_id', 'left')
-                ->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left')
-                ->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left')
-                ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
-                ->join('charger chr', 'chr.id_charger = qs.charger_id', 'left')
-                ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
-                ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
-                ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
-                ->join('fork fk', 'fk.id = qs.fork_id', 'left')
-                ->where('qs.id_specification', $specId)
-                ->get();
-            $kontrak_spec = $result ? $result->getRowArray() : null;
+            // Helper to build and run the spec query with given joins
+            $buildSpecQuery = function (bool $withNewTables) use ($specId): ?array {
+                $db = \Config\Database::connect();
+                $builder = $db->table('quotation_specifications qs')
+                    ->select('qs.*')
+                    ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
+                    ->select('k.kapasitas_unit as kontrak_kapasitas_name')
+                    ->select('d.nama_departemen as kontrak_departemen_name')
+                    ->select('tm.tipe_mast as kontrak_mast_name')
+                    ->select('jr.tipe_roda as kontrak_roda_name')
+                    ->select('tb.tipe_ban as kontrak_ban_name')
+                    ->select('v.jumlah_valve as kontrak_valve_name')
+                    ->select('chr.merk_charger as kontrak_merk_charger, chr.tipe_charger as kontrak_tipe_charger')
+                    ->select('mu.merk_unit, mu.model_unit')
+                    ->select('att.tipe as attachment_tipe, att.merk as attachment_merk, att.model as attachment_model')
+                    ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
+                    ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+                    ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
+                    ->join('tipe_mast tm', 'tm.id_mast = qs.mast_id', 'left')
+                    ->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left')
+                    ->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left')
+                    ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
+                    ->join('charger chr', 'chr.id_charger = qs.charger_id', 'left')
+                    ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
+                    ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left');
+                if ($withNewTables) {
+                    $builder
+                        ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
+                        ->select('fk.name as fork_name, fk.fork_class as fork_class')
+                        ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
+                        ->join('fork fk', 'fk.id = qs.fork_id', 'left');
+                }
+                $result = $builder->where('qs.id_specification', $specId)->get();
+                return ($result !== false) ? $result->getRowArray() : null;
+            };
+
+            // Try full query first; if it fails (older prod schema), fall back without baterai/fork
+            try {
+                $kontrak_spec = $buildSpecQuery(true);
+            } catch (\Throwable $e) {
+                log_message('warning', 'SPK print: full spec query failed (' . $e->getMessage() . '), retrying without baterai/fork joins');
+                try {
+                    $kontrak_spec = $buildSpecQuery(false);
+                } catch (\Throwable $e2) {
+                    log_message('error', 'SPK print: simple spec query also failed: ' . $e2->getMessage());
+                    $kontrak_spec = null;
+                }
+            }
 
             // Map quotation_specifications fields to expected kontrak_spesifikasi format
             if ($kontrak_spec) {
