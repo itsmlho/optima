@@ -245,16 +245,7 @@
                                   <p class="text-muted small mb-0"><?= lang('App.manage_employee_assignments') ?></p>
                               </div>
                           </div>
-                          <div class="alert alert-info">
-                              <strong><i class="fas fa-info-circle"></i> Cara Kerja Tab Assignments:</strong>
-                              <ul class="mb-0 mt-2">
-                                  <li><strong>1. Pilih Area:</strong> Pilih area dari dropdown di panel kiri</li>
-                                  <li><strong>2. Lihat Assignments:</strong> Tabel di kanan akan menampilkan semua employee yang ditugaskan ke area tersebut</li>
-                                  <li><strong>3. Filter Role:</strong> Gunakan dropdown "All Roles" untuk filter berdasarkan role (Supervisor, Foreman, Mechanic, Helper)</li>
-                                  <li><strong>4. Tambah Assignment:</strong> Klik "New Assignment" untuk menugaskan employee baru ke area</li>
-                                  <li><strong>5. Edit/Delete:</strong> Klik tombol edit/delete pada setiap assignment untuk mengubah atau menghapus</li>
-                              </ul>
-                          </div>
+
                           <div class="row">
                               <div class="col-md-4">
                                   <div class="card shadow-sm">
@@ -299,7 +290,7 @@
                                           <div id="areaAssignmentsTable">
                                               <div class="text-center text-muted py-4">
                                                   <i class="fas fa-arrow-left text-muted"></i>
-                                                  <p class="mb-0">Select an area from the left panel to view assignments</p>
+                                                  <p class="mb-0">Pilih area dari panel kiri untuk melihat penugasan</p>
                                               </div>
                                           </div>
                                       </div>
@@ -2101,33 +2092,33 @@ function loadAreaAssignments() {
   const areaId = $('#assignAreaSelect').val();
   
   if (!areaId) {
-    $('#areaAssignmentsTable').html('<div class="text-center text-muted">Select an area to view assignments</div>');
+    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-arrow-left"></i> Pilih area dari panel kiri</div>');
     $('#areaAssignmentSummary').html('');
     return;
   }
   
-  $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i><br>Loading assignments...</div>');
+  $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i><br>Memuat data penugasan...</div>');
   
   const timestamp = Date.now();
   const url = `<?= base_url('service/area-management/getAreaAssignments') ?>/${areaId}?_=${timestamp}`;
   
   $.getJSON(url, function(resp){
     if (!resp.success) {
-      $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Error loading assignments</div>');
+      $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Gagal memuat data penugasan</div>');
       return;
     }
     const assignments = resp.data || [];
     renderAssignmentsTable(assignments);
     updateAreaAssignmentSummary(assignments);
   }).fail(function(xhr, status, error) {
-    $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Network error loading assignments<br><button class="btn btn-sm btn-primary mt-2" onclick="loadAreaAssignments()">Retry</button></div>');
+    $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Koneksi gagal<br><button class="btn btn-sm btn-primary mt-2" onclick="loadAreaAssignments()">Coba Lagi</button></div>');
   });
 }
 
 function forceRefreshAssignments() {
   const areaId = $('#assignAreaSelect').val();
   if (areaId) {
-    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-sync fa-spin"></i><br>Refreshing...</div>');
+    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-sync fa-spin"></i><br>Memperbarui...</div>');
     setTimeout(function() {
       loadAreaAssignments();
     }, 300);
@@ -2142,24 +2133,41 @@ function renderAssignmentsTable(assignments) {
   if (filterRole) filtered = assignments.filter(a => a.staff_role === filterRole);
   
   if (filtered.length === 0) {
-    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-users-slash"></i><br>No assignments found for the selected role</div>');
+    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-5"><i class="fas fa-users-slash fa-2x mb-2"></i><br>Tidak ada penugasan untuk role yang dipilih</div>');
     return;
   }
-  let html = '<div class="table-responsive"><table class="table table-sm table-hover table-bordered">';
-  html += '<thead class="thead-light"><tr><th>Staff Name</th><th>Role</th><th>Assignment Type</th><th>Start Date</th><th>End Date</th><th>Actions</th></tr></thead><tbody>';
+
+  const roleSoftClass = r => ({
+    'ADMIN': 'badge-soft-blue', 'SUPERVISOR': 'badge-soft-red',
+    'FOREMAN': 'badge-soft-yellow', 'MECHANIC': 'badge-soft-green',
+    'MECHANIC_SERVICE_AREA': 'badge-soft-cyan', 'MECHANIC_UNIT_PREP': 'badge-soft-purple',
+    'MECHANIC_FABRICATION': 'badge-soft-gray', 'HELPER': 'badge-soft-orange'
+  })[r] || 'badge-soft-gray';
+
+  const assignTypeSoftClass = t => ({
+    'PRIMARY': 'badge-soft-green', 'BACKUP': 'badge-soft-yellow', 'TEMPORARY': 'badge-soft-cyan'
+  })[t] || 'badge-soft-gray';
+
+  let html = '<div class="table-responsive"><table class="table table-hover align-middle mb-0">';
+  html += '<thead class="table-light"><tr><th>Karyawan</th><th>Role</th><th>Tipe</th><th>Departemen</th><th>Mulai</th><th>Selesai</th><th>Aksi</th></tr></thead><tbody>';
+
   filtered.forEach(a => {
-    const assignmentTypeColor = a.assignment_type === 'PRIMARY' ? 'success' : (a.assignment_type === 'BACKUP' ? 'warning' : 'info');
-    // Fix: Handle undefined role
     const role = a.staff_role || a.role || 'UNKNOWN';
+    const roleLabel = role.replace(/_/g, ' ');
+    const deptScope = a.department_scope || '-';
     html += `<tr id="assignment-row-${a.id}">
-      <td><strong>${a.staff_name}</strong><br><small class="text-muted">${a.staff_code || ''}</small></td>
-      <td><strong class='text-${roleBadgeColor(role)}'>${role}</strong></td>
-      <td><strong class='text-${assignmentTypeColor}'>${a.assignment_type}</strong></td>
-      <td>${a.start_date ? new Date(a.start_date).toLocaleDateString('en-GB') : '-'}</td>
-      <td>${a.end_date ? new Date(a.end_date).toLocaleDateString('en-GB') : '-'}</td>
       <td>
-        <button class='btn btn-sm btn-outline-primary mr-1' onclick='editAssignment(${a.id})' title="Edit Assignment" aria-label="Edit assignment"><i class='fas fa-edit' aria-hidden='true'></i></button>
-        <button class='btn btn-sm btn-outline-danger' onclick='removeAssignment(${a.id})' title="Remove Assignment" aria-label="Hapus assignment"><i class='fas fa-trash' aria-hidden='true'></i></button>
+        <span class="fw-medium">${a.staff_name}</span>
+        <span class="area-code-badge ms-1">${a.staff_code || ''}</span>
+      </td>
+      <td><span class="badge ${roleSoftClass(role)}">${roleLabel}</span></td>
+      <td><span class="badge ${assignTypeSoftClass(a.assignment_type)}">${a.assignment_type}</span></td>
+      <td><small class="text-muted">${deptScope}</small></td>
+      <td><small>${a.start_date ? new Date(a.start_date).toLocaleDateString('id-ID') : '-'}</small></td>
+      <td><small>${a.end_date ? new Date(a.end_date).toLocaleDateString('id-ID') : '<span class="badge badge-soft-cyan">Open</span>'}</small></td>
+      <td>
+        <button class='btn btn-sm btn-outline-primary me-1' onclick='editAssignment(${a.id})' title="Edit" aria-label="Edit"><i class='fas fa-edit'></i></button>
+        <button class='btn btn-sm btn-outline-danger' onclick='removeAssignment(${a.id})' title="Hapus" aria-label="Hapus"><i class='fas fa-trash'></i></button>
       </td>
     </tr>`;
   });
@@ -2169,7 +2177,7 @@ function renderAssignmentsTable(assignments) {
 
 function updateAreaAssignmentSummary(assignments) {
   if (!assignments || assignments.length === 0) {
-    $('#areaAssignmentSummary').html('<div class="alert alert-info"><i class="fas fa-info-circle"></i> No assignments found for this area</div>');
+    $('#areaAssignmentSummary').html('<div class="text-muted small py-2"><i class="fas fa-info-circle"></i> Belum ada penugasan</div>');
     return;
   }
   const roles = {};
@@ -2182,27 +2190,30 @@ function updateAreaAssignmentSummary(assignments) {
     if (a.assignment_type === 'TEMPORARY') roles[role].temporary++;
   });
   
-  let html = '<div class="card border-0 bg-light">';
-  html += '<div class="card-body p-3">';
-  html += '<h6 class="card-title text-primary mb-3"><i class="fas fa-chart-pie"></i> Assignment Summary</h6>';
-  
+  const roleSoftClass = r => ({
+    'ADMIN': 'badge-soft-blue', 'SUPERVISOR': 'badge-soft-red',
+    'FOREMAN': 'badge-soft-yellow', 'MECHANIC': 'badge-soft-green',
+    'MECHANIC_SERVICE_AREA': 'badge-soft-cyan', 'MECHANIC_UNIT_PREP': 'badge-soft-purple',
+    'MECHANIC_FABRICATION': 'badge-soft-gray', 'HELPER': 'badge-soft-orange'
+  })[r] || 'badge-soft-gray';
+
+  let html = '<div class="mt-2">';
+
   Object.keys(roles).forEach(r => {
     const v = roles[r];
     const total = v.primary + v.backup + v.temporary;
-    html += `<div class="mb-2">
-      <div class="d-flex justify-content-between align-items-center">
-        <strong class="text-dark">${r}</strong>
-        <strong class="text-primary">${total} Assigned</strong>
-      </div>
-      <div class="small text-muted">
-        <span class='text-success mr-2'>✅ Primary: ${v.primary}</span>
-        <span class='text-warning mr-2'>⚠️ Backup: ${v.backup}</span>
-        <span class='text-info'>⏱️ Temporary: ${v.temporary}</span>
+    const roleLabel = r.replace(/_/g, ' ');
+    html += `<div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+      <span class="badge ${roleSoftClass(r)} me-1">${roleLabel}</span>
+      <div class="d-flex gap-1">
+        <span class="badge badge-soft-green" title="Primary">${v.primary}P</span>
+        <span class="badge badge-soft-yellow" title="Backup">${v.backup}B</span>
+        <span class="badge badge-soft-cyan" title="Temporary">${v.temporary}T</span>
       </div>
     </div>`;
   });
-  
-  html += '</div></div>';
+
+  html += '</div>';
   $('#areaAssignmentSummary').html(html);
 }
 
