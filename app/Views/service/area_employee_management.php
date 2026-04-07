@@ -220,15 +220,16 @@
                           </div>
                           
                           <div class="table-responsive">
-                              <table id="employeesTable" class="table table-striped dt-responsive nowrap">
-                                  <thead>
+                              <table id="employeesTable" class="table table-hover align-middle dt-responsive">
+                                  <thead class="table-light">
                                       <tr>
-                                          <th><?= lang('App.staff_code') ?></th>
-                                          <th><?= lang('Common.name') ?></th>
+                                          <th><?= lang('App.employee') ?></th>
                                           <th><?= lang('App.role') ?></th>
-                                          <th><?= lang('App.work_location') ?></th>
                                           <th><?= lang('App.department') ?></th>
                                           <th><?= lang('App.assigned_to') ?></th>
+                                          <th><?= lang('App.contact') ?></th>
+                                          <th class="text-center"><?= lang('Common.status') ?></th>
+                                          <th class="text-center no-sort"><?= lang('Common.actions') ?></th>
                                       </tr>
                                   </thead>
                                   <tbody></tbody>
@@ -1197,6 +1198,17 @@
     padding: 1px 5px;
     margin-left: 4px;
 }
+
+/* Employees table */
+#employeesTable tbody tr {
+    cursor: pointer;
+}
+#employeesTable tbody tr td:last-child {
+    cursor: default;
+}
+#employeesTable tbody td {
+    vertical-align: middle;
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -1517,101 +1529,115 @@ function initializeEmployeeTable() {
         }
       },
       columns: [
-        { 
-          data: 'staff_code',
-          render: function(d, type, row, meta) {
-            let label = d || '';
-            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-              label = OptimaSearch.highlightForMeta(meta, label);
-            }
-            return `<span class="employee-code">${label}</span>`;
-          }
-        },
-        { 
+        // Column 1: Staff (name + code)
+        {
           data: 'staff_name',
-          render: function(d, type, row, meta) {
-            let label = d || '';
-            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-              label = OptimaSearch.highlightForMeta(meta, label);
-            }
-            return `<span class="text-dark font-weight-medium">${label}</span>`;
+          render: function(d, type, row) {
+            return `<span class="fw-medium">${d || ''}</span><span class="area-code-badge ms-1">${row.staff_code || ''}</span>`;
           }
         },
+        // Column 2: Role
         {
           data: 'staff_role',
-          render: function(data, type, row) {
-            if (!data) return '<span class="text-muted">N/A</span>';
-            return `<strong class="text-${roleBadgeColor(data)}">${data}</strong>`;
+          render: function(data) {
+            if (!data) return '<span class="badge badge-soft-gray">-</span>';
+            const roleColors = {
+              'ADMIN': 'blue', 'SUPERVISOR': 'red', 'FOREMAN': 'yellow',
+              'MECHANIC': 'green', 'MECHANIC_SERVICE_AREA': 'cyan',
+              'MECHANIC_UNIT_PREP': 'purple', 'MECHANIC_FABRICATION': 'gray',
+              'HELPER': 'orange'
+            };
+            const cls = roleColors[data] || 'gray';
+            const label = data.replace(/_/g, ' ');
+            return `<span class="badge badge-soft-${cls}">${label}</span>`;
           }
         },
+        // Column 3: Departemen
         {
-          data: 'work_location',
-          render: function(data, type, row, meta) {
-            if (!data || data === '-') return '<span class="text-muted">-</span>';
-            let label = data;
-            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-              label = OptimaSearch.highlightForMeta(meta, label);
-            }
-            return `<strong class="text-${locationBadgeColor(data)}">${label}</strong>`;
-          }
-        },
-        { 
           data: 'departemen',
-          render: function(d, type, row, meta) {
-            if (!d) return '<span class="text-muted">-</span>';
-            let label = d;
-            if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-              label = OptimaSearch.highlightForMeta(meta, label);
-            }
-            return `<span class="text-dark">${label}</span>`;
+          render: function(d) {
+            return d && d !== '-'
+              ? `<span class="text-dark">${d}</span>`
+              : '<span class="text-muted">-</span>';
           }
         },
+        // Column 4: Penugasan Area
         {
           data: 'area_assignments',
           orderable: false,
           searchable: false,
-          render: function(data, type, row) {
+          render: function(data) {
             if (!data || data.length === 0) {
-              return '<span class="text-warning">⚠️ Unassigned</span>';
+              return '<span class="badge badge-soft-yellow"><i class="bi bi-exclamation-circle me-1"></i>Unassigned</span>';
             }
-            const central = data.filter(a => a.area_type === 'CENTRAL');
-            const mill = data.filter(a => a.area_type === 'MILL');
-            let output = [];
-            if (central.length > 0) output.push(`<strong class="text-primary">${central.length} Central</strong>`);
-            if (mill.length > 0) output.push(`<strong class="text-success">${mill.length} Mill</strong>`);
-            return output.join(' | ');
+            return data.map(a => {
+              const cls = a.area_type === 'MILL' ? 'badge-soft-green' : 'badge-soft-blue';
+              return `<span class="badge ${cls} me-1" title="${a.area_name}">${a.area_code}</span>`;
+            }).join('');
+          }
+        },
+        // Column 5: Kontak
+        {
+          data: 'phone',
+          orderable: false,
+          render: function(d, type, row) {
+            const phone = d ? `<div class="small"><i class="fas fa-phone text-muted me-1"></i>${d}</div>` : '';
+            const email = row.email ? `<div class="small"><i class="fas fa-envelope text-muted me-1"></i>${row.email}</div>` : '';
+            return (phone || email) ? phone + email : '<span class="text-muted">-</span>';
+          }
+        },
+        // Column 6: Status
+        {
+          data: 'is_active',
+          className: 'text-center',
+          render: function(data) {
+            return data == 1
+              ? '<span class="badge badge-soft-green">Active</span>'
+              : '<span class="badge badge-soft-gray">Inactive</span>';
+          }
+        },
+        // Column 7: Aksi
+        {
+          data: null,
+          orderable: false,
+          searchable: false,
+          className: 'text-center',
+          render: function(data, type, row) {
+            return `<button class="btn btn-sm btn-outline-primary"
+                      title="Detail / Edit"
+                      onclick="event.stopPropagation(); viewEmployeeDetail(${row.id})">
+                      <i class="fas fa-pencil-alt"></i>
+                    </button>`;
           }
         }
       ],
-      order: [[1, 'asc']],
+      order: [[0, 'asc']],
       pageLength: 25,
+      columnDefs: [{ orderable: false, targets: [3, 4, 6] }],
       language: {
-        emptyTable: "No employees found",
-        info: "Showing _START_ to _END_ of _TOTAL_ employees",
-        infoEmpty: "Showing 0 to 0 of 0 employees",
-        search: "Search:",
-        searchPlaceholder: "Search employees...",
-        lengthMenu: "Show _MENU_ entries"
+        emptyTable: "Belum ada karyawan",
+        info: "Menampilkan _START_ – _END_ dari _TOTAL_ karyawan",
+        infoEmpty: "Menampilkan 0 karyawan",
+        search: "Cari:",
+        searchPlaceholder: "Cari karyawan...",
+        lengthMenu: "Tampilkan _MENU_ entri"
       },
-      drawCallback: function(settings) {
-        $('#employeesTable tbody').off('click', 'tr').on('click', 'tr', function() {
+      drawCallback: function() {
+        $('#employeesTable tbody').off('click', 'tr').on('click', 'tr', function(e) {
+          if ($(e.target).closest('.btn').length) return;
           const data = employeesTable.row(this).data();
           if (data && data.id) viewEmployeeDetail(data.id);
         });
-        $('#employeesTable tbody tr').hover(
-          function() { $(this).addClass('table-hover-row'); },
-          function() { $(this).removeClass('table-hover-row'); }
-        );
       }
     });
 
     setTimeout(function() {
-      $('#employeesTable_wrapper div.dataTables_filter input').attr('placeholder', 'Search employees...');
+      $('#employeesTable_wrapper div.dataTables_filter input').attr('placeholder', 'Cari karyawan...');
     }, 100);
 
   } catch (error) {
     console.error('Error initializing Employees DataTable:', error);
-    $('#employeesTable').html('<div class="alert alert-danger">Error loading employees data. Please refresh the page.</div>');
+    $('#employeesTable').html('<div class="alert alert-danger">Error memuat data karyawan. Silakan refresh halaman.</div>');
   }
 }
 
