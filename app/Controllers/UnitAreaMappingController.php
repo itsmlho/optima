@@ -29,16 +29,15 @@ class UnitAreaMappingController extends BaseController
             ->where('is_active', 1)->countAllResults();
 
         $stats['units_with_area'] = $this->db->table('inventory_unit')
-            ->whereNotNull('area_id')->countAllResults();
+            ->where('area_id IS NOT NULL')->countAllResults();
 
         $stats['units_without_area'] = $this->db->table('inventory_unit')
-            ->join('status_unit su', 'su.id_status = inventory_unit.status_unit_id', 'left')
-            ->whereNull('inventory_unit.area_id')
-            ->where('inventory_unit.status_unit_id !=', 13) // exclude SOLD
+            ->where('area_id IS NULL')
+            ->where('status_unit_id !=', 13) // exclude SOLD
             ->countAllResults();
 
         $stats['locations_without_area'] = $this->db->table('customer_locations')
-            ->whereNull('area_id')
+            ->where('area_id IS NULL')
             ->where('is_active', 1)
             ->countAllResults();
 
