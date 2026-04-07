@@ -223,6 +223,7 @@
                               <table id="employeesTable" class="table table-hover align-middle dt-responsive">
                                   <thead class="table-light">
                                       <tr>
+                                          <th>NIK</th>
                                           <th><?= lang('App.employee') ?></th>
                                           <th><?= lang('App.role') ?></th>
                                           <th><?= lang('App.department') ?></th>
@@ -1520,14 +1521,21 @@ function initializeEmployeeTable() {
         }
       },
       columns: [
-        // Column 1: Staff (name + code)
+        // Column 1: NIK
         {
-          data: 'staff_name',
-          render: function(d, type, row) {
-            return `<span class="fw-medium">${d || ''}</span><span class="area-code-badge ms-1">${row.staff_code || ''}</span>`;
+          data: 'staff_code',
+          render: function(d) {
+            return d ? `<span class="area-code-badge">${d}</span>` : '<span class="text-muted">-</span>';
           }
         },
-        // Column 2: Role
+        // Column 2: Nama
+        {
+          data: 'staff_name',
+          render: function(d) {
+            return `<span class="fw-medium">${d || '-'}</span>`;
+          }
+        },
+        // Column 3: Role
         {
           data: 'staff_role',
           render: function(data) {
@@ -1602,9 +1610,9 @@ function initializeEmployeeTable() {
           }
         }
       ],
-      order: [[0, 'asc']],
+      order: [[1, 'asc']],
       pageLength: 25,
-      columnDefs: [{ orderable: false, targets: [3, 4, 6] }],
+      columnDefs: [{ orderable: false, targets: [4, 5, 7] }],
       language: {
         emptyTable: "Belum ada karyawan",
         info: "Menampilkan _START_ – _END_ dari _TOTAL_ karyawan",
