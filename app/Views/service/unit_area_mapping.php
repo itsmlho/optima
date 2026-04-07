@@ -236,6 +236,13 @@
 <!-- Hidden: Areas JSON for dropdowns                             -->
 <!-- ============================================================ -->
 <script>
+const allAreas = <?= json_encode($areas) ?>;
+</script>
+
+<?= $this->endSection() ?>
+
+<?= $this->section('javascript') ?>
+<script>
 const base_url    = '<?= base_url() ?>';
 const csrfName    = window.csrfTokenName  || '<?= csrf_token() ?>';
 const csrfValue   = window.csrfTokenValue || '<?= csrf_hash() ?>';
