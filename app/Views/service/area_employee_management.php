@@ -157,38 +157,7 @@
                               </div>
                           </div>
                           <div class="table-responsive">
-                              <table id="areasTable" class="table table-striped dt-responsive nowrap">
-                                  <thead>
-                                      <tr>
-                                          <th><?= lang('App.area_code') ?></th>
-                                          <th><?= lang('App.area_name') ?></th>
-                                          <th><?= lang('Common.type') ?></th>
-                                          <th><?= lang('Common.description') ?></th>
-                                          <th><?= lang('App.customers') ?></th>
-                                          <th><?= lang('App.employee_details') ?></th>
-                                          <th><?= lang('Common.status') ?></th>
-                                      </tr>
-                                  </thead>
-                                  <tbody></tbody>
-                              </table>
-                          </div>
-
-                          <!-- ─── Area Summary (unit coverage per area) ──────────── -->
-                          <hr class="my-4">
-                          <div class="d-flex justify-content-between align-items-center mb-3">
-                              <div>
-                                  <h6 class="fw-semibold mb-0">
-                                      <i class="bi bi-bar-chart-steps text-primary me-1"></i>
-                                      <?= lang('App.area_summary') ?>
-                                  </h6>
-                                  <p class="text-muted small mb-0"><?= lang('App.area_summary_hint') ?></p>
-                              </div>
-                              <button class="btn btn-sm btn-outline-primary" id="btnRefreshSummary">
-                                  <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
-                              </button>
-                          </div>
-                          <div class="table-responsive">
-                              <table class="table table-hover align-middle" id="tableAreaSummary">
+                              <table id="areasTable" class="table table-hover align-middle dt-responsive">
                                   <thead class="table-light">
                                       <tr>
                                           <th><?= lang('App.area') ?></th>
@@ -197,11 +166,11 @@
                                           <th class="text-center"><?= lang('App.mechanic') ?></th>
                                           <th class="text-center"><?= lang('App.customer_location') ?></th>
                                           <th class="text-center"><?= lang('App.unit_count') ?></th>
+                                          <th class="text-center"><?= lang('Common.status') ?></th>
+                                          <th class="text-center no-sort"><?= lang('Common.actions') ?></th>
                                       </tr>
                                   </thead>
-                                  <tbody id="bodyAreaSummary">
-                                      <tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> <?= lang('App.loading') ?? 'Loading...' ?></td></tr>
-                                  </tbody>
+                                  <tbody></tbody>
                               </table>
                           </div>
 
@@ -1204,6 +1173,30 @@
         text-align: left;
     }
 }
+
+/* Areas table — rich summary rows */
+#areasTable tbody tr {
+    cursor: pointer;
+}
+#areasTable tbody tr td:last-child {
+    cursor: default;
+}
+#areasTable tbody tr.table-active {
+    background-color: rgba(13, 110, 253, .08);
+}
+#areasTable tbody td {
+    vertical-align: middle;
+}
+/* area_code badge inside area column */
+.area-code-badge {
+    font-family: monospace;
+    font-size: .75rem;
+    color: #6c757d;
+    background: #f0f2f5;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -1224,8 +1217,7 @@ $(document).ready(function() {
   initializeCharts();
   bindForms();
   buildRoleCoverageMatrix();
-  loadAreaSummary(); // Load area summary on page load (shown in Area tab)
-  
+
   // Restore tab if page was reloaded for refresh
   restoreActiveTab();
   
@@ -1256,8 +1248,6 @@ $(document).ready(function() {
     // Adjust columns when switching tabs
     if (targetTab === 'areasTab' && areasTable) {
       areasTable.columns.adjust().responsive.recalc();
-      // Reload area summary if it hasn't loaded yet
-      if ($('#bodyAreaSummary tr td[colspan]').length) loadAreaSummary();
     } else if (targetTab === 'employeesTab' && employeesTable) {
       employeesTable.columns.adjust().responsive.recalc();
     }
@@ -1343,24 +1333,11 @@ function initializeAreaTable() {
         }
       },
     columns: [
-      { 
-        data: 'area_code',
-        render: function(d, type, row, meta) {
-          let label = d || '';
-          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-            label = OptimaSearch.highlightForMeta(meta, label);
-          }
-          return `<span class="employee-code">${label}</span>`;
-        }
-      },
+      // Column 1: Area (code + name combined)
       { 
         data: 'area_name',
-        render: function(d, type, row, meta) {
-          let label = d || '';
-          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-            label = OptimaSearch.highlightForMeta(meta, label);
-          }
-          return `<span class="text-dark font-weight-medium">${label}</span>`;
+        render: function(d, type, row) {
+          return `<span class="fw-medium">${d || ''}</span><span class="area-code-badge ms-1">${row.area_code || ''}</span>`;
         }
       },
       { 
@@ -1386,93 +1363,121 @@ function initializeAreaTable() {
           return typeBadge + deptBadge;
         }
       },
-      { 
-        data: 'description',
-        render: function(d, type, row, meta) {
-          if (!d) return '<span class="text-muted">-</span>';
-          let short = d.length > 50 ? d.substring(0,50) : d;
-          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-            short = OptimaSearch.highlightForMeta(meta, short);
-          }
-          if (d.length > 50) {
-            return `<span class="text-dark">${short}</span><span class="text-muted">…</span>`;
-          }
-          return `<span class="text-dark">${short}</span>`;
+      // Column 3: Foreman
+      {
+        data: 'foreman_count',
+        className: 'text-center',
+        render: function(d, type, row) {
+          const count = d || 0;
+          const names = row.foremans || '';
+          const badge = count > 0
+            ? `<span class="badge badge-soft-green">${count}</span>`
+            : `<span class="badge badge-soft-gray">0</span>`;
+          const nameHtml = names
+            ? `<div class="small text-success mt-1" style="white-space:normal;max-width:140px">${names}</div>`
+            : '';
+          return badge + nameHtml;
         }
       },
-      { 
-        data: 'customers_count',
-        render: function(d, type, row, meta) {
-          let label = String(d || 0);
-          if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-            label = OptimaSearch.highlightForMeta(meta, label);
-          }
-          return `<strong class="text-dark">${label}</strong>`;
+      // Column 4: Mekanik
+      {
+        data: 'mechanic_count',
+        className: 'text-center',
+        render: function(d, type, row) {
+          const count = d || 0;
+          const names = row.mechanics || '';
+          const badge = count > 0
+            ? `<span class="badge badge-soft-blue">${count}</span>`
+            : `<span class="badge badge-soft-gray">0</span>`;
+          const nameHtml = names
+            ? `<div class="small text-primary mt-1" style="white-space:normal;max-width:140px">${names}</div>`
+            : '';
+          return badge + nameHtml;
         }
       },
-      { 
-        data: null, 
-        orderable: false,
-        render: function(data, type, row) {
-          const foreman = row.employees_breakdown?.foreman || 0;
-          const mechanic = row.employees_breakdown?.mechanic || 0;
-          const helper = row.employees_breakdown?.helper || 0;
-          
-          return `<div class="employee-breakdown">
-            <small class="d-block text-success"><i class="fas fa-user-tie"></i> Foreman: ${foreman}</small>
-            <small class="d-block text-primary"><i class="fas fa-wrench"></i> Mechanic: ${mechanic}</small>
-            <small class="d-block text-info"><i class="fas fa-hand-holding"></i> Helper: ${helper}</small>
-          </div>`;
+      // Column 5: Lokasi Customer
+      {
+        data: 'location_count',
+        className: 'text-center',
+        render: function(d) {
+          const n = d || 0;
+          return n > 0
+            ? `<span class="badge badge-soft-cyan">${n}</span>`
+            : `<span class="badge badge-soft-gray">0</span>`;
         }
       },
+      // Column 6: Jumlah Unit
+      {
+        data: 'unit_count',
+        className: 'text-center',
+        render: function(d) {
+          const n = d || 0;
+          return n > 0
+            ? `<span class="badge badge-soft-blue" style="font-size:.85em">${n}</span>`
+            : `<span class="badge badge-soft-gray">0</span>`;
+        }
+      },
+      // Column 7: Status
       { 
         data: 'is_active',
-        render: function(data, type, row) {
+        className: 'text-center',
+        render: function(data) {
           return data == 1 
             ? '<span class="badge badge-soft-green">Active</span>' 
             : '<span class="badge badge-soft-gray">Inactive</span>';
         }
+      },
+      // Column 8: Actions
+      {
+        data: null,
+        orderable: false,
+        searchable: false,
+        className: 'text-center',
+        render: function(data, type, row) {
+          return `<button class="btn btn-sm btn-outline-primary btn-edit-area"
+                    data-area-code="${row.area_code}" title="Edit Area"
+                    onclick="event.stopPropagation(); viewAreaDetail('${row.area_code}', null)">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>`;
+        }
       }
     ],
-    order: [[1,'asc']],
+    order: [[0, 'asc']],
     pageLength: 25,
     language: {
-      emptyTable: "No areas found",
-      info: "Showing _START_ to _END_ of _TOTAL_ areas",
-      infoEmpty: "Showing 0 to 0 of 0 areas",
-      search: "Search:",
-      searchPlaceholder: "Search areas...",
-      lengthMenu: "Show _MENU_ entries"
+      emptyTable: "Belum ada area",
+      info: "Menampilkan _START_ – _END_ dari _TOTAL_ area",
+      infoEmpty: "Menampilkan 0 area",
+      search: "Cari:",
+      searchPlaceholder: "Cari area...",
+      lengthMenu: "Tampilkan _MENU_ entri"
     },
-    drawCallback: function(settings) {
-      console.log('📊 Areas table draw completed');
-      // Add click event to table rows
-      $('#areasTable tbody').off('click', 'tr').on('click', 'tr', function() {
+    columnDefs: [{ orderable: false, targets: [2, 3, 7] }],
+    drawCallback: function() {
+      // Row click → show unit drill-down
+      $('#areasTable tbody').off('click', 'tr').on('click', 'tr', function(e) {
+        if ($(e.target).closest('.btn-edit-area').length) return;
         const data = areasTable.row(this).data();
-        if (data) {
-          viewAreaDetail(data.area_code, data);
-        }
+        if (!data) return;
+        // Highlight selection
+        $('#areasTable tbody tr').removeClass('table-active');
+        $(this).addClass('table-active');
+        // Show unit drill-down panel
+        $('#panelAreaTitle').html(`<i class="bi bi-list-ul me-1"></i> Unit di [${data.area_code}] ${data.area_name}`);
+        $('#bodyAreaUnits').html('<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>');
+        $('#panelAreaUnits').removeClass('d-none');
+        loadAreaUnits(data.id);
       });
-      // Add hover effect
-      $('#areasTable tbody tr').hover(
-        function() { $(this).addClass('table-hover-row'); },
-        function() { $(this).removeClass('table-hover-row'); }
-      );
     }
   });
-  
-  // Add search event listener for debugging
 
-  
-  // Ensure search input is properly bound
   setTimeout(function() {
-    $('div.dataTables_filter input').attr('placeholder', 'Search areas...');
+    $('div.dataTables_filter input').attr('placeholder', 'Cari area...');
   }, 100);
-  
+
   } catch (error) {
     console.error('Error initializing Areas DataTable:', error);
-    // Fallback: show error message
-    $('#areasTable').html('<div class="alert alert-danger">Error loading areas data. Please refresh the page.</div>');
+    $('#areasTable').html('<div class="alert alert-danger">Error memuat data area. Silakan refresh halaman.</div>');
   }
 }
 
@@ -2889,86 +2894,29 @@ function csrfData(extra) {
 }
 
 // ----------------------------------------------------------------
-// Area Summary (shown in Area tab)
+// loadAreaSummary — kept as stub (table removed; DataTable now shows summary inline)
 // ----------------------------------------------------------------
 function loadAreaSummary() {
-    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaSummary', csrfData({}), function(resp) {
-        const tbody = $('#bodyAreaSummary');
-        tbody.empty();
-        if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Belum ada area aktif</td></tr>');
-            return;
-        }
-        resp.data.forEach(row => {
-            const unitBadge = row.unit_count > 0
-                ? `<span class="badge badge-soft-blue">${row.unit_count}</span>`
-                : `<span class="badge badge-soft-gray">0</span>`;
-            const typeBadge = row.area_type === 'MILL'
-                ? `<span class="badge badge-soft-cyan">${row.area_type}</span>`
-                : `<span class="badge badge-soft-purple">${row.area_type}</span>`;
-            const foremanHtml = row.foremans
-                ? `<small class="text-success">${row.foremans}</small>`
-                : `<small class="text-muted">-</small>`;
-            const mechHtml = row.mechanics
-                ? `<small class="text-primary">${row.mechanics}</small>`
-                : `<small class="text-muted">-</small>`;
-
-            tbody.append(`
-                <tr class="area-row" data-area-id="${row.id}" data-area-name="[${row.area_code}] ${row.area_name}" style="cursor:pointer">
-                    <td>
-                        <span class="fw-medium">${row.area_name}</span>
-                        <small class="text-muted ms-1">${row.area_code}</small>
-                    </td>
-                    <td>${typeBadge}</td>
-                    <td class="text-center">${row.foreman_count > 0 ? `<span class="badge badge-soft-green">${row.foreman_count}</span>` : '<span class="badge badge-soft-gray">0</span>'}<br>${foremanHtml}</td>
-                    <td class="text-center">${row.mechanic_count > 0 ? `<span class="badge badge-soft-blue">${row.mechanic_count}</span>` : '<span class="badge badge-soft-gray">0</span>'}<br>${mechHtml}</td>
-                    <td class="text-center"><span class="badge badge-soft-cyan">${row.location_count}</span></td>
-                    <td class="text-center">${unitBadge}</td>
-                </tr>
-            `);
-        });
-    });
+    if (areasTable) areasTable.ajax.reload(null, false);
 }
 
 $(document).on('click', '.area-row', function() {
+    // .area-row exists only in Unit Mapping tab (Unit Mapping Controller)
     const areaId   = $(this).data('area-id');
     const areaName = $(this).data('area-name');
     $('.area-row').removeClass('table-active');
     $(this).addClass('table-active');
-
     $('#panelAreaTitle').html(`<i class="bi bi-list-ul me-1"></i> Unit di ${areaName}`);
     $('#bodyAreaUnits').html('<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>');
     $('#panelAreaUnits').removeClass('d-none');
-
-    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaUnits', csrfData({area_id: areaId}), function(resp) {
-        const tbody = $('#bodyAreaUnits');
-        tbody.empty();
-        if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada unit di area ini</td></tr>');
-            return;
-        }
-        resp.data.forEach(u => {
-            tbody.append(`
-                <tr>
-                    <td><strong>${u.no_unit}</strong></td>
-                    <td>${u.model || '-'}</td>
-                    <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
-                    <td>${u.customer_name || '<span class="text-muted">-</span>'}</td>
-                    <td>${u.location_name || '<span class="text-muted">-</span>'}</td>
-                    <td><small>${u.no_kontrak || '-'}</small></td>
-                    <td><small>${u.tanggal_berakhir || '-'}</small></td>
-                </tr>
-            `);
-        });
-    });
+    loadAreaUnits(areaId);
 });
 
 $('#btnClosePanelUnits').on('click', function() {
     $('#panelAreaUnits').addClass('d-none');
+    $('#areasTable tbody tr').removeClass('table-active');
     $('.area-row').removeClass('table-active');
 });
-
-$('#btnRefreshSummary').on('click', loadAreaSummary);
 
 // ----------------------------------------------------------------
 // Unit Mapping sub-tab 1: Customer Locations
@@ -3050,7 +2998,6 @@ $('#btnSyncFromContracts').on('click', function() {
         btn.prop('disabled', false).html('<i class="bi bi-arrow-repeat me-1"></i> Auto-Sync dari Kontrak');
         if (resp.success) {
             showToast('success', resp.message);
-            loadAreaSummary();
             updateStats();
         } else {
             showToast('danger', resp.message);
@@ -3133,12 +3080,38 @@ $('#subtabUnassignedLink').on('shown.bs.tab', function() {
 });
 
 // ----------------------------------------------------------------
+// Load units for a given area id (shared drill-down helper)
+// ----------------------------------------------------------------
+function loadAreaUnits(areaId) {
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaUnits', csrfData({area_id: areaId}), function(resp) {
+        const tbody = $('#bodyAreaUnits');
+        tbody.empty();
+        if (!resp.success || !resp.data.length) {
+            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada unit di area ini</td></tr>');
+            return;
+        }
+        resp.data.forEach(u => {
+            tbody.append(`
+                <tr>
+                    <td><strong>${u.no_unit}</strong></td>
+                    <td>${u.model || '-'}</td>
+                    <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
+                    <td>${u.customer_name || '<span class="text-muted">-</span>'}</td>
+                    <td>${u.location_name || '<span class="text-muted">-</span>'}</td>
+                    <td><small>${u.no_kontrak || '-'}</small></td>
+                    <td><small>${u.tanggal_berakhir || '-'}</small></td>
+                </tr>
+            `);
+        });
+    });
+}
+
+// ----------------------------------------------------------------
 // Stats update helper
 // ----------------------------------------------------------------
 function updateStats() {
-    $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaSummary', csrfData({}), function(resp) {
-        if (resp.success) loadAreaSummary();
-    });
+    // Reload areas table to refresh unit/location counts
+    if (areasTable) areasTable.ajax.reload(null, false);
 }
 
 // ----------------------------------------------------------------

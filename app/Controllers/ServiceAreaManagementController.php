@@ -257,12 +257,18 @@ class ServiceAreaManagementController extends BaseController
                     'helper' => 0
                 ];
                 
+                $foremans  = '';
+                $mechanics = '';
                 try {
                     if ($this->db->tableExists('area_employee_assignments')) {
                         $empSql = "SELECT
-                            SUM(CASE WHEN e.staff_role = 'FOREMAN' THEN 1 ELSE 0 END) as foreman,
+                            SUM(CASE WHEN e.staff_role LIKE '%FOREMAN%' THEN 1 ELSE 0 END) as foreman,
                             SUM(CASE WHEN e.staff_role LIKE '%MECHANIC%' THEN 1 ELSE 0 END) as mechanic,
-                            SUM(CASE WHEN e.staff_role LIKE '%HELPER%' THEN 1 ELSE 0 END) as helper
+                            SUM(CASE WHEN e.staff_role LIKE '%HELPER%' THEN 1 ELSE 0 END) as helper,
+                            GROUP_CONCAT(DISTINCT CASE WHEN e.staff_role LIKE '%FOREMAN%'
+                                THEN e.staff_name END ORDER BY e.staff_name SEPARATOR ', ') as foremans,
+                            GROUP_CONCAT(DISTINCT CASE WHEN e.staff_role LIKE '%MECHANIC%'
+                                THEN e.staff_name END ORDER BY e.staff_name SEPARATOR ', ') as mechanics
                         FROM area_employee_assignments aea
                         JOIN employees e ON e.id = aea.employee_id
                         WHERE aea.area_id = ? AND aea.is_active = 1 AND e.is_active = 1";
@@ -272,11 +278,25 @@ class ServiceAreaManagementController extends BaseController
                             'mechanic' => (int)($empRow->mechanic ?? 0),
                             'helper'   => (int)($empRow->helper   ?? 0),
                         ];
+                        $foremans  = $empRow->foremans  ?? '';
+                        $mechanics = $empRow->mechanics ?? '';
                     }
                 } catch (\Exception $e) {
                     log_message('error', 'Employee count error for area ' . $area['id'] . ': ' . $e->getMessage());
                 }
-                
+
+                // Unit count (all units mapped to this area)
+                $unitCount = (int) ($this->db->query(
+                    "SELECT COUNT(*) as cnt FROM inventory_unit WHERE area_id = ?",
+                    [$area['id']]
+                )->getRow()->cnt ?? 0);
+
+                // Location count (all active customer_locations mapped to this area)
+                $locationCount = (int) ($this->db->query(
+                    "SELECT COUNT(*) as cnt FROM customer_locations WHERE area_id = ? AND is_active = 1",
+                    [$area['id']]
+                )->getRow()->cnt ?? 0);
+
                 $totalEmployees = $employeeBreakdown['foreman'] + $employeeBreakdown['mechanic'] + $employeeBreakdown['helper'];
                 
                 $data[] = [
@@ -288,8 +308,14 @@ class ServiceAreaManagementController extends BaseController
                     'departemen_name' => $area['departemen_name'] ?? null,
                     'description' => $area['area_description'] ?? '',
                     'customers_count' => (int) $customerCount,
+                    'location_count' => $locationCount,
+                    'unit_count' => $unitCount,
                     'employees_count' => $totalEmployees,
                     'employees_breakdown' => $employeeBreakdown,
+                    'foreman_count' => $employeeBreakdown['foreman'],
+                    'mechanic_count' => $employeeBreakdown['mechanic'],
+                    'foremans' => $foremans,
+                    'mechanics' => $mechanics,
                     'created_at' => $area['created_at'],
                     'updated_at' => $area['updated_at'],
                     'is_active' => $area['is_active']
