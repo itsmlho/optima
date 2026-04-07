@@ -2528,8 +2528,8 @@ class Marketing extends BaseDataTableController
                 ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
                 ->join('fork fk', 'fk.id = qs.fork_id', 'left')
                 ->where('qs.id_specification', $row['quotation_specification_id'])
-                ->get()
-                ->getRowArray();
+                ->get();
+            $kontrak_spec = $kontrak_spec ? $kontrak_spec->getRowArray() : null;
 
             // Map quotation_specifications fields to expected kontrak_spesifikasi format
             if ($kontrak_spec) {
