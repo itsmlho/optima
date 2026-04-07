@@ -232,12 +232,7 @@
     </div><!-- /card-body -->
 </div><!-- /card -->
 
-<!-- ============================================================ -->
-<!-- Hidden: Areas JSON for dropdowns                             -->
-<!-- ============================================================ -->
-<script>
-const allAreas = <?= json_encode($areas) ?>;
-</script>
+
 
 <?= $this->endSection() ?>
 
