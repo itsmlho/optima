@@ -991,11 +991,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function addPageNumbers() {
     // Simple page counting for print
     const footer = document.getElementById('printFooter');
-    if (footer) {
-        // This will be handled by browser's print system
-        // JavaScript page counting is limited in print context
-        document.getElementById('currentPage').textContent = '1';
-        document.getElementById('totalPages').textContent = '1';
+    const currentPageEl = document.getElementById('currentPage');
+    const totalPagesEl  = document.getElementById('totalPages');
+    if (footer && currentPageEl) {
+        currentPageEl.textContent = '1';
+    }
+    if (footer && totalPagesEl) {
+        totalPagesEl.textContent = '1';
     }
 }
 
