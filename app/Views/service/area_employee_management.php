@@ -1248,6 +1248,78 @@
 </style>
 <?= $this->endSection() ?>
 
+<!-- Edit PIC Modal -->
+<div class="modal fade" id="modalEditPic" tabindex="-1" aria-labelledby="modalEditPicLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEditPicLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Edit Info Lokasi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border py-2 mb-3 small">
+                    <i class="bi bi-info-circle me-1 text-primary"></i>
+                    <span id="picModalSubtitle" class="text-muted"></span>
+                </div>
+                <input type="hidden" id="picLocId">
+
+                <!-- PIC Section -->
+                <p class="fw-semibold text-primary mb-2"><i class="bi bi-person-vcard me-1"></i>Kontak PIC</p>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nama PIC <small class="text-muted fw-normal">(Person In Charge)</small></label>
+                        <input type="text" id="picContactPerson" class="form-control" placeholder="Contoh: Budi Santoso" maxlength="255">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Jabatan / Posisi</label>
+                        <input type="text" id="picPosition" class="form-control" placeholder="Contoh: Site Manager" maxlength="100">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">No. Telepon</label>
+                        <input type="text" id="picPhone" class="form-control" placeholder="Contoh: 0812-xxxx-xxxx" maxlength="20">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" id="picEmail" class="form-control" placeholder="Contoh: pic@company.com" maxlength="128">
+                    </div>
+                </div>
+
+                <hr class="my-1">
+
+                <!-- Address Section -->
+                <p class="fw-semibold text-secondary mb-2 mt-3"><i class="bi bi-geo-alt me-1"></i>Alamat Lokasi</p>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Alamat Lengkap</label>
+                        <textarea id="picAddress" class="form-control" rows="2" placeholder="Jl. ..." maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Kota</label>
+                        <input type="text" id="picCity" class="form-control" placeholder="Contoh: Bandung" maxlength="100">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Provinsi</label>
+                        <input type="text" id="picProvince" class="form-control" placeholder="Contoh: Jawa Barat" maxlength="100">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Kode Pos</label>
+                        <input type="text" id="picPostalCode" class="form-control" placeholder="40xxx" maxlength="10">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="btnSavePic">
+                    <i class="bi bi-check-lg me-1"></i>Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /Edit PIC Modal -->
+
 <?= $this->section('javascript') ?>
 <script>
 let areasTable, employeesTable, locationsTable, unassignedTable;
@@ -1256,6 +1328,7 @@ let allUnassignedIds = [];
 const selectedUnits = new Set();
 const selectedLocations = new Set();
 let allLocationIds = [];
+let locInfoMap = {}; // cache of loc data keyed by id, for modal
 let employeesByRoleChart, assignmentsByAreaChart;
 // Filter functionality removed for simplicity
 
@@ -3035,6 +3108,7 @@ function loadLocations() {
         unassignedLocationIds = [];
         selectedLocations.clear();
         allLocationIds = resp.data.map(l => l.id);
+        locInfoMap = {}; // reset cache
 
         // Count locations per customer for multi-location visual indicator
         const custLocCount = {};
@@ -3044,15 +3118,28 @@ function loadLocations() {
 
         resp.data.forEach(loc => {
             if (!loc.area_id) unassignedLocationIds.push(loc.id);
+            locInfoMap[loc.id] = loc; // cache full loc data
             const isMulti  = custLocCount[loc.customer_name] > 1;
             const multiTag = isMulti
                 ? ` <span class="badge badge-soft-blue ms-1" title="Customer ini memiliki ${custLocCount[loc.customer_name]} lokasi terdaftar">${custLocCount[loc.customer_name]} lokasi</span>`
                 : '';
+            const hasPic   = loc.contact_person;
+            const picTitle = hasPic
+                ? `PIC: ${loc.contact_person}${loc.pic_position ? ' ('+loc.pic_position+')' : ''}${loc.phone ? ' · '+loc.phone : ''}`
+                : 'Belum ada data PIC · klik untuk mengisi';
+            const picIcon  = hasPic
+                ? `<i class="bi bi-person-check-fill text-success"></i>`
+                : `<i class="bi bi-person-plus text-muted"></i>`;
             tbody.append(`
                 <tr data-assigned="${loc.area_id ? '1' : '0'}" data-loc-id="${loc.id}">
                     <td class="text-center"><input type="checkbox" class="chk-loc" data-loc-id="${loc.id}"></td>
                     <td><strong>${loc.customer_name}</strong>${multiTag}</td>
-                    <td>${loc.location_name}</td>
+                    <td>
+                        ${loc.location_name}
+                        <button class="btn btn-link btn-sm p-0 ms-1 btn-edit-pic"
+                            data-loc-id="${loc.id}"
+                            title="${picTitle}">${picIcon}</button>
+                    </td>
                     <td><small class="text-muted">${loc.location_code || '-'}</small></td>
                     <td class="text-center">
                         ${loc.active_units > 0
@@ -3522,6 +3609,77 @@ function notify(msg, type='success'){
 	}
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
 }
+
+// ── Edit PIC ──────────────────────────────────────────────────────────────
+$(document).on('click', '.btn-edit-pic', function(e) {
+    e.preventDefault();
+    const locId = $(this).data('loc-id');
+    const loc   = locInfoMap[locId];
+    if (!loc) return;
+    $('#picLocId').val(locId);
+    $('#picContactPerson').val(loc.contact_person || '');
+    $('#picPhone').val(loc.phone || '');
+    $('#picEmail').val(loc.email || '');
+    $('#picPosition').val(loc.pic_position || '');
+    $('#picAddress').val(loc.address || '');
+    $('#picCity').val(loc.city || '');
+    $('#picProvince').val(loc.province || '');
+    $('#picPostalCode').val(loc.postal_code || '');
+    $('#picModalSubtitle').text(loc.customer_name + ' · ' + loc.location_name);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditPic')).show();
+});
+
+$('#btnSavePic').on('click', function() {
+    const locId = $('#picLocId').val();
+    if (!locId) return;
+    const btn = $(this);
+    btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm me-1"></div> Menyimpan...');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/updateLocationPic/' + locId,
+        csrfData({
+            contact_person: $('#picContactPerson').val().trim(),
+            phone:          $('#picPhone').val().trim(),
+            email:          $('#picEmail').val().trim(),
+            pic_position:   $('#picPosition').val().trim(),
+            address:        $('#picAddress').val().trim(),
+            city:           $('#picCity').val().trim(),
+            province:       $('#picProvince').val().trim(),
+            postal_code:    $('#picPostalCode').val().trim(),
+        }),
+        function(resp) {
+            btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>Simpan');
+            if (resp.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalEditPic')).hide();
+                showToast('success', resp.message);
+                // Update locInfoMap cache
+                if (locInfoMap[locId]) {
+                    locInfoMap[locId].contact_person = $('#picContactPerson').val().trim();
+                    locInfoMap[locId].phone          = $('#picPhone').val().trim();
+                    locInfoMap[locId].email          = $('#picEmail').val().trim();
+                    locInfoMap[locId].pic_position   = $('#picPosition').val().trim();
+                    locInfoMap[locId].address        = $('#picAddress').val().trim();
+                    locInfoMap[locId].city           = $('#picCity').val().trim();
+                    locInfoMap[locId].province       = $('#picProvince').val().trim();
+                    locInfoMap[locId].postal_code    = $('#picPostalCode').val().trim();
+                }
+                // Update icon in table row
+                const hasPic = $('#picContactPerson').val().trim();
+                const $rowBtn = $(`.btn-edit-pic[data-loc-id="${locId}"]`);
+                $rowBtn.attr('title', hasPic
+                    ? 'PIC: ' + hasPic + ($('#picPosition').val().trim() ? ' (' + $('#picPosition').val().trim() + ')' : '') + ($('#picPhone').val().trim() ? ' · ' + $('#picPhone').val().trim() : '')
+                    : 'Belum ada data PIC · klik untuk mengisi');
+                $rowBtn.html(hasPic
+                    ? '<i class="bi bi-person-check-fill text-success"></i>'
+                    : '<i class="bi bi-person-plus text-muted"></i>');
+            } else {
+                showToast('danger', resp.message || 'Gagal menyimpan');
+            }
+        }
+    ).fail(function() {
+        btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>Simpan');
+        showToast('danger', 'Koneksi gagal. Coba lagi.');
+    });
+});
 
 </script>
 <?= $this->endSection() ?>

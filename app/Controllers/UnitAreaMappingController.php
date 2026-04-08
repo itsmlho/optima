@@ -154,6 +154,14 @@ class UnitAreaMappingController extends BaseController
                 a.area_code,
                 a.area_name,
                 c.customer_name,
+                cl.contact_person,
+                cl.phone,
+                cl.email,
+                cl.pic_position,
+                cl.address,
+                cl.city,
+                cl.province,
+                cl.postal_code,
                 COUNT(DISTINCT CASE WHEN ku.status = 'ACTIVE' THEN ku.unit_id END) AS active_units
             FROM customer_locations cl
             JOIN customers c ON c.id = cl.customer_id
@@ -168,8 +176,10 @@ class UnitAreaMappingController extends BaseController
             $sql .= ' AND cl.area_id IS NULL';
         }
 
-        $sql .= ' GROUP BY cl.id, cl.location_name, cl.location_code, cl.area_id, 
-                            a.area_code, a.area_name, c.customer_name
+        $sql .= ' GROUP BY cl.id, cl.location_name, cl.location_code, cl.area_id,
+                            a.area_code, a.area_name, c.customer_name,
+                            cl.contact_person, cl.phone, cl.email, cl.pic_position,
+                            cl.address, cl.city, cl.province, cl.postal_code
                   ORDER BY c.customer_name, cl.location_name';
 
         $rows = $this->db->query($sql)->getResultArray();
@@ -422,5 +432,56 @@ class UnitAreaMappingController extends BaseController
         ")->getResultArray();
 
         return $this->response->setJSON(['success' => true, 'data' => $rows]);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST: Update PIC info for a customer location (service-side)
+    // -------------------------------------------------------------------------
+
+    public function updateLocationPic($id)
+    {
+        $id = (int) $id;
+        if (!$id) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID tidak valid']);
+        }
+
+        $rules = [
+            'contact_person' => 'permit_empty|max_length[255]',
+            'phone'          => 'permit_empty|max_length[20]',
+            'email'          => 'permit_empty|valid_email|max_length[128]',
+            'pic_position'   => 'permit_empty|max_length[100]',
+            'address'        => 'permit_empty|max_length[500]',
+            'city'           => 'permit_empty|max_length[100]',
+            'province'       => 'permit_empty|max_length[100]',
+            'postal_code'    => 'permit_empty|max_length[10]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $this->validator->getErrors(),
+            ]);
+        }
+
+        try {
+            $this->db->table('customer_locations')
+                ->where('id', $id)
+                ->update([
+                    'contact_person' => $this->request->getPost('contact_person') ?? '',
+                    'phone'          => $this->request->getPost('phone') ?? '',
+                    'email'          => $this->request->getPost('email') ?? '',
+                    'pic_position'   => $this->request->getPost('pic_position') ?? '',
+                    'address'        => $this->request->getPost('address') ?? '',
+                    'city'           => $this->request->getPost('city') ?? '',
+                    'province'       => $this->request->getPost('province') ?? '',
+                    'postal_code'    => $this->request->getPost('postal_code') ?? '',
+                ]);
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Data lokasi berhasil diperbarui']);
+        } catch (\Exception $e) {
+            log_message('error', 'updateLocationPic error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan data PIC']);
+        }
     }
 }
