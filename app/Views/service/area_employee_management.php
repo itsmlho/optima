@@ -1295,6 +1295,11 @@ $(document).ready(function() {
     
     // Lazy load unit mapping when that tab is opened
     if (targetTab === 'unitMapTab') {
+      // Always activate "Input Area per Lokasi" sub-tab first
+      const $locLink = $('#subtabLocationsLink');
+      if (!$locLink.hasClass('active')) {
+        bootstrap.Tab.getOrCreateInstance($locLink[0]).show();
+      }
       if ($('#bodyLocations tr td[colspan]').length) loadLocations();
     }
 
