@@ -3115,14 +3115,16 @@ function loadLocations() {
     });
 }
 
-// Customer filter for tableLocations
-$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-    if (settings.nTable.id !== 'tableLocations') return true;
-    const sel = $('#filterCustomerName').val();
-    if (!sel) return true;
-    // col 1 = Customer (strip HTML tags for comparison)
-    const cellText = $('<div>').html(data[1]).text().trim();
-    return cellText.toLowerCase().indexOf(sel.toLowerCase()) !== -1;
+// Customer filter for tableLocations — registered inside ready so $.fn.dataTable is available
+$(function() {
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (settings.nTable.id !== 'tableLocations') return true;
+        const sel = $('#filterCustomerName').val();
+        if (!sel) return true;
+        // col 1 = Customer (strip HTML tags for comparison)
+        const cellText = $('<div>').html(data[1]).text().trim();
+        return cellText.toLowerCase().indexOf(sel.toLowerCase()) !== -1;
+    });
 });
 $('#filterCustomerName').on('change', function() {
     if (locationsTable) locationsTable.draw();
