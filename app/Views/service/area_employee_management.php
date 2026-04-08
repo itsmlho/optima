@@ -391,11 +391,14 @@
                                       </div>
                                   </div>
                                   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                      <div class="d-flex gap-2">
-                                          <select class="form-select form-select-sm" id="filterLocationArea" style="width:180px">
+                                      <div class="d-flex gap-2 flex-wrap">
+                                          <select class="form-select form-select-sm" id="filterLocationArea" style="width:160px">
                                               <option value="all"><?= lang('App.all_locations') ?></option>
                                               <option value="unassigned" selected><?= lang('App.unassigned_area_label') ?></option>
                                               <option value="assigned"><?= lang('App.assigned_area_label') ?></option>
+                                          </select>
+                                          <select class="form-select form-select-sm" id="filterCustomerName" style="width:200px">
+                                              <option value="">Semua Customer</option>
                                           </select>
                                           <button class="btn btn-sm btn-outline-secondary" id="btnLoadLocations">
                                               <i class="bi bi-funnel me-1"></i> <?= lang('Common.filter') ?>
@@ -3038,7 +3041,7 @@ function loadLocations() {
             if (!loc.area_id) unassignedLocationIds.push(loc.id);
             const isMulti  = custLocCount[loc.customer_name] > 1;
             const multiTag = isMulti
-                ? ` <span class="badge badge-soft-orange ms-1" title="${custLocCount[loc.customer_name]} lokasi terdaftar">${custLocCount[loc.customer_name]}x</span>`
+                ? ` <span class="badge badge-soft-blue ms-1" title="Customer ini memiliki ${custLocCount[loc.customer_name]} lokasi terdaftar">${custLocCount[loc.customer_name]} lokasi</span>`
                 : '';
             tbody.append(`
                 <tr data-assigned="${loc.area_id ? '1' : '0'}" data-loc-id="${loc.id}">
@@ -3064,6 +3067,15 @@ function loadLocations() {
                 </tr>
             `);
         });
+
+        // Populate customer filter dropdown
+        const $custFilter = $('#filterCustomerName');
+        const savedCust = $custFilter.val();
+        $custFilter.find('option:not(:first)').remove();
+        Object.keys(custLocCount).sort().forEach(name => {
+            $custFilter.append(`<option value="${name}">${name}</option>`);
+        });
+        if (savedCust) $custFilter.val(savedCust);
 
         // DataTables — destroy first if already initialized
         if ($.fn.DataTable.isDataTable('#tableLocations')) {
@@ -3097,6 +3109,19 @@ function loadLocations() {
         updateBulkLocBar();
     });
 }
+
+// Customer filter for tableLocations
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    if (settings.nTable.id !== 'tableLocations') return true;
+    const sel = $('#filterCustomerName').val();
+    if (!sel) return true;
+    // col 1 = Customer (strip HTML tags for comparison)
+    const cellText = $('<div>').html(data[1]).text().trim();
+    return cellText.toLowerCase().indexOf(sel.toLowerCase()) !== -1;
+});
+$('#filterCustomerName').on('change', function() {
+    if (locationsTable) locationsTable.draw();
+});
 
 // ── Bulk location select & assign (cross-page via Set) ──────────────────────
 function updateBulkLocBar() {
