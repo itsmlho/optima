@@ -3015,21 +3015,35 @@ $('#btnClosePanelUnits').on('click', function() {
 function loadLocations() {
     const filter = $('#filterLocationArea').val();
     if ($.fn.DataTable.isDataTable('#tableLocations')) { $('#tableLocations').DataTable().destroy(); }
-    $('#bodyLocations').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+    $('#bodyLocations').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
 
     $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations', csrfData({area_filter: filter}), function(resp) {
         const tbody = $('#bodyLocations');
         tbody.empty();
         if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Tidak ada data</td></tr>');
+            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada data</td></tr>');
             return;
         }
         unassignedLocationIds = [];
+        selectedLocations.clear();
+        allLocationIds = resp.data.map(l => l.id);
+
+        // Count locations per customer for multi-location visual indicator
+        const custLocCount = {};
+        resp.data.forEach(loc => {
+            custLocCount[loc.customer_name] = (custLocCount[loc.customer_name] || 0) + 1;
+        });
+
         resp.data.forEach(loc => {
             if (!loc.area_id) unassignedLocationIds.push(loc.id);
+            const isMulti  = custLocCount[loc.customer_name] > 1;
+            const multiTag = isMulti
+                ? ` <span class="badge badge-soft-orange ms-1" title="${custLocCount[loc.customer_name]} lokasi terdaftar">${custLocCount[loc.customer_name]}x</span>`
+                : '';
             tbody.append(`
-                <tr data-assigned="${loc.area_id ? '1' : '0'}">
-                    <td><strong>${loc.customer_name}</strong></td>
+                <tr data-assigned="${loc.area_id ? '1' : '0'}" data-loc-id="${loc.id}">
+                    <td class="text-center"><input type="checkbox" class="chk-loc" data-loc-id="${loc.id}"></td>
+                    <td><strong>${loc.customer_name}</strong>${multiTag}</td>
                     <td>${loc.location_name}</td>
                     <td><small class="text-muted">${loc.location_code || '-'}</small></td>
                     <td class="text-center">
@@ -3050,11 +3064,15 @@ function loadLocations() {
                 </tr>
             `);
         });
-        // DataTables
+
+        // DataTables — destroy first if already initialized
+        if ($.fn.DataTable.isDataTable('#tableLocations')) {
+            $('#tableLocations').DataTable().destroy();
+        }
         locationsTable = $('#tableLocations').DataTable({
             pageLength: 25,
-            order: [[0, 'asc']],
-            columnDefs: [{ orderable: false, targets: [4, 5] }],
+            order: [[1, 'asc']],
+            columnDefs: [{ orderable: false, targets: [0, 5, 6] }],
             language: {
                 emptyTable: 'Tidak ada data',
                 info: 'Menampilkan _START_ – _END_ dari _TOTAL_ lokasi',
@@ -3063,17 +3081,20 @@ function loadLocations() {
                 searchPlaceholder: 'Cari customer / lokasi...',
                 lengthMenu: 'Tampilkan _MENU_ entri',
                 paginate: { previous: '&laquo;', next: '&raquo;' }
+            },
+            drawCallback: function() {
+                $('#bodyLocations .chk-loc').each(function() {
+                    $(this).prop('checked', selectedLocations.has(parseInt($(this).data('loc-id'))));
+                });
+                const total   = $('#bodyLocations .chk-loc').length;
+                const checked = $('#bodyLocations .chk-loc:checked').length;
+                $('#chkSelectAllLocations')
+                    .prop('indeterminate', checked > 0 && checked < total)
+                    .prop('checked', total > 0 && checked === total);
+                updateBulkLocBar();
             }
         });
-        // Update bulk bar count
-        const unassignedCount = unassignedLocationIds.length;
-        $('#bulkLocationCount').text(unassignedCount);
-        if (unassignedCount > 0) {
-            $('#bulkLocationHint').text(unassignedCount + ' lokasi belum diassign');
-        } else {
-            $('#bulkLocationHint').text('Semua lokasi sudah ter-assign');
-            $('#btnBulkAssignLocations').prop('disabled', true);
-        }
+        updateBulkLocBar();
     });
 }
 
@@ -3445,22 +3466,6 @@ function showToast(type, message) {
         Swal.fire({ icon: iconMap[type] || 'info', text: message, timer: 3000, showConfirmButton: false, toast: true, position: 'top-end' });
     } else {
         alert(message);
-    }
-}
-
-function showConfirm(message, title, onConfirm) {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: title || 'Konfirmasi',
-            html: message,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Lanjutkan',
-            cancelButtonText: 'Batal',
-            confirmButtonColor: '#0d6efd',
-        }).then(result => { if (result.isConfirmed) onConfirm(); });
-    } else {
-        if (confirm(message.replace(/<[^>]+>/g, ''))) onConfirm();
     }
 }
 
