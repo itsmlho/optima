@@ -3248,7 +3248,6 @@ $('#btnSyncFromContracts').on('click', function() {
         }
     );
 });
-            showToast('danger', resp.message);
 // ----------------------------------------------------------------
 // Unit Mapping sub-tab 2: Unassigned Units
 // ----------------------------------------------------------------
