@@ -461,11 +461,10 @@
                                                   <th style="width:36px"><input type="checkbox" id="chkSelectAllUnits"></th>
                                                   <th><?= lang('App.unit_number') ?></th><th>Model</th><th><?= lang('Common.status') ?></th>
                                                   <th>Customer</th><th><?= lang('App.customer_location') ?></th><th><?= lang('App.contract_number') ?></th>
-                                                  <th style="min-width:180px"><?= lang('App.assign_area') ?></th>
                                               </tr>
                                           </thead>
                                           <tbody id="bodyUnassigned">
-                                              <tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
+                                              <tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
                                           </tbody>
                                       </table>
                                   </div>
@@ -1239,7 +1238,10 @@
 
 <?= $this->section('javascript') ?>
 <script>
-let areasTable, employeesTable;
+let areasTable, employeesTable, locationsTable, unassignedTable;
+let unassignedLocationIds = [];
+let allUnassignedIds = [];
+const selectedUnits = new Set();
 let employeesByRoleChart, assignmentsByAreaChart;
 // Filter functionality removed for simplicity
 
@@ -3001,6 +3003,7 @@ $('#btnClosePanelUnits').on('click', function() {
 // ----------------------------------------------------------------
 function loadLocations() {
     const filter = $('#filterLocationArea').val();
+    if ($.fn.DataTable.isDataTable('#tableLocations')) { $('#tableLocations').DataTable().destroy(); }
     $('#bodyLocations').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
 
     $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations', csrfData({area_filter: filter}), function(resp) {
@@ -3010,14 +3013,11 @@ function loadLocations() {
             tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Tidak ada data</td></tr>');
             return;
         }
+        unassignedLocationIds = [];
         resp.data.forEach(loc => {
-            const currentAreaText = loc.area_id
-                ? `<span class="badge badge-soft-blue">[${loc.area_code}] ${loc.area_name}</span>`
-                : `<span class="text-muted small">Belum di-assign</span>`;
-
+            if (!loc.area_id) unassignedLocationIds.push(loc.id);
             tbody.append(`
                 <tr data-assigned="${loc.area_id ? '1' : '0'}">
-                    <td><strong>${loc.customer_name}</strong></td>
                     <td><strong>${loc.customer_name}</strong></td>
                     <td>${loc.location_name}</td>
                     <td><small class="text-muted">${loc.location_code || '-'}</small></td>
@@ -3039,8 +3039,23 @@ function loadLocations() {
                 </tr>
             `);
         });
+        // DataTables
+        locationsTable = $('#tableLocations').DataTable({
+            pageLength: 25,
+            order: [[0, 'asc']],
+            columnDefs: [{ orderable: false, targets: [4, 5] }],
+            language: {
+                emptyTable: 'Tidak ada data',
+                info: 'Menampilkan _START_ – _END_ dari _TOTAL_ lokasi',
+                infoEmpty: '0 lokasi',
+                search: 'Cari:',
+                searchPlaceholder: 'Cari customer / lokasi...',
+                lengthMenu: 'Tampilkan _MENU_ entri',
+                paginate: { previous: '&laquo;', next: '&raquo;' }
+            }
+        });
         // Update bulk bar count
-        const unassignedCount = resp.data.filter(l => !l.area_id).length;
+        const unassignedCount = unassignedLocationIds.length;
         $('#bulkLocationCount').text(unassignedCount);
         if (unassignedCount > 0) {
             $('#bulkLocationHint').text(unassignedCount + ' lokasi belum diassign');
@@ -3062,11 +3077,7 @@ $('#btnBulkAssignLocations').on('click', function() {
     const areaId = $('#bulkLocationArea').val();
     if (!areaId) { showToast('warning', 'Pilih area terlebih dahulu'); return; }
 
-    const locIds = [];
-    $('#bodyLocations tr[data-assigned="0"]').each(function() {
-        const locId = $(this).find('.loc-area-select').data('loc-id');
-        if (locId) locIds.push(parseInt(locId));
-    });
+    const locIds = unassignedLocationIds.slice(); // use stored IDs (works across DT pages)
 
     if (!locIds.length) { showToast('info', 'Tidak ada lokasi yang belum diassign'); return; }
 
@@ -3141,9 +3152,13 @@ function loadUnassigned() {
         const tbody = $('#bodyUnassigned');
         tbody.empty();
         if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="8" class="text-center py-3 text-success"><i class="bi bi-check-circle me-1"></i> Semua unit sudah ter-mapping ke area</td></tr>');
+            tbody.html('<tr><td colspan="7" class="text-center py-3 text-success"><i class="bi bi-check-circle me-1"></i> Semua unit sudah ter-mapping ke area</td></tr>');
+            selectedUnits.clear();
+            updateBulkUnitBar();
             return;
         }
+        allUnassignedIds = resp.data.map(u => parseInt(u.id_inventory_unit));
+        selectedUnits.clear();
         resp.data.forEach(u => {
             tbody.append(`
                 <tr>
@@ -3154,64 +3169,64 @@ function loadUnassigned() {
                     <td>${u.customer_name || '<span class="text-muted">Tanpa Kontrak</span>'}</td>
                     <td><small>${u.location_name || '-'}</small></td>
                     <td><small>${u.no_kontrak || '-'}</small></td>
-                    <td>
-                        <div class="input-group input-group-sm">
-                            <select class="form-select form-select-sm unit-area-select" data-unit-id="${u.id_inventory_unit}">
-                                ${buildAreaOptions(null)}
-                            </select>
-                            <button class="btn btn-outline-primary btn-assign-unit" data-unit-id="${u.id_inventory_unit}" title="Assign satu unit">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        </div>
-                    </td>
                 </tr>
             `);
         });
-        // Reset checkbox state after reload
-        $('#chkSelectAllUnits').prop('checked', false).prop('indeterminate', false);
+        // DataTables
+        if ($.fn.DataTable.isDataTable('#tableUnassigned')) { $('#tableUnassigned').DataTable().destroy(); }
+        unassignedTable = $('#tableUnassigned').DataTable({
+            pageLength: 25,
+            order: [[1, 'asc']],
+            columnDefs: [{ orderable: false, targets: [0] }],
+            language: {
+                emptyTable: 'Semua unit sudah ter-mapping',
+                info: 'Menampilkan _START_ – _END_ dari _TOTAL_ unit',
+                infoEmpty: '0 unit',
+                search: 'Cari:',
+                searchPlaceholder: 'Cari unit / customer...',
+                lengthMenu: 'Tampilkan _MENU_ entri',
+                paginate: { previous: '&laquo;', next: '&raquo;' }
+            },
+            drawCallback: function() {
+                // Restore checkbox state on each page draw
+                $('#bodyUnassigned .chk-unit').each(function() {
+                    $(this).prop('checked', selectedUnits.has(parseInt($(this).data('unit-id'))));
+                });
+                const total   = $('#bodyUnassigned .chk-unit').length;
+                const checked = $('#bodyUnassigned .chk-unit:checked').length;
+                $('#chkSelectAllUnits')
+                    .prop('indeterminate', checked > 0 && checked < total)
+                    .prop('checked', total > 0 && checked === total);
+                updateBulkUnitBar();
+            }
+        });
         updateBulkUnitBar();
     });
 }
 
-$(document).on('click', '.btn-assign-unit', function() {
-    const unitId = $(this).data('unit-id');
-    const areaId = $(`.unit-area-select[data-unit-id="${unitId}"]`).val();
-
-    if (!areaId) { showToast('warning', 'Pilih area terlebih dahulu'); return; }
-
-    const btn = $(this);
-    btn.prop('disabled', true);
-
-    $.post(BASE_URL + 'service/area-management/unit-mapping/manualAssignUnit',
-        csrfData({unit_id: unitId, area_id: areaId}),
-        function(resp) {
-            if (resp.success) {
-                btn.closest('tr').fadeOut(300, function() { $(this).remove(); });
-                showToast('success', `Unit berhasil di-assign ke area`);
-                updateStats();
-            } else {
-                btn.prop('disabled', false);
-                showToast('danger', resp.message);
-            }
-        }
-    );
-});
-
 $('#btnRefreshUnassigned').on('click', loadUnassigned);
 
-// ── Bulk unit select & assign ─────────────────────────────────────────────────
+// ── Bulk unit select & assign (cross-page via Set) ────────────────────────────
 function updateBulkUnitBar() {
-    const count = $('#bodyUnassigned .chk-unit:checked').length;
+    const count = selectedUnits.size;
     $('#bulkUnitCount').text(count + ' terpilih');
     $('#btnBulkAssignUnits').prop('disabled', count === 0);
 }
 
 $(document).on('change', '#chkSelectAllUnits', function() {
-    $('#bodyUnassigned .chk-unit').prop('checked', $(this).is(':checked'));
+    const isChecked = $(this).is(':checked');
+    $('#bodyUnassigned .chk-unit').each(function() {
+        const id = parseInt($(this).data('unit-id'));
+        $(this).prop('checked', isChecked);
+        if (isChecked) selectedUnits.add(id); else selectedUnits.delete(id);
+    });
     updateBulkUnitBar();
 });
 
 $(document).on('change', '.chk-unit', function() {
+    const id = parseInt($(this).data('unit-id'));
+    if ($(this).is(':checked')) { selectedUnits.add(id); }
+    else { selectedUnits.delete(id); }
     updateBulkUnitBar();
     const total   = $('#bodyUnassigned .chk-unit').length;
     const checked = $('#bodyUnassigned .chk-unit:checked').length;
@@ -3222,6 +3237,7 @@ $(document).on('change', '.chk-unit', function() {
 
 $('#btnSelectAllUnits').on('click', function(e) {
     e.preventDefault();
+    allUnassignedIds.forEach(id => selectedUnits.add(id)); // all pages
     $('#bodyUnassigned .chk-unit').prop('checked', true);
     $('#chkSelectAllUnits').prop('checked', true).prop('indeterminate', false);
     updateBulkUnitBar();
@@ -3229,6 +3245,7 @@ $('#btnSelectAllUnits').on('click', function(e) {
 
 $('#btnDeselectAllUnits').on('click', function(e) {
     e.preventDefault();
+    selectedUnits.clear();
     $('#bodyUnassigned .chk-unit').prop('checked', false);
     $('#chkSelectAllUnits').prop('checked', false).prop('indeterminate', false);
     updateBulkUnitBar();
@@ -3238,10 +3255,7 @@ $('#btnBulkAssignUnits').on('click', function() {
     const areaId = $('#bulkUnitArea').val();
     if (!areaId) { showToast('warning', 'Pilih area terlebih dahulu'); return; }
 
-    const unitIds = [];
-    $('#bodyUnassigned .chk-unit:checked').each(function() {
-        unitIds.push(parseInt($(this).data('unit-id')));
-    });
+    const unitIds = Array.from(selectedUnits);
     if (!unitIds.length) return;
 
     const btn = $(this);
