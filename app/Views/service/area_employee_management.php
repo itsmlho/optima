@@ -1094,6 +1094,73 @@
   </div>
 </div>
 
+<!-- Edit Location Info Modal (must be inside content section to be rendered) -->
+<div class="modal fade" id="modalEditPic" tabindex="-1" aria-labelledby="modalEditPicLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEditPicLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Edit Info Lokasi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border py-2 mb-3 small">
+                    <i class="bi bi-info-circle me-1 text-primary"></i>
+                    <span id="picModalSubtitle" class="text-muted"></span>
+                </div>
+                <input type="hidden" id="picLocId">
+                <p class="fw-semibold text-primary mb-2"><i class="bi bi-person-vcard me-1"></i>Kontak PIC</p>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Nama PIC <small class="text-muted fw-normal">(Person In Charge)</small></label>
+                        <input type="text" id="picContactPerson" class="form-control" placeholder="Contoh: Budi Santoso" maxlength="255">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Jabatan / Posisi</label>
+                        <input type="text" id="picPosition" class="form-control" placeholder="Contoh: Site Manager" maxlength="100">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">No. Telepon</label>
+                        <input type="text" id="picPhone" class="form-control" placeholder="Contoh: 0812-xxxx-xxxx" maxlength="20">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" id="picEmail" class="form-control" placeholder="Contoh: pic@company.com" maxlength="128">
+                    </div>
+                </div>
+                <hr class="my-1">
+                <p class="fw-semibold text-secondary mb-2 mt-3"><i class="bi bi-geo-alt me-1"></i>Alamat Lokasi</p>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Alamat Lengkap</label>
+                        <textarea id="picAddress" class="form-control" rows="2" placeholder="Jl. ..." maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Kota</label>
+                        <input type="text" id="picCity" class="form-control" placeholder="Contoh: Bandung" maxlength="100">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Provinsi</label>
+                        <input type="text" id="picProvince" class="form-control" placeholder="Contoh: Jawa Barat" maxlength="100">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Kode Pos</label>
+                        <input type="text" id="picPostalCode" class="form-control" placeholder="40xxx" maxlength="10">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="btnSavePic">
+                    <i class="bi bi-check-lg me-1"></i>Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /Edit Location Info Modal -->
+
 <?= $this->endSection() ?>
 
 <?= $this->section('styles') ?>
@@ -1248,78 +1315,6 @@
 </style>
 <?= $this->endSection() ?>
 
-<!-- Edit PIC Modal -->
-<div class="modal fade" id="modalEditPic" tabindex="-1" aria-labelledby="modalEditPicLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalEditPicLabel">
-                    <i class="bi bi-pencil-square me-2"></i>Edit Info Lokasi
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-light border py-2 mb-3 small">
-                    <i class="bi bi-info-circle me-1 text-primary"></i>
-                    <span id="picModalSubtitle" class="text-muted"></span>
-                </div>
-                <input type="hidden" id="picLocId">
-
-                <!-- PIC Section -->
-                <p class="fw-semibold text-primary mb-2"><i class="bi bi-person-vcard me-1"></i>Kontak PIC</p>
-                <div class="row g-3 mb-4">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Nama PIC <small class="text-muted fw-normal">(Person In Charge)</small></label>
-                        <input type="text" id="picContactPerson" class="form-control" placeholder="Contoh: Budi Santoso" maxlength="255">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Jabatan / Posisi</label>
-                        <input type="text" id="picPosition" class="form-control" placeholder="Contoh: Site Manager" maxlength="100">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">No. Telepon</label>
-                        <input type="text" id="picPhone" class="form-control" placeholder="Contoh: 0812-xxxx-xxxx" maxlength="20">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Email</label>
-                        <input type="email" id="picEmail" class="form-control" placeholder="Contoh: pic@company.com" maxlength="128">
-                    </div>
-                </div>
-
-                <hr class="my-1">
-
-                <!-- Address Section -->
-                <p class="fw-semibold text-secondary mb-2 mt-3"><i class="bi bi-geo-alt me-1"></i>Alamat Lokasi</p>
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Alamat Lengkap</label>
-                        <textarea id="picAddress" class="form-control" rows="2" placeholder="Jl. ..." maxlength="500"></textarea>
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label fw-semibold">Kota</label>
-                        <input type="text" id="picCity" class="form-control" placeholder="Contoh: Bandung" maxlength="100">
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label fw-semibold">Provinsi</label>
-                        <input type="text" id="picProvince" class="form-control" placeholder="Contoh: Jawa Barat" maxlength="100">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold">Kode Pos</label>
-                        <input type="text" id="picPostalCode" class="form-control" placeholder="40xxx" maxlength="10">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" id="btnSavePic">
-                    <i class="bi bi-check-lg me-1"></i>Simpan
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- /Edit PIC Modal -->
-
 <?= $this->section('javascript') ?>
 <script>
 let areasTable, employeesTable, locationsTable, unassignedTable;
@@ -1368,12 +1363,15 @@ $(document).ready(function() {
     
     // Lazy load unit mapping when that tab is opened
     if (targetTab === 'unitMapTab') {
-      // Always activate "Input Area per Lokasi" sub-tab first
+      // Ensure sub-tab 1 is active — the pill's shown.bs.tab will fire loadLocations
       const $locLink = $('#subtabLocationsLink');
-      if (!$locLink.hasClass('active')) {
+      if ($locLink.hasClass('active')) {
+        // Already active — pill event won't fire, so load manually
+        if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+      } else {
         bootstrap.Tab.getOrCreateInstance($locLink[0]).show();
+        // loadLocations will be triggered by the pill's shown.bs.tab handler
       }
-      if ($('#bodyLocations tr td[colspan]').length) loadLocations();
     }
 
     // Adjust columns when switching tabs
