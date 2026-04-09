@@ -513,7 +513,7 @@
 
 <!-- Add Area Modal -->
 <div class="modal fade" id="addAreaModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Add New Area</h5>
@@ -573,7 +573,7 @@
 
 <!-- Add Employee Modal -->
 <div class="modal fade" id="addEmployeeModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header bg-light">
         <h5 class="modal-title"><i class="fas fa-user-plus text-primary"></i> Add New Employee</h5>
@@ -658,7 +658,7 @@
 
 <!-- Add Assignment Modal -->
 <div class="modal fade" id="addAssignmentModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Create Area Assignment</h5>
@@ -744,7 +744,7 @@
 
 <!-- Placeholder Modals (Edit/View) -->
 <div class="modal fade" id="viewAreaModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Area Details</h5>
@@ -761,7 +761,7 @@
 </div>
 
 <div class="modal fade" id="viewEmployeeModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Employee Details</h5>
@@ -779,7 +779,7 @@
 
 <!-- Edit Area Modal -->
 <div class="modal fade" id="editAreaModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Area</h5>
@@ -834,7 +834,7 @@
 
 <!-- Edit Employee Modal -->
 <div class="modal fade" id="editEmployeeModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Employee</h5>
@@ -905,7 +905,7 @@
 
 <!-- Edit Assignment Modal -->
 <div class="modal fade" id="editAssignmentModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Edit Assignment</h5>
@@ -1045,7 +1045,7 @@
 
 <!-- Area Detail Modal -->
 <div class="modal fade" id="areaDetailModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Detail Area</h5>
@@ -1117,7 +1117,7 @@
 
 <!-- Edit Location Info Modal (must be inside content section to be rendered) -->
 <div class="modal fade" id="modalEditPic" tabindex="-1" aria-labelledby="modalEditPicLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalEditPicLabel">
@@ -1514,32 +1514,22 @@ function initializeAreaTable() {
       {
         data: 'foreman_count',
         className: 'text-center',
-        render: function(d, type, row) {
+        render: function(d) {
           const count = d || 0;
-          const names = row.foremans || '';
-          const badge = count > 0
+          return count > 0
             ? `<span class="badge badge-soft-green">${count}</span>`
             : `<span class="badge badge-soft-gray">0</span>`;
-          const nameHtml = names
-            ? `<div class="small text-success mt-1" style="white-space:normal;max-width:140px">${names}</div>`
-            : '';
-          return badge + nameHtml;
         }
       },
       // Column 4: Mekanik
       {
         data: 'mechanic_count',
         className: 'text-center',
-        render: function(d, type, row) {
+        render: function(d) {
           const count = d || 0;
-          const names = row.mechanics || '';
-          const badge = count > 0
+          return count > 0
             ? `<span class="badge badge-soft-blue">${count}</span>`
             : `<span class="badge badge-soft-gray">0</span>`;
-          const nameHtml = names
-            ? `<div class="small text-primary mt-1" style="white-space:normal;max-width:140px">${names}</div>`
-            : '';
-          return badge + nameHtml;
         }
       },
       // Column 5: Lokasi Customer
@@ -3844,3 +3834,5 @@ $('#btnSavePic').on('click', function() {
 </script>
 <?= $this->endSection() ?>
   
+
+

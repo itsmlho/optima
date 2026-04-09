@@ -217,8 +217,8 @@ $can_export = can_export('marketing');
         </div>
     </div>
     <!-- FLAT VIEW body -->
-    <div id="flatViewBody" class="card-body p-0" style="overflow: visible;">
-        <div class="table-responsive" style="overflow: visible;">
+    <div id="flatViewBody" class="card-body p-0">
+        <div class="table-responsive">
             <table class="table table-striped table-hover mb-0" id="contractsTable">
                 <thead class="bg-light">
                     <tr>
@@ -1880,7 +1880,6 @@ $(document).on('submit', '#addContractForm', function(e) {
 .gv-child-table td { vertical-align: middle; font-size: 0.875rem; }
 .gv-customer-block { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
 .gv-child-wrap { transition: none; }
-#groupedViewBody .table-responsive { overflow: visible; }
 #groupedViewBody .dropdown-menu { z-index: 9050; }
 .gv-summary-badges .badge { font-size: 0.72rem; }
 .gv-search-wrap { padding: 12px 16px; background: #f1f3f5; border-bottom: 1px solid #dee2e6; }

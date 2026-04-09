@@ -378,9 +378,9 @@
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px; margin-top: 15px; font-size: 9pt;">
                 <div style="text-align: center;">
                     <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: <?= isset($workOrder['report_date_raw']) ? date('d/m/Y', strtotime($workOrder['report_date_raw'])) : (isset($workOrder['report_date']) ? date('d/m/Y', strtotime($workOrder['report_date'])) : '___/___/_____') ?></div>
-                    <div style="font-weight: bold; margin-bottom: 8px;">Admin</div>
+                    <div style="font-weight: bold; margin-bottom: 8px;">Head Divisi Service</div>
                     <div style="border-bottom: 1px solid #000; width: 140px; margin: 0 auto 5px; height: 50px;"></div>
-                    <div style="font-size: 8pt; margin-top: 3px;">Nama: <?= htmlspecialchars($workOrder['admin_staff_name'] ?? '________________') ?></div>
+                    <div style="font-size: 8pt; margin-top: 3px;">Nama: ________________</div>
                 </div>
                 <div style="text-align: center;">
                     <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: ___/___/_____</div>
@@ -392,7 +392,7 @@
                     <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: <?= isset($workOrder['report_date_raw']) ? date('d/m/Y', strtotime($workOrder['report_date_raw'])) : (isset($workOrder['report_date']) ? date('d/m/Y', strtotime($workOrder['report_date'])) : '___/___/_____') ?></div>
                     <div style="font-weight: bold; margin-bottom: 8px;">Mekanik</div>
                     <div style="border-bottom: 1px solid #000; width: 140px; margin: 0 auto 5px; height: 50px;"></div>
-                    <div style="font-size: 8pt; margin-top: 3px;">Nama: <?= htmlspecialchars($workOrder['mechanic_staff_name'] ?? '________________') ?></div>
+                    <div style="font-size: 8pt; margin-top: 3px;"><?= htmlspecialchars($workOrder['mechanic_staff_name'] ?? '________________') ?></div>
                 </div>
                 <div style="text-align: center;">
                     <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: ___/___/_____</div>
