@@ -1211,7 +1211,9 @@ class UnitInventoryController extends BaseController
 
         if ($searchValue !== '') {
             $builder->groupStart()
-                ->like('iu.serial_number', $searchValue)
+                ->like('iu.no_unit', $searchValue)
+                ->orLike('iu.no_unit_na', $searchValue)
+                ->orLike('iu.serial_number', $searchValue)
                 ->orLike('iu.lokasi_unit',  $searchValue)
                 ->groupEnd();
         }

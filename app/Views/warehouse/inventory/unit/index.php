@@ -334,8 +334,12 @@ $(document).ready(function() {
                         }
                         return String(txt);
                     };
-                    if (sid === 7 && data) {
-                        return '<div class="text-success fw-bold"><i class="fas fa-building me-1"></i> ' + hl('Rented Area') + '</div><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>' + hl(data) + '</small>';
+                    const rentalSids = [7, 8, 14]; // RENTAL_ACTIVE, RENTAL_DAILY, RENTAL_INACTIVE
+                    if (rentalSids.includes(sid)) {
+                        const locName  = row.rental_location_name  || data || '-';
+                        const custName = row.rental_customer_name  || '';
+                        return `<div class="text-success fw-bold"><i class="fas fa-building me-1"></i>${hl(custName || 'Rented Area')}</div>`
+                             + `<small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${hl(locName)}</small>`;
                     }
                     if (sid === 10) {
                         return '<div class="text-danger"><i class="fas fa-tools me-2"></i>' + hl(data || 'Workshop') + '</div>';

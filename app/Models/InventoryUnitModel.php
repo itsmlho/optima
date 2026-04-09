@@ -394,7 +394,9 @@ class InventoryUnitModel extends Model
                               iu.departemen_id,
                               COALESCE(d.nama_departemen, "-") as nama_departemen,
                               iu.lokasi_unit,
-                              iu.created_at');
+                              iu.created_at,
+                              cl.location_name as rental_location_name,
+                              c.customer_name  as rental_customer_name');
             $tableExists = $this->checkTablesExist(['model_unit', 'tipe_unit', 'status_unit', 'departemen', 'kontrak']);
             
             // Minimal Join (Avoid missing fields in kontrak or customers table)
@@ -410,9 +412,20 @@ class InventoryUnitModel extends Model
             if ($tableExists['departemen']) {
                 $builder->join('departemen as d', 'd.id_departemen = iu.departemen_id', 'left');
             }
+            // Join active rental location (latest active kontrak_unit row) for rented units
+            $builder->join(
+                'kontrak_unit as ku',
+                'ku.id = (SELECT id FROM kontrak_unit WHERE unit_id = iu.id_inventory_unit AND status IN ("ACTIVE","TEMP_ACTIVE","Aktif") ORDER BY id DESC LIMIT 1)',
+                'left'
+            );
+            $builder->join('customer_locations as cl', 'cl.id = ku.customer_location_id', 'left');
+            $builder->join('kontrak as k_rent', 'k_rent.id = ku.kontrak_id', 'left');
+            $builder->join('customers as c', 'c.id = k_rent.customer_id', 'left');
             if (!empty($searchValue)) {
                 $builder->groupStart()
-                    ->like('iu.serial_number', $searchValue)
+                    ->like('iu.no_unit', $searchValue)
+                    ->orLike('iu.no_unit_na', $searchValue)
+                    ->orLike('iu.serial_number', $searchValue)
                     ->orLike('iu.lokasi_unit', $searchValue);
                 if ($tableExists['model_unit']) {
                     $builder->orLike('mu.merk_unit', $searchValue)
@@ -487,7 +500,9 @@ class InventoryUnitModel extends Model
             }
             if (!empty($searchValue)) {
                 $builder->groupStart()
-                    ->like('iu.serial_number', $searchValue)
+                    ->like('iu.no_unit', $searchValue)
+                    ->orLike('iu.no_unit_na', $searchValue)
+                    ->orLike('iu.serial_number', $searchValue)
                     ->orLike('iu.lokasi_unit', $searchValue);
                 if ($tableExists['model_unit']) {
                     $builder->orLike('mu.merk_unit', $searchValue)

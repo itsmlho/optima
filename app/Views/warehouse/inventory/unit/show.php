@@ -76,11 +76,8 @@ if ($aksesorisRaw) {
     <!-- Action Buttons -->
     <div class="d-flex gap-2 flex-wrap">
         <a href="<?= base_url('warehouse/inventory/unit') ?>" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back
+            <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Kembali
         </a>
-        <button type="button" class="btn btn-outline-info btn-sm" onclick="fetchUnitHistory(<?= (int)($unit['id_inventory_unit'] ?? 0) ?>)">
-            <i class="fas fa-history me-1" aria-hidden="true"></i>Refresh History
-        </button>
         <?php if($can_edit): ?>
         <?php if(in_array($statusId, [1, 2, 9, 12, 15])): ?>
         <button type="button" class="btn btn-success btn-sm" onclick="openBookingModal()">
@@ -89,12 +86,12 @@ if ($aksesorisRaw) {
         <?php endif; ?>
         <?php if($statusId === 10): ?>
         <button type="button" class="btn btn-danger btn-sm" onclick="openScrapModal()">
-            <i class="fas fa-trash-alt me-1"></i>Scrab Unit
+            <i class="fas fa-trash-alt me-1"></i>Scrap Unit
         </button>
         <?php endif; ?>
         <?php if(in_array($statusId, [1, 3, 12])): ?>
         <button type="button" class="btn btn-warning btn-sm" onclick="openChangeStatusModal()">
-            <i class="fas fa-exchange-alt me-1"></i>Change Status
+            <i class="fas fa-exchange-alt me-1"></i>Ubah Status
         </button>
         <?php endif; ?>
         <?php endif; ?>
@@ -123,7 +120,7 @@ if ($aksesorisRaw) {
                 <ul class="nav nav-tabs nav-fill mb-3" id="detailTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">
-                            <i class="fas fa-info-circle me-1"></i>Overview
+                            <i class="fas fa-info-circle me-1"></i>Ringkasan
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -141,7 +138,7 @@ if ($aksesorisRaw) {
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-aktivitas" data-bs-toggle="tab" data-bs-target="#pane-aktivitas" type="button" role="tab">
-                            <i class="fas fa-stream me-1"></i>Aktivitas
+                            <i class="fas fa-history me-1"></i>Log Histori
                         </button>
                     </li>
                 </ul>
@@ -261,9 +258,7 @@ if ($aksesorisRaw) {
                                 <dl class="row mb-0 small">
                                     <dt class="col-5 text-muted">No. Kontrak</dt>
                                     <dd class="col-7">
-                                        <a href="<?= base_url('kontrak/detail/'.(int)$unit['kontrak_id']) ?>" class="fw-bold font-monospace text-decoration-none">
-                                            <?= esc($unit['no_kontrak']) ?> <i class="fas fa-external-link-alt small ms-1"></i>
-                                        </a>
+                                        <span class="fw-bold font-monospace"><?php $nk = $unit['no_kontrak'] ?? ''; echo esc(strlen($nk) > 6 ? substr($nk,0,3).'***'.substr($nk,-3) : str_repeat('*', strlen($nk))); ?></span>
                                     </dd>
 
                                     <dt class="col-5 text-muted">Customer</dt>
@@ -824,7 +819,7 @@ if ($aksesorisRaw) {
                     <div class="tab-pane fade" id="pane-aktivitas" role="tabpanel">
                         <div class="card border-0 mb-0">
                             <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <h6 class="mb-0"><i class="fas fa-stream me-2"></i><strong>Timeline Aktivitas</strong></h6>
+                                <h6 class="mb-0"><i class="fas fa-history me-2"></i><strong>Log Histori</strong></h6>
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <select id="filter-aktivitas" class="form-select form-select-sm" style="min-width:140px;">
                                         <option value="all">Semua</option>
@@ -851,7 +846,7 @@ if ($aksesorisRaw) {
                             <div class="card-body">
                                 <div id="aktivitas-loader" class="text-center py-5" style="display:none;">
                                     <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
-                                    <p class="text-muted mt-2 small">Loading aktivitas...</p>
+                                    <p class="text-muted mt-2 small">Memuat data...</p>
                                 </div>
                                 <div id="aktivitas-empty" class="text-center py-5" style="display:none;">
                                     <i class="fas fa-stream fa-3x text-muted mb-3 d-block"></i>
@@ -873,9 +868,8 @@ if ($aksesorisRaw) {
 
         <!-- Quick Info Card -->
         <div class="card shadow-sm mb-3">
-            <div class="card-header bg-light d-flex align-items-center justify-content-between">
+            <div class="card-header bg-light">
                 <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i><strong>Unit Info</strong></h6>
-                <a href="<?= base_url('warehouse/inventory/unit/'.$unit['id_inventory_unit'].'/print') ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 text-muted" title="Print Unit Info"><i class="fas fa-print"></i></a>
             </div>
             <div class="card-body p-3">
                 <dl class="row mb-0 small">
@@ -888,12 +882,6 @@ if ($aksesorisRaw) {
                     <dt class="col-5 text-muted">Status</dt>
                     <dd class="col-7">
                         <span class="badge bg-<?= $badgeClass ?>"><?= esc($unit['status_unit_name'] ?? 'Unknown') ?></span>
-                    </dd>
-
-                    <dt class="col-5 text-muted">Asset Status</dt>
-                    <dd class="col-7">
-                        <?php $assetStat = strtolower($unit['status_aset'] ?? ''); ?>
-                        <span class="badge <?= $assetStat === 'active' ? 'bg-primary' : 'bg-secondary' ?>"><?= esc($unit['status_aset'] ?? 'Inactive') ?></span>
                     </dd>
 
                     <div class="col-12 my-2"><hr class="m-0 text-muted opacity-25"></div>
@@ -969,80 +957,49 @@ if ($aksesorisRaw) {
                 <div class="mb-1"><span class="text-muted">Nomor SILO:</span> <span class="fw-semibold"><?= esc($silo['nomor_silo'] ?? '-') ?></span></div>
                 <div class="mb-1"><span class="text-muted">Terbit:</span> <?= !empty($silo['tanggal_terbit_silo']) ? date('d M Y', strtotime($silo['tanggal_terbit_silo'])) : '-' ?></div>
                 <div class="mb-2"><span class="text-muted">Expired:</span> <?= !empty($silo['tanggal_expired_silo']) ? date('d M Y', strtotime($silo['tanggal_expired_silo'])) : '-' ?></div>
+                <?php if($hasSiloFile && $siloId > 0): ?>
                 <div class="d-flex gap-2">
-                    <a href="<?= esc($siloDetailUrl) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-external-link-alt me-1"></i>Detail SILO
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-silo-preview">
+                        <i class="fas fa-eye me-1"></i>Preview
+                    </button>
+                    <a href="<?= esc($siloDownloadUrl) ?>" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-download me-1"></i>Download
                     </a>
-                    <?php if($siloDownloadUrl && $hasSiloFile): ?>
-                        <a href="<?= esc($siloDownloadUrl) ?>" target="_blank" class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-download me-1"></i>Download SILO
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <!-- Active Contract Sidebar Card -->
-        <?php if(!empty($unit['no_kontrak'])): ?>
-        <div class="card shadow-sm mb-3 border-primary border-opacity-25">
-            <div class="card-header d-flex align-items-center justify-content-between" style="background:rgba(13,110,253,.06)">
-                <h6 class="mb-0 text-primary small"><i class="fas fa-file-contract me-2"></i><strong>Kontrak Aktif</strong></h6>
-                <a href="<?= base_url('kontrak/detail/'.(int)$unit['kontrak_id']) ?>" class="btn btn-sm btn-outline-primary py-0 px-2" title="Lihat Kontrak">
-                    <i class="fas fa-external-link-alt small"></i>
-                </a>
-            </div>
-            <div class="card-body p-3">
-                <p class="fw-bold font-monospace text-primary mb-1 small"><?= esc($unit['no_kontrak']) ?></p>
-                <p class="text-dark mb-1 small"><i class="fas fa-building text-muted me-1"></i><?= esc($unit['customer_name'] ?? '-') ?></p>
-                <?php
-                $sbEndDate  = $unit['kontrak_end_date'] ?? $unit['ku_end_date'] ?? null;
-                $sbDaysLeft = null;
-                $sbCls = 'badge-soft-green';
-                if($sbEndDate) {
-                    $sbDaysLeft = (int)floor((strtotime($sbEndDate) - time()) / 86400);
-                    $sbCls = $sbDaysLeft < 0 ? 'badge-soft-red' : ($sbDaysLeft <= 30 ? 'badge-soft-orange' : 'badge-soft-green');
-                }
-                ?>
-                <?php if($sbEndDate): ?>
-                <div class="mt-2">
-                    <span class="badge <?= $sbCls ?> w-100 d-block text-center py-1">
-                        <?php if($sbDaysLeft < 0): ?>
-                        <i class="fas fa-exclamation-circle me-1"></i>Expired <?= abs($sbDaysLeft) ?> hari lalu
-                        <?php elseif($sbDaysLeft <= 30): ?>
-                        <i class="fas fa-clock me-1"></i>Berakhir <?= $sbDaysLeft ?> hari lagi
-                        <?php else: ?>
-                        <i class="fas fa-check-circle me-1"></i>Aktif — <?= $sbDaysLeft ?> hari lagi
-                        <?php endif; ?>
-                    </span>
-                    <p class="text-muted small mt-1 mb-0 text-center"><?= date('d M Y', strtotime($sbEndDate)) ?></p>
                 </div>
                 <?php else: ?>
-                <span class="badge badge-soft-cyan mt-1">Open Ended</span>
-                <?php endif; ?>
-                <?php if(!empty($unit['ku_is_spare'])): ?>
-                <span class="badge badge-soft-orange mt-1"><i class="fas fa-star me-1"></i>Unit Spare</span>
+                <p class="text-muted fst-italic mb-0">Dokumen belum tersedia.</p>
                 <?php endif; ?>
             </div>
         </div>
-        <?php endif; ?>
 
-        <!-- History Timeline Mini Card -->
-        <div class="card shadow-sm mb-3">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="fas fa-history me-2"></i><strong>System Timeline</strong></h6>
-            </div>
-            <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
-                <div class="text-center py-4" id="history-loader" style="display:none;">
-                    <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-                </div>
-                <div id="history-timeline-container" class="small px-2">
-                    <div class="text-center text-muted py-3 fst-italic">Loading events...</div>
-                </div>
-            </div>
-        </div>
 
     </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: SILO PREVIEW
+══════════════════════════════════════════════════════════ -->
+<?php if($hasSiloFile && $siloId > 0): ?>
+<div class="modal fade" id="modal-silo-preview" tabindex="-1" aria-labelledby="modalSiloPreviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSiloPreviewLabel"><i class="fas fa-certificate me-2"></i>SILO — <?= esc($silo['nomor_silo'] ?? '-') ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="height:75vh;">
+                <iframe src="<?= base_url('perizinan/preview-file/' . $siloId . '/silo') ?>" style="width:100%;height:100%;border:none;" title="Preview SILO"></iframe>
+            </div>
+            <div class="modal-footer">
+                <a href="<?= esc($siloDownloadUrl) ?>" class="btn btn-success btn-sm">
+                    <i class="fas fa-download me-1"></i>Download SILO
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- ══════════════════════════════════════════════════════════
      MODAL: BOOK UNIT
@@ -1129,13 +1086,13 @@ if ($aksesorisRaw) {
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
-     MODAL: SCRAB UNIT
+     MODAL: Scrap UNIT
 ══════════════════════════════════════════════════════════ -->
 <div class="modal fade" id="modal-scrap" tabindex="-1" aria-labelledby="modalScrapLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="modalScrapLabel"><i class="fas fa-trash-alt me-2"></i>Scrab Unit</h5>
+                <h5 class="modal-title" id="modalScrapLabel"><i class="fas fa-trash-alt me-2"></i>Scrap Unit</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -1147,9 +1104,9 @@ if ($aksesorisRaw) {
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold">Alasan Scrab <span class="text-danger">*</span></label>
+                    <label class="form-label small fw-semibold">Alasan Scrap <span class="text-danger">*</span></label>
                     <textarea id="scrap-reason" class="form-control form-control-sm" rows="3"
-                              placeholder="Jelaskan kondisi unit dan alasan di-scrab..."></textarea>
+                              placeholder="Jelaskan kondisi unit dan alasan di-Scrap..."></textarea>
                 </div>
                 <div class="mb-3">
                     <label class="form-label small fw-semibold">Estimasi Nilai Jual <span class="text-muted fw-normal">(opsional, IDR)</span></label>
@@ -1161,7 +1118,7 @@ if ($aksesorisRaw) {
                         <input class="form-check-input" type="checkbox" id="scrap-confirm-check"
                                onchange="document.getElementById('btn-submit-scrap').disabled = !this.checked;">
                         <label class="form-check-label small" for="scrap-confirm-check">
-                            Saya konfirmasi unit <strong><?= esc($unitNo) ?></strong> siap untuk di-scrab
+                            Saya konfirmasi unit <strong><?= esc($unitNo) ?></strong> siap untuk di-Scrap
                         </label>
                     </div>
                 </div>
@@ -1169,7 +1126,7 @@ if ($aksesorisRaw) {
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
                 <button type="button" class="btn btn-danger btn-sm" id="btn-submit-scrap" disabled onclick="submitScrap()">
-                    <i class="fas fa-trash-alt me-1"></i>Scrab Unit
+                    <i class="fas fa-trash-alt me-1"></i>Scrap Unit
                 </button>
             </div>
         </div>
@@ -1256,31 +1213,8 @@ if ($aksesorisRaw) {
     window.addEventListener('load', function(){ setTimeout(forceOverviewTab, 0); });
     $(document).ready(function(){
         forceOverviewTab();
-        fetchUnitHistory(unitId);
     });
 })();
-    function fetchUnitHistory(uid) {
-        var baseUnitUrl = window._baseUnitUrl || '';
-        $('#history-timeline-container').hide();
-        $('#history-loader').show();
-        $.ajax({
-            url: baseUnitUrl + uid + '/timeline',
-            type: 'GET',
-            success: function(response) {
-                if (response.success) {
-                    $('#history-loader').hide();
-                    $('#history-timeline-container').html(response.html).fadeIn();
-                } else {
-                    $('#history-loader').hide();
-                    $('#history-timeline-container').html(`<div class="alert alert-light border small text-center text-muted py-2">No history events found.</div>`).show();
-                }
-            },
-            error: function() {
-                $('#history-loader').hide();
-                $('#history-timeline-container').html(`<div class="alert alert-danger small text-center py-2"><i class="fas fa-wifi"></i> Network error.</div>`).show();
-            }
-        });
-    }
 
     var UNIT_ID = window._unitId;
     var _aktivitasLoaded = false;
@@ -1793,7 +1727,7 @@ if ($aksesorisRaw) {
 
     function submitScrap() {
         var reason = document.getElementById('scrap-reason').value.trim();
-        if (!reason) { OptimaNotify.error('Alasan scrab wajib diisi.'); return; }
+        if (!reason) { OptimaNotify.error('Alasan Scrap wajib diisi.'); return; }
         if (!document.getElementById('scrap-confirm-check').checked) {
             OptimaNotify.error('Centang konfirmasi terlebih dahulu.'); return;
         }
@@ -1815,17 +1749,17 @@ if ($aksesorisRaw) {
                 if (res.csrf_hash) $('meta[name="' + _csrfNameKey + '"]').attr('content', res.csrf_hash);
                 if (res.success) {
                     bootstrap.Modal.getInstance(document.getElementById('modal-scrap')).hide();
-                    OptimaNotify.success(res.message, 'Scrab Berhasil');
+                    OptimaNotify.success(res.message, 'Scrap Berhasil');
                     setTimeout(function() { window.location.reload(); }, 1200);
                 } else {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Scrab Unit';
+                    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Scrap Unit';
                     OptimaNotify.error(res.message);
                 }
             },
             error: function() {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Scrab Unit';
+                btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Scrap Unit';
                 OptimaNotify.error('Gagal terhubung ke server.');
             }
         });
