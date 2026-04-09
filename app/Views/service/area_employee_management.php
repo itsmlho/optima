@@ -1583,7 +1583,7 @@ function initializeAreaTable() {
         render: function(data, type, row) {
           return `<button class="btn btn-sm btn-outline-primary btn-edit-area"
                     data-area-code="${row.area_code}" title="Edit Area"
-                    onclick="event.stopPropagation(); viewAreaDetail('${row.area_code}', null)">
+                    onclick="event.stopPropagation(); viewAreaDetail('${row.area_code}', null, ${row.id})">
                     <i class="fas fa-pencil-alt"></i>
                   </button>`;
         }
@@ -2722,52 +2722,77 @@ function viewEmployeeDetail(employeeId) {
 let currentAreaId = null;
 let currentAreaData = null;
 
-function viewAreaDetail(areaCode, areaData = null) {
-  // If we have area data from the table, use it directly
+function viewAreaDetail(areaCode, areaData = null, areaId = null) {
   if (areaData) {
     currentAreaId = areaData.id || areaData.area_id;
     currentAreaData = areaData;
-    
-    // Populate modal with available data
     $('#area_detail_code').text(areaData.area_code || '-');
     $('#area_detail_name').text(areaData.area_name || '-');
     $('#area_detail_description').text(areaData.description || '-');
     $('#area_detail_customers').text(areaData.customers_count || 0);
     $('#area_detail_employees').text(areaData.employees_count || 0);
     $('#area_detail_created').text(areaData.created_at ? new Date(areaData.created_at).toLocaleDateString('en-GB') : '-');
-    
-    // Load assignments for this area
     loadAreaDetailAssignments(currentAreaId);
-  } else {
-    // Fallback - load from server
-    notify(`Loading area details for ${areaCode}...`, 'info');
-    // You can implement server-side loading here if needed
+    $('#areaDetailModal').modal('show');
+  } else if (areaId) {
+    // Reset fields while loading
+    $('#area_detail_code').text('-');
+    $('#area_detail_name').text('-');
+    $('#area_detail_description').text('-');
+    $('#area_detail_customers').text('-');
+    $('#area_detail_employees').text('-');
+    $('#area_detail_created').text('-');
+    $('#area_detail_assignments').html('<div class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Memuat data...</div>');
+    $('#areaDetailModal').modal('show');
+    $.getJSON(`<?= base_url('service/area-management/getArea') ?>/${areaId}`, function(resp) {
+      if (!resp.success) { notify(resp.message || 'Gagal memuat data area', 'error'); return; }
+      const area = resp.data;
+      currentAreaId = area.id;
+      currentAreaData = {
+        id: area.id,
+        area_code: area.area_code,
+        area_name: area.area_name,
+        description: area.area_description || '',
+        area_type: area.area_type || 'MILL',
+        departemen_id: area.departemen_id || '',
+        customers_count: area.customers_count || 0,
+        created_at: area.created_at
+      };
+      $('#area_detail_code').text(area.area_code || '-');
+      $('#area_detail_name').text(area.area_name || '-');
+      $('#area_detail_description').text(area.area_description || '-');
+      $('#area_detail_customers').text(area.customers_count || 0);
+      $('#area_detail_created').text(area.created_at ? new Date(area.created_at).toLocaleDateString('en-GB') : '-');
+      loadAreaDetailAssignments(currentAreaId);
+    }).fail(function() {
+      notify('Gagal memuat data area', 'error');
+    });
   }
-  
-  $('#areaDetailModal').modal('show');
 }
 
 function loadAreaDetailAssignments(areaId) {
-  $('#area_detail_assignments').html('<div class="text-muted">Loading assignments...</div>');
+  $('#area_detail_assignments').html('<div class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Memuat data...</div>');
   
   $.get(`<?= base_url('service/area-management/getAreaAssignments') ?>/${areaId}`, function(response) {
     if (response.success && response.data && response.data.length > 0) {
-      let assignmentsHtml = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Employee</th><th>Role</th><th>Type</th><th>Status</th></tr></thead><tbody>';
+      $('#area_detail_employees').text(response.data.length);
+      let assignmentsHtml = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Karyawan</th><th>Role</th><th>Tipe</th><th>Status</th></tr></thead><tbody>';
       response.data.forEach(assign => {
         assignmentsHtml += `<tr>
           <td>${assign.staff_name}</td>
           <td><strong class="text-${roleBadgeColor(assign.staff_role)}">${assign.staff_role}</strong></td>
           <td><strong class="text-${assign.assignment_type === 'PRIMARY' ? 'success' : 'secondary'}">${assign.assignment_type}</strong></td>
-          <td><strong class="text-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? '✅ Active' : '❌ Inactive'}</strong></td>
+          <td><strong class="text-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? 'Aktif' : 'Nonaktif'}</strong></td>
         </tr>`;
       });
       assignmentsHtml += '</tbody></table></div>';
       $('#area_detail_assignments').html(assignmentsHtml);
     } else {
-      $('#area_detail_assignments').html('<div class="text-muted">No employee assignments found</div>');
+      $('#area_detail_employees').text(0);
+      $('#area_detail_assignments').html('<div class="text-muted">Belum ada karyawan yang ditugaskan.</div>');
     }
   }, 'json').fail(function() {
-    $('#area_detail_assignments').html('<div class="text-danger">Error loading assignments</div>');
+    $('#area_detail_assignments').html('<div class="text-danger">Gagal memuat data karyawan.</div>');
   });
 }
 
