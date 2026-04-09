@@ -46,7 +46,7 @@ $can_export = $permissions['export'];
     
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
             <div class="stat-card bg-primary-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
@@ -59,7 +59,7 @@ $can_export = $permissions['export'];
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
             <div class="stat-card bg-warning-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
@@ -72,7 +72,7 @@ $can_export = $permissions['export'];
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
             <div class="stat-card bg-success-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
@@ -85,7 +85,7 @@ $can_export = $permissions['export'];
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
             <div class="stat-card bg-info-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">

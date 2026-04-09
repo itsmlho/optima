@@ -729,6 +729,7 @@ $(document).ready(function () {
     // use the OPTIMA global language config, including our nice loading animations.
     if (typeof $.fn.dataTable !== 'undefined') {
         $.extend(true, $.fn.dataTable.defaults, {
+            responsive: true,
             language: window.OptimaDataTable ? window.OptimaDataTable.language : {
                 // Fallback to basic processing indicator if OptimaDataTable somehow not ready
                 processing: '<div class="loading-text">Memproses data...</div>'

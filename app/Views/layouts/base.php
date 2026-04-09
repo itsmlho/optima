@@ -886,7 +886,7 @@ $currentLang = service('request')->getLocale();
                 <a href="<?= base_url('/welcome') ?>" class="header-brand d-flex align-items-center text-decoration-none gap-2">
                     <!-- Cukup logo & nama perusahaan (logo OPTIMA dipindah ke sidebar) -->
                     <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" style="height: 24px; width: auto;">
-                    <span class="fw-bold text-dark" style="font-size: 0.8rem; letter-spacing: 0.5px; white-space: nowrap;">
+                    <span class="fw-bold text-dark header-company-name" style="font-size: 0.8rem; letter-spacing: 0.5px; white-space: nowrap;">
                         PT SARANA MITRA LUAS Tbk
                     </span>
                 </a>

@@ -879,6 +879,36 @@ h6, .h6 { font-size: 1rem; }
         width: 40px;
         padding: 0;
     }
+
+    /* Hide company name and theme toggle to save space on mobile */
+    .header-company-name {
+        display: none;
+    }
+
+    .theme-toggle {
+        display: none;
+    }
+
+    /* Notification dropdown: prevent overflow on small screens */
+    .dropdown-menu.notification-dropdown {
+        min-width: calc(100vw - 2rem) !important;
+        max-width: calc(100vw - 2rem) !important;
+        width: calc(100vw - 2rem) !important;
+        right: 0 !important;
+        left: auto !important;
+    }
+}
+
+/* ==============================
+   Modal: mobile max-width override
+   Bootstrap .modal-lg (800px) and .modal-xl (1140px) are too wide on phones.
+   Below 768px force them to fill the screen with only a small gutter.
+   ============================== */
+@media (max-width: 767.98px) {
+    .modal-lg,
+    .modal-xl {
+        --bs-modal-width: calc(100% - 2rem);
+    }
 }
 
 /* ==============================

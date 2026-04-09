@@ -148,11 +148,96 @@ class UnitAreaMappingController extends BaseController
 
     public function getCustomerLocations()
     {
-        // Optional filters
-        $filterDept   = $this->request->getPost('dept_filter');   // departemen_id int or ''
-        $filterAssign = $this->request->getPost('area_filter');   // 'assigned','unassigned','all'
+        // Optional filters + DataTables server-side params
+        $filterDept   = $this->request->getPost('dept_filter');
+        $filterAssign = $this->request->getPost('area_filter');
+        $qCustom      = trim((string) $this->request->getPost('q'));
+        $locationId   = trim((string) $this->request->getPost('location_id'));
+        $customerName = trim((string) $this->request->getPost('customer_name'));
 
-        $sql = "
+        $draw   = (int) ($this->request->getPost('draw') ?? 0);
+        $length = (int) ($this->request->getPost('length') ?? 25);
+        $start  = (int) ($this->request->getPost('start') ?? 0);
+        $dtSearch = trim((string) ($this->request->getPost('search')['value'] ?? ''));
+        $isDt = $draw > 0;
+
+        if ($length <= 0) {
+            $length = 25;
+        }
+        $length = min($length, 500);
+        $start = max($start, 0);
+
+        // Ambil 1 kontrak aktif terbaru per unit agar tidak duplicate row.
+        $latestActiveContractPerUnit = "
+            SELECT ku1.id, ku1.unit_id, ku1.kontrak_id, ku1.customer_location_id
+            FROM kontrak_unit ku1
+            JOIN kontrak k1 ON k1.id = ku1.kontrak_id AND k1.status = 'ACTIVE'
+            JOIN (
+                SELECT ku2.unit_id, MAX(ku2.id) AS max_ku_id
+                FROM kontrak_unit ku2
+                JOIN kontrak k2 ON k2.id = ku2.kontrak_id AND k2.status = 'ACTIVE'
+                WHERE ku2.status = 'ACTIVE'
+                GROUP BY ku2.unit_id
+            ) x ON x.max_ku_id = ku1.id
+            WHERE ku1.status = 'ACTIVE'
+        ";
+
+        $fromSql = "
+            FROM inventory_unit iu
+            LEFT JOIN ({$latestActiveContractPerUnit}) ku
+                ON ku.unit_id = iu.id_inventory_unit
+            LEFT JOIN kontrak k
+                ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+            LEFT JOIN customer_locations cl
+                ON cl.id = ku.customer_location_id AND cl.is_active = 1
+            LEFT JOIN customers c
+                ON c.id = cl.customer_id
+            LEFT JOIN model_unit mu
+                ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN departemen d
+                ON d.id_departemen = iu.departemen_id
+            LEFT JOIN areas a
+                ON a.id = iu.area_id
+            WHERE iu.status_unit_id != 13
+        ";
+
+        $whereParams = [];
+
+        if (!empty($filterDept) && is_numeric($filterDept)) {
+            $fromSql .= ' AND iu.departemen_id = ?';
+            $whereParams[] = (int) $filterDept;
+        }
+
+        if ($filterAssign === 'assigned') {
+            $fromSql .= ' AND iu.area_id IS NOT NULL';
+        } elseif ($filterAssign === 'unassigned') {
+            $fromSql .= ' AND iu.area_id IS NULL';
+        }
+
+        if ($customerName !== '') {
+            $fromSql .= ' AND c.customer_name = ?';
+            $whereParams[] = $customerName;
+        }
+        if ($locationId !== '' && is_numeric($locationId)) {
+            $fromSql .= ' AND cl.id = ?';
+            $whereParams[] = (int) $locationId;
+        }
+
+        $keyword = $dtSearch !== '' ? $dtSearch : $qCustom;
+        if ($keyword !== '') {
+            $fromSql .= " AND (
+                iu.no_unit LIKE ?
+                OR iu.no_unit_na LIKE ?
+                OR iu.serial_number LIKE ?
+                OR c.customer_name LIKE ?
+                OR cl.location_name LIKE ?
+                OR k.no_kontrak LIKE ?
+            )";
+            $like = '%' . $keyword . '%';
+            array_push($whereParams, $like, $like, $like, $like, $like, $like);
+        }
+
+        $selectSql = "
             SELECT
                 cl.id                       AS location_id,
                 cl.location_name,
@@ -163,6 +248,8 @@ class UnitAreaMappingController extends BaseController
                 c.customer_name,
                 iu.id_inventory_unit,
                 iu.no_unit,
+                iu.no_unit_na,
+                iu.serial_number,
                 iu.fuel_type,
                 iu.area_id,
                 d.nama_departemen,
@@ -170,41 +257,69 @@ class UnitAreaMappingController extends BaseController
                 a.area_name,
                 CONCAT(mu.merk_unit, ' ', mu.model_unit) AS model,
                 k.no_kontrak
-            FROM customer_locations cl
-            JOIN customers c ON c.id = cl.customer_id
-            JOIN kontrak_unit ku
-                ON ku.customer_location_id = cl.id AND ku.status = 'ACTIVE'
-            JOIN kontrak k
-                ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
-            JOIN inventory_unit iu
-                ON iu.id_inventory_unit = ku.unit_id
-            LEFT JOIN model_unit mu
-                ON mu.id_model_unit = iu.model_unit_id
-            LEFT JOIN departemen d
-                ON d.id_departemen = iu.departemen_id
-            LEFT JOIN areas a
-                ON a.id = iu.area_id
-            WHERE cl.is_active = 1
         ";
 
-        $params = [];
+        $orderSql = ' ORDER BY c.customer_name IS NULL, c.customer_name, cl.location_name IS NULL, cl.location_name, iu.no_unit';
 
-        if (!empty($filterDept) && is_numeric($filterDept)) {
-            $sql   .= ' AND iu.departemen_id = ?';
-            $params[] = (int) $filterDept;
+        $dataSql = $selectSql . $fromSql . $orderSql . ' LIMIT ' . (int) $length . ' OFFSET ' . (int) $start;
+        $rows = $this->db->query($dataSql, $whereParams)->getResultArray();
+
+        if ($isDt) {
+            // counts hanya dibutuhkan mode DataTables server-side
+            $filteredSql = 'SELECT COUNT(*) AS cnt ' . $fromSql;
+            $recordsFiltered = (int) (($this->db->query($filteredSql, $whereParams)->getRowArray()['cnt'] ?? 0));
+
+            // total dengan filter struktural (dept/assign/customer/location), tanpa keyword search
+            $totalFromSql = "
+                FROM inventory_unit iu
+                LEFT JOIN ({$latestActiveContractPerUnit}) ku
+                    ON ku.unit_id = iu.id_inventory_unit
+                LEFT JOIN kontrak k
+                    ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                LEFT JOIN customer_locations cl
+                    ON cl.id = ku.customer_location_id AND cl.is_active = 1
+                LEFT JOIN customers c
+                    ON c.id = cl.customer_id
+                WHERE iu.status_unit_id != 13
+            ";
+            $totalParams = [];
+            if (!empty($filterDept) && is_numeric($filterDept)) {
+                $totalFromSql .= ' AND iu.departemen_id = ?';
+                $totalParams[] = (int) $filterDept;
+            }
+            if ($filterAssign === 'assigned') {
+                $totalFromSql .= ' AND iu.area_id IS NOT NULL';
+            } elseif ($filterAssign === 'unassigned') {
+                $totalFromSql .= ' AND iu.area_id IS NULL';
+            }
+            if ($customerName !== '') {
+                $totalFromSql .= ' AND c.customer_name = ?';
+                $totalParams[] = $customerName;
+            }
+            if ($locationId !== '' && is_numeric($locationId)) {
+                $totalFromSql .= ' AND cl.id = ?';
+                $totalParams[] = (int) $locationId;
+            }
+            $recordsTotal = (int) (($this->db->query('SELECT COUNT(*) AS cnt ' . $totalFromSql, $totalParams)->getRowArray()['cnt'] ?? 0));
+
+            return $this->response->setJSON([
+                'draw' => $draw,
+                'recordsTotal' => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data' => $rows,
+            ]);
         }
 
-        if ($filterAssign === 'assigned') {
-            $sql .= ' AND iu.area_id IS NOT NULL';
-        } elseif ($filterAssign === 'unassigned') {
-            $sql .= ' AND iu.area_id IS NULL';
-        }
-
-        $sql .= ' ORDER BY c.customer_name, cl.location_name, iu.no_unit';
-
-        $rows = $this->db->query($sql, $params)->getResultArray();
-
-        return $this->response->setJSON(['success' => true, 'data' => $rows]);
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $rows,
+            'meta' => [
+                'limit' => $length,
+                'offset' => $start,
+                'returned' => count($rows),
+                'has_more' => count($rows) >= $length,
+            ],
+        ]);
     }
 
     // -------------------------------------------------------------------------
@@ -315,13 +430,30 @@ class UnitAreaMappingController extends BaseController
 
     public function getUnassignedUnits()
     {
+        $latestActiveContractPerUnit = "
+            SELECT ku1.id, ku1.unit_id, ku1.kontrak_id, ku1.customer_location_id
+            FROM kontrak_unit ku1
+            JOIN kontrak k1 ON k1.id = ku1.kontrak_id AND k1.status = 'ACTIVE'
+            JOIN (
+                SELECT ku2.unit_id, MAX(ku2.id) AS max_ku_id
+                FROM kontrak_unit ku2
+                JOIN kontrak k2 ON k2.id = ku2.kontrak_id AND k2.status = 'ACTIVE'
+                WHERE ku2.status = 'ACTIVE'
+                GROUP BY ku2.unit_id
+            ) x ON x.max_ku_id = ku1.id
+            WHERE ku1.status = 'ACTIVE'
+        ";
+
         $rows = $this->db->query("
             SELECT
                 iu.id_inventory_unit,
                 iu.no_unit,
+                iu.no_unit_na,
+                iu.serial_number,
                 CONCAT(mu.merk_unit, ' ', mu.model_unit) AS model,
                 su.status_unit                           AS status,
                 c.customer_name,
+                cl.id                                    AS location_id,
                 cl.location_name,
                 k.no_kontrak,
                 iu.fuel_type,
@@ -329,15 +461,14 @@ class UnitAreaMappingController extends BaseController
             FROM inventory_unit iu
             LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
             LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
-            LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+            LEFT JOIN ({$latestActiveContractPerUnit}) ku ON ku.unit_id = iu.id_inventory_unit
             LEFT JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
             LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN customer_locations cl ON cl.id = ku.customer_location_id
             LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
             WHERE iu.area_id IS NULL
               AND iu.status_unit_id != 13
-            ORDER BY k.no_kontrak IS NULL, c.customer_name, iu.no_unit
-            LIMIT 500
+            ORDER BY k.no_kontrak IS NULL, c.customer_name, cl.location_name, iu.no_unit
         ")->getResultArray();
 
         return $this->response->setJSON(['success' => true, 'data' => $rows]);

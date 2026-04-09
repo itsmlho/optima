@@ -412,9 +412,6 @@
                                                   <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
                                               <?php endforeach; ?>
                                           </select>
-                                          <button class="btn btn-sm btn-outline-secondary" id="btnLoadLocationUnits">
-                                              <i class="bi bi-funnel me-1"></i> <?= lang('Common.filter') ?>
-                                          </button>
                                       </div>
                                       <button class="btn btn-sm btn-outline-secondary" id="btnRefreshLocationUnits">
                                           <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
@@ -3088,8 +3085,9 @@ const userDeptScope = <?= json_encode($userDeptScope) ?>;
  * Build <option> HTML for area select, filtered by user dept scope.
  * Logic: MILL areas always visible; CENTRAL areas only if dept matches user scope.
  */
-function buildAreaOptions(selectedId) {
+function buildAreaOptions(selectedId, selectedCode = null, selectedName = null) {
     let html = '<option value="">-- Tidak Ada --</option>';
+    let selectedExists = false;
     allAreas.forEach(a => {
         // Apply dept scope filter: null = full access, show all
         if (userDeptScope !== null && !userDeptScope.has_full_access) {
@@ -3102,10 +3100,21 @@ function buildAreaOptions(selectedId) {
             }
             // MILL areas: always include
         }
-        const sel = (selectedId && parseInt(selectedId) === a.id) ? ' selected' : '';
+        const isSel = (selectedId && parseInt(selectedId) === a.id);
+        if (isSel) {
+            selectedExists = true;
+        }
+        const sel = isSel ? ' selected' : '';
         const typeTag = a.area_type === 'CENTRAL' ? ' [C]' : '';
         html += `<option value="${a.id}"${sel}>[${a.area_code}${typeTag}] ${a.area_name}</option>`;
     });
+    // Jika area terpasang ada tetapi tidak masuk scope dropdown user, tetap tampilkan agar user tahu area existing.
+    if (selectedId && !selectedExists) {
+        const label = (selectedCode && selectedName)
+            ? `[${selectedCode}] ${selectedName}`
+            : `Area ID ${selectedId}`;
+        html += `<option value="${selectedId}" selected>${label} (di luar scope)</option>`;
+    }
     return html;
 }
 
@@ -3144,6 +3153,9 @@ $('#btnClosePanelUnits').on('click', function() {
 // Unit Mapping sub-tab 1: Assign Area per Unit
 // ----------------------------------------------------------------
 let locSelectedUnits = new Set(); // unit IDs selected via checkbox
+let locLoadXhr = null;
+let locLoadReqId = 0;
+const TABLE_LOCATION_LOADING_HTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div><span class="text-muted">Memuat data...</span></td></tr>';
 
 function updateBulkLocBar() {
     const count = locSelectedUnits.size;
@@ -3157,16 +3169,26 @@ function loadLocationUnits() {
     const customerFilter = $('#filterLocCustomer').val();
     const locationFilter = $('#filterLocLocation').val();
 
+    // Cancel request sebelumnya agar response tidak balapan (race condition).
+    if (locLoadXhr && locLoadXhr.readyState !== 4) {
+        locLoadXhr.abort();
+    }
+    const reqId = ++locLoadReqId;
+
     if ($.fn.DataTable.isDataTable('#tableLocationUnits')) {
         $('#tableLocationUnits').DataTable().destroy();
     }
     locSelectedUnits.clear();
     updateBulkLocBar();
-    $('#bodyLocationUnits').html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+    $('#bodyLocationUnits').html(TABLE_LOCATION_LOADING_HTML);
 
-    $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations',
-        csrfData({ dept_filter: deptFilter, area_filter: assignFilter }),
+    locLoadXhr = $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations',
+        csrfData({ dept_filter: deptFilter, area_filter: assignFilter, limit: 25, offset: 0 }),
         function(resp) {
+            // Abaikan response lama yang sudah tidak relevan.
+            if (reqId !== locLoadReqId) {
+                return;
+            }
             const tbody = $('#bodyLocationUnits');
             tbody.empty();
             locInfoMap = {};
@@ -3193,8 +3215,6 @@ function loadLocationUnits() {
             customers.forEach(c => {
                 $('#filterLocCustomer').append(`<option value="${c}"${c === prevCust ? ' selected' : ''}>${c}</option>`);
             });
-            // Re-trigger cascade so location dropdown also refreshes
-            $('#filterLocCustomer').trigger('change');
 
             // Build ordered location list per customer (preserves response order)
             // custLocOrder[customer_name] = [loc_id_1, loc_id_2, ...]
@@ -3216,6 +3236,23 @@ function loadLocationUnits() {
                     };
                 }
             });
+
+            // Refresh opsi lokasi TANPA trigger event change (hindari reload rekursif).
+            (function refreshLocationOptionsSilently() {
+                const customer = $('#filterLocCustomer').val();
+                const prevLoc  = $('#filterLocLocation').val();
+                const $locSel  = $('#filterLocLocation');
+                $locSel.empty().append('<option value="">Semua Lokasi</option>').prop('disabled', !customer);
+                if (!customer) return;
+                const seen = new Set();
+                Object.entries(locInfoMap).forEach(([locId, loc]) => {
+                    if (loc.customer_name === customer && !seen.has(locId)) {
+                        seen.add(locId);
+                        const selected = (String(locId) === String(prevLoc)) ? ' selected' : '';
+                        $locSel.append(`<option value="${locId}"${selected}>${loc.location_name}</option>`);
+                    }
+                });
+            }());
 
             rows.forEach(row => {
                 const hasPic   = row.contact_person;
@@ -3250,7 +3287,7 @@ function loadLocationUnits() {
                         <td>
                             <select class="form-select form-select-sm unit-area-select"
                                 data-unit-id="${row.id_inventory_unit}">
-                                ${buildAreaOptions(row.area_id)}
+                                ${buildAreaOptions(row.area_id, row.area_code, row.area_name)}
                             </select>
                         </td>
                         <td class="text-center">
@@ -3263,12 +3300,10 @@ function loadLocationUnits() {
                 `);
             });
 
-            if ($.fn.DataTable.isDataTable('#tableLocationUnits')) {
-                $('#tableLocationUnits').DataTable().destroy();
-            }
             locationUnitsTable = $('#tableLocationUnits').DataTable({
                 pageLength: 25,
                 order: [[1, 'asc'], [2, 'asc']],
+                searching: true,
                 columnDefs: [{ orderable: false, targets: [0, 6, 7] }],
                 language: {
                     emptyTable:    'Tidak ada data',
@@ -3293,7 +3328,15 @@ function loadLocationUnits() {
                 }
             });
         }
-    );
+    ).fail(function(xhr, statusText) {
+        if (statusText === 'abort') {
+            return;
+        }
+        if (reqId !== locLoadReqId) {
+            return;
+        }
+        $('#bodyLocationUnits').html('<tr><td colspan="8" class="text-center py-3 text-danger">Gagal memuat data. Coba lagi.</td></tr>');
+    });
 }
 
 // Customer → Location cascade
@@ -3314,8 +3357,16 @@ $('#filterLocCustomer').on('change', function() {
     });
 });
 
-$('#btnLoadLocationUnits').on('click', function() { loadLocationUnits(); });
 $('#btnRefreshLocationUnits').on('click', function() { loadLocationUnits(); });
+$('#filterLocAreaAssign').on('change', function() {
+    // Hindari filter turunan nyangkut saat ganti assigned/unassigned
+    $('#filterLocCustomer').val('');
+    $('#filterLocLocation').val('').prop('disabled', true).empty().append('<option value="">Semua Lokasi</option>');
+    loadLocationUnits();
+});
+$('#filterLocCustomer, #filterLocLocation, #filterLocDept').on('change', function() {
+    loadLocationUnits();
+});
 
 // Select all (current page)
 $(document).on('change', '#chkSelectAllLoc', function() {
@@ -3527,6 +3578,7 @@ function loadUnassigned() {
         unassignedTable = $('#tableUnassigned').DataTable({
             pageLength: 25,
             order: [[1, 'asc']],
+            searching: true,
             columnDefs: [{ orderable: false, targets: [0] }],
             language: {
                 emptyTable: 'Semua unit sudah ter-mapping',

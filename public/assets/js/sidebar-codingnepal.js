@@ -114,6 +114,22 @@
         closeAllDropdowns();
       }
     });
+
+    // Mobile: klik overlay atau Escape tutup sidebar
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', () => {
+        document.body.classList.remove('body-sidebar-mobile-open');
+        closeAllDropdowns();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('body-sidebar-mobile-open')) {
+        document.body.classList.remove('body-sidebar-mobile-open');
+        closeAllDropdowns();
+      }
+    });
   };
 
   if (document.readyState === 'loading') {

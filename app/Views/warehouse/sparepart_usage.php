@@ -199,13 +199,13 @@
                                 <table class="table table-hover table-sm mb-0" id="woUsageTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:30px;"></th>
-                                            <th style="width:130px;">Reference</th>
-                                            <th style="width:100px;">Date</th>
+                                            <th></th>
+                                            <th>Reference</th>
+                                            <th>Date</th>
                                             <th>Customer</th>
                                             <th>Unit</th>
-                                            <th style="width:110px;text-align:center;">Items</th>
-                                            <th style="width:70px;text-align:center;">Action</th>
+                                            <th class="text-center">Items</th>
+                                            <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -234,12 +234,12 @@
                                 <table class="table table-striped table-hover table-sm mb-0" id="woReturnsTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:130px;">Reference</th>
-                                            <th style="min-width:200px;">Item Details</th>
-                                            <th style="width:180px;">Customer / Unit</th>
-                                            <th style="width:120px;">Mechanic</th>
-                                            <th style="width:150px;text-align:center;">Quantity</th>
-                                            <th style="width:70px;text-align:center;">Action</th>
+                                            <th>Reference</th>
+                                            <th>Item Details</th>
+                                            <th>Customer / Unit</th>
+                                            <th>Mechanic</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -254,14 +254,14 @@
                                 <table class="table table-hover table-sm mb-0" id="woNonwhTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:120px;">Reference</th>
+                                            <th>Reference</th>
                                             <th>Item Name</th>
-                                            <th style="width:80px;">Type</th>
-                                            <th style="width:90px;">Source</th>
+                                            <th>Type</th>
+                                            <th>Source</th>
                                             <th>Notes</th>
-                                            <th style="width:80px;text-align:center;">Qty</th>
-                                            <th style="width:180px;">Customer / Unit</th>
-                                            <th style="width:110px;">Date</th>
+                                            <th class="text-center">Qty</th>
+                                            <th>Customer / Unit</th>
+                                            <th>Date</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -306,13 +306,13 @@
                                 <table class="table table-hover table-sm mb-0" id="spkUsageTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:30px;"></th>
-                                            <th style="width:130px;">Reference</th>
-                                            <th style="width:100px;">Date</th>
+                                            <th></th>
+                                            <th>Reference</th>
+                                            <th>Date</th>
                                             <th>Customer</th>
                                             <th>Unit</th>
-                                            <th style="width:110px;text-align:center;">Items</th>
-                                            <th style="width:70px;text-align:center;">Action</th>
+                                            <th class="text-center">Items</th>
+                                            <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
