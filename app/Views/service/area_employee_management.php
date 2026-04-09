@@ -2744,24 +2744,24 @@ function viewAreaDetail(areaCode, areaData = null, areaId = null) {
     $('#area_detail_created').text('-');
     $('#area_detail_assignments').html('<div class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Memuat data...</div>');
     $('#areaDetailModal').modal('show');
-    $.getJSON(`<?= base_url('service/area-management/getArea') ?>/${areaId}`, function(resp) {
+    $.getJSON(`<?= base_url('service/area-management/showArea') ?>/${areaId}`, function(resp) {
       if (!resp.success) { notify(resp.message || 'Gagal memuat data area', 'error'); return; }
-      const area = resp.data;
+      const area = resp.data.area;
       currentAreaId = area.id;
       currentAreaData = {
         id: area.id,
         area_code: area.area_code,
         area_name: area.area_name,
-        description: area.area_description || '',
+        description: area.description || '',
         area_type: area.area_type || 'MILL',
         departemen_id: area.departemen_id || '',
-        customers_count: area.customers_count || 0,
+        customers_count: 0,
         created_at: area.created_at
       };
       $('#area_detail_code').text(area.area_code || '-');
       $('#area_detail_name').text(area.area_name || '-');
-      $('#area_detail_description').text(area.area_description || '-');
-      $('#area_detail_customers').text(area.customers_count || 0);
+      $('#area_detail_description').text(area.description || '-');
+      $('#area_detail_customers').text('-');
       $('#area_detail_created').text(area.created_at ? new Date(area.created_at).toLocaleDateString('en-GB') : '-');
       loadAreaDetailAssignments(currentAreaId);
     }).fail(function() {
