@@ -124,14 +124,13 @@ class StaffModel extends Model
      */
     public function getStaffByUnit($unitId, $role = null)
     {
+        // Area is now mapped per-unit (inventory_unit.area_id)
         $builder = $this->db->table('staff s')
-                           ->select('s.*, s.staff_role, asa.assignment_type, c.customer_name, a.area_name')
+                           ->select('s.*, s.staff_role, asa.assignment_type, a.area_name')
                            ->join('area_staff_assignments asa', 's.id = asa.staff_id')
                            ->join('areas a', 'asa.area_id = a.id')
-                           ->join('customer_locations cl', 'a.id = cl.area_id')
-                           ->join('customers c', 'c.id = cl.customer_id')
-                           ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0')
-                           ->where('ku.unit_id', $unitId)
+                           ->join('inventory_unit iu', 'iu.area_id = a.id')
+                           ->where('iu.id_inventory_unit', $unitId)
                            ->where('s.is_active', 1)
                            ->where('asa.is_active', 1);
                            

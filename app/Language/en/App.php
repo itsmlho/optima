@@ -512,6 +512,7 @@ return [
     'area_management_subtitle'    => 'Manage service areas, employees, assignments, and unit mapping in one place',
     'units_with_area'             => 'Units with Area',
     'units_without_area'          => 'Units Without Area',
+    'active_contract_units'       => 'Active Contract Units',
     'locations_without_area'      => 'Locations Without Area',
     'area_summary'                => 'Area Summary',
     'input_area_per_location'     => 'Input Area per Location',

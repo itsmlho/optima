@@ -3,8 +3,9 @@
 namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
-use App\Models\UnitMovementModel;
 use App\Models\InventoryUnitModel;
+use App\Models\UnitMovementModel;
+use CodeIgniter\Exceptions\PageNotFoundException;
 
 class UnitMovementController extends BaseController
 {
@@ -42,6 +43,7 @@ class UnitMovementController extends BaseController
         $data['stats'] = $this->movementModel->getStats();
         $data['location_types'] = UnitMovementModel::getLocationTypes();
         $data['component_types'] = UnitMovementModel::getComponentTypes();
+        $data['movement_purposes'] = UnitMovementModel::getMovementPurposes();
 
         return view('warehouse/unit_movement', $data);
     }
@@ -85,48 +87,63 @@ class UnitMovementController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
-        $validation = \Config\Services::validation();
-        $validation->setRules([
-            'unit_id'               => 'permit_empty|integer',
-            'origin_location'       => 'required|max_length[100]',
-            'destination_location'  => 'required|max_length[100]',
-            'origin_type'           => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
-            'destination_type'      => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
-            'movement_date'         => 'required|valid_date',
-            'component_type'        => 'permit_empty|in_list[FORKLIFT,ATTACHMENT,CHARGER,BATTERY,FORK,SPAREPART]',
-        ]);
-
-        if (!$validation->withRequest($this->request)->run()) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
-                'errors' => $validation->getErrors(),
-            ]);
-        }
-
         try {
-            $data = $this->request->getPost();
-            $data['movement_number'] = $this->movementModel->generateMovementNumber();
-            $data['created_by_user_id'] = session()->get('user_id');
-            $data['status'] = 'DRAFT';
-
-            // Generate SJ number if customer site
-            if (in_array($data['destination_type'], ['CUSTOMER_SITE', 'POS_1', 'POS_2', 'POS_3', 'POS_4', 'POS_5'])) {
-                $data['surat_jalan_number'] = $this->movementModel->generateSuratJalanNumber();
+            $payload = $this->request->getJSON(true);
+            if (!is_array($payload) || $payload === []) {
+                $payload = $this->request->getPost();
             }
 
-            $result = $this->movementModel->insert($data);
+            $items = $this->extractItemsPayload($payload);
+            $stops = $this->extractStopsPayload($payload);
+            $errors = $this->validateMovementPayload($payload, $items, $stops);
+            if ($errors !== []) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
+                    'errors'  => $errors,
+                ]);
+            }
+
+            $header = [
+                'unit_id'               => !empty($payload['unit_id']) ? (int)$payload['unit_id'] : null,
+                'component_id'          => !empty($payload['component_id']) ? (int)$payload['component_id'] : null,
+                'component_type'        => strtoupper((string)($payload['component_type'] ?? 'FORKLIFT')),
+                'origin_location'       => trim((string)$payload['origin_location']),
+                'destination_location'  => trim((string)$payload['destination_location']),
+                'origin_type'           => strtoupper((string)$payload['origin_type']),
+                'destination_type'      => strtoupper((string)$payload['destination_type']),
+                'movement_date'         => $payload['movement_date'],
+                'driver_name'           => trim((string)($payload['driver_name'] ?? '')),
+                'vehicle_number'        => trim((string)($payload['vehicle_number'] ?? '')),
+                'notes'                 => trim((string)($payload['notes'] ?? '')),
+                'movement_number'       => $this->movementModel->generateMovementNumber(),
+                'surat_jalan_number'    => $this->movementModel->generateSuratJalanNumber(),
+                'verification_code'     => $this->movementModel->generateVerificationCode(),
+                'created_by_user_id'    => (int)session()->get('user_id'),
+                'status'                => 'DRAFT',
+            ];
+
+            $db = \Config\Database::connect();
+            if ($db->fieldExists('movement_purpose', 'unit_movements')) {
+                $mp = strtoupper(trim((string)($payload['movement_purpose'] ?? UnitMovementModel::PURPOSE_INTERNAL_TRANSFER)));
+                $allowedMp = array_keys(UnitMovementModel::getMovementPurposes());
+                $header['movement_purpose'] = in_array($mp, $allowedMp, true) ? $mp : UnitMovementModel::PURPOSE_INTERNAL_TRANSFER;
+            }
+
+            $result = $this->movementModel->createWithDetails($header, $items, $stops);
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Movement created successfully',
+                'message' => 'Surat jalan berhasil dibuat',
                 'data' => [
                     'id' => $result,
-                    'movement_number' => $data['movement_number'],
-                    'surat_jalan_number' => $data['surat_jalan_number'] ?? null,
+                    'movement_number' => $header['movement_number'],
+                    'surat_jalan_number' => $header['surat_jalan_number'] ?? null,
+                    'verification_code' => $header['verification_code'] ?? null,
                 ],
             ]);
         } catch (\Exception $e) {
+            log_message('error', '[UnitMovementController::createMovement] ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
@@ -153,12 +170,25 @@ class UnitMovementController extends BaseController
         }
 
         try {
+            $driverName    = trim((string) $this->request->getPost('driver_name'));
+            $vehicleNumber = trim((string) $this->request->getPost('vehicle_number'));
+            $notes         = trim((string) $this->request->getPost('notes'));
+
             $this->movementModel->update($id, [
-                'status' => 'IN_TRANSIT',
-                'driver_name' => $this->request->getPost('driver_name'),
-                'vehicle_number' => $this->request->getPost('vehicle_number'),
-                'notes' => $this->request->getPost('notes'),
+                'driver_name'    => $driverName,
+                'vehicle_number' => $vehicleNumber,
+                'notes'          => $notes,
             ]);
+
+            try {
+                $checkpointOk = $this->movementModel->recordDepartureFromWarehouse($id, $driverName, $vehicleNumber, $notes);
+                if (! $checkpointOk) {
+                    $this->movementModel->update($id, ['status' => 'IN_TRANSIT']);
+                }
+            } catch (\Throwable $e) {
+                log_message('error', '[UnitMovementController::startMovement] checkpoint: ' . $e->getMessage());
+                $this->movementModel->update($id, ['status' => 'IN_TRANSIT']);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -248,15 +278,32 @@ class UnitMovementController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
-        $movement = $this->movementModel->find($id);
-        if (!$movement) {
+        $bundle = $this->movementModel->getMovementDetailBundle((int)$id);
+        if (!$bundle) {
             return $this->response->setJSON(['success' => false, 'message' => 'Data perpindahan tidak ditemukan']);
         }
 
-        // Get unit info if exists
-        $unit = null;
-        if ($movement['unit_id']) {
-            $unit = $this->unitModel->getUnitDetailForWorkOrder($movement['unit_id']);
+        $bundle['items'] = $this->movementModel->enrichItemsForPrint($bundle['items']);
+
+        // Get unit info if exists (header unit_id, atau baris pertama Forklift di multi-item)
+        $unit         = null;
+        $movement     = $bundle['movement'];
+        $unitIdDetail = (int) ($movement['unit_id'] ?? 0);
+        if ($unitIdDetail <= 0 && ! empty($bundle['items'])) {
+            foreach ($bundle['items'] as $it) {
+                if (strtoupper((string) ($it['component_type'] ?? '')) === 'FORKLIFT' && ! empty($it['unit_id'])) {
+                    $unitIdDetail = (int) $it['unit_id'];
+                    break;
+                }
+            }
+        }
+        if ($unitIdDetail > 0) {
+            try {
+                $unit = $this->unitModel->getUnitDetailForWorkOrder($unitIdDetail);
+            } catch (\Throwable $e) {
+                log_message('error', '[UnitMovementController::getMovementDetail] getUnitDetailForWorkOrder: ' . $e->getMessage());
+                $unit = null;
+            }
         }
 
         return $this->response->setJSON([
@@ -264,7 +311,37 @@ class UnitMovementController extends BaseController
             'data' => [
                 'movement' => $movement,
                 'unit' => $unit,
+                'items' => $bundle['items'] ?? [],
+                'stops' => $bundle['stops'] ?? [],
+                'checkpoints' => $bundle['checkpoints'] ?? [],
             ],
+        ]);
+    }
+
+    /**
+     * Cetak surat jalan (user login gudang).
+     */
+    public function printMovement($id)
+    {
+        if (! $this->checkAccess('view')) {
+            return view('errors/html/error_403');
+        }
+
+        $bundle = $this->movementModel->getMovementPrintBundle((int) $id);
+        if ($bundle === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $autoPrint = in_array(strtolower((string) $this->request->getGet('autoprint')), ['1', 'true', 'yes'], true);
+
+        return view('public/surat_jalan_print', [
+            'movement'        => $bundle['movement'],
+            'items'           => $bundle['items'],
+            'stops'           => $bundle['stops'],
+            'checkpoints'     => $bundle['checkpoints'],
+            'companyName'     => 'PT Sarana Mitra Luas Tbk',
+            'isPublicContext' => false,
+            'autoPrint'       => $autoPrint,
         ]);
     }
 
@@ -277,7 +354,13 @@ class UnitMovementController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
-        $units = $this->unitModel->getUnitsForDropdown();
+        $query = trim((string)$this->request->getGet('q'));
+        if ($query !== '') {
+            $units = $this->movementModel->searchUnitsForMovement($query, 25);
+        } else {
+            $units = $this->unitModel->getUnitsForDropdown([InventoryUnitModel::STATUS_UNIT_SOLD_ID]);
+            $units = array_slice($units, 0, 25);
+        }
 
         return $this->response->setJSON([
             'success' => true,
@@ -345,8 +428,14 @@ class UnitMovementController extends BaseController
                     }
                     break;
                 case 'FORKLIFT':
-                    $units = $this->unitModel->getUnitsForDropdown();
+                    $query = trim((string)$this->request->getGet('q'));
+                    $units = $query !== ''
+                        ? $this->movementModel->searchUnitsForMovement($query, 25)
+                        : array_slice($this->unitModel->getUnitsForDropdown([InventoryUnitModel::STATUS_UNIT_SOLD_ID]), 0, 25);
                     $data  = $units;
+                    break;
+                case 'OTHERS':
+                    $data = [];
                     break;
                 default:
                     return $this->response->setJSON([
@@ -365,5 +454,124 @@ class UnitMovementController extends BaseController
                 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
             ]);
         }
+    }
+
+    private function extractItemsPayload(array $payload): array
+    {
+        if (!empty($payload['items']) && is_array($payload['items'])) {
+            return array_values(array_filter($payload['items'], static fn ($item) => is_array($item)));
+        }
+
+        return [[
+            'component_type' => $payload['component_type'] ?? 'FORKLIFT',
+            'unit_id'        => $payload['unit_id'] ?? null,
+            'component_id'   => $payload['component_id'] ?? null,
+            'qty'            => 1,
+            'item_notes'     => null,
+        ]];
+    }
+
+    private function extractStopsPayload(array $payload): array
+    {
+        if (!empty($payload['stops']) && is_array($payload['stops'])) {
+            $out = [];
+            foreach ($payload['stops'] as $index => $stop) {
+                if (!is_array($stop)) {
+                    continue;
+                }
+                $stopType = strtoupper((string)($stop['stop_type'] ?? 'TRANSIT'));
+                $out[] = [
+                    'stop_type'      => $stopType,
+                    'location_name'  => trim((string)($stop['location_name'] ?? '')),
+                    'location_type'  => strtoupper((string)($stop['location_type'] ?? 'OTHER')),
+                    'eta_at'         => $stop['eta_at'] ?? null,
+                    'sequence_no'    => $index + 1,
+                ];
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+
+        return [
+            [
+                'stop_type'      => 'ORIGIN',
+                'location_name'  => trim((string)($payload['origin_location'] ?? '')),
+                'location_type'  => strtoupper((string)($payload['origin_type'] ?? 'OTHER')),
+            ],
+            [
+                'stop_type'      => 'DESTINATION',
+                'location_name'  => trim((string)($payload['destination_location'] ?? '')),
+                'location_type'  => strtoupper((string)($payload['destination_type'] ?? 'OTHER')),
+            ],
+        ];
+    }
+
+    private function validateMovementPayload(array $payload, array $items, array $stops): array
+    {
+        $errors = [];
+        $componentTypes = array_keys(UnitMovementModel::getComponentTypes());
+        $locationTypes = array_keys(UnitMovementModel::getLocationTypes());
+
+        if (empty($payload['origin_location'])) {
+            $errors['origin_location'] = 'Lokasi asal wajib diisi.';
+        }
+        if (empty($payload['destination_location'])) {
+            $errors['destination_location'] = 'Lokasi tujuan wajib diisi.';
+        }
+        if (empty($payload['origin_type']) || !in_array(strtoupper((string)$payload['origin_type']), $locationTypes, true)) {
+            $errors['origin_type'] = 'Tipe asal tidak valid.';
+        }
+        if (empty($payload['destination_type']) || !in_array(strtoupper((string)$payload['destination_type']), $locationTypes, true)) {
+            $errors['destination_type'] = 'Tipe tujuan tidak valid.';
+        }
+        if (empty($payload['movement_date'])) {
+            $errors['movement_date'] = 'Tanggal perpindahan wajib diisi.';
+        }
+
+        $purposes = array_keys(UnitMovementModel::getMovementPurposes());
+        $mp = strtoupper(trim((string)($payload['movement_purpose'] ?? UnitMovementModel::PURPOSE_INTERNAL_TRANSFER)));
+        if (!in_array($mp, $purposes, true)) {
+            $errors['movement_purpose'] = 'Tipe surat jalan tidak valid.';
+        } elseif ($mp === UnitMovementModel::PURPOSE_SCRAP_SALE) {
+            $hasForklift = false;
+            foreach ($items as $item) {
+                if (strtoupper((string)($item['component_type'] ?? '')) === 'FORKLIFT' && !empty($item['unit_id'])) {
+                    $hasForklift = true;
+                    break;
+                }
+            }
+            if (!$hasForklift) {
+                $errors['movement_purpose'] = 'SJ jual scrab wajib memuat minimal 1 baris Forklift/Unit dengan unit terpilih.';
+            }
+        }
+
+        if (count($items) < 1) {
+            $errors['items'] = 'Minimal 1 barang harus dipilih.';
+        }
+        foreach ($items as $idx => $item) {
+            $type = strtoupper((string)($item['component_type'] ?? ''));
+            if (!in_array($type, $componentTypes, true)) {
+                $errors["items_{$idx}_component_type"] = 'Tipe barang tidak valid.';
+            }
+            if ($type === 'FORKLIFT' && empty($item['unit_id'])) {
+                $errors["items_{$idx}_unit_id"] = 'Unit wajib dipilih untuk tipe Forklift.';
+            }
+            if ($type !== 'FORKLIFT' && $type !== 'OTHERS' && empty($item['component_id'])) {
+                $errors["items_{$idx}_component_id"] = 'Komponen wajib dipilih.';
+            }
+        }
+
+        if (count($stops) < 2) {
+            $errors['stops'] = 'Minimal 2 lokasi (asal dan tujuan) wajib diisi.';
+        } else {
+            foreach ($stops as $idx => $stop) {
+                if (empty($stop['location_name'])) {
+                    $errors["stops_{$idx}_location_name"] = 'Lokasi stop tidak boleh kosong.';
+                }
+            }
+        }
+
+        return $errors;
     }
 }

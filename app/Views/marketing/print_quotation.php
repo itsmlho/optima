@@ -816,7 +816,12 @@ function formatCurrency($amount, $currency = 'IDR') {
         <br>
 
         <div class="signature-section">
-            <div style="width: 60%;"></div>
+            <div class="sig-box" style="width: 60%; text-align: center;">
+                <div style="margin-bottom: 5px; font-weight: bold;">TTD Persetujuan Customer</div>
+                <div class="sig-line"></div>
+                <!-- Nama customer sengaja dikosongkan agar tidak tampil -->
+                <div class="sig-name" style="font-weight: bold; margin-top: 5px;"></div>
+            </div>
             <div class="sig-box" style="width: 35%; text-align: center;">
                 <div style="margin-bottom: 5px; font-weight: bold;">Hormat Kami,</div>
                 <div style="margin-bottom: 8px; font-weight: bold;">Marketing Department</div>

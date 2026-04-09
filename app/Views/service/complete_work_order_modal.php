@@ -78,6 +78,9 @@ Contoh:
                 </form>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-outline-warning d-none" id="btn-reverify-complete">
+                    <i class="fas fa-redo-alt me-1"></i>Verifikasi Ulang
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Cancel
                 </button>
@@ -133,6 +136,12 @@ $(document).ready(function() {
                         $('#notes_complete').val(response.data.notes);
                         console.log('✅ Pre-filled notes');
                     }
+                    const validity = response.data.verification_validity || null;
+                    if (validity && validity.is_valid_1y) {
+                        $('#btn-reverify-complete').removeClass('d-none');
+                    } else {
+                        $('#btn-reverify-complete').addClass('d-none');
+                    }
                 }
                 
                 // Show modal
@@ -152,7 +161,11 @@ $(document).ready(function() {
     // Save Complete button
     $('#btn-save-complete').on('click', function(e) {
         e.preventDefault();
-        saveCompleteWorkOrder();
+        saveCompleteWorkOrder(false);
+    });
+    $('#btn-reverify-complete').on('click', function(e) {
+        e.preventDefault();
+        saveCompleteWorkOrder(true);
     });
     
     // Submit form on Enter (Ctrl+Enter in textarea)
@@ -163,7 +176,7 @@ $(document).ready(function() {
     });
     
     // Function to save Complete data
-    function saveCompleteWorkOrder() {
+    function saveCompleteWorkOrder(forceReverification) {
         let form = $('#completeWorkOrderForm')[0];
         
         // Validate form
@@ -177,6 +190,9 @@ $(document).ready(function() {
         }
         
         let formData = $('#completeWorkOrderForm').serialize();
+        if (forceReverification) {
+            formData += '&force_reverification=1';
+        }
         console.log('💾 Saving complete data:', formData);
         
         // Add CSRF token to form data
@@ -193,6 +209,25 @@ $(document).ready(function() {
                 console.log('✅ Complete data saved:', response);
                 
                 if (response.success) {
+                    const skipped = !!(response.data && response.data.verification_skipped);
+                    const validity = response.data && response.data.verification_validity ? response.data.verification_validity : null;
+                    if (skipped) {
+                        const validUntilText = validity && validity.valid_until ? validity.valid_until : '-';
+                        OptimaNotify.success(
+                            'WO selesai. Verifikasi unit masih valid sampai ' + validUntilText + ' (auto-skip).',
+                            'Completed'
+                        );
+                        $('#completeWorkOrderModal').modal('hide');
+                        setTimeout(function() {
+                            if (typeof window.loadWorkOrders === 'function') {
+                                window.loadWorkOrders();
+                            } else {
+                                window.location.reload();
+                            }
+                        }, 450);
+                        return;
+                    }
+
                     // Show success message
                     OptimaNotify.success(
                         'Analysis & Repair data saved. Opening Unit Verification...',
@@ -248,6 +283,7 @@ $(document).ready(function() {
     $('#completeWorkOrderModal').on('hidden.bs.modal', function() {
         $('#completeWorkOrderForm')[0].reset();
         $('#completeWorkOrderForm').removeClass('was-validated');
+        $('#btn-reverify-complete').addClass('d-none');
         currentCompleteWoId = null;
         currentCompleteWoNumber = null;
     });

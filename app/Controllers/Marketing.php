@@ -263,7 +263,7 @@ class Marketing extends BaseDataTableController
                 su.status_unit
             FROM customers c
             LEFT JOIN customer_locations cl ON cl.customer_id = c.id
-            LEFT JOIN areas a ON a.id = cl.area_id
+            LEFT JOIN areas a ON a.id = iu.area_id
             LEFT JOIN kontrak k ON k.customer_id = c.id
             -- Updated: JOIN via kontrak_unit junction table (source of truth)
             LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
@@ -1662,6 +1662,12 @@ class Marketing extends BaseDataTableController
     {
         try {
             $db = \Config\Database::connect();
+
+            if (! $db->tableExists('quotation_history')) {
+                log_message('debug', 'logQuotationChange skipped: quotation_history table missing');
+
+                return false;
+            }
             
             $userId = session()->get('user_id');
             
@@ -1791,24 +1797,246 @@ class Marketing extends BaseDataTableController
         }
 
         try {
-            $db = \Config\Database::connect();
-            
-            // Get history from view for better formatting
-            $history = $db->table('vw_quotation_history_detail')
-                ->where('quotation_id', $quotationId)
-                ->orderBy('changed_at', 'DESC')
-                ->get()
-                ->getResultArray();
+            $history = $this->fetchQuotationDocumentHistoryRows((int) $quotationId);
 
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $history
+                'data' => $history,
             ]);
         } catch (\Exception $e) {
             log_message('error', 'Marketing::getQuotationHistory - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Terjadi kesalahan. Silakan coba lagi.'
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Riwayat perubahan stage penjualan (DRAFT → SENT → NEGOTIATION, …) dari quotation_stage_history.
+     */
+    public function getQuotationStageHistory($quotationId)
+    {
+        if (! $this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('quotation_stage_history')) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data'    => [],
+                    'meta'    => ['table_ready' => false],
+                ]);
+            }
+
+            $quotationIdCol = $db->fieldExists('id_quotation', 'quotation_stage_history') ? 'id_quotation' : 'quotation_id';
+            $changedByCol = null;
+            foreach (['changed_by', 'updated_by', 'created_by', 'user_id'] as $c) {
+                if ($db->fieldExists($c, 'quotation_stage_history')) {
+                    $changedByCol = $c;
+                    break;
+                }
+            }
+            $changedAtCol = null;
+            foreach (['changed_at', 'created_at', 'updated_at'] as $c) {
+                if ($db->fieldExists($c, 'quotation_stage_history')) {
+                    $changedAtCol = $c;
+                    break;
+                }
+            }
+
+            $builder = $db->table('quotation_stage_history s');
+            $builder->select('s.*');
+            if ($changedByCol !== null) {
+                $builder->select('u.first_name, u.last_name, u.username');
+                $builder->join('users u', 'u.id = s.' . $changedByCol, 'left');
+            }
+            $builder->where('s.' . $quotationIdCol, (int) $quotationId);
+            $builder->orderBy('s.' . ($changedAtCol ?? 'id'), 'DESC');
+            $rows = $builder->get()->getResultArray();
+
+            foreach ($rows as &$r) {
+                $fn                        = trim(((string) ($r['first_name'] ?? '')) . ' ' . ((string) ($r['last_name'] ?? '')));
+                $r['changed_by_display'] = $fn !== '' ? $fn : ($r['username'] ?? '-');
+                if ($changedAtCol !== null && isset($r[$changedAtCol]) && ! isset($r['changed_at'])) {
+                    $r['changed_at'] = $r[$changedAtCol];
+                }
+            }
+            unset($r);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => $rows,
+                'meta'    => ['table_ready' => true],
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getQuotationStageHistory - ' . $e->getMessage());
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fetchQuotationDocumentHistoryRows(int $quotationId): array
+    {
+        $db = \Config\Database::connect();
+        if (! $db->tableExists('quotation_history')) {
+            return [];
+        }
+
+        $rows = [];
+        try {
+            if ($db->tableExists('vw_quotation_history_detail')) {
+                $rows = $db->table('vw_quotation_history_detail')
+                    ->where('quotation_id', $quotationId)
+                    ->orderBy('changed_at', 'DESC')
+                    ->get()
+                    ->getResultArray();
+            }
+        } catch (\Throwable $e) {
+            log_message('debug', 'vw_quotation_history_detail query failed, using base table: ' . $e->getMessage());
+            $rows = [];
+        }
+
+        if ($rows !== []) {
+            return $this->normalizeQuotationDocumentHistoryRows($rows);
+        }
+
+        $builder = $db->table('quotation_history h');
+        $builder->select('h.*, u.first_name, u.last_name, u.username');
+        $builder->join('users u', 'u.id = h.changed_by', 'left');
+        $builder->where('h.quotation_id', $quotationId);
+        $builder->orderBy('h.changed_at', 'DESC');
+        $rows = $builder->get()->getResultArray();
+
+        return $this->normalizeQuotationDocumentHistoryRows($rows);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeQuotationDocumentHistoryRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            if (empty($row['changed_by_name'])) {
+                $fn = trim(((string) ($row['first_name'] ?? '')) . ' ' . ((string) ($row['last_name'] ?? '')));
+                $row['changed_by_name'] = $fn !== '' ? $fn : ($row['username'] ?? '-');
+            }
+            if (empty($row['changed_by_username']) && ! empty($row['username'])) {
+                $row['changed_by_username'] = $row['username'];
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Catat satu baris ke quotation_stage_history (jika tabel & user valid).
+     */
+    private function insertQuotationStageHistoryIfExists(
+        int $quotationId,
+        string $oldStage,
+        string $newStage,
+        ?string $changeReason = null,
+        ?string $changeNotes = null
+    ): void {
+        $db = \Config\Database::connect();
+        if (! $db->tableExists('quotation_stage_history')) {
+            return;
+        }
+        $quotationIdCol = $db->fieldExists('id_quotation', 'quotation_stage_history') ? 'id_quotation' : 'quotation_id';
+        $changedByCol = null;
+        foreach (['changed_by', 'updated_by', 'created_by', 'user_id'] as $c) {
+            if ($db->fieldExists($c, 'quotation_stage_history')) {
+                $changedByCol = $c;
+                break;
+            }
+        }
+        $changedAtCol = null;
+        foreach (['changed_at', 'created_at', 'updated_at'] as $c) {
+            if ($db->fieldExists($c, 'quotation_stage_history')) {
+                $changedAtCol = $c;
+                break;
+            }
+        }
+
+        $stageUserId = (int) (session()->get('user_id') ?? 0);
+        if ($stageUserId <= 0 || ! $db->table('users')->where('id', $stageUserId)->countAllResults()) {
+            log_message('debug', 'insertQuotationStageHistoryIfExists: skip (invalid user_id)');
+
+            return;
+        }
+        if ($changedByCol === null || $changedAtCol === null) {
+            log_message('error', 'insertQuotationStageHistoryIfExists: skip (missing changed_by/changed_at columns)');
+            return;
+        }
+        $insert = [
+            $quotationIdCol => $quotationId,
+            'stage'         => $newStage,
+            'change_reason' => $changeReason,
+            'change_notes'  => $changeNotes,
+            $changedByCol   => $stageUserId,
+            $changedAtCol   => date('Y-m-d H:i:s'),
+        ];
+        if ($db->fieldExists('stage_from', 'quotation_stage_history')) {
+            $insert['stage_from'] = $oldStage;
+        }
+        try {
+            $db->table('quotation_stage_history')->insert($insert);
+        } catch (\Throwable $e) {
+            log_message('error', 'insertQuotationStageHistoryIfExists: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Riwayat perubahan quotation specification (harga, qty, teknis) untuk SPV/Manager.
+     */
+    public function getQuotationSpecificationHistory($quotationId)
+    {
+        if (! $this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('quotation_specification_history')) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data'    => [],
+                    'meta'    => ['table_ready' => false],
+                ]);
+            }
+
+            $historyModel = new \App\Models\QuotationSpecificationHistoryModel();
+            $rows         = $historyModel->getHistoryForQuotation((int) $quotationId);
+
+            foreach ($rows as &$r) {
+                $fn                    = trim(((string) ($r['first_name'] ?? '')) . ' ' . ((string) ($r['last_name'] ?? '')));
+                $r['changed_by_display'] = $fn !== '' ? $fn : ($r['username'] ?? '-');
+            }
+            unset($r);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => $rows,
+                'meta'    => ['table_ready' => true],
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getQuotationSpecificationHistory - ' . $e->getMessage());
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan. Silakan coba lagi.',
             ])->setStatusCode(500);
         }
     }
@@ -2169,12 +2397,25 @@ class Marketing extends BaseDataTableController
             $updateData['probability_percent'] = $this->request->getPost('probability_percent');
         }
 
-        $this->quotationModel->update($quotationId, $updateData);
+        $quotationBefore = $this->quotationModel->find($quotationId);
+        if (! $quotationBefore) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Quotation tidak ditemukan',
+            ]);
+        }
+        $oldStage = $quotationBefore['stage'] ?? 'UNKNOWN';
 
-        // Get quotation details for notification
+        if (! $this->quotationModel->update($quotationId, $updateData)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memperbarui stage. Silakan coba lagi.',
+            ]);
+        }
+
+        // Get quotation details for notification (after update)
         $quotation = $this->quotationModel->find($quotationId);
-        $oldStage = $quotation['stage'] ?? 'UNKNOWN';
-        
+
         // Send notification - quotation stage changed
         if (function_exists('notify_quotation_stage_changed')) {
             notify_quotation_stage_changed([
@@ -2188,23 +2429,13 @@ class Marketing extends BaseDataTableController
             ]);
         }
 
-        // Log stage history if table exists
-        $db = \Config\Database::connect();
-        if ($db->tableExists('quotation_stage_history')) {
-            $stageUserId = (int)session('user_id');
-            if ($stageUserId > 0 && $db->table('users')->where('id', $stageUserId)->countAllResults()) {
-                $db->table('quotation_stage_history')->insert([
-                    'id_quotation' => $quotationId,
-                    'stage' => $updateData['stage'],
-                    'change_reason' => $this->request->getPost('change_reason'),
-                    'change_notes' => $this->request->getPost('change_notes'),
-                    'changed_by' => $stageUserId,
-                    'changed_at' => date('Y-m-d H:i:s')
-                ]);
-            } else {
-                log_message('warning', "[Marketing] updateStage: skipping stage_history insert - user_id={$stageUserId} not valid");
-            }
-        }
+        $this->insertQuotationStageHistoryIfExists(
+            (int) $quotationId,
+            $oldStage,
+            (string) $updateData['stage'],
+            $this->request->getPost('change_reason'),
+            $this->request->getPost('change_notes')
+        );
 
         return $this->response->setJSON([
             'success' => true,
@@ -8024,13 +8255,21 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
-            $updated = $quotationModel->update($quotationId, [
+            $oldSalesStage = $quotation['stage'] ?? 'DRAFT';
+            $updated        = $quotationModel->update($quotationId, [
                 'workflow_stage' => 'SENT',
                 'stage' => 'SENT',
                 'sent_at' => date('Y-m-d H:i:s')
             ]);
 
             if ($updated) {
+                $this->insertQuotationStageHistoryIfExists(
+                    (int) $quotationId,
+                    (string) $oldSalesStage,
+                    'SENT',
+                    'send_quotation',
+                    'workflow_stage → SENT'
+                );
                 // Log activity
                 $this->logActivity('send_quotation', 'quotations', $quotationId, 'Quotation ' . $quotation['quotation_number'] . ' sent to customer');
 
@@ -8219,6 +8458,8 @@ class Marketing extends BaseDataTableController
             $quotation = $quotationModel->find($quotationId);
 
             if (!$quotation) {
+                $db->transRollback();
+
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Quotation tidak ditemukan'
@@ -8226,6 +8467,8 @@ class Marketing extends BaseDataTableController
             }
 
             if ($quotation['workflow_stage'] !== 'SENT') {
+                $db->transRollback();
+
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Only sent quotations can be marked as deal'
@@ -8235,6 +8478,8 @@ class Marketing extends BaseDataTableController
             // Check if specifications exist
             $hasSpecs = $this->quotationSpecificationModel->where('id_quotation', $quotationId)->countAllResults() > 0;
             if (!$hasSpecs) {
+                $db->transRollback();
+
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Please add specifications before marking as deal'
@@ -8242,7 +8487,8 @@ class Marketing extends BaseDataTableController
             }
 
             // Update quotation to DEAL status
-            $updated = $quotationModel->update($quotationId, [
+            $oldSalesStage = $quotation['stage'] ?? 'SENT';
+            $updated       = $quotationModel->update($quotationId, [
                 'workflow_stage' => 'DEAL',
                 'stage' => 'ACCEPTED',
                 'is_deal' => 1,
@@ -8253,6 +8499,14 @@ class Marketing extends BaseDataTableController
             if (!$updated) {
                 throw new \Exception('Failed to update quotation status');
             }
+
+            $this->insertQuotationStageHistoryIfExists(
+                (int) $quotationId,
+                (string) $oldSalesStage,
+                'ACCEPTED',
+                'mark_as_deal',
+                'workflow_stage → DEAL'
+            );
 
             // Auto-create customer from prospect data. If this fails, fallback remains available in DEAL stage.
             $customerMessage = '';
@@ -8403,7 +8657,9 @@ class Marketing extends BaseDataTableController
             ]);
 
         } catch (\Exception $e) {
+            $db->transRollback();
             log_message('error', 'Marketing::markAsDeal - Error: ' . $e->getMessage());
+
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
@@ -8465,7 +8721,8 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
-            $updated = $quotationModel->update($quotationId, [
+            $oldSalesStage = $quotation['stage'] ?? 'SENT';
+            $updated       = $quotationModel->update($quotationId, [
                 'workflow_stage' => 'NOT_DEAL',
                 'stage' => 'REJECTED',
                 'is_deal' => 0,
@@ -8474,6 +8731,13 @@ class Marketing extends BaseDataTableController
             ]);
 
             if ($updated) {
+                $this->insertQuotationStageHistoryIfExists(
+                    (int) $quotationId,
+                    (string) $oldSalesStage,
+                    'REJECTED',
+                    'mark_as_not_deal',
+                    'workflow_stage → NOT_DEAL'
+                );
                 // Log activity
                 $this->logActivity('mark_as_not_deal', 'quotations', $quotationId, 
                     'Quotation marked as not deal: ' . $quotation['quotation_number']);

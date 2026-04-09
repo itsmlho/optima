@@ -17,6 +17,13 @@ $routes->get('/', function() {
 // Welcome page - requires authentication
 $routes->get('welcome', 'Welcome::index');
 
+// Public unit view for barcode/QR scan (no login)
+$routes->get('unit-view/(:alphanum)', 'Warehouse\UnitInventoryController::publicView/$1');
+$routes->get('surat-jalan', 'Warehouse\UnitMovementPublicController::index');
+$routes->get('surat-jalan/lookup', 'Warehouse\UnitMovementPublicController::lookup');
+$routes->get('surat-jalan/print', 'Warehouse\UnitMovementPublicController::printSj');
+$routes->post('surat-jalan/submit-checkpoint', 'Warehouse\UnitMovementPublicController::submitCheckpoint');
+
 // CSRF token refresh endpoint — returns fresh token for AJAX callers whose
 // session-based token has expired. Requires auth filter (no csrf filter needed
 // because this GET endpoint is used to OBTAIN a fresh token, not submit data).
@@ -185,6 +192,8 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('quotations/update/(:num)', 'Marketing::updateQuotation/$1');
     $routes->post('quotations/delete/(:num)', 'Marketing::deleteQuotation/$1');
     $routes->get('quotations/history/(:num)', 'Marketing::getQuotationHistory/$1');
+    $routes->get('quotations/specification-history/(:num)', 'Marketing::getQuotationSpecificationHistory/$1');
+    $routes->get('quotations/stage-history/(:num)', 'Marketing::getQuotationStageHistory/$1');
     $routes->post('quotations/createContract/(:num)', 'Marketing::createContract/$1');
     $routes->post('quotations/createSPK/(:num)', 'Marketing::createSPK/$1');
     $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
@@ -752,13 +761,12 @@ $routes->group('service', static function ($routes) {
         $routes->post('unit-mapping/getAreaSummary', 'UnitAreaMappingController::getAreaSummary');
         $routes->post('unit-mapping/getAreaUnits', 'UnitAreaMappingController::getAreaUnits');
         $routes->post('unit-mapping/getCustomerLocations', 'UnitAreaMappingController::getCustomerLocations');
-        $routes->post('unit-mapping/assignAreaToLocation', 'UnitAreaMappingController::assignAreaToLocation');
-        $routes->post('unit-mapping/syncFromContracts', 'UnitAreaMappingController::syncFromContracts');
+        $routes->post('unit-mapping/assignUnitArea', 'UnitAreaMappingController::assignUnitArea');
         $routes->post('unit-mapping/manualAssignUnit', 'UnitAreaMappingController::manualAssignUnit');
         $routes->post('unit-mapping/getUnassignedUnits', 'UnitAreaMappingController::getUnassignedUnits');
-        $routes->post('unit-mapping/batchAssignLocations', 'UnitAreaMappingController::batchAssignLocations');
         $routes->post('unit-mapping/batchAssignUnits', 'UnitAreaMappingController::batchAssignUnits');
         $routes->post('unit-mapping/updateLocationPic/(:num)', 'UnitAreaMappingController::updateLocationPic/$1');
+        $routes->get('unit-mapping/unitsAtLocation/(:num)', 'UnitAreaMappingController::getUnitsAtLocation/$1');
     });
 
     // Export routes
@@ -866,6 +874,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('confirmArrival/(:num)', 'Warehouse\UnitMovementController::confirmArrival/$1');
         $routes->post('cancelMovement/(:num)', 'Warehouse\UnitMovementController::cancelMovement/$1');
         $routes->get('getMovementDetail/(:num)', 'Warehouse\UnitMovementController::getMovementDetail/$1');
+        $routes->get('printMovement/(:num)', 'Warehouse\UnitMovementController::printMovement/$1');
         $routes->get('getAvailableUnits', 'Warehouse\UnitMovementController::getAvailableUnits');
         $routes->get('getComponentsByType', 'Warehouse\UnitMovementController::getComponentsByType');
     });

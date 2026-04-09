@@ -713,6 +713,11 @@ window.loadVerificationHistory = function(unitId, currentWorkOrderId) {
                 if (history.has_history) {
                     let refLabel = history.reference_label || (history.wo_number ? ('WO ' + history.wo_number) : 'Verifikasi');
                     let historyHtml = `<strong>Unit ini terakhir diverifikasi pada ${history.verified_at}</strong> oleh <strong>${history.mechanic_name}</strong> — <strong>${refLabel}</strong>`;
+                    if (history.is_valid_1y) {
+                        historyHtml += `<br><span class="text-success fw-semibold">Status: masih valid sampai ${history.valid_until} (1 tahun)</span>`;
+                    } else {
+                        historyHtml += `<br><span class="text-warning fw-semibold">Status: sudah melewati masa berlaku 1 tahun, perlu verifikasi ulang</span>`;
+                    }
                     
                     $('#verification-history-text').html(historyHtml);
                     $('#verification-history-banner').removeClass('d-none');

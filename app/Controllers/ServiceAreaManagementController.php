@@ -71,7 +71,7 @@ class ServiceAreaManagementController extends BaseController
         $areas = [];
         try {
             $areaBuilder = $db->table('areas');
-            $areaBuilder->select('areas.id, areas.area_code, areas.area_name, areas.area_type');
+            $areaBuilder->select('areas.id, areas.area_code, areas.area_name, areas.area_type, areas.departemen_id');
             $areaBuilder->where('areas.is_active', 1);
             
             // Apply scope filter
@@ -140,14 +140,21 @@ class ServiceAreaManagementController extends BaseController
         
         // Unit Mapping stats (merged from UnitAreaMappingController)
         $unitStats = [
-            'units_with_area'        => $db->table('inventory_unit')->where('area_id IS NOT NULL')->countAllResults(),
-            'units_without_area'     => $db->table('inventory_unit')->where('area_id IS NULL')->where('status_unit_id !=', 13)->countAllResults(),
-            'locations_without_area' => $db->table('customer_locations')->where('area_id IS NULL')->where('is_active', 1)->countAllResults(),
-            'active_contract_units'  => $db->query("
+            'units_with_area'               => $db->table('inventory_unit')->where('area_id IS NOT NULL')->countAllResults(),
+            'units_without_area'            => $db->table('inventory_unit')->where('area_id IS NULL')->where('status_unit_id !=', 13)->countAllResults(),
+            'active_contract_units'         => $db->query("
                 SELECT COUNT(DISTINCT ku.unit_id) as cnt
                 FROM kontrak_unit ku
                 JOIN kontrak k ON k.id = ku.kontrak_id
                 WHERE k.status = 'ACTIVE' AND ku.status = 'ACTIVE'
+            ")->getRowArray()['cnt'] ?? 0,
+            'contract_units_without_area'   => $db->query("
+                SELECT COUNT(DISTINCT ku.unit_id) as cnt
+                FROM kontrak_unit ku
+                JOIN kontrak k ON k.id = ku.kontrak_id
+                JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                WHERE k.status = 'ACTIVE' AND ku.status = 'ACTIVE'
+                  AND iu.area_id IS NULL
             ")->getRowArray()['cnt'] ?? 0,
         ];
 
@@ -159,6 +166,7 @@ class ServiceAreaManagementController extends BaseController
             'totalAssignments' => $dashboardData['totalAssignments'],
             'unitStats' => $unitStats,
             'areas' => $areas,
+            'userDeptScope' => $scope,
             'roleStats' => $roleStats,
             'employeesByRole' => $employeesByRole,
             'assignmentsByArea' => $assignmentsByArea,
@@ -245,8 +253,12 @@ class ServiceAreaManagementController extends BaseController
             // Format data
             $data = [];
             foreach ($areas as $area) {
-                // Get customer count
-                $customerSql = "SELECT COUNT(DISTINCT customer_id) as count FROM customer_locations WHERE area_id = ?";
+                // Get customer count (via active-contract units in this area)
+                $customerSql = "SELECT COUNT(DISTINCT k.customer_id) as count
+                    FROM inventory_unit iu
+                    JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+                    JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                    WHERE iu.area_id = ?";
                 $customerResult = $this->db->query($customerSql, [$area['id']]);
                 $customerCount = $customerResult->getRow()->count ?? 0;
                 
@@ -291,9 +303,13 @@ class ServiceAreaManagementController extends BaseController
                     [$area['id']]
                 )->getRow()->cnt ?? 0);
 
-                // Location count (all active customer_locations mapped to this area)
+                // Location count (active locations that have at least one unit mapped to this area)
                 $locationCount = (int) ($this->db->query(
-                    "SELECT COUNT(*) as cnt FROM customer_locations WHERE area_id = ? AND is_active = 1",
+                    "SELECT COUNT(DISTINCT ku.customer_location_id) as cnt
+                     FROM inventory_unit iu
+                     JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+                     JOIN customer_locations cl ON cl.id = ku.customer_location_id AND cl.is_active = 1
+                     WHERE iu.area_id = ?",
                     [$area['id']]
                 )->getRow()->cnt ?? 0);
 
@@ -364,8 +380,10 @@ class ServiceAreaManagementController extends BaseController
         
         $builder = $this->areaModel->builder();
         $builder->select('areas.*, COUNT(DISTINCT c.id) as customers_count');
-        $builder->join('customer_locations cl', 'cl.area_id = areas.id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('inventory_unit iu_c', 'iu_c.area_id = areas.id', 'left');
+        $builder->join('kontrak_unit ku_c', 'ku_c.unit_id = iu_c.id_inventory_unit AND ku_c.status = \'ACTIVE\'', 'left');
+        $builder->join('kontrak k_c', 'k_c.id = ku_c.kontrak_id AND k_c.status = \'ACTIVE\'', 'left');
+        $builder->join('customers c', 'c.id = k_c.customer_id', 'left');
         $builder->where('areas.id', $id);
         $builder->where('areas.deleted_at IS NULL', null, false);
         $builder->groupBy('areas.id');

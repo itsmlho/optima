@@ -471,7 +471,7 @@ helper('ui');
 
 <!-- ═══ MODAL: Detail Audit Lokasi (AUDLOC) ════════════════════ -->
 <div class="modal fade" id="audlocDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title fw-semibold"><i class="fas fa-map-marker-alt me-2 text-primary"></i>Detail Audit Lokasi</h5>
@@ -1191,6 +1191,11 @@ function submitVerifikasi() {
         formData.append('items[' + i + '][result]', it.result);
         (it.reasons || []).forEach(function(r) { formData.append('items[' + i + '][reasons][]', r); });
         formData.append('items[' + i + '][keterangan]', it.keterangan || '');
+        if (it.extra && typeof it.extra === 'object') {
+            Object.keys(it.extra).forEach(function(k) {
+                formData.append('items[' + i + '][extra][' + k + ']', it.extra[k]);
+            });
+        }
     });
 
     const $btn = $('#verifikasiModal .btn-primary');
@@ -1458,6 +1463,7 @@ function loadAuditHistory() {
 
     $.get(BASE + 'service/unit_audit/getAuditRequests', { status: status, customer_id: custId }, function(res) {
         if (res.success) renderHistoryTable(res.data);
+        else $('#historyTable tbody').html('<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>');
     }).fail(function() {
         $('#historyTable tbody').html('<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat data</td></tr>');
     });
@@ -1660,98 +1666,184 @@ function viewAudlocDetail(id) {
             return;
         }
         const d = res.data;
-        const kontrak = parseInt(d.kontrak_total_units || 0, 10);
-        const actual  = parseInt(d.actual_total_units  || 0, 10);
-        const selisih = actual - kontrak;
-        const selisihClass = selisih === 0 ? 'badge-soft-green' : (selisih < 0 ? 'badge-soft-red' : 'badge-soft-yellow');
-        const selisihText  = selisih === 0 ? '0' : (selisih > 0 ? '+' + selisih : '' + selisih);
+        const kontrak      = parseInt(d.kontrak_total_units || 0, 10);
+        const actual       = parseInt(d.actual_total_units  || 0, 10);
+        const kontrakSpare = parseInt(d.kontrak_spare_units || 0, 10);
+        const actualSpare  = parseInt(d.actual_spare_units  || 0, 10);
+        const difference   = actual - kontrak;
+        const hasDiscrep   = difference !== 0;
 
+        // ── Header cards ──────────────────────────────────────────
         let html = `
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
                 <div class="text-muted small">No. Audit</div>
-                <span class="badge badge-soft-blue">${esc(d.audit_number || '-')}</span>
-            </div>
-            <div class="col-md-6">
+                <div class="fw-bold small">${esc(d.audit_number || '-')}</div>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
+                <div class="text-muted small">Customer</div>
+                <div class="fw-bold small">${esc(d.customer_name || '-')}</div>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
+                <div class="text-muted small">Lokasi</div>
+                <div class="fw-bold small">${esc(d.location_name || '-')}</div>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
                 <div class="text-muted small">Status</div>
                 ${getAudlocStatusBadge(d.status)}
-            </div>
-            <div class="col-md-6 mt-2">
-                <div class="text-muted small">Customer</div>
-                <strong>${esc(d.customer_name || '-')}</strong>
-            </div>
-            <div class="col-md-6 mt-2">
-                <div class="text-muted small">Lokasi</div>
-                <strong>${esc(d.location_name || '-')}</strong>
-            </div>
-            <div class="col-md-6 mt-2">
-                <div class="text-muted small">Tanggal Audit</div>
-                ${d.audit_date ? new Date(d.audit_date).toLocaleDateString('id-ID') : '-'}
-            </div>
-            <div class="col-md-6 mt-2">
-                <div class="text-muted small">Mekanik</div>
-                ${esc(d.mechanic_name || '-')}
-            </div>
+            </div></div></div>
         </div>
-        <hr>
-        <div class="row g-2 mb-3 text-center">
-            <div class="col-4">
-                <div class="border rounded p-3">
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
+                <div class="text-muted small">Kontrak</div>
+                <div class="fw-bold small">${esc(d.no_kontrak_masked || d.no_kontrak || '-')}</div>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light h-100"><div class="card-body py-2">
+                <div class="text-muted small">Tanggal Audit</div>
+                <div class="fw-bold small">${d.audit_date ? new Date(d.audit_date).toLocaleDateString('id-ID') : '-'}</div>
+            </div></div></div>
+            <div class="col-12 col-md-6"><div class="card bg-light h-100"><div class="card-body py-2">
+                <div class="text-muted small">Mekanik</div>
+                <div class="fw-bold small">${esc(d.mechanic_name || d.audited_by_name || '-')}</div>
+            </div></div></div>
+        </div>
+
+        <!-- Kontrak vs Aktual -->
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="card border-0 bg-light text-center py-2">
                     <div class="text-muted small mb-1">Kontrak Unit</div>
-                    <div class="fw-bold fs-4">${kontrak}</div>
+                    <div class="fs-4 fw-bold">${kontrak}</div>
+                    <div class="text-muted small">Spare: ${kontrakSpare}</div>
                 </div>
             </div>
-            <div class="col-4">
-                <div class="border rounded p-3">
-                    <div class="text-muted small mb-1">Actual Unit</div>
-                    <div class="fw-bold fs-4">${actual}</div>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="border rounded p-3">
-                    <div class="text-muted small mb-1">Selisih</div>
-                    <div class="fw-bold fs-4"><span class="badge ${selisihClass} fs-5">${selisihText}</span></div>
+            <div class="col-6">
+                <div class="card border-0 bg-light text-center py-2">
+                    <div class="text-muted small mb-1">Aktual (Audit)</div>
+                    <div class="fs-4 fw-bold ${hasDiscrep ? 'text-danger' : 'text-success'}">${actual}</div>
+                    <div class="text-muted small">Spare: ${actualSpare}
+                        ${hasDiscrep
+                            ? `<span class="ms-2 badge badge-soft-red">Selisih ${difference > 0 ? '+' : ''}${difference}</span>`
+                            : '<span class="ms-2 badge badge-soft-green">Sesuai</span>'}
+                    </div>
                 </div>
             </div>
         </div>`;
 
+        // ── Items table ───────────────────────────────────────────
         const items = d.items || [];
         if (items.length > 0) {
             const resultLabel = {
-                'MATCH':              '<span class="badge badge-soft-green">Sesuai</span>',
-                'MISMATCH_NO_UNIT':   '<span class="badge badge-soft-red">No Unit Berbeda</span>',
-                'NO_UNIT_IN_KONTRAK': '<span class="badge badge-soft-red">Unit Hilang</span>',
-                'EXTRA_UNIT':         '<span class="badge badge-soft-yellow">Unit Tambahan</span>',
-                'MISMATCH_SERIAL':    '<span class="badge badge-soft-orange">S/N Berbeda</span>',
+                'MATCH':             '<span class="badge badge-soft-green">Sesuai</span>',
+                'MISMATCH_NO_UNIT':  '<span class="badge badge-soft-orange">Unit Beda</span>',
+                'NO_UNIT_IN_KONTRAK':'<span class="badge badge-soft-red">Unit Tidak Ada</span>',
+                'EXTRA_UNIT':        '<span class="badge badge-soft-yellow">Unit Tambahan</span>',
+                'MISMATCH_SERIAL':   '<span class="badge badge-soft-orange">S/N Berbeda</span>',
+                'MISMATCH_SPEC':     '<span class="badge badge-soft-orange">Spesifikasi Beda</span>',
+                'MISMATCH_SPARE':    '<span class="badge badge-soft-cyan">Tandai Spare</span>',
             };
-            html += `<hr>
-            <h6 class="fw-semibold mb-2"><i class="fas fa-list-check me-2 text-primary"></i>Hasil per Unit</h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered mb-0">
+
+            function parseNotesAudloc(notes) {
+                if (!notes) return '—';
+                let parsed;
+                try { parsed = JSON.parse(notes); } catch(e) { return notes; }
+                const parts = [];
+                if (parsed.reasons && parsed.reasons.length) {
+                    const labels = parsed.reasons.map(function(r) {
+                        if (r === 'LOCATION_MISMATCH') {
+                            const locName = parsed.extra && parsed.extra.target_location_name;
+                            return locName ? 'Lokasi salah \u2192 ' + locName : 'Lokasi salah';
+                        }
+                        const map = { 'UNIT_SWAP':'Unit beda', 'MARK_SPARE':'Tandai Spare', 'UNIT_MISSING':'Unit tidak ada' };
+                        return map[r] || r;
+                    });
+                    parts.push(labels.join(', '));
+                }
+                if (parsed.keterangan && parsed.keterangan.trim()) parts.push(parsed.keterangan.trim());
+                return parts.length ? parts.join(' — ') : '—';
+            }
+
+            let rowsHtml = '';
+            items.forEach(function(it, idx) {
+                const badge  = resultLabel[it.result] || `<span class="badge badge-soft-gray">${esc(it.result || '-')}</span>`;
+                const parsed = (function() {
+                    try { return JSON.parse(it.notes || '{}'); } catch(e) { return {}; }
+                })();
+                const reason = (parsed.reasons && parsed.reasons[0]) || '';
+
+                let rowClass = '';
+                switch (it.result) {
+                    case 'NO_UNIT_IN_KONTRAK': rowClass = 'table-danger';  break;
+                    case 'MISMATCH_NO_UNIT':   rowClass = reason === 'LOCATION_MISMATCH' ? 'table-info' : 'table-warning'; break;
+                    case 'MISMATCH_SPARE':
+                    case 'MISMATCH_SPEC':
+                    case 'MISMATCH_SERIAL':    rowClass = 'table-warning'; break;
+                    case 'EXTRA_UNIT':         rowClass = 'table-success'; break;
+                }
+
+                // UNIT_SWAP: show keterangan as actual unit when actual == expected
+                let displayActualNo     = it.actual_no_unit;
+                let displayActualSerial = it.actual_serial;
+                if (it.result === 'MISMATCH_NO_UNIT' && reason === 'UNIT_SWAP') {
+                    if (!it.actual_no_unit || it.actual_no_unit === it.expected_no_unit) {
+                        const ket = parsed.keterangan || '';
+                        displayActualNo     = ket ? ket + ' <span class="text-muted small">(catatan)</span>' : '—';
+                        displayActualSerial = null;
+                    }
+                }
+
+                rowsHtml += `<tr class="${rowClass}">
+                    <td class="text-center small text-muted">${idx + 1}</td>
+                    <td class="small fw-semibold">${esc(it.expected_no_unit || '—')}</td>
+                    <td class="small text-muted">${esc(it.expected_serial || '—')}</td>
+                    <td class="small fw-semibold">${displayActualNo || '—'}</td>
+                    <td class="small text-muted">${esc(displayActualSerial || '—')}</td>
+                    <td>${badge}</td>
+                    <td class="small">${parseNotesAudloc(it.notes)}</td>
+                </tr>`;
+            });
+
+            html += `
+            <h6 class="fw-semibold mb-2"><i class="fas fa-list-check me-2 text-primary"></i>Detail Unit</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>No Unit (Kontrak)</th>
-                            <th>No Unit (Aktual)</th>
+                            <th class="text-center" style="width:36px">No</th>
+                            <th>No Unit <small class="text-muted">(Kontrak)</small></th>
+                            <th>Serial <small class="text-muted">(Kontrak)</small></th>
+                            <th>No Unit <small class="text-muted">(Aktual)</small></th>
+                            <th>Serial <small class="text-muted">(Aktual)</small></th>
                             <th>Hasil</th>
                             <th>Catatan</th>
                         </tr>
                     </thead>
-                    <tbody>`;
-            items.forEach(function(it) {
-                const badge = resultLabel[it.result] || `<span class="badge badge-soft-gray">${esc(it.result || '-')}</span>`;
-                html += `<tr>
-                    <td class="small"><strong>${esc(it.expected_no_unit || '—')}</strong></td>
-                    <td class="small">${esc(it.actual_no_unit || '—')}</td>
-                    <td>${badge}</td>
-                    <td class="small text-muted">${esc(it.notes || '—')}</td>
-                </tr>`;
-            });
-            html += `</tbody></table></div>`;
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>`;
         }
 
+        // ── Catatan Mekanik ───────────────────────────────────────
+        if (d.mechanic_notes) {
+            let mechText = '—';
+            try {
+                const mn = JSON.parse(d.mechanic_notes);
+                const statusMap = { 'sesuai': 'Sesuai', 'tidak_sesuai': 'Tidak Sesuai' };
+                const st = statusMap[mn.field_status] || mn.field_status || '-';
+                const cnt = mn.items_count !== undefined ? ` (${mn.items_count} unit diperiksa)` : '';
+                mechText = `Status lapangan: <strong>${st}</strong>${cnt}`;
+            } catch(e) { mechText = esc(d.mechanic_notes); }
+            html += `
+            <div class="mb-3">
+                <div class="text-muted small fw-semibold mb-1">Catatan Mekanik</div>
+                <div class="p-2 bg-light rounded small">${mechText}</div>
+            </div>`;
+        }
+
+        // ── Review Marketing ──────────────────────────────────────
         if (d.reviewed_by) {
             const isApproved = d.status === 'APPROVED';
-            html += `<hr>
+            html += `
             <div class="alert alert-${isApproved ? 'success' : 'danger'} mb-0">
                 <h6 class="fw-bold mb-2">Review Marketing</h6>
                 <p class="mb-1"><strong>Oleh:</strong> ${esc(d.reviewer_name || '-')}</p>

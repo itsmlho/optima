@@ -114,9 +114,9 @@ class AreaModel extends Model
      */
     public function getAreasWithStats()
     {
-        return $this->select('areas.*, COUNT(DISTINCT customers.id) as customer_count')
-                   ->join('customer_locations cl', 'cl.area_id = areas.id', 'left')
-                   ->join('customers', 'customers.id = cl.customer_id AND customers.is_active = 1', 'left')
+        // Count units (not locations) mapped to each area, and customers via contracts
+        return $this->select('areas.*, COUNT(DISTINCT iu.id_inventory_unit) as unit_count')
+                   ->join('inventory_unit iu', 'iu.area_id = areas.id', 'left')
                    ->where('areas.is_active', 1)
                    ->groupBy('areas.id')
                    ->findAll();

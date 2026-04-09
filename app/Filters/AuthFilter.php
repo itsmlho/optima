@@ -42,6 +42,8 @@ class AuthFilter implements FilterInterface
             'auth/index',
             'auth/verify-otp',
             'auth/resend-otp',
+            'unit-view',
+            'surat-jalan',
             'comingsoon',
         ];
         

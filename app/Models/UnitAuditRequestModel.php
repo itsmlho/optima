@@ -195,7 +195,7 @@ class UnitAuditRequestModel extends Model
     /**
      * Approve and apply the change
      */
-    public function approveAndApply(int $id, int $reviewerId, ?string $notes = null): array
+    public function approveAndApply(int $id, int $reviewerId, ?string $notes = null, array $overrides = []): array
     {
         $request = $this->find($id);
         if (!$request) {
@@ -206,8 +206,16 @@ class UnitAuditRequestModel extends Model
         }
 
         $proposed = json_decode($request['proposed_data'], true) ?? [];
-        if ($request['request_type'] === 'ADD_UNIT' && !empty($proposed['customer_location_id']) && empty($request['kontrak_id'])) {
-            return ['success' => false, 'message' => 'Unit ini terikat lokasi pending. Approve via Request Lokasi Baru.'];
+
+        // Resolve effective values (overrides from Marketing > proposed_data)
+        $kontrakId     = $overrides['kontrak_id']     ?? $request['kontrak_id'] ?? null;
+        $hargaSewa     = $overrides['harga_sewa']     ?? $proposed['harga_sewa'] ?? null;
+        $isSpare       = isset($overrides['is_spare']) ? (int) $overrides['is_spare'] : (int) ($proposed['is_spare'] ?? 0);
+        $missingAction = $overrides['missing_action'] ?? 'record';
+
+        // ADD_UNIT requires a contract
+        if ($request['request_type'] === 'ADD_UNIT' && empty($kontrakId)) {
+            return ['success' => false, 'message' => 'Pilih kontrak terlebih dahulu sebelum approve.'];
         }
 
         $db = $this->db;
@@ -223,11 +231,10 @@ class UnitAuditRequestModel extends Model
             ]);
 
             // Apply the change based on request type
-            $unitId   = $request['unit_id'];
+            $unitId = $request['unit_id'];
 
             switch ($request['request_type']) {
                 case 'LOCATION_MISMATCH':
-                    // Update unit location
                     if ($unitId && !empty($proposed['new_location'])) {
                         $db->table('inventory_unit')
                            ->where('id_inventory_unit', $unitId)
@@ -236,58 +243,67 @@ class UnitAuditRequestModel extends Model
                     break;
 
                 case 'MARK_SPARE':
-                    // Mark unit as spare in kontrak_unit
-                    if ($unitId && $request['kontrak_id']) {
+                    if ($unitId && $kontrakId) {
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
-                           ->where('kontrak_id', $request['kontrak_id'])
+                           ->where('kontrak_id', $kontrakId)
                            ->whereIn('status', ['ACTIVE', 'PULLED', 'REPLACED'])
                            ->update(['is_spare' => 1]);
                     }
                     break;
 
                 case 'ADD_UNIT':
-                    // Add unit to contract
-                    if (!empty($proposed['unit_id']) && $request['kontrak_id']) {
+                    // $kontrakId already validated above (not empty)
+                    if (!empty($proposed['unit_id'])) {
                         $db->table('kontrak_unit')->insert([
-                            'kontrak_id'  => $request['kontrak_id'],
-                            'unit_id'     => $proposed['unit_id'],
-                            'status'      => 'ACTIVE',
-                            'is_spare'    => $proposed['is_spare'] ?? 0,
-                            'harga_sewa'  => $proposed['harga_sewa'] ?? null,
-                            'created_at'  => date('Y-m-d H:i:s'),
+                            'kontrak_id'           => $kontrakId,
+                            'unit_id'              => $proposed['unit_id'],
+                            'status'               => 'ACTIVE',
+                            'is_spare'             => $isSpare,
+                            'harga_sewa'           => $hargaSewa ?: null,
+                            'tanggal_mulai'        => date('Y-m-d'),
+                            'customer_location_id' => $proposed['customer_location_id'] ?? null,
+                            'created_by'           => $reviewerId,
+                            'created_at'           => date('Y-m-d H:i:s'),
                         ]);
                     }
                     break;
 
                 case 'UNIT_SWAP':
-                    // Swap unit: deactivate old, activate new
-                    if ($unitId && !empty($proposed['new_unit_id']) && $request['kontrak_id']) {
+                    if ($unitId && !empty($proposed['new_unit_id']) && $kontrakId) {
                         // Pull old unit
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
-                           ->where('kontrak_id', $request['kontrak_id'])
-                           ->whereIn('status', ['ACTIVE'])
+                           ->where('kontrak_id', $kontrakId)
+                           ->where('status', 'ACTIVE')
                            ->update(['status' => 'PULLED']);
 
-                        // Add new unit
+                        // Insert new unit
                         $db->table('kontrak_unit')->insert([
-                            'kontrak_id' => $request['kontrak_id'],
-                            'unit_id'    => $proposed['new_unit_id'],
-                            'status'     => 'ACTIVE',
-                            'is_spare'   => 0,
-                            'harga_sewa' => $proposed['harga_sewa'] ?? null,
-                            'created_at' => date('Y-m-d H:i:s'),
+                            'kontrak_id'    => $kontrakId,
+                            'unit_id'       => $proposed['new_unit_id'],
+                            'status'        => 'ACTIVE',
+                            'is_spare'      => 0,
+                            'harga_sewa'    => $hargaSewa ?: null,
+                            'tanggal_mulai' => date('Y-m-d'),
+                            'created_by'    => $reviewerId,
+                            'created_at'    => date('Y-m-d H:i:s'),
                         ]);
                     }
                     break;
 
                 case 'UNIT_MISSING':
-                    // Flag unit — just log it, no automatic action needed
+                    if ($missingAction === 'pull' && $unitId && $kontrakId) {
+                        $db->table('kontrak_unit')
+                           ->where('unit_id', $unitId)
+                           ->where('kontrak_id', $kontrakId)
+                           ->where('status', 'ACTIVE')
+                           ->update(['status' => 'PULLED']);
+                    }
+                    // 'record' → no DB change, already marked APPROVED above
                     break;
 
                 case 'OTHER':
-                    // Custom — apply location change if provided
                     if ($unitId && !empty($proposed['new_location'])) {
                         $db->table('inventory_unit')
                            ->where('id_inventory_unit', $unitId)
@@ -299,12 +315,16 @@ class UnitAuditRequestModel extends Model
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return ['success' => false, 'message' => 'Database transaction failed'];
+                $dbErr = $db->error();
+                $errMsg = $dbErr['message'] ?? 'Database transaction failed';
+                log_message('error', 'approveAndApply[' . $request['request_type'] . '] failed: ' . json_encode($dbErr));
+                return ['success' => false, 'message' => 'Database error: ' . $errMsg];
             }
 
-            return ['success' => true, 'message' => 'Request approved and changes applied'];
+            return ['success' => true, 'message' => 'Request approved dan perubahan telah diterapkan'];
         } catch (\Exception $e) {
             $db->transRollback();
+            log_message('error', 'approveAndApply exception: ' . $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }

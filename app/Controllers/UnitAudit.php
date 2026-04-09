@@ -57,6 +57,7 @@ class UnitAudit extends BaseController
             $customers = $this->auditLocationModel->getCustomersWithLocationAuditSummary();
             return $this->response->setJSON(['success' => true, 'data' => $customers]);
         } catch (\Exception $e) {
+            log_message('error', '[getCustomersForUnitAudit] ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
@@ -178,6 +179,7 @@ class UnitAudit extends BaseController
             $data = $this->auditModel->getWithDetails($filters);
             return $this->response->setJSON(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
+            log_message('error', '[getAuditRequests] ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
@@ -280,8 +282,15 @@ class UnitAudit extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
-        $notes  = $this->request->getPost('notes');
-        $result = $this->auditModel->approveAndApply((int) $id, $userId, $notes);
+        $notes      = $this->request->getPost('notes');
+        $overrides  = array_filter([
+            'kontrak_id'     => $this->request->getPost('kontrak_id')     ?: null,
+            'harga_sewa'     => $this->request->getPost('harga_sewa')     ?: null,
+            'is_spare'       => $this->request->getPost('is_spare') !== null ? (int) $this->request->getPost('is_spare') : null,
+            'missing_action' => $this->request->getPost('missing_action') ?: null,
+        ], fn($v) => $v !== null);
+
+        $result = $this->auditModel->approveAndApply((int) $id, $userId, $notes, $overrides);
 
         return $this->response->setJSON($result);
     }
@@ -567,6 +576,7 @@ class UnitAudit extends BaseController
             $audits = $this->auditLocationModel->getAllAudits($filters);
             return $this->response->setJSON(['success' => true, 'data' => $audits]);
         } catch (\Exception $e) {
+            log_message('error', '[getLocationAudits] ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
@@ -742,7 +752,8 @@ class UnitAudit extends BaseController
                 'data'    => ['id' => $auditId],
             ]);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+            log_message('error', 'createAuditVerification: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 
@@ -983,9 +994,8 @@ class UnitAudit extends BaseController
         try {
             $db = \Config\Database::connect();
             $requests = $db->table('customer_locations cl')
-                ->select("cl.*, c.customer_name, c.customer_code, a.area_name, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as requested_by_name")
+                ->select("cl.*, c.customer_name, c.customer_code, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as requested_by_name")
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->join('areas a', 'a.id = cl.area_id', 'left')
                 ->join('users u', 'u.id = cl.requested_by', 'left')
                 ->where('cl.approval_status', 'PENDING')
                 ->where('cl.is_active', 1)
@@ -1061,10 +1071,9 @@ class UnitAudit extends BaseController
             // 1. Approved Location Requests (Request Lokasi Baru)
             $locRequests = $db->table('customer_locations cl')
                 ->select("cl.id, cl.location_code, cl.location_name, cl.approved_at,
-                    c.customer_name, c.customer_code, a.area_name,
+                    c.customer_name, c.customer_code,
                     TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as approved_by_name")
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->join('areas a', 'a.id = cl.area_id', 'left')
                 ->join('users u', 'u.id = cl.approved_by', 'left')
                 ->where('cl.approval_status', 'APPROVED')
                 ->where('cl.is_active', 1)
@@ -1143,11 +1152,10 @@ class UnitAudit extends BaseController
         try {
             $db = \Config\Database::connect();
             $req = $db->table('customer_locations cl')
-                ->select("cl.*, c.customer_name, c.customer_code, a.area_name,
+                ->select("cl.*, c.customer_name, c.customer_code,
                     TRIM(CONCAT(COALESCE(u_approved.first_name, ''), ' ', COALESCE(u_approved.last_name, ''))) as approved_by_name,
                     TRIM(CONCAT(COALESCE(u_req.first_name, ''), ' ', COALESCE(u_req.last_name, ''))) as requested_by_name")
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->join('areas a', 'a.id = cl.area_id', 'left')
                 ->join('users u_approved', 'u_approved.id = cl.approved_by', 'left')
                 ->join('users u_req', 'u_req.id = cl.requested_by', 'left')
                 ->where('cl.id', $id)
@@ -1224,9 +1232,8 @@ class UnitAudit extends BaseController
         try {
             $db = \Config\Database::connect();
             $requests = $db->table('customer_locations cl')
-                ->select("cl.*, c.customer_name, c.customer_code, a.area_name, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as approved_by_name")
+                ->select("cl.*, c.customer_name, c.customer_code, TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) as approved_by_name")
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->join('areas a', 'a.id = cl.area_id', 'left')
                 ->join('users u', 'u.id = cl.approved_by', 'left')
                 ->where('cl.approval_status', 'APPROVED')
                 ->where('cl.is_active', 1)
@@ -1580,16 +1587,17 @@ class UnitAudit extends BaseController
         }
 
         $pricing = [
-            'price_per_unit'      => $this->request->getPost('price_per_unit'),
             'marketing_notes'     => $this->request->getPost('marketing_notes'),
             'deactivate_location' => $this->request->getPost('deactivate_location') === '1',
+            'item_prices'         => json_decode($this->request->getPost('item_prices') ?? '{}', true) ?: [],
         ];
 
         try {
             $result = $this->auditLocationModel->approveAudit((int) $id, $pricing, $userId);
             return $this->response->setJSON($result);
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+            log_message('error', 'approveLocationAudit: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 

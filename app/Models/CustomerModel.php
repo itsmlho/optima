@@ -155,9 +155,7 @@ class CustomerModel extends Model
      */
     public function getCustomersWithArea($customerId = null)
     {
-        $builder = $this->select('customers.*, areas.area_name, areas.area_code')
-                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                       ->join('areas', 'areas.id = cl.area_id', 'left')
+        $builder = $this->select('customers.*, NULL as area_name, NULL as area_code')
                        ->where('customers.is_active', 1);
                        
         if ($customerId) {
@@ -173,12 +171,17 @@ class CustomerModel extends Model
      */
     public function getCustomersByArea($areaId)
     {
-        return $this->select('customers.*, areas.area_name')
-                   ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                   ->join('areas', 'areas.id = cl.area_id', 'left')
-                   ->where('cl.area_id', $areaId)
-                   ->where('customers.is_active', 1)
-                   ->findAll();
+        // Area is now mapped per-unit (inventory_unit.area_id), not per-location
+        return $this->db->table('customers c')
+            ->select('c.*, a.area_name')
+            ->join('kontrak k', 'k.customer_id = c.id AND k.status = \'ACTIVE\'', 'inner')
+            ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status = \'ACTIVE\'', 'inner')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id AND iu.area_id = ' . (int)$areaId, 'inner')
+            ->join('areas a', 'a.id = iu.area_id', 'left')
+            ->where('c.is_active', 1)
+            ->groupBy('c.id')
+            ->orderBy('c.customer_name')
+            ->get()->getResultArray();
     }
     
     /**
@@ -217,9 +220,7 @@ class CustomerModel extends Model
      */
     public function searchCustomers($search = '', $areaId = null, $contractType = null)
     {
-        $builder = $this->select('customers.*, areas.area_name, areas.area_code')
-                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                       ->join('areas', 'areas.id = cl.area_id', 'left')
+        $builder = $this->select('customers.*')
                        ->where('customers.is_active', 1);
                        
         if (!empty($search)) {
@@ -232,7 +233,13 @@ class CustomerModel extends Model
         }
         
         if ($areaId) {
-            $builder->where('cl.area_id', $areaId);
+            // Area is now per-unit — filter customers who have at least one unit in this area
+            $builder->where("customers.id IN (
+                SELECT DISTINCT k2.customer_id FROM kontrak k2
+                JOIN kontrak_unit ku2 ON ku2.kontrak_id = k2.id AND ku2.status = 'ACTIVE'
+                JOIN inventory_unit iu2 ON iu2.id_inventory_unit = ku2.unit_id AND iu2.area_id = " . (int)$areaId . "
+                WHERE k2.status = 'ACTIVE'
+            )");
         }
         
         if ($contractType) {
@@ -250,10 +257,6 @@ class CustomerModel extends Model
         $builder = $this->select('customers.id, customers.customer_name, customers.customer_code')
                        ->where('customers.is_active', 1);
                        
-        if ($areaId) {
-            $builder->where('cl.area_id', $areaId);
-        }
-        
         $customers = $builder->orderBy('customers.customer_name')->findAll();
         
         $options = [];

@@ -24,6 +24,7 @@ elseif ($statusId === 14)                          { $badgeClass = 'secondary'; 
 elseif ($statusId === 16)                          { $badgeClass = 'dark';      $statusIcon = 'fa-ban'; }
 
 $unitNo = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-'.$unit['id_inventory_unit']);
+$serialNo = $unit['serial_number'] ?? ($unit['serial_no'] ?? null);
 // Fall back to tipe_unit (tipe/jenis) when model_unit FK is missing (id=0)
 $brand = !empty($unit['merk_unit']) ? $unit['merk_unit'] : ($unit['unit_tipe'] ?? 'N/A');
 $model = !empty($unit['model_unit']) ? $unit['model_unit'] : ($unit['unit_jenis'] ?? '');
@@ -838,6 +839,10 @@ if ($aksesorisRaw) {
                                         <option value="SPAREPART">Sparepart</option>
                                         <option value="STATUS">Status</option>
                                     </select>
+                                    <select id="group-aktivitas" class="form-select form-select-sm" style="min-width:160px;">
+                                        <option value="document">Group: Dokumen</option>
+                                        <option value="date">Group: Tanggal</option>
+                                    </select>
                                     <button type="button" class="btn btn-sm btn-outline-primary" id="btn-refresh-aktivitas" title="Refresh">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
@@ -899,6 +904,81 @@ if ($aksesorisRaw) {
                     <dt class="col-5 text-muted">Model</dt>
                     <dd class="col-7 fw-bold"><?= esc($model ?: '—') ?></dd>
                 </dl>
+            </div>
+        </div>
+
+        <?php if(!empty($public_view_url)): ?>
+        <?php
+        $barcodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . rawurlencode($public_view_url);
+        $companyLogoUrl = base_url('assets/images/company-logo.svg');
+        $barcodeLabelPayload = [
+            'unitNo' => (string)($unitNo ?? ''),
+            'serialNumber' => (string)($unit['serial_number'] ?? ''),
+            'brand' => (string)($brand ?? ''),
+            'model' => (string)($model ?? ''),
+            'type' => (string)($unit['nama_tipe_unit'] ?? ''),
+            'capacity' => (string)($unit['kapasitas_display'] ?? ''),
+            'publicUrl' => (string)$public_view_url,
+            'qrUrl' => (string)('https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . rawurlencode($public_view_url)),
+            'logoUrl' => (string)$companyLogoUrl,
+        ];
+        ?>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light d-flex align-items-center justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i><strong>Barcode Unit</strong></h6>
+                <span class="badge bg-dark">Public</span>
+            </div>
+            <div class="card-body p-3 small">
+                <div class="text-center border rounded p-2">
+                    <img
+                        src="<?= esc($barcodeImageUrl) ?>"
+                        alt="QR public unit view"
+                        style="width:160px;height:160px;"
+                    >
+                    <div class="mt-2">
+                        <a href="<?= esc($public_view_url) ?>" target="_blank" class="btn btn-sm btn-dark me-1">
+                            <i class="fas fa-link me-1"></i>Link
+                        </a>
+                        <button type="button" class="btn btn-sm btn-primary" onclick='downloadUnitBarcodeLabel(<?= json_encode($barcodeLabelPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>)'>
+                            <i class="fas fa-download me-1"></i>Download Barcode Label
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php
+        $siloStatus = strtoupper((string)($silo['status'] ?? 'BELUM_ADA'));
+        $siloBadgeClass = 'bg-secondary';
+        if ($siloStatus === 'SILO_TERBIT') $siloBadgeClass = 'bg-success';
+        elseif ($siloStatus === 'SILO_EXPIRED') $siloBadgeClass = 'bg-danger';
+        elseif ($siloStatus !== 'BELUM_ADA') $siloBadgeClass = 'bg-warning text-dark';
+
+        $siloId = (int)($silo['id_silo'] ?? 0);
+        $hasSiloFile = !empty($silo['file_silo']);
+        $siloDetailUrl = $siloId > 0 ? base_url('perizinan/silo') : base_url('perizinan/silo');
+        $siloDownloadUrl = $siloId > 0 ? base_url('perizinan/download-file/' . $siloId . '/silo') : null;
+        ?>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light d-flex align-items-center justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-certificate me-2"></i><strong>SILO</strong></h6>
+                <span class="badge <?= $siloBadgeClass ?>"><?= esc($siloStatus) ?></span>
+            </div>
+            <div class="card-body p-3 small">
+                <div class="mb-1"><span class="text-muted">Nomor SILO:</span> <span class="fw-semibold"><?= esc($silo['nomor_silo'] ?? '-') ?></span></div>
+                <div class="mb-1"><span class="text-muted">Terbit:</span> <?= !empty($silo['tanggal_terbit_silo']) ? date('d M Y', strtotime($silo['tanggal_terbit_silo'])) : '-' ?></div>
+                <div class="mb-2"><span class="text-muted">Expired:</span> <?= !empty($silo['tanggal_expired_silo']) ? date('d M Y', strtotime($silo['tanggal_expired_silo'])) : '-' ?></div>
+                <div class="d-flex gap-2">
+                    <a href="<?= esc($siloDetailUrl) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>Detail SILO
+                    </a>
+                    <?php if($siloDownloadUrl && $hasSiloFile): ?>
+                        <a href="<?= esc($siloDownloadUrl) ?>" target="_blank" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-download me-1"></i>Download SILO
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
@@ -1218,6 +1298,10 @@ if ($aksesorisRaw) {
         _aktivitasLoaded = false;
         loadAktivitas(UNIT_ID);
     });
+    $('#group-aktivitas').on('change', function () {
+        _aktivitasLoaded = false;
+        loadAktivitas(UNIT_ID);
+    });
 
     function loadAktivitas(uid) {
         var baseUnitUrl = window._baseUnitUrl || '';
@@ -1267,12 +1351,11 @@ if ($aksesorisRaw) {
                     'component': 'Komponen'
                 };
                 function esc(s) { if (s == null || s === undefined) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-                var html = '';
-                res.events.forEach(function (ev, idx) {
+                function renderEvent(ev, idx, total) {
                     var dateStr = ev.date ? new Date(ev.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
                     var icon = iconMap[ev.icon] || 'fa-circle';
                     var color = ev.color || 'secondary';
-                    var isLast = idx === res.events.length - 1;
+                    var isLast = idx === total - 1;
                     var url = (ev.meta && ev.meta.url) ? ev.meta.url : null;
                     var refNum = ev.reference_number || ev.description || '';
                     var refNumDisplay = refNum || '-';
@@ -1292,7 +1375,7 @@ if ($aksesorisRaw) {
                     var detailLine = ev.detail ? '<div class="text-muted small mt-1">' + esc(ev.detail) + '</div>' : '';
                     var descLine = (ev.description && ev.description !== refNum) ? '<div class="text-muted small">' + esc(ev.description) + '</div>' : '';
 
-                    html += '<div class="d-flex gap-3 mb-0">' +
+                    return '<div class="d-flex gap-3 mb-0">' +
                         '<div class="flex-shrink-0 text-center" style="width:42px;">' +
                         '<div class="rounded-circle bg-' + color + ' text-white d-flex align-items-center justify-content-center mx-auto mb-0" style="width:36px;height:36px;"><i class="fas ' + icon + ' small"></i></div>' +
                         (!isLast ? '<div class="border-start border-2 border-secondary mx-auto" style="width:2px;min-height:40px;opacity:.25;"></div>' : '') +
@@ -1309,6 +1392,53 @@ if ($aksesorisRaw) {
                         '<div class="small text-muted mb-1">' + esc(dateStr) + '</div>' +
                         '<span class="badge bg-' + color + '">' + esc(ev.category || '') + '</span>' +
                         '</div></div></div></div>';
+                }
+
+                function docGroupKey(ev) {
+                    var t = (ev.reference_type || ev.category || 'misc').toLowerCase();
+                    var n = (ev.reference_number || ev.description || 'no-ref').toString();
+                    return t + '|' + n;
+                }
+
+                function docGroupTitle(ev) {
+                    var t = (ev.reference_type || ev.category || 'Dokumen').toString().toUpperCase();
+                    var n = (ev.reference_number || ev.description || '-').toString();
+                    return t + ' - ' + n;
+                }
+
+                function dateGroupKey(ev) {
+                    if (!ev.date) return 'Tanpa tanggal';
+                    var d = new Date(ev.date);
+                    if (isNaN(d.getTime())) return 'Tanpa tanggal';
+                    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+
+                var mode = $('#group-aktivitas').val() || 'document';
+                var grouped = {};
+                var order = [];
+                res.events.forEach(function(ev) {
+                    var key = mode === 'date' ? dateGroupKey(ev) : docGroupKey(ev);
+                    if (!grouped[key]) {
+                        grouped[key] = [];
+                        order.push(key);
+                    }
+                    grouped[key].push(ev);
+                });
+
+                var html = '';
+                order.forEach(function(key) {
+                    var items = grouped[key];
+                    var groupTitle = mode === 'date' ? key : docGroupTitle(items[0]);
+                    html += '<div class="border rounded mb-3 overflow-hidden">';
+                    html += '<div class="bg-light px-3 py-2 d-flex justify-content-between align-items-center">';
+                    html += '<strong class="small">' + esc(groupTitle) + '</strong>';
+                    html += '<span class="badge bg-secondary">' + items.length + ' item</span>';
+                    html += '</div>';
+                    html += '<div class="p-3">';
+                    items.forEach(function(ev, idx) {
+                        html += renderEvent(ev, idx, items.length);
+                    });
+                    html += '</div></div>';
                 });
 
                 $('#aktivitas-timeline').html(html).show();
@@ -1738,6 +1868,126 @@ if ($aksesorisRaw) {
                 OptimaNotify.error('Gagal terhubung ke server.');
             }
         });
+    }
+
+    async function downloadUnitBarcodeLabel(payload) {
+        try {
+            var unitNo = (payload && payload.unitNo) ? String(payload.unitNo) : '-';
+            var serial = (payload && payload.serialNumber) ? String(payload.serialNumber) : '-';
+            var brand = (payload && payload.brand) ? String(payload.brand) : '-';
+            var model = (payload && payload.model) ? String(payload.model) : '-';
+            var type = (payload && payload.type) ? String(payload.type) : '-';
+            var capacity = (payload && payload.capacity) ? String(payload.capacity) : '-';
+            var publicUrl = (payload && payload.publicUrl) ? String(payload.publicUrl) : '';
+            var qrUrl = (payload && payload.qrUrl) ? String(payload.qrUrl) : '';
+            var logoUrl = (payload && payload.logoUrl) ? String(payload.logoUrl) : '';
+            var barcodeValue = unitNo !== '-' ? unitNo : serial;
+            var barcodeUrl = 'https://bwipjs-api.metafloor.com/?bcid=code128&text=' + encodeURIComponent(barcodeValue) + '&scale=3&includetext=false&paddingwidth=0&paddingheight=0';
+
+            async function loadImageAsObjectUrl(url) {
+                if (!url) return null;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to load image: ' + url);
+                const blob = await res.blob();
+                return URL.createObjectURL(blob);
+            }
+            async function loadImg(url) {
+                return new Promise(function(resolve, reject) {
+                    var img = new Image();
+                    img.onload = function() { resolve(img); };
+                    img.onerror = reject;
+                    img.src = url;
+                });
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.width = 1500;
+            canvas.height = 920;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#2c2f39';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+            // Green accent wave background
+            ctx.fillStyle = '#ebf9f0';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(canvas.width, 0);
+            ctx.lineTo(canvas.width, 165);
+            ctx.bezierCurveTo(canvas.width * 0.68, 112, canvas.width * 0.42, 235, 0, 160);
+            ctx.closePath();
+            ctx.fill();
+
+            // Secondary accent
+            ctx.fillStyle = '#d7f2e1';
+            ctx.beginPath();
+            ctx.moveTo(0, 155);
+            ctx.bezierCurveTo(canvas.width * 0.30, 235, canvas.width * 0.66, 75, canvas.width, 142);
+            ctx.lineTo(canvas.width, 205);
+            ctx.bezierCurveTo(canvas.width * 0.70, 145, canvas.width * 0.35, 285, 0, 215);
+            ctx.closePath();
+            ctx.fill();
+
+            // Left detail panel + right QR panel for cleaner composition
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(48, 228, 885, 630);
+            ctx.fillRect(952, 228, 500, 500);
+            ctx.strokeStyle = '#dfe5eb';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(48, 228, 885, 630);
+            ctx.strokeRect(952, 228, 500, 500);
+
+            ctx.fillStyle = '#20232a';
+            ctx.font = '700 42px Arial';
+            var y = 312;
+            function drawRow(label, value) {
+                ctx.fillText(label, 88, y);
+                ctx.font = '600 40px Arial';
+                ctx.fillText(value || '-', 310, y);
+                ctx.font = '700 42px Arial';
+                y += 74;
+            }
+            drawRow('No Unit:', unitNo);
+            drawRow('Serial:', serial);
+            drawRow('Brand:', brand);
+            drawRow('Model:', model);
+            drawRow('Type:', type);
+            drawRow('Capacity:', capacity);
+
+            var tmpUrls = [];
+            if (logoUrl) {
+                try {
+                    const logoObjTop = await loadImageAsObjectUrl(logoUrl);
+                    tmpUrls.push(logoObjTop);
+                    const logoImgTop = await loadImg(logoObjTop);
+                    ctx.drawImage(logoImgTop, 78, 28, 300, 120);
+                } catch (e) {}
+            }
+            if (qrUrl) {
+                try {
+                    const qrObj = await loadImageAsObjectUrl(qrUrl);
+                    tmpUrls.push(qrObj);
+                    const qrImg = await loadImg(qrObj);
+                    // Center QR inside its panel (500x500)
+                    ctx.drawImage(qrImg, 980, 256, 444, 444);
+                } catch (e) {}
+            }
+            // Barcode 1D intentionally removed per request.
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'barcode-label-' + unitNo.replace(/[^a-zA-Z0-9_-]/g, '_') + '.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            tmpUrls.forEach(function(u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+        } catch (err) {
+            console.error(err);
+            if (window.OptimaNotify) OptimaNotify.error('Gagal generate barcode label.');
+        }
     }
 </script>
 <?= $this->endSection() ?>

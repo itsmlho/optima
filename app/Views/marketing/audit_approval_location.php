@@ -300,6 +300,27 @@ $stats = $stats ?? [];
     </div>
 </div>
 
+<!-- Approve Confirm Modal -->
+<div class="modal fade" id="auditApproveConfirmModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-3" style="background-color:#198754;color:#fff;">
+                <h5 class="modal-title" style="color:#fff;"><i class="fas fa-check-circle me-2"></i>Konfirmasi Approve Audit</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="filter:invert(1);"></button>
+            </div>
+            <div class="modal-body" id="approveConfirmBody">
+                <!-- populated by approveAudit() -->
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" onclick="doApproveAudit()">
+                    <i class="fas fa-check me-1"></i>Ya, Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Reject Modal -->
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
@@ -372,17 +393,31 @@ $stats = $stats ?? [];
 
 <!-- Modal Review Pengajuan Unit -->
 <div class="modal fade" id="unitRequestModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Review Pengajuan Unit</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Review Pengajuan Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body" id="unitRequestDetailContent"></div>
             <div class="modal-footer bg-light" id="unitRequestActionFooter" style="display:none;">
                 <input type="hidden" id="unitRequestId">
-                <textarea class="form-control mb-2" id="unitRequestReviewNotes" rows="2" placeholder="Catatan review (opsional)"></textarea>
-                <div class="w-100 d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="button" class="btn btn-danger" onclick="processUnitRequest('REJECT')"><i class="fas fa-times me-1"></i>Tolak</button>
-                    <button type="button" class="btn btn-success" onclick="processUnitRequest('APPROVE')"><i class="fas fa-check me-1"></i>Approve</button>
+                <input type="hidden" id="unitRequestType">
+                <input type="hidden" id="unitRequestCustomerId">
+                <div class="w-100 mb-2">
+                    <textarea class="form-control" id="unitRequestReviewNotes" rows="2" placeholder="Catatan review (opsional)"></textarea>
+                </div>
+                <div class="w-100 d-flex justify-content-between align-items-center">
+                    <span class="text-muted small" id="unitRequestHint"></span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-danger" id="btnRejectUnitRequest" onclick="processUnitRequest('REJECT')">
+                            <i class="fas fa-times me-1"></i>Tolak
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnApproveUnitRequest" onclick="processUnitRequest('APPROVE')">
+                            <i class="fas fa-check me-1"></i>Approve
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -421,6 +456,14 @@ let selectedLocationRequestId = null;
 let pendingLocationRequests = [];  // Cache for approve-with-units flow
 
 const BASE_AUDIT = '<?= base_url() ?>';
+// CSRF token untuk semua POST request
+const CSRF_NAME  = '<?= csrf_token() ?>';
+const CSRF_HASH  = '<?= csrf_hash() ?>';
+function csrfBody(extra) {
+    const p = new URLSearchParams(extra || {});
+    p.set(CSRF_NAME, CSRF_HASH);
+    return p.toString();
+}
 // Pengajuan Unit: pakai service/unit_audit (sama seperti Audit Unit - sudah terbukti jalan)
 const URL_GET_AUDIT_REQUESTS = '<?= base_url('service/unit_audit/getAuditRequests') ?>';
 const URL_GET_AUDIT_DETAIL = '<?= base_url('service/unit_audit/getAuditDetail') ?>';
@@ -485,16 +528,23 @@ function renderUnitRequestsTable(data) {
     tbody.innerHTML = data.map(item => {
         const typeLabel = typeMap[item.request_type] || item.request_type;
         const statusBadge = statusMap[item.status] || item.status;
-        const unitInfo = item.no_unit ? (item.no_unit + (item.serial_number ? ' / ' + item.serial_number : '')) : '-';
+
+        // Unit info: for ADD_UNIT show proposed unit, for others show existing unit
+        let unitInfo = '-';
+        if (item.request_type === 'ADD_UNIT') {
+            unitInfo = item.no_unit
+                ? `<strong>${item.no_unit}</strong>${item.serial_number ? '<br><small class="text-muted">' + item.serial_number + '</small>' : ''}`
+                : '<span class="text-muted fst-italic">Unit baru</span>';
+        } else {
+            unitInfo = item.no_unit
+                ? (item.no_unit + (item.serial_number ? '<br><small class="text-muted">' + item.serial_number + '</small>' : ''))
+                : '-';
+        }
+
         const proposed = typeof item.proposed_data === 'string' ? JSON.parse(item.proposed_data || '{}') : (item.proposed_data || {});
-        const isPendingLocationAddUnit = item.request_type === 'ADD_UNIT' && proposed.customer_location_id && !item.kontrak_id && item.status === 'SUBMITTED';
         let action;
         if (item.status === 'SUBMITTED') {
-            if (isPendingLocationAddUnit) {
-                action = `<button class="btn btn-sm btn-outline-secondary" disabled title="Approve via Request Lokasi Baru"><i class="fas fa-lock me-1"></i>Via Lokasi</button>`;
-            } else {
-                action = `<button class="btn btn-sm btn-primary" onclick="openUnitRequestReview(${item.id})">Review</button>`;
-            }
+            action = `<button class="btn btn-sm btn-primary" onclick="openUnitRequestReview(${item.id})"><i class="fas fa-eye me-1"></i>Review</button>`;
         } else {
             action = `<button class="btn btn-sm btn-outline-secondary" onclick="openUnitRequestDetail(${item.id})">Detail</button>`;
         }
@@ -513,58 +563,388 @@ function renderUnitRequestsTable(data) {
 function openUnitRequestReview(id) { openUnitRequestModal(id, true); }
 function openUnitRequestDetail(id) { openUnitRequestModal(id, false); }
 
+function formatRp(n) {
+    return parseInt(n || 0).toLocaleString('id-ID');
+}
+
+// Attach Rupiah live-formatting to a display input; syncs raw value to a hidden input
+function initRpInput(displayId, hiddenId) {
+    const disp = document.getElementById(displayId);
+    const hid  = document.getElementById(hiddenId);
+    if (!disp || !hid) return;
+    // Format existing value
+    if (hid.value) {
+        disp.value = parseInt(hid.value).toLocaleString('id-ID');
+    }
+    disp.addEventListener('input', function() {
+        const raw = this.value.replace(/\D/g, '');
+        hid.value  = raw;
+        this.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+    });
+    disp.addEventListener('focus', function() {
+        // Move cursor to end
+        const len = this.value.length;
+        this.setSelectionRange(len, len);
+    });
+}
+
 function openUnitRequestModal(id, isReview) {
-    document.getElementById('unitRequestDetailContent').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>';
-    document.getElementById('unitRequestActionFooter').style.display = isReview ? 'block' : 'none';
+    const body   = document.getElementById('unitRequestDetailContent');
+    const footer = document.getElementById('unitRequestActionFooter');
+    body.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>';
+    footer.style.display = 'none';
     document.getElementById('unitRequestId').value = id;
+    document.getElementById('unitRequestType').value = '';
+    document.getElementById('unitRequestCustomerId').value = '';
+    document.getElementById('unitRequestReviewNotes').value = '';
+    document.getElementById('unitRequestHint').textContent = '';
     $('#unitRequestModal').modal('show');
-    
+
     fetch(URL_GET_AUDIT_DETAIL + '/' + id)
+        .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
         .then(res => {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        })
-        .then(res => {
-            if (!res.success) { document.getElementById('unitRequestDetailContent').innerHTML = '<div class="alert alert-danger">Gagal memuat</div>'; return; }
-            const item = res.data;
-            const current = JSON.parse(item.current_data || '{}');
-            const proposed = JSON.parse(item.proposed_data || '{}');
-            const typeMap = { 'ADD_UNIT':'Tambah Unit','UNIT_SWAP':'Tukar Unit','MARK_SPARE':'Tandai Spare','LOCATION_MISMATCH':'Lokasi Berbeda','UNIT_MISSING':'Unit Hilang','OTHER':'Lainnya' };
-            let proposedHtml = '';
-            if (item.request_type === 'ADD_UNIT') proposedHtml = `<p><strong>Unit ID:</strong> ${proposed.unit_id || '-'} | <strong>Spare:</strong> ${proposed.is_spare ? 'Ya' : 'Tidak'}</p>`;
-            else if (item.request_type === 'UNIT_SWAP') proposedHtml = `<p><strong>Unit Baru ID:</strong> ${proposed.new_unit_id || '-'}</p>`;
-            else proposedHtml = `<p>${JSON.stringify(proposed)}</p>`;
-            const html = `
-                <div class="mb-3"><strong>No. Audit:</strong> ${item.audit_number} | <strong>Customer:</strong> ${item.customer_name || '-'} | <strong>Lokasi:</strong> ${item.lokasi_kontrak || '-'}</div>
-                <div class="row">
-                    <div class="col-md-6"><div class="card"><div class="card-header py-2">Data Saat Ini</div><div class="card-body py-2"><p class="mb-0">Unit: ${current.no_unit || '-'} | S/N: ${current.serial || '-'}</p></div></div></div>
-                    <div class="col-md-6"><div class="card"><div class="card-header py-2">Pengajuan (${typeMap[item.request_type] || item.request_type})</div><div class="card-body py-2">${proposedHtml}</div></div></div>
-                </div>
-                <div class="mt-2"><strong>Catatan:</strong> ${item.notes || '-'}</div>
-            `;
-            document.getElementById('unitRequestDetailContent').innerHTML = html;
+            if (!res.success) { body.innerHTML = '<div class="alert alert-danger">Gagal memuat detail</div>'; return; }
+            const item     = res.data;
+            const proposed = typeof item.proposed_data === 'string' ? JSON.parse(item.proposed_data || '{}') : (item.proposed_data || {});
+            const current  = typeof item.current_data  === 'string' ? JSON.parse(item.current_data  || '{}') : (item.current_data  || {});
+            const typeMap  = { ADD_UNIT:'Tambah Unit', UNIT_SWAP:'Tukar Unit', MARK_SPARE:'Tandai Spare', LOCATION_MISMATCH:'Lokasi Berbeda', UNIT_MISSING:'Unit Hilang', OTHER:'Lainnya' };
+
+            document.getElementById('unitRequestType').value       = item.request_type;
+            document.getElementById('unitRequestCustomerId').value = item.customer_id || '';
+
+            // ── Header info bar ──────────────────────────────────────
+            const headerHtml = `
+                <div class="alert alert-light border mb-3 py-2">
+                    <div class="row gx-4 gy-1 small">
+                        <div class="col-auto"><strong>No. Audit:</strong> ${item.audit_number || '-'}</div>
+                        <div class="col-auto"><strong>Customer:</strong> ${item.customer_name || '-'}</div>
+                        <div class="col-auto"><strong>Lokasi:</strong> ${item.lokasi_kontrak || '-'}</div>
+                        <div class="col-auto"><strong>Jenis:</strong> <span class="badge badge-soft-blue">${typeMap[item.request_type] || item.request_type}</span></div>
+                        <div class="col-auto"><strong>Diajukan Oleh:</strong> ${item.submitter_name || '-'}</div>
+                    </div>
+                    ${item.notes ? `<div class="mt-1 small text-muted"><strong>Catatan Service:</strong> ${item.notes}</div>` : ''}
+                </div>`;
+
+            // ── Per-type review form ─────────────────────────────────
+            let detailHtml = '';
+            let hint       = '';
+
+            if (item.request_type === 'ADD_UNIT') {
+                hint = 'Wajib pilih kontrak dan isi harga sewa sebelum approve.';
+                detailHtml = `
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-light"><strong>Unit yang Diajukan</strong></div>
+                            <div class="card-body py-3">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr><th class="text-muted" style="width:110px">No. Unit</th><td><strong>${item.no_unit || '<span class="text-muted">-</span>'}</strong></td></tr>
+                                    <tr><th class="text-muted">Serial No.</th><td>${item.serial_number || '-'}</td></tr>
+                                    <tr><th class="text-muted">Model</th><td>${(item.merk_unit || '') + ' ' + (item.model_unit || '') || '-'}</td></tr>
+                                    <tr><th class="text-muted">Spare?</th><td><span class="badge ${proposed.is_spare ? 'badge-soft-orange' : 'badge-soft-gray'}">${proposed.is_spare ? 'Spare' : 'Unit Reguler'}</span></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header py-2 bg-primary text-white"><strong>Data Marketing (wajib diisi)</strong></div>
+                            <div class="card-body py-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Kontrak <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="reviewKontrakId">
+                                        <option value="">-- Memuat kontrak... --</option>
+                                    </select>
+                                    <div class="form-text">Pilih kontrak aktif customer yang akan menerima unit ini.</div>
+                                </div>
+                                <div class="mb-3" id="wrapHargaSewa">
+                                    <label class="form-label fw-bold">Harga Sewa / Unit / Bulan <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rp</span>
+                                        <input type="text" class="form-control review-rp-input" id="reviewHargaSewaDisplay"
+                                            inputmode="numeric" placeholder="0" autocomplete="off">
+                                        <input type="hidden" id="reviewHargaSewa">
+                                    </div>
+                                    <div class="form-text">Contoh: 2.500.000</div>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="reviewIsSpare" ${proposed.is_spare ? 'checked' : ''}>
+                                    <label class="form-check-label" for="reviewIsSpare">Tandai sebagai Spare Unit</label>
+                                    <div class="form-text text-warning" id="spareHargaNote" style="display:none">Harga sewa tidak berlaku untuk spare unit.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                // Load contracts async
+                if (item.customer_id) {
+                    fetch(`<?= base_url('marketing/unit-audit/getContractsForCustomer/') ?>${item.customer_id}`)
+                        .then(r => r.json())
+                        .then(r => {
+                            const sel = document.getElementById('reviewKontrakId');
+                            if (!sel) return;
+                            if (r.success && r.data.length) {
+                                sel.innerHTML = '<option value="">-- Pilih Kontrak --</option>' +
+                                    r.data.map(c => `<option value="${c.id}">${c.no_kontrak}${c.customer_po_number ? ' / ' + c.customer_po_number : ''} (${c.status})</option>`).join('');
+                                // Pre-select if request already has kontrak_id
+                                if (item.kontrak_id) sel.value = item.kontrak_id;
+                            } else {
+                                sel.innerHTML = '<option value="">Tidak ada kontrak aktif</option>';
+                            }
+                        });
+                }
+                // Init Rp formatting and spare toggle after DOM is ready
+                setTimeout(() => {
+                    initRpInput('reviewHargaSewaDisplay', 'reviewHargaSewa');
+                    const spareChk = document.getElementById('reviewIsSpare');
+                    if (spareChk) {
+                        const toggleSpare = () => {
+                            const isSpare = spareChk.checked;
+                            const wrap    = document.getElementById('wrapHargaSewa');
+                            const note    = document.getElementById('spareHargaNote');
+                            const inp     = document.getElementById('reviewHargaSewaDisplay');
+                            if (wrap)  wrap.style.opacity = isSpare ? '0.45' : '1';
+                            if (inp)   inp.disabled       = isSpare;
+                            if (note)  note.style.display = isSpare ? 'block' : 'none';
+                        };
+                        spareChk.addEventListener('change', toggleSpare);
+                        toggleSpare(); // run once for initial state
+                    }
+                }, 50);
+
+            } else if (item.request_type === 'UNIT_SWAP') {
+                hint = 'Isi harga sewa untuk unit pengganti sebelum approve.';
+                detailHtml = `
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-danger text-white"><strong>Unit Lama (Ditarik)</strong></div>
+                            <div class="card-body py-3">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr><th class="text-muted" style="width:90px">No. Unit</th><td><strong>${current.no_unit || item.no_unit || '-'}</strong></td></tr>
+                                    <tr><th class="text-muted">Serial</th><td>${current.serial || item.serial_number || '-'}</td></tr>
+                                    <tr><th class="text-muted">Kontrak</th><td>${item.no_kontrak || '-'}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-success text-white"><strong>Unit Baru (Pengganti)</strong></div>
+                            <div class="card-body py-3">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr><th class="text-muted" style="width:90px">Unit ID</th><td><strong>${proposed.new_unit_id || '-'}</strong></td></tr>
+                                    <tr><th class="text-muted">Catatan</th><td>${proposed.swap_reason || '-'}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header py-2 bg-primary text-white"><strong>Data Marketing</strong></div>
+                            <div class="card-body py-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Harga Sewa Unit Baru <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rp</span>
+                                        <input type="text" class="form-control review-rp-input" id="reviewHargaSewaDisplay"
+                                            inputmode="numeric" placeholder="0" autocomplete="off"
+                                            value="${proposed.harga_sewa ? parseInt(proposed.harga_sewa).toLocaleString('id-ID') : ''}">
+                                        <input type="hidden" id="reviewHargaSewa" value="${proposed.harga_sewa || ''}">
+                                    </div>
+                                    <div class="form-text">Kosongkan jika sama dengan unit lama.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                // Init Rp format for UNIT_SWAP harga input
+                setTimeout(() => initRpInput('reviewHargaSewaDisplay', 'reviewHargaSewa'), 50);
+                hint = 'Review dan konfirmasi penandaan spare unit.';
+                detailHtml = `
+                <div class="card">
+                    <div class="card-header py-2 bg-light"><strong>Unit yang Ditandai Spare</strong></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr><th class="text-muted" style="width:110px">No. Unit</th><td><strong>${item.no_unit || '-'}</strong></td></tr>
+                                    <tr><th class="text-muted">Serial No.</th><td>${item.serial_number || '-'}</td></tr>
+                                    <tr><th class="text-muted">Model</th><td>${(item.merk_unit || '') + ' ' + (item.model_unit || '') || '-'}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr><th class="text-muted" style="width:110px">Kontrak</th><td>${item.no_kontrak || '-'}</td></tr>
+                                    <tr><th class="text-muted">Lokasi</th><td>${item.lokasi_kontrak || '-'}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning py-2 mt-2 mb-0">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Menyetujui pengajuan ini akan menandai unit sebagai <strong>Spare Unit</strong> di dalam kontrak.
+                        </div>
+                    </div>
+                </div>`;
+
+            } else if (item.request_type === 'LOCATION_MISMATCH') {
+                hint = 'Verifikasi bahwa perubahan lokasi unit sudah sesuai.';
+                detailHtml = `
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-danger text-white"><strong>Lokasi Lama</strong></div>
+                            <div class="card-body py-3">
+                                <p class="mb-1"><strong>${current.location || item.lokasi_kontrak || '-'}</strong></p>
+                                <p class="mb-0 text-muted small">Unit: ${item.no_unit || '-'} | S/N: ${item.serial_number || '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-1 d-flex align-items-center justify-content-center">
+                        <i class="fas fa-arrow-right fa-2x text-muted"></i>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-success text-white"><strong>Lokasi Baru (Diusulkan)</strong></div>
+                            <div class="card-body py-3">
+                                <p class="mb-1"><strong>${proposed.new_location || '-'}</strong></p>
+                                <p class="mb-0 text-muted small">Alasan: ${proposed.reason || item.notes || '-'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            } else if (item.request_type === 'UNIT_MISSING') {
+                hint = 'Pilih tindakan yang akan diambil untuk unit yang hilang.';
+                detailHtml = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-warning"><strong>Unit Dilaporkan Hilang</strong></div>
+                            <div class="card-body py-3">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr><th class="text-muted" style="width:110px">No. Unit</th><td><strong>${item.no_unit || '-'}</strong></td></tr>
+                                    <tr><th class="text-muted">Serial No.</th><td>${item.serial_number || '-'}</td></tr>
+                                    <tr><th class="text-muted">Kontrak</th><td>${item.no_kontrak || '-'}</td></tr>
+                                    <tr><th class="text-muted">Lokasi</th><td>${item.lokasi_kontrak || '-'}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header py-2 bg-primary text-white"><strong>Tindakan</strong></div>
+                            <div class="card-body py-3">
+                                <label class="form-label fw-bold">Tindakan yang Diambil <span class="text-danger">*</span></label>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="missingAction" id="missingRecord" value="record" checked>
+                                        <label class="form-check-label" for="missingRecord">
+                                            <strong>Catat Saja</strong>
+                                            <div class="text-muted small">Unit tetap di kontrak, dicatat sebagai laporan hilang</div>
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="missingAction" id="missingPull" value="pull">
+                                        <label class="form-check-label" for="missingPull">
+                                            <strong>Pull dari Kontrak</strong>
+                                            <div class="text-muted small">Unit dikeluarkan dari kontrak (status PULLED)</div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                // OTHER / fallback
+                detailHtml = `
+                <div class="card">
+                    <div class="card-header py-2">Data Pengajuan</div>
+                    <div class="card-body">
+                        <pre class="mb-0 small">${JSON.stringify(proposed, null, 2)}</pre>
+                    </div>
+                </div>`;
+            }
+
+            body.innerHTML = headerHtml + detailHtml;
+            document.getElementById('unitRequestHint').textContent = hint;
+
+            if (isReview) {
+                footer.style.display = 'block';
+            }
         })
         .catch(() => {
-            document.getElementById('unitRequestDetailContent').innerHTML = '<div class="alert alert-danger">Gagal memuat detail</div>';
+            body.innerHTML = '<div class="alert alert-danger">Gagal memuat detail. Coba lagi.</div>';
         });
 }
 
 function processUnitRequest(action) {
-    const id = document.getElementById('unitRequestId').value;
-    const notes = document.getElementById('unitRequestReviewNotes').value;
-    const endpoint = action === 'APPROVE' ? 'approveRequest' : 'rejectRequest';
+    const id          = document.getElementById('unitRequestId').value;
+    const notes       = document.getElementById('unitRequestReviewNotes').value;
+    const requestType = document.getElementById('unitRequestType').value;
+    const endpoint    = action === 'APPROVE' ? 'approveRequest' : 'rejectRequest';
+
+    let extraData = {};
+
+    if (action === 'APPROVE') {
+        if (requestType === 'ADD_UNIT') {
+            const kontrakId = document.getElementById('reviewKontrakId')?.value;
+            const hargaSewa = document.getElementById('reviewHargaSewa')?.value;   // hidden raw value
+            const isSpare   = document.getElementById('reviewIsSpare')?.checked ? '1' : '0';
+            if (!kontrakId) {
+                if (window.OptimaNotify) OptimaNotify.error('Pilih kontrak terlebih dahulu.');
+                else alert('Pilih kontrak terlebih dahulu.');
+                return;
+            }
+            // Spare unit: harga sewa boleh kosong (0)
+            if (isSpare === '0' && (!hargaSewa || parseFloat(hargaSewa) <= 0)) {
+                if (window.OptimaNotify) OptimaNotify.error('Isi harga sewa per unit per bulan.');
+                else alert('Isi harga sewa per unit per bulan.');
+                return;
+            }
+            extraData = { kontrak_id: kontrakId, harga_sewa: isSpare === '1' ? '0' : hargaSewa, is_spare: isSpare };
+        }
+
+        if (requestType === 'UNIT_SWAP') {
+            const hargaSewa = document.getElementById('reviewHargaSewa')?.value;   // hidden raw value
+            if (hargaSewa) extraData.harga_sewa = hargaSewa;
+        }
+
+        if (requestType === 'UNIT_MISSING') {
+            const actionEl = document.querySelector('input[name="missingAction"]:checked');
+            extraData.missing_action = actionEl ? actionEl.value : 'record';
+        }
+    }
+
+    const btn = action === 'APPROVE'
+        ? document.getElementById('btnApproveUnitRequest')
+        : document.getElementById('btnRejectUnitRequest');
+    btn.disabled = true;
+    const origHTML = btn.innerHTML;
+    btn.innerHTML  = '<i class="fas fa-spinner fa-spin me-1"></i> Memproses...';
+
     fetch(URL_APPROVE_REJECT + '/' + endpoint + '/' + id, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-        body: 'notes=' + encodeURIComponent(notes)
+        body: csrfBody({ notes, ...extraData })
     }).then(r => r.json()).then(res => {
+        btn.disabled  = false;
+        btn.innerHTML = origHTML;
         if (res.success) {
             $('#unitRequestModal').modal('hide');
             if (window.OptimaNotify) OptimaNotify.success(res.message);
+            else alert(res.message);
             loadUnitRequests();
         } else {
             if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal');
+            else alert(res.message || 'Gagal');
         }
+    }).catch(() => {
+        btn.disabled  = false;
+        btn.innerHTML = origHTML;
+        if (window.OptimaNotify) OptimaNotify.error('Koneksi gagal. Coba lagi.');
+        else alert('Koneksi gagal. Coba lagi.');
     });
 }
 
@@ -617,7 +997,7 @@ function doRollback(id) {
     fetch(`<?= base_url('marketing/unit-audit/rollbackLocationRequest/') ?>${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-        body: 'notes='
+        body: csrfBody({ notes: '' })
     })
     .then(res => res.json())
     .then(data => {
@@ -802,6 +1182,7 @@ function confirmApproveLocationWithUnits() {
 
 function doApproveLocationRequest(locId, kontrakId, unitPrices) {
     const params = new URLSearchParams();
+    params.append(CSRF_NAME, CSRF_HASH);
     params.append('notes', '');
     if (kontrakId) params.append('kontrak_id', kontrakId);
     if (Object.keys(unitPrices).length) params.append('unit_prices', JSON.stringify(unitPrices));
@@ -838,7 +1219,7 @@ function confirmRejectLocation() {
     fetch(`<?= base_url('marketing/unit-audit/rejectLocationRequest/') ?>${selectedLocationRequestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `notes=${encodeURIComponent(notes)}`
+        body: csrfBody({ notes: notes })
     })
     .then(res => res.json())
     .then(data => {
@@ -1054,147 +1435,180 @@ function renderDetailModal(audit) {
     const hasDiscrepancy = difference !== 0;
     const hasExtraUnits = (audit.items || []).some(item => item.result === 'EXTRA_UNIT');
     const hasMissingUnits = (audit.items || []).some(item => item.result === 'NO_UNIT_IN_KONTRAK');
+    const discrepancyItems = (audit.items || []).filter(i => i.result !== 'MATCH');
 
+    // Build per-discrepancy action summary
+    let actionRowsHtml = '';
+    discrepancyItems.forEach(item => {
+        const parsed = parseNotesObj(item.notes);
+        const reason = (parsed.reasons && parsed.reasons[0]) || '';
+        let kondisi = '', tindakan = '', badgeCls = 'badge-soft-gray';
+        switch (item.result) {
+            case 'NO_UNIT_IN_KONTRAK':
+                kondisi = 'Unit tidak ditemukan di lapangan';
+                tindakan = '<i class="fas fa-minus-circle me-1"></i>Pull dari kontrak';
+                badgeCls = 'badge-soft-red'; break;
+            case 'MISMATCH_NO_UNIT':
+                if (reason === 'UNIT_SWAP') {
+                    kondisi = 'Unit fisik berbeda dengan kontrak';
+                    const actualDisplay = (item.actual_no_unit && item.actual_no_unit !== item.expected_no_unit)
+                        ? item.actual_no_unit
+                        : (parsed.keterangan || 'baru');
+                    tindakan = '<i class="fas fa-exchange-alt me-1"></i>Swap unit di kontrak → ' + esc(actualDisplay);
+                    badgeCls = 'badge-soft-orange';
+                } else if (reason === 'LOCATION_MISMATCH') {
+                    kondisi = 'Unit berada di lokasi yang salah';
+                    tindakan = '<i class="fas fa-map-marker-alt me-1"></i>Update lokasi unit di kontrak';
+                    badgeCls = 'badge-soft-blue';
+                } else {
+                    kondisi = 'Perbedaan unit terdeteksi';
+                    tindakan = '<i class="fas fa-info-circle me-1"></i>Dicatat';
+                }
+                break;
+            case 'MISMATCH_SPARE':
+                kondisi = 'Unit ditandai sebagai Spare Unit';
+                tindakan = '<i class="fas fa-tag me-1"></i>Update status spare di kontrak';
+                badgeCls = 'badge-soft-cyan'; break;
+            case 'MISMATCH_SPEC':
+                kondisi = 'Spesifikasi unit berbeda';
+                tindakan = '<i class="fas fa-info-circle me-1"></i>Dicatat saja'; break;
+            case 'EXTRA_UNIT':
+                kondisi = 'Unit tambahan ditemukan di lapangan';
+                tindakan = '<i class="fas fa-plus-circle me-1"></i>Tambah ke kontrak';
+                badgeCls = 'badge-soft-green'; break;
+            case 'ADD_UNIT':
+                kondisi = 'Unit ditambahkan ke kontrak di lokasi ini';
+                tindakan = '<i class="fas fa-plus-circle me-1"></i>Tambah ke kontrak';
+                badgeCls = 'badge-soft-green'; break;
+        }
+        const ket = parsed.keterangan ? ` <span class="text-muted small">— ${esc(parsed.keterangan)}</span>` : '';
+        actionRowsHtml += `<tr>
+            <td><strong>${esc(item.expected_no_unit || item.actual_no_unit || '-')}</strong></td>
+            <td class="small">${kondisi}${ket}</td>
+            <td><span class="badge ${badgeCls} small">${tindakan}</span></td>
+        </tr>`;
+    });
     let itemsHtml = '';
+    const priceNeededItems = [];
     audit.items.forEach((item, idx) => {
         const resultBadge = getResultBadge(item.result);
+        const notesText = formatNotes(item.notes);
+        const parsed = parseNotesObj(item.notes);
+        const reason = (parsed.reasons && parsed.reasons[0]) || '';
+        let rowClass = '';
+        switch (item.result) {
+            case 'NO_UNIT_IN_KONTRAK':
+                rowClass = 'table-danger'; break;
+            case 'MISMATCH_NO_UNIT':
+                rowClass = (reason === 'LOCATION_MISMATCH') ? 'table-info' : 'table-warning';
+                // UNIT_SWAP: no price needed — uses existing harga_sewa from the old row
+                break;
+            case 'MISMATCH_SPARE':
+            case 'MISMATCH_SPEC':
+            case 'MISMATCH_SERIAL':
+                rowClass = 'table-warning'; break;
+            case 'EXTRA_UNIT':
+                rowClass = 'table-success';
+                priceNeededItems.push({ no: item.actual_no_unit, idx: idx, result: 'EXTRA_UNIT' });
+                break;
+            case 'ADD_UNIT':
+                rowClass = 'table-success';
+                priceNeededItems.push({ no: item.actual_no_unit || item.expected_no_unit, idx: idx, result: 'ADD_UNIT' });
+                break;
+        }
+        // For UNIT_SWAP, resolve the "actual" unit to display:
+        // prefer actual_no_unit (if different from expected), fallback to keterangan (mechanic's free text)
+        let displayActualNo = item.actual_no_unit;
+        let displayActualSerial = item.actual_serial;
+        if (item.result === 'MISMATCH_NO_UNIT' && reason === 'UNIT_SWAP') {
+            if (!item.actual_no_unit || item.actual_no_unit === item.expected_no_unit) {
+                const ket = parsed.keterangan || '';
+                displayActualNo = ket ? ket + ' <span class="text-muted small">(catatan)</span>' : '—';
+                displayActualSerial = null;
+            }
+        }
         itemsHtml += `
-            <tr>
-                <td>${idx + 1}</td>
-                <td>${item.expected_no_unit || '-'}</td>
-                <td>${item.expected_serial || '-'}</td>
-                <td>${item.expected_merk || ''} ${item.expected_model || ''}</td>
-                <td class="text-center">${item.expected_is_spare == 1 ? 'YES' : 'NO'}</td>
-                <td>${item.actual_no_unit || '-'}</td>
-                <td>${item.actual_serial || '-'}</td>
-                <td>${item.actual_merk || ''} ${item.actual_model || ''}</td>
-                <td class="text-center">${item.actual_is_spare == 1 ? 'YES' : 'NO'}</td>
+            <tr class="${rowClass}">
+                <td class="text-center small">${idx + 1}</td>
+                <td class="small fw-semibold">${esc(item.expected_no_unit || '—')}</td>
+                <td class="small text-muted">${esc(item.expected_serial || '—')}</td>
+                <td class="small fw-semibold">${displayActualNo || '—'}</td>
+                <td class="small text-muted">${esc(displayActualSerial || '—')}</td>
                 <td>${resultBadge}</td>
-                <td>${item.notes || '-'}</td>
+                <td class="small">${notesText}</td>
             </tr>
         `;
     });
 
-    // Service notes contains the audit summary
-    const auditSummary = audit.service_notes || '';
-    const summaryClass = hasDiscrepancy ? 'alert-warning' : 'alert-success';
-    const summaryIcon = hasDiscrepancy ? 'exclamation-triangle' : 'check-circle';
-    
+    // Store for use in confirm modal
+    window._auditPriceNeededItems = priceNeededItems;
+    window._auditActionRowsHtml   = actionRowsHtml;
+    window._auditDiscrepancyCount = discrepancyItems.length;
+
     body.innerHTML = `
-        <!-- Audit Summary Header -->
-        ${auditSummary ? `
-        <div class="alert ${summaryClass} mb-3">
-            <div class="d-flex align-items-start">
-                <i class="fas fa-${summaryIcon} me-2 mt-1"></i>
-                <div>
-                    <strong>Ringkasan Audit:</strong>
-                    <div>${auditSummary}</div>
-                </div>
-            </div>
+        <!-- Header cards -->
+        <div class="row g-2 mb-3">
+            <div class="col-md-3"><div class="card bg-light h-100"><div class="card-body py-2"><div class="text-muted small">No. Audit</div><div class="fw-bold small">${esc(audit.audit_number)}</div></div></div></div>
+            <div class="col-md-3"><div class="card bg-light h-100"><div class="card-body py-2"><div class="text-muted small">Customer</div><div class="fw-bold small">${esc(audit.customer_name || '-')}</div></div></div></div>
+            <div class="col-md-3"><div class="card bg-light h-100"><div class="card-body py-2"><div class="text-muted small">Lokasi</div><div class="fw-bold small">${esc(audit.location_name || '-')}</div></div></div></div>
+            <div class="col-md-3"><div class="card bg-light h-100"><div class="card-body py-2"><div class="text-muted small">Kontrak</div><div class="fw-bold small">${esc(audit.no_kontrak || '-')}</div></div></div></div>
         </div>
-        ` : ''}
-        
-        <!-- Summary -->
-        <div class="row g-3 mb-3">
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <div class="text-muted small">No. Audit</div>
-                        <div class="fw-bold">${audit.audit_number}</div>
-                    </div>
+
+        <!-- Kontrak vs Actual compact -->
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="card border-0 bg-light text-center py-2">
+                    <div class="text-muted small mb-1">Kontrak Unit</div>
+                    <div class="fs-4 fw-bold">${audit.kontrak_total_units || 0}</div>
+                    <div class="text-muted small">Spare: ${audit.kontrak_spare_units || 0}</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <div class="text-muted small">Customer</div>
-                        <div class="fw-bold">${audit.customer_name || '-'}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <div class="text-muted small">Lokasi</div>
-                        <div class="fw-bold">${audit.location_name || '-'}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <div class="text-muted small">Kontrak</div>
-                        <div class="fw-bold">${audit.no_kontrak || '-'}</div>
+            <div class="col-6">
+                <div class="card border-0 bg-light text-center py-2">
+                    <div class="text-muted small mb-1">Aktual (Audit)</div>
+                    <div class="fs-4 fw-bold ${hasDiscrepancy ? 'text-danger' : 'text-success'}">${audit.actual_total_units || 0}</div>
+                    <div class="text-muted small">Spare: ${audit.actual_spare_units || 0}
+                        ${hasDiscrepancy ? `<span class="ms-2 badge badge-soft-red">Selisih ${difference > 0 ? '+' : ''}${difference}</span>` : '<span class="ms-2 badge badge-soft-green">Sesuai</span>'}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Comparison -->
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-light">Data Kontrak</div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-6">Total Unit: <strong>${audit.kontrak_total_units || 0}</strong></div>
-                            <div class="col-6">Spare Unit: <strong>${audit.kontrak_spare_units || 0}</strong></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-light">Data Actual (Audit)</div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-6">Total Unit: <strong>${audit.actual_total_units || 0}</strong></div>
-                            <div class="col-6">Spare Unit: <strong>${audit.actual_spare_units || 0}</strong></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hidden: kontrak_id auto dari audit record -->
         <input type="hidden" id="approveAuditKontrakId" value="${audit.kontrak_id || ''}">
 
-        ${hasMissingUnits ? `
-        <div class="alert alert-warning mb-3">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Unit hilang terdeteksi.</strong> Unit yang tidak ditemukan di lapangan akan otomatis dicabut dari kontrak saat di-approve.
-        </div>
-        ` : ''}
-
-        ${hasExtraUnits ? `
-        <div class="card mb-3 border-warning">
-            <div class="card-header" style="background:#fff3cd;">
-                <i class="fas fa-tag me-2"></i>Harga Unit Baru Ditemukan
-            </div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">Ada <strong>${difference > 0 ? '+' + difference : difference}</strong> unit tambahan yang ditemukan di lapangan. Masukkan harga sewa per unit untuk mencatatnya ke kontrak.</p>
-                <div class="row g-3">
-                    <div class="col-md-5">
-                        <label class="form-label fw-semibold">Harga Sewa per Unit <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text">Rp</span>
-                            <input type="number" class="form-control" id="pricePerUnit" placeholder="0" min="0" value="${audit.price_per_unit || ''}">
-                        </div>
-                    </div>
-                </div>
+        <!-- Detail Unit Table -->
+        <div class="mb-3">
+            <h6 class="fw-semibold mb-2"><i class="fas fa-list-check me-2 text-primary"></i>Detail Unit</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width:40px">No</th>
+                            <th>No Unit <small class="text-muted">(Kontrak)</small></th>
+                            <th>Serial <small class="text-muted">(Kontrak)</small></th>
+                            <th>No Unit <small class="text-muted">(Aktual)</small></th>
+                            <th>Serial <small class="text-muted">(Aktual)</small></th>
+                            <th>Hasil</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
             </div>
         </div>
-        ` : ''}
 
-        <!-- Notes -->
+        <!-- Catatan Mekanik -->
         <div class="mb-3">
-            <label class="form-label">Catatan Mekanik</label>
-            <div class="p-2 bg-light rounded small">${audit.mechanic_notes || '-'}</div>
+            <label class="form-label fw-semibold text-muted small">Catatan Mekanik</label>
+            <div class="p-2 bg-light rounded small">${formatMechanicNotes(audit.mechanic_notes)}</div>
         </div>
+
+        <!-- Catatan Marketing -->
         <div class="mb-3">
-            <label class="form-label">Catatan Marketing</label>
+            <label class="form-label fw-semibold">Catatan Marketing</label>
             <textarea class="form-control" id="marketingNotes" rows="2" placeholder="Catatan untuk approval ini...">${audit.marketing_notes || ''}</textarea>
         </div>
+
         ${audit.actual_total_units === 0 ? `
         <div class="mb-3">
             <div class="form-check">
@@ -1204,31 +1618,7 @@ function renderDetailModal(audit) {
                 </label>
                 <div class="form-text">Tidak ada unit ditemukan di lokasi ini. Centang untuk menonaktifkan lokasi setelah approve.</div>
             </div>
-        </div>
-        ` : ''}
-
-        <!-- Items Table -->
-        <h6>Detail Unit</h6>
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>No</th>
-                        <th>No Unit<br><small>(Kontrak)</small></th>
-                        <th>Serial<br><small>(Kontrak)</small></th>
-                        <th>Merk/Model<br><small>(Kontrak)</small></th>
-                        <th>Spare?</th>
-                        <th>No Unit<br><small>(Actual)</small></th>
-                        <th>Serial<br><small>(Actual)</small></th>
-                        <th>Merk/Model<br><small>(Actual)</small></th>
-                        <th>Spare?</th>
-                        <th>Hasil</th>
-                        <th>Catatan</th>
-                    </tr>
-                </thead>
-                <tbody>${itemsHtml}</tbody>
-            </table>
-        </div>
+        </div>` : ''}
     `;
 
     // Setup footer buttons based on status
@@ -1300,7 +1690,7 @@ function confirmReject() {
     fetch(`<?= base_url('marketing/unit-audit/rejectLocation/') ?>${selectedAuditId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `notes=${encodeURIComponent(notes)}`
+        body: csrfBody({ notes: notes })
     })
     .then(res => res.json())
     .then(data => {
@@ -1313,21 +1703,92 @@ function confirmReject() {
 }
 
 function approveAudit() {
-    const pricePerUnit = document.getElementById('pricePerUnit')?.value || '';
+    // Build confirm modal content from stored data
+    const priceNeededItems = window._auditPriceNeededItems || [];
+    const actionRowsHtml   = window._auditActionRowsHtml || '';
+    const discrepancyCount = window._auditDiscrepancyCount || 0;
+
+    const actionTable = discrepancyCount === 0
+        ? `<div class="alert alert-success py-2 mb-3"><i class="fas fa-check-circle me-2"></i>Semua unit sesuai. Tidak ada perbedaan ditemukan.</div>`
+        : `<div class="card mb-3 border-primary">
+            <div class="card-header py-2 bg-primary text-white"><i class="fas fa-tasks me-2"></i><strong>Tindakan yang Akan Dilakukan</strong></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light"><tr><th style="width:110px">Unit</th><th>Kondisi di Lapangan</th><th>Tindakan Otomatis</th></tr></thead>
+                    <tbody>${actionRowsHtml}</tbody>
+                </table>
+            </div>
+           </div>`;
+
+    let priceInputsHtml = '';
+    if (priceNeededItems.length > 0) {
+        const rows = priceNeededItems.map(it => `
+            <tr>
+                <td class="small fw-semibold align-middle">${esc(it.no || '-')}</td>
+                <td class="small align-middle">${it.result === 'ADD_UNIT' ? 'Unit Ditambahkan' : 'Unit Tambahan (Extra)'}</td>
+                <td>
+                    <div class="input-group input-group-sm" style="max-width:200px">
+                        <span class="input-group-text">Rp</span>
+                        <input type="text" class="form-control audit-harga-input" data-idx="${it.idx}"
+                            placeholder="Isi harga sewa" inputmode="numeric"
+                            oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    </div>
+                </td>
+            </tr>`).join('');
+        priceInputsHtml = `
+            <div class="card mb-3 border-warning">
+                <div class="card-header py-2 bg-warning text-dark fw-semibold">
+                    <i class="fas fa-tag me-2"></i>Harga Sewa Unit Tambahan
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light"><tr><th>No Unit</th><th>Jenis</th><th style="width:220px">Harga Sewa / Bulan</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                <div class="card-footer text-muted small py-2">
+                    <i class="fas fa-info-circle me-1"></i>Wajib diisi untuk unit yang baru ditambahkan ke kontrak.
+                </div>
+            </div>`;
+    }
+
+    document.getElementById('approveConfirmBody').innerHTML = actionTable + priceInputsHtml;
+    $('#auditApproveConfirmModal').modal('show');
+}
+
+function doApproveAudit() {
     const marketingNotes = document.getElementById('marketingNotes')?.value || '';
     const deactivateLocation = document.getElementById('deactivateLocation')?.checked ? '1' : '0';
+    const kontrakId = document.getElementById('approveAuditKontrakId')?.value || '';
+
+    const itemPrices = {};
+    document.querySelectorAll('.audit-harga-input').forEach(input => {
+        const idx = input.dataset.idx;
+        const val = input.value.trim();
+        if (val) itemPrices[idx] = val;
+    });
+
+    const btn = document.querySelector('#auditApproveConfirmModal .btn-success');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Memproses...'; }
 
     fetch(`<?= base_url('marketing/unit-audit/approveLocation/') ?>${selectedAuditId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `price_per_unit=${pricePerUnit}&marketing_notes=${encodeURIComponent(marketingNotes)}&deactivate_location=${deactivateLocation}`
+        body: csrfBody({
+            marketing_notes:     marketingNotes,
+            deactivate_location: deactivateLocation,
+            kontrak_id:          kontrakId,
+            item_prices:         JSON.stringify(itemPrices),
+        }),
     })
     .then(res => res.json())
     .then(data => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check me-1"></i>Ya, Approve'; }
         if (data.success) {
+            $('#auditApproveConfirmModal').modal('hide');
+            $('#detailModal').modal('hide');
             if (window.OptimaNotify) OptimaNotify.success(data.message);
             else alert(data.message);
-            $('#detailModal').modal('hide');
             loadPendingApprovals();
             loadApprovalHistory();
         } else {
@@ -1336,6 +1797,7 @@ function approveAudit() {
         }
     })
     .catch(() => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check me-1"></i>Ya, Approve'; }
         if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan');
         else alert('Terjadi kesalahan');
     });
@@ -1356,15 +1818,59 @@ function getStatusBadge(status) {
 
 function getResultBadge(result) {
     const badges = {
-        'MATCH': '<span class="badge badge-soft-green">MATCH</span>',
-        'NO_UNIT_IN_KONTRAK': '<span class="badge badge-soft-red">Tidak Ada</span>',
-        'EXTRA_UNIT': '<span class="badge badge-soft-yellow">Extra</span>',
-        'MISMATCH_NO_UNIT': '<span class="badge badge-soft-orange">No Beda</span>',
-        'MISMATCH_SERIAL': '<span class="badge badge-soft-orange">Serial Beda</span>',
-        'MISMATCH_SPEC': '<span class="badge badge-soft-orange">Spesifikasi Beda</span>',
-        'MISMATCH_SPARE': '<span class="badge badge-soft-cyan">Spare Beda</span>'
+        'MATCH':             '<span class="badge badge-soft-green">Sesuai</span>',
+        'NO_UNIT_IN_KONTRAK':'<span class="badge badge-soft-red">Unit Tidak Ada</span>',
+        'EXTRA_UNIT':        '<span class="badge badge-soft-yellow">Unit Tambahan</span>',
+        'MISMATCH_NO_UNIT':  '<span class="badge badge-soft-orange">Unit Beda</span>',
+        'MISMATCH_SERIAL':   '<span class="badge badge-soft-orange">Serial Beda</span>',
+        'MISMATCH_SPEC':     '<span class="badge badge-soft-orange">Spesifikasi Beda</span>',
+        'MISMATCH_SPARE':    '<span class="badge badge-soft-cyan">Tandai Spare</span>'
     };
-    return badges[result] || result;
+    return badges[result] || `<span class="badge badge-soft-gray">${result}</span>`;
+}
+
+function formatNotes(notes) {
+    if (!notes) return '—';
+    let parsed;
+    try { parsed = JSON.parse(notes); } catch(e) { return notes; }
+    const parts = [];
+    if (parsed.reasons && parsed.reasons.length) {
+        const labels = parsed.reasons.map(r => {
+            if (r === 'LOCATION_MISMATCH') {
+                const locName = parsed.extra && parsed.extra.target_location_name;
+                return locName ? 'Lokasi salah \u2192 ' + locName : 'Lokasi salah';
+            }
+            const reasonLabels = {
+                'UNIT_SWAP':    'Unit beda',
+                'MARK_SPARE':   'Tandai Spare',
+                'UNIT_MISSING': 'Unit tidak ada'
+            };
+            return reasonLabels[r] || r;
+        });
+        parts.push(labels.join(', '));
+    }
+    if (parsed.keterangan && parsed.keterangan.trim()) parts.push(parsed.keterangan.trim());
+    return parts.length ? parts.join(' — ') : '—';
+}
+
+function parseNotesObj(notes) {
+    if (!notes) return { reasons: [], keterangan: '', extra: {} };
+    try { return JSON.parse(notes); } catch(e) { return { reasons: [], keterangan: notes, extra: {} }; }
+}
+
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatMechanicNotes(notes) {
+    if (!notes) return '—';
+    let parsed;
+    try { parsed = JSON.parse(notes); } catch(e) { return notes; }
+    const statusMap = { 'sesuai': 'Sesuai', 'tidak_sesuai': 'Tidak Sesuai' };
+    const status = statusMap[parsed.field_status] || parsed.field_status || '-';
+    const count = parsed.items_count !== undefined ? ` (${parsed.items_count} unit diperiksa)` : '';
+    return `Status lapangan: <strong>${status}</strong>${count}`;
 }
 
 function formatDate(dateStr) {

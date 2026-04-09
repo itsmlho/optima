@@ -117,8 +117,7 @@ class AuditLocationModel extends Model
         if ($hasRequestedBy) {
             $select .= ', cl.requested_by';
         }
-        $select .= ', cl.area_id, a.area_name, a.area_code,
-                COUNT(ku.id) as total_units,
+        $select .= ', COUNT(ku.id) as total_units,
                 SUM(CASE WHEN ku.is_spare = 1 THEN 1 ELSE 0 END) as spare_units,
                 MIN(k.tanggal_mulai) as periode_start,
                 MAX(k.tanggal_berakhir) as periode_end,
@@ -140,7 +139,6 @@ class AuditLocationModel extends Model
 
         $builder = $this->db->table('customer_locations cl')
             ->select($select)
-            ->join('areas a', 'a.id = cl.area_id', 'left')
             ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)', 'left')
             ->join('kontrak k', 'k.id = ku.kontrak_id AND k.status IN ("ACTIVE","TEMP_ACTIVE","Aktif")', 'left')
             ->where('cl.customer_id', $customerId)
@@ -321,10 +319,12 @@ class AuditLocationModel extends Model
             $auditId = (int) $audit['id'];
             $items   = $itemsModel->getByAuditLocation($auditId);
             $verifiedRows = [];
-            if ($hasUvhTable && $uvhHasAuditId) {
+            $unitIdsForAudit = array_values(array_unique(array_filter(array_map(static fn($x) => (int)($x['unit_id'] ?? 0), $items))));
+            if ($hasUvhTable && !empty($unitIdsForAudit)) {
+                // Global verification source (WO or Unit Verification page), valid for 1 year.
                 $verifiedRows = $this->db->table('unit_verification_history')
                     ->select('unit_id, MAX(verified_at) as verified_at')
-                    ->where('audit_id', $auditId)
+                    ->whereIn('unit_id', $unitIdsForAudit)
                     ->where('unit_id IS NOT NULL', null, false)
                     ->groupBy('unit_id')
                     ->get()
@@ -334,7 +334,11 @@ class AuditLocationModel extends Model
             foreach ($verifiedRows as $vr) {
                 $vuid = (int) ($vr['unit_id'] ?? 0);
                 if ($vuid > 0) {
-                    $verifiedMap[$vuid] = $vr['verified_at'] ?? null;
+                    $verifiedAt = $vr['verified_at'] ?? null;
+                    $isValid1Year = !empty($verifiedAt) && strtotime((string)$verifiedAt) >= strtotime('-1 year');
+                    if ($isValid1Year) {
+                        $verifiedMap[$vuid] = $verifiedAt;
+                    }
                 }
             }
             $units   = [];
@@ -797,12 +801,30 @@ class AuditLocationModel extends Model
         foreach ($items as $it) {
             $unitId = isset($it['unit_id']) ? (int) $it['unit_id'] : 0;
             $result = isset($it['result']) ? $it['result'] : 'sesuai';
-            $dbResult = (strtolower((string) $result) === 'tidak_sesuai') ? 'MISMATCH' : 'MATCH';
             $reasons = isset($it['reasons']) && is_array($it['reasons']) ? $it['reasons'] : [];
+            // Map reason to valid enum value
+            if (strtolower((string) $result) === 'tidak_sesuai') {
+                $primaryReason = $reasons[0] ?? '';
+                $dbResult = match ($primaryReason) {
+                    'UNIT_MISSING'       => 'NO_UNIT_IN_KONTRAK',
+                    'MARK_SPARE'         => 'MISMATCH_SPARE',
+                    'UNIT_SWAP'          => 'MISMATCH_NO_UNIT',
+                    'LOCATION_MISMATCH'  => 'MISMATCH_NO_UNIT',
+                    default              => 'MISMATCH_SPEC',
+                };
+            } else {
+                $dbResult = 'MATCH';
+            }
+            // Guard: ensure dbResult is a valid enum value
+            $validResults = ['MATCH', 'NO_UNIT_IN_KONTRAK', 'EXTRA_UNIT', 'ADD_UNIT', 'MISMATCH_NO_UNIT', 'MISMATCH_SERIAL', 'MISMATCH_SPEC', 'MISMATCH_SPARE'];
+            if (!in_array($dbResult, $validResults)) {
+                log_message('error', "[updateAuditLocationItemResults] Invalid result '{$dbResult}' for unit_id={$unitId}, raw_result='{$result}', reasons=" . json_encode($reasons));
+                $dbResult = 'MATCH';
+            }
             $keterangan = isset($it['keterangan']) ? trim((string) $it['keterangan']) : '';
             $extra = isset($it['extra']) && is_array($it['extra']) ? $it['extra'] : [];
             $notes = null;
-            if ($dbResult === 'MISMATCH' && (count($reasons) > 0 || $keterangan !== '' || !empty($extra))) {
+            if ($dbResult !== 'MATCH' && (count($reasons) > 0 || $keterangan !== '' || !empty($extra))) {
                 $notes = json_encode(['reasons' => $reasons, 'keterangan' => $keterangan, 'extra' => $extra], JSON_UNESCAPED_UNICODE);
             }
             if ($unitId <= 0) {
@@ -818,9 +840,69 @@ class AuditLocationModel extends Model
                 if ($notes !== null) {
                     $update['notes'] = $notes;
                 }
+                // Populate actual unit info
+                if ($dbResult === 'MATCH') {
+                    // Same unit was physically found — copy from expected
+                    $update['actual_no_unit'] = $row['expected_no_unit'];
+                    $update['actual_serial']  = $row['expected_serial'];
+                    $update['actual_merk']    = $row['expected_merk'];
+                    $update['actual_model']   = $row['expected_model'];
+                } elseif ($dbResult === 'MISMATCH_NO_UNIT' && !empty($extra['target_unit_id'])) {
+                    // A different unit was found — look it up
+                    $found = $this->db->table('inventory_unit iu')
+                        ->select('iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
+                        ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                        ->where('iu.id_inventory_unit', (int) $extra['target_unit_id'])
+                        ->get()->getRowArray();
+                    if ($found) {
+                        $update['actual_no_unit'] = $found['no_unit'];
+                        $update['actual_serial']  = $found['serial_number'];
+                        $update['actual_merk']    = $found['merk_unit'];
+                        $update['actual_model']   = $found['model_unit'];
+                    }
+                } elseif ($dbResult === 'MISMATCH_NO_UNIT' && $primaryReason === 'UNIT_SWAP' && $keterangan !== '') {
+                    // No target_unit_id — mechanic typed unit number in keterangan as fallback
+                    $update['actual_no_unit'] = $keterangan;
+                    $update['actual_serial']  = null;
+                } elseif ($dbResult !== 'NO_UNIT_IN_KONTRAK') {
+                    // Other mismatch types (MISMATCH_SPARE, MISMATCH_SPEC) — unit was physically there
+                    $update['actual_no_unit'] = $row['expected_no_unit'];
+                    $update['actual_serial']  = $row['expected_serial'];
+                    $update['actual_merk']    = $row['expected_merk'];
+                    $update['actual_model']   = $row['expected_model'];
+                }
                 $itemsModel->update((int) $row['id'], $update);
             }
         }
+
+        // Recalculate header counts from submitted item results
+        $allItems = $this->db->table('unit_audit_location_items')
+            ->where('audit_location_id', $auditLocationId)
+            ->get()->getResultArray();
+
+        $actualTotal  = 0;
+        $actualSpare  = 0;
+        $hasDiscrep   = false;
+        foreach ($allItems as $item) {
+            $r = $item['result'] ?? 'MATCH';
+            if ($r !== 'NO_UNIT_IN_KONTRAK') {
+                $actualTotal++;
+                if (($item['expected_is_spare'] ?? 0) || $r === 'MISMATCH_SPARE') $actualSpare++;
+            }
+            if ($r !== 'MATCH') $hasDiscrep = true;
+        }
+
+        $kontrakTotal = (int) ($this->db->table('unit_audit_locations')
+            ->select('kontrak_total_units')
+            ->where('id', $auditLocationId)
+            ->get()->getRowArray()['kontrak_total_units'] ?? 0);
+
+        $this->db->table('unit_audit_locations')->where('id', $auditLocationId)->update([
+            'actual_total_units' => $actualTotal,
+            'actual_spare_units' => $actualSpare,
+            'unit_difference'    => $actualTotal - $kontrakTotal,
+            'has_discrepancy'    => $hasDiscrep ? 1 : 0,
+        ]);
     }
 
     /**
@@ -859,7 +941,57 @@ class AuditLocationModel extends Model
         $header['periode_status_text'] = $this->getPeriodeStatusText($header['periode_end'] ?? null);
 
         $itemsModel = new AuditLocationItemModel();
-        $header['items'] = $itemsModel->getByAuditLocation($id);
+        $items = $itemsModel->getByAuditLocation($id);
+
+        // Recompute spare count from items (fixes historical data where actual_spare_units was stored incorrectly)
+        $computedSpare = 0;
+        foreach ($items as $it) {
+            if ($it['result'] !== 'NO_UNIT_IN_KONTRAK') {
+                if (($it['expected_is_spare'] ?? 0) || $it['result'] === 'MISMATCH_SPARE') {
+                    $computedSpare++;
+                }
+            }
+        }
+        $header['actual_spare_units'] = $computedSpare;
+
+        $isApproved = ($header['status'] ?? '') === 'APPROVED';
+
+        // Enrich LOCATION_MISMATCH items with resolved target location name
+        foreach ($items as &$item) {
+            if ($item['result'] === 'MISMATCH_NO_UNIT' && !empty($item['notes'])) {
+                $parsed = json_decode($item['notes'], true);
+                if (!is_array($parsed)) continue;
+                if (!in_array('LOCATION_MISMATCH', $parsed['reasons'] ?? [])) continue;
+
+                // Ensure extra is an array (not empty JSON array [])
+                if (!is_array($parsed['extra'])) $parsed['extra'] = [];
+
+                $targetLocId = (int) ($parsed['extra']['target_location_id'] ?? 0);
+
+                if (!$targetLocId && $isApproved && !empty($item['kontrak_unit_id'])) {
+                    // Fallback for old approved audits: read current location from kontrak_unit
+                    $ku = $this->db->table('kontrak_unit')
+                        ->select('customer_location_id')
+                        ->where('id', $item['kontrak_unit_id'])
+                        ->get()->getRowArray();
+                    if ($ku) $targetLocId = (int) $ku['customer_location_id'];
+                }
+
+                if ($targetLocId && empty($parsed['extra']['target_location_name'])) {
+                    $loc = $this->db->table('customer_locations')
+                        ->select('location_name')
+                        ->where('id', $targetLocId)
+                        ->get()->getRowArray();
+                    if ($loc) {
+                        $parsed['extra']['target_location_id']   = $targetLocId;
+                        $parsed['extra']['target_location_name'] = $loc['location_name'];
+                        $item['notes'] = json_encode($parsed);
+                    }
+                }
+            }
+        }
+        unset($item);
+        $header['items'] = $items;
 
         return $header;
     }
@@ -1055,14 +1187,12 @@ class AuditLocationModel extends Model
             // Use kontrak_id from existing audit record
             $kontrakId = $audit['kontrak_id'];
 
-            // Calculate price adjustment
-            $unitDifference = $audit['actual_total_units'] - $audit['kontrak_total_units'];
-            $pricePerUnit = $pricing['price_per_unit'] ?? null;
-            $totalAdjustment = null;
+            // Per-item prices keyed by item index (from marketing approval form)
+            $itemPrices = $pricing['item_prices'] ?? [];
 
-            if ($unitDifference != 0 && $pricePerUnit) {
-                $totalAdjustment = $unitDifference * $pricePerUnit;
-            }
+            // Calculate unit difference for header
+            $unitDifference   = $audit['actual_total_units'] - $audit['kontrak_total_units'];
+            $totalAdjustment  = null;
 
             // Update audit header
             $this->update($id, [
@@ -1071,45 +1201,81 @@ class AuditLocationModel extends Model
                 'reviewed_by'            => $reviewerId,
                 'reviewed_at'            => date('Y-m-d H:i:s'),
                 'unit_difference'        => $unitDifference,
-                'price_per_unit'         => $pricePerUnit,
+                'price_per_unit'         => null,
                 'total_price_adjustment' => $totalAdjustment,
                 'marketing_notes'        => $pricing['marketing_notes'] ?? null,
             ]);
 
             // Process each item - apply changes to kontrak_unit and inventory_unit
             $itemsModel = new AuditLocationItemModel();
-            foreach ($audit['items'] as $item) {
+            foreach ($audit['items'] as $itemIdx => $item) {
                 switch ($item['result']) {
+                    case 'MATCH':
+                        // Unit physically present and matches contract — ensure inventory reflects DISEWA
+                        if (!empty($item['unit_id'])) {
+                            $db->table('inventory_unit')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->update([
+                                    'workflow_status' => 'DISEWA',
+                                    'lokasi_unit'     => $audit['location_name'] ?? '',
+                                ]);
+                        }
+                        break;
+
                     case 'EXTRA_UNIT':
                         // Add new unit to kontrak_unit (unit lebih - add to contract)
                         if (!empty($item['unit_id'])) {
+                            $harga = isset($itemPrices[$itemIdx]) ? (float) $itemPrices[$itemIdx] : null;
                             $db->table('kontrak_unit')->insert([
                                 'kontrak_id'           => $kontrakId,
                                 'unit_id'              => $item['unit_id'],
                                 'customer_location_id' => $audit['customer_location_id'],
                                 'status'               => 'ACTIVE',
                                 'is_spare'             => $item['actual_is_spare'] ?? 0,
-                                'harga_sewa'           => $pricePerUnit,
+                                'harga_sewa'           => $harga,
+                                'tanggal_mulai'        => date('Y-m-d'),
+                                'created_by'           => $reviewerId,
+                                'created_at'           => date('Y-m-d H:i:s'),
                             ]);
+                            // Update inventory_unit: mark unit as rented at this location
+                            $db->table('inventory_unit')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->update([
+                                    'workflow_status' => 'DISEWA',
+                                    'lokasi_unit'     => $audit['location_name'] ?? '',
+                                    'keterangan'      => 'Disewa oleh ' . ($audit['customer_name'] ?? '') . ' di ' . ($audit['location_name'] ?? '') . ' (Audit: ' . $audit['audit_number'] . ')',
+                                ]);
                         }
                         break;
 
                     case 'ADD_UNIT':
-                        // Unit kurang - add unit to kontrak at this location
+                        // Unit ditambahkan ke kontrak di lokasi ini
                         if (!empty($item['unit_id'])) {
+                            $harga = isset($itemPrices[$itemIdx]) ? (float) $itemPrices[$itemIdx] : null;
                             $db->table('kontrak_unit')->insert([
                                 'kontrak_id'           => $kontrakId,
                                 'unit_id'              => $item['unit_id'],
                                 'customer_location_id' => $audit['customer_location_id'],
                                 'status'               => 'ACTIVE',
                                 'is_spare'             => $item['actual_is_spare'] ?? 0,
-                                'harga_sewa'           => $pricePerUnit,
+                                'harga_sewa'           => $harga,
+                                'tanggal_mulai'        => date('Y-m-d'),
+                                'created_by'           => $reviewerId,
+                                'created_at'           => date('Y-m-d H:i:s'),
                             ]);
+                            // Update inventory_unit: mark unit as rented at this location
+                            $db->table('inventory_unit')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->update([
+                                    'workflow_status' => 'DISEWA',
+                                    'lokasi_unit'     => $audit['location_name'] ?? '',
+                                    'keterangan'      => 'Disewa oleh ' . ($audit['customer_name'] ?? '') . ' di ' . ($audit['location_name'] ?? '') . ' (Audit: ' . $audit['audit_number'] . ')',
+                                ]);
                         }
                         break;
 
                     case 'NO_UNIT_IN_KONTRAK':
-                        // Mark unit as pulled in kontrak_unit
+                        // Mark unit as pulled in kontrak_unit, mark available in inventory
                         if ($item['kontrak_unit_id']) {
                             $db->table('kontrak_unit')
                                 ->where('id', $item['kontrak_unit_id'])
@@ -1117,33 +1283,120 @@ class AuditLocationModel extends Model
                                     'status'        => 'PULLED',
                                     'tanggal_tarik' => date('Y-m-d'),
                                 ]);
+                            // Update inventory_unit: unit is now available
+                            $db->table('inventory_unit')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->update([
+                                    'workflow_status' => 'TERSEDIA',
+                                    'lokasi_unit'     => '',
+                                    'keterangan'      => 'Ditarik dari kontrak – Audit: ' . $audit['audit_number'] . ' (' . date('Y-m-d') . ')',
+                                ]);
                         }
                         break;
 
                     case 'MISMATCH_SPARE':
-                        // Update spare status
+                        // Mark unit as spare in kontrak_unit & update inventory_unit
                         if ($item['kontrak_unit_id']) {
                             $db->table('kontrak_unit')
                                 ->where('id', $item['kontrak_unit_id'])
-                                ->update(['is_spare' => $item['actual_is_spare']]);
+                                ->update(['is_spare' => 1]);
+                            $db->table('inventory_unit')
+                                ->where('id_inventory_unit', $item['unit_id'])
+                                ->update([
+                                    'workflow_status' => 'DISEWA',
+                                    'lokasi_unit'     => $audit['location_name'] ?? '',
+                                    'keterangan'      => 'Unit spare/cadangan di ' . ($audit['location_name'] ?? '') . ' (Audit: ' . $audit['audit_number'] . ')',
+                                ]);
                         }
                         break;
 
                     case 'MISMATCH_NO_UNIT':
-                        // Update unit number in inventory
-                        if ($item['unit_id'] && !empty($item['actual_no_unit'])) {
-                            // Check if it's NA or regular
-                            $unit = $db->table('inventory_unit')->find($item['unit_id']);
-                            if ($unit && !empty($unit['no_unit_na'])) {
+                        $notesData     = json_decode($item['notes'] ?? '{}', true) ?? [];
+                        $mismatchReason = $notesData['reasons'][0] ?? '';
+                        $mismatchExtra  = $notesData['extra'] ?? [];
+
+                        if ($mismatchReason === 'UNIT_SWAP') {
+                            // Pull old unit, insert actual unit found, update both in inventory
+                            $targetUnitId = (int) ($mismatchExtra['target_unit_id'] ?? 0);
+
+                            // Fallback: if target_unit_id missing, look up by no_unit from keterangan
+                            if (!$targetUnitId && !empty($notesData['keterangan'])) {
+                                $fallbackUnit = $db->table('inventory_unit')
+                                    ->select('id_inventory_unit')
+                                    ->where('no_unit', trim($notesData['keterangan']))
+                                    ->get()->getRowArray();
+                                if ($fallbackUnit) {
+                                    $targetUnitId = (int) $fallbackUnit['id_inventory_unit'];
+                                }
+                            }
+
+                            if ($item['kontrak_unit_id'] && $targetUnitId) {
+                                // Fetch old row BEFORE updating (to preserve harga_sewa)
+                                $oldRow = $db->table('kontrak_unit')
+                                    ->where('id', $item['kontrak_unit_id'])
+                                    ->get()->getRowArray();
+                                $harga = isset($itemPrices[$itemIdx]) ? (float) $itemPrices[$itemIdx] : ($oldRow['harga_sewa'] ?? null);
+                                // Pull old kontrak_unit row, link to replacement
+                                $db->table('kontrak_unit')
+                                   ->where('id', $item['kontrak_unit_id'])
+                                   ->update([
+                                       'status'            => 'PULLED',
+                                       'tanggal_tarik'     => date('Y-m-d H:i:s'),
+                                       'unit_pengganti_id' => $targetUnitId,
+                                   ]);
+                                // Insert new unit into kontrak
+                                $db->table('kontrak_unit')->insert([
+                                    'kontrak_id'           => $kontrakId,
+                                    'unit_id'              => $targetUnitId,
+                                    'customer_location_id' => $audit['customer_location_id'],
+                                    'status'               => 'ACTIVE',
+                                    'is_spare'             => 0,
+                                    'harga_sewa'           => $harga,
+                                    'tanggal_mulai'        => date('Y-m-d'),
+                                    'created_by'           => $reviewerId,
+                                    'unit_sebelumnya_id'   => $item['unit_id'],
+                                    'created_at'           => date('Y-m-d H:i:s'),
+                                ]);
+                                // Old unit: mark as available in inventory
                                 $db->table('inventory_unit')
                                     ->where('id_inventory_unit', $item['unit_id'])
-                                    ->update(['no_unit_na' => $item['actual_no_unit']]);
-                            } else {
+                                    ->update([
+                                        'workflow_status' => 'TERSEDIA',
+                                        'lokasi_unit'     => '',
+                                        'keterangan'      => 'Unit ditukar/diganti saat audit ' . $audit['audit_number'] . ' (' . date('Y-m-d') . ')',
+                                    ]);
+                                // New unit: mark as rented in inventory
+                                $db->table('inventory_unit')
+                                    ->where('id_inventory_unit', $targetUnitId)
+                                    ->update([
+                                        'workflow_status' => 'DISEWA',
+                                        'lokasi_unit'     => $audit['location_name'] ?? '',
+                                        'keterangan'      => 'Disewa oleh ' . ($audit['customer_name'] ?? '') . ' di ' . ($audit['location_name'] ?? '') . ' (Audit: ' . $audit['audit_number'] . ')',
+                                    ]);
+                            }
+                        } elseif ($mismatchReason === 'LOCATION_MISMATCH') {
+                            // Unit FK & inventory.lokasi_unit updated to new location
+                            $targetLocId = (int) ($mismatchExtra['target_location_id'] ?? 0);
+                            if ($item['kontrak_unit_id'] && $targetLocId) {
+                                $db->table('kontrak_unit')
+                                   ->where('id', $item['kontrak_unit_id'])
+                                   ->update(['customer_location_id' => $targetLocId]);
+                                // Fetch new location name for inventory update
+                                $newLoc = $db->table('customer_locations')
+                                    ->select('location_name')
+                                    ->where('id', $targetLocId)
+                                    ->get()->getRowArray();
+                                $newLocName = $newLoc['location_name'] ?? '';
                                 $db->table('inventory_unit')
                                     ->where('id_inventory_unit', $item['unit_id'])
-                                    ->update(['no_unit' => $item['actual_no_unit']]);
+                                    ->update([
+                                        'workflow_status' => 'DISEWA',
+                                        'lokasi_unit'     => $newLocName,
+                                        'keterangan'      => 'Pindah lokasi ke ' . $newLocName . ' (Audit: ' . $audit['audit_number'] . ')',
+                                    ]);
                             }
                         }
+                        // MISMATCH_SPEC / other reasons: logged only, no DB change
                         break;
                 }
             }

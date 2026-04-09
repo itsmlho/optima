@@ -51,7 +51,7 @@
             <div class="d-flex align-items-center">
                 <div class="me-3"><i class="bi bi-geo-alt stat-icon text-danger"></i></div>
                 <div>
-                    <div class="stat-value" id="statLocationsNoArea"><?= $stats['locations_without_area'] ?></div>
+                    <div class="stat-value" id="statLocationsNoArea"><?= $stats['locations_without_area'] ?? 0 ?></div>
                     <div class="text-muted">Lokasi Belum Ada Area</div>
                 </div>
             </div>
@@ -71,7 +71,7 @@
             <li class="nav-item">
                 <a class="nav-link" data-bs-toggle="tab" href="#tabLocations" id="tabLocationsLink">
                     <i class="bi bi-building me-1"></i> Input Area per Lokasi
-                    <span class="badge badge-soft-orange ms-1" id="badgeUnassignedLoc"><?= $stats['locations_without_area'] ?></span>
+                    <span class="badge badge-soft-orange ms-1" id="badgeUnassignedLoc"><?= $stats['locations_without_area'] ?? 0 ?></span>
                 </a>
             </li>
             <li class="nav-item">

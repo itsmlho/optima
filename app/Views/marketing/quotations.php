@@ -9,7 +9,7 @@
 // Force modal sizes on page load
 window.addEventListener('DOMContentLoaded', function() {
     // Add timestamp to force cache invalidation
-    console.log('Ã°Å¸â€â€ž Page loaded at:', new Date().toLocaleTimeString(), '- Modals set to 98vw');
+    console.log('Page loaded at:', new Date().toLocaleTimeString());
 });
 </script>
 
@@ -304,6 +304,9 @@ window.addEventListener('DOMContentLoaded', function() {
                                     <h6 class="mb-2 mb-md-0"><strong>Specifications for SPK</strong></h6>
                                 </div>
                                 <div class="col-md-6 text-md-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="openQuotationSpecificationHistoryModal()" title="Riwayat perubahan spesifikasi &amp; harga (negosiasi)">
+                                        <i class="fas fa-history me-1"></i>Riwayat spec
+                                    </button>
                                     <?= ui_button('add', lang('App.unit'), [
                                         'onclick' => 'openAddSpecificationModal()',
                                         'size' => 'sm',
@@ -334,6 +337,84 @@ window.addEventListener('DOMContentLoaded', function() {
                     <!-- Action buttons will be populated dynamically -->
                 </div>
                 <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Riwayat perubahan quotation specification (SPV / Manager) -->
+<div class="modal fade" id="quotationSpecificationHistoryModal" tabindex="-1" aria-labelledby="quotationSpecificationHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <div>
+                    <h5 class="modal-title mb-0" id="quotationSpecificationHistoryModalLabel">
+                        <i class="fas fa-clipboard-list me-2 text-primary"></i>Riwayat perubahan spesifikasi
+                    </h5>
+                    <small class="text-muted">Per baris: harga, qty, aksesoris, dan parameter teknis (audit negosiasi).</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quotationSpecHistoryLoading" class="text-center text-muted py-4 d-none">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><div>Memuat riwayat…</div>
+                </div>
+                <div id="quotationSpecHistoryContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Riwayat dokumen quotation (quotation_history) -->
+<div class="modal fade" id="quotationDocumentHistoryModal" tabindex="-1" aria-labelledby="quotationDocumentHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <div>
+                    <h5 class="modal-title mb-0" id="quotationDocumentHistoryModalLabel">
+                        <i class="fas fa-file-contract me-2 text-primary"></i>Riwayat dokumen quotation
+                    </h5>
+                    <small class="text-muted">Perubahan header quotation (total, revisi, masa berlaku, dll.).</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quotationDocHistoryLoading" class="text-center text-muted py-4 d-none">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><div>Memuat riwayat…</div>
+                </div>
+                <div id="quotationDocHistoryContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Riwayat stage penjualan (quotation_stage_history) -->
+<div class="modal fade" id="quotationStageHistoryModal" tabindex="-1" aria-labelledby="quotationStageHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <div>
+                    <h5 class="modal-title mb-0" id="quotationStageHistoryModalLabel">
+                        <i class="fas fa-stream me-2 text-primary"></i>Riwayat stage penjualan
+                    </h5>
+                    <small class="text-muted">DRAFT → SENT → NEGOTIATION → ACCEPTED/REJECTED, dll.</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quotationStageHistoryLoading" class="text-center text-muted py-4 d-none">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><div>Memuat riwayat…</div>
+                </div>
+                <div id="quotationStageHistoryContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
@@ -416,7 +497,7 @@ window.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                         <small class="text-muted d-block mt-1">
                                             <i class="fas fa-info-circle me-1"></i>
-                                            <?= $isEn ? 'Billing calculation: Billable Units Ãƒâ€” Monthly Price' : 'Perhitungan tagihan: Unit yang Ditagih Ãƒâ€” Harga Bulanan' ?>
+                                            <?= $isEn ? 'Billing calculation: Billable Units x Monthly Price' : 'Perhitungan tagihan: Unit yang Ditagih x Harga Bulanan' ?>
                                         </small>
                                     </div>
                                 </div>
@@ -1061,11 +1142,11 @@ $(function() {
  * Quotations Module - Using Optima Badge Standards (optima-pro.css)
  * 
  * Quick Reference:
- * - ACCEPTED/Success  Ã¢â€ â€™ <span class="badge badge-soft-green">ACCEPTED</span>
- * - SENT/Warning      Ã¢â€ â€™ <span class="badge badge-soft-yellow">SENT</span>
- * - REJECTED/Danger   Ã¢â€ â€™ <span class="badge badge-soft-red">REJECTED</span>
- * - DRAFT/Disabled    Ã¢â€ â€™ <span class="badge badge-soft-gray">DRAFT</span>
- * - Info/Counters     Ã¢â€ â€™ <span class="badge badge-soft-blue">247</span>
+ * - ACCEPTED/Success  -> <span class="badge badge-soft-green">ACCEPTED</span>
+ * - SENT/Warning      -> <span class="badge badge-soft-yellow">SENT</span>
+ * - REJECTED/Danger   -> <span class="badge badge-soft-red">REJECTED</span>
+ * - DRAFT/Disabled    -> <span class="badge badge-soft-gray">DRAFT</span>
+ * - Info/Counters     -> <span class="badge badge-soft-blue">247</span>
  * 
  * See docs/BADGE_STANDARDS.md for complete guide
  */
@@ -1078,13 +1159,14 @@ window.OptimaUI = window.OptimaUI || {};
 window.OptimaUI.fire = function() {
     var fireFn = window.Swal && window.Swal['fire'];
     if (typeof fireFn === 'function') {
-        return fireFn.apply(this, arguments);
+        // SweetAlert2 relies on `this` being the Swal constructor.
+        return fireFn.apply(window.Swal, arguments);
     }
     return Promise.resolve({ isConfirmed: false, isDenied: false });
 };
 
 $(document).ready(function() {
-    console.log('Ã°Å¸â€â€ž Initializing Quotations DataTable...');
+    console.log('Initializing Quotations DataTable...');
     
     try {
         // Initialize using OptimaDataTable with minimal config
@@ -1124,7 +1206,7 @@ $(document).ready(function() {
                 $(row).attr('title', 'Click to view details');
             },
             initComplete: function(settings, json) {
-                console.log('Ã¢Å“â€¦ Quotations DataTable initialized successfully');
+                console.log('Quotations DataTable initialized successfully');
                 
                 // Add row click functionality
                 $('#quotationsTable tbody').on('click', 'tr', function(e) {
@@ -1142,10 +1224,10 @@ $(document).ready(function() {
             }
         });
         
-        console.log('Ã¢Å“â€¦ Quotations table setup complete');
+        console.log('Quotations table setup complete');
         
     } catch(error) {
-        console.error('Ã¢ÂÅ’ Failed to initialize Quotations DataTable:', error);
+        console.error('Failed to initialize Quotations DataTable:', error);
         showNotification('Failed to initialize quotations table. Please refresh the page.', 'error');
     }
     
@@ -1379,7 +1461,7 @@ $(document).ready(function() {
             
             // Validate required fields
             if (!locationData.location_name || !locationData.address || !locationData.city || 
-                !locationData.province || !locationData.area_id) {
+                !locationData.province) {
                 OptimaUI.fire('Error', 'Please fill all required fields (marked with *)', 'error');
                 return;
             }
@@ -1834,9 +1916,12 @@ function refreshQuotationActions(quotationId) {
             </button>`;
         }
         
-        // Show history button
-        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Lihat riwayat perubahan quotation (revisi, approval, dll)">
-            <i class="fas fa-history me-1"></i>History
+        // Show history button (quotation_history: dokumen / revisi header)
+        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Riwayat perubahan dokumen quotation (total, masa berlaku, revisi)">
+            <i class="fas fa-history me-1"></i>History dokumen
+        </button>`;
+        actionButtons += `<button class="btn btn-outline-primary me-2" onclick="viewQuotationStageHistory(${data.id_quotation})" title="Riwayat stage penjualan (DRAFT, SENT, NEGOTIATION, …)">
+            <i class="fas fa-stream me-1"></i>Riwayat stage
         </button>`;
         
         // Update action buttons container
@@ -1967,9 +2052,12 @@ function viewQuotation(id) {
             </button>`;
         }
         
-        // Show history button
-        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Lihat riwayat perubahan quotation (revisi, approval, dll)">
-            <i class="fas fa-history me-1"></i>History
+        // Show history button (quotation_history)
+        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="Riwayat perubahan dokumen quotation (total, masa berlaku, revisi)">
+            <i class="fas fa-history me-1"></i>History dokumen
+        </button>`;
+        actionButtons += `<button class="btn btn-outline-primary me-2" onclick="viewQuotationStageHistory(${data.id_quotation})" title="Riwayat stage penjualan (DRAFT, SENT, NEGOTIATION, …)">
+            <i class="fas fa-stream me-1"></i>Riwayat stage
         </button>`;
         
         $('#quotationActions').html(actionButtons);
@@ -2349,19 +2437,33 @@ function getActionBadge(actionType) {
         'SENT': '<span class="badge badge-soft-cyan"><i class="fas fa-paper-plane me-1"></i>SENT</span>',
         'ACCEPTED': '<span class="badge badge-soft-green"><i class="fas fa-check-circle me-1"></i>ACCEPTED</span>',
         'REJECTED': '<span class="badge badge-soft-red"><i class="fas fa-times-circle me-1"></i>REJECTED</span>',
-        'DEAL': '<span class="badge badge-soft-purple"><i class="fas fa-handshake me-1"></i>DEAL</span>'
+        'DEAL': '<span class="badge badge-soft-purple"><i class="fas fa-handshake me-1"></i>DEAL</span>',
+        'DELETED': '<span class="badge badge-soft-red"><i class="fas fa-trash me-1"></i>DELETED</span>'
     };
     return badges[actionType.toUpperCase()] || `<span class="badge badge-soft-gray">${actionType}</span>`;
 }
 
-// Function to view quotation history
+function escapeHtmlSpecHist(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// Function to view quotation document history (quotation_history)
 function viewQuotationHistory(id) {
-    OptimaUI.fire({
-        title: '<i class="fas fa-spinner fa-spin"></i> Loading History...',
-        text: 'Fetching change history',
-        allowOutsideClick: false,
-        showConfirmButton: false
-    });
+    const elModal = document.getElementById('quotationDocumentHistoryModal');
+    const elLoad = document.getElementById('quotationDocHistoryLoading');
+    const elBody = document.getElementById('quotationDocHistoryContent');
+    if (!elModal || !elLoad || !elBody) return;
+
+    elBody.innerHTML = '';
+    elLoad.classList.remove('d-none');
+    let m = bootstrap.Modal.getInstance(elModal);
+    if (!m) m = new bootstrap.Modal(elModal);
+    m.show();
 
     fetch(`<?= base_url('marketing/quotations/history/') ?>${id}`, {
             headers: {
@@ -2375,63 +2477,189 @@ function viewQuotationHistory(id) {
             return response.json();
         })
         .then(result => {
-            if (result.success) {
-                let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
-                
-                if (result.data && result.data.length > 0) {
-                    historyHtml += '<table class="table table-sm table-hover">';
-                    historyHtml += '<thead class="table-light sticky-top">';
-                    historyHtml += '<tr><th>Version</th><th>Action</th><th>Changed By</th><th>Date</th><th>Changes</th></tr>';
-                    historyHtml += '</thead><tbody>';
-                    
-                    result.data.forEach(h => {
-                        const actionBadge = getActionBadge(h.action_type);
-                        
-                        historyHtml += `<tr>
-                            <td><span class="badge badge-soft-blue">v${h.version || 1}</span></td>
-                            <td>${actionBadge}</td>
-                            <td><small>${h.changed_by_name || h.changed_by_username || '-'}</small></td>
-                            <td><small>${formatDateTime(h.changed_at)}</small></td>
-                            <td><small class="text-muted">${h.changes_summary || 'No details'}</small></td>
-                        </tr>`;
-                    });
-                    
-                    historyHtml += '</tbody></table>';
-                } else {
-                    historyHtml += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No history available</div>';
-                }
-                
-                historyHtml += '</div>';
-                
-                OptimaUI.fire({
-                    title: '<i class="fas fa-history"></i> Quotation History',
-                    html: historyHtml,
-                    width: '800px',
-                    showCloseButton: true,
-                    showConfirmButton: false,
-                    customClass: {
-                        container: 'history-modal'
-                    }
-                });
-            } else {
-                OptimaUI.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: result.message || 'Failed to load history'
-                });
+            elLoad.classList.add('d-none');
+            if (!result.success) {
+                elBody.innerHTML = '<div class="alert alert-danger mb-0">' + escapeHtmlSpecHist(result.message || 'Failed to load history') + '</div>';
+                return;
             }
+            let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+            if (result.data && result.data.length > 0) {
+                historyHtml += '<table class="table table-sm table-hover">';
+                historyHtml += '<thead class="table-light sticky-top">';
+                historyHtml += '<tr><th>Versi</th><th>Aksi</th><th>User</th><th>Tanggal</th><th>Ringkasan</th></tr>';
+                historyHtml += '</thead><tbody>';
+                result.data.forEach(h => {
+                    const actionBadge = getActionBadge(h.action_type);
+                    const by = escapeHtmlSpecHist(h.changed_by_name || h.changed_by_username || '-');
+                    const sum = escapeHtmlSpecHist(h.changes_summary || '—');
+                    historyHtml += `<tr>
+                        <td><span class="badge badge-soft-blue">v${h.version || 1}</span></td>
+                        <td>${actionBadge}</td>
+                        <td><small>${by}</small></td>
+                        <td><small>${formatDateTime(h.changed_at)}</small></td>
+                        <td><small class="text-muted">${sum}</small></td>
+                    </tr>`;
+                });
+                historyHtml += '</tbody></table>';
+            } else {
+                historyHtml += '<div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>Belum ada riwayat dokumen. Riwayat muncul setelah penyimpanan quotation (revisi, update total, dll.) memakai tabel <code>quotation_history</code>.</div>';
+            }
+            historyHtml += '</div>';
+            elBody.innerHTML = historyHtml;
         })
         .catch(error => {
-            OptimaPro.hideLoading();
+            elLoad.classList.add('d-none');
             console.error('History fetch error:', error);
             console.error('Error details:', error.message);
-            OptimaUI.fire({
-                icon: 'error',
-                title: 'Failed to fetch history',
-                html: `<p class="mb-0">${error.message || 'Unknown error'}</p>
-                       <small class="text-muted">Check console for details</small>`,
-                footer: 'Make sure you are logged in and have proper permissions'
+            elBody.innerHTML = '<div class="alert alert-danger mb-0">Gagal memuat riwayat: ' + escapeHtmlSpecHist(error.message || String(error)) + '</div>';
+        });
+}
+
+// Riwayat stage penjualan (quotation_stage_history)
+function viewQuotationStageHistory(id) {
+    const elModal = document.getElementById('quotationStageHistoryModal');
+    const elLoad = document.getElementById('quotationStageHistoryLoading');
+    const elBody = document.getElementById('quotationStageHistoryContent');
+    if (!elModal || !elLoad || !elBody) return;
+
+    elBody.innerHTML = '';
+    elLoad.classList.remove('d-none');
+    let m = bootstrap.Modal.getInstance(elModal);
+    if (!m) m = new bootstrap.Modal(elModal);
+    m.show();
+
+    const url = '<?= base_url('marketing/quotations/stage-history/') ?>' + id;
+    const fetchOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } };
+    const run = (window.csrfFetch && typeof window.csrfFetch === 'function')
+        ? window.csrfFetch(url, fetchOpts)
+        : fetch(url, fetchOpts);
+
+    run.then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+        .then(result => {
+            elLoad.classList.add('d-none');
+            if (!result.success) {
+                elBody.innerHTML = '<div class="alert alert-danger mb-0">' + escapeHtmlSpecHist(result.message || 'Error') + '</div>';
+                return;
+            }
+            if (result.meta && result.meta.table_ready === false) {
+                elBody.innerHTML = '<div class="alert alert-warning mb-0"><i class="fas fa-database me-2"></i>Tabel <code>quotation_stage_history</code> belum ada di database ini.</div>';
+                return;
+            }
+            const rows = result.data || [];
+            let html = '<div class="table-responsive" style="max-height: 480px; overflow-y: auto;">';
+            if (!rows.length) {
+                html += '<div class="alert alert-info mb-0">Belum ada perubahan stage tercatat. Riwayat terisi saat stage diubah manual, quotation dikirim, ditandai deal, atau tidak deal.</div>';
+            } else {
+                html += '<table class="table table-sm table-hover"><thead class="table-light sticky-top"><tr>';
+                html += '<th>Tanggal</th><th>Dari</th><th>Ke</th><th>Oleh</th><th>Alasan</th><th>Catatan</th>';
+                html += '</tr></thead><tbody>';
+                rows.forEach(h => {
+                    const fromS = h.stage_from != null && h.stage_from !== '' ? escapeHtmlSpecHist(h.stage_from) : '—';
+                    const toS = escapeHtmlSpecHist(h.stage || '—');
+                    const by = escapeHtmlSpecHist(h.changed_by_display || '-');
+                    const reason = escapeHtmlSpecHist(h.change_reason || '—');
+                    const notes = escapeHtmlSpecHist(h.change_notes || '—');
+                    html += `<tr>
+                        <td><small>${formatDateTime(h.changed_at)}</small></td>
+                        <td><span class="badge badge-soft-secondary">${fromS}</span></td>
+                        <td><span class="badge badge-soft-primary">${toS}</span></td>
+                        <td><small>${by}</small></td>
+                        <td><small class="text-muted">${reason}</small></td>
+                        <td><small class="text-muted">${notes}</small></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
+            html += '</div>';
+            elBody.innerHTML = html;
+        })
+        .catch(err => {
+            elLoad.classList.add('d-none');
+            elBody.innerHTML = '<div class="alert alert-danger mb-0">Gagal memuat riwayat stage: ' + escapeHtmlSpecHist(err.message || String(err)) + '</div>';
+        });
+}
+
+function specHistoryActionBadge(action) {
+    const a = (action || '').toUpperCase();
+    if (a === 'CREATED') return '<span class="badge badge-soft-green"><i class="fas fa-plus me-1"></i>Ditambah</span>';
+    if (a === 'UPDATED') return '<span class="badge badge-soft-orange"><i class="fas fa-edit me-1"></i>Diubah</span>';
+    if (a === 'DELETED') return '<span class="badge badge-soft-red"><i class="fas fa-trash me-1"></i>Dihapus</span>';
+    return '<span class="badge badge-soft-gray">' + (action || '-') + '</span>';
+}
+
+function openQuotationSpecificationHistoryModal() {
+    const qid = typeof currentQuotationId !== 'undefined' ? currentQuotationId : null;
+    if (!qid) {
+        if (typeof OptimaUI !== 'undefined' && OptimaUI.fire) {
+            OptimaUI.fire({ icon: 'warning', title: 'Buka detail quotation', text: 'Buka quotation dari daftar terlebih dahulu.' });
+        } else {
+            alert('Buka detail quotation terlebih dahulu.');
+        }
+        return;
+    }
+    const elModal = document.getElementById('quotationSpecificationHistoryModal');
+    const elLoad = document.getElementById('quotationSpecHistoryLoading');
+    const elBody = document.getElementById('quotationSpecHistoryContent');
+    if (!elModal || !elBody) return;
+
+    elBody.innerHTML = '';
+    elLoad.classList.remove('d-none');
+
+    let specHistModal = bootstrap.Modal.getInstance(elModal);
+    if (!specHistModal) {
+        specHistModal = new bootstrap.Modal(elModal);
+    }
+    specHistModal.show();
+
+    const url = '<?= base_url('marketing/quotations/specification-history/') ?>' + qid;
+    const fetchOpts = { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } };
+    const run = (window.csrfFetch && typeof window.csrfFetch === 'function')
+        ? window.csrfFetch(url, fetchOpts)
+        : fetch(url, fetchOpts);
+
+    run.then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+        .then(result => {
+            elLoad.classList.add('d-none');
+            if (!result.success) {
+                elBody.innerHTML = '<div class="alert alert-danger">' + escapeHtmlSpecHist(result.message || 'Gagal memuat') + '</div>';
+                return;
+            }
+            if (result.meta && result.meta.table_ready === false) {
+                elBody.innerHTML = '<div class="alert alert-warning"><i class="fas fa-database me-2"></i>Tabel riwayat belum dijalankan di database. Jalankan migrasi SQL <code>quotation_specification_history.sql</code> lalu coba lagi. Setelah itu setiap tambah/ubah/hapus spesifikasi akan tercatat otomatis.</div>';
+                return;
+            }
+            const rows = result.data || [];
+            if (!rows.length) {
+                elBody.innerHTML = '<div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>Belum ada riwayat perubahan spesifikasi untuk quotation ini.</div>';
+                return;
+            }
+            let html = '<div class="list-group list-group-flush">';
+            rows.forEach(h => {
+                const specId = h.specification_id != null ? h.specification_id : '-';
+                const ver = h.quotation_version != null ? '<span class="badge badge-soft-blue ms-1">v' + h.quotation_version + '</span>' : '';
+                const snapOld = h.old_snapshot ? '<details class="mt-2"><summary class="small text-muted">Snapshot sebelum</summary><pre class="small bg-light p-2 rounded mt-1 mb-0" style="max-height:180px;overflow:auto;">' + escapeHtmlSpecHist(h.old_snapshot) + '</pre></details>' : '';
+                const snapNew = h.new_snapshot ? '<details class="mt-2"><summary class="small text-muted">Snapshot sesudah</summary><pre class="small bg-light p-2 rounded mt-1 mb-0" style="max-height:180px;overflow:auto;">' + escapeHtmlSpecHist(h.new_snapshot) + '</pre></details>' : '';
+                html += '<div class="list-group-item px-0 py-3 border-bottom">';
+                html += '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">';
+                html += '<div>' + specHistoryActionBadge(h.action_type) + ver + ' <span class="text-muted small">ID spec: ' + escapeHtmlSpecHist(specId) + '</span></div>';
+                html += '<div class="text-end small text-muted">' + escapeHtmlSpecHist(h.changed_by_display || '-') + '<br><span>' + formatDateTime(h.changed_at) + '</span></div>';
+                html += '</div>';
+                html += '<p class="small mb-0 mt-2">' + escapeHtmlSpecHist(h.summary || '') + '</p>';
+                html += snapOld + snapNew;
+                html += '</div>';
             });
+            html += '</div>';
+            elBody.innerHTML = html;
+        })
+        .catch(err => {
+            elLoad.classList.add('d-none');
+            elBody.innerHTML = '<div class="alert alert-danger">Gagal memuat riwayat: ' + escapeHtmlSpecHist(err.message || String(err)) + '</div>';
         });
 }
 

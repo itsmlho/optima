@@ -103,10 +103,8 @@ class CustomerContractModel extends Model
      */
     public function getCustomersByContract($kontrakId)
     {
-        return $this->select('customer_contracts.*, customers.*, areas.area_name')
+        return $this->select('customer_contracts.*, customers.*')
                    ->join('customers', 'customers.id = customer_contracts.customer_id')
-                   ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                   ->join('areas', 'areas.id = cl.area_id', 'left')
                    ->where('customer_contracts.kontrak_id', $kontrakId)
                    ->findAll();
     }
@@ -156,13 +154,10 @@ class CustomerContractModel extends Model
                         customer_contracts.*,
                         customers.customer_name, customers.customer_code,
                         kontrak.no_kontrak, kontrak.pelanggan, kontrak.jenis_sewa, 
-                        kontrak.status, kontrak.tanggal_mulai, kontrak.tanggal_berakhir,
-                        areas.area_name, areas.area_code
+                        kontrak.status, kontrak.tanggal_mulai, kontrak.tanggal_berakhir
                     ')
                        ->join('customers', 'customers.id = customer_contracts.customer_id')
-                       ->join('kontrak', 'kontrak.id = customer_contracts.kontrak_id')
-                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                       ->join('areas', 'areas.id = cl.area_id', 'left');
+                       ->join('kontrak', 'kontrak.id = customer_contracts.kontrak_id');
                        
         if ($customerId) {
             $builder->where('customer_contracts.customer_id', $customerId);

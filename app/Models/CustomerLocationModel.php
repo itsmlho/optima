@@ -15,7 +15,6 @@ class CustomerLocationModel extends Model
     
     protected $allowedFields = [
         'customer_id',
-        'area_id',
         'location_name',
         'location_code',
         'location_type',
@@ -170,9 +169,8 @@ class CustomerLocationModel extends Model
      */
     public function getLocationsWithCustomer($locationId = null)
     {
-        $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code, areas.area_name')
+        $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code')
                        ->join('customers', 'customers.id = customer_locations.customer_id')
-                       ->join('areas', 'areas.id = customer_locations.area_id')
                        ->where('customer_locations.is_active', 1);
                        
         if ($locationId) {
@@ -190,9 +188,8 @@ class CustomerLocationModel extends Model
      */
     public function searchLocations($search = '', $customerId = null, $areaId = null)
     {
-        $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code, areas.area_name')
+        $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code')
                        ->join('customers', 'customers.id = customer_locations.customer_id')
-                       ->join('areas', 'areas.id = customer_locations.area_id')
                        ->where('customer_locations.is_active', 1);
                        
         if (!empty($search)) {
@@ -206,10 +203,6 @@ class CustomerLocationModel extends Model
         
         if ($customerId) {
             $builder->where('customer_locations.customer_id', $customerId);
-        }
-        
-        if ($areaId) {
-            $builder->where('customer_locations.area_id', $areaId);
         }
         
         return $builder->orderBy('customers.customer_name')

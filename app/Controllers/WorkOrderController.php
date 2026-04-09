@@ -2089,8 +2089,14 @@ class WorkOrderController extends Controller
             ]);
         }
         
+        $unitId = (int)($workOrder['unit_id'] ?? 0);
+        $verificationValidity = $unitId > 0
+            ? $this->getLatestUnitVerificationStatus($unitId, (int)$id)
+            : ['has_history' => false, 'is_valid_1y' => false];
+
         return view('service/print_work_order', [
-            'workOrder' => $workOrder
+            'workOrder' => $workOrder,
+            'verificationValidity' => $verificationValidity,
         ]);
     }
     
@@ -2909,18 +2915,37 @@ class WorkOrderController extends Controller
             $sparepartCount = $db->table('work_order_spareparts')
                 ->where('work_order_id', $woId)
                 ->countAllResults();
+            $woData = $db->table('work_orders')
+                ->select('id, unit_id, status_id, sparepart_validated')
+                ->where('id', $woId)
+                ->get()
+                ->getRowArray();
+            if (!$woData) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work order tidak ditemukan.'
+                ]);
+            }
             if ($sparepartCount > 0) {
-                $woData = $db->table('work_orders')
-                    ->select('sparepart_validated')
-                    ->where('id', $woId)
-                    ->get()
-                    ->getRowArray();
                 if (!($woData['sparepart_validated'] ?? 0)) {
                     return $this->response->setJSON([
                         'success' => false,
                         'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
                     ]);
                 }
+            }
+
+            // Enforce unified verification rule:
+            // closeWorkOrder can auto-complete only when latest verification is still valid (1 year).
+            $unitId = (int)($woData['unit_id'] ?? 0);
+            $verificationValidity = $unitId > 0
+                ? $this->getLatestUnitVerificationStatus($unitId, (int)$woId)
+                : ['has_history' => false, 'is_valid_1y' => false];
+            if (empty($verificationValidity['is_valid_1y'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Verifikasi unit sudah tidak valid atau belum ada. Silakan gunakan flow Complete + Verifikasi Unit terlebih dahulu.'
+                ]);
             }
 
             $db->transStart();
@@ -2939,7 +2964,9 @@ class WorkOrderController extends Controller
                 $completedStatus = $this->workOrderModel->getStatusByCode('COMPLETED');
                 $updateData = [
                     'completed_date' => date('Y-m-d H:i:s'),
-                    'completion_notes' => $completionNotes
+                    'completion_notes' => $completionNotes,
+                    'unit_verified' => 1,
+                    'unit_verified_at' => $verificationValidity['verified_at_raw'] ?? date('Y-m-d H:i:s'),
                 ];
                 
                 if ($completedStatus) {
@@ -2950,7 +2977,7 @@ class WorkOrderController extends Controller
 
                 // Add status history for completion
                 if ($completedStatus) {
-                    $this->workOrderModel->addStatusHistory($woId, $completedStatus['id'], 'Work order completed', $fromStatusId);
+                    $this->workOrderModel->addStatusHistory($woId, $completedStatus['id'], 'Work order completed (auto-skip verification valid 1 year)', $fromStatusId);
                 }
 
                 // Record sparepart usage if provided
@@ -3028,7 +3055,7 @@ class WorkOrderController extends Controller
             
             // Get work order data
             $workOrder = $db->table('work_orders')
-                ->select('id, work_order_number, repair_description, notes, status_id')
+                ->select('id, unit_id, work_order_number, repair_description, notes, status_id')
                 ->where('id', $workOrderId)
                 ->get()
                 ->getRowArray();
@@ -3040,14 +3067,21 @@ class WorkOrderController extends Controller
                 ]);
             }
 
+            $unitId = (int)($workOrder['unit_id'] ?? 0);
+            $verificationValidity = $unitId > 0
+                ? $this->getLatestUnitVerificationStatus($unitId)
+                : ['has_history' => false, 'is_valid_1y' => false];
+
             return $this->response->setJSON([
                 'success' => true,
                 'data' => [
                     'work_order_id' => $workOrder['id'],
+                    'unit_id' => $workOrder['unit_id'],
                     'work_order_number' => $workOrder['work_order_number'],
                     'repair_description' => $workOrder['repair_description'],
                     'notes' => $workOrder['notes'],
-                    'status_id' => $workOrder['status_id']
+                    'status_id' => $workOrder['status_id'],
+                    'verification_validity' => $verificationValidity,
                 ]
             ]);
 
@@ -3073,6 +3107,7 @@ class WorkOrderController extends Controller
         $workOrderId = $this->request->getPost('work_order_id');
         $repairDescription = $this->request->getPost('repair_description');
         $notes = $this->request->getPost('notes');
+        $forceReverification = (int)($this->request->getPost('force_reverification') ?? 0) === 1;
         
         if (!$workOrderId) {
             return $this->response->setJSON([
@@ -3104,6 +3139,62 @@ class WorkOrderController extends Controller
                 ]);
             }
 
+            $unitId = (int)($workOrder['unit_id'] ?? 0);
+            $verificationValidity = $unitId > 0
+                ? $this->getLatestUnitVerificationStatus($unitId, (int)$workOrderId)
+                : ['has_history' => false, 'is_valid_1y' => false];
+
+            if (!empty($verificationValidity['is_valid_1y']) && !$forceReverification) {
+                $completedStatus = $db->table('work_order_statuses')
+                    ->where('status_code', 'COMPLETED')
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getRowArray();
+
+                $fromStatusId = $workOrder['status_id'] ?? null;
+                $verifiedAtRaw = $verificationValidity['verified_at_raw'] ?? null;
+                $now = date('Y-m-d H:i:s');
+
+                $updatedSkip = $db->table('work_orders')
+                    ->where('id', $workOrderId)
+                    ->update([
+                        'repair_description' => $repairDescription,
+                        'notes' => $notes,
+                        'status_id' => $completedStatus['id'] ?? ($workOrder['status_id'] ?? null),
+                        'completion_date' => $now,
+                        'unit_verified' => 1,
+                        'unit_verified_at' => $verifiedAtRaw ?: $now,
+                        'updated_at' => $now,
+                    ]);
+
+                if (!$updatedSkip) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Failed to update work order'
+                    ]);
+                }
+
+                if (!empty($completedStatus['id']) && !empty($fromStatusId) && (int)$fromStatusId !== (int)$completedStatus['id']) {
+                    $this->workOrderModel->addStatusHistory(
+                        $workOrderId,
+                        (int)$completedStatus['id'],
+                        'Auto-skip verifikasi unit (masih valid 1 tahun)',
+                        (int)$fromStatusId
+                    );
+                }
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Data tersimpan. Verifikasi unit masih valid 1 tahun, tahap verifikasi di-skip.',
+                    'data' => [
+                        'work_order_id' => $workOrderId,
+                        'status' => 'COMPLETED',
+                        'verification_skipped' => true,
+                        'verification_validity' => $verificationValidity,
+                    ]
+                ]);
+            }
+
             // Update work order with repair data
             // Status REMAINS IN_PROGRESS - will be changed to COMPLETED after unit verification
             $updateData = [
@@ -3128,7 +3219,9 @@ class WorkOrderController extends Controller
                 'message' => 'Complete data saved successfully. Please continue with unit verification.',
                 'data' => [
                     'work_order_id' => $workOrderId,
-                    'status' => 'IN_PROGRESS' // Status tetap IN_PROGRESS
+                    'status' => 'IN_PROGRESS', // Status tetap IN_PROGRESS
+                    'verification_skipped' => false,
+                    'verification_validity' => $verificationValidity,
                 ]
             ]);
 
@@ -3685,7 +3778,11 @@ class WorkOrderController extends Controller
                         'fork' => $forkOptions
                     ],
                     'accessories' => $accessories,
-                    'verified_by' => $verifiedBy
+                    'verified_by' => $verifiedBy,
+                    'verification_validity' => $this->getLatestUnitVerificationStatus(
+                        (int)($unit['id_inventory_unit'] ?? 0),
+                        $isAuditContext ? null : (int)$workOrderId
+                    ),
                 ]
             ]);
 
@@ -3768,6 +3865,84 @@ class WorkOrderController extends Controller
     }
 
     /**
+     * Latest verification snapshot for unit (WO or Unit Verification).
+     * Valid for 1 year from verified_at.
+     */
+    private function getLatestUnitVerificationStatus(int $unitId, ?int $excludeWorkOrderId = null): array
+    {
+        $default = [
+            'has_history' => false,
+            'is_valid_1y' => false,
+            'verified_at' => null,
+            'verified_at_raw' => null,
+            'valid_until' => null,
+            'valid_until_raw' => null,
+            'mechanic_name' => '—',
+            'wo_number' => null,
+            'source' => null,
+            'reference_label' => null,
+            'work_order_id' => null,
+            'audit_id' => null,
+        ];
+        if ($unitId <= 0) {
+            return $default;
+        }
+
+        $db = \Config\Database::connect();
+        if (! $db->tableExists('unit_verification_history')) {
+            return $default;
+        }
+
+        $uvhFields = [];
+        try {
+            $uvhFields = $db->getFieldNames('unit_verification_history');
+        } catch (\Throwable $e) {
+            $uvhFields = [];
+        }
+        $hasAuditId = is_array($uvhFields) && in_array('audit_id', $uvhFields, true);
+
+        $builder = $db->table('unit_verification_history uvh')
+            ->select('uvh.verified_at, uvh.work_order_id, uvh.verified_by, wo.work_order_number as wo_number, e.staff_name as mechanic_name' . ($hasAuditId ? ', uvh.audit_id' : ''))
+            ->join('work_orders wo', 'wo.id = uvh.work_order_id', 'left')
+            ->join('employees e', 'e.id = uvh.verified_by', 'left')
+            ->where('uvh.unit_id', $unitId);
+        if (!empty($excludeWorkOrderId)) {
+            $builder->groupStart()
+                ->where('uvh.work_order_id IS NULL', null, false)
+                ->orWhere('uvh.work_order_id !=', $excludeWorkOrderId)
+                ->groupEnd();
+        }
+        $row = $builder->orderBy('uvh.verified_at', 'DESC')->limit(1)->get()->getRowArray();
+        if (!$row || empty($row['verified_at'])) {
+            return $default;
+        }
+
+        $verifiedAtTs = strtotime((string)$row['verified_at']);
+        if (!$verifiedAtTs) {
+            return $default;
+        }
+        $validUntilTs = strtotime('+1 year', $verifiedAtTs);
+        $nowTs = time();
+        $source = !empty($row['work_order_id']) ? 'work_order' : (!empty($row['audit_id']) ? 'audit' : 'standalone');
+        $refLabel = !empty($row['wo_number']) ? ('WO ' . $row['wo_number']) : ($source === 'audit' ? 'Unit Verification' : 'Verifikasi');
+
+        return [
+            'has_history' => true,
+            'is_valid_1y' => $validUntilTs >= $nowTs,
+            'verified_at' => date('d M Y H:i', $verifiedAtTs),
+            'verified_at_raw' => date('Y-m-d H:i:s', $verifiedAtTs),
+            'valid_until' => date('d M Y H:i', $validUntilTs),
+            'valid_until_raw' => date('Y-m-d H:i:s', $validUntilTs),
+            'mechanic_name' => $row['mechanic_name'] ?: '—',
+            'wo_number' => $row['wo_number'] ?? null,
+            'source' => $source,
+            'reference_label' => $refLabel,
+            'work_order_id' => $row['work_order_id'] ?? null,
+            'audit_id' => $hasAuditId ? ($row['audit_id'] ?? null) : null,
+        ];
+    }
+
+    /**
      * Get available tinggi mast options for a selected model mast
      * Returns distinct tinggi_mast values for the given model name
      */
@@ -3836,55 +4011,11 @@ class WorkOrderController extends Controller
                 ]);
             }
 
-            $db = \Config\Database::connect();
-
-            // Query the most recent verification history for this unit (WO or standalone/audit)
-            $query = "
-                SELECT 
-                    uvh.verified_at,
-                    wo.work_order_number as wo_number,
-                    e.staff_name as mechanic_name,
-                    uvh.work_order_id
-                FROM unit_verification_history uvh
-                LEFT JOIN work_orders wo ON wo.id = uvh.work_order_id
-                LEFT JOIN employees e ON e.id = uvh.verified_by
-                WHERE uvh.unit_id = ?
-            ";
-
-            $params = [$unitId];
-
-            // Exclude current work order if provided
-            if (!empty($currentWorkOrderId)) {
-                $query .= " AND (uvh.work_order_id IS NULL OR uvh.work_order_id != ?)";
-                $params[] = $currentWorkOrderId;
-            }
-
-            $query .= " ORDER BY uvh.verified_at DESC LIMIT 1";
-
-            $history = $db->query($query, $params)->getRowArray();
-
-            if ($history) {
-                $refLabel = !empty($history['wo_number'])
-                    ? ('WO ' . $history['wo_number'])
-                    : 'Verifikasi audit/mandiri';
-                $mechName = $history['mechanic_name'] ?: '—';
-
-                return $this->response->setJSON([
-                    'success' => true,
-                    'data' => [
-                        'has_history' => true,
-                        'verified_at' => date('d M Y H:i', strtotime($history['verified_at'])),
-                        'mechanic_name' => $mechName,
-                        'wo_number' => $history['wo_number'],
-                        'reference_label' => $refLabel,
-                    ]
-                ]);
-            } else {
-                return $this->response->setJSON([
-                    'success' => true,
-                    'data' => ['has_history' => false]
-                ]);
-            }
+            $history = $this->getLatestUnitVerificationStatus((int)$unitId, !empty($currentWorkOrderId) ? (int)$currentWorkOrderId : null);
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $history,
+            ]);
 
         } catch (\Throwable $e) {
             log_message('error', 'Terjadi kesalahan. Silakan coba lagi.');

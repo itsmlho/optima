@@ -87,12 +87,12 @@
           </div>
       </div>
       <div class="col-xl-2 col-md-4 col-6">
-          <div class="stat-card bg-danger-soft h-100">
+          <div class="stat-card bg-info-soft h-100">
               <div class="d-flex align-items-center">
-                  <div class="me-3"><i class="bi bi-geo-alt stat-icon text-danger"></i></div>
+                  <div class="me-3"><i class="bi bi-file-earmark-check stat-icon text-info"></i></div>
                   <div>
-                      <div class="stat-value" id="statLocationsNoArea"><?= $unitStats['locations_without_area'] ?? 0 ?></div>
-                      <div class="text-muted small"><?= lang('App.locations_without_area') ?></div>
+                      <div class="stat-value" id="statActiveContractUnits"><?= $unitStats['active_contract_units'] ?? 0 ?></div>
+                      <div class="text-muted small"><?= lang('App.active_contract_units') ?></div>
                   </div>
               </div>
           </div>
@@ -356,14 +356,14 @@
                               <ul class="nav nav-pills gap-1 px-1 pt-1" id="unitMapSubTabs">
                                   <li class="nav-item">
                                       <a class="nav-link nav-link-sm active" data-bs-toggle="pill" href="#subtabLocations" id="subtabLocationsLink">
-                                          <i class="bi bi-building me-1"></i> <?= lang('App.input_area_per_location') ?>
-                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassignedLoc"><?= $unitStats['locations_without_area'] ?? 0 ?></span>
+                                          <i class="bi bi-building me-1"></i> Assign Area per Unit
+                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassignedLoc" title="Unit kontrak aktif belum ada area"><?= $unitStats['contract_units_without_area'] ?? 0 ?></span>
                                       </a>
                                   </li>
                                   <li class="nav-item">
                                       <a class="nav-link nav-link-sm" data-bs-toggle="pill" href="#subtabUnassigned" id="subtabUnassignedLink">
-                                          <i class="bi bi-question-circle me-1"></i> <?= lang('App.unassigned_units') ?>
-                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassigned"><?= $unitStats['units_without_area'] ?? 0 ?></span>
+                                          <i class="bi bi-question-circle me-1"></i> Semua Unit Tanpa Area
+                                          <span class="badge badge-soft-orange ms-1" id="badgeUnassigned" title="Semua unit (termasuk tidak dikontrak) belum ada area"><?= $unitStats['units_without_area'] ?? 0 ?></span>
                                       </a>
                                   </li>
                               </ul>
@@ -371,65 +371,77 @@
 
                           <div class="tab-content px-1 pb-3">
 
-                              <!-- ─── Sub-tab 1: Input Area per Lokasi ──────────────── -->
+                              <!-- ─── Sub-tab 1: Assign Area per Unit ─────────────────── -->
                               <div class="tab-pane fade show active" id="subtabLocations">
-                                  <!-- Bulk bar -->
+
+                                  <!-- Bulk assign bar -->
                                   <div class="bg-light border rounded px-3 py-2 mb-3" id="bulkLocBar">
                                       <div class="d-flex align-items-center gap-2 flex-wrap">
-                                          <span class="fw-semibold small"><i class="bi bi-check2-square text-warning me-1"></i> <span id="bulkLocationCount">0 terpilih</span></span>
-                                          <select class="form-select form-select-sm" id="bulkLocationArea" style="width:230px">
+                                          <span class="fw-semibold small"><i class="bi bi-check2-square text-primary me-1"></i> <span id="bulkLocCount">0 terpilih</span></span>
+                                          <select class="form-select form-select-sm" id="bulkLocArea" style="width:250px">
                                               <option value="">-- Pilih Area --</option>
                                               <?php foreach ($areas as $a): ?>
                                                   <option value="<?= $a['id'] ?>"><?= esc($a['area_code']) ?> — <?= esc($a['area_name']) ?></option>
                                               <?php endforeach; ?>
                                           </select>
-                                          <button class="btn btn-sm btn-warning fw-semibold" id="btnBulkAssignLocations" disabled>
+                                          <button class="btn btn-sm btn-primary" id="btnBulkAssignLoc" disabled>
                                               <i class="bi bi-check-all me-1"></i> Assign Terpilih
                                           </button>
-                                          <a href="#" class="small text-muted ms-2" id="btnSelectAllLocations">Pilih Semua</a>
-                                          <a href="#" class="small text-muted" id="btnDeselectAllLocations">Hapus Pilihan</a>
+                                          <a href="#" class="small text-muted ms-2" id="btnSelectAllLoc">Pilih Semua</a>
+                                          <a href="#" class="small text-muted" id="btnDeselectAllLoc">Hapus Pilihan</a>
                                       </div>
                                   </div>
+
+                                  <!-- Filters -->
                                   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                      <div class="d-flex gap-2 flex-wrap">
-                                          <select class="form-select form-select-sm" id="filterLocationArea" style="width:160px">
-                                              <option value="all"><?= lang('App.all_locations') ?></option>
-                                              <option value="unassigned" selected><?= lang('App.unassigned_area_label') ?></option>
-                                              <option value="assigned"><?= lang('App.assigned_area_label') ?></option>
+                                      <div class="d-flex gap-2 flex-wrap align-items-center">
+                                          <select class="form-select form-select-sm" id="filterLocAreaAssign" style="width:165px">
+                                              <option value="unassigned" selected>Belum ter-assign</option>
+                                              <option value="assigned">Sudah ter-assign</option>
+                                              <option value="all">Semua Unit</option>
                                           </select>
-                                          <select class="form-select form-select-sm" id="filterCustomerName" style="width:200px">
+                                          <select class="form-select form-select-sm" id="filterLocCustomer" style="width:190px">
                                               <option value="">Semua Customer</option>
                                           </select>
-                                          <button class="btn btn-sm btn-outline-secondary" id="btnLoadLocations">
+                                          <select class="form-select form-select-sm" id="filterLocLocation" style="width:190px" disabled>
+                                              <option value="">Semua Lokasi</option>
+                                          </select>
+                                          <select class="form-select form-select-sm" id="filterLocDept" style="width:160px">
+                                              <option value="">Semua Departemen</option>
+                                              <?php foreach ($departemen as $d): ?>
+                                                  <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
+                                              <?php endforeach; ?>
+                                          </select>
+                                          <button class="btn btn-sm btn-outline-secondary" id="btnLoadLocationUnits">
                                               <i class="bi bi-funnel me-1"></i> <?= lang('Common.filter') ?>
                                           </button>
                                       </div>
-                                      <div class="d-flex gap-2">
-                                          <button class="btn btn-sm btn-success" id="btnSyncFromContracts">
-                                              <i class="bi bi-arrow-repeat me-1"></i> <?= lang('App.auto_sync_from_contracts') ?>
-                                          </button>
-                                          <button class="btn btn-sm btn-outline-info" id="btnRefreshLocations">
-                                              <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
-                                          </button>
-                                      </div>
+                                      <button class="btn btn-sm btn-outline-secondary" id="btnRefreshLocationUnits">
+                                          <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
+                                      </button>
                                   </div>
+
                                   <div class="alert alert-info border-0 py-2 small mb-3">
                                       <i class="bi bi-lightbulb me-1"></i>
-                                      <strong><?= lang('App.input_area_label') ?></strong> <?= lang('App.input_area_hint') ?>
+                                      <strong>Mapping area per unit:</strong> Setiap unit memiliki area-nya sendiri sesuai departemen. Unit DIESEL dan ELECTRIC di lokasi yang sama dapat memiliki area berbeda.
                                   </div>
+
                                   <div class="table-responsive">
-                                      <table class="table table-hover align-middle" id="tableLocations">
+                                      <table class="table table-hover align-middle" id="tableLocationUnits">
                                           <thead class="table-light">
                                               <tr>
-                                                  <th style="width:36px"><input type="checkbox" id="chkSelectAllLocations"></th>
-                                                  <th>Customer</th><th><?= lang('App.customer_location') ?></th><th><?= lang('App.location_code') ?></th>
-                                                  <th class="text-center"><?= lang('App.active_units') ?></th>
+                                                  <th style="width:36px"><input type="checkbox" id="chkSelectAllLoc"></th>
+                                                  <th>Customer</th>
+                                                  <th><?= lang('App.customer_location') ?></th>
+                                                  <th><?= lang('App.unit_number') ?></th>
+                                                  <th>Model</th>
+                                                  <th>Departemen</th>
                                                   <th style="min-width:200px"><?= lang('App.area') ?></th>
-                                                  <th class="text-center"><?= lang('Common.action') ?></th>
+                                                  <th class="text-center"><?= lang('Common.save') ?></th>
                                               </tr>
                                           </thead>
-                                          <tbody id="bodyLocations">
-                                              <tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
+                                          <tbody id="bodyLocationUnits">
+                                              <tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
                                           </tbody>
                                       </table>
                                   </div>
@@ -461,6 +473,14 @@
                                               <option value="with_contract">Ada Kontrak</option>
                                               <option value="without_contract">Tanpa Kontrak</option>
                                           </select>
+                                          <select class="form-select form-select-sm" id="filterUnitDept" style="width:160px">
+                                              <option value="all">Semua Departemen</option>
+                                              <option value="DIESEL">DIESEL</option>
+                                              <option value="ELECTRIC">ELECTRIC</option>
+                                              <option value="GASOLINE">GASOLINE</option>
+                                              <option value="LPG">LPG</option>
+                                              <option value="">Tanpa Dept</option>
+                                          </select>
                                       </div>
                                       <button class="btn btn-sm btn-outline-secondary" id="btnRefreshUnassigned">
                                           <i class="bi bi-arrow-clockwise me-1"></i> <?= lang('Common.refresh') ?>
@@ -472,11 +492,12 @@
                                               <tr>
                                                   <th style="width:36px"><input type="checkbox" id="chkSelectAllUnits"></th>
                                                   <th><?= lang('App.unit_number') ?></th><th>Model</th><th><?= lang('Common.status') ?></th>
+                                                  <th>Departemen</th>
                                                   <th>Customer</th><th><?= lang('App.customer_location') ?></th><th><?= lang('App.contract_number') ?></th>
                                               </tr>
                                           </thead>
                                           <tbody id="bodyUnassigned">
-                                              <tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
+                                              <tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat data...</td></tr>
                                           </tbody>
                                       </table>
                                   </div>
@@ -1317,13 +1338,10 @@
 
 <?= $this->section('javascript') ?>
 <script>
-let areasTable, employeesTable, locationsTable, unassignedTable;
-let unassignedLocationIds = [];
+let areasTable, employeesTable, locationUnitsTable, unassignedTable;
 let allUnassignedIds = [];
 const selectedUnits = new Set();
-const selectedLocations = new Set();
-let allLocationIds = [];
-let locInfoMap = {}; // cache of loc data keyed by id, for modal
+let locInfoMap = {}; // cache of loc data keyed by location_id, for PIC modal
 let employeesByRoleChart, assignmentsByAreaChart;
 // Filter functionality removed for simplicity
 
@@ -1363,14 +1381,14 @@ $(document).ready(function() {
     
     // Lazy load unit mapping when that tab is opened
     if (targetTab === 'unitMapTab') {
-      // Ensure sub-tab 1 is active — the pill's shown.bs.tab will fire loadLocations
+      // Ensure sub-tab 1 is active — the pill's shown.bs.tab will fire loadLocationUnits
       const $locLink = $('#subtabLocationsLink');
       if ($locLink.hasClass('active')) {
         // Already active — pill event won't fire, so load manually
-        if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+        if ($('#bodyLocationUnits tr td[colspan]').length) loadLocationUnits();
       } else {
         bootstrap.Tab.getOrCreateInstance($locLink[0]).show();
-        // loadLocations will be triggered by the pill's shown.bs.tab handler
+        // loadLocationUnits will be triggered by the pill's shown.bs.tab handler
       }
     }
 
@@ -2951,7 +2969,7 @@ function refreshCurrentTab() {
       refreshAssignments();
       break;
     case 'unitMapTab':
-      if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+      if ($('#bodyLocationUnits tr td[colspan]').length) loadLocationUnits();
       break;
     case 'analyticsTab':
       buildRoleCoverageMatrix();
@@ -3048,11 +3066,30 @@ function restoreActiveTab() {
 
 const allAreas = <?= json_encode($areas) ?>;
 
+// User dept scope from server: null = full access, otherwise {areas:[], departments:[], has_full_access: bool}
+const userDeptScope = <?= json_encode($userDeptScope) ?>;
+
+/**
+ * Build <option> HTML for area select, filtered by user dept scope.
+ * Logic: MILL areas always visible; CENTRAL areas only if dept matches user scope.
+ */
 function buildAreaOptions(selectedId) {
     let html = '<option value="">-- Tidak Ada --</option>';
     allAreas.forEach(a => {
+        // Apply dept scope filter: null = full access, show all
+        if (userDeptScope !== null && !userDeptScope.has_full_access) {
+            if (a.area_type === 'CENTRAL') {
+                // Only show CENTRAL area if departemen_id is in user's allowed departments
+                const allowedDepts = userDeptScope.departments || [];
+                if (allowedDepts.length > 0 && !allowedDepts.includes(parseInt(a.departemen_id))) {
+                    return; // skip this area
+                }
+            }
+            // MILL areas: always include
+        }
         const sel = (selectedId && parseInt(selectedId) === a.id) ? ' selected' : '';
-        html += `<option value="${a.id}"${sel}>[${a.area_code}] ${a.area_name}</option>`;
+        const typeTag = a.area_type === 'CENTRAL' ? ' [C]' : '';
+        html += `<option value="${a.id}"${sel}>[${a.area_code}${typeTag}] ${a.area_name}</option>`;
     });
     return html;
 }
@@ -3089,315 +3126,365 @@ $('#btnClosePanelUnits').on('click', function() {
 });
 
 // ----------------------------------------------------------------
-// Unit Mapping sub-tab 1: Customer Locations
+// Unit Mapping sub-tab 1: Assign Area per Unit
 // ----------------------------------------------------------------
-function loadLocations() {
-    const filter = $('#filterLocationArea').val();
-    if ($.fn.DataTable.isDataTable('#tableLocations')) { $('#tableLocations').DataTable().destroy(); }
-    $('#bodyLocations').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+let locSelectedUnits = new Set(); // unit IDs selected via checkbox
 
-    $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations', csrfData({area_filter: filter}), function(resp) {
-        const tbody = $('#bodyLocations');
-        tbody.empty();
-        if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada data</td></tr>');
-            return;
-        }
-        unassignedLocationIds = [];
-        selectedLocations.clear();
-        allLocationIds = resp.data.map(l => l.id);
-        locInfoMap = {}; // reset cache
-
-        // Count locations per customer for multi-location visual indicator
-        const custLocCount = {};
-        resp.data.forEach(loc => {
-            custLocCount[loc.customer_name] = (custLocCount[loc.customer_name] || 0) + 1;
-        });
-
-        resp.data.forEach(loc => {
-            if (!loc.area_id) unassignedLocationIds.push(loc.id);
-            locInfoMap[loc.id] = loc; // cache full loc data
-            const isMulti  = custLocCount[loc.customer_name] > 1;
-            const multiTag = isMulti
-                ? ` <span class="badge badge-soft-blue ms-1" title="Customer ini memiliki ${custLocCount[loc.customer_name]} lokasi terdaftar">${custLocCount[loc.customer_name]} lokasi</span>`
-                : '';
-            const hasPic   = loc.contact_person;
-            const picTitle = hasPic
-                ? `PIC: ${loc.contact_person}${loc.pic_position ? ' ('+loc.pic_position+')' : ''}${loc.phone ? ' · '+loc.phone : ''}`
-                : 'Belum ada data PIC · klik untuk mengisi';
-            const picIcon  = hasPic
-                ? `<i class="bi bi-person-check-fill text-success"></i>`
-                : `<i class="bi bi-person-plus text-muted"></i>`;
-            tbody.append(`
-                <tr data-assigned="${loc.area_id ? '1' : '0'}" data-loc-id="${loc.id}">
-                    <td class="text-center"><input type="checkbox" class="chk-loc" data-loc-id="${loc.id}"></td>
-                    <td><strong>${loc.customer_name}</strong>${multiTag}</td>
-                    <td>
-                        ${loc.location_name}
-                        <button class="btn btn-link btn-sm p-0 ms-1 btn-edit-pic"
-                            data-loc-id="${loc.id}"
-                            title="${picTitle}">${picIcon}</button>
-                    </td>
-                    <td><small class="text-muted">${loc.location_code || '-'}</small></td>
-                    <td class="text-center">
-                        ${loc.active_units > 0
-                            ? `<span class="badge badge-soft-green">${loc.active_units} unit</span>`
-                            : `<span class="text-muted">0</span>`}
-                    </td>
-                    <td>
-                        <select class="form-select form-select-sm loc-area-select" data-loc-id="${loc.id}">
-                            ${buildAreaOptions(loc.area_id)}
-                        </select>
-                    </td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-primary btn-save-location" data-loc-id="${loc.id}">
-                            <i class="bi bi-check-lg"></i> Save
-                        </button>
-                    </td>
-                </tr>
-            `);
-        });
-
-        // Populate customer filter dropdown
-        const $custFilter = $('#filterCustomerName');
-        const savedCust = $custFilter.val();
-        $custFilter.find('option:not(:first)').remove();
-        Object.keys(custLocCount).sort().forEach(name => {
-            $custFilter.append(`<option value="${name}">${name}</option>`);
-        });
-        if (savedCust) $custFilter.val(savedCust);
-
-        // DataTables — destroy first if already initialized
-        if ($.fn.DataTable.isDataTable('#tableLocations')) {
-            $('#tableLocations').DataTable().destroy();
-        }
-        locationsTable = $('#tableLocations').DataTable({
-            pageLength: 25,
-            order: [[1, 'asc']],
-            columnDefs: [{ orderable: false, targets: [0, 5, 6] }],
-            language: {
-                emptyTable: 'Tidak ada data',
-                info: 'Menampilkan _START_ – _END_ dari _TOTAL_ lokasi',
-                infoEmpty: '0 lokasi',
-                search: 'Cari:',
-                searchPlaceholder: 'Cari customer / lokasi...',
-                lengthMenu: 'Tampilkan _MENU_ entri',
-                paginate: { previous: '&laquo;', next: '&raquo;' }
-            },
-            drawCallback: function() {
-                $('#bodyLocations .chk-loc').each(function() {
-                    $(this).prop('checked', selectedLocations.has(parseInt($(this).data('loc-id'))));
-                });
-                const total   = $('#bodyLocations .chk-loc').length;
-                const checked = $('#bodyLocations .chk-loc:checked').length;
-                $('#chkSelectAllLocations')
-                    .prop('indeterminate', checked > 0 && checked < total)
-                    .prop('checked', total > 0 && checked === total);
-                updateBulkLocBar();
-            }
-        });
-        updateBulkLocBar();
-    });
-}
-
-// Customer filter for tableLocations — registered inside ready so $.fn.dataTable is available
-$(function() {
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-        if (settings.nTable.id !== 'tableLocations') return true;
-        const sel = $('#filterCustomerName').val();
-        if (!sel) return true;
-        // col 1 = Customer (strip HTML tags for comparison)
-        const cellText = $('<div>').html(data[1]).text().trim();
-        return cellText.toLowerCase().indexOf(sel.toLowerCase()) !== -1;
-    });
-});
-$('#filterCustomerName').on('change', function() {
-    if (locationsTable) locationsTable.draw();
-});
-
-// ── Bulk location select & assign (cross-page via Set) ──────────────────────
 function updateBulkLocBar() {
-    const count = selectedLocations.size;
-    $('#bulkLocationCount').text(count + ' terpilih');
-    $('#btnBulkAssignLocations').prop('disabled', count === 0);
+    const count = locSelectedUnits.size;
+    $('#bulkLocCount').text(count + ' terpilih');
+    $('#btnBulkAssignLoc').prop('disabled', count === 0);
 }
 
-$(document).on('change', '#chkSelectAllLocations', function() {
-    const isChecked = $(this).is(':checked');
-    $('#bodyLocations .chk-loc').each(function() {
-        const id = parseInt($(this).data('loc-id'));
-        $(this).prop('checked', isChecked);
-        if (isChecked) selectedLocations.add(id); else selectedLocations.delete(id);
+function loadLocationUnits() {
+    const deptFilter     = $('#filterLocDept').val();
+    const assignFilter   = $('#filterLocAreaAssign').val();
+    const customerFilter = $('#filterLocCustomer').val();
+    const locationFilter = $('#filterLocLocation').val();
+
+    if ($.fn.DataTable.isDataTable('#tableLocationUnits')) {
+        $('#tableLocationUnits').DataTable().destroy();
+    }
+    locSelectedUnits.clear();
+    updateBulkLocBar();
+    $('#bodyLocationUnits').html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations',
+        csrfData({ dept_filter: deptFilter, area_filter: assignFilter }),
+        function(resp) {
+            const tbody = $('#bodyLocationUnits');
+            tbody.empty();
+            locInfoMap = {};
+
+            if (!resp.success || !resp.data.length) {
+                tbody.html('<tr><td colspan="8" class="text-center py-3 text-muted">Tidak ada data unit aktif</td></tr>');
+                return;
+            }
+
+            // Apply client-side customer / location filters
+            let rows = resp.data;
+            if (customerFilter) rows = rows.filter(r => r.customer_name === customerFilter);
+            if (locationFilter) rows = rows.filter(r => String(r.location_id) === String(locationFilter));
+
+            if (!rows.length) {
+                tbody.html('<tr><td colspan="8" class="text-center py-3 text-muted">Tidak ada data untuk filter yang dipilih</td></tr>');
+                return;
+            }
+
+            // Populate customer dropdown from full response (always refresh)
+            const prevCust = $('#filterLocCustomer').val();
+            $('#filterLocCustomer').find('option[value!=""]').remove();
+            const customers = [...new Set(resp.data.map(r => r.customer_name))].sort();
+            customers.forEach(c => {
+                $('#filterLocCustomer').append(`<option value="${c}"${c === prevCust ? ' selected' : ''}>${c}</option>`);
+            });
+            // Re-trigger cascade so location dropdown also refreshes
+            $('#filterLocCustomer').trigger('change');
+
+            // Build ordered location list per customer (preserves response order)
+            // custLocOrder[customer_name] = [loc_id_1, loc_id_2, ...]
+            const custLocOrder = {};
+            resp.data.forEach(row => {
+                if (!custLocOrder[row.customer_name]) custLocOrder[row.customer_name] = [];
+                const list = custLocOrder[row.customer_name];
+                if (!list.includes(String(row.location_id))) list.push(String(row.location_id));
+            });
+
+            // Build locInfoMap for PIC modal
+            resp.data.forEach(row => {
+                if (!locInfoMap[row.location_id]) {
+                    locInfoMap[row.location_id] = {
+                        location_name:  row.location_name,
+                        customer_name:  row.customer_name,
+                        contact_person: row.contact_person || '',
+                        phone:          row.phone || '',
+                    };
+                }
+            });
+
+            rows.forEach(row => {
+                const hasPic   = row.contact_person;
+                const picTitle = hasPic
+                    ? `PIC: ${row.contact_person}${row.phone ? ' · ' + row.phone : ''}`
+                    : 'Belum ada data PIC · klik untuk mengisi';
+                const picIcon  = hasPic
+                    ? '<i class="bi bi-person-check-fill text-success"></i>'
+                    : '<i class="bi bi-person-plus text-muted"></i>';
+
+                // Show "Lokasi 1", "Lokasi 2" ... only when customer has >1 location
+                const locList  = custLocOrder[row.customer_name] || [];
+                const locIndex = locList.indexOf(String(row.location_id)) + 1;
+                const locTag   = locList.length > 1
+                    ? `<span class="badge badge-soft-blue ms-1" title="${row.location_name}">Lokasi ${locIndex}</span>`
+                    : '';
+
+                tbody.append(`
+                    <tr data-unit-id="${row.id_inventory_unit}" data-loc-id="${row.location_id}">
+                        <td class="text-center">
+                            <input type="checkbox" class="chk-loc-unit" data-unit-id="${row.id_inventory_unit}">
+                        </td>
+                        <td><strong>${row.customer_name}</strong>${locTag}</td>
+                        <td>
+                            ${row.location_name}
+                            <button class="btn btn-link btn-sm p-0 ms-1 btn-edit-pic"
+                                data-loc-id="${row.location_id}" title="${picTitle}">${picIcon}</button>
+                        </td>
+                        <td><strong>${row.no_unit}</strong></td>
+                        <td><small>${row.model || '-'}</small></td>
+                        <td><small>${row.nama_departemen || '-'}</small></td>
+                        <td>
+                            <select class="form-select form-select-sm unit-area-select"
+                                data-unit-id="${row.id_inventory_unit}">
+                                ${buildAreaOptions(row.area_id)}
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-primary btn-save-unit-area"
+                                data-unit-id="${row.id_inventory_unit}" title="Simpan Area">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            if ($.fn.DataTable.isDataTable('#tableLocationUnits')) {
+                $('#tableLocationUnits').DataTable().destroy();
+            }
+            locationUnitsTable = $('#tableLocationUnits').DataTable({
+                pageLength: 25,
+                order: [[1, 'asc'], [2, 'asc']],
+                columnDefs: [{ orderable: false, targets: [0, 6, 7] }],
+                language: {
+                    emptyTable:    'Tidak ada data',
+                    info:          'Menampilkan _START_ \u2013 _END_ dari _TOTAL_ unit',
+                    infoEmpty:     '0 unit',
+                    search:        'Cari:',
+                    searchPlaceholder: 'Cari unit / customer / lokasi...',
+                    lengthMenu:    'Tampilkan _MENU_ entri',
+                    paginate:      { previous: '&laquo;', next: '&raquo;' }
+                },
+                drawCallback: function() {
+                    // Re-tick checkboxes that are still in the selection set
+                    $('#bodyLocationUnits .chk-loc-unit').each(function() {
+                        const uid = parseInt($(this).data('unit-id'));
+                        $(this).prop('checked', locSelectedUnits.has(uid));
+                    });
+                    const total   = $('#bodyLocationUnits .chk-loc-unit').length;
+                    const checked = $('#bodyLocationUnits .chk-loc-unit:checked').length;
+                    $('#chkSelectAllLoc')
+                        .prop('indeterminate', checked > 0 && checked < total)
+                        .prop('checked', total > 0 && checked === total);
+                }
+            });
+        }
+    );
+}
+
+// Customer → Location cascade
+$('#filterLocCustomer').on('change', function() {
+    const customer = $(this).val();
+    const prevLoc  = $('#filterLocLocation').val();
+    const $locSel  = $('#filterLocLocation');
+    $locSel.empty().append('<option value="">Semua Lokasi</option>').prop('disabled', !customer);
+    if (!customer) return;
+    // Collect unique locations from locInfoMap
+    const seen = new Set();
+    Object.entries(locInfoMap).forEach(([locId, loc]) => {
+        if (loc.customer_name === customer && !seen.has(locId)) {
+            seen.add(locId);
+            const selected = (String(locId) === String(prevLoc)) ? ' selected' : '';
+            $locSel.append(`<option value="${locId}"${selected}>${loc.location_name}</option>`);
+        }
+    });
+});
+
+$('#btnLoadLocationUnits').on('click', function() { loadLocationUnits(); });
+$('#btnRefreshLocationUnits').on('click', function() { loadLocationUnits(); });
+
+// Select all (current page)
+$(document).on('change', '#chkSelectAllLoc', function() {
+    const checked = $(this).is(':checked');
+    $('#bodyLocationUnits .chk-loc-unit').each(function() {
+        const uid = parseInt($(this).data('unit-id'));
+        $(this).prop('checked', checked);
+        if (checked) locSelectedUnits.add(uid); else locSelectedUnits.delete(uid);
     });
     updateBulkLocBar();
 });
 
-$(document).on('change', '.chk-loc', function() {
-    const id = parseInt($(this).data('loc-id'));
-    if ($(this).is(':checked')) { selectedLocations.add(id); }
-    else { selectedLocations.delete(id); }
+// Individual checkbox
+$(document).on('change', '.chk-loc-unit', function() {
+    const uid = parseInt($(this).data('unit-id'));
+    if ($(this).is(':checked')) locSelectedUnits.add(uid); else locSelectedUnits.delete(uid);
     updateBulkLocBar();
-    const total   = $('#bodyLocations .chk-loc').length;
-    const checked = $('#bodyLocations .chk-loc:checked').length;
-    $('#chkSelectAllLocations')
+    const total   = $('#bodyLocationUnits .chk-loc-unit').length;
+    const checked = $('#bodyLocationUnits .chk-loc-unit:checked').length;
+    $('#chkSelectAllLoc')
         .prop('indeterminate', checked > 0 && checked < total)
         .prop('checked', total > 0 && checked === total);
 });
 
-$('#btnSelectAllLocations').on('click', function(e) {
+$('#btnSelectAllLoc').on('click', function(e) {
     e.preventDefault();
-    if (locationsTable) {
-        locationsTable.rows({ filter: 'applied' }).nodes().each(function() {
-            const id = parseInt($(this).find('.chk-loc').data('loc-id'));
-            if (id) selectedLocations.add(id);
-            $(this).find('.chk-loc').prop('checked', true);
+    if (locationUnitsTable) {
+        locationUnitsTable.rows({ filter: 'applied' }).nodes().each(function() {
+            const uid = parseInt($(this).find('.chk-loc-unit').data('unit-id'));
+            if (uid) locSelectedUnits.add(uid);
+            $(this).find('.chk-loc-unit').prop('checked', true);
         });
-    } else {
-        allLocationIds.forEach(id => selectedLocations.add(id));
-        $('#bodyLocations .chk-loc').prop('checked', true);
     }
-    $('#chkSelectAllLocations').prop('checked', true).prop('indeterminate', false);
+    $('#chkSelectAllLoc').prop('checked', true).prop('indeterminate', false);
     updateBulkLocBar();
 });
 
-$('#btnDeselectAllLocations').on('click', function(e) {
+$('#btnDeselectAllLoc').on('click', function(e) {
     e.preventDefault();
-    selectedLocations.clear();
-    $('#bodyLocations .chk-loc').prop('checked', false);
-    $('#chkSelectAllLocations').prop('checked', false).prop('indeterminate', false);
+    locSelectedUnits.clear();
+    $('#bodyLocationUnits .chk-loc-unit').prop('checked', false);
+    $('#chkSelectAllLoc').prop('checked', false).prop('indeterminate', false);
     updateBulkLocBar();
 });
 
-// Bulk assign locations
-$('#btnBulkAssignLocations').on('click', function() {
-    const areaId = $('#bulkLocationArea').val();
+// Bulk assign
+$('#btnBulkAssignLoc').on('click', function() {
+    const areaId = $('#bulkLocArea').val();
     if (!areaId) { showToast('warning', 'Pilih area terlebih dahulu'); return; }
-
-    const locIds = Array.from(selectedLocations);
-    if (!locIds.length) { showToast('info', 'Pilih lokasi terlebih dahulu'); return; }
-
-    const areaName = $('#bulkLocationArea option:selected').text();
+    const unitIds = Array.from(locSelectedUnits);
+    if (!unitIds.length) return;
+    const areaName = $('#bulkLocArea option:selected').text();
     showConfirm(
-        `Assign ${locIds.length} lokasi ke area <strong>${areaName}</strong>?`,
+        `Assign <strong>${unitIds.length} unit</strong> ke area <strong>${areaName}</strong>?`,
         'Konfirmasi Bulk Assign',
         function() {
-            const btn = $('#btnBulkAssignLocations');
+            const btn = $('#btnBulkAssignLoc');
             btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm me-1"></div> Menyimpan...');
-
-            $.post(BASE_URL + 'service/area-management/unit-mapping/batchAssignLocations',
-                csrfData({location_ids: JSON.stringify(locIds), area_id: areaId}),
+            $.post(BASE_URL + 'service/area-management/unit-mapping/batchAssignUnits',
+                csrfData({ unit_ids: JSON.stringify(unitIds), area_id: areaId }),
                 function(resp) {
                     btn.html('<i class="bi bi-check-all me-1"></i> Assign Terpilih');
                     if (resp.success) {
                         showToast('success', resp.message);
-                        selectedLocations.clear();
-                        loadLocations();
+                        locSelectedUnits.clear();
+                        loadLocationUnits();
                         updateStats();
+                        // Update badges
+                        const locB = parseInt($('#badgeUnassignedLoc').text()) || 0;
+                        const all  = parseInt($('#badgeUnassigned').text()) || 0;
+                        const n    = unitIds.length;
+                        if (locB > 0) $('#badgeUnassignedLoc').text(Math.max(0, locB - n));
+                        if (all  > 0) $('#badgeUnassigned').text(Math.max(0, all - n));
                     } else {
                         btn.prop('disabled', false);
                         showToast('danger', resp.message || 'Gagal menyimpan');
                     }
                 }
-            );
-        }
-    );
-});
-
-$(document).on('click', '.btn-save-location', function() {
-    const locId  = $(this).data('loc-id');
-    const areaId = $(`.loc-area-select[data-loc-id="${locId}"]`).val();
-    const btn    = $(this);
-    const row    = btn.closest('tr');
-
-    btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm"></div>');
-
-    $.post(BASE_URL + 'service/area-management/unit-mapping/assignAreaToLocation',
-        csrfData({location_id: locId, area_id: areaId}),
-        function(resp) {
-            if (resp.success) {
-                showToast('success', resp.message);
-                // Auto-remove row if viewing unassigned filter
-                const filter = $('#filterLocationArea').val();
-                if (filter === 'unassigned' && locationsTable) {
-                    selectedLocations.delete(parseInt(locId));
-                    unassignedLocationIds = unassignedLocationIds.filter(id => id !== parseInt(locId));
-                    locationsTable.row(row).remove().draw(false);
-                    updateBulkLocBar();
-                } else {
-                    // Just mark row as assigned visually
-                    row.attr('data-assigned', '1');
-                    btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Save');
-                    btn.removeClass('btn-primary').addClass('btn-success');
-                    setTimeout(() => btn.removeClass('btn-success').addClass('btn-primary'), 2000);
-                }
-                updateStats();
-            } else {
-                btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Save');
-                showToast('danger', resp.message || 'Gagal menyimpan');
-            }
-        }
-    ).fail(function() {
-        btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> Save');
-        showToast('danger', 'Koneksi gagal. Coba lagi.');
-    });
-});
-
-$('#btnSyncFromContracts').on('click', function() {
-    showConfirm(
-        'Sync area unit dari semua kontrak aktif?<br><small class="text-muted">Hanya unit yang lokasi kontraknya sudah memiliki area yang akan ter-update.</small>',
-        'Auto-Sync dari Kontrak',
-        function() {
-            const btn = $('#btnSyncFromContracts');
-            btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm me-1"></div> Syncing...');
-
-            $.post(BASE_URL + 'service/area-management/unit-mapping/syncFromContracts', csrfData({}), function(resp) {
-                btn.prop('disabled', false).html('<i class="bi bi-arrow-repeat me-1"></i> Auto-Sync dari Kontrak');
-                if (resp.success) {
-                    showToast('success', resp.message);
-                    updateStats();
-                } else {
-                    showToast('danger', resp.message);
-                }
-            }).fail(function() {
-                btn.prop('disabled', false).html('<i class="bi bi-arrow-repeat me-1"></i> Auto-Sync dari Kontrak');
+            ).fail(() => {
+                btn.prop('disabled', false).html('<i class="bi bi-check-all me-1"></i> Assign Terpilih');
                 showToast('danger', 'Koneksi gagal. Coba lagi.');
             });
         }
     );
 });
+
+// Save area for a single unit
+$(document).on('click', '.btn-save-unit-area', function() {
+    const unitId = $(this).data('unit-id');
+    const areaId = $(`.unit-area-select[data-unit-id="${unitId}"]`).val();
+    const btn    = $(this);
+    btn.prop('disabled', true).html('<div class="spinner-border spinner-border-sm"></div>');
+
+    $.post(BASE_URL + 'service/area-management/unit-mapping/assignUnitArea',
+        csrfData({ unit_id: unitId, area_id: areaId }),
+        function(resp) {
+            if (resp.success) {
+                showToast('success', resp.message);
+                btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i>');
+                btn.removeClass('btn-primary').addClass('btn-success');
+                setTimeout(() => btn.removeClass('btn-success').addClass('btn-primary'), 2000);
+                updateStats();
+                // Decrement both badges by 1 (unit just got assigned)
+                const locBadge = parseInt($('#badgeUnassignedLoc').text()) || 0;
+                if (locBadge > 0) $('#badgeUnassignedLoc').text(locBadge - 1);
+                const allBadge = parseInt($('#badgeUnassigned').text()) || 0;
+                if (allBadge > 0) $('#badgeUnassigned').text(allBadge - 1);
+                // Uncheck the saved unit's checkbox (if any)
+                const chkBox = $(`.chk-loc-unit[data-unit-id="${unitId}"]`);
+                if (chkBox.is(':checked')) {
+                    chkBox.prop('checked', false);
+                    locSelectedUnits.delete(parseInt(unitId));
+                    updateBulkLocBar();
+                }
+            } else {
+                btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i>');
+                showToast('danger', resp.message || 'Gagal menyimpan');
+            }
+        }
+    ).fail(function() {
+        btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i>');
+        showToast('danger', 'Koneksi gagal. Coba lagi.');
+    });
+});
 // ----------------------------------------------------------------
 // Unit Mapping sub-tab 2: Unassigned Units
 // ----------------------------------------------------------------
 function loadUnassigned() {
-    $('#bodyUnassigned').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
+    $('#bodyUnassigned').html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>');
 
     $.post(BASE_URL + 'service/area-management/unit-mapping/getUnassignedUnits', csrfData({}), function(resp) {
         const tbody = $('#bodyUnassigned');
         tbody.empty();
         if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-3 text-success"><i class="bi bi-check-circle me-1"></i> Semua unit sudah ter-mapping ke area</td></tr>');
+            tbody.html('<tr><td colspan="8" class="text-center py-3 text-success"><i class="bi bi-check-circle me-1"></i> Semua unit sudah ter-mapping ke area</td></tr>');
             selectedUnits.clear();
             updateBulkUnitBar();
             return;
         }
         allUnassignedIds = resp.data.map(u => parseInt(u.id_inventory_unit));
         selectedUnits.clear();
+
+        // Build ordered location list per customer (same logic as sub-tab 1)
+        const uCustLocOrder = {};
+        resp.data.forEach(u => {
+            if (!u.customer_name || !u.location_id) return;
+            if (!uCustLocOrder[u.customer_name]) uCustLocOrder[u.customer_name] = [];
+            const list = uCustLocOrder[u.customer_name];
+            if (!list.includes(String(u.location_id))) list.push(String(u.location_id));
+        });
+
         resp.data.forEach(u => {
             const hasContract = u.no_kontrak ? '1' : '0';
+            const fuelType    = u.fuel_type  || '';
+            const fuelBadge   = fuelType
+                ? `<span class="badge badge-soft-${fuelType === 'ELECTRIC' ? 'blue' : fuelType === 'DIESEL' ? 'yellow' : fuelType === 'GASOLINE' ? 'orange' : 'gray'} me-1">${fuelType}</span>`
+                : '';
+            const deptName = u.nama_departemen || '<span class="text-muted">-</span>';
+
+            // "Lokasi 1" / "Lokasi 2" badge on customer column
+            const uLocList  = uCustLocOrder[u.customer_name] || [];
+            const uLocIndex = uLocList.indexOf(String(u.location_id)) + 1;
+            const uLocTag   = uLocList.length > 1
+                ? `<span class="badge badge-soft-blue ms-1" title="${u.location_name || ''}">Lokasi ${uLocIndex}</span>`
+                : '';
+            const custCell  = u.customer_name
+                ? `<strong>${u.customer_name}</strong>${uLocTag}`
+                : '<span class="text-muted">Tanpa Kontrak</span>';
+
             tbody.append(`
-                <tr data-contract="${hasContract}">
+                <tr data-contract="${hasContract}" data-fuel="${fuelType}">
                     <td class="text-center"><input type="checkbox" class="chk-unit" data-unit-id="${u.id_inventory_unit}"></td>
                     <td><strong>${u.no_unit}</strong></td>
                     <td>${u.model || '-'}</td>
                     <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
-                    <td>${u.customer_name || '<span class="text-muted">Tanpa Kontrak</span>'}</td>
+                    <td>${fuelBadge}${deptName}</td>
+                    <td>${custCell}</td>
                     <td><small>${u.location_name || '-'}</small></td>
                     <td><small>${u.no_kontrak || '-'}</small></td>
                 </tr>
             `);
         });
         // DataTables + custom contract filter
-        $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(f => f._id !== 'contractFilter');
+        $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(f => f._id !== 'contractFilter' && f._id !== 'deptFilter');
         const contractFilterFn = function(settings, data, dataIndex) {
             if (settings.nTable.id !== 'tableUnassigned') return true;
             const val = $('#filterUnitContract').val();
@@ -3410,6 +3497,16 @@ function loadUnassigned() {
         };
         contractFilterFn._id = 'contractFilter';
         $.fn.dataTable.ext.search.push(contractFilterFn);
+        const deptFilterFn = function(settings, data, dataIndex) {
+            if (settings.nTable.id !== 'tableUnassigned') return true;
+            const val = $('#filterUnitDept').val();
+            if (val === 'all') return true;
+            const row = settings.aoData[dataIndex].nTr;
+            const fuel = row ? $(row).data('fuel') : '';
+            return fuel === val || (val === '' && !fuel);
+        };
+        deptFilterFn._id = 'deptFilter';
+        $.fn.dataTable.ext.search.push(deptFilterFn);
         // DataTables
         if ($.fn.DataTable.isDataTable('#tableUnassigned')) { $('#tableUnassigned').DataTable().destroy(); }
         unassignedTable = $('#tableUnassigned').DataTable({
@@ -3443,6 +3540,10 @@ function loadUnassigned() {
 }
 
 $('#filterUnitContract').on('change', function() {
+    if (unassignedTable) unassignedTable.draw();
+});
+
+$('#filterUnitDept').on('change', function() {
     if (unassignedTable) unassignedTable.draw();
 });
 
@@ -3532,7 +3633,7 @@ $('#btnBulkAssignUnits').on('click', function() {
 // Sub-tab lazy load triggers
 // ----------------------------------------------------------------
 $('#subtabLocationsLink').on('shown.bs.tab', function() {
-    if ($('#bodyLocations tr td[colspan]').length) loadLocations();
+    if ($('#bodyLocationUnits tr td[colspan]').length) loadLocationUnits();
 });
 $('#subtabUnassignedLink').on('shown.bs.tab', function() {
     if ($('#bodyUnassigned tr td[colspan]').length) loadUnassigned();
@@ -3607,6 +3708,42 @@ function notify(msg, type='success'){
 	}
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
 }
+
+// ── Preview units at location (Bootstrap Dropdown, lazy-load) ──────────────
+$(document).on('show.bs.dropdown', '[data-bs-toggle="dropdown"][data-loc-id]', function() {
+    const $toggle = $(this);
+    if ($toggle.data('loaded')) return; // already loaded, reuse cached content
+    const locId = $toggle.data('loc-id');
+    const $menu  = $(`.dropdown-menu[data-loc-menu="${locId}"]`);
+
+    $.get(BASE_URL + 'service/area-management/unit-mapping/unitsAtLocation/' + locId, function(resp) {
+        $toggle.data('loaded', true);
+        if (!resp.success || !resp.data.length) {
+            $menu.html('<div class="px-3 py-2 text-muted small"><i class="bi bi-inbox me-1"></i>Tidak ada unit aktif</div>');
+            return;
+        }
+        const fuelColor = { ELECTRIC: 'blue', DIESEL: 'yellow', GASOLINE: 'orange', LPG: 'gray' };
+        let html = `<div class="px-3 py-1 bg-light border-bottom d-flex justify-content-between align-items-center">
+            <small class="fw-semibold text-muted">Unit Aktif</small>
+            <span class="badge badge-soft-blue">${resp.data.length} unit</span>
+        </div>`;
+        resp.data.forEach(u => {
+            const fc   = fuelColor[u.fuel_type] || 'gray';
+            const fuel = u.fuel_type ? `<span class="badge badge-soft-${fc} ms-1" style="font-size:0.65rem">${u.fuel_type}</span>` : '';
+            const area = u.area_code ? `<small class="text-muted ms-1">[${u.area_code}]</small>` : '';
+            const exp  = u.tanggal_berakhir ? ` <small class="text-muted">· ${u.tanggal_berakhir.substring(0,10)}</small>` : '';
+            html += `
+                <div class="px-3 py-1 border-bottom d-flex justify-content-between align-items-center" style="font-size:0.8rem">
+                    <div>
+                        <strong>#${u.no_unit}</strong>
+                        <span class="text-muted ms-1">${u.model || ''}</span>${area}${exp}
+                    </div>
+                    <div class="ms-2 text-nowrap">${fuel}</div>
+                </div>`;
+        });
+        $menu.html(html);
+    });
+});
 
 // ── Edit PIC ──────────────────────────────────────────────────────────────
 $(document).on('click', '.btn-edit-pic', function(e) {

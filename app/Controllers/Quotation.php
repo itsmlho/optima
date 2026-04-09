@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\QuotationModel;
+use App\Models\QuotationSpecificationHistoryModel;
 use App\Models\QuotationSpecificationModel;
 use App\Traits\ActivityLoggingTrait;
 
@@ -588,11 +589,11 @@ class Quotation extends BaseController
                 ]);
             }
 
-            // Check workflow stage - only allow specifications for QUOTATION and SENT stages
-            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+            // Check workflow stage - allow specs during quotation / sent / active negotiation
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT', 'NEGOTIATION'], true)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Specifications can only be added to quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
+                    'message' => 'Specifications can only be added to quotations in QUOTATION, SENT, or NEGOTIATION stage. Current stage: ' . $quotation['workflow_stage']
                 ]);
             }
 
@@ -668,6 +669,15 @@ class Quotation extends BaseController
                 
                 // Get updated quotation total
                 $updatedQuotation = $this->quotationModel->find($quotationId);
+
+                $newRow = $this->quotationSpecificationModel->find($specId);
+                $this->logSpecificationHistoryEvent(
+                    (int) $quotationId,
+                    (int) $specId,
+                    'CREATED',
+                    null,
+                    QuotationSpecificationHistoryModel::snapshotFromRow($newRow)
+                );
                 
                 // Log activity
                 $this->logActivity(
@@ -742,10 +752,10 @@ class Quotation extends BaseController
                 ]);
             }
 
-            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT', 'NEGOTIATION'], true)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Specifications can only be modified for quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
+                    'message' => 'Specifications can only be modified for quotations in QUOTATION, SENT, or NEGOTIATION stage. Current stage: ' . $quotation['workflow_stage']
                 ]);
             }
 
@@ -861,6 +871,17 @@ class Quotation extends BaseController
             if ($this->quotationSpecificationModel->update($specId, $data)) {
                 // Update quotation total after specification update
                 $this->quotationSpecificationModel->updateQuotationTotal($specification['id_quotation']);
+
+                $oldSnap = QuotationSpecificationHistoryModel::snapshotFromRow($specification);
+                $newRow  = $this->quotationSpecificationModel->find($specId);
+                $newSnap = QuotationSpecificationHistoryModel::snapshotFromRow($newRow);
+                $this->logSpecificationHistoryEvent(
+                    (int) $specification['id_quotation'],
+                    (int) $specId,
+                    'UPDATED',
+                    $oldSnap,
+                    $newSnap
+                );
                 
                 // Log activity
                 $this->logActivity(
@@ -921,14 +942,23 @@ class Quotation extends BaseController
                 ]);
             }
 
-            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT', 'NEGOTIATION'], true)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Specifications can only be deleted from quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
+                    'message' => 'Specifications can only be deleted from quotations in QUOTATION, SENT, or NEGOTIATION stage. Current stage: ' . $quotation['workflow_stage']
                 ]);
             }
 
             if ($this->quotationSpecificationModel->delete($specId)) {
+                $oldSnap = QuotationSpecificationHistoryModel::snapshotFromRow($specification);
+                $this->logSpecificationHistoryEvent(
+                    (int) $specification['id_quotation'],
+                    (int) $specId,
+                    'DELETED',
+                    $oldSnap,
+                    null
+                );
+
                 // Log activity
                 $this->logActivity(
                     'quotation_specification_deleted',
@@ -956,5 +986,127 @@ class Quotation extends BaseController
             ]);
         }
     }
-    
+
+    /**
+     * @param 'CREATED'|'UPDATED'|'DELETED' $action
+     */
+    protected function logSpecificationHistoryEvent(
+        int $quotationId,
+        ?int $specId,
+        string $action,
+        ?array $oldSnap,
+        ?array $newSnap
+    ): void {
+        if (! $this->db->tableExists('quotation_specification_history')) {
+            return;
+        }
+
+        try {
+            $historyModel = new QuotationSpecificationHistoryModel();
+            $summary       = $this->buildSpecificationHistorySummary($action, $oldSnap, $newSnap);
+            $qv            = $this->getQuotationVersionForHistory($quotationId);
+            $uid           = (int) ($this->session->get('user_id') ?? 0);
+
+            $historyModel->insert([
+                'quotation_id'      => $quotationId,
+                'specification_id' => $specId,
+                'action_type'       => $action,
+                'quotation_version' => $qv,
+                'summary'           => $summary,
+                'old_snapshot'      => $oldSnap !== null ? json_encode($oldSnap, JSON_UNESCAPED_UNICODE) : null,
+                'new_snapshot'      => $newSnap !== null ? json_encode($newSnap, JSON_UNESCAPED_UNICODE) : null,
+                'changed_by'        => $uid > 0 ? $uid : null,
+                'changed_at'        => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'logSpecificationHistoryEvent: ' . $e->getMessage());
+        }
+    }
+
+    protected function getQuotationVersionForHistory(int $quotationId): ?int
+    {
+        if (! $this->db->fieldExists('version', 'quotations')) {
+            return null;
+        }
+        $row = $this->db->table('quotations')->select('version')->where('id_quotation', $quotationId)->get()->getRowArray();
+
+        return isset($row['version']) ? (int) $row['version'] : 1;
+    }
+
+    /**
+     * @param 'CREATED'|'UPDATED'|'DELETED' $action
+     */
+    protected function buildSpecificationHistorySummary(string $action, ?array $old, ?array $new): string
+    {
+        $labels = $this->specHistoryFieldLabels();
+        if ($action === 'CREATED') {
+            $name = $new['specification_name'] ?? '-';
+
+            return 'Menambah spesifikasi: ' . $name;
+        }
+        if ($action === 'DELETED') {
+            $name = $old['specification_name'] ?? '-';
+
+            return 'Menghapus spesifikasi: ' . $name;
+        }
+        if ($action === 'UPDATED' && is_array($old) && is_array($new)) {
+            $parts = [];
+            foreach ($labels as $key => $label) {
+                $a = $old[$key] ?? null;
+                $b = $new[$key] ?? null;
+                if ((string) $a !== (string) $b) {
+                    $parts[] = $label . ': "' . $this->truncateSpecSummaryVal($a) . '" → "' . $this->truncateSpecSummaryVal($b) . '"';
+                }
+            }
+
+            return $parts !== [] ? implode('; ', $parts) : 'Perubahan spesifikasi';
+        }
+
+        return 'Perubahan spesifikasi';
+    }
+
+    protected function truncateSpecSummaryVal($v, int $max = 120): string
+    {
+        $s = $v === null || $v === '' ? '-' : (string) $v;
+        if (strlen($s) > $max) {
+            return substr($s, 0, $max) . '…';
+        }
+
+        return $s;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function specHistoryFieldLabels(): array
+    {
+        return [
+            'specification_name'        => 'Nama',
+            'specification_type'        => 'Tipe',
+            'quantity'                  => 'Qty unit',
+            'spare_quantity'            => 'Qty cadangan',
+            'is_spare_unit'             => 'Spare unit',
+            'monthly_price'             => 'Harga bulanan',
+            'daily_price'               => 'Harga harian',
+            'total_price'               => 'Total harga baris',
+            'unit_accessories'          => 'Aksesoris',
+            'include_operator'          => 'Include operator',
+            'operator_quantity'         => 'Qty operator',
+            'operator_monthly_rate'     => 'Tarif operator (bln)',
+            'operator_daily_rate'       => 'Tarif operator (hr)',
+            'departemen_id'             => 'Departemen (ID)',
+            'tipe_unit_id'              => 'Tipe unit (ID)',
+            'kapasitas_id'              => 'Kapasitas (ID)',
+            'brand_id'                  => 'Model/brand (ID)',
+            'battery_id'                => 'Baterai (ID)',
+            'charger_id'                => 'Charger (ID)',
+            'attachment_id'             => 'Attachment (ID)',
+            'fork_id'                   => 'Fork (ID)',
+            'valve_id'                  => 'Valve (ID)',
+            'mast_id'                   => 'Mast (ID)',
+            'ban_id'                    => 'Ban (ID)',
+            'roda_id'                   => 'Roda (ID)',
+            'notes'                     => 'Catatan',
+        ];
+    }
 }

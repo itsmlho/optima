@@ -474,6 +474,17 @@
                     // Store the data for later use
                     window.verificationData = data.data;
                     console.log('✅ Data stored for later use');
+
+                    const validity = data.data.verification_validity || null;
+                    if (validity && validity.is_valid_1y) {
+                        const container = document.getElementById('verification-content');
+                        if (container) {
+                            container.innerHTML = renderVerificationSummary(validity, data.data);
+                        }
+                        verificationLoaded = true;
+                        setTimeout(function() { initiatePrint(); }, 600);
+                        return Promise.resolve(null);
+                    }
                     
                     // Now load the HTML content
                     return fetch('<?= base_url("service/work-orders/print-verification") ?>?wo_id=' + workOrderId + '&embedded=1');
@@ -482,6 +493,9 @@
                 }
             })
             .then(response => {
+                if (response === null) {
+                    return null;
+                }
                 console.log('HTML fetch response status:', response.status);
                 if (!response.ok) {
                     throw new Error('HTML response not ok: ' + response.status);
@@ -489,6 +503,9 @@
                 return response.text();
             })
             .then(html => {
+                if (html === null) {
+                    return;
+                }
                 console.log('HTML received, length:', html.length);
                 // Extract content from verification page
                 const parser = new DOMParser();
@@ -576,6 +593,35 @@
                     initiatePrint();
                 }, 1000);
             });
+        }
+
+        function renderVerificationSummary(validity, data) {
+            const unit = data.unit || {};
+            const source = validity.source === 'work_order' ? 'Work Order' : 'Unit Verification';
+            const verifiedAt = validity.verified_at || '-';
+            const validUntil = validity.valid_until || '-';
+            const verifier = validity.mechanic_name || '-';
+            const unitNo = unit.no_unit || '-';
+            return `
+                <div class="content-panel">
+                    <div class="panel-title">RINGKASAN VERIFIKASI UNIT</div>
+                    <div class="panel-body">
+                        <div style="border:1px solid #cce5d8;background:#eefaf3;padding:12px;border-radius:4px;">
+                            <div style="font-weight:bold;color:#145a32;margin-bottom:6px;">Verifikasi unit masih berlaku (1 tahun)</div>
+                            <div style="font-size:9pt;line-height:1.5;">
+                                <div><strong>Unit:</strong> ${unitNo}</div>
+                                <div><strong>Terverifikasi:</strong> ${verifiedAt}</div>
+                                <div><strong>Valid sampai:</strong> ${validUntil}</div>
+                                <div><strong>Sumber:</strong> ${source}</div>
+                                <div><strong>Verifikator:</strong> ${verifier}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;font-size:8.5pt;color:#555;">
+                            Form verifikasi detail tidak dicetak ulang karena unit masih dalam masa valid verifikasi.
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // Function to populate verification data manually

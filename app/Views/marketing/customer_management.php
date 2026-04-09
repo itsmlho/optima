@@ -607,13 +607,7 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="area_id">Service Area <span class="text-danger">*</span></label>
-                            <select class="form-control" id="area_id" name="area_id" required>
-                                <option value="">-- Select Service Area --</option>
-                            </select>
-                            <small class="form-text text-muted">Sales territory / service area for this location</small>
-                        </div>
+
                     </div>
 
                     <!-- Contact Person Information -->
@@ -789,14 +783,7 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="loc_area_id">Area <span class="text-danger">*</span></label>
-                                <select class="form-control" id="loc_area_id" name="area_id" required>
-                                    <option value="">Select Area</option>
-                                </select>
-                            </div>
-                        </div>
+
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="loc_contact_person">Contact Person</label>
@@ -2103,9 +2090,6 @@ function openAddCustomerModal() {
     // Clear previous validation states
     clearFormErrors('#addCustomerForm');
     
-    // Load areas for primary location dropdown
-    loadAreas();
-    
     // Generate customer code automatically
     generateCustomerCode();
     
@@ -2466,7 +2450,6 @@ function openAddLocationModal() {
     $('#addLocationModal .modal-title').text('<?= lang('Marketing.add_location') ?>');
     $('#locationCustomerId').val(currentCustomerId);
     $('#loc_location_code').val('');
-    loadLocationAreas();
     
     // Show di atas customerDetailModal (stacked modal)
     $('#addLocationModal').css('z-index', 1065);
@@ -2633,7 +2616,6 @@ function deleteLocation(locationId, locationName, isPrimary) {
 
 function openEditLocationModal(locationId) {
     clearFormErrors('#addLocationForm');
-    loadLocationAreas();
     
     $.ajax({
         url: `<?= base_url('marketing/customer-management/showCustomerLocation') ?>/${locationId}`,
@@ -2655,10 +2637,6 @@ function openEditLocationModal(locationId) {
                 $('#loc_email').val(loc.email || '');
                 $('#loc_notes').val(loc.notes || '');
                 $('#loc_is_primary').prop('checked', loc.is_primary == 1);
-                
-                if (loc.area_id) {
-                    setTimeout(() => { $('#loc_area_id').val(loc.area_id); }, 100);
-                }
                 
                 // Show di atas customerDetailModal (stacked modal)
                 $('#addLocationModal').css('z-index', 1065);
@@ -3346,53 +3324,7 @@ function setupTabHandlers() {
 }
 
 
-function loadAreas() {
-    $.ajax({
-        url: '<?= base_url('marketing/customer-management/getAreas') ?>',
-        method: 'GET',
-        success: function(response) {
-            console.log('Areas response:', response);
-            if (response.success) {
-                const areaSelect = $('#area_id');
-                areaSelect.empty().append('<option value="">Select Area</option>');
-                response.data.forEach(area => {
-                    areaSelect.append(`<option value="${area.id}">${area.area_code} - ${area.area_name}</option>`);
-                });
-            } else {
-                console.error('Error loading areas:', response.message);
-                notify('Error loading areas: ' + response.message, 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error loading areas:', {xhr, status, error});
-            notify('Error loading areas: ' + error, 'error');
-        }
-    });
-}
 
-function loadLocationAreas() {
-    $.ajax({
-        url: '<?= base_url('marketing/customer-management/getAreas') ?>',
-        method: 'GET',
-        success: function(response) {
-            console.log('Location Areas response:', response);
-            if (response.success) {
-                const areaSelect = $('#loc_area_id');
-                areaSelect.empty().append('<option value="">Select Area</option>');
-                response.data.forEach(area => {
-                    areaSelect.append(`<option value="${area.id}">${area.area_code} - ${area.area_name}</option>`);
-                });
-            } else {
-                console.error('Error loading areas for location:', response.message);
-                notify('Error loading areas: ' + response.message, 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error loading areas for location:', {xhr, status, error});
-            notify('Error loading areas: ' + error, 'error');
-        }
-    });
-}
 
 
 function loadCustomers(callback) {

@@ -6,6 +6,9 @@ use CodeIgniter\Model;
 
 class InventoryUnitModel extends Model
 {
+    /** Master status: SOLD (unit tidak boleh dipilih untuk SJ / operasional aktif) */
+    public const STATUS_UNIT_SOLD_ID = 13;
+
     protected $table            = 'inventory_unit';
     // Internal PK (auto increment) setelah migrasi opsi 2: rename kolom lama no_unit -> id_inventory_unit
     protected $primaryKey       = 'id_inventory_unit';
@@ -564,7 +567,10 @@ class InventoryUnitModel extends Model
      * 
      * Updated: Uses kontrak_unit junction table instead of redundant iu.kontrak_id
      */
-    public function getUnitsForDropdown()
+    /**
+     * @param list<int> $excludeStatusUnitIds Tambahan status_unit_id yang dikecualikan (mis. SOLD untuk picker SJ)
+     */
+    public function getUnitsForDropdown(array $excludeStatusUnitIds = [])
     {
         $builder = $this->db->table($this->table . ' as iu');
         $builder->select('iu.id_inventory_unit, 
@@ -586,7 +592,11 @@ class InventoryUnitModel extends Model
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->where('iu.status_unit_id !=', 2) // Exclude WORKSHOP-RUSAK
                 ->orderBy('iu.no_unit', 'ASC');
-        
+
+        if ($excludeStatusUnitIds !== []) {
+            $builder->whereNotIn('iu.status_unit_id', $excludeStatusUnitIds);
+        }
+
         return $builder->get()->getResultArray();
     }
 
@@ -727,14 +737,14 @@ class InventoryUnitModel extends Model
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
-                          COALESCE(kap.kapasitas, "Unknown") as kapasitas')
+                          COALESCE(kap.kapasitas_unit, "Unknown") as kapasitas')
                 // Updated: JOIN via kontrak_unit junction (source of truth)
                 ->join('kontrak_unit ku', 'iu.id_inventory_unit = ku.unit_id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak as k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customers as c', 'c.id = k.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
-                ->join('kapasitas_unit as kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->join('kapasitas as kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
                 ->where('iu.id_inventory_unit', $unitId);
         
         return $builder->get()->getRowArray();

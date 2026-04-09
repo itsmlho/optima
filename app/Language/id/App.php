@@ -506,6 +506,7 @@ return [
     'area_management_subtitle'    => 'Kelola area layanan, karyawan, penugasan, dan pemetaan unit dalam satu halaman',
     'units_with_area'             => 'Unit Sudah Ada Area',
     'units_without_area'          => 'Unit Belum Ada Area',
+    'active_contract_units'       => 'Unit Kontrak Aktif',
     'locations_without_area'      => 'Lokasi Belum Ada Area',
     'area_summary'                => 'Ringkasan per Area',
     'input_area_per_location'     => 'Input Area per Lokasi',

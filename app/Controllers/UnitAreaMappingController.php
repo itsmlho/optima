@@ -36,11 +36,6 @@ class UnitAreaMappingController extends BaseController
             ->where('status_unit_id !=', 13) // exclude SOLD
             ->countAllResults();
 
-        $stats['locations_without_area'] = $this->db->table('customer_locations')
-            ->where('area_id IS NULL')
-            ->where('is_active', 1)
-            ->countAllResults();
-
         $stats['active_contract_units'] = $this->db->query("
             SELECT COUNT(DISTINCT ku.unit_id) as cnt
             FROM kontrak_unit ku
@@ -50,15 +45,19 @@ class UnitAreaMappingController extends BaseController
 
         // All active areas for dropdowns
         $areas = $this->db->table('areas')
-            ->select('id, area_code, area_name, area_type')
+            ->select('id, area_code, area_name, area_type, departemen_id')
             ->where('is_active', 1)
             ->orderBy('area_type')->orderBy('area_name')
             ->get()->getResultArray();
+
+        // User dept scope for area dropdown filtering in frontend
+        $userDeptScope = get_user_area_department_scope();
 
         $data = [
             'pageTitle' => 'Unit Area Mapping',
             'stats'     => $stats,
             'areas'     => $areas,
+            'userDeptScope' => $userDeptScope,
             'breadcrumbs' => [
                 '/'                         => 'Dashboard',
                 '/service/area-management'  => 'Area Management',
@@ -93,7 +92,11 @@ class UnitAreaMappingController extends BaseController
             LEFT JOIN inventory_unit iu ON iu.area_id = a.id
             LEFT JOIN area_employee_assignments aea ON aea.area_id = a.id AND aea.is_active = 1
             LEFT JOIN employees e ON e.id = aea.employee_id AND e.is_active = 1
-            LEFT JOIN customer_locations cl ON cl.area_id = a.id AND cl.is_active = 1
+            LEFT JOIN customer_locations cl ON cl.id IN (
+                SELECT DISTINCT ku2.customer_location_id FROM kontrak_unit ku2
+                JOIN inventory_unit iu2 ON iu2.id_inventory_unit = ku2.unit_id
+                WHERE iu2.area_id = a.id AND ku2.status = 'ACTIVE'
+            ) AND cl.is_active = 1
             WHERE a.is_active = 1
             GROUP BY a.id, a.area_code, a.area_name, a.area_type
             ORDER BY a.area_type, a.area_name
@@ -138,139 +141,99 @@ class UnitAreaMappingController extends BaseController
     }
 
     // -------------------------------------------------------------------------
-    // AJAX: Customer Locations list (Tab 2 - input area per lokasi)
+    // AJAX: Customer Locations list (Tab 2 - input area per unit dalam lokasi)
+    // Returns each active location with its active-contract units and their
+    // individual area_id.  Replaces the old single-area-per-location design.
     // -------------------------------------------------------------------------
 
     public function getCustomerLocations()
     {
-        $filterArea = $this->request->getPost('area_filter'); // 'assigned','unassigned','all'
+        // Optional filters
+        $filterDept   = $this->request->getPost('dept_filter');   // departemen_id int or ''
+        $filterAssign = $this->request->getPost('area_filter');   // 'assigned','unassigned','all'
 
         $sql = "
             SELECT
-                cl.id,
+                cl.id                       AS location_id,
                 cl.location_name,
                 cl.location_code,
-                cl.area_id,
-                a.area_code,
-                a.area_name,
-                c.customer_name,
                 cl.contact_person,
                 cl.phone,
-                cl.email,
-                cl.pic_position,
-                cl.address,
                 cl.city,
-                cl.province,
-                cl.postal_code,
-                COUNT(DISTINCT CASE WHEN ku.status = 'ACTIVE' THEN ku.unit_id END) AS active_units
+                c.customer_name,
+                iu.id_inventory_unit,
+                iu.no_unit,
+                iu.fuel_type,
+                iu.area_id,
+                d.nama_departemen,
+                a.area_code,
+                a.area_name,
+                CONCAT(mu.merk_unit, ' ', mu.model_unit) AS model,
+                k.no_kontrak
             FROM customer_locations cl
             JOIN customers c ON c.id = cl.customer_id
-            LEFT JOIN areas a ON a.id = cl.area_id
-            LEFT JOIN kontrak_unit ku ON ku.customer_location_id = cl.id
+            JOIN kontrak_unit ku
+                ON ku.customer_location_id = cl.id AND ku.status = 'ACTIVE'
+            JOIN kontrak k
+                ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+            JOIN inventory_unit iu
+                ON iu.id_inventory_unit = ku.unit_id
+            LEFT JOIN model_unit mu
+                ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN departemen d
+                ON d.id_departemen = iu.departemen_id
+            LEFT JOIN areas a
+                ON a.id = iu.area_id
             WHERE cl.is_active = 1
         ";
 
-        if ($filterArea === 'assigned') {
-            $sql .= ' AND cl.area_id IS NOT NULL';
-        } elseif ($filterArea === 'unassigned') {
-            $sql .= ' AND cl.area_id IS NULL';
+        $params = [];
+
+        if (!empty($filterDept) && is_numeric($filterDept)) {
+            $sql   .= ' AND iu.departemen_id = ?';
+            $params[] = (int) $filterDept;
         }
 
-        $sql .= ' GROUP BY cl.id, cl.location_name, cl.location_code, cl.area_id,
-                            a.area_code, a.area_name, c.customer_name,
-                            cl.contact_person, cl.phone, cl.email, cl.pic_position,
-                            cl.address, cl.city, cl.province, cl.postal_code
-                  ORDER BY c.customer_name, cl.location_name';
+        if ($filterAssign === 'assigned') {
+            $sql .= ' AND iu.area_id IS NOT NULL';
+        } elseif ($filterAssign === 'unassigned') {
+            $sql .= ' AND iu.area_id IS NULL';
+        }
 
-        $rows = $this->db->query($sql)->getResultArray();
+        $sql .= ' ORDER BY c.customer_name, cl.location_name, iu.no_unit';
+
+        $rows = $this->db->query($sql, $params)->getResultArray();
 
         return $this->response->setJSON(['success' => true, 'data' => $rows]);
     }
 
     // -------------------------------------------------------------------------
-    // POST: Assign area to a customer location + sync affected units
+    // POST: Assign area directly to a single unit (replaces assignAreaToLocation)
     // -------------------------------------------------------------------------
 
-    public function assignAreaToLocation()
+    public function assignUnitArea()
     {
-        $locationId = (int) $this->request->getPost('location_id');
-        $areaId     = $this->request->getPost('area_id'); // can be '' to remove
+        $unitId = (int) $this->request->getPost('unit_id');
+        $areaId = $this->request->getPost('area_id'); // can be '' to clear
 
-        if (!$locationId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'location_id required']);
+        if (!$unitId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'unit_id required']);
         }
 
-        $areaIdValue = $areaId !== '' ? (int) $areaId : null;
+        $areaIdValue = ($areaId !== '' && $areaId !== null) ? (int) $areaId : null;
 
         try {
-            $this->db->transStart();
-
-            // 1. Update customer_locations
-            $this->db->table('customer_locations')
-                ->where('id', $locationId)
-                ->update(['area_id' => $areaIdValue]);
-
-            // 2. Sync inventory_unit.area_id for all ACTIVE units at this location
-            if ($areaIdValue !== null) {
-                $this->db->query("
-                    UPDATE inventory_unit iu
-                    JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
-                    SET iu.area_id = ?, iu.updated_at = NOW()
-                    WHERE ku.customer_location_id = ?
-                ", [$areaIdValue, $locationId]);
-            }
-
-            $this->db->transComplete();
-
-            if (!$this->db->transStatus()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Transaksi gagal']);
-            }
-
-            // Count synced units
-            $synced = $this->db->query("
-                SELECT COUNT(DISTINCT ku.unit_id) as cnt
-                FROM kontrak_unit ku
-                WHERE ku.customer_location_id = ? AND ku.status = 'ACTIVE'
-            ", [$locationId])->getRowArray()['cnt'] ?? 0;
+            $this->db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update(['area_id' => $areaIdValue, 'updated_at' => date('Y-m-d H:i:s')]);
 
             return $this->response->setJSON([
-                'success'      => true,
-                'message'      => "Area berhasil di-assign. {$synced} unit aktif telah ter-sync.",
-                'synced_units' => (int) $synced,
+                'success' => true,
+                'message' => 'Area unit berhasil diperbarui.',
             ]);
-
         } catch (\Throwable $e) {
-            log_message('error', 'assignAreaToLocation error: ' . $e->getMessage());
+            log_message('error', 'assignUnitArea error: ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // POST: Bulk sync all units from their contract customer_location.area_id
-    // -------------------------------------------------------------------------
-
-    public function syncFromContracts()
-    {
-        try {
-            $result = $this->db->query("
-                UPDATE inventory_unit iu
-                JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
-                JOIN customer_locations cl ON cl.id = ku.customer_location_id AND cl.area_id IS NOT NULL
-                SET iu.area_id = cl.area_id, iu.updated_at = NOW()
-                WHERE iu.area_id IS NULL OR iu.area_id != cl.area_id
-            ");
-
-            $affected = $this->db->affectedRows();
-
-            return $this->response->setJSON([
-                'success'  => true,
-                'message'  => "{$affected} unit berhasil di-sync dari data kontrak.",
-                'affected' => $affected,
-            ]);
-
-        } catch (\Throwable $e) {
-            log_message('error', 'syncFromContracts error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Gagal sync: ' . $e->getMessage()]);
         }
     }
 
@@ -302,63 +265,6 @@ class UnitAreaMappingController extends BaseController
     // -------------------------------------------------------------------------
     // AJAX: Unassigned units (Tab 3)
     // -------------------------------------------------------------------------
-
-    // -------------------------------------------------------------------------
-    // POST: Batch assign many locations to one area
-    // -------------------------------------------------------------------------
-
-    public function batchAssignLocations()
-    {
-        $locationIds = $this->request->getPost('location_ids');
-        $areaId      = $this->request->getPost('area_id');
-
-        if (!$locationIds || !$areaId) {
-            return $this->response->setJSON(['success' => false, 'message' => 'location_ids dan area_id wajib diisi']);
-        }
-
-        if (is_string($locationIds)) {
-            $locationIds = json_decode($locationIds, true);
-        }
-
-        $locationIds = array_values(array_filter(array_map('intval', (array) $locationIds)));
-        $areaId      = (int) $areaId;
-
-        if (empty($locationIds)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada lokasi yang dipilih']);
-        }
-
-        try {
-            $this->db->transStart();
-
-            $this->db->table('customer_locations')
-                ->whereIn('id', $locationIds)
-                ->update(['area_id' => $areaId]);
-
-            $placeholders = implode(',', array_fill(0, count($locationIds), '?'));
-            $this->db->query("
-                UPDATE inventory_unit iu
-                JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
-                SET iu.area_id = ?, iu.updated_at = NOW()
-                WHERE ku.customer_location_id IN ({$placeholders})
-            ", array_merge([$areaId], $locationIds));
-
-            $this->db->transComplete();
-
-            if (!$this->db->transStatus()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Transaksi gagal']);
-            }
-
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => count($locationIds) . ' lokasi berhasil diassign ke area.',
-                'count'   => count($locationIds),
-            ]);
-
-        } catch (\Throwable $e) {
-            log_message('error', 'batchAssignLocations error: ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
-        }
-    }
 
     // -------------------------------------------------------------------------
     // POST: Batch assign many units to one area
@@ -417,7 +323,9 @@ class UnitAreaMappingController extends BaseController
                 su.status_unit                           AS status,
                 c.customer_name,
                 cl.location_name,
-                k.no_kontrak
+                k.no_kontrak,
+                iu.fuel_type,
+                d.nama_departemen
             FROM inventory_unit iu
             LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
             LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
@@ -425,11 +333,49 @@ class UnitAreaMappingController extends BaseController
             LEFT JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
             LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN customer_locations cl ON cl.id = ku.customer_location_id
+            LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
             WHERE iu.area_id IS NULL
               AND iu.status_unit_id != 13
             ORDER BY k.no_kontrak IS NULL, c.customer_name, iu.no_unit
             LIMIT 500
         ")->getResultArray();
+
+        return $this->response->setJSON(['success' => true, 'data' => $rows]);
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX: Get units at a specific customer location (for preview modal)
+    // -------------------------------------------------------------------------
+
+    public function getUnitsAtLocation($locationId)
+    {
+        $locationId = (int) $locationId;
+        if (!$locationId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'location_id invalid']);
+        }
+
+        $rows = $this->db->query("
+            SELECT
+                iu.id_inventory_unit,
+                iu.no_unit,
+                CONCAT(mu.merk_unit, ' ', mu.model_unit) AS model,
+                su.status_unit                           AS status,
+                iu.fuel_type,
+                d.nama_departemen,
+                a.area_code,
+                a.area_name,
+                k.no_kontrak,
+                k.tanggal_berakhir
+            FROM inventory_unit iu
+            JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+            JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+            LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
+            LEFT JOIN areas a ON a.id = iu.area_id
+            WHERE ku.customer_location_id = ?
+            ORDER BY iu.no_unit
+        ", [$locationId])->getResultArray();
 
         return $this->response->setJSON(['success' => true, 'data' => $rows]);
     }

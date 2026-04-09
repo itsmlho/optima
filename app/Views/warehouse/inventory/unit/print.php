@@ -58,8 +58,19 @@ $now = date('d M Y, H:i');
             </div>
         </div>
         <div class="text-end">
-            <div class="qr-placeholder">QR<br>Code</div>
+            <?php if (!empty($public_view_url)): ?>
+                <img
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=<?= rawurlencode($public_view_url) ?>"
+                    alt="QR public unit view"
+                    style="width:80px;height:80px;border:1px solid #dee2e6;padding:4px;background:#fff;"
+                >
+            <?php else: ?>
+                <div class="qr-placeholder">QR<br>Code</div>
+            <?php endif; ?>
             <div style="font-size:10px; color:#aaa; margin-top:4px;">INT-<?= esc($unit['id_inventory_unit']) ?></div>
+            <?php if (!empty($public_view_url)): ?>
+                <div style="font-size:9px; margin-top:2px;">Scan: <?= esc($public_view_url) ?></div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -78,7 +89,11 @@ $now = date('d M Y, H:i');
 
             <div class="section-title">Assignment</div>
             <table class="info-table w-100">
-                <tr><td>Department</td><td><?= esc($unit['nama_departemen'] ?: 'Unassigned') ?></td></tr>
+                <?php
+                    // Some controller fallbacks may expose `unit_departemen` instead of `nama_departemen`.
+                    $deptName = $unit['nama_departemen'] ?? ($unit['unit_departemen'] ?? null);
+                ?>
+                <tr><td>Department</td><td><?= esc($deptName ?: 'Unassigned') ?></td></tr>
                 <tr><td>Location</td><td><?= esc($unit['lokasi_unit'] ?: 'Internal Warehouse') ?></td></tr>
                 <?php if (!empty($unit['customer_name'])): ?>
                 <tr><td>Customer</td><td><?= esc($unit['customer_name']) ?></td></tr>

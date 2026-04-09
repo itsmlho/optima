@@ -8,6 +8,7 @@
 $stats = $stats ?? [];
 $location_types = $location_types ?? [];
 $component_types = $component_types ?? [];
+$movement_purposes = $movement_purposes ?? [];
 ?>
 <?= $this->section('content') ?>
 
@@ -26,11 +27,7 @@ $component_types = $component_types ?? [];
         </h4>
         <p class="text-muted small mb-0">Record perpindahan unit antar workshop (POS) atau lokasi perusahaan</p>
     </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-primary btn-sm" onclick="showCreateModal()">
-            <i class="fas fa-plus me-1"></i>Buat Surat Jalan
-        </button>
-    </div>
+    <div class="d-flex gap-2"></div>
 </div>
 
 <!-- Stats Cards -->
@@ -151,8 +148,11 @@ $component_types = $component_types ?? [];
 
 <!-- Data Table -->
 <div class="card shadow-sm">
-    <div class="card-header bg-light">
+    <div class="card-header bg-light d-flex align-items-center justify-content-between">
         <h5 class="mb-0"><i class="fas fa-list me-2"></i>Daftar Surat Jalan</h5>
+        <button class="btn btn-primary btn-sm" onclick="showCreateModal()">
+            <i class="fas fa-plus me-1"></i>Buat Surat Jalan
+        </button>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -161,10 +161,8 @@ $component_types = $component_types ?? [];
                     <tr>
                         <th>No. SJ</th>
                         <th>No. Movement</th>
-                        <th>Unit</th>
-                        <th>Tipe</th>
-                        <th>Asal</th>
-                        <th>Tujuan</th>
+                        <th>Barang</th>
+                        <th>Rute</th>
                         <th>Tanggal</th>
                         <th>Driver</th>
                         <th>Status</th>
@@ -173,7 +171,7 @@ $component_types = $component_types ?? [];
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="8" class="text-center py-4">
                             <i class="fas fa-spinner fa-spin me-2"></i>Memuat data...
                         </td>
                     </tr>
@@ -183,9 +181,9 @@ $component_types = $component_types ?? [];
     </div>
 </div>
 
-<!-- Create Modal -->
+<!-- Create Modal: lebar + body scrollable (header/footer tetap) -->
 <div class="modal fade" id="createModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-plus me-2 text-primary"></i>Buat Surat Jalan</h5>
@@ -193,98 +191,109 @@ $component_types = $component_types ?? [];
             </div>
             <div class="modal-body">
                 <form id="createForm">
-                    <!-- Baris pertama: pilih tipe komponen dulu, baru unit jika diperlukan -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Tipe Barang / Komponen <span class="text-danger">*</span></label>
-                                <select class="form-select" name="component_type" id="componentTypeSelect" onchange="onComponentTypeChange()" required>
-                                    <option value="FORKLIFT">Forklift / Unit</option>
-                                    <option value="ATTACHMENT">Attachment</option>
-                                    <option value="CHARGER">Charger</option>
-                                    <option value="BATTERY">Baterai</option>
-                                    <option value="FORK">Fork</option>
-                                    <option value="SPAREPART">Sparepart</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6" id="unitSelectCol">
-                            <div class="mb-3">
-                                <label class="form-label">Pilih Unit (jika Forklift)</label>
-                                <select class="form-select" id="unitSelect" name="unit_id">
-                                    <option value="">-- Unit Utama (Opsional) --</option>
-                                </select>
-                            </div>
-                        </div>
+                    <input type="hidden" name="component_type" value="FORKLIFT">
+                    <input type="hidden" name="unit_id" value="">
+                    <input type="hidden" name="component_id" value="">
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipe Surat Jalan <span class="text-danger">*</span></label>
+                        <select class="form-select" name="movement_purpose" id="movementPurposeSelect" onchange="onMovementPurposeChange()" required>
+                            <?php foreach ($movement_purposes as $code => $label): ?>
+                                <option value="<?= esc($code) ?>" <?= $code === 'INTERNAL_TRANSFER' ? 'selected' : '' ?>><?= esc($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <div class="row" id="componentIdRow" style="display:none;">
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label" id="componentIdLabel">Pilih Komponen</label>
-                                <select class="form-select" name="component_id" id="componentIdSelect">
-                                    <option value="">-- Pilih Komponen --</option>
-                                </select>
-                                <small class="text-muted">Pilih komponen spesifik yang dipindahkan</small>
-                            </div>
-                        </div>
+                    <div class="alert alert-warning py-2 small mb-3 d-none" id="scrapPurposeHint">
+                        <strong>Jual scrab:</strong> setelah semua checkpoint selesai, setiap <strong>unit (Forklift)</strong> pada SJ ini akan otomatis berstatus <strong>SOLD</strong> di inventory.
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Lokasi Asal <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="origin_location" id="originLocationInput" placeholder="Contoh: Workshop POS 1" required>
-                            </div>
+                    <div class="alert alert-light border mb-3">
+                        <div class="fw-semibold mb-1">Alur pengisian:</div>
+                        <div class="small text-muted">1) Isi rute perjalanan (asal -> transit -> tujuan), 2) isi daftar barang yang dibawa.</div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="fw-semibold mb-2"><i class="fas fa-route me-1 text-primary"></i>Rute Perjalanan</div>
+                        <div class="small text-muted mb-3">
+                            <strong>Lokasi Asal/Tujuan</strong> = nama tempat fisik. <strong>Tipe Asal/Tujuan</strong> = kategori lokasi (POS/Gudang/Customer).
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Tipe Asal <span class="text-danger">*</span></label>
-                                <select class="form-select" name="origin_type" id="originTypeSelect" onchange="onOriginTypeChange()" required>
-                                    <option value="POS_1">POS 1 (Workshop Utama)</option>
-                                    <option value="POS_2">POS 2</option>
-                                    <option value="POS_3">POS 3</option>
-                                    <option value="POS_4">POS 4</option>
-                                    <option value="POS_5">POS 5</option>
-                                    <option value="WAREHOUSE">Gudang</option>
-                                    <option value="CUSTOMER_SITE">Lokasi Customer</option>
-                                    <option value="OTHER">Lainnya (ketik manual)</option>
-                                </select>
+
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="mb-3">
+                                    <label class="form-label">Lokasi Asal <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="origin_location" id="originLocationInput" placeholder="Contoh: Area Loading POS 1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label">Tipe Asal <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="origin_type" id="originTypeSelect" onchange="onOriginTypeChange()" required>
+                                        <option value="POS_1">POS 1 (Workshop Utama)</option>
+                                        <option value="POS_2">POS 2</option>
+                                        <option value="POS_3">POS 3</option>
+                                        <option value="POS_4">POS 4</option>
+                                        <option value="POS_5">POS 5</option>
+                                        <option value="WAREHOUSE">Gudang</option>
+                                        <option value="CUSTOMER_SITE">Lokasi Customer</option>
+                                        <option value="OTHER">Lainnya</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="mb-3" id="originTypeOtherGroup" style="display:none;">
-                                <label class="form-label">Tipe Asal (Lainnya)</label>
-                                <input type="text" class="form-control" id="originTypeOtherInput" placeholder="Misal: Mills Area Jateng">
-                                <small class="text-muted">Teks ini akan ikut dicatat di lokasi asal.</small>
+                                <label class="form-label">Keterangan Tipe Asal (Lainnya)</label>
+                                <input type="text" class="form-control" id="originTypeOtherInput" placeholder="Misal: Site Proyek A">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="form-label mb-0">Transit (opsional)</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTransitRow()">
+                                    <i class="fas fa-plus me-1"></i>Tambah Transit
+                                </button>
+                            </div>
+                            <div id="transitContainer"></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="mb-3">
+                                    <label class="form-label">Lokasi Tujuan <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="destination_location" id="destinationLocationInput" placeholder="Contoh: Workshop POS 2 - Gate Utama" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label">Tipe Tujuan <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="destination_type" id="destinationTypeSelect" onchange="onDestinationTypeChange()" required>
+                                        <option value="POS_1">POS 1 (Workshop Utama)</option>
+                                        <option value="POS_2">POS 2</option>
+                                        <option value="POS_3">POS 3</option>
+                                        <option value="POS_4">POS 4</option>
+                                        <option value="POS_5">POS 5</option>
+                                        <option value="WAREHOUSE">Gudang</option>
+                                        <option value="CUSTOMER_SITE">Lokasi Customer</option>
+                                        <option value="OTHER">Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="destinationTypeOtherGroup" style="display:none;">
+                                <label class="form-label">Keterangan Tipe Tujuan (Lainnya)</label>
+                                <input type="text" class="form-control" id="destinationTypeOtherInput" placeholder="Misal: Site Proyek B">
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Lokasi Tujuan <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="destination_location" id="destinationLocationInput" placeholder="Contoh: Workshop POS 2" required>
-                            </div>
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="fw-semibold"><i class="fas fa-boxes me-1 text-primary"></i>Barang yang Dibawa</div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addItemRow()">
+                                <i class="fas fa-plus me-1"></i>Tambah Barang
+                            </button>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Tipe Tujuan <span class="text-danger">*</span></label>
-                                <select class="form-select" name="destination_type" id="destinationTypeSelect" onchange="onDestinationTypeChange()" required>
-                                    <option value="POS_1">POS 1 (Workshop Utama)</option>
-                                    <option value="POS_2">POS 2</option>
-                                    <option value="POS_3">POS 3</option>
-                                    <option value="POS_4">POS 4</option>
-                                    <option value="POS_5">POS 5</option>
-                                    <option value="WAREHOUSE">Gudang</option>
-                                    <option value="CUSTOMER_SITE">Lokasi Customer</option>
-                                    <option value="OTHER">Lainnya (ketik manual)</option>
-                                </select>
-                            </div>
-                            <div class="mb-3" id="destinationTypeOtherGroup" style="display:none;">
-                                <label class="form-label">Tipe Tujuan (Lainnya)</label>
-                                <input type="text" class="form-control" id="destinationTypeOtherInput" placeholder="Misal: Mills Area Jatim">
-                                <small class="text-muted">Teks ini akan ikut dicatat di lokasi tujuan.</small>
-                            </div>
-                        </div>
+                        <div class="small text-muted mb-2">Untuk tipe <strong>Forklift / Unit</strong>, pilih unit dari dropdown pencarian.</div>
+                        <div id="movementItemsContainer"></div>
                     </div>
 
                     <div class="row">
@@ -326,7 +335,7 @@ $component_types = $component_types ?? [];
 
 <!-- Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2 text-info"></i>Detail Surat Jalan</h5>
@@ -357,6 +366,14 @@ $.ajaxSetup({
     beforeSend: function(xhr, settings) {
         if (settings.type === 'POST' && settings.data instanceof FormData) {
             settings.data.append(CSRF_TOKEN_NAME, CSRF_HASH);
+        } else if (settings.type === 'POST' && settings.contentType && String(settings.contentType).indexOf('application/json') !== -1) {
+            try {
+                const parsed = JSON.parse(settings.data || '{}');
+                parsed[CSRF_TOKEN_NAME] = CSRF_HASH;
+                settings.data = JSON.stringify(parsed);
+            } catch (e) {
+                // keep original payload
+            }
         } else if (settings.type === 'POST' && typeof settings.data === 'string') {
             settings.data += '&' + CSRF_TOKEN_NAME + '=' + CSRF_HASH;
         } else if (settings.type === 'POST') {
@@ -366,13 +383,122 @@ $.ajaxSetup({
     }
 });
 
-$(document).ready(function() {
-    loadMovements();
-    loadUnitsForSelect();
+/** Bootstrap 5 modal (layout tidak memuat plugin jQuery .modal()) */
+function optimaBsModalShow(elementId) {
+    var el = document.getElementById(elementId);
+    if (!el) {
+        return;
+    }
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    } else if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+        jQuery('#' + elementId).modal('show');
+    }
+}
 
-    // Select2 di modal create (#unitSelect diisi & di-init di loadUnitsForSelect dengan template Optima)
+function optimaBsModalHide(elementId) {
+    var el = document.getElementById(elementId);
+    if (!el) {
+        return;
+    }
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        var inst = bootstrap.Modal.getInstance(el);
+        if (inst) {
+            inst.hide();
+        }
+    } else if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+        jQuery('#' + elementId).modal('hide');
+    }
+}
+
+/** Buka lembar SJ di tab baru dan picu dialog cetak browser (autoprint=1). */
+function openSuratJalanPrintPreview(movementId) {
+    var url = _movementBaseUrl + 'warehouse/movements/printMovement/' + movementId + '?autoprint=1';
+    var w = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!w) {
+        if (window.OptimaNotify) {
+            OptimaNotify.warning('Izinkan pop-up untuk pratinjau cetak surat jalan.');
+        } else {
+            alert('Izinkan pop-up untuk pratinjau cetak surat jalan.');
+        }
+    }
+}
+
+function copyTextFallback(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+    } finally {
+        document.body.removeChild(ta);
+    }
+}
+
+function copyDetailDash(val) {
+    var t = String(val == null ? '' : val).trim();
+    return t === '' ? '-' : t;
+}
+
+/** Teks untuk dibagikan ke grup satpam (label jelas per baris). */
+function copyDetailSjVerificationToClipboard() {
+    var sj = copyDetailDash($('#detailModal').data('copySj'));
+    var code = copyDetailDash($('#detailModal').data('copyCode'));
+    var driver = copyDetailDash($('#detailModal').data('copyDriver'));
+    var vehicle = copyDetailDash($('#detailModal').data('copyVehicle'));
+    var notes = copyDetailDash($('#detailModal').data('copyNotes'));
+
+    var text = [
+        'No. SJ : ' + sj,
+        'Kode Verifikasi : ' + code,
+        'Driver: ' + driver,
+        'No. Kendaraan: ' + vehicle,
+        'Catatan: ' + notes
+    ].join('\n');
+
+    if (sj === '-' && code === '-') {
+        if (window.OptimaNotify) {
+            OptimaNotify.warning('Tidak ada data untuk disalin');
+        }
+        return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            if (window.OptimaNotify) {
+                OptimaNotify.success('Info surat jalan disalin (siap kirim ke grup)');
+            }
+        }).catch(function() {
+            copyTextFallback(text);
+            if (window.OptimaNotify) {
+                OptimaNotify.success('Info surat jalan disalin');
+            }
+        });
+    } else {
+        copyTextFallback(text);
+        if (window.OptimaNotify) {
+            OptimaNotify.success('Info surat jalan disalin');
+        }
+    }
+}
+
+$(document).ready(function() {
+    $(document).on('click', '#btnCopySjAndCode', function(e) {
+        e.preventDefault();
+        copyDetailSjVerificationToClipboard();
+    });
+
+    loadMovements();
+    initMovementItemUI();
+    onMovementPurposeChange();
+
+    // Select2 dasar untuk field kategori lokasi
     if ($.fn.select2) {
-        $('#componentTypeSelect, #componentIdSelect, #originTypeSelect, #destinationTypeSelect').select2({
+        $('#movementPurposeSelect, #originTypeSelect, #destinationTypeSelect').select2({
             dropdownParent: $('#createModal'),
             width: '100%'
         });
@@ -407,14 +533,14 @@ function loadMovements() {
             }
         },
         error: function() {
-            $('#movementTable tbody').html('<tr><td colspan="10" class="text-center text-danger py-4">Error memuat data</td></tr>');
+            $('#movementTable tbody').html('<tr><td colspan="8" class="text-center text-danger py-4">Error memuat data</td></tr>');
         }
     });
 }
 
 function renderMovementTable(data) {
     if (!data || data.length === 0) {
-        $('#movementTable tbody').html('<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data</td></tr>');
+        $('#movementTable tbody').html('<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data</td></tr>');
         return;
     }
 
@@ -423,6 +549,8 @@ function renderMovementTable(data) {
         const statusBadge = getMovementStatusBadge(item.status);
         const date = new Date(item.movement_date).toLocaleDateString('id-ID');
 
+        const itemsCount = parseInt(item.total_items || 0, 10) || 0;
+        const routeText = item.last_stop_name ? (item.origin_location + ' → ' + item.last_stop_name) : (item.origin_location + ' → ' + item.destination_location);
         // Build item label: unit or component
         let itemLabel = '<span class="text-muted">-</span>';
         if (item.no_unit || item.no_unit_na) {
@@ -434,10 +562,8 @@ function renderMovementTable(data) {
         html += '<tr>';
         html += '<td><strong>' + (item.surat_jalan_number || '-') + '</strong></td>';
         html += '<td><small>' + (item.movement_number || '-') + '</small></td>';
-        html += '<td>' + itemLabel + '</td>';
-        html += '<td>' + getComponentBadge(item.component_type) + '</td>';
-        html += '<td>' + item.origin_location + '<br><small class="text-muted">' + item.origin_type + '</small></td>';
-        html += '<td>' + item.destination_location + '<br><small class="text-muted">' + item.destination_type + '</small></td>';
+        html += '<td>' + itemLabel + '<br><small class="text-muted">Items: ' + itemsCount + ' · ' + getComponentBadge(item.component_type) + ' · ' + getMovementPurposeBadge(item.movement_purpose) + '</small></td>';
+        html += '<td>' + routeText + '<br><small class="text-muted">Checkpoint: ' + (item.last_checkpoint_status || '-') + '</small></td>';
         html += '<td>' + date + '</td>';
         html += '<td>' + (item.driver_name || '-') + '</td>';
         html += '<td>' + statusBadge + '</td>';
@@ -465,9 +591,29 @@ function getComponentBadge(type) {
         'CHARGER':    '<span class="badge badge-soft-yellow">Charger</span>',
         'BATTERY':    '<span class="badge badge-soft-green">Baterai</span>',
         'FORK':       '<span class="badge badge-soft-orange">Fork</span>',
-        'SPAREPART':  '<span class="badge badge-soft-purple">Sparepart</span>'
+        'SPAREPART':  '<span class="badge badge-soft-purple">Sparepart</span>',
+        'OTHERS':     '<span class="badge badge-soft-gray">Others</span>'
     };
     return badges[type] || type || '-';
+}
+
+function getMovementPurposeBadge(purpose) {
+    if (!purpose || purpose === 'INTERNAL_TRANSFER') {
+        return '<span class="badge badge-soft-cyan">Pindah</span>';
+    }
+    if (purpose === 'SCRAP_SALE') {
+        return '<span class="badge badge-soft-orange">Scrab</span>';
+    }
+    return '<span class="badge badge-soft-gray">' + purpose + '</span>';
+}
+
+function onMovementPurposeChange() {
+    const v = ($('#movementPurposeSelect').val() || '').toUpperCase();
+    if (v === 'SCRAP_SALE') {
+        $('#scrapPurposeHint').removeClass('d-none');
+    } else {
+        $('#scrapPurposeHint').addClass('d-none');
+    }
 }
 
 function onComponentTypeChange() {
@@ -485,6 +631,12 @@ function onComponentTypeChange() {
         return;
     }
 
+    if (type === 'OTHERS') {
+        unitCol.hide();
+        row.hide();
+        $('#unitSelect').val('');
+        return;
+    }
     // For non-FORKLIFT types: hide unit select, show component dropdown
     unitCol.hide();
     const $u = $('#unitSelect');
@@ -555,72 +707,60 @@ function onDestinationTypeChange() {
 }
 
 function showCreateModal() {
-    $('#createModal').modal('show');
+    if ($('#movementItemsContainer .movement-item-row').length === 0) {
+        addItemRow();
+    }
+    optimaBsModalShow('createModal');
 }
 
 function loadUnitsForSelect() {
     const $sel = $('#unitSelect');
+    if (!$sel.length) return;
     if ($sel.hasClass('select2-hidden-accessible')) {
         try {
             $sel.select2('destroy');
         } catch (e) { /* ignore */ }
     }
-    $.ajax({
-        url: _movementBaseUrl + 'warehouse/movements/getAvailableUnits',
-        type: 'GET',
-        success: function(res) {
-            if (res.success && res.data) {
-                $sel.empty().append($('<option value=""></option>').text('-- Unit Utama (Opsional) --'));
-                const Ou = window.OptimaUnitSelect2;
-                const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
-                res.data.forEach(function (unit) {
-                    const id = unit.id_inventory_unit;
-                    const row = {
-                        id: id,
-                        id_inventory_unit: id,
-                        no_unit: unit.no_unit || unit.no_unit_na,
-                        serial_number: unit.serial_number || '',
-                        merk: unit.merk_unit || '',
-                        model_unit: unit.model_unit || '',
-                        jenis: unit.tipe || '',
-                        kapasitas: '',
-                        status: '',
-                        lokasi: unit.lokasi || unit.lokasi_unit || '',
-                        pelanggan: unit.pelanggan || ''
-                    };
-                    if (useOu) {
-                        const attrs = Ou.optionDataAttributes(row);
-                        const label = Ou.line1FromRow(Ou.normalizeRow(row));
-                        const $opt = $('<option></option>').val(String(id)).text(label);
-                        Object.keys(attrs).forEach(function (k) {
-                            const v = attrs[k];
-                            if (v !== '' && v != null && v !== false) {
-                                $opt.attr(k, v);
-                            }
+    const Ou = window.OptimaUnitSelect2;
+    if ($.fn.select2 && Ou && typeof Ou.templateResult === 'function') {
+        $sel.select2({
+            dropdownParent: $('#createModal'),
+            width: '100%',
+            placeholder: '-- Unit Utama (Opsional) --',
+            allowClear: true,
+            minimumInputLength: 1,
+            theme: 'bootstrap-5',
+            ajax: {
+                url: _movementBaseUrl + 'warehouse/movements/getAvailableUnits',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return { q: params.term || '' };
+                },
+                processResults: function(res) {
+                    const out = [];
+                    if (res.success && Array.isArray(res.data)) {
+                        res.data.forEach(function(unit) {
+                            out.push({
+                                id: String(unit.id_inventory_unit),
+                                text: unit.no_unit || unit.no_unit_na || ('UNIT-' + unit.id_inventory_unit),
+                                no_unit: unit.no_unit || unit.no_unit_na,
+                                serial_number: unit.serial_number || '',
+                                merk: unit.merk_unit || '',
+                                model_unit: unit.model_unit || '',
+                                jenis: unit.tipe || '',
+                                lokasi: unit.lokasi || unit.lokasi_unit || ''
+                            });
                         });
-                        $sel.append($opt);
-                    } else {
-                        const labelNoUnit = unit.no_unit || unit.no_unit_na || ('UNIT-' + id);
-                        const labelMerkModel = (unit.merk_unit || '') + ' ' + (unit.model_unit || '');
-                        $sel.append($('<option></option>').val(String(id)).text((labelNoUnit + ' - ' + labelMerkModel).trim()));
                     }
-                });
-                if ($.fn.select2 && useOu) {
-                    $sel.select2({
-                        dropdownParent: $('#createModal'),
-                        width: '100%',
-                        placeholder: '-- Unit Utama (Opsional) --',
-                        allowClear: true,
-                        minimumResultsForSearch: 0,
-                        theme: 'bootstrap-5',
-                        templateResult: function (i) { return Ou.templateResult(i, {}); },
-                        templateSelection: function (i) { return Ou.templateSelection(i, {}); },
-                        escapeMarkup: function (m) { return m; }
-                    });
+                    return { results: out };
                 }
-            }
-        }
-    });
+            },
+            templateResult: function(i) { return Ou.templateResult(i, {}); },
+            templateSelection: function(i) { return Ou.templateSelection(i, {}); },
+            escapeMarkup: function(m) { return m; }
+        });
+    }
 }
 
 function submitMovement() {
@@ -649,16 +789,42 @@ function submitMovement() {
         formData.set('destination_location', combined);
     }
 
+    const itemsPayload = collectItemsPayload();
+    if (!itemsPayload.length) {
+        if (window.OptimaNotify) OptimaNotify.warning('Minimal 1 barang harus diisi');
+        else alert('Minimal 1 barang harus diisi');
+        return;
+    }
+    const firstItem = itemsPayload[0] || {};
+
+    const payload = {
+        unit_id: firstItem.unit_id || null,
+        component_id: firstItem.component_id || null,
+        component_type: firstItem.component_type || 'FORKLIFT',
+        origin_location: formData.get('origin_location'),
+        origin_type: formData.get('origin_type'),
+        destination_location: formData.get('destination_location'),
+        destination_type: formData.get('destination_type'),
+        movement_date: formData.get('movement_date'),
+        driver_name: formData.get('driver_name') || '',
+        vehicle_number: formData.get('vehicle_number') || '',
+        notes: formData.get('notes') || '',
+        movement_purpose: formData.get('movement_purpose') || 'INTERNAL_TRANSFER',
+        items: itemsPayload,
+        stops: collectStopsPayload()
+    };
+
     $.ajax({
         url: _movementBaseUrl + 'warehouse/movements/createMovement',
         type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
+        data: JSON.stringify(payload),
+        contentType: 'application/json',
         success: function(res) {
             if (res.success) {
-                $('#createModal').modal('hide');
+                optimaBsModalHide('createModal');
                 form.reset();
+                $('#movementPurposeSelect').val('INTERNAL_TRANSFER').trigger('change');
+                onMovementPurposeChange();
                 loadMovements();
 
                 // Set datetime again
@@ -666,8 +832,12 @@ function submitMovement() {
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
                 $('input[name="movement_date"]').val(now.toISOString().slice(0, 16));
 
-                if (window.OptimaNotify) OptimaNotify.success('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
-                else alert('Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-'));
+                var okMsg = 'Surat Jalan berhasil dibuat!\nNo. Movement: ' + res.data.movement_number + '\nNo. SJ: ' + (res.data.surat_jalan_number || '-');
+                if (res.data.verification_code) {
+                    okMsg += '\nKode verifikasi (untuk satpam): ' + res.data.verification_code;
+                }
+                if (window.OptimaNotify) OptimaNotify.success(okMsg);
+                else alert(okMsg);
             } else {
                 if (window.OptimaNotify) OptimaNotify.error('Error: ' + res.message);
                 else alert('Error: ' + res.message);
@@ -681,36 +851,106 @@ function submitMovement() {
 }
 
 function viewMovementDetail(id) {
+    var mid = parseInt(id, 10);
+    if (!mid || mid < 1) {
+        if (window.OptimaNotify) {
+            OptimaNotify.error('ID movement tidak valid.');
+        } else {
+            alert('ID movement tidak valid.');
+        }
+        return;
+    }
     $.ajax({
-        url: _movementBaseUrl + 'warehouse/movements/getMovementDetail/' + id,
+        url: _movementBaseUrl + 'warehouse/movements/getMovementDetail/' + mid,
         type: 'GET',
         success: function(res) {
-            if (res.success) {
-                showMovementDetailModal(res.data);
+            if (res.success && res.data && res.data.movement) {
+                try {
+                    showMovementDetailModal(res.data);
+                } catch (e) {
+                    console.error(e);
+                    if (window.OptimaNotify) {
+                        OptimaNotify.error('Gagal menampilkan detail.');
+                    } else {
+                        alert('Gagal menampilkan detail.');
+                    }
+                }
+            } else if (window.OptimaNotify) {
+                OptimaNotify.error(res.message || 'Data tidak ditemukan.');
+            } else {
+                alert(res.message || 'Data tidak ditemukan.');
+            }
+        },
+        error: function() {
+            if (window.OptimaNotify) {
+                OptimaNotify.error('Gagal memuat detail surat jalan.');
+            } else {
+                alert('Gagal memuat detail surat jalan.');
             }
         }
     });
 }
 
+function formatMovementDate(isoStr, withTime) {
+    if (!isoStr) {
+        return '-';
+    }
+    const d = new Date(isoStr);
+    if (Number.isNaN(d.getTime())) {
+        return String(isoStr);
+    }
+    return withTime ? d.toLocaleString('id-ID') : d.toLocaleDateString('id-ID');
+}
+
+/** Escape text for safe HTML insertion */
+function escDetailHtml(s) {
+    if (s === null || s === undefined) {
+        return '';
+    }
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+}
+
 function showMovementDetailModal(data) {
     const movement = data.movement;
     const unit = data.unit;
+    const items = data.items || [];
+    const stops = data.stops || [];
 
     const statusBadge = getMovementStatusBadge(movement.status);
     const componentBadge = getComponentBadge(movement.component_type);
-    const date = new Date(movement.movement_date).toLocaleString('id-ID');
-    const createdDate = new Date(movement.created_at).toLocaleString('id-ID');
-    const confirmedDate = movement.confirmed_at ? new Date(movement.confirmed_at).toLocaleString('id-ID') : '-';
+    const date = formatMovementDate(movement.movement_date, true);
+    const createdDate = formatMovementDate(movement.created_at, true);
+    const confirmedDate = movement.confirmed_at ? formatMovementDate(movement.confirmed_at, true) : '-';
 
-    let content = '<div class="row">';
-    content += '<div class="col-md-4"><strong>No. SJ:</strong></div><div class="col-md-8"><strong>' + (movement.surat_jalan_number || '-') + '</strong></div>';
-    content += '<div class="col-md-4"><strong>No. Movement:</strong></div><div class="col-md-8">' + (movement.movement_number || '-') + '</div>';
-    content += '<div class="col-md-4"><strong>Tipe Komponen:</strong></div><div class="col-md-8">' + componentBadge + '</div>';
-    content += '<div class="col-md-4"><strong>Status:</strong></div><div class="col-md-8">' + statusBadge + '</div>';
-    content += '<div class="col-md-4"><strong>Tanggal:</strong></div><div class="col-md-8">' + date + '</div>';
-    content += '<div class="col-md-4"><strong>Dibuat Oleh:</strong></div><div class="col-md-8">' + (movement.creator_name || '-') + '</div>';
-    content += '<div class="col-md-4"><strong>Tanggal Dibuat:</strong></div><div class="col-md-8">' + createdDate + '</div>';
-    content += '</div><hr>';
+    const hasCode = !!movement.verification_code;
+    const leftCol = hasCode ? 'col-md-8' : 'col-12';
+
+    let content = '<div class="row g-3 align-items-start">';
+    content += '<div class="' + leftCol + '">';
+    content += '<div class="row g-2 small">';
+    content += '<div class="col-sm-4 text-sm-end text-muted">No. SJ</div><div class="col-sm-8"><strong class="fs-6">' + escDetailHtml(movement.surat_jalan_number || '-') + '</strong></div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">No. Movement</div><div class="col-sm-8">' + escDetailHtml(movement.movement_number || '-') + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Tipe Komponen</div><div class="col-sm-8">' + componentBadge + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Tipe Surat Jalan</div><div class="col-sm-8">' + getMovementPurposeBadge(movement.movement_purpose) + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Status</div><div class="col-sm-8">' + statusBadge + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Tanggal</div><div class="col-sm-8">' + escDetailHtml(date) + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Dibuat Oleh</div><div class="col-sm-8">' + escDetailHtml(movement.creator_name || '-') + '</div>';
+    content += '<div class="col-sm-4 text-sm-end text-muted">Tanggal Dibuat</div><div class="col-sm-8">' + escDetailHtml(createdDate) + '</div>';
+    content += '</div></div>';
+
+    if (hasCode) {
+        content += '<div class="col-md-4">';
+        content += '<div class="border rounded-3 p-3 bg-light text-center h-100">';
+        content += '<div class="text-muted small mb-1">Kode verifikasi (satpam)</div>';
+        content += '<div class="display-5 fw-bold text-danger font-monospace lh-sm py-1 user-select-all">' + escDetailHtml(String(movement.verification_code)) + '</div>';
+        content += '<p class="small text-muted mb-2 mb-md-3">Konfirmasi satpam</p>';
+        content += '<button type="button" class="btn btn-primary btn-sm w-100" id="btnCopySjAndCode"><i class="fas fa-copy me-1"></i>Salin info untuk satpam</button>';
+        content += '</div></div>';
+    }
+
+    content += '</div><hr class="my-3">';
 
     content += '<div class="row">';
     content += '<div class="col-md-6"><div class="alert alert-secondary mb-0">';
@@ -732,6 +972,22 @@ function showMovementDetailModal(data) {
     content += '<p class="mb-0"><strong>Catatan:</strong> ' + (movement.notes || '-') + '</p>';
     content += '</div>';
 
+    if (items.length > 0) {
+        content += '<hr><h6 class="fw-bold">Daftar Barang</h6><ul class="mb-2">';
+        items.forEach(function(it, i) {
+            const label = (it.print_description || it.component_type || '-') + ' | qty ' + (it.qty || 1);
+            content += '<li>#' + (i + 1) + ' - ' + label + '</li>';
+        });
+        content += '</ul>';
+    }
+    if (stops.length > 0) {
+        content += '<h6 class="fw-bold">Rute</h6><ol class="mb-0">';
+        stops.forEach(function(st) {
+            content += '<li>' + (st.location_name || '-') + ' <small class="text-muted">(' + (st.stop_type || '-') + ')</small></li>';
+        });
+        content += '</ol>';
+    }
+
     if (movement.confirmed_at) {
         content += '<hr><div class="alert alert-success mb-0">';
         content += '<h6 class="fw-bold">Konfirmasi Penerimaan:</h6>';
@@ -742,8 +998,17 @@ function showMovementDetailModal(data) {
 
     $('#detailContent').html(content);
 
+    $('#detailModal').data({
+        copySj: String(movement.surat_jalan_number || '').trim(),
+        copyCode: String(movement.verification_code || '').trim(),
+        copyDriver: movement.driver_name,
+        copyVehicle: movement.vehicle_number,
+        copyNotes: movement.notes
+    });
+
     // Action buttons
     let actions = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>';
+    actions += '<button type="button" class="btn btn-outline-dark" onclick="openSuratJalanPrintPreview(' + movement.id + ')"><i class="fas fa-print me-1"></i>Cetak SJ</button>';
 
     if (movement.status === 'DRAFT') {
         actions += '<button class="btn btn-primary" onclick="startMovement(' + movement.id + ')"><i class="fas fa-truck me-1"></i>Jalankan</button>';
@@ -753,7 +1018,7 @@ function showMovementDetailModal(data) {
     }
 
     $('#detailActions').html(actions);
-    $('#detailModal').modal('show');
+    optimaBsModalShow('detailModal');
 }
 
 function startMovement(id) {
@@ -799,7 +1064,7 @@ function startMovement(id) {
                 },
                 success: function(res) {
                     if (res.success) {
-                        $('#detailModal').modal('hide');
+                        optimaBsModalHide('detailModal');
                         loadMovements();
                         OptimaNotify.success('Movement dimulai! Driver: ' + driverName);
                     } else {
@@ -824,7 +1089,7 @@ function confirmArrival(id) {
                 data: {},
                 success: function(res) {
                     if (res.success) {
-                        $('#detailModal').modal('hide');
+                        optimaBsModalHide('detailModal');
                         loadMovements();
                         OptimaNotify.success('Movement selesai dan lokasi unit diperbarui!');
                     } else {
@@ -849,7 +1114,7 @@ function cancelMovement(id) {
                 data: {},
                 success: function(res) {
                     if (res.success) {
-                        $('#detailModal').modal('hide');
+                        optimaBsModalHide('detailModal');
                         loadMovements();
                         OptimaNotify.success('Movement dibatalkan');
                     } else {
@@ -868,6 +1133,184 @@ function resetFilters() {
     $('#filterDateFrom').val('');
     $('#filterDateTo').val('');
     loadMovements();
+}
+
+function initMovementItemUI() {
+    if ($('#movementItemsContainer .movement-item-row').length === 0) {
+        addItemRow();
+    }
+}
+
+function addItemRow() {
+    const idx = Date.now();
+    const html = `
+        <div class="border rounded p-2 mb-2 movement-item-row" data-row="${idx}">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-2">
+                    <label class="form-label form-label-sm mb-1">Tipe Barang</label>
+                    <select class="form-select form-select-sm item-type" onchange="onItemTypeChange(${idx}, this.value)">
+                        <option value="FORKLIFT">Forklift / Unit</option>
+                        <option value="ATTACHMENT">Attachment</option>
+                        <option value="CHARGER">Charger</option>
+                        <option value="BATTERY">Baterai</option>
+                        <option value="FORK">Fork</option>
+                        <option value="SPAREPART">Sparepart</option>
+                        <option value="OTHERS">Others</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-5 item-unit-wrap">
+                    <label class="form-label form-label-sm mb-1">Pilih Barang / Unit</label>
+                    <select class="form-select form-select-sm item-unit" data-kind="unit"></select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label form-label-sm mb-1">Qty</label>
+                    <input type="number" class="form-control form-control-sm item-qty" value="1" min="1">
+                </div>
+                <div class="col-6 col-lg-3 text-lg-end">
+                    <label class="form-label form-label-sm mb-1 d-none d-lg-block">&nbsp;</label>
+                    <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removeItemRow(${idx})"><i class="fas fa-trash me-1"></i>Hapus</button>
+                </div>
+            </div>
+            <div class="row g-2 mt-1 item-component-row" style="display:none;">
+                <div class="col-12">
+                    <label class="form-label form-label-sm mb-1">Pilih Komponen</label>
+                    <select class="form-select form-select-sm item-component" data-kind="component">
+                        <option value="">-- Pilih komponen --</option>
+                    </select>
+                </div>
+            </div>
+        </div>`;
+    $('#movementItemsContainer').append(html);
+    setupItemUnitSelect(idx);
+}
+
+function removeItemRow(idx) {
+    $('[data-row="' + idx + '"]').remove();
+}
+
+function setupItemUnitSelect(idx) {
+    const $el = $('[data-row="' + idx + '"] .item-unit');
+    const Ou = window.OptimaUnitSelect2;
+    if (!$el.length || !$.fn.select2) return;
+    $el.select2({
+        dropdownParent: $('#createModal'),
+        width: '100%',
+        placeholder: 'Cari unit...',
+        minimumInputLength: 1,
+        ajax: {
+            url: _movementBaseUrl + 'warehouse/movements/getAvailableUnits',
+            dataType: 'json',
+            delay: 300,
+            data: function(params){ return { q: params.term || '' }; },
+            processResults: function(res){
+                const out = [];
+                if (res.success && Array.isArray(res.data)) {
+                    res.data.forEach(function(u){
+                        out.push({
+                            id: String(u.id_inventory_unit),
+                            text: [u.no_unit || u.no_unit_na || ('UNIT-'+u.id_inventory_unit), (u.merk_unit || ''), (u.model_unit || ''), (u.serial_number ? ('SN:' + u.serial_number) : '')].filter(Boolean).join(' - '),
+                            no_unit: u.no_unit || u.no_unit_na || ('UNIT-'+u.id_inventory_unit),
+                            serial_number: u.serial_number || '',
+                            merk: u.merk_unit || '',
+                            model_unit: u.model_unit || ''
+                        });
+                    });
+                }
+                return { results: out };
+            }
+        },
+        templateResult: function(i){ return Ou && Ou.templateResult ? Ou.templateResult(i,{}) : i.text; },
+        templateSelection: function(i){
+            if (!i || i.loading) return i.text || '';
+            const no = i.no_unit || i.text || '';
+            const mm = [i.merk || '', i.model_unit || ''].filter(Boolean).join(' ');
+            const sn = i.serial_number ? ('SN:' + i.serial_number) : '';
+            return [no, mm, sn].filter(Boolean).join(' | ');
+        },
+        escapeMarkup: function(m){ return m; }
+    });
+}
+
+function onItemTypeChange(idx, type) {
+    const $row = $('[data-row="' + idx + '"]');
+    const $comp = $row.find('.item-component');
+    const $unitWrap = $row.find('.item-unit-wrap');
+    const $compRow = $row.find('.item-component-row');
+    if (type === 'FORKLIFT') {
+        $unitWrap.show();
+        $compRow.hide();
+        return;
+    }
+    if (type === 'OTHERS') {
+        $unitWrap.hide();
+        $compRow.hide();
+        return;
+    }
+    $unitWrap.hide();
+    $compRow.show();
+    loadComponentOptions($comp, type);
+}
+
+function loadComponentOptions($target, type) {
+    $.get(_movementBaseUrl + 'warehouse/movements/getComponentsByType', { type: type }, function(res) {
+        let html = '<option value="">-- pilih --</option>';
+        if (res.success && Array.isArray(res.data)) {
+            res.data.forEach(function(c){ html += '<option value="' + c.id + '">' + c.label + '</option>'; });
+        }
+        $target.html(html);
+    });
+}
+
+function addTransitRow() {
+    const html = `
+        <div class="row g-2 mb-2 transit-row">
+            <div class="col-md-5"><input class="form-control form-control-sm transit-location" placeholder="Lokasi transit"></div>
+            <div class="col-md-5">
+                <select class="form-select form-select-sm transit-type">
+                    <option value="POS_1">POS 1</option><option value="POS_2">POS 2</option><option value="POS_3">POS 3</option>
+                    <option value="POS_4">POS 4</option><option value="POS_5">POS 5</option><option value="WAREHOUSE">Gudang</option>
+                    <option value="CUSTOMER_SITE">Customer Site</option><option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="$(this).closest('.transit-row').remove()"><i class="fas fa-times"></i></button></div>
+        </div>`;
+    $('#transitContainer').append(html);
+}
+
+function collectItemsPayload() {
+    const items = [];
+    $('#movementItemsContainer .movement-item-row').each(function() {
+        const $row = $(this);
+        const type = ($row.find('.item-type').val() || 'FORKLIFT').toUpperCase();
+        items.push({
+            component_type: type,
+            unit_id: type === 'FORKLIFT' ? ($row.find('.item-unit').val() || null) : null,
+            component_id: (type !== 'FORKLIFT' && type !== 'OTHERS') ? ($row.find('.item-component').val() || null) : null,
+            qty: parseInt($row.find('.item-qty').val() || '1', 10)
+        });
+    });
+    return items;
+}
+
+function collectStopsPayload() {
+    const stops = [{
+        stop_type: 'ORIGIN',
+        location_name: $('#originLocationInput').val() || '',
+        location_type: $('#originTypeSelect').val() || 'OTHER'
+    }];
+    $('#transitContainer .transit-row').each(function() {
+        stops.push({
+            stop_type: 'TRANSIT',
+            location_name: $(this).find('.transit-location').val() || '',
+            location_type: $(this).find('.transit-type').val() || 'OTHER'
+        });
+    });
+    stops.push({
+        stop_type: 'DESTINATION',
+        location_name: $('#destinationLocationInput').val() || '',
+        location_type: $('#destinationTypeSelect').val() || 'OTHER'
+    });
+    return stops;
 }
 </script>
 <?= $this->endSection() ?>

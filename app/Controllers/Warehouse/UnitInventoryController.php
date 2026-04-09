@@ -4,6 +4,7 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\InventoryUnitModel;
+use App\Models\SiloModel;
 use App\Traits\ActivityLoggingTrait;
 use Config\Database;
 
@@ -131,6 +132,8 @@ class UnitInventoryController extends BaseController
     public function show($id)
     {
         $db = Database::connect();
+        $publicToken = $this->ensurePublicViewToken((int) $id);
+        $publicViewUrl = $publicToken ? base_url('unit-view/' . $publicToken) : null;
 
         // Build unit query with safe optional JOINs
         // Wrap entirely in try/catch because optional tables may not exist in DB
@@ -360,6 +363,13 @@ class UnitInventoryController extends BaseController
 
         // Lookup data for inline edit
         $lookup = $this->getLookupData();
+        $silo = null;
+        try {
+            $siloModel = new SiloModel();
+            $silo = $siloModel->getByUnitId((int) $id);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::show silo: ' . $e->getMessage());
+        }
 
         return view('warehouse/inventory/unit/show', [
             'title'            => 'Detail Unit: ' . ($unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-' . $id)),
@@ -377,6 +387,157 @@ class UnitInventoryController extends BaseController
             'jenis_roda'       => $lookup['roda']            ?? [],
             'valve'            => $lookup['valve']           ?? [],
             'active_booking'   => $active_booking,
+            'silo'             => $silo,
+            'public_view_url'  => $publicViewUrl,
+        ]);
+    }
+
+    /**
+     * Public unit view by token for external mechanics (no login).
+     */
+    public function publicView(string $token)
+    {
+        $token = trim($token);
+        if ($token === '') {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $db = Database::connect();
+        if (! $db->fieldExists('public_view_token', 'inventory_unit')) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $selectParts = [
+            'iu.*',
+            'su.status_unit',
+            'mu.merk_unit, mu.model_unit, mu.ban_depan, mu.ban_belakang',
+            'tu.tipe, tu.jenis',
+            'd.nama_departemen AS unit_departemen',
+            'c.customer_name, c.customer_code',
+            'cl.location_name AS customer_location_name',
+            'cl.city AS customer_city',
+            'cl.address AS customer_address',
+            'k.no_kontrak',
+            'ku.tanggal_mulai AS kontrak_mulai',
+            'ku.tanggal_selesai AS kontrak_selesai',
+        ];
+
+        $hasTipeMast  = $db->tableExists('tipe_mast');
+        $hasMesin     = $db->tableExists('mesin');
+        $hasKapasitas = $db->tableExists('kapasitas');
+        $hasJenisRoda = $db->tableExists('jenis_roda');
+        $hasTipeBan   = $db->tableExists('tipe_ban');
+        $hasValve     = $db->tableExists('valve');
+        $hasAreas     = $db->tableExists('areas');
+
+        if ($hasTipeMast)  $selectParts[] = 'tm.tipe_mast, tm.tinggi_mast AS mast_tinggi_default';
+        if ($hasMesin) {
+            $selectParts[] = 'm.merk_mesin, m.model_mesin';
+            $selectParts[] = 'dm.nama_departemen AS fuel_type_dept';
+        }
+        if ($hasKapasitas) $selectParts[] = 'kap.kapasitas_unit AS kapasitas_display';
+        if ($hasJenisRoda) $selectParts[] = 'r.tipe_roda AS jenis_roda';
+        if ($hasTipeBan)   $selectParts[] = 'tb.tipe_ban';
+        if ($hasValve)     $selectParts[] = 'vl.jumlah_valve';
+        if ($hasAreas) {
+            if ($db->fieldExists('area_name', 'areas')) {
+                $selectParts[] = 'a.area_name AS area_name';
+            } elseif ($db->fieldExists('nama_area', 'areas')) {
+                $selectParts[] = 'a.nama_area AS area_name';
+            } elseif ($db->fieldExists('name', 'areas')) {
+                $selectParts[] = 'a.name AS area_name';
+            } else {
+                $selectParts[] = 'CAST(iu.area_id AS CHAR) AS area_name';
+            }
+        } else {
+            $selectParts[] = 'CAST(iu.area_id AS CHAR) AS area_name';
+        }
+
+        $builder = $db->table('inventory_unit iu')
+            ->select(implode(', ', $selectParts))
+            ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+            ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
+            ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
+        if ($hasAreas) $builder->join('areas a', 'a.id = iu.area_id', 'left');
+
+        if ($hasTipeMast)  $builder->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left');
+        if ($hasMesin) {
+            $builder->join('mesin m', 'm.id = iu.model_mesin_id', 'left');
+            $builder->join('departemen dm', 'dm.id_departemen = m.departemen_id', 'left');
+        }
+        if ($hasKapasitas) $builder->join('kapasitas kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left');
+        if ($hasJenisRoda) $builder->join('jenis_roda r', 'r.id_roda = iu.roda_id', 'left');
+        if ($hasTipeBan)   $builder->join('tipe_ban tb', 'tb.id_ban = iu.ban_id', 'left');
+        if ($hasValve)     $builder->join('valve vl', 'vl.id_valve = iu.valve_id', 'left');
+
+        $unit = $builder
+            ->where('iu.public_view_token', $token)
+            ->get()
+            ->getRowArray();
+
+        if (! $unit) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $events = [];
+        try {
+            $service = new \App\Services\UnitActivityService();
+            $events = $service->getUnifiedTimeline((int) $unit['id_inventory_unit'], null, 120);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView activity: ' . $e->getMessage());
+        }
+
+        $silo = null;
+        try {
+            $siloModel = new SiloModel();
+            $silo = $siloModel->getByUnitId((int) $unit['id_inventory_unit']);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView silo: ' . $e->getMessage());
+        }
+
+        $currentComponents = ['battery' => null, 'charger' => null, 'attachment' => null];
+        try {
+            $compHelper = new \App\Models\InventoryComponentHelper();
+            $currentComponents = $compHelper->getUnitComponents((int)$unit['id_inventory_unit']);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView current_components: ' . $e->getMessage());
+        }
+
+        $aksesorisItems = [];
+        try {
+            $aksesorisRaw = $unit['aksesoris'] ?? null;
+            if ($aksesorisRaw) {
+                $decoded = json_decode($aksesorisRaw, true);
+                if (is_array($decoded)) {
+                    $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+                    foreach ($decoded as $k => $v) {
+                        if ($isAssoc) {
+                            if ($v) $aksesorisItems[] = format_accessory_label($k);
+                        } else {
+                            if ($v && !is_bool($v)) $aksesorisItems[] = format_accessory_label($v);
+                        }
+                    }
+                } else {
+                    $rawItems = array_values(array_filter(array_map('trim', explode(',', $aksesorisRaw))));
+                    $aksesorisItems = array_map(static fn ($item) => format_accessory_label($item), $rawItems);
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView aksesoris: ' . $e->getMessage());
+        }
+
+        return view('public/unit_scan', [
+            'title' => 'Unit View',
+            'unit' => $unit,
+            'events' => $events,
+            'silo' => $silo,
+            'current_components' => $currentComponents,
+            'aksesorisItems' => $aksesorisItems,
         ]);
     }
 
@@ -860,6 +1021,8 @@ class UnitInventoryController extends BaseController
     public function printUnit($id)
     {
         $db  = Database::connect();
+        $publicToken = $this->ensurePublicViewToken((int) $id);
+        $publicViewUrl = $publicToken ? base_url('unit-view/' . $publicToken) : null;
 
         // Build SELECT with safe optional JOINs
         try {
@@ -926,7 +1089,40 @@ class UnitInventoryController extends BaseController
             'title'          => 'Unit Print — ' . ($row['no_unit'] ?: $row['no_unit_na'] ?: 'TEMP-' . $id),
             'unit'           => $row,
             'aksesorisItems' => $aksesorisItems,
+            'public_view_url' => $publicViewUrl,
         ]);
+    }
+
+    private function ensurePublicViewToken(int $unitId): ?string
+    {
+        if ($unitId <= 0) {
+            return null;
+        }
+        try {
+            $db = Database::connect();
+            if (! $db->fieldExists('public_view_token', 'inventory_unit')) {
+                return null;
+            }
+            $row = $db->table('inventory_unit')
+                ->select('public_view_token')
+                ->where('id_inventory_unit', $unitId)
+                ->get()
+                ->getRowArray();
+            $token = trim((string) ($row['public_view_token'] ?? ''));
+            if ($token !== '') {
+                return $token;
+            }
+
+            $token = bin2hex(random_bytes(24));
+            $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update(['public_view_token' => $token, 'updated_at' => date('Y-m-d H:i:s')]);
+
+            return $token;
+        } catch (\Throwable $e) {
+            log_message('warning', 'ensurePublicViewToken: ' . $e->getMessage());
+            return null;
+        }
     }
 
     // ──────────────────────────────────────────────────────

@@ -18,6 +18,30 @@ if (!function_exists('resolvePrintSignerName')) {
         return $fallback;
     }
 }
+
+if (!function_exists('resolveFirstNonEmptyPrint')) {
+    function resolveFirstNonEmptyPrint(array $data, array $keys, string $fallback = ''): string
+    {
+        foreach ($keys as $key) {
+            $value = trim((string)($data[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+}
+
+if (!function_exists('maskSensitivePrint')) {
+    function maskSensitivePrint(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-') return '-';
+        // Mask all non-space characters to avoid exposing the number directly.
+        return preg_replace('/\\S/u', '*', $value) ?? str_repeat('*', mb_strlen($value));
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -463,19 +487,16 @@ if (!function_exists('resolvePrintSignerName')) {
         </div>
         <div class="header-right">
             <div class="document-info">
-                <div class="doc-number">No <?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></div>
                 <?php 
-                    // Show quotation number or contract indicator
-                    $hasContract = !empty($spk['kontrak_id']);
-                    if ($hasContract) {
-                        $sourceDisplay = 'Source: Contract-based';
-                    } else {
-                        // Show actual quotation number
-                        $quotationNumber = $spk['quotation_number'] ?? '-';
-                        $sourceDisplay = 'No Quotation: ' . $quotationNumber;
-                    }
+                    $quotationNumber = $spk['quotation_number'] ?? '-';
+
+                    $poNumber = resolveFirstNonEmptyPrint($spk, ['no_po', 'po_number', 'nomor_po', 'po_no'], '');
+                    $contractNumber = resolveFirstNonEmptyPrint($spk, ['no_kontrak', 'nomor_kontrak', 'contract_number', 'kontrak_number'], '');
+                    $poContractRaw = trim(implode(' / ', array_values(array_filter([$poNumber, $contractNumber], fn($v) => trim((string)$v) !== ''))));
+                    $poContractMasked = $poContractRaw !== '' ? maskSensitivePrint($poContractRaw) : '-';
                 ?>
-                <div class="doc-spk"><?= $sourceDisplay ?></div>
+                <div class="doc-number">No PO &amp; Contract: <?= esc($poContractMasked) ?></div>
+                <div class="doc-spk">No Quotation: <?= esc($quotationNumber) ?></div>
                 <div class="doc-date">Tanggal: <?= date('d F Y', strtotime($spk['created_at'] ?? $spk['dibuat_pada'] ?? date('Y-m-d'))) ?></div>
             </div>
             <div class="status-badge">
@@ -490,6 +511,12 @@ if (!function_exists('resolvePrintSignerName')) {
     
     <!-- Garis pemisah -->
     <hr class="header-separator">
+    <div class="row mb-1">
+        <div class="col-12">
+            <span class="label">No SPK:</span>
+            <span class="val"><?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></span>
+        </div>
+    </div>
     <div class="row mb-1">
         <div class="col-6"><span class="label">Nama Perusahaan:</span> <span class="val"><?= esc($spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span></div>
         <div class="col-6"><span class="label">Kontak:</span> <span class="val"><?= esc($spk['kontak'] ?? '-') ?></span></div>

@@ -122,21 +122,19 @@ class CustomerManagementController extends BaseController
             // Build query with search - updated to include customer_locations primary contact and marketing_name
             $builder = $this->customerModel->builder();
             $builder->select('customers.id, customers.customer_code, customers.customer_name, customers.marketing_name, customers.created_at, customers.updated_at, customers.is_active,
-                              GROUP_CONCAT(DISTINCT areas.area_name ORDER BY areas.area_name SEPARATOR ", ") as area_name,
+                              NULL as area_name,
                               MAX(cl_primary.contact_person) as pic_name, 
                               MAX(cl_primary.phone) as pic_phone, 
                               MAX(cl_primary.email) as pic_email,
                               MAX(cl_primary.address) as primary_address')
                     ->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
                     ->join('customer_locations cl_all', 'customers.id = cl_all.customer_id', 'left')
-                    ->join('areas', 'cl_all.area_id = areas.id', 'left')
                     ->groupBy('customers.id, customers.customer_code, customers.customer_name, customers.marketing_name, customers.created_at, customers.updated_at, customers.is_active');
                     
             if (!empty($searchValue)) {
                 $builder->groupStart()
                         ->like('customers.customer_code', $searchValue)
                         ->orLike('customers.customer_name', $searchValue)
-                        ->orLike('areas.area_name', $searchValue)
                         ->orLike('cl_primary.contact_person', $searchValue)
                         ->orLike('cl_primary.phone', $searchValue)
                         ->orLike('cl_primary.email', $searchValue)
@@ -148,12 +146,9 @@ class CustomerManagementController extends BaseController
             if (!empty($searchValue)) {
                 $countBuilder->distinct('customers.id')
                             ->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
-                            ->join('customer_locations cl_all', 'customers.id = cl_all.customer_id', 'left')
-                            ->join('areas', 'cl_all.area_id = areas.id', 'left')
                             ->groupStart()
                             ->like('customers.customer_code', $searchValue)
                             ->orLike('customers.customer_name', $searchValue)
-                            ->orLike('areas.area_name', $searchValue)
                             ->orLike('cl_primary.contact_person', $searchValue)
                             ->orLike('cl_primary.phone', $searchValue)
                             ->orLike('cl_primary.email', $searchValue)
@@ -361,11 +356,9 @@ class CustomerManagementController extends BaseController
         try {
             log_message('debug', '[CustomerManagement] Starting data fetch for customer ID: ' . $id);
             
-            // Get customer basic info with area from primary location
+            // Get customer basic info (area now comes from units, not from primary location)
             $customerBuilder = $this->customerModel->builder();
-            $customer = $customerBuilder->select('customers.*, areas.area_name, areas.area_code')
-                                      ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                                      ->join('areas', 'cl.area_id = areas.id', 'left')
+            $customer = $customerBuilder->select('customers.*')
                                       ->where('customers.id', $id)
                                       ->get()->getRowArray();
             
@@ -534,7 +527,6 @@ class CustomerManagementController extends BaseController
             'is_active' => 'permit_empty|in_list[0,1]',
             
             // Primary location info
-            'area_id' => 'required|integer',
             'location_name' => 'required|max_length[100]',
             'location_type' => 'permit_empty|in_list[HEAD_OFFICE,BRANCH,WAREHOUSE,FACTORY]',
             'address' => 'required|max_length[500]',
@@ -559,10 +551,6 @@ class CustomerManagementController extends BaseController
             'customer_name' => [
                 'required' => 'Nama customer harus diisi.',
                 'max_length' => 'Nama customer maksimal 255 karakter.'
-            ],
-            'area_id' => [
-                'required' => 'Area harus dipilih.',
-                'integer' => 'Area tidak valid.'
             ],
             'location_name' => [
                 'required' => 'Nama lokasi harus diisi.'
@@ -640,7 +628,6 @@ class CustomerManagementController extends BaseController
                 // Create primary location
                     $locationData = [
                         'customer_id' => $customerId,
-                        'area_id' => $this->request->getPost('area_id'),
                     'location_name' => $this->request->getPost('location_name'),
                     'location_code' => $locationCode,
                     'location_type' => $this->request->getPost('location_type') ?: 'HEAD_OFFICE',
@@ -1649,14 +1636,16 @@ class CustomerManagementController extends BaseController
      */
     private function getCustomersByAreaStats()
     {
-        $builder = $this->customerModel->builder();
-        $builder->select('areas.area_name, COUNT(customers.id) as customer_count')
-                ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
-                ->join('areas', 'cl.area_id = areas.id', 'left')
-                ->groupBy('areas.id, areas.area_name')
-                ->orderBy('customer_count', 'DESC');
-                
-        return $builder->get()->getResultArray();
+        // Area is now per-unit, not per-customer; aggregate via active contract units
+        return $this->db->query("
+            SELECT a.area_name, COUNT(DISTINCT k.customer_id) as customer_count
+            FROM areas a
+            LEFT JOIN inventory_unit iu ON iu.area_id = a.id
+            LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+            LEFT JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+            GROUP BY a.id, a.area_name
+            ORDER BY customer_count DESC
+        ")->getResultArray();
     }
 
     /**
@@ -1939,11 +1928,10 @@ class CustomerManagementController extends BaseController
                         cl.id,
                         'location' as type,
                         CONCAT('Location ', CASE WHEN cl.is_primary=1 THEN '(Primary) ' ELSE '' END, '- ', cl.location_name) as title,
-                        CONCAT('Added location in ', a.area_name) as description,
+                        CONCAT('Added location in ', cl.city) as description,
                         NULL as user,
                         cl.created_at
                     FROM customer_locations cl
-                    LEFT JOIN areas a ON cl.area_id = a.id
                     WHERE cl.customer_id = ?
                     ORDER BY cl.created_at DESC
                     LIMIT 20
@@ -1989,8 +1977,7 @@ class CustomerManagementController extends BaseController
             
             
             $locations = $this->db->table('customer_locations cl')
-                ->select('cl.*, areas.area_name, areas.area_code')
-                ->join('areas', 'cl.area_id = areas.id', 'left')
+                ->select('cl.*')
                 ->where('cl.customer_id', $customerId)
                 ->where('cl.is_active', 1)
                 ->orderBy('cl.is_primary', 'DESC')
@@ -2023,7 +2010,6 @@ class CustomerManagementController extends BaseController
 
         $rules = [
             'customer_id' => 'required|integer',
-            'area_id' => 'required|integer',
             'location_name' => 'required|max_length[100]',
             'address' => 'required|max_length[500]',
             'city' => 'required|max_length[100]',
@@ -2057,7 +2043,6 @@ class CustomerManagementController extends BaseController
 
         $data = [
             'customer_id' => (int) $this->request->getPost('customer_id'),
-            'area_id' => (int) $this->request->getPost('area_id'),
             'location_name' => $this->request->getPost('location_name'),
             'location_code' => $locationCode,
             'location_type' => $this->request->getPost('location_type') ?: 'BRANCH',
@@ -2135,7 +2120,6 @@ class CustomerManagementController extends BaseController
         }
 
         $rules = [
-            'area_id' => 'required|integer',
             'location_name' => 'required|max_length[100]',
             'address' => 'required|max_length[500]',
             'city' => 'required|max_length[100]',
@@ -2157,7 +2141,6 @@ class CustomerManagementController extends BaseController
         }
 
         $data = [
-            'area_id' => (int) $this->request->getPost('area_id'),
             'location_name' => $this->request->getPost('location_name'),
             'location_code' => $this->request->getPost('location_code'),
             'location_type' => $this->request->getPost('location_type') ?: 'BRANCH',
@@ -2220,10 +2203,9 @@ class CustomerManagementController extends BaseController
                 return $this->response->setJSON(['success' => false, 'message' => 'Customer tidak ditemukan']);
             }
 
-            // Get customer locations
+            // Get customer locations (area is now per-unit, not per-location)
             $locations = $this->db->table('customer_locations cl')
-                ->select('cl.*, a.area_name')
-                ->join('areas a', 'a.id = cl.area_id', 'left')
+                ->select('cl.*')
                 ->where('cl.customer_id', $customerId)
                 ->get()
                 ->getResultArray();
