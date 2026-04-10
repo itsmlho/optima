@@ -412,10 +412,10 @@ class InventoryUnitModel extends Model
             if ($tableExists['departemen']) {
                 $builder->join('departemen as d', 'd.id_departemen = iu.departemen_id', 'left');
             }
-            // Join active rental location (latest active kontrak_unit row) for rented units
+            // Join active rental: gunakan LEFT JOIN with ON kondisi langsung (hindari correlated subquery per-row)
             $builder->join(
                 'kontrak_unit as ku',
-                'ku.id = (SELECT id FROM kontrak_unit WHERE unit_id = iu.id_inventory_unit AND status IN ("ACTIVE","TEMP_ACTIVE","Aktif") ORDER BY id DESC LIMIT 1)',
+                'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE","Aktif") AND ku.is_temporary = 0',
                 'left'
             );
             $builder->join('customer_locations as cl', 'cl.id = ku.customer_location_id', 'left');
@@ -458,6 +458,8 @@ class InventoryUnitModel extends Model
                     $builder->where('iu.area_id', 0); // BRANCH with no areas = see nothing
                 }
             }
+            // Count filtered rows BEFORE ORDER BY / LIMIT (countAllResults works on a clone — original builder preserved)
+            $recordsFiltered = $builder->countAllResults(false);
             // Whitelist order column to prevent SQL error
             // Kolom order disesuaikan: nama_tipe_unit tidak fisik -> gunakan tu.tipe sebagai fallback
             $allowedOrder = ['iu.no_unit','iu.id_inventory_unit','iu.serial_number','mu.merk_unit','mu.model_unit','tu.tipe','d.nama_departemen','su.status_unit','iu.lokasi_unit','iu.created_at'];
@@ -468,11 +470,11 @@ class InventoryUnitModel extends Model
             $orderDir = strtolower($orderDir) === 'asc' ? 'asc' : 'desc';
             $builder->orderBy($orderColumn, $orderDir)->limit($length, $start);
             $result = $builder->get()->getResultArray();
-            return $result;
+            return ['data' => $result, 'recordsFiltered' => $recordsFiltered];
         } catch (\Throwable $e) {
             log_message('error', '[InventoryUnitModel::getDataTable] Exception: ' . $e->getMessage());
             try { log_message('error', 'Last query: ' . ($this->db->getLastQuery() ?? 'N/A')); } catch (\Throwable $ie) { }
-            return [];
+            return ['data' => [], 'recordsFiltered' => 0];
         }
     }
 

@@ -238,16 +238,12 @@ class AttachmentInventoryController extends BaseController
             }
         }
 
-        // Build detailed stats from 3 separate models
-        $attachmentModel = new InventoryAttachmentModel();
-        $batteryModel = new InventoryBatteryModel();
-        $chargerModel = new InventoryChargerModel();
-        $forkModel = new InventoryForkModel();
-
-        $attachmentStats = $attachmentModel->getStats();
-        $batteryStats = $batteryModel->getStats();
-        $chargerStats = $chargerModel->getStats();
-        $forkStats = $forkModel->getStats();
+        // Fetch all 4 type stats in a single UNION ALL query (4 queries → 1)
+        $allStats        = InventoryAttachmentModel::getAllTypesStats();
+        $attachmentStats = $allStats['attachment'];
+        $batteryStats    = $allStats['battery'];
+        $chargerStats    = $allStats['charger'];
+        $forkStats       = $allStats['fork'];
 
         // Send stats per type so JavaScript can update status counts dynamically
         $detailed_stats = [
@@ -366,6 +362,23 @@ class AttachmentInventoryController extends BaseController
                 $attachment['lokasi_penyimpanan'] = $attachment['storage_location'] ?? '';
                 $attachment['attachment_status'] = $attachment['status'] ?? '';
                 $attachment['id_inventory_unit'] = $attachment['inventory_unit_id'] ?? null;
+            }
+
+            // Enrich with unit merk/model/type if attached to a unit
+            $unitId = $attachment['inventory_unit_id'] ?? null;
+            if ($unitId) {
+                $db = \Config\Database::connect();
+                $unitRow = $db->table('inventory_unit iu')
+                    ->select('iu.serial_number as unit_sn, mu.merk_unit as unit_merk, mu.model_unit as unit_model, iu.fuel_type as unit_jenis')
+                    ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
+                    ->where('iu.id_inventory_unit', $unitId)
+                    ->get()->getRowArray();
+                if ($unitRow) {
+                    $attachment['unit_sn']    = $unitRow['unit_sn']    ?? null;
+                    $attachment['unit_merk']  = $unitRow['unit_merk']  ?? null;
+                    $attachment['unit_model'] = $unitRow['unit_model'] ?? null;
+                    $attachment['unit_jenis'] = $unitRow['unit_jenis'] ?? null;
+                }
             }
 
             return $this->response->setJSON([
@@ -2281,5 +2294,153 @@ class AttachmentInventoryController extends BaseController
                 'message' => 'Gagal memuat data units. Silakan coba lagi.'
             ]);
         }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  PUBLIC VIEW TOKEN + PUBLIC PAGE
+    // ──────────────────────────────────────────────────────
+
+    /**
+     * Return the table name for a given tipe_item string.
+     */
+    private function tableForType(string $type): ?string
+    {
+        return match (strtolower($type)) {
+            'attachment' => 'inventory_attachments',
+            'battery'    => 'inventory_batteries',
+            'charger'    => 'inventory_chargers',
+            'fork'       => 'inventory_forks',
+            default      => null,
+        };
+    }
+
+    /**
+     * Return or generate the public_view_token for a component row.
+     */
+    private function ensurePublicToken(int $id, string $type): ?string
+    {
+        if ($id <= 0) {
+            return null;
+        }
+        $table = $this->tableForType($type);
+        if ($table === null) {
+            return null;
+        }
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->fieldExists('public_view_token', $table)) {
+                return null;
+            }
+            $pk = 'id';
+            $row = $db->table($table)
+                ->select('public_view_token')
+                ->where($pk, $id)
+                ->get()
+                ->getRowArray();
+
+            if (! $row) {
+                return null;
+            }
+            $token = trim((string) ($row['public_view_token'] ?? ''));
+            if ($token !== '') {
+                return $token;
+            }
+            $token = bin2hex(random_bytes(24));
+            $db->table($table)->where($pk, $id)->update([
+                'public_view_token' => $token,
+                'updated_at'        => date('Y-m-d H:i:s'),
+            ]);
+            return $token;
+        } catch (\Throwable $e) {
+            log_message('warning', '[AttachmentInventoryController::ensurePublicToken] ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * AJAX: generate/return public_view_token for a component.
+     * GET warehouse/inventory/attachments/get-token/{id}/{type}
+     */
+    public function getPublicToken(int $id, string $type): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $token = $this->ensurePublicToken($id, $type);
+        if ($token === null) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Token tidak dapat dibuat.'])->setStatusCode(422);
+        }
+        return $this->response->setJSON([
+            'success'    => true,
+            'token'      => $token,
+            'public_url' => base_url('attachment-view/' . $token),
+        ]);
+    }
+
+    /**
+     * Public read-only asset page — no login required.
+     * GET /attachment-view/{token}
+     */
+    public function publicView(string $token): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $token = trim($token);
+        if ($token === '') {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $db     = \Config\Database::connect();
+        $tables = [
+            'inventory_attachments' => ['pk' => 'id_inventory_attachment', 'type' => 'attachment'],
+            'inventory_batteries'   => ['pk' => 'id_inventory_battery',    'type' => 'battery'],
+            'inventory_chargers'    => ['pk' => 'id_inventory_charger',    'type' => 'charger'],
+            'inventory_forks'       => ['pk' => 'id_inventory_fork',       'type' => 'fork'],
+        ];
+
+        $component = null;
+        $tipeItem  = null;
+
+        foreach ($tables as $table => $meta) {
+            if (! $db->tableExists($table)) {
+                continue;
+            }
+            if (! $db->fieldExists('public_view_token', $table)) {
+                continue;
+            }
+            $row = $db->table($table)
+                ->where('public_view_token', $token)
+                ->get()
+                ->getRowArray();
+            if ($row) {
+                $component = $row;
+                $tipeItem  = $meta['type'];
+                break;
+            }
+        }
+
+        if (! $component) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        // Enrich with unit info if assigned
+        $unitInfo = null;
+        $unitId   = (int) ($component['id_inventory_unit'] ?? 0);
+        if ($unitId > 0 && $db->tableExists('inventory_unit')) {
+            try {
+                $unitInfo = $db->table('inventory_unit iu')
+                    ->select('iu.no_unit, iu.serial_number AS unit_serial_number, su.status_unit, mu.merk_unit, mu.model_unit')
+                    ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+                    ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                    ->where('iu.id_inventory_unit', $unitId)
+                    ->get()
+                    ->getRowArray();
+            } catch (\Throwable $e) {
+                log_message('warning', '[AttachmentInventoryController::publicView] unit: ' . $e->getMessage());
+            }
+        }
+
+        return view('warehouse/inventory/attachments/public', [
+            'component'  => $component,
+            'tipe_item'  => $tipeItem,
+            'unit_info'  => $unitInfo,
+            'public_url' => base_url('attachment-view/' . $token),
+            'title'      => strtoupper($tipeItem) . ' Asset View',
+        ]);
     }
 }

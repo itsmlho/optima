@@ -148,16 +148,19 @@
 </div>
 
 <!-- Modal View Attachment Detail -->
-<div class="modal fade modal-wide" id="viewAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade" id="viewAttachmentModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Attachment</h5>
+            <div class="modal-header bg-light py-2">
+                <div>
+                    <h5 class="modal-title mb-0" id="viewAttachmentModalTitle"><i class="fas fa-eye me-2 text-primary"></i>Detail Item</h5>
+                    <p class="text-muted small mb-0" id="viewAttachmentModalSubtitle"></p>
+                </div>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
                 <!-- Tabs -->
-                <ul class="nav nav-tabs px-3 pt-2" id="attachmentModalTabs" role="tablist">
+                <ul class="nav nav-tabs px-3 pt-2 border-bottom" id="attachmentModalTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="att-detail-tab" data-bs-toggle="tab"
                             data-bs-target="#att-detail-pane" type="button" role="tab">
@@ -169,18 +172,66 @@
                             data-bs-target="#att-history-pane" type="button" role="tab"
                             onclick="loadAttachmentHistory(currentAttachmentId)">
                             <i class="fas fa-history me-1"></i>History
-                            <span class="badge badge-soft-gray ms-1" id="attHistoryBadge" style="display:none;"></span>
+                            <span class="badge badge-soft-blue ms-1" id="attHistoryBadge" style="display:none;"></span>
                         </button>
                     </li>
                 </ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active p-3" id="att-detail-pane" role="tabpanel">
-                        <div id="attachmentDetailContent">
-                            <!-- Content will be loaded here -->
+                <div class="tab-content" style="min-height:540px;max-height:60vh;overflow-y:auto;">
+                    <!-- Detail Pane -->
+                    <div class="tab-pane fade show active" id="att-detail-pane" role="tabpanel">
+                        <div class="row g-0">
+                            <!-- Main content (left) -->
+                            <div class="col-lg-8 p-3 border-end">
+                                <div id="attachmentDetailContent">
+                                    <div class="text-center p-5 text-muted">
+                                        <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block"></i>Loading...
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Sidebar (right) -->
+                            <div class="col-lg-4 p-3 bg-light" id="attachmentDetailSidebar">
+                                <div id="attachmentQuickInfo">
+                                    <!-- Populated by JS -->
+                                </div>
+                                <div id="attachmentQrSection">
+                                    <div class="card shadow-sm mb-3">
+                                        <div class="card-header bg-light d-flex align-items-center justify-content-between">
+                                            <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i><strong>Barcode Aset</strong></h6>
+                                            <span class="badge bg-dark">Public</span>
+                                        </div>
+                                        <div class="card-body p-2 small" id="attachmentQrBody">
+                                            <div class="text-center py-3 text-muted">
+                                                <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-primary"></i>
+                                                <small>Memuat QR...</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <!-- History Pane -->
                     <div class="tab-pane fade" id="att-history-pane" role="tabpanel">
-                        <div id="attachmentHistoryContent">
+                        <!-- Filter toolbar -->
+                        <div class="d-flex align-items-center gap-2 px-3 pt-3 pb-2 border-bottom flex-wrap">
+                            <span class="small fw-semibold text-muted me-1"><i class="fas fa-filter me-1"></i>Filter:</span>
+                            <select id="attHistoryFilter" class="form-select form-select-sm" style="width:auto;" onchange="applyAttHistoryFilter()">
+                                <option value="all">Semua</option>
+                                <option value="assign">Dipasang</option>
+                                <option value="detach">Dilepas</option>
+                                <option value="audit">Audit/SPK/WO</option>
+                                <option value="movement">Surat Jalan</option>
+                                <option value="update">Update Data</option>
+                            </select>
+                            <select id="attHistoryGroup" class="form-select form-select-sm" style="width:auto;" onchange="applyAttHistoryFilter()">
+                                <option value="document">Group: Dokumen</option>
+                                <option value="date">Group: Tanggal</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="resetAttachmentHistory(currentAttachmentId)">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div id="attachmentHistoryContent" class="p-3">
                             <div class="text-center text-muted py-4">
                                 <i class="fas fa-history fa-2x mb-2 d-block"></i>
                                 <p class="mb-0">Klik tab ini untuk memuat history.</p>
@@ -190,16 +241,16 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <div class="me-auto">
+                <div class="me-auto d-flex gap-2 align-items-center">
                     <!-- Action Buttons (Left side) -->
                     <button type="button" class="btn btn-success btn-sm" id="btnAttachToUnit" onclick="openAttachModal()" style="display:none;">
                         <i class="fas fa-link me-1"></i>Install to Unit
                     </button>
                     <button type="button" class="btn btn-warning btn-sm" id="btnSwapUnit" onclick="openSwapModal()" style="display:none;">
-                        <i class="fas fa-exchange-alt me-1"></i>Move to Another Unit
+                        <i class="fas fa-exchange-alt me-1"></i>Move Unit
                     </button>
                     <button type="button" class="btn btn-warning btn-sm" id="btnDetachFromUnit" onclick="openDetachModal()" style="display:none;">
-                        <i class="fas fa-unlink me-1"></i>Detach from Unit
+                        <i class="fas fa-unlink me-1"></i>Detach
                     </button>
                 </div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -737,11 +788,11 @@
 
     function getDynamicColumns(type) {
         let columns = [
-            // No Item column (always first) - Use no_item from database
+            // No Item column (always first) - item_number field from DB (no_item alias only exists on fork)
             { 
-                data: 'no_item',
+                data: null,
                 render: function(data, type, row) {
-                    return data || '-';
+                    return row.item_number || row.no_item || '-';
                 }
             },
             // Tipe Item column (always second)
@@ -1181,11 +1232,15 @@
         }
     }
 
+    // Global state for current item print/QR
+    var _currentAttachmentData = null;
+
     window.viewAttachment = function(id) {
         console.log('viewAttachment called for ID:', id);
         currentAttachmentId = id;
         attachmentHistoryLoaded = false;
         currentHistoryAttachmentId = id;
+        _currentAttachmentData = null;
 
         // Reset tabs: activate Detail tab, clear history pane
         const detailTabEl = document.getElementById('att-detail-tab');
@@ -1198,6 +1253,8 @@
         const historyPane = document.getElementById('att-history-pane');
         if (detailPane) { detailPane.classList.add('show', 'active'); }
         if (historyPane) { historyPane.classList.remove('show', 'active'); }
+
+        // Reset history pane placeholder
         $('#attachmentHistoryContent').html(`
             <div class="text-center text-muted py-4">
                 <i class="fas fa-history fa-2x mb-2 d-block"></i>
@@ -1206,151 +1263,282 @@
         `);
         $('#attHistoryBadge').hide().text('');
 
+        // Reset modal title/subtitle
+        $('#viewAttachmentModalTitle').html('<i class="fas fa-spinner fa-spin me-2 text-muted"></i>Memuat...');
+        $('#viewAttachmentModalSubtitle').text('');
+
+        // Show loading state in main content + sidebar
+        $('#attachmentDetailContent').html(`
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-primary"></i>
+                <p class="mb-0">Memuat detail...</p>
+            </div>
+        `);
+        $('#attachmentQuickInfo').html('');
+        $('#attachmentQrBody').html(`
+            <div class="text-center py-3 text-muted">
+                <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-primary"></i>
+                <small>Memuat QR...</small>
+            </div>`);
+        $('#viewAttachmentModal').modal('show');
+
         $.ajax({
             url: `<?= base_url('warehouse/inventory/attachments/detail/') ?>${id}`,
             type: 'GET',
             dataType: 'json',
-            beforeSend: function() {
-                $('#attachmentDetailContent').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><br>Loading attachment details...</div>');
-                $('#viewAttachmentModal').modal('show');
-            },
             success: function(response) {
-                console.log('AJAX Success Response:', response);
-                
                 if (response.success) {
                     const data = response.data;
-                    const detailHtml = createAttachmentDetailHtml(data);
-                    $('#attachmentDetailContent').html(detailHtml);
-                    
-                    // Show/hide action buttons based on attachment status
+                    _currentAttachmentData = data;
+                    renderAttachmentDetail(data);
+                    renderAttachmentSidebar(data);
+
+                    // Set modal title
+                    const typeIcon = {attachment:'fa-puzzle-piece',battery:'fa-battery-half',charger:'fa-plug',fork:'fa-grip-lines-vertical'}[data.tipe_item] || 'fa-box';
+                    const typeLabel = (data.tipe_item||'Item').charAt(0).toUpperCase()+(data.tipe_item||'Item').slice(1);
+                    $('#viewAttachmentModalTitle').html(`<i class="fas ${typeIcon} me-2 text-primary"></i>${typeLabel} Detail`);
+                    $('#viewAttachmentModalSubtitle').text(data.item_number || data.serial_number || '');
+
+                    // Show/hide unit action buttons
                     $('#btnAttachToUnit, #btnSwapUnit, #btnDetachFromUnit').hide();
-                    
-                    if (data.id_inventory_unit === null || data.id_inventory_unit === '' || data.id_inventory_unit === 0) {
-                        // Item tidak terpasang → Show "Pasang ke Unit"
-                        $('#btnAttachToUnit').show();
+                    if (!data.id_inventory_unit || data.id_inventory_unit == '0') {
+                        // Not assigned to unit → can install
+                        if (data.tipe_item !== 'fork') { // forks managed differently
+                            $('#btnAttachToUnit').show();
+                        }
                     } else {
-                        // Item terpasang → Show "Pindah Unit" & "Lepas dari Unit"
                         $('#btnSwapUnit').show();
                         $('#btnDetachFromUnit').show();
                     }
+
+                    // Load public token & QR if available
+                    if (data.public_view_token) {
+                        showAttachmentQr(data.public_view_token);
+                    } else {
+                        // Request token generation lazily
+                        $.get(`<?= base_url('warehouse/inventory/attachments/get-token/') ?>${id}/${data.tipe_item||'attachment'}`, function(res) {
+                            if (res && res.token) {
+                                _currentAttachmentData.public_view_token = res.token;
+                                _currentAttachmentData.public_url = res.public_url;
+                                showAttachmentQr(res.token);
+                            }
+                        }).fail(function(){
+                            // Token generation not available – QR section stays hidden
+                        });
+                    }
                 } else {
-                    const errorHtml = `
-                        <div class="alert alert-danger">
-                            <h5><i class="fas fa-exclamation-triangle"></i> Failed to Load Details</h5>
-                            <p>${response.message || 'An unknown error occurred'}</p>
-                        </div>
-                    `;
-                    $('#attachmentDetailContent').html(errorHtml);
+                    $('#attachmentDetailContent').html(`<div class="alert alert-danger m-3"><i class="fas fa-exclamation-triangle me-2"></i>${response.message||'Gagal memuat detail.'}</div>`);
                 }
             },
-            error: function(xhr, status, error) {
-                console.log('AJAX Error:', {xhr, status, error});
-                console.log('Response Text:', xhr.responseText);
-                
-                let errorMessage = 'An error occurred while fetching attachment details.';
-                
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.message) {
-                        errorMessage = errorResponse.message;
-                    }
-                } catch (e) {
-                    errorMessage += ' (Server Error ' + xhr.status + ')';
-                }
-                
-                const errorHtml = `
-                    <div class="alert alert-danger">
-                        <h5><i class="fas fa-exclamation-triangle"></i> Error ${xhr.status}</h5>
-                        <p>${errorMessage}</p>
-                        <details class="mt-2">
-                            <summary>Technical Details</summary>
-                            <pre class="mt-2 text-muted small">${xhr.responseText}</pre>
-                        </details>
-                    </div>
-                `;
-                $('#attachmentDetailContent').html(errorHtml);
+            error: function(xhr) {
+                let msg = 'Terjadi kesalahan saat memuat detail.';
+                try { const r = JSON.parse(xhr.responseText); if(r.message) msg = r.message; } catch(e){}
+                $('#attachmentDetailContent').html(`<div class="alert alert-danger m-3"><i class="fas fa-exclamation-triangle me-2"></i>${msg}</div>`);
             }
         });
     }
 
-    function createAttachmentDetailHtml(data) {
-        const h = (str) => {
-            if (str === null || str === undefined || str === '') {
-                return '-';
-            }
-            return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        };
-        
-        console.log('Creating detail HTML for data:', data);
-        
-        return `
-            <div class="row">
-                <!-- Basic Attachment Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i><strong>Attachment Information</strong></h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>ID Attachment</strong></td><td>: ${h(data.id_inventory_attachment)}</td></tr>
-                                <tr><td><strong>Item Type</strong></td><td>: ${h(data.tipe_item)}</td></tr>
-                                <tr><td><strong>SN Attachment</strong></td><td>: ${h(data.sn_attachment)}</td></tr>
-                                <tr><td><strong>SN Battery</strong></td><td>: ${h(data.sn_baterai)}</td></tr>
-                                <tr><td><strong>SN Charger</strong></td><td>: ${h(data.sn_charger)}</td></tr>
-                                <tr><td><strong>Unit</strong></td><td>: ${h(data.no_unit)}</td></tr>
-                                <tr><td><strong>Status</strong></td><td>: <span class="badge badge-soft-blue">${h(data.attachment_status)}</span></td></tr>
-                                <tr><td><strong>Unit Status</strong></td><td>: ${h(data.status_unit_name)}</td></tr>
-                                <tr><td><strong>Storage Location</strong></td><td>: ${h(data.lokasi_penyimpanan)}</td></tr>
-                                <tr><td><strong>Physical Condition</strong></td><td>: <span class="badge ${data.kondisi_fisik === 'Baik' ? 'badge-soft-green' : data.kondisi_fisik === 'Rusak Berat' ? 'badge-soft-red' : 'badge-soft-yellow'}">${h(data.kondisi_fisik)}</span></td></tr>
-                                <tr><td><strong>Completeness</strong></td><td>: <span class="badge ${data.kelengkapan === 'Lengkap' ? 'badge-soft-green' : 'badge-soft-yellow'}">${h(data.kelengkapan)}</span></td></tr>
-                                <tr><td><strong>Entry Date</strong></td><td>: ${h(data.tanggal_masuk)}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Purchase Order Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i><strong>Purchase Order Information</strong></h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>PO Number</strong></td><td>: ${h(data.no_po) || 'Manual Entry'}</td></tr>
-                                <tr><td><strong>PO Date</strong></td><td>: ${h(data.tanggal_po) || '-'}</td></tr>
-                                <tr><td><strong>Supplier</strong></td><td>: ${h(data.nama_supplier) || '-'}</td></tr>
-                                <tr><td><strong>PO Status</strong></td><td>: <span class="badge badge-soft-gray">${h(data.status) || '-'}</span></td></tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Additional Information -->
-                <div class="col-12 mb-4">
-                    <div class="card">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i><strong>Additional Information</strong></h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p><strong>Created At:</strong> ${h(data.created_at)}</p>
-                                    <p><strong>Updated At:</strong> ${h(data.updated_at)}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    ${data.catatan_inventory ? `
-                                    <p><strong>Inventory Notes:</strong></p>
-                                    <p class="text-muted">${h(data.catatan_inventory)}</p>
-                                    ` : '<p class="text-muted">No additional notes</p>'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    function showAttachmentQr(token) {
+        const publicUrl = `<?= base_url('attachment-view/') ?>${token}`;
+        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(publicUrl);
+        if (_currentAttachmentData) {
+            _currentAttachmentData.public_url = publicUrl;
+            _currentAttachmentData.public_view_token = token;
+        }
+        $('#attachmentQrBody').html(`
+            <div class="text-center border rounded p-2">
+                <img src="${qrUrl}" alt="QR Code" style="width:160px;height:160px;">
+                <div class="mt-2">
+                    <a href="${publicUrl}" target="_blank" class="btn btn-sm btn-dark me-1">
+                        <i class="fas fa-link me-1"></i>Link
+                    </a>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="downloadAttachmentLabel()">
+                        <i class="fas fa-download me-1"></i>Download Barcode Label
+                    </button>
                 </div>
             </div>
-        `;
+        `);
+    }
+
+    function renderAttachmentDetail(data) {
+        const h = (s) => (s===null||s===undefined||s==='')?'-':String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const badge = (val, map) => { const cls = map[val]||'badge-soft-gray'; return `<span class="badge ${cls}">${h(val)}</span>`; };
+        const statusMap = {AVAILABLE:'badge-soft-green',IN_USE:'badge-soft-blue',SPARE:'badge-soft-cyan',MAINTENANCE:'badge-soft-yellow',BROKEN:'badge-soft-red',RESERVED:'badge-soft-gray',SOLD:'badge-soft-gray'};
+        const condMap = {GOOD:'badge-soft-green',MINOR_DAMAGE:'badge-soft-yellow',MAJOR_DAMAGE:'badge-soft-red'};
+        const condLabel = {GOOD:'Good',MINOR_DAMAGE:'Minor Damage',MAJOR_DAMAGE:'Major Damage'};
+        const fmt = (d) => { if(!d) return '-'; try{return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;} };
+        const fmtDt = (d) => { if(!d) return '-'; try{return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return d;} };
+
+        // — Status strip at top —
+        const statusVal  = data.status || data.attachment_status || '-';
+        const condVal    = data.physical_condition || data.kondisi_fisik || '';
+        const condLbl    = condLabel[condVal] || condVal;
+        let header = `
+        <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom flex-wrap">
+            <span class="fw-bold font-monospace fs-6">${h(data.item_number||data.no_item||'#'+data.id)}</span>
+            ${badge(statusVal, statusMap)}
+            ${condVal ? badge(condVal, condMap).replace('>'+h(condVal)+'<', '>'+h(condLbl)+'<') : ''}
+        </div>`;
+
+        // — Asset Info card —
+        const sn = data.serial_number || data.sn_attachment || data.sn_baterai || data.sn_charger || data.sn_fork || '';
+        let assetCard = `
+        <div class="card mb-3">
+            <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-box me-2 text-secondary"></i><strong>Informasi Aset</strong></h6></div>
+            <div class="card-body p-0">
+                <dl class="row mb-0 small px-3 pt-2">
+                    <dt class="col-5 text-muted">Item Number</dt><dd class="col-7 fw-bold font-monospace">${h(data.item_number||data.no_item)}</dd>
+                    <dt class="col-5 text-muted">Serial Number</dt><dd class="col-7 fw-bold font-monospace">${sn||'-'}</dd>
+                    <dt class="col-5 text-muted">Status</dt><dd class="col-7">${badge(statusVal,statusMap)}</dd>
+                    <dt class="col-5 text-muted">Kondisi</dt><dd class="col-7">${condVal?badge(condVal,condMap).replace('>'+h(condVal)+'<', '>'+h(condLbl)+'<'):'-'}</dd>
+                    <dt class="col-5 text-muted">Kelengkapan</dt><dd class="col-7">${badge(data.completeness||data.kelengkapan||'-',{COMPLETE:'badge-soft-green',INCOMPLETE:'badge-soft-yellow'})}</dd>
+                    <dt class="col-5 text-muted">Lokasi Simpan</dt><dd class="col-7">${h(data.storage_location||data.lokasi_penyimpanan)}</dd>
+                    <dt class="col-5 text-muted">Tanggal Masuk</dt><dd class="col-7">${fmt(data.received_at||data.tanggal_masuk)}</dd>
+                    <dt class="col-5 text-muted">Dibuat</dt><dd class="col-7">${fmtDt(data.created_at)}</dd>
+                    <dt class="col-5 text-muted">Diperbarui</dt><dd class="col-7">${fmtDt(data.updated_at)}</dd>
+                </dl>
+                ${data.notes||data.catatan_inventory?`<div class="px-3 pb-2 pt-1 border-top"><span class="small text-muted"><i class="fas fa-sticky-note me-1"></i></span><span class="small fst-italic">${h(data.notes||data.catatan_inventory)}</span></div>`:''}
+            </div>
+        </div>`;
+
+        // — Type-specific specs card —
+        let specsCard = '';
+        const tipe = data.tipe_item || '';
+        if (tipe === 'attachment') {
+            specsCard = `
+            <div class="card mb-3">
+                <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-puzzle-piece me-2 text-primary"></i><strong>Spesifikasi Attachment</strong></h6></div>
+                <div class="card-body p-0">
+                    <dl class="row mb-0 small px-3 py-2">
+                        <dt class="col-5 text-muted">Merk</dt><dd class="col-7 fw-bold">${h(data.merk||data.attachment_merk)}</dd>
+                        <dt class="col-5 text-muted">Tipe</dt><dd class="col-7">${h(data.tipe||data.attachment_tipe)}</dd>
+                        <dt class="col-5 text-muted">Model</dt><dd class="col-7">${h(data.model||data.attachment_model)}</dd>
+                        <dt class="col-5 text-muted">Kapasitas Maks</dt><dd class="col-7">${h(data.max_capacity)}</dd>
+                    </dl>
+                </div>
+            </div>`;
+        } else if (tipe === 'battery') {
+            specsCard = `
+            <div class="card mb-3">
+                <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-battery-half me-2 text-success"></i><strong>Spesifikasi Battery</strong></h6></div>
+                <div class="card-body p-0">
+                    <dl class="row mb-0 small px-3 py-2">
+                        <dt class="col-5 text-muted">Merk</dt><dd class="col-7 fw-bold">${h(data.merk_baterai)}</dd>
+                        <dt class="col-5 text-muted">Tipe</dt><dd class="col-7">${h(data.tipe_baterai)}</dd>
+                        <dt class="col-5 text-muted">Jenis</dt><dd class="col-7">${h(data.jenis_baterai)}</dd>
+                        <dt class="col-5 text-muted">Voltage</dt><dd class="col-7">${h(data.voltage)}</dd>
+                        <dt class="col-5 text-muted">Ampere</dt><dd class="col-7">${h(data.ampere)}</dd>
+                    </dl>
+                </div>
+            </div>`;
+        } else if (tipe === 'charger') {
+            specsCard = `
+            <div class="card mb-3">
+                <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-plug me-2 text-warning"></i><strong>Spesifikasi Charger</strong></h6></div>
+                <div class="card-body p-0">
+                    <dl class="row mb-0 small px-3 py-2">
+                        <dt class="col-5 text-muted">Merk</dt><dd class="col-7 fw-bold">${h(data.merk_charger)}</dd>
+                        <dt class="col-5 text-muted">Tipe</dt><dd class="col-7">${h(data.tipe_charger)}</dd>
+                        <dt class="col-5 text-muted">Input Voltage</dt><dd class="col-7">${h(data.input_voltage)}</dd>
+                        <dt class="col-5 text-muted">Output Voltage</dt><dd class="col-7">${h(data.output_voltage)}</dd>
+                        <dt class="col-5 text-muted">Frekuensi</dt><dd class="col-7">${h(data.frequency)}</dd>
+                    </dl>
+                </div>
+            </div>`;
+        } else if (tipe === 'fork') {
+            specsCard = `
+            <div class="card mb-3">
+                <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-grip-lines-vertical me-2 text-secondary"></i><strong>Spesifikasi Fork</strong></h6></div>
+                <div class="card-body p-0">
+                    <dl class="row mb-0 small px-3 py-2">
+                        <dt class="col-5 text-muted">Spec Name</dt><dd class="col-7 fw-bold">${h(data.fork_spec_name||data.fork_name)}</dd>
+                        <dt class="col-5 text-muted">Class</dt><dd class="col-7">${h(data.fork_class)}</dd>
+                        <dt class="col-5 text-muted">Panjang</dt><dd class="col-7">${data.length_mm?h(data.length_mm)+' mm':'-'}</dd>
+                        <dt class="col-5 text-muted">Lebar</dt><dd class="col-7">${data.width_mm?h(data.width_mm)+' mm':'-'}</dd>
+                        <dt class="col-5 text-muted">Kapasitas</dt><dd class="col-7">${data.capacity_kg?h(data.capacity_kg)+' kg':'-'}</dd>
+                        <dt class="col-5 text-muted">Qty Pair</dt><dd class="col-7">${h(data.qty_pairs)}</dd>
+                    </dl>
+                </div>
+            </div>`;
+        }
+
+        // — PO Info card (only when PO exists) —
+        let poCard = '';
+        if (data.no_po) {
+            poCard = `
+            <div class="card mb-3">
+                <div class="card-header bg-light py-2"><h6 class="mb-0 small"><i class="fas fa-file-invoice me-2 text-secondary"></i><strong>Purchase Order</strong></h6></div>
+                <div class="card-body p-0">
+                    <dl class="row mb-0 small px-3 py-2">
+                        <dt class="col-5 text-muted">No. PO</dt><dd class="col-7 fw-bold font-monospace">${h(data.no_po)}</dd>
+                        <dt class="col-5 text-muted">Tanggal PO</dt><dd class="col-7">${fmt(data.tanggal_po)}</dd>
+                        <dt class="col-5 text-muted">Supplier</dt><dd class="col-7">${h(data.nama_supplier)}</dd>
+                        <dt class="col-5 text-muted">Status PO</dt><dd class="col-7">${badge(data.po_status||'-',{APPROVED:'badge-soft-green',PENDING:'badge-soft-yellow'})}</dd>
+                    </dl>
+                </div>
+            </div>`;
+        }
+
+        $('#attachmentDetailContent').html(header + assetCard + specsCard + poCard);
+    }
+
+    function renderAttachmentSidebar(data) {
+        const h = (s) => (s===null||s===undefined||s==='')?'-':String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const statusMap = {AVAILABLE:'badge-soft-green',IN_USE:'badge-soft-blue',SPARE:'badge-soft-cyan',MAINTENANCE:'badge-soft-yellow',BROKEN:'badge-soft-red',RESERVED:'badge-soft-gray',SOLD:'badge-soft-gray'};
+        const typeIcon = {attachment:'fa-puzzle-piece text-primary',battery:'fa-battery-half text-success',charger:'fa-plug text-warning',fork:'fa-grip-lines-vertical text-secondary'};
+        const tipe = data.tipe_item || 'attachment';
+        const icon = typeIcon[tipe] || 'fa-box text-muted';
+        const typeLabel = tipe.charAt(0).toUpperCase()+tipe.slice(1);
+        const statusVal = data.status || data.attachment_status || '-';
+        const sn = data.serial_number || data.sn_attachment || data.sn_baterai || data.sn_charger || data.sn_fork || '';
+        const noUnit = data.no_unit || data.unit_no_polisi || '';
+
+        // Blue outline only when installed on a unit
+        const isInstalled = !!noUnit;
+        const cardBorder  = isInstalled ? 'border-primary border-opacity-25' : 'border';
+        const cardBg      = isInstalled ? 'style="background:rgba(13,110,253,.05)"' : '';
+
+        const unitSn    = data.unit_sn    || data.unit_serial_number || '';
+        const unitMerk  = data.unit_merk  || '';
+        const unitModel = data.unit_model || '';
+        const unitJenis = data.unit_jenis || '';
+
+        const unitRow = isInstalled
+            ? `<div class="mt-2 pt-2 border-top">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fas fa-truck text-primary"></i>
+                    <span class="small fw-semibold text-primary">Terpasang di Unit</span>
+                </div>
+                <dl class="row mb-0 small ms-1">
+                    <dt class="col-5 text-muted">No Unit</dt>
+                    <dd class="col-7 fw-bold font-monospace">${h(noUnit)}</dd>
+                    ${unitSn?`<dt class="col-5 text-muted">S/N Unit</dt><dd class="col-7 font-monospace">${h(unitSn)}</dd>`:''}
+                    ${unitMerk?`<dt class="col-5 text-muted">Merk</dt><dd class="col-7">${h(unitMerk)}</dd>`:''}
+                    ${unitModel?`<dt class="col-5 text-muted">Model</dt><dd class="col-7">${h(unitModel)}</dd>`:''}
+                    ${unitJenis?`<dt class="col-5 text-muted">Jenis</dt><dd class="col-7">${h(unitJenis)}</dd>`:''}
+                </dl>
+               </div>`
+            : `<div class="mt-2 pt-2 border-top text-muted small">
+                <i class="fas fa-circle-xmark me-1"></i>Belum terpasang di unit
+               </div>`;
+
+        $('#attachmentQuickInfo').html(`
+            <div class="card mb-3 ${cardBorder}">
+                <div class="card-header py-2 d-flex align-items-center justify-content-between" ${cardBg}>
+                    <h6 class="mb-0 small fw-semibold"><i class="fas fa-info-circle me-2 ${isInstalled?'text-primary':'text-muted'}"></i>Quick Info</h6>
+                    <span class="badge ${statusMap[statusVal]||'badge-soft-gray'}">${h(statusVal)}</span>
+                </div>
+                <div class="card-body py-2 px-3">
+                    ${unitRow}
+                </div>
+            </div>
+        `);
+    }
+
+    function createAttachmentDetailHtml(data) {
+        // Legacy fallback — now handled by renderAttachmentDetail
+        renderAttachmentDetail(data);
+        return '';
     }
 
 
@@ -2073,9 +2261,17 @@
     // ── Attachment History ──────────────────────────────────────────────
     let attachmentHistoryLoaded = null;
 
+    // Cached history data for filter/group-by re-render without re-fetch
+    var _cachedTimeline = [];
+    var _historyLoadedForId = null;
+
     function loadAttachmentHistory(attachmentId) {
         if (!attachmentId) return;
-        if (attachmentHistoryLoaded === attachmentId) return; // already loaded
+        // If same item & already cached, just re-render with current filters
+        if (_historyLoadedForId === attachmentId && _cachedTimeline.length >= 0) {
+            applyAttHistoryFilter();
+            return;
+        }
 
         $('#attachmentHistoryContent').html(`
             <div class="text-center py-5">
@@ -2091,11 +2287,13 @@
             success: function(response) {
                 if (response.success) {
                     attachmentHistoryLoaded = attachmentId;
-                    const total = response.total || 0;
+                    _historyLoadedForId = attachmentId;
+                    _cachedTimeline = response.timeline || [];
+                    const total = _cachedTimeline.length;
                     if (total > 0) {
                         $('#attHistoryBadge').text(total).show();
                     }
-                    $('#attachmentHistoryContent').html(renderAttachmentTimeline(response.timeline || []));
+                    applyAttHistoryFilter();
                 } else {
                     $('#attachmentHistoryContent').html(`
                         <div class="alert alert-danger m-3">
@@ -2116,80 +2314,96 @@
         });
     }
 
-    function renderAttachmentTimeline(timeline) {
+    function applyAttHistoryFilter() {
+        const filterVal = $('#attHistoryFilter').val() || 'all';
+        const groupBy   = $('#attHistoryGroup').val() || 'date';
+
+        let items = _cachedTimeline.slice();
+
+        // Filter
+        if (filterVal !== 'all') {
+            items = items.filter(i => (i.source || 'log') === filterVal || (i.type || '') === filterVal);
+        }
+
+        $('#attachmentHistoryContent').html(renderAttachmentTimeline(items, groupBy));
+    }
+
+    function resetAttachmentHistory(attachmentId) {
+        _historyLoadedForId = null;
+        _cachedTimeline = [];
+        attachmentHistoryLoaded = false;
+        $('#attHistoryBadge').hide().text('');
+        loadAttachmentHistory(attachmentId || currentAttachmentId);
+    }
+
+    function renderAttachmentTimeline(timeline, groupBy) {
+        groupBy = groupBy || 'date';
         if (!timeline || timeline.length === 0) {
             return `
                 <div class="text-center text-muted py-5">
                     <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
                     <h6>Belum Ada Aktivitas</h6>
-                    <p class="small">Attachment ini belum memiliki history tercatat.</p>
+                    <p class="small">Tidak ada aktivitas yang cocok dengan filter ini.</p>
                 </div>
             `;
         }
 
         const colorHexMap = {
-            primary: '#0d6efd', success: '#198754', warning: '#ffc107',
-            info: '#0dcaf0', secondary: '#6c757d', dark: '#212529', danger: '#dc3545'
+            primary:'#0d6efd',success:'#198754',warning:'#ffc107',
+            info:'#0dcaf0',secondary:'#6c757d',dark:'#212529',danger:'#dc3545',
+            purple:'#6f42c1',orange:'#fd7e14',cyan:'#0dcaf0'
+        };
+        const h = (s) => {
+            if (s===null||s===undefined) return '-';
+            return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
         };
         const formatDate = (d) => {
             if (!d) return '-';
-            try { return new Date(d).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+            try { return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
             catch(e){ return d; }
         };
-        const h = (s) => {
-            if (s === null || s === undefined) return '-';
-            return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const formatDateShort = (d) => {
+            if (!d) return '-';
+            try { return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}); }
+            catch(e){ return d; }
+        };
+        const srcBadgeFn = (src) => {
+            if (src==='seed') return `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;">legacy</span>`;
+            if (src==='movement') return `<span class="badge badge-soft-blue ms-1" style="font-size:0.65rem;"><i class="fas fa-truck me-1"></i>Surat Jalan</span>`;
+            if (src==='audit_log') return `<span class="badge badge-soft-purple ms-1" style="font-size:0.65rem;"><i class="fas fa-clipboard-check me-1"></i>Audit</span>`;
+            return '';
         };
 
-        let html = `<div class="p-3">
-            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                <i class="fas fa-history text-primary me-2"></i>
-                <span class="fw-semibold">Timeline Attachment</span>
-                <span class="badge badge-soft-blue ms-2">${timeline.length} event</span>
-            </div>
-            <div style="position:relative; padding-left:2.5rem;">
-                <div style="position:absolute;left:1rem;top:0;bottom:0;width:2px;background:#dee2e6;border-radius:2px;"></div>`;
+        const buildItemHtml = (item) => {
+            const color   = item.color || 'secondary';
+            const hex     = colorHexMap[color] || '#6c757d';
+            const icon    = item.icon || 'fas fa-circle';
+            const title   = item.title || '';
+            const desc    = item.description || item.subtitle || '';
+            const user    = item.performed_by || item.user || null;
+            const ref     = item.ref_number || null;
+            const src     = item.source || 'log';
+            const userHtml= user ? `<div class="text-muted" style="font-size:0.72rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
+            const refHtml = ref ? `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
 
-        timeline.forEach(item => {
-            const color    = item.color || 'secondary';
-            const hex      = colorHexMap[color] || '#6c757d';
-            const icon     = item.icon || 'fas fa-circle';
-            const title    = item.title || '';
-            const desc     = item.description || item.subtitle || '';
-            const user     = item.performed_by || item.user || null;
-            const ref      = item.ref_number || null;
-            const src      = item.source || 'log';
-            const srcBadge = src === 'seed'
-                ? `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;">legacy</span>`
-                : (src === 'movement'
-                    ? `<span class="badge badge-soft-blue ms-1" style="font-size:0.65rem;"><i class="fas fa-truck me-1"></i>Surat Jalan</span>`
-                    : (src === 'audit_log'
-                        ? `<span class="badge badge-soft-purple ms-1" style="font-size:0.65rem;"><i class="fas fa-clipboard-check me-1"></i>Audit</span>`
-                        : ''));
-            const userHtml = user ? `<div class="text-muted" style="font-size:0.72rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
-            const refHtml  = ref ? `<span class="badge badge-soft-gray ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
-
-            // Build details rows (key-value pairs from backend)
             let detailsHtml = '';
             if (item.details && typeof item.details === 'object' && !Array.isArray(item.details)) {
                 const rows = Object.entries(item.details)
-                    .filter(([k, v]) => v !== null && v !== undefined && v !== '')
-                    .map(([k, v]) => `<tr><td class="text-muted pe-2" style="white-space:nowrap;font-size:0.72rem;">${h(k)}</td><td style="font-size:0.72rem;">${h(v)}</td></tr>`)
+                    .filter(([k,v]) => v!==null&&v!==undefined&&v!=='')
+                    .map(([k,v]) => `<tr><td class="text-muted pe-2" style="white-space:nowrap;font-size:0.72rem;">${h(k)}</td><td style="font-size:0.72rem;">${h(v)}</td></tr>`)
                     .join('');
-                if (rows) {
-                    detailsHtml = `<table class="mt-1 w-100">${rows}</table>`;
-                }
+                if (rows) detailsHtml = `<table class="mt-1 w-100">${rows}</table>`;
             }
 
-            html += `<div class="timeline-item mb-3" style="position:relative;">
-                <div style="position:absolute;left:-2.15rem;top:0.25rem;width:1.25rem;height:1.25rem;border-radius:50%;
-                    background:${hex};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 3px #fff;">
-                    <i class="${h(icon)} text-white" style="font-size:0.55rem;"></i>
+            return `<div class="timeline-item mb-2" style="position:relative;padding-left:2rem;">
+                <div style="position:absolute;left:0;top:0.25rem;width:1.1rem;height:1.1rem;border-radius:50%;
+                    background:${hex};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 2px #fff;">
+                    <i class="${h(icon)} text-white" style="font-size:0.5rem;"></i>
                 </div>
-                <div class="card border-0 shadow-sm" style="border-left:3px solid ${hex} !important;">
+                <div class="card border-0 shadow-sm mb-0" style="border-left:3px solid ${hex} !important;">
                     <div class="card-body py-2 px-3">
                         <div class="d-flex align-items-start justify-content-between flex-wrap gap-1">
-                            <div><span class="fw-semibold small">${h(title)}</span>${srcBadge}${refHtml}</div>
+                            <div><span class="fw-semibold small">${h(title)}</span>${srcBadgeFn(src)}${refHtml}</div>
                             <small class="text-muted text-nowrap"><i class="fas fa-calendar-alt me-1"></i>${h(formatDate(item.date))}</small>
                         </div>
                         ${desc ? `<div class="text-muted small mt-1">${h(desc)}</div>` : ''}
@@ -2198,10 +2412,205 @@
                     </div>
                 </div>
             </div>`;
-        });
+        };
 
-        html += `</div></div>`;
+        let html = `<div class="p-3">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <i class="fas fa-history text-primary me-2"></i>
+                <span class="fw-semibold">Timeline Aktivitas</span>
+                <span class="badge badge-soft-blue ms-2">${timeline.length} event</span>
+            </div>`;
+
+        if (groupBy === 'document') {
+            // Group by reference_type + reference_number
+            const groups = {};
+            const order = [];
+            timeline.forEach(item => {
+                const key = (item.ref_type||item.source||'log') + '|' + (item.ref_number||item.reference_number||'—');
+                if (!groups[key]) { groups[key] = []; order.push(key); }
+                groups[key].push(item);
+            });
+            order.forEach(key => {
+                const parts = key.split('|');
+                const docType = parts[0]; const docNum = parts[1];
+                const items = groups[key];
+                const firstColor = colorHexMap[items[0].color||'secondary'] || '#6c757d';
+                html += `
+                <div class="border rounded mb-3" style="border-left:3px solid ${firstColor} !important;overflow:hidden;">
+                    <div class="px-3 py-2 d-flex align-items-center gap-2" style="background:rgba(0,0,0,.03);border-bottom:1px solid #dee2e6;">
+                        <i class="fas fa-file-alt text-muted" style="font-size:0.8rem;"></i>
+                        <span class="fw-semibold small">${h(docType)}</span>
+                        ${docNum!=='—'?`<span class="badge badge-soft-gray" style="font-size:0.65rem;">${h(docNum)}</span>`:''}
+                        <span class="badge badge-soft-blue ms-auto" style="font-size:0.65rem;">${items.length} event</span>
+                    </div>
+                    <div class="p-3 position-relative" style="padding-left:1rem!important;">
+                        <div style="position:absolute;left:1.5rem;top:0;bottom:0;width:2px;background:#dee2e6;border-radius:2px;"></div>
+                        ${items.map(buildItemHtml).join('')}
+                    </div>
+                </div>`;
+            });
+        } else {
+            // Group by date (default)
+            const groups = {};
+            const order = [];
+            timeline.forEach(item => {
+                const d = item.date ? item.date.substring(0,10) : '0000-00-00';
+                if (!groups[d]) { groups[d] = []; order.push(d); }
+                groups[d].push(item);
+            });
+            order.forEach(dateKey => {
+                const items = groups[dateKey];
+                const label = dateKey === '0000-00-00' ? 'Tanggal tidak diketahui' : formatDateShort(dateKey);
+                html += `
+                <div class="border rounded mb-3" style="overflow:hidden;">
+                    <div class="px-3 py-2 d-flex align-items-center gap-2" style="background:rgba(0,0,0,.03);border-bottom:1px solid #dee2e6;">
+                        <i class="fas fa-calendar-day text-muted" style="font-size:0.8rem;"></i>
+                        <span class="fw-semibold small">${label}</span>
+                        <span class="badge badge-soft-blue ms-auto" style="font-size:0.65rem;">${items.length} event</span>
+                    </div>
+                    <div class="p-3 position-relative" style="padding-left:1rem!important;">
+                        <div style="position:absolute;left:1.5rem;top:0;bottom:0;width:2px;background:#dee2e6;border-radius:2px;"></div>
+                        ${items.map(buildItemHtml).join('')}
+                    </div>
+                </div>`;
+            });
+        }
+
+        html += `</div>`;
         return html;
+    }
+
+    function printAttachmentLabel() {
+        // Print: open public page in new tab and trigger browser print
+        const data = _currentAttachmentData;
+        if (!data) { alert('Tidak ada data untuk dicetak.'); return; }
+        if (data.public_url) {
+            const win = window.open(data.public_url, '_blank');
+            if (win) setTimeout(() => win.print(), 1200);
+        } else {
+            if (window.OptimaNotify) OptimaNotify.warning('QR code belum tersedia. Tunggu sebentar lalu coba lagi.', 'Info');
+        }
+    }
+
+    async function downloadAttachmentLabel() {
+        try {
+            const data = _currentAttachmentData;
+            if (!data) { alert('Tidak ada data.'); return; }
+
+            const itemNo   = String(data.item_number || data.no_item || '-');
+            const serial   = String(data.serial_number || data.sn_attachment || data.sn_baterai || data.sn_charger || data.sn_fork || '-');
+            const tipe     = String((data.tipe_item||'item').charAt(0).toUpperCase()+(data.tipe_item||'item').slice(1));
+            const merk     = String(data.merk || data.attachment_merk || data.merk_baterai || data.merk_charger || '');
+            const model    = String(data.model || data.attachment_model || data.tipe_baterai || data.tipe_charger || data.fork_spec_name || '');
+            const status   = String(data.status || data.attachment_status || '-');
+            const unit     = String(data.no_unit || '-');
+            const publicUrl = String(data.public_url || '');
+            const qrUrl    = publicUrl ? 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(publicUrl) : '';
+            const logoUrl  = '<?= base_url('assets/images/company-logo.svg') ?>';
+
+            async function loadImageAsObjectUrl(url) {
+                if (!url) return null;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to load image: ' + url);
+                const blob = await res.blob();
+                return URL.createObjectURL(blob);
+            }
+            async function loadImg(url) {
+                return new Promise(function(resolve, reject) {
+                    var img = new Image();
+                    img.onload = function() { resolve(img); };
+                    img.onerror = reject;
+                    img.src = url;
+                });
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.width = 1500;
+            canvas.height = 920;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#2c2f39';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+            // Green accent wave background
+            ctx.fillStyle = '#ebf9f0';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(canvas.width, 0);
+            ctx.lineTo(canvas.width, 165);
+            ctx.bezierCurveTo(canvas.width * 0.68, 112, canvas.width * 0.42, 235, 0, 160);
+            ctx.closePath();
+            ctx.fill();
+
+            // Secondary accent
+            ctx.fillStyle = '#d7f2e1';
+            ctx.beginPath();
+            ctx.moveTo(0, 155);
+            ctx.bezierCurveTo(canvas.width * 0.30, 235, canvas.width * 0.66, 75, canvas.width, 142);
+            ctx.lineTo(canvas.width, 205);
+            ctx.bezierCurveTo(canvas.width * 0.70, 145, canvas.width * 0.35, 285, 0, 215);
+            ctx.closePath();
+            ctx.fill();
+
+            // Left detail panel
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(48, 228, 885, 630);
+            ctx.fillRect(952, 228, 500, 500);
+            ctx.strokeStyle = '#dfe5eb';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(48, 228, 885, 630);
+            ctx.strokeRect(952, 228, 500, 500);
+
+            ctx.fillStyle = '#20232a';
+            ctx.font = '700 42px Arial';
+            var y = 312;
+            function drawRow(label, value) {
+                ctx.font = '500 36px Arial';
+                ctx.fillStyle = '#6b7280';
+                ctx.fillText(label, 88, y);
+                ctx.font = '600 40px Arial';
+                ctx.fillStyle = '#20232a';
+                ctx.fillText(value || '-', 310, y);
+                y += 74;
+            }
+            drawRow('Item #:', itemNo);
+            drawRow('Serial:', serial);
+            drawRow('Tipe:', tipe);
+            drawRow('Merk:', merk);
+            drawRow('Model:', model);
+
+            var tmpUrls = [];
+            if (logoUrl) {
+                try {
+                    const logoObjTop = await loadImageAsObjectUrl(logoUrl);
+                    tmpUrls.push(logoObjTop);
+                    const logoImgTop = await loadImg(logoObjTop);
+                    ctx.drawImage(logoImgTop, 78, 28, 300, 120);
+                } catch (e) {}
+            }
+            if (qrUrl) {
+                try {
+                    const qrObj = await loadImageAsObjectUrl(qrUrl);
+                    tmpUrls.push(qrObj);
+                    const qrImg = await loadImg(qrObj);
+                    ctx.drawImage(qrImg, 980, 256, 444, 444);
+                } catch (e) {}
+            }
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'barcode-label-' + itemNo.replace(/[^a-zA-Z0-9_-]/g, '_') + '.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            tmpUrls.forEach(function(u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+        } catch (err) {
+            console.error(err);
+            if (window.OptimaNotify) OptimaNotify.error('Gagal generate barcode label.');
+        }
     }
 </script>
 <?= $this->endSection() ?>

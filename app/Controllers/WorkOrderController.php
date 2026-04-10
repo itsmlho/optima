@@ -2658,8 +2658,18 @@ class WorkOrderController extends Controller
                 AND wo_check.deleted_at IS NULL
                 AND wos_check.status_code NOT IN ('CLOSED','COMPLETED')
             )";
-            
-            $sql .= " ORDER BY iu.no_unit ASC";
+
+            // Server-side search: filter by keyword across key columns, limit results for performance
+            $search = $this->request->getGet('search');
+            if ($search !== null && trim($search) !== '') {
+                $term = '%' . $db->escapeLikeString(trim($search)) . '%';
+                $sql .= " AND (iu.no_unit LIKE ? OR tu.jenis LIKE ? OR kp.kapasitas_unit LIKE ?"
+                      . " OR mu.merk_unit LIKE ? OR mu.model_unit LIKE ? OR c.customer_name LIKE ? OR su.status_unit LIKE ?)";
+                $bindings = array_merge($bindings, [$term, $term, $term, $term, $term, $term, $term]);
+                $sql .= " ORDER BY iu.no_unit ASC LIMIT 30";
+            } else {
+                $sql .= " ORDER BY iu.no_unit ASC";
+            }
             
             $result = $db->query($sql, $bindings);
             $units = $result->getResultArray();

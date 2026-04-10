@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\QuotationModel;
 use App\Models\QuotationSpecificationHistoryModel;
 use App\Models\QuotationSpecificationModel;
+use App\Models\QuotationSpecTemplateModel;
 use App\Traits\ActivityLoggingTrait;
 
 class Quotation extends BaseController
@@ -984,6 +985,222 @@ class Quotation extends BaseController
                 'success' => false,
                 'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  SPECIFICATION TEMPLATES
+    // ──────────────────────────────────────────────────────
+
+    /**
+     * GET api/v1/quotation/spec-templates
+     * Return list of all active templates (for dropdown + manager).
+     */
+    public function getSpecTemplates()
+    {
+        if (!$this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+        try {
+            $model     = new QuotationSpecTemplateModel();
+            $templates = $model->getTemplatesWithDetails();
+            return $this->response->setJSON([
+                'success'   => true,
+                'data'      => $templates,
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getSpecTemplates error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Server error']);
+        }
+    }
+
+    /**
+     * GET api/v1/quotation/spec-templates/{id}
+     * Return a single template with all JOIN data (used to prefill the spec form).
+     */
+    public function getSpecTemplateDetail(int $id)
+    {
+        if (!$this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+        try {
+            $model    = new QuotationSpecTemplateModel();
+            $template = $model->getTemplateForForm($id);
+            if (!$template) {
+                return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Template tidak ditemukan']);
+            }
+            return $this->response->setJSON([
+                'success'   => true,
+                'data'      => $template,
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getSpecTemplateDetail error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Server error']);
+        }
+    }
+
+    /**
+     * POST api/v1/quotation/spec-templates
+     * Create a new specification template.
+     */
+    public function createSpecTemplate()
+    {
+        if (!$this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+        try {
+            $post = $this->request->getPost();
+
+            $templateName = trim($post['template_name'] ?? '');
+            if ($templateName === '') {
+                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Nama template wajib diisi']);
+            }
+
+            $model = new QuotationSpecTemplateModel();
+
+            // Parse accessories array → comma-separated string
+            $accessories = $post['unit_accessories'] ?? null;
+            if (is_array($accessories)) {
+                $accessories = implode(',', array_filter(array_map('trim', $accessories)));
+            }
+
+            $data = [
+                'template_name'         => $templateName,
+                'template_description'  => $post['template_description'] ?? null,
+                'specification_type'    => $post['specification_type'] ?? 'UNIT',
+                'departemen_id'         => ($post['departemen_id'] ?? '') !== '' ? (int)$post['departemen_id'] : null,
+                'tipe_unit_id'          => ($post['tipe_unit_id'] ?? '') !== '' ? (int)$post['tipe_unit_id'] : null,
+                'kapasitas_id'          => ($post['kapasitas_id'] ?? '') !== '' ? (int)$post['kapasitas_id'] : null,
+                'brand_id'              => ($post['brand_id'] ?? '') !== '' ? (int)$post['brand_id'] : null,
+                'fork_id'               => ($post['fork_id'] ?? '') !== '' ? (int)$post['fork_id'] : null,
+                'battery_id'            => ($post['battery_id'] ?? '') !== '' ? (int)$post['battery_id'] : null,
+                'attachment_id'         => ($post['attachment_id'] ?? '') !== '' ? (int)$post['attachment_id'] : null,
+                'charger_id'            => ($post['charger_id'] ?? '') !== '' ? (int)$post['charger_id'] : null,
+                'mast_id'               => ($post['mast_id'] ?? '') !== '' ? (int)$post['mast_id'] : null,
+                'ban_id'                => ($post['ban_id'] ?? '') !== '' ? (int)$post['ban_id'] : null,
+                'roda_id'               => ($post['roda_id'] ?? '') !== '' ? (int)$post['roda_id'] : null,
+                'valve_id'              => ($post['valve_id'] ?? '') !== '' ? (int)$post['valve_id'] : null,
+                'unit_accessories'      => $accessories ?: null,
+                'notes'                 => $post['notes'] ?? null,
+                'default_monthly_price' => ($post['default_monthly_price'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['default_monthly_price']) : null,
+                'default_daily_price'   => ($post['default_daily_price'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['default_daily_price']) : null,
+                'include_operator'      => !empty($post['include_operator']) ? 1 : 0,
+                'operator_quantity'     => ($post['operator_quantity'] ?? '') !== '' ? (int)$post['operator_quantity'] : 0,
+                'operator_monthly_rate' => ($post['operator_monthly_rate'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['operator_monthly_rate']) : null,
+                'operator_daily_rate'   => ($post['operator_daily_rate'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['operator_daily_rate']) : null,
+                'created_by'            => (int) ($this->session->get('user_id') ?? 0) ?: null,
+                'is_active'             => 1,
+            ];
+
+            $id = $model->insert($data, true);
+            if (!$id) {
+                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Gagal menyimpan template']);
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Template berhasil disimpan',
+                'id'        => $id,
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'createSpecTemplate error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Server error']);
+        }
+    }
+
+    /**
+     * POST api/v1/quotation/spec-templates/{id}
+     * Update an existing specification template.
+     */
+    public function updateSpecTemplate(int $id)
+    {
+        if (!$this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+        try {
+            $model    = new QuotationSpecTemplateModel();
+            $existing = $model->find($id);
+            if (!$existing) {
+                return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Template tidak ditemukan']);
+            }
+
+            $post = $this->request->getPost();
+
+            $templateName = trim($post['template_name'] ?? '');
+            if ($templateName === '') {
+                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Nama template wajib diisi']);
+            }
+
+            $accessories = $post['unit_accessories'] ?? null;
+            if (is_array($accessories)) {
+                $accessories = implode(',', array_filter(array_map('trim', $accessories)));
+            }
+
+            $data = [
+                'template_name'         => $templateName,
+                'template_description'  => $post['template_description'] ?? null,
+                'specification_type'    => $post['specification_type'] ?? 'UNIT',
+                'departemen_id'         => ($post['departemen_id'] ?? '') !== '' ? (int)$post['departemen_id'] : null,
+                'tipe_unit_id'          => ($post['tipe_unit_id'] ?? '') !== '' ? (int)$post['tipe_unit_id'] : null,
+                'kapasitas_id'          => ($post['kapasitas_id'] ?? '') !== '' ? (int)$post['kapasitas_id'] : null,
+                'brand_id'              => ($post['brand_id'] ?? '') !== '' ? (int)$post['brand_id'] : null,
+                'fork_id'               => ($post['fork_id'] ?? '') !== '' ? (int)$post['fork_id'] : null,
+                'battery_id'            => ($post['battery_id'] ?? '') !== '' ? (int)$post['battery_id'] : null,
+                'attachment_id'         => ($post['attachment_id'] ?? '') !== '' ? (int)$post['attachment_id'] : null,
+                'charger_id'            => ($post['charger_id'] ?? '') !== '' ? (int)$post['charger_id'] : null,
+                'mast_id'               => ($post['mast_id'] ?? '') !== '' ? (int)$post['mast_id'] : null,
+                'ban_id'                => ($post['ban_id'] ?? '') !== '' ? (int)$post['ban_id'] : null,
+                'roda_id'               => ($post['roda_id'] ?? '') !== '' ? (int)$post['roda_id'] : null,
+                'valve_id'              => ($post['valve_id'] ?? '') !== '' ? (int)$post['valve_id'] : null,
+                'unit_accessories'      => $accessories ?: null,
+                'notes'                 => $post['notes'] ?? null,
+                'default_monthly_price' => ($post['default_monthly_price'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['default_monthly_price']) : null,
+                'default_daily_price'   => ($post['default_daily_price'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['default_daily_price']) : null,
+                'include_operator'      => !empty($post['include_operator']) ? 1 : 0,
+                'operator_quantity'     => ($post['operator_quantity'] ?? '') !== '' ? (int)$post['operator_quantity'] : 0,
+                'operator_monthly_rate' => ($post['operator_monthly_rate'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['operator_monthly_rate']) : null,
+                'operator_daily_rate'   => ($post['operator_daily_rate'] ?? '') !== '' ? (float)str_replace(['.', ','], ['', '.'], $post['operator_daily_rate']) : null,
+            ];
+
+            $model->update($id, $data);
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Template berhasil diperbarui',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'updateSpecTemplate error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Server error']);
+        }
+    }
+
+    /**
+     * DELETE api/v1/quotation/spec-templates/{id}
+     * Hard-delete a template (templates are not linked to saved specs).
+     */
+    public function deleteSpecTemplate(int $id)
+    {
+        if (!$this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+        try {
+            $model    = new QuotationSpecTemplateModel();
+            $existing = $model->find($id);
+            if (!$existing) {
+                return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Template tidak ditemukan']);
+            }
+            $model->delete($id);
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Template berhasil dihapus',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'deleteSpecTemplate error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Server error']);
         }
     }
 

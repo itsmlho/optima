@@ -556,7 +556,7 @@
 
         let allVerified = true;
 
-        $form.find('tbody tr').each(function() {
+        $form.find('tbody tr').filter(':visible').each(function() {
             const row = $(this);
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
@@ -609,7 +609,7 @@
         const snData = {};
         const discrepancies = [];
         
-        form.find('tbody tr').each(function() {
+        form.find('tbody tr').filter(':visible').each(function() {
             const row = $(this);
             const label = row.find('td:first').text().replace(/\s*\*/g, '').trim();
             
@@ -650,7 +650,7 @@
         });
         
         let hasTidakSesuai = false;
-        form.find('tbody tr').each(function() {
+        form.find('tbody tr').filter(':visible').each(function() {
             const row = $(this);
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             if (tidakSesuaiCheckbox.is(':checked')) {
@@ -994,24 +994,31 @@
 
                     const whDel = $form && $form.length ? $form.data('whDeliveryId') : null;
                     if (whDel) {
-                        $(`#orphan-line-d${whDel}-a${itemId}`).remove();
-                        const sisaPl = $(`#lbl-remain-pl-${whDel}`);
-                        let n = parseInt(sisaPl.text(), 10) || 0;
-                        if (n > 0) {
-                            sisaPl.text(n - 1);
-                        }
                         const $blk = $form.closest('.wh-embed-att-block');
                         if ($blk.length) {
+                            if (typeof window.whPoVerifyDecrementDeliveryPendingOnly === 'function') {
+                                window.whPoVerifyDecrementDeliveryPendingOnly(whDel);
+                            }
                             $blk.fadeOut(300, function() { $(this).remove(); });
                         } else {
-                            $form.closest('.wh-orphan-verify-root').fadeOut(300, function() {
-                                $(this).remove();
-                                $('#wh-verification-detail-container').html(`
+                            if (typeof window.whPoVerifyAfterOrphanSuccess === 'function') {
+                                window.whPoVerifyAfterOrphanSuccess(whDel, itemId);
+                            } else {
+                                $(`#orphan-line-d${whDel}-a${itemId}`).remove();
+                                const sisaPl = $(`.wh-lbl-remain-pl[data-delivery-id="${whDel}"]`).first();
+                                let n = parseInt(sisaPl.text(), 10) || 0;
+                                if (n > 0) {
+                                    $(`.wh-lbl-remain-pl[data-delivery-id="${whDel}"]`).text(String(n - 1));
+                                }
+                                $form.closest('.wh-orphan-verify-root').fadeOut(300, function() {
+                                    $(this).remove();
+                                    $('#wh-verification-detail-container').html(`
                                     <div class="card table-card"><div class="card-body text-center p-5">
                                         <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
                                         <h5 class="text-muted">Verifikasi berhasil. Pilih item lain dari daftar.</h5>
                                     </div></div>`);
-                            });
+                                });
+                            }
                         }
                     } else {
                         let sisaElem = $(`#lbl-remain-attachment-po-${poId}`);

@@ -670,6 +670,26 @@ function submitCheckpoint() {
         showMsg('danger', msg);
     });
 }
+
+// Deep link support: autofill dari URL lalu auto-cari.
+$(function() {
+    try {
+        const p = new URLSearchParams(window.location.search || '');
+        const sj = (p.get('surat_jalan_number') || p.get('suratJalanNumber') || '').trim();
+        const code = (p.get('verification_code') || p.get('verificationCode') || '').trim();
+        if (sj) {
+            $('#sjNumber').val(sj);
+        }
+        if (code) {
+            $('#verifyCode').val(code);
+        }
+        if (sj && code) {
+            lookupSJ();
+        }
+    } catch (e) {
+        // abaikan jika browser lama / URLSearchParams tidak tersedia
+    }
+});
 </script>
 </body>
 </html>

@@ -19,6 +19,8 @@ $routes->get('welcome', 'Welcome::index');
 
 // Public unit view for barcode/QR scan (no login)
 $routes->get('unit-view/(:alphanum)', 'Warehouse\UnitInventoryController::publicView/$1');
+// Public attachment/component view for barcode/QR scan (no login)
+$routes->get('attachment-view/(:alphanum)', 'Warehouse\AttachmentInventoryController::publicView/$1');
 $routes->get('surat-jalan', 'Warehouse\UnitMovementPublicController::index');
 $routes->get('surat-jalan/lookup', 'Warehouse\UnitMovementPublicController::lookup');
 $routes->get('surat-jalan/print', 'Warehouse\UnitMovementPublicController::printSj');
@@ -375,6 +377,13 @@ $routes->group('marketing',  static function ($routes) {
         $routes->post('add-specification', 'Quotation::addSpecification');
         $routes->post('update-specification/(:num)', 'Quotation::updateSpecification/$1');
         $routes->delete('delete-specification/(:num)', 'Quotation::deleteSpecification/$1');
+
+        // Specification Templates Routes
+        $routes->get('spec-templates', 'Quotation::getSpecTemplates');
+        $routes->post('spec-templates', 'Quotation::createSpecTemplate');
+        $routes->get('spec-templates/(:num)', 'Quotation::getSpecTemplateDetail/$1');
+        $routes->post('spec-templates/(:num)', 'Quotation::updateSpecTemplate/$1');
+        $routes->delete('spec-templates/(:num)', 'Quotation::deleteSpecTemplate/$1');
         
         // Dropdown Data Routes
         $routes->get('departments', 'Quotation::getDepartments');
@@ -906,6 +915,7 @@ $routes->group('warehouse', static function ($routes) {
             $routes->get('export/charger',              'Warehouse\AttachmentInventoryController::exportChargerInventory');
             $routes->get('export/fork',                 'Warehouse\AttachmentInventoryController::exportAttachmentInventory');
             $routes->get('units',                       'Warehouse\AttachmentInventoryController::getUnits');
+            $routes->get('get-token/(:num)/(:alpha)',    'Warehouse\AttachmentInventoryController::getPublicToken/$1/$2');
             $routes->get('master/attachment',           'Warehouse\AttachmentInventoryController::masterAttachment');
             $routes->get('master/baterai',              'Warehouse\AttachmentInventoryController::masterBaterai');
             $routes->get('master/charger',              'Warehouse\AttachmentInventoryController::masterCharger');

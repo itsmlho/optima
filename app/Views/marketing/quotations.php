@@ -91,6 +91,10 @@ window.addEventListener('DOMContentLoaded', function() {
             <p class="text-muted small mb-0"><?= lang('Marketing.manage_prospects') ?></p>
         </div>
         <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                    onclick="$('#specTemplateManagerModal').modal('show')">
+                <i class="fas fa-layer-group me-1"></i>Kelola Template
+            </button>
             <?= ui_button('export', lang('App.export'), [
                 'href' => base_url('marketing/quotations/export'),
                 'color' => 'outline-success',
@@ -435,7 +439,23 @@ window.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" name="id_quotation" id="specQuotationId">
                     <input type="hidden" name="id_specification" id="specId">
                     <input type="hidden" name="specification_type" id="specType" value="UNIT">
-                    
+
+                    <!-- ── TEMPLATE SECTION ── -->
+                    <div class="card border-0 bg-light mb-3">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <i class="fas fa-layer-group text-success"></i>
+                                <span class="fw-600 text-success small">Gunakan Template:</span>
+                                <select id="specTemplateSelect" class="form-select form-select-sm flex-grow-1" style="max-width:280px">
+                                    <option value="">-- Pilih template spesifikasi --</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-success" id="applyTemplateBtn" disabled>
+                                    <i class="fas fa-magic me-1"></i>Terapkan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Info Box -->
                     <div class="alert alert-info mb-3">
                         <i class="fas fa-info-circle me-2"></i>
@@ -652,12 +672,232 @@ window.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-top-0">
-                    <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal']) ?>
-                    <?= ui_button('save', '<span id="submitBtnText">Save Specification</span>', [
-                        'type' => 'submit',
-                        'id' => 'submitSpecificationBtn'
-                    ]) ?>
+                <div class="modal-footer bg-light border-top-0 justify-content-between">
+                    <div>
+                        <!-- Save as Template (collapse) -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="saveAsTemplateToggleBtn">
+                            <i class="fas fa-save me-1"></i>Simpan sebagai Template
+                        </button>
+                        <div id="saveAsTemplateInline" class="mt-2 d-none">
+                            <div class="input-group input-group-sm" style="max-width:340px">
+                                <input type="text" class="form-control" id="newTemplateName" placeholder="Nama template (wajib)">
+                                <button type="button" class="btn btn-success" id="confirmSaveTemplateBtn">
+                                    <i class="fas fa-check"></i> Simpan
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="cancelSaveTemplateBtn">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal']) ?>
+                        <?= ui_button('save', '<span id="submitBtnText">Save Specification</span>', [
+                            'type' => 'submit',
+                            'id' => 'submitSpecificationBtn'
+                        ]) ?>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     TEMPLATE MANAGER MODAL
+     ════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="specTemplateManagerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-muted">
+                <h6 class="modal-title fw-600">
+                    <i class="fas fa-layer-group me-2"></i>Kelola Template Spesifikasi
+                </h6>
+                <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Template dapat digunakan kembali saat mengisi spesifikasi baru.</span>
+                    <button type="button" class="btn btn-sm btn-success" id="openCreateTemplateBtn">
+                        <i class="fas fa-plus me-1"></i>Buat Template Baru
+                    </button>
+                </div>
+                <!-- Template list -->
+                <div id="templateManagerList">
+                    <div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin"></i> Memuat...</div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     CREATE / EDIT TEMPLATE MODAL
+     ════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="createEditTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-muted" id="createEditTemplateModalHeader">
+                <h6 class="modal-title fw-600" id="createEditTemplateModalTitle">
+                    <i class="fas fa-layer-group me-2"></i>Buat Template Baru
+                </h6>
+                <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createEditTemplateForm" method="post" action="javascript:void(0)">
+                <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+                    <input type="hidden" id="tplId" name="tpl_id" value="">
+
+                    <!-- Template name & description -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Nama Template <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="template_name" id="tplName" placeholder="Contoh: Forklift Diesel 3T Standard" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi Template <span class="text-muted">(opsional)</span></label>
+                            <input type="text" class="form-control" name="template_description" id="tplDescription"
+                                   placeholder="Keterangan singkat untuk memudahkan pencarian">
+                        </div>
+                    </div>
+
+                    <hr class="my-2">
+                    <h6 class="text-success mb-3"><i class="fas fa-cogs me-2"></i>Spesifikasi Unit</h6>
+
+                    <div class="row g-3">
+                        <!-- Departemen -->
+                        <div class="col-md-6">
+                            <label class="form-label">Departemen</label>
+                            <select class="form-select" name="departemen_id" id="tplDepartemenId">
+                                <option value="">-- Pilih Departemen --</option>
+                            </select>
+                        </div>
+                        <!-- Tipe Unit -->
+                        <div class="col-md-6">
+                            <label class="form-label">Tipe Unit</label>
+                            <select class="form-select" name="tipe_unit_id" id="tplTipeUnitId">
+                                <option value="">-- Pilih Tipe Unit --</option>
+                            </select>
+                        </div>
+                        <!-- Kapasitas -->
+                        <div class="col-md-6">
+                            <label class="form-label">Kapasitas</label>
+                            <select class="form-select" name="kapasitas_id" id="tplKapasitasId">
+                                <option value="">-- Pilih Kapasitas --</option>
+                            </select>
+                        </div>
+                        <!-- Merk/Brand -->
+                        <div class="col-md-6">
+                            <label class="form-label">Merk / Brand</label>
+                            <select class="form-select" name="brand_id" id="tplBrandId">
+                                <option value="">-- Pilih Merk --</option>
+                            </select>
+                        </div>
+                        <!-- Fork / Attachment -->
+                        <div class="col-md-6">
+                            <label class="form-label">Fork / Attachment</label>
+                            <div class="btn-group w-100 mb-2" role="group" id="tplForkAttachToggle">
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptNone" value="none" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="tplOptNone">Tidak Ada</label>
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptFork" value="fork" autocomplete="off">
+                                <label class="btn btn-outline-primary btn-sm" for="tplOptFork"><i class="fas fa-tools me-1"></i>Fork Standar</label>
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptAttachment" value="attachment" autocomplete="off">
+                                <label class="btn btn-outline-success btn-sm" for="tplOptAttachment"><i class="fas fa-paperclip me-1"></i>Attachment</label>
+                            </div>
+                            <div id="tplForkSection" style="display:none;">
+                                <select class="form-select" name="fork_id" id="tplForkId">
+                                    <option value="">-- Pilih Jenis Fork --</option>
+                                </select>
+                                <small class="text-muted">Ukuran fork standar</small>
+                            </div>
+                            <div id="tplAttachSection" style="display:none;">
+                                <select class="form-select" name="attachment_id" id="tplAttachmentId">
+                                    <option value="">-- Pilih Jenis Attachment --</option>
+                                </select>
+                                <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
+                            </div>
+                        </div>
+                        <!-- Mast (2-level) -->
+                        <div class="col-md-3">
+                            <label class="form-label">Mast (Model)</label>
+                            <select class="form-select" id="tplMastModel">
+                                <option value="">Pilih Model Mast</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Mast (Tinggi)</label>
+                            <select class="form-select" name="mast_id" id="tplMastHeight">
+                                <option value="">Pilih model terlebih dahulu</option>
+                            </select>
+                            <small class="text-muted">Untuk mast custom, tulis di Notes</small>
+                        </div>
+                        <!-- Ban -->
+                        <div class="col-md-6">
+                            <label class="form-label">Tipe Ban</label>
+                            <select class="form-select" name="ban_id" id="tplBanId">
+                                <option value="">-- Pilih Ban --</option>
+                            </select>
+                            <small class="text-muted">Solid atau Pneumatic</small>
+                        </div>
+                    </div>
+
+                    <!-- Default Prices -->
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label">Harga Bulanan Default <span class="text-muted">(opsional)</span></label>
+                            <input type="text" class="form-control tpl-price-input" name="default_monthly_price" id="tplMonthlyPrice"
+                                   inputmode="numeric" placeholder="Rp/unit/bulan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Harga Harian Default <span class="text-muted">(opsional)</span></label>
+                            <input type="text" class="form-control tpl-price-input" name="default_daily_price" id="tplDailyPrice"
+                                   inputmode="numeric" placeholder="Rp/unit/hari">
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mt-3">
+                        <label class="form-label">Catatan Default <span class="text-muted">(opsional)</span></label>
+                        <textarea class="form-control" name="notes" id="tplNotes" rows="2"
+                                  placeholder="Kebutuhan teknis atau catatan default untuk template ini"></textarea>
+                    </div>
+
+                    <!-- Accessories -->
+                    <div class="mt-3">
+                        <label class="form-label mb-2"><i class="fas fa-toolbox me-1"></i>Aksesori Default</label>
+                        <div id="accGridTemplate"></div>
+                    </div>
+
+                    <!-- Operator -->
+                    <hr class="my-3">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="tplIncludeOperator" name="include_operator" value="1">
+                        <label class="form-check-label fw-bold" for="tplIncludeOperator">
+                            <i class="fas fa-user-hard-hat me-1"></i>Sertakan Operator
+                        </label>
+                    </div>
+                    <div id="tplOperatorSection" class="row g-3 d-none">
+                        <div class="col-md-4">
+                            <label class="form-label">Jumlah Operator</label>
+                            <input type="number" class="form-control" name="operator_quantity" id="tplOperatorQty" min="1" value="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tarif Bulanan / Operator</label>
+                            <input type="text" class="form-control tpl-price-input" name="operator_monthly_rate" id="tplOperatorMonthly" inputmode="numeric" placeholder="Rp">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tarif Harian / Operator</label>
+                            <input type="text" class="form-control tpl-price-input" name="operator_daily_rate" id="tplOperatorDaily" inputmode="numeric" placeholder="Rp">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success btn-sm" id="saveTemplateFormBtn">
+                        <i class="fas fa-save me-1"></i><span id="saveTemplateBtnText">Simpan Template</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -1132,6 +1372,14 @@ $(function() {
         ['quotationStandard', 'quotationExtra'], {
         name: 'aksesoris[]',
         idPrefix: 'acc_',
+        columnsClass: 'col-md-4 col-sm-6',
+        style: 'inline'
+    });
+    // Template form accessories grid (separate idPrefix to avoid checkbox ID conflicts)
+    OptimaAccessory.renderGroupSections('#accGridTemplate',
+        ['quotationStandard', 'quotationExtra'], {
+        name: 'unit_accessories[]',
+        idPrefix: 'tpl_acc_',
         columnsClass: 'col-md-4 col-sm-6',
         style: 'inline'
     });
@@ -7534,6 +7782,547 @@ $('#createSPKForm').on('submit', function(e) {
 
 
 // Third $(document).ready() block removed - merged into main block above
+
+// ══════════════════════════════════════════════════════════════════════
+//  SPECIFICATION TEMPLATE SYSTEM
+// ══════════════════════════════════════════════════════════════════════
+
+(function () {
+    'use strict';
+
+    const TPL_API = '<?= base_url('marketing/quotations/spec-templates') ?>';
+
+    // ── Cached template list (reloaded when needed) ──────────────────
+    let _templateCache = null;
+
+    /** Fetch active templates and (re)populate the given <select> */
+    function loadTemplatesIntoSelect($sel, selectedId) {
+        $.getJSON(TPL_API, function (res) {
+            _templateCache = res.data || [];
+            $sel.find('option:not(:first)').remove();
+            _templateCache.forEach(function (t) {
+                const label = t.template_name + (t.nama_tipe_unit ? ' (' + t.nama_tipe_unit + (t.jenis_tipe_unit ? ' ' + t.jenis_tipe_unit : '') + ')' : '');
+                $sel.append($('<option>', { value: t.id, text: label }));
+            });
+            if (selectedId) { $sel.val(selectedId); }
+        });
+    }
+
+    /** Parse localised price string "1.500.000" → "1500000" */
+    function parsePrice(str) {
+        if (!str) return '';
+        return str.toString().replace(/\./g, '').replace(',', '.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  1. Load template dropdown when addSpecificationModal opens
+    // ─────────────────────────────────────────────────────────────────
+    $('#addSpecificationModal').on('show.bs.modal', function () {
+        loadTemplatesIntoSelect($('#specTemplateSelect'));
+    });
+
+    $('#specTemplateSelect').on('change', function () {
+        $('#applyTemplateBtn').prop('disabled', !$(this).val());
+    });
+
+    $('#applyTemplateBtn').on('click', function () {
+        const id = $('#specTemplateSelect').val();
+        if (!id) return;
+
+        $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Memuat...');
+
+        $.getJSON(TPL_API + '/' + id, function (res) {
+            if (!res.success) { alert('Gagal memuat template.'); return; }
+            const t = res.data;
+
+            // --- Populate spec form fields --------------------------------
+            const $form = $('#addSpecificationForm');
+
+            // Dept change triggers cascade (tipe unit, brands)
+            $form.find('[name="departemen_id"]').val(t.departemen_id || '').trigger('change');
+            // Wait for cascade to settle before setting dependent dropdowns
+            setTimeout(function () {
+                $form.find('[name="tipe_unit_id"]').val(t.tipe_unit_id || '');
+                $form.find('[name="brand_id"]').val(t.brand_id || '');
+            }, 450);
+            $form.find('[name="kapasitas_id"]').val(t.kapasitas_id || '');
+            $form.find('[name="ban_id"]').val(t.ban_id || '');
+
+            // Fork / Attachment toggle
+            $('input[name="fork_attach_type"][value="none"]').prop('checked', true).trigger('change');
+            if (t.fork_id) {
+                $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
+                $form.find('[name="fork_id"]').val(t.fork_id);
+            } else if (t.attachment_id) {
+                $('input[name="fork_attach_type"][value="attachment"]').prop('checked', true).trigger('change');
+                $form.find('[name="attachment_id"]').val(t.attachment_id);
+            }
+
+            // Mast (2-level: match model by name, then select height)
+            if (t.mast_id && t.mast_name) {
+                $('#specMastModel option').filter(function () {
+                    return $(this).text() === t.mast_name;
+                }).prop('selected', true);
+                loadMastHeightsForSpecification($('#specMastModel').val(), t.mast_id);
+            }
+
+            // Prices
+            if (t.default_monthly_price) {
+                $form.find('[name="unit_price"]').val(parseFloat(t.default_monthly_price).toLocaleString('id-ID')).trigger('input');
+            }
+            if (t.default_daily_price) {
+                $form.find('[name="harga_per_unit_harian"]').val(parseFloat(t.default_daily_price).toLocaleString('id-ID')).trigger('input');
+            }
+
+            // Notes
+            if (t.notes) { $form.find('[name="notes"]').val(t.notes); }
+
+            // Accessories – spec form uses name="aksesoris[]"
+            if (t.unit_accessories) {
+                const acc = t.unit_accessories.split(',').map(function (s) { return s.trim(); });
+                $form.find('[name="aksesoris[]"]').each(function () {
+                    $(this).prop('checked', acc.includes($(this).val()));
+                });
+            }
+
+            // Operator
+            if (parseInt(t.include_operator)) {
+                const $chk = $('#includeOperator');
+                if ($chk.length && !$chk.is(':checked')) { $chk.prop('checked', true).trigger('change'); }
+                $form.find('[name="operator_quantity"]').val(t.operator_quantity || 1);
+                if (t.operator_monthly_rate) {
+                    $form.find('[name="operator_price_monthly"]').val(parseFloat(t.operator_monthly_rate).toLocaleString('id-ID')).trigger('input');
+                }
+                if (t.operator_daily_rate) {
+                    $form.find('[name="operator_price_daily"]').val(parseFloat(t.operator_daily_rate).toLocaleString('id-ID')).trigger('input');
+                }
+            }
+
+            // UI feedback
+            $('#applyTemplateBtn')
+                .html('<i class="fas fa-check me-1"></i>Diterapkan')
+                .removeClass('btn-success').addClass('btn-outline-success');
+            setTimeout(function () {
+                $('#applyTemplateBtn')
+                    .html('<i class="fas fa-magic me-1"></i>Terapkan')
+                    .removeClass('btn-outline-success').addClass('btn-success');
+            }, 2000);
+        }).fail(function () {
+            alert('Gagal memuat detail template.');
+        }).always(function () {
+            $('#applyTemplateBtn').prop('disabled', false);
+        });
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    //  2. Save current spec form as Template
+    // ─────────────────────────────────────────────────────────────────
+    $('#saveAsTemplateToggleBtn').on('click', function () {
+        $('#saveAsTemplateInline').toggleClass('d-none');
+        $('#newTemplateName').focus();
+    });
+    $('#cancelSaveTemplateBtn').on('click', function () {
+        $('#saveAsTemplateInline').addClass('d-none');
+        $('#newTemplateName').val('');
+    });
+
+    $('#confirmSaveTemplateBtn').on('click', function () {
+        const name = $('#newTemplateName').val().trim();
+        if (!name) { $('#newTemplateName').addClass('is-invalid').focus(); return; }
+        $('#newTemplateName').removeClass('is-invalid');
+
+        const $form     = $('#addSpecificationForm');
+        const formData  = {};
+        $form.serializeArray().forEach(function (f) { formData[f.name] = f.value; });
+
+        // Build accessories array (spec form uses name="aksesoris[]")
+        const acc = [];
+        $form.find('[name="aksesoris[]"]:checked').each(function () { acc.push($(this).val()); });
+
+        // Fork / Attachment from spec form toggle
+        const forkAttachType = $('input[name="fork_attach_type"]:checked').val() || 'none';
+
+        const payload = {
+            template_name:          name,
+            specification_type:     formData.specification_type || 'UNIT',
+            departemen_id:          formData.departemen_id      || '',
+            tipe_unit_id:           formData.tipe_unit_id       || '',
+            kapasitas_id:           formData.kapasitas_id       || '',
+            brand_id:               formData.brand_id           || '',
+            mast_id:                formData.mast_id            || '',
+            fork_id:                forkAttachType === 'fork'       ? (formData.fork_id       || '') : '',
+            attachment_id:          forkAttachType === 'attachment' ? (formData.attachment_id || '') : '',
+            ban_id:                 formData.ban_id             || '',
+            notes:                  formData.notes              || '',
+            default_monthly_price:  parsePrice(formData.unit_price)               || '',
+            default_daily_price:    parsePrice(formData.harga_per_unit_harian)    || '',
+            include_operator:       formData.include_operator   || 0,
+            operator_quantity:      formData.operator_quantity  || '',
+            operator_monthly_rate:  parsePrice(formData.operator_price_monthly)   || '',
+            operator_daily_rate:    parsePrice(formData.operator_price_daily)     || '',
+            unit_accessories:       acc.join(','),
+            [window.csrfTokenName]: window.csrfTokenValue
+        };
+
+        $(this).prop('disabled', true).text('Menyimpan...');
+        const self = this;
+
+        $.ajax({
+            url:  TPL_API,
+            type: 'POST',
+            data: payload,
+            success: function (res) {
+                if (res.success) {
+                    if (res.csrf_hash && window.csrfTokenName) {
+                        window.csrfTokenValue = res.csrf_hash;
+                        $('[name="' + window.csrfTokenName + '"]').val(res.csrf_hash);
+                    }
+                    _templateCache = null; // invalidate cache
+                    $('#saveAsTemplateInline').addClass('d-none');
+                    $('#newTemplateName').val('');
+                    // Reload dropdown
+                    loadTemplatesIntoSelect($('#specTemplateSelect'), res.id);
+                    $('#specTemplateSelect').val(res.id).trigger('change');
+                    alert('Template "' + name + '" berhasil disimpan!');
+                } else {
+                    alert(res.message || 'Gagal menyimpan template.');
+                }
+            },
+            error: function () { alert('Server error. Silakan coba lagi.'); },
+            complete: function () { $(self).prop('disabled', false).text('Simpan'); }
+        });
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    //  3. Template Manager Modal — list, edit, delete
+    // ─────────────────────────────────────────────────────────────────
+    function renderTemplateManagerList(templates) {
+        const $list = $('#templateManagerList');
+        if (!templates || !templates.length) {
+            $list.html('<div class="text-center py-4 text-muted">Belum ada template. Klik <strong>Buat Template Baru</strong> untuk memulai.</div>');
+            return;
+        }
+        let html = '<div class="list-group list-group-flush">';
+        templates.forEach(function (t) {
+            const tipeLabel = t.nama_tipe_unit
+                ? ('<span class="badge badge-soft-blue me-1">' + esc(t.nama_tipe_unit) + (t.jenis_tipe_unit ? ' ' + esc(t.jenis_tipe_unit) : '') + '</span>')
+                : '';
+            const deptLabel = t.nama_departemen
+                ? ('<span class="badge badge-soft-cyan me-1">' + esc(t.nama_departemen) + '</span>')
+                : '';
+            const priceLabel = t.default_monthly_price
+                ? ('<span class="badge badge-soft-green">Rp ' + parseFloat(t.default_monthly_price).toLocaleString('id-ID') + '/bln</span>')
+                : '';
+            html += '<div class="list-group-item d-flex justify-content-between align-items-start gap-2 py-2">' +
+                '<div>' +
+                '<div class="fw-600">' + esc(t.template_name) + '</div>' +
+                '<div class="mt-1">' + tipeLabel + deptLabel + priceLabel + '</div>' +
+                (t.template_description ? '<small class="text-muted">' + esc(t.template_description) + '</small>' : '') +
+                '</div>' +
+                '<div class="d-flex gap-1 flex-shrink-0">' +
+                '<button type="button" class="btn btn-xs btn-outline-primary tpl-edit-btn" data-id="' + t.id + '">' +
+                '<i class="fas fa-edit"></i></button>' +
+                '<button type="button" class="btn btn-xs btn-outline-danger tpl-delete-btn" data-id="' + t.id + '" data-name="' + esc(t.template_name) + '">' +
+                '<i class="fas fa-trash"></i></button>' +
+                '</div></div>';
+        });
+        html += '</div>';
+        $list.html(html);
+    }
+
+    function esc(str) {
+        return $('<div>').text(str || '').html();
+    }
+
+    $('#specTemplateManagerModal').on('show.bs.modal', function () {
+        $('#templateManagerList').html('<div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin"></i> Memuat...</div>');
+        $.getJSON(TPL_API, function (res) {
+            _templateCache = res.data || [];
+            renderTemplateManagerList(_templateCache);
+        });
+    });
+
+    // Delete
+    $(document).on('click', '.tpl-delete-btn', function () {
+        const id   = $(this).data('id');
+        const name = $(this).data('name');
+        if (!confirm('Hapus template "' + name + '"? Tindakan ini tidak dapat dibatalkan.')) return;
+
+        $.ajax({
+            url:  TPL_API + '/' + id,
+            type: 'DELETE',
+            data: { [window.csrfTokenName]: window.csrfTokenValue },
+            success: function (res) {
+                if (res.csrf_hash) { window.csrfTokenValue = res.csrf_hash; }
+                _templateCache = null;
+                if (res.success) {
+                    // Refresh list
+                    $.getJSON(TPL_API, function (r) {
+                        _templateCache = r.data || [];
+                        renderTemplateManagerList(_templateCache);
+                        loadTemplatesIntoSelect($('#specTemplateSelect'));
+                    });
+                } else {
+                    alert(res.message || 'Gagal menghapus template.');
+                }
+            },
+            error: function () { alert('Server error saat menghapus.'); }
+        });
+    });
+
+    // Open create
+    $('#openCreateTemplateBtn').on('click', function () {
+        openCreateEditTemplateModal(null);
+    });
+
+    // Open edit
+    $(document).on('click', '.tpl-edit-btn', function () {
+        const id = $(this).data('id');
+        openCreateEditTemplateModal(id);
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    //  4. Create / Edit Template Modal
+    // ─────────────────────────────────────────────────────────────────
+    let _tplDropdownsLoaded = false;
+
+    function openCreateEditTemplateModal(id) {
+        // Reset form
+        $('#createEditTemplateForm')[0].reset();
+        $('#tplId').val('');
+        $('#tplOperatorSection').addClass('d-none');
+        // Reset cascaded dropdowns
+        $('#tplTipeUnitId').html('<option value="">-- Pilih Tipe Unit --</option>');
+        $('#tplBrandId').html('<option value="">-- Pilih Merk --</option>');
+        $('#tplMastHeight').html('<option value="">Pilih model terlebih dahulu</option>');
+        $('#tplForkSection, #tplAttachSection').hide();
+        $('#createEditTemplateModalTitle').html('<i class="fas fa-layer-group me-2"></i>' + (id ? 'Edit Template' : 'Buat Template Baru'));
+        $('#saveTemplateBtnText').text(id ? 'Simpan Perubahan' : 'Simpan Template');
+
+        // Load dropdown options (reuse existing quotation spec dropdowns data)
+        loadTplDropdowns(function () {
+            if (id) {
+                $.getJSON(TPL_API + '/' + id, function (res) {
+                    if (!res.success) { alert('Gagal memuat data template.'); return; }
+                    const t = res.data;
+                    $('#tplId').val(t.id);
+                    $('#tplName').val(t.template_name || '');
+                    $('#tplDescription').val(t.template_description || '');
+                    // Dept triggers cascade (tipe unit filtered, brands reloaded)
+                    $('#tplDepartemenId').val(t.departemen_id || '').trigger('change');
+                    // Set tipe unit + brand after cascade settles
+                    setTimeout(function () {
+                        $('#tplTipeUnitId').val(t.tipe_unit_id || '');
+                        $('#tplBrandId').val(t.brand_id || '');
+                    }, 450);
+                    $('#tplKapasitasId').val(t.kapasitas_id || '');
+                    $('#tplBanId').val(t.ban_id || '');
+                    // Fork / Attachment
+                    $('input[name="tpl_fork_attach_type"][value="none"]').prop('checked', true);
+                    $('#tplForkSection, #tplAttachSection').hide();
+                    $('#tplForkId, #tplAttachmentId').val('');
+                    if (t.fork_id) {
+                        $('input[name="tpl_fork_attach_type"][value="fork"]').prop('checked', true);
+                        $('#tplForkSection').show();
+                        $('#tplForkId').val(t.fork_id);
+                    } else if (t.attachment_id) {
+                        $('input[name="tpl_fork_attach_type"][value="attachment"]').prop('checked', true);
+                        $('#tplAttachSection').show();
+                        $('#tplAttachmentId').val(t.attachment_id);
+                    }
+                    // Mast (2-level restore using mast_name returned by API)
+                    if (t.mast_id && t.mast_name) {
+                        $('#tplMastModel option').filter(function () {
+                            return $(this).text() === t.mast_name;
+                        }).prop('selected', true);
+                        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=mast_height&mast_model=' + encodeURIComponent(t.mast_name), function (r2) {
+                            const $h = $('#tplMastHeight');
+                            $h.html('<option value="">-- Pilih Tinggi Mast --</option>');
+                            if (r2.success) {
+                                r2.data.forEach(function (m) { $h.append($('<option>', { value: m.id, text: m.name })); });
+                                $h.val(t.mast_id);
+                            }
+                        });
+                    }
+                    // Accessories
+                    if (t.unit_accessories) {
+                        const acc = t.unit_accessories.split(',').map(function (s) { return s.trim(); });
+                        $('#accGridTemplate').find('[name="unit_accessories[]"]').each(function () {
+                            $(this).prop('checked', acc.includes($(this).val()));
+                        });
+                    }
+                    $('#tplNotes').val(t.notes || '');
+                    if (t.default_monthly_price) { $('#tplMonthlyPrice').val(parseFloat(t.default_monthly_price).toLocaleString('id-ID')); }
+                    if (t.default_daily_price)   { $('#tplDailyPrice').val(parseFloat(t.default_daily_price).toLocaleString('id-ID')); }
+                    if (parseInt(t.include_operator)) {
+                        $('#tplIncludeOperator').prop('checked', true);
+                        $('#tplOperatorSection').removeClass('d-none');
+                        $('#tplOperatorQty').val(t.operator_quantity || 1);
+                        if (t.operator_monthly_rate) { $('#tplOperatorMonthly').val(parseFloat(t.operator_monthly_rate).toLocaleString('id-ID')); }
+                        if (t.operator_daily_rate)   { $('#tplOperatorDaily').val(parseFloat(t.operator_daily_rate).toLocaleString('id-ID')); }
+                    }
+                });
+            }
+            $('#createEditTemplateModal').modal('show');
+        });
+    }
+
+    function loadTplDropdowns(callback) {
+        if (_tplDropdownsLoaded) { callback(); return; }
+        const SPK_OPT      = '<?= base_url('marketing/spk/spec-options') ?>?type=';
+        const TIPE_UNIT_URL = '<?= base_url('marketing/customer-management/getTipeUnit') ?>';
+        const FORKS_URL    = '<?= base_url('marketing/forks') ?>';
+        const tasks = {
+            departments: $.getJSON(SPK_OPT + 'departemen'),
+            unitTypes:   $.getJSON(TIPE_UNIT_URL),
+            capacities:  $.getJSON(SPK_OPT + 'kapasitas'),
+            masts:       $.getJSON(SPK_OPT + 'mast_model'),
+            tires:       $.getJSON(SPK_OPT + 'ban'),
+            forks:       $.getJSON(FORKS_URL),
+            attachments: $.getJSON(SPK_OPT + 'attachment_tipe'),
+        };
+
+        $.when.apply($, Object.values(tasks)).done(function () {
+            const doneArgs = arguments;
+            const results = {};
+            Object.keys(tasks).forEach(function (k, i) { results[k] = doneArgs[i][0]; });
+
+            function populate($sel, items, valKey, textKey) {
+                $sel.find('option:not(:first)').remove();
+                (items || []).forEach(function (it) {
+                    $sel.append($('<option>', { value: it[valKey], text: it[textKey] }));
+                });
+            }
+
+            // spk/spec-options → {success, data:[{id, name}]}
+            // getTipeUnit → {success, data:[{id_tipe_unit, jenis, id_departemen}]}
+            populate($('#tplDepartemenId'), results.departments.data, 'id', 'name');
+            window.tplAllTipeUnitData = results.unitTypes.data || [];
+            $('#tplTipeUnitId').html('<option value="">-- Pilih Tipe Unit --</option>');
+            populate($('#tplKapasitasId'), results.capacities.data, 'id', 'name');
+            populate($('#tplMastModel'),   results.masts.data,      'id', 'name');
+            populate($('#tplBanId'),       results.tires.data,      'id', 'name');
+            if (results.forks && results.forks.success) {
+                populate($('#tplForkId'), results.forks.data, 'id', 'name');
+            }
+            if (results.attachments && results.attachments.success) {
+                populate($('#tplAttachmentId'), results.attachments.data, 'id', 'name');
+            }
+
+            _tplDropdownsLoaded = true;
+            callback();
+        });
+    }
+
+    // ── Dept change: filter tipe unit + reload brands ──────────────────────────
+    $(document).on('change', '#tplDepartemenId', function () {
+        const deptId = $(this).val();
+        const $tipe  = $('#tplTipeUnitId');
+        $tipe.html('<option value="">-- Pilih Tipe Unit --</option>');
+        if (deptId && window.tplAllTipeUnitData) {
+            const filtered    = window.tplAllTipeUnitData.filter(function (u) { return u.id_departemen == deptId; });
+            const uniqueJenis = [...new Set(filtered.map(function (u) { return u.jenis; }))].sort();
+            uniqueJenis.forEach(function (jenis) {
+                const unit = filtered.find(function (u) { return u.jenis === jenis; });
+                if (unit) { $tipe.append($('<option>', { value: unit.id_tipe_unit, text: jenis })); }
+            });
+        }
+        // Reload brands for selected dept
+        const $brand = $('#tplBrandId');
+        $brand.html('<option value="">-- Pilih Merk --</option>');
+        if (!deptId) return;
+        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit&departemen_id=' + deptId, function (res) {
+            if (res.success) {
+                res.data.forEach(function (b) { $brand.append($('<option>', { value: b.id, text: b.name })); });
+            }
+        });
+    });
+
+    // ── Mast model cascade ─────────────────────────────────────────────────────
+    $(document).on('change', '#tplMastModel', function () {
+        const modelName = $(this).find('option:selected').text();
+        const $height   = $('#tplMastHeight');
+        if (!$(this).val() || modelName.startsWith('Pilih')) {
+            $height.html('<option value="">Pilih model mast terlebih dahulu</option>');
+            return;
+        }
+        $height.html('<option value="">Memuat...</option>');
+        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=mast_height&mast_model=' + encodeURIComponent(modelName), function (res) {
+            $height.html('<option value="">-- Pilih Tinggi Mast --</option>');
+            if (res.success) {
+                res.data.forEach(function (m) { $height.append($('<option>', { value: m.id, text: m.name })); });
+            }
+        });
+    });
+
+    // ── Fork / Attachment toggle ───────────────────────────────────────────────
+    $(document).on('change', 'input[name="tpl_fork_attach_type"]', function () {
+        const val = $(this).val();
+        $('#tplForkSection').toggle(val === 'fork');
+        $('#tplAttachSection').toggle(val === 'attachment');
+        if (val !== 'fork')       { $('#tplForkId').val(''); }
+        if (val !== 'attachment') { $('#tplAttachmentId').val(''); }
+    });
+
+    $('#tplIncludeOperator').on('change', function () {
+        $('#tplOperatorSection').toggleClass('d-none', !this.checked);
+    });
+
+    // Price formatting in template form
+    $(document).on('input', '.tpl-price-input', function () {
+        const raw = $(this).val().replace(/\D/g, '');
+        $(this).val(raw ? parseInt(raw, 10).toLocaleString('id-ID') : '');
+    });
+
+    // Submit create/edit template form
+    $('#createEditTemplateForm').on('submit', function (e) {
+        e.preventDefault();
+        const id  = $('#tplId').val();
+        const url = id ? (TPL_API + '/' + id) : TPL_API;
+
+        const formData = new FormData(this);
+        // Strip localization from price fields
+        ['default_monthly_price', 'default_daily_price', 'operator_monthly_rate', 'operator_daily_rate'].forEach(function (k) {
+            const v = formData.get(k);
+            if (v) formData.set(k, parsePrice(v));
+        });
+        formData.set(window.csrfTokenName, window.csrfTokenValue);
+
+        $('#saveTemplateFormBtn').prop('disabled', true);
+        $.ajax({
+            url:         url,
+            type:        'POST',
+            data:        formData,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.csrf_hash) { window.csrfTokenValue = res.csrf_hash; $('[name="' + window.csrfTokenName + '"]').val(res.csrf_hash); }
+                if (res.success) {
+                    _templateCache = null;
+                    $('#createEditTemplateModal').modal('hide');
+                    // Refresh manager list
+                    $.getJSON(TPL_API, function (r) {
+                        _templateCache = r.data || [];
+                        renderTemplateManagerList(_templateCache);
+                        loadTemplatesIntoSelect($('#specTemplateSelect'));
+                    });
+                } else {
+                    alert(res.message || 'Gagal menyimpan template.');
+                }
+            },
+            error: function () { alert('Server error. Silakan coba lagi.'); },
+            complete: function () { $('#saveTemplateFormBtn').prop('disabled', false); }
+        });
+    });
+
+    // Re-open manager when create/edit modal is hidden
+    $('#createEditTemplateModal').on('hidden.bs.modal', function () {
+        if ($('#specTemplateManagerModal').data('bs.modal')) {
+            $('#specTemplateManagerModal').modal('show');
+        }
+    });
+
+}());
 </script>
 
 <?= $this->endSection() ?>

@@ -1325,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				url: assignUnitUrl,
 				placeholder: '- Select Unit -',
 				dropdownParent: $('#assignItemsModal'),
-				minimumInputLength: 0,
+				minimumInputLength: 1,
 				extraSpkRow: true,
 				allowedStatuses: null,
 				disableAssigned: false,
@@ -1880,7 +1880,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				url: dataUrl,
 				placeholder: '🔍 Search by unit number, SN, brand/model, or unit type...',
 				dropdownParent: $('#approvalStageModal .modal-content'),
-				minimumInputLength: 0,
+				minimumInputLength: 1,
 				extraSpkRow: true,
 				allowedStatuses: ['AVAILABLE_STOCK', 'NON_ASSET_STOCK', 'BOOKED', 'RENTAL_ACTIVE'],
 				disableAssigned: true,
@@ -1894,7 +1894,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				allowClear: true,
 				width: '100%',
 				dropdownParent: $('#approvalStageModal .modal-content'),
-				minimumInputLength: 0
+				minimumInputLength: 1
 			};
 		}
 		$unitPick.select2($.extend({}, baseCfg, {
@@ -4639,7 +4639,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				url: rbUrl,
 				placeholder: '-- Select New Unit --',
 				dropdownParent: $('#rollbackModal .modal-content'),
-				minimumInputLength: 0,
+				minimumInputLength: 1,
 				extraSpkRow: true,
 				allowedStatuses: null,
 				disableAssigned: false,

@@ -166,6 +166,49 @@ class InventoryAttachmentModel extends Model
     }
 
     /**
+     * Fetch stats for all 4 attachment-type tables in a single UNION ALL query.
+     * Returns ['attachment' => [...], 'battery' => [...], 'charger' => [...], 'fork' => [...]]
+     */
+    public static function getAllTypesStats(): array
+    {
+        $db   = \Config\Database::connect();
+        $rows = $db->query("
+            SELECT 'attachment' AS type_name,
+                COUNT(*)                     AS total,
+                SUM(status = 'AVAILABLE')    AS available,
+                SUM(status = 'IN_USE')       AS in_use,
+                SUM(status = 'SPARE')        AS spare,
+                SUM(status = 'MAINTENANCE')  AS maintenance,
+                SUM(status = 'BROKEN')       AS broken
+            FROM inventory_attachments
+            UNION ALL
+            SELECT 'battery',
+                COUNT(*), SUM(status='AVAILABLE'), SUM(status='IN_USE'),
+                SUM(status='SPARE'), SUM(status='MAINTENANCE'), SUM(status='BROKEN')
+            FROM inventory_batteries
+            UNION ALL
+            SELECT 'charger',
+                COUNT(*), SUM(status='AVAILABLE'), SUM(status='IN_USE'),
+                SUM(status='SPARE'), SUM(status='MAINTENANCE'), SUM(status='BROKEN')
+            FROM inventory_chargers
+            UNION ALL
+            SELECT 'fork',
+                COUNT(*), SUM(status='AVAILABLE'), SUM(status='IN_USE'),
+                SUM(status='SPARE'), SUM(status='MAINTENANCE'), SUM(status='BROKEN')
+            FROM inventory_forks
+        ")->getResultArray();
+
+        $defaults = ['total' => 0, 'available' => 0, 'in_use' => 0, 'spare' => 0, 'maintenance' => 0, 'broken' => 0];
+        $result   = array_fill_keys(['attachment', 'battery', 'charger', 'fork'], $defaults);
+        foreach ($rows as $row) {
+            $type          = $row['type_name'];
+            unset($row['type_name']);
+            $result[$type] = array_map('intval', $row);
+        }
+        return $result;
+    }
+
+    /**
      * Get attachment statistics — single query (no N+1)
      */
     public function getStats()

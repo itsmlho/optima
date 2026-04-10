@@ -15,7 +15,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 <?= $this->section('content') ?>
 
 <div class="mb-3 d-flex align-items-center gap-2">
-    <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-sm btn-outline-secondary">
+    <a href="<?= base_url('marketing/kontrak/detail/' . (int)$contract['id']) ?>" class="btn btn-sm btn-outline-secondary">
         <i class="fas fa-arrow-left me-1"></i>Back
     </a>
     <div>
@@ -42,7 +42,34 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                     <input type="hidden" name="customer_id" id="hiddenCustomerId" value="<?= (int)$contract['customer_id'] ?>">
                     <?= csrf_field() ?>
 
-                    <!-- ROW 1 – Contract No / PO Number -->
+                    <!-- ROW 1 – Rental Type & Status -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Rental Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="rental_type" id="editRentalType" onchange="toggleRentalFields()">
+                                <?php foreach (['CONTRACT' => 'Formal Contract', 'PO_ONLY' => 'PO-Based Only', 'DAILY_SPOT' => 'Daily/Spot'] as $val => $lbl): ?>
+                                <option value="<?= $val ?>" <?= ($contract['rental_type'] ?? '') === $val ? 'selected' : '' ?>><?= $lbl ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="status" required>
+                                <?php foreach (['ACTIVE' => 'Active', 'PENDING' => 'Pending', 'EXPIRED' => 'Expired', 'CANCELLED' => 'Cancelled'] as $val => $lbl): ?>
+                                <option value="<?= $val ?>" <?= ($contract['status'] ?? '') === $val ? 'selected' : '' ?>><?= $lbl ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Billing Period <span class="text-danger">*</span></label>
+                            <select class="form-select" name="jenis_sewa" id="editBillingPeriod">
+                                <option value="BULANAN" <?= ($contract['jenis_sewa'] ?? '') === 'BULANAN' ? 'selected' : '' ?>>Monthly</option>
+                                <option value="HARIAN"  <?= ($contract['jenis_sewa'] ?? '') === 'HARIAN'  ? 'selected' : '' ?>>Daily</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ROW 2 – Contract No / PO Number -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Contract Number <span class="text-danger">*</span></label>
@@ -57,7 +84,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                         </div>
                     </div>
 
-                    <!-- ROW 2 – Customer (Read-only) -->
+                    <!-- ROW 3 – Customer (Read-only) -->
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
@@ -73,48 +100,53 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                         </div>
                     </div>
 
-                    <!-- ROW 3 – Dates -->
-                    <div class="row mb-3">
+                    <!-- ROW 4 – Dates -->
+                    <div class="row mb-3" id="rowDates">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="start_date"
                                    value="<?= esc($contract['tanggal_mulai'] ?? '') ?>" required>
                         </div>
+                        <div class="col-md-6" id="colEndDate">
+                            <label class="form-label fw-semibold">End Date <span class="text-danger" id="endDateRequired">*</span></label>
+                            <input type="date" class="form-control" name="end_date" id="editEndDate"
+                                   value="<?= esc($contract['tanggal_berakhir'] ?? '') ?>">
+                            <small class="text-muted" id="endDateHelp"></small>
+                        </div>
+                    </div>
+
+                    <!-- ROW 5 – PO_ONLY specific: Payment Due Day -->
+                    <div class="row mb-3" id="rowPoFields" style="display:none;">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="end_date"
-                                   value="<?= esc($contract['tanggal_berakhir'] ?? '') ?>" required>
+                            <label class="form-label fw-semibold">Payment Due Day</label>
+                            <input type="number" class="form-control" name="payment_due_day" id="editPaymentDueDay"
+                                   min="1" max="31" value="<?= esc($contract['payment_due_day'] ?? '') ?>"
+                                   placeholder="e.g. 25">
+                            <small class="text-muted">Tanggal jatuh tempo pembayaran tiap bulan (1-31)</small>
                         </div>
                     </div>
 
-                    <!-- ROW 4 – Type / Billing / Status -->
-                    <div class="row mb-3">
+                    <!-- ROW 5b – DAILY_SPOT specific -->
+                    <div class="row mb-3" id="rowDailyFields" style="display:none;">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Rental Type <span class="text-danger">*</span></label>
-                            <select class="form-select" name="rental_type">
-                                <?php foreach (['CONTRACT' => 'Formal Contract', 'PO_ONLY' => 'PO-Based Only', 'DAILY_SPOT' => 'Daily/Spot'] as $val => $lbl): ?>
-                                <option value="<?= $val ?>" <?= ($contract['rental_type'] ?? '') === $val ? 'selected' : '' ?>><?= $lbl ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label class="form-label fw-semibold">Estimated Duration (days)</label>
+                            <input type="number" class="form-control" name="estimated_duration_days" id="editEstDuration"
+                                   min="1" max="30" value="<?= esc($contract['estimated_duration_days'] ?? '') ?>">
+                            <small class="text-muted">Max 30 hari</small>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Billing Period <span class="text-danger">*</span></label>
-                            <select class="form-select" name="jenis_sewa">
-                                <option value="BULANAN" <?= ($contract['jenis_sewa'] ?? '') === 'BULANAN' ? 'selected' : '' ?>>Monthly</option>
-                                <option value="HARIAN"  <?= ($contract['jenis_sewa'] ?? '') === 'HARIAN'  ? 'selected' : '' ?>>Daily</option>
-                            </select>
+                            <label class="form-label fw-semibold">Spot Rental Number</label>
+                            <input type="text" class="form-control" name="spot_rental_number"
+                                   value="<?= esc($contract['spot_rental_number'] ?? '') ?>" placeholder="SPT-xxx">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="status" required>
-                                <?php foreach (['ACTIVE' => 'Active', 'PENDING' => 'Pending', 'EXPIRED' => 'Expired', 'CANCELLED' => 'Cancelled'] as $val => $lbl): ?>
-                                <option value="<?= $val ?>" <?= ($contract['status'] ?? '') === $val ? 'selected' : '' ?>><?= $lbl ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label class="form-label fw-semibold">Actual Return Date</label>
+                            <input type="date" class="form-control" name="actual_return_date"
+                                   value="<?= esc($contract['actual_return_date'] ?? '') ?>">
                         </div>
                     </div>
 
-                    <!-- ROW 5 – Financial (Auto-calculated) -->
+                    <!-- ROW 6 – Financial (Auto-calculated) -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Contract Value (Rp)</label>
@@ -130,7 +162,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                         </div>
                     </div>
 
-                    <!-- ROW 6 – Notes -->
+                    <!-- ROW 7 – Notes -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Notes</label>
                         <textarea class="form-control" name="catatan" rows="3"><?= esc($contract['catatan'] ?? '') ?></textarea>
@@ -141,7 +173,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
                         <button type="submit" class="btn btn-primary px-4" id="btnSave">
                             <i class="fas fa-save me-1"></i>Save Changes
                         </button>
-                        <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-secondary">
+                        <a href="<?= base_url('marketing/kontrak/detail/' . (int)$contract['id']) ?>" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-1"></i>Cancel
                         </a>
                     </div>
@@ -176,7 +208,7 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 const CONTRACT_ID = <?= (int)$contract['id'] ?>;
 const CUSTOMERS_URL   = '<?= base_url('marketing/kontrak/customers') ?>';
 const UPDATE_URL      = '<?= base_url('marketing/kontrak/update') ?>/' + CONTRACT_ID;
-const LIST_URL        = '<?= base_url('marketing/kontrak') ?>';
+const DETAIL_URL      = '<?= base_url('marketing/kontrak/detail') ?>/' + CONTRACT_ID;
 const UNITS_URL       = '<?= base_url('marketing/kontrak/units') ?>/' + CONTRACT_ID;
 
 // ── Load customers dropdown ──────────────────────────────────────────────────
@@ -240,7 +272,7 @@ $('#editContractForm').on('submit', function(e) {
         success: function(res) {
             if (res.success) {
                 $alert.html('<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Contract updated successfully! Redirecting…</div>');
-                setTimeout(() => window.location.href = LIST_URL, 1500);
+                setTimeout(() => window.location.href = DETAIL_URL, 1500);
             } else {
                 const errMsg = res.errors
                     ? '<ul class="mb-0">' + Object.values(res.errors).map(e => `<li>${e}</li>`).join('') + '</ul>'
@@ -259,7 +291,47 @@ $('#editContractForm').on('submit', function(e) {
 // ── Init ─────────────────────────────────────────────────────────────────────
 $(document).ready(function() {
     loadCustomers();
-    loadContractTotals(); // Auto-calculate from units
+    loadContractTotals();
+    toggleRentalFields(); // Set initial state based on rental type
 });
+
+// ── Toggle fields based on Rental Type ───────────────────────────────────────
+function toggleRentalFields() {
+    const type = document.getElementById('editRentalType').value;
+    const endDateInput  = document.getElementById('editEndDate');
+    const endDateReq    = document.getElementById('endDateRequired');
+    const endDateHelp   = document.getElementById('endDateHelp');
+    const rowPoFields   = document.getElementById('rowPoFields');
+    const rowDailyFields= document.getElementById('rowDailyFields');
+    const billingSelect = document.getElementById('editBillingPeriod');
+
+    // Reset
+    rowPoFields.style.display = 'none';
+    rowDailyFields.style.display = 'none';
+    endDateInput.required = true;
+    endDateReq.style.display = '';
+    endDateHelp.textContent = '';
+
+    if (type === 'PO_ONLY') {
+        // PO: open-ended, no end date required, show payment due day
+        endDateInput.required = false;
+        endDateReq.style.display = 'none';
+        endDateHelp.textContent = 'Optional — PO Bulanan bersifat open-ended';
+        rowPoFields.style.display = '';
+        billingSelect.value = 'BULANAN';
+        billingSelect.disabled = true;
+    } else if (type === 'DAILY_SPOT') {
+        // Daily: end date optional (max 30 days), show spot fields
+        endDateInput.required = false;
+        endDateReq.style.display = 'none';
+        endDateHelp.textContent = 'Max 30 hari dari start date';
+        rowDailyFields.style.display = '';
+        billingSelect.value = 'HARIAN';
+        billingSelect.disabled = true;
+    } else {
+        // CONTRACT: standard, end date required
+        billingSelect.disabled = false;
+    }
+}
 </script>
 <?= $this->endSection() ?>

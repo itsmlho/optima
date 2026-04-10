@@ -35,6 +35,11 @@ class KontrakModel extends Model
         'renewal_initiated_by', // Siapa yang memulai renewal
         'dibuat_oleh',
         'customer_id',          // Direct customer reference (untuk kontrak tanpa lokasi spesifik)
+        'payment_due_day',      // PO_ONLY: tanggal jatuh tempo (1-31)
+        'estimated_duration_days', // DAILY_SPOT: estimasi durasi sewa (max 30)
+        'spot_rental_number',   // DAILY_SPOT: nomor sewa spot
+        'actual_return_date',   // DAILY_SPOT: tanggal pengembalian aktual
+        'fast_track',           // Flag fast-track processing
     ];
 
     // Dates

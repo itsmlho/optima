@@ -41,19 +41,10 @@ class DeliveryBundleLibrary
             return null;
         }
 
-        if ($unitFk !== null && $unitFk > 0) {
-            foreach ($pool as $row) {
-                $id = (int) $row->id_delivery_item;
-                if (in_array($id, $usedIds, true)) {
-                    continue;
-                }
-                $lineFk = (int) $lineFkGetter($row);
-                if ($lineFk > 0 && $lineFk === $unitFk) {
-                    $usedIds[] = $id;
-
-                    return $row;
-                }
-            }
+        // Hanya pasangkan jika FK master unit cocok dengan baris delivery (baris PI terpisah
+        // tanpa link master tidak boleh "nempel" ke unit pertama).
+        if ($unitFk === null || $unitFk <= 0) {
+            return null;
         }
 
         foreach ($pool as $row) {
@@ -61,9 +52,12 @@ class DeliveryBundleLibrary
             if (in_array($id, $usedIds, true)) {
                 continue;
             }
-            $usedIds[] = $id;
+            $lineFk = (int) $lineFkGetter($row);
+            if ($lineFk > 0 && $lineFk === $unitFk) {
+                $usedIds[] = $id;
 
-            return $row;
+                return $row;
+            }
         }
 
         return null;

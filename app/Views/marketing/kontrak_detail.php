@@ -57,9 +57,6 @@ $canAmend  = ($status === 'ACTIVE');
             <i class="fas fa-truck-loading me-1" aria-hidden="true"></i><?= lang('Marketing.create_di_retrieval') ?>
         </button>
         <?php endif; ?>
-        <button type="button" class="btn btn-outline-info btn-sm" onclick="openHistoryModal(<?= $id ?>)">
-            <i class="fas fa-history me-1" aria-hidden="true"></i>History
-        </button>
         <button type="button" class="btn btn-danger btn-sm" onclick="deleteContract(<?= $id ?>)">
             <i class="fas fa-trash me-1" aria-hidden="true"></i>Delete
         </button>
@@ -111,12 +108,7 @@ $canAmend  = ($status === 'ACTIVE');
                             <i class="fas fa-history me-1"></i>History
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-documents" data-bs-toggle="tab"
-                                data-bs-target="#pane-documents" type="button" role="tab">
-                            <i class="fas fa-file-alt me-1"></i>Documents
-                        </button>
-                    </li>
+
                 </ul>
 
                 <div class="tab-content">
@@ -157,7 +149,6 @@ $canAmend  = ($status === 'ACTIVE');
                                 </div>
                             </div>
                         </div>
-                    </div><!-- /row customer+financial -->
 
                     <?php $rentalType = $contract['rental_type'] ?? 'CONTRACT'; ?>
 
@@ -319,22 +310,7 @@ $canAmend  = ($status === 'ACTIVE');
                         </div>
                     </div>
 
-                    <!-- ── Documents ── -->
-                    <div class="tab-pane fade" id="pane-documents" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i><strong>Contract Documents</strong></h6>
-                                <button class="btn btn-sm btn-primary" onclick="uploadContractDocument()">
-                                    <i class="fas fa-upload me-1"></i>Upload Document
-                                </button>
-                            </div>
-                            <div class="card-body" id="documentsListContent">
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p>Loading documents...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                 </div><!-- /tab-content -->
             </div><!-- /card-body -->
@@ -1012,14 +988,6 @@ function openAmendmentModal(id) {
     });
 }
 
-function openHistoryModal(id) {
-    // openAssetHistory is defined in asset-history.js and pre-selects the contract
-    if (typeof openAssetHistory === 'function') {
-        openAssetHistory(id);
-    } else {
-        $('#assetHistoryModal').modal('show');
-    }
-}
 
 // ── Tab lazy-loading ────────────────────────────────────
 $(document).ready(function() {
@@ -1038,7 +1006,6 @@ $(document).ready(function() {
     // Setup lazy loading for other tabs
     $('#tab-units').on('shown.bs.tab', function() { loadUnits(); });
     $('#tab-history').on('shown.bs.tab', function() { loadHistory(); });
-    $('#tab-documents').on('shown.bs.tab', function() { loadDocuments(); });
 });
 
 // ── DI Penarikan (TARIK) from Kontrak Detail ────────────

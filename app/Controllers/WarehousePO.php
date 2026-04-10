@@ -14,6 +14,7 @@ use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
 use App\Models\InventoryBatteryModel;
 use App\Models\InventoryChargerModel;
+use App\Models\InventoryForkModel;
 use App\Models\VerificationAuditLogModel;
 use App\Libraries\DeliveryBundleLibrary;
 use CodeIgniter\HTTP\RequestInterface;
@@ -34,6 +35,7 @@ class WarehousePO extends BaseController
     protected $inventoryAttachmentModel;
     protected $inventoryBatteryModel;
     protected $inventoryChargerModel;
+    protected $inventoryForkModel;
     protected $verificationAuditLogModel;
 
     // Replace the constructor with initController
@@ -64,6 +66,7 @@ class WarehousePO extends BaseController
         $this->inventoryAttachmentModel = new InventoryAttachmentModel();
         $this->inventoryBatteryModel = new InventoryBatteryModel();
         $this->inventoryChargerModel = new InventoryChargerModel();
+        $this->inventoryForkModel = new InventoryForkModel();
         $this->verificationAuditLogModel = new VerificationAuditLogModel();
     }
 
@@ -94,7 +97,10 @@ class WarehousePO extends BaseController
      */
     public function whVerification()
     {
-        $dataUnit = $this->pounitsmodel
+        $dbWh = \Config\Database::connect();
+        $forkJoinOk = $dbWh->tableExists('fork') && $dbWh->fieldExists('fork_id', 'po_units');
+
+        $builder = $this->pounitsmodel
             ->select('
                 po_units.*, 
                 purchase_orders.no_po, 
@@ -117,8 +123,17 @@ class WarehousePO extends BaseController
                 pd.actual_date as tanggal_datang,
                 pd.updated_at,
                 pd.status as delivery_status,
-                pd.delivery_sequence
-            ')
+                pd.delivery_sequence,
+                TRIM(CONCAT(COALESCE(att.tipe, \'\'), \' \', COALESCE(att.merk, \'\'), \' \', COALESCE(att.model, \'\'))) AS wh_attachment_label,
+                TRIM(CONCAT(COALESCE(bat.merk_baterai, \'\'), \' \', COALESCE(bat.tipe_baterai, \'\'))) AS wh_baterai_label,
+                TRIM(CONCAT(COALESCE(chg.merk_charger, \'\'), \' \', COALESCE(chg.tipe_charger, \'\'))) AS wh_charger_label
+            ', false);
+        if ($forkJoinOk) {
+            $builder->select('fk_po.name as fork_name_spec, fk_po.length_mm as fork_length_mm', false);
+        } else {
+            $builder->select('NULL as fork_name_spec, NULL as fork_length_mm', false);
+        }
+        $builder
             ->join('purchase_orders', 'purchase_orders.id_po = po_units.po_id')
             ->join('model_unit mu', 'mu.id_model_unit = po_units.model_unit_id', 'left')
             ->join('tipe_unit tu', 'tu.id_tipe_unit = po_units.tipe_unit_id', 'left')
@@ -129,6 +144,13 @@ class WarehousePO extends BaseController
             ->join('tipe_ban tb', 'tb.id_ban = po_units.ban_id', 'left')
             ->join('jenis_roda jr', 'jr.id_roda = po_units.roda_id', 'left')
             ->join('valve v', 'v.id_valve = po_units.valve_id', 'left')
+            ->join('attachment att', 'att.id_attachment = po_units.attachment_id', 'left')
+            ->join('baterai bat', 'bat.id = po_units.baterai_id', 'left')
+            ->join('charger chg', 'chg.id_charger = po_units.charger_id', 'left');
+        if ($forkJoinOk) {
+            $builder->join('fork fk_po', 'fk_po.id = po_units.fork_id', 'left');
+        }
+        $dataUnit = $builder
             ->join('po_delivery_items pdi', 'pdi.id_po_unit = po_units.id_po_unit', 'inner')
             ->join('po_deliveries pd', 'pd.id_delivery = pdi.delivery_id', 'inner')
             ->where('po_units.status_verifikasi', 'Belum Dicek')
@@ -171,7 +193,7 @@ class WarehousePO extends BaseController
             'title' => 'PO Verification | Warehouse',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse/wh_verification' => 'PO Verification'
+                '/warehouse/purchase-orders/wh-verification' => 'PO Verification'
             ],
             'deliveryGroups' => $deliveryGroups,
         ];
@@ -529,16 +551,59 @@ class WarehousePO extends BaseController
                         ->get()->getResultArray();
                     break;
                 case 'jenis_roda':
-                    $options = $db->table('jenis_roda')
-                        ->select('id_roda as id, COALESCE(tipe_roda, jenis_roda, nama_jenis_roda) as text')
-                        ->orderBy('text', 'ASC')
-                        ->get()->getResultArray();
+                    // Skema tabel bervariasi (tipe_roda saja vs jenis_roda / nama_jenis_roda); hindari COALESCE ke kolom yang tidak ada.
+                    $options = [];
+                    try {
+                        if ($db->tableExists('jenis_roda')) {
+                            $cols = $db->getFieldNames('jenis_roda');
+                            $idCol = in_array('id_roda', $cols, true) ? 'id_roda' : (in_array('id', $cols, true) ? 'id' : null);
+                            $labelCol = null;
+                            foreach (['tipe_roda', 'jenis_roda', 'nama_jenis_roda', 'jenis'] as $c) {
+                                if (in_array($c, $cols, true)) {
+                                    $labelCol = $c;
+                                    break;
+                                }
+                            }
+                            if ($idCol !== null && $labelCol !== null) {
+                                $options = $db->table('jenis_roda')
+                                    ->select($idCol . ' as id, ' . $labelCol . ' as text', false)
+                                    ->orderBy($labelCol, 'ASC')
+                                    ->get()->getResultArray();
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        log_message('error', '[WarehousePO] jenis_roda options: ' . $e->getMessage());
+                        $options = [];
+                    }
                     break;
                 case 'valve':
                     $options = $db->table('valve')
                         ->select('id_valve as id, CONCAT(jumlah_valve, " Valve") as text')
                         ->orderBy('jumlah_valve', 'ASC')
                         ->get()->getResultArray();
+                    break;
+                case 'fork_master':
+                    $options = [];
+                    if ($db->tableExists('fork')) {
+                        $rows = $db->table('fork')
+                            ->select('id, name, length_mm, fork_class, capacity_kg')
+                            ->orderBy('name', 'ASC')
+                            ->orderBy('length_mm', 'ASC')
+                            ->get()->getResultArray();
+                        foreach ($rows as $r) {
+                            $t = (string) ($r['name'] ?? '');
+                            if (! empty($r['length_mm'])) {
+                                $t .= ' (' . $r['length_mm'] . ' mm)';
+                            }
+                            if (! empty($r['fork_class'])) {
+                                $t .= ' — ' . $r['fork_class'];
+                            }
+                            $options[] = [
+                                'id'   => (int) $r['id'],
+                                'text' => $t !== '' ? $t : ('Fork #' . (int) $r['id']),
+                            ];
+                        }
+                    }
                     break;
                 // Attachment fields
                 case 'tipe_attachment':
@@ -1084,14 +1149,18 @@ class WarehousePO extends BaseController
         }
         $intKeys = [
             'tipe_unit_id', 'model_unit_id', 'tahun_po', 'kapasitas_id', 'mast_id', 'mesin_id',
-            'ban_id', 'roda_id', 'valve_id', 'baterai_id', 'charger_id', 'attachment_id', 'jenis_unit',
+            'ban_id', 'roda_id', 'valve_id', 'fork_id', 'baterai_id', 'charger_id', 'attachment_id', 'jenis_unit',
         ];
         $strKeys = ['merk_unit', 'keterangan', 'unit_accessories', 'tinggi_mast_po'];
         foreach ($intKeys as $k) {
             if (!array_key_exists($k, $decoded) || $decoded[$k] === '' || $decoded[$k] === null) {
                 continue;
             }
-            $dataToUpdate[$k] = (int) $decoded[$k];
+            $raw = $decoded[$k];
+            if ($k === 'fork_id' && (! is_numeric($raw) || (int) $raw <= 0)) {
+                continue;
+            }
+            $dataToUpdate[$k] = (int) $raw;
         }
         foreach ($strKeys as $k) {
             if (!array_key_exists($k, $decoded) || $decoded[$k] === null) {
@@ -1117,6 +1186,22 @@ class WarehousePO extends BaseController
         $next = (int) ($row['m'] ?? 0) + 1;
 
         return $prefix . str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Default isi paket untuk validasi / UI ketika po_units.package_flags kosong (data lama).
+     *
+     * @return list<string>
+     */
+    private function defaultVerificationPackageFlagsByDepartemen(string $namaDepartemen): array
+    {
+        $u = strtoupper(trim($namaDepartemen));
+        $base = ['fork_standard', 'attachment', 'accessories'];
+        if ($u !== 'DIESEL' && $u !== 'GASOLINE') {
+            array_splice($base, 1, 0, ['battery', 'charger']);
+        }
+
+        return $base;
     }
 
     /**
@@ -1165,6 +1250,21 @@ class WarehousePO extends BaseController
             $flags = $flagsRaw;
         }
 
+        if ($flags === []) {
+            $namaDept = '';
+            $tid = (int) ($effective['tipe_unit_id'] ?? 0);
+            if ($tid > 0) {
+                $db = \Config\Database::connect();
+                $r = $db->table('tipe_unit tu')
+                    ->select('d.nama_departemen')
+                    ->join('departemen d', 'd.id_departemen = tu.id_departemen', 'left')
+                    ->where('tu.id_tipe_unit', $tid)
+                    ->get()->getRowArray();
+                $namaDept = trim((string) ($r['nama_departemen'] ?? ''));
+            }
+            $flags = $this->defaultVerificationPackageFlagsByDepartemen($namaDept);
+        }
+
         if (in_array('battery', $flags, true)) {
             if ((int) ($effective['baterai_id'] ?? 0) <= 0) {
                 return 'Paket menyertakan baterai: pilih tipe baterai dan isi SN baterai sebelum Sesuai.';
@@ -1190,6 +1290,15 @@ class WarehousePO extends BaseController
             $snAtt = trim((string) ($effective['sn_attachment_po'] ?? ''));
             if ($snAtt === '') {
                 return 'Paket menyertakan attachment: SN attachment wajib diisi sebelum Sesuai.';
+            }
+        }
+        if (in_array('fork_standard', $flags, true)) {
+            if ((int) ($effective['fork_id'] ?? 0) <= 0) {
+                return 'Paket termasuk fork standar pabrik: pilih fork dari master (dropdown) sesuai ukuran/tipe fisik & PI sebelum Sesuai.';
+            }
+            $snFork = trim((string) ($snData['sn_fork_po'] ?? $effective['sn_fork_po'] ?? ''));
+            if ($snFork === '') {
+                return 'Paket termasuk fork standar pabrik: isi SN fork fisik sebelum Sesuai.';
             }
         }
 
@@ -1246,6 +1355,28 @@ class WarehousePO extends BaseController
                 $this->inventoryAttachmentModel->skipValidation(false);
             }
         }
+        $db = \Config\Database::connect();
+        if (!empty($pu['fork_id']) && $db->tableExists('inventory_forks')) {
+            $sn = trim((string) ($snData['sn_fork_po'] ?? $pu['sn_fork_po'] ?? ''));
+            if ($sn !== '') {
+                $this->inventoryForkModel->skipValidation(true);
+                $this->inventoryForkModel->insert([
+                    'item_number'         => $sn,
+                    'fork_id'             => (int) $pu['fork_id'],
+                    'fork_stock_id'       => null,
+                    'inventory_unit_id'   => $inventoryUnitId,
+                    'qty_pairs'           => 1,
+                    'physical_condition'  => 'GOOD',
+                    'status'              => 'AVAILABLE',
+                    'storage_location'    => $lokasi,
+                    'assigned_at'         => $now,
+                    'detached_at'         => null,
+                    'received_at'         => date('Y-m-d'),
+                    'notes'               => 'Dari verifikasi PO unit',
+                ]);
+                $this->inventoryForkModel->skipValidation(false);
+            }
+        }
     }
 
     public function verifyPoUnit()
@@ -1267,6 +1398,10 @@ class WarehousePO extends BaseController
             $snCharger = $this->request->getPost('sn_charger');
             if ($snCharger !== null && $snCharger !== '') {
                 $snData['sn_charger_po'] = $snCharger;
+            }
+            $snFork = $this->request->getPost('sn_fork');
+            if ($snFork !== null && $snFork !== '') {
+                $snData['sn_fork_po'] = $snFork;
             }
 
             $dataToUpdate = [
@@ -1316,13 +1451,21 @@ class WarehousePO extends BaseController
             }
             
             try {
+                // Kolom migrasi belum ada di beberapa DB → jangan kirim ke UPDATE (validasi tetap pakai $dataToUpdate lengkap)
+                $dataToUpdateForDb = $dataToUpdate;
+                foreach (['fork_id', 'sn_fork_po'] as $col) {
+                    if (! $db->fieldExists($col, 'po_units')) {
+                        unset($dataToUpdateForDb[$col]);
+                    }
+                }
+
                 // Log data yang akan diupdate untuk debugging
-                log_message('debug', '[WarehousePO] Updating unit ' . $id_unit . ' with data: ' . json_encode($dataToUpdate));
+                log_message('debug', '[WarehousePO] Updating unit ' . $id_unit . ' with data: ' . json_encode($dataToUpdateForDb));
                 
                 // Skip validation untuk update verifikasi (karena hanya update status dan catatan)
                 $this->pounitsmodel->skipValidation(true);
                 
-                if ($this->pounitsmodel->update($id_unit, $dataToUpdate)) {
+                if ($this->pounitsmodel->update($id_unit, $dataToUpdateForDb)) {
                     // Re-enable validation
                     $this->pounitsmodel->skipValidation(false);
                     // Jika verifikasi "Sesuai", masukkan ke tabel inventory
@@ -1494,6 +1637,23 @@ class WarehousePO extends BaseController
                                     'field_name' => 'sn_baterai',
                                     'database_value' => $original['sn_baterai_po'] ?? '',
                                     'real_value' => $snData['sn_baterai_po']
+                                ];
+                            }
+                        }
+                        if (!empty($snData['sn_fork_po']) && isset($original['sn_fork_po']) &&
+                            $snData['sn_fork_po'] !== $original['sn_fork_po']) {
+                            $exists = false;
+                            foreach ($discrepancies as $disc) {
+                                if (isset($disc['field_name']) && $disc['field_name'] === 'sn_fork') {
+                                    $exists = true;
+                                    break;
+                                }
+                            }
+                            if (!$exists) {
+                                $discrepancies[] = [
+                                    'field_name' => 'sn_fork',
+                                    'database_value' => $original['sn_fork_po'] ?? '',
+                                    'real_value' => $snData['sn_fork_po']
                                 ];
                             }
                         }

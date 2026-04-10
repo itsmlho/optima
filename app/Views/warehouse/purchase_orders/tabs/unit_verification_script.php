@@ -3,6 +3,10 @@
 // UNIT VERIFICATION SCRIPT
 // ========================================
 (function() {
+    const baseUrl = (typeof window.baseUrl !== 'undefined' && window.baseUrl)
+        ? String(window.baseUrl).replace(/\/$/, '')
+        : '<?= rtrim(base_url(), '/') ?>';
+
     // Toast helper
     function unitToast(type, message, title = 'Verifikasi Unit') {
         if (typeof window.createOptimaToast === 'function') {
@@ -45,10 +49,40 @@
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea');
             const dbValue = dbField.val() || '';
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
+            const poRefEmpty = row.attr('data-po-reference-empty') === '1';
             
             if ($(this).is(':checked')) {
                 // Uncheck "Tidak Sesuai" jika "Sesuai" dicentang (mutually exclusive)
                 tidakSesuaiCheckbox.prop('checked', false);
+                
+                // Referensi PO terstruktur kosong: jangan salin kosong / jangan kunci sebelum user mengisi (melengkapi data gudang)
+                if (poRefEmpty) {
+                    let filled = false;
+                    if (verifyField.is('select')) {
+                        const v = verifyField.val();
+                        filled = v !== '' && v !== null && v !== undefined;
+                    } else {
+                        const t = String(verifyField.val() || '').trim();
+                        filled = t !== '' && t !== '-';
+                    }
+                    if (!filled) {
+                        $(this).prop('checked', false);
+                        unitToast('warning', 'Isi kolom Real Lapangan dulu (acuan Spesifikasi vendor + cek fisik), lalu centang Sesuai untuk mengunci baris ini.', 'Lengkapi data');
+                        return;
+                    }
+                    if (verifyField.is('select')) {
+                        verifyField.prop('disabled', true);
+                    } else {
+                        verifyField.prop('readonly', true);
+                    }
+                    verifyField.css({
+                        'background-color': '#f0fdf4',
+                        'border-color': '#10b981'
+                    });
+                    row.css('background-color', '#f0fdf4');
+                    checkAllUnitVerifiedInline();
+                    return;
+                }
                 
                 if (verifyField.is('select')) {
                     const dbId = row.attr('data-db-id');
@@ -146,6 +180,7 @@
         $(document).on('input change', '#unitVerificationFormInline .verify-field', function() {
             const row = $(this).closest('tr');
             const verifyField = $(this);
+            const poRefEmpty = row.attr('data-po-reference-empty') === '1';
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea, td:nth-child(2) select');
             let dbValue = '';
             if (dbField.is('select')) {
@@ -157,6 +192,30 @@
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             const dbIdRow = row.attr('data-db-id');
+
+            if (poRefEmpty) {
+                sesuaiCheckbox.prop('checked', false);
+                if (!tidakSesuaiCheckbox.is(':checked')) {
+                    if (verifyField.is('select')) {
+                        verifyField.prop('disabled', false);
+                    } else {
+                        verifyField.prop('readonly', false);
+                    }
+                    verifyField.css({
+                        'background-color': '#fff',
+                        'border-color': '#333'
+                    }).removeAttr('required');
+                    row.css('background-color', '');
+                }
+                const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
+                if (!hasTidakSesuai) {
+                    $('#alasan-reject-container').slideUp(300);
+                    $('#alasan_reject_inline').prop('required', false).val('');
+                }
+                checkAllUnitVerifiedInline();
+                return;
+            }
+
             let differs;
             if (verifyField.is('select')) {
                 if (dbIdRow !== undefined && dbIdRow !== '') {
@@ -190,10 +249,19 @@
                 $('#alasan-reject-container').slideDown(300);
                 $('#alasan_reject_inline').prop('required', true);
             } else {
-                // Jika nilai sama dengan database, bisa check "Sesuai" (tapi tidak otomatis)
-                // Biarkan user memilih sendiri
-                
-                // Cek apakah masih ada checkbox "Tidak Sesuai" yang dicentang
+                tidakSesuaiCheckbox.prop('checked', false);
+                if (!sesuaiCheckbox.is(':checked')) {
+                    if (verifyField.is('select')) {
+                        verifyField.prop('disabled', false);
+                    } else {
+                        verifyField.prop('readonly', false);
+                    }
+                    verifyField.css({
+                        'background-color': '#fff',
+                        'border-color': '#333'
+                    }).removeAttr('required');
+                    row.css('background-color', '');
+                }
                 const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
                     $('#alasan-reject-container').slideUp(300);
@@ -277,8 +345,13 @@
                                 );
                             });
                             
-                            // If current value not found in options and it's a valid value, keep it as selected
-                            if (currentValue && currentValue !== '' && currentValue !== '-' && !$dropdown.find(`option[value="${currentValue}"]`).length) {
+                            // Jika value terpilih bukan ID (mis. teks fork referensi PO), jangan buat opsi palsu — fork_master hanya terima angka
+                            const isNumericId = /^-?\d+$/.test(String(currentValue).trim());
+                            const allowOrphanOption = dropdownType !== 'fork_master' || isNumericId;
+                            const hasMatchingOption = $dropdown.find('option').filter(function() {
+                                return String($(this).val()) === String(currentValue);
+                            }).length > 0;
+                            if (allowOrphanOption && currentValue && currentValue !== '' && currentValue !== '-' && !hasMatchingOption) {
                                 $dropdown.prepend(
                                     $('<option>', {
                                         value: currentValue,
@@ -313,6 +386,7 @@
             const fieldName = $dropdown.data('field-name');
             const row = $(this).closest('tr');
             const verifyField = $(this);
+            const poRefEmpty = row.attr('data-po-reference-empty') === '1';
             const dbField = row.find('td:nth-child(2) input, td:nth-child(2) textarea, td:nth-child(2) select');
             let dbValue = '';
             if (dbField.is('select')) {
@@ -323,6 +397,22 @@
             const realValue = verifyField.val() || '';
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
+
+            if (poRefEmpty) {
+                sesuaiCheckbox.prop('checked', false);
+                if (!tidakSesuaiCheckbox.is(':checked')) {
+                    verifyField.prop('disabled', false).css({
+                        'background-color': '#fff',
+                        'border-color': '#333'
+                    });
+                    row.css('background-color', '');
+                }
+                const hasTidakSesuaiEarly = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
+                if (!hasTidakSesuaiEarly) {
+                    $('#alasan-reject-container').slideUp(300);
+                    $('#alasan_reject_inline').prop('required', false).val('');
+                }
+            }
             
             // Handle cascading dropdowns
             if (fieldName === 'merk') {
@@ -345,6 +435,11 @@
                     $modelMesinDropdown.append('<option value="">Loading...</option>');
                     setTimeout(() => loadDropdownOptions(), 100);
                 }
+            }
+
+            if (poRefEmpty) {
+                checkAllUnitVerifiedInline();
+                return;
             }
             
             const dbIdRow = row.attr('data-db-id');
@@ -374,6 +469,14 @@
                 $('#alasan-reject-container').slideDown(300);
                 $('#alasan_reject_inline').prop('required', true);
             } else {
+                tidakSesuaiCheckbox.prop('checked', false);
+                if (!sesuaiCheckbox.is(':checked')) {
+                    verifyField.prop('disabled', false).css({
+                        'background-color': '#fff',
+                        'border-color': '#333'
+                    }).removeAttr('required');
+                    row.css('background-color', '');
+                }
                 const hasTidakSesuai = $('#unitVerificationFormInline .verify-checkbox-tidak-sesuai:checked').length > 0;
                 if (!hasTidakSesuai) {
                     $('#alasan-reject-container').slideUp(300);
@@ -694,7 +797,10 @@
         let allVerified = true;
         let allRowsVerified = true;
         
-        $('#unitVerificationFormInline tbody tr.verification-data-row:not(.wh-no-verify-check)').each(function() {
+        $('#unitVerificationFormInline tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(function() {
+            const $r = $(this);
+            return $r.is(':visible') && $r.closest('table').is(':visible');
+        }).each(function() {
             const row = $(this);
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
@@ -719,7 +825,7 @@
                 }
             }
             
-            // Jika "Sesuai" dicentang, field harus terisi (otomatis dari database)
+            // Jika "Sesuai" dicentang, Real Lapangan harus terisi (dari salinan PO atau dari pelengkapan gudang)
             if (isSesuaiChecked) {
                 if (!verifyField.val() || verifyField.val().trim() === '') {
                     allVerified = false;
@@ -733,7 +839,8 @@
         // Button enabled hanya jika:
         // 1. Semua baris punya checkbox yang dicentang
         // 2. Jika "Tidak Sesuai", field "Real Lapangan" terisi
-        // 3. Lokasi Unit terpilih
+        // 3. Jika "Sesuai", field "Real Lapangan" terisi (termasuk setelah melengkapi PO kosong)
+        // 4. Lokasi Unit terpilih
         $('#btn-submit-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
     }
 
@@ -756,8 +863,8 @@
         const snData = {};
         const discrepancies = []; // Array untuk menyimpan discrepancy data yang terstruktur
         
-        // Collect data from verification table
-        form.find('tbody tr.verification-data-row').each(function() {
+        // Collect data from verification table (hanya baris tampil — konsisten dengan package gating)
+        form.find('tbody tr.verification-data-row').filter(':visible').each(function() {
             const row = $(this);
             const label = row.find('td:first').text().replace(/\s*\*/g, '').trim();
             
@@ -836,7 +943,7 @@
         // Pastikan finalStatus ditentukan dengan benar berdasarkan checkbox yang dicentang
         // Cek ulang apakah ada checkbox "Tidak Sesuai" yang dicentang
         let hasTidakSesuai = false;
-        form.find('tbody tr.verification-data-row:not(.wh-no-verify-check)').each(function() {
+        form.find('tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(':visible').each(function() {
             const row = $(this);
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             if (tidakSesuaiCheckbox.is(':checked')) {
@@ -850,6 +957,29 @@
             finalStatus = 'Tidak Sesuai';
         } else {
             finalStatus = 'Sesuai';
+        }
+
+        // Tanpa teks vendor dan tanpa satu pun referensi PO terstruktur (baris fork tidak dihitung) — blok Sesuai
+        if (finalStatus === 'Sesuai') {
+            const vendorPresent = form.attr('data-vendor-spec-present') === '1';
+            let anyStructuredPoRef = false;
+            form.find('tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(':visible').each(function () {
+                const $tr = $(this);
+                if ($tr.data('field') === 'fork_package') {
+                    return;
+                }
+                if ($tr.attr('data-po-reference-empty') === '0') {
+                    anyStructuredPoRef = true;
+                    return false;
+                }
+            });
+            if (!vendorPresent && !anyStructuredPoRef) {
+                OptimaNotify.warning(
+                    'Tidak ada teks Spesifikasi vendor dan tidak ada referensi PO terstruktur di tabel. Minta Purchasing melengkapi spesifikasi vendor atau data PO sebelum verifikasi.',
+                    'Acuan wajib'
+                );
+                return;
+            }
         }
         
         // Debug: Log collected SN data
@@ -879,7 +1009,7 @@
         }
         
         const poUnitFields = {};
-        form.find('tbody tr.verification-data-row').each(function() {
+        form.find('tbody tr.verification-data-row').filter(':visible').each(function() {
             const mk = $(this).attr('data-merge-key');
             if (!mk) return;
             const row = $(this);
@@ -927,6 +1057,7 @@
             if (snData['sn_baterai']) summaryHTML += '<li>SN Baterai: <code>' + snData['sn_baterai'] + '</code></li>';
             if (snData['sn_charger']) summaryHTML += '<li>SN Charger: <code>' + snData['sn_charger'] + '</code></li>';
             if (snData['sn_attachment']) summaryHTML += '<li>SN Attachment: <code>' + snData['sn_attachment'] + '</code></li>';
+            if (snData['sn_fork']) summaryHTML += '<li>SN Fork: <code>' + snData['sn_fork'] + '</code></li>';
             summaryHTML += '</ul></div>';
         }
         
@@ -967,20 +1098,41 @@
         return u === 'DIESEL' || u === 'GASOLINE';
     }
 
+    /**
+     * Baca package_flags dari PO; jika kosong (data lama / belum dicentang di Purchasing),
+     * anggap paket lengkap untuk form verifikasi gudang agar fork + master + aksesoris tetap muncul.
+     */
+    function whEffectivePackageFlags(d) {
+        let flags = [];
+        try {
+            const p = d.package_flags;
+            if (p == null || p === '') {
+                flags = [];
+            } else if (typeof p === 'string') {
+                const j = JSON.parse(p);
+                flags = Array.isArray(j) ? j : [];
+            } else {
+                flags = Array.isArray(p) ? p : [];
+            }
+        } catch (e) {
+            flags = [];
+        }
+        if (flags.length > 0) {
+            return flags;
+        }
+        const base = ['fork_standard', 'attachment', 'accessories'];
+        if (!whDepartemenIsNonElectric(d.nama_departemen)) {
+            base.splice(1, 0, 'battery', 'charger');
+        }
+        return base;
+    }
+
     function createUnitDetailCard(data, options) {
         options = options || {};
         const h = (str) => str ? String(str).replace(/</g, '&lt;') : "-";
         
         function whParsePkgFlags(d) {
-            try {
-                const p = d.package_flags;
-                if (p == null || p === '') return [];
-                if (typeof p === 'string') {
-                    const j = JSON.parse(p);
-                    return Array.isArray(j) ? j : [];
-                }
-                return Array.isArray(p) ? p : [];
-            } catch (e) { return []; }
+            return whEffectivePackageFlags(d);
         }
         function whParseUnitAcc(d) {
             try {
@@ -1005,25 +1157,25 @@
             ['safety_belt_interlock','Safety belt interlock'],['spark_arrestor','Spark arrestor'],['mirror','Mirror']
         ];
         
-        const specDetails = [];
+        const specMain = [];
         const brandValue = data.brand_name_po || data.merk_unit || data.brand_from_model_table || '-';
         
         if (data.nama_departemen) {
-            specDetails.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen', mergeKey: '', dbId: data.id_departemen, selectValue: data.id_departemen});
+            specMain.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen', mergeKey: '', dbId: data.id_departemen, selectValue: data.id_departemen});
         }
-        specDetails.push({label: 'Jenis Unit', value: h(data.jenis) || '-', fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit', mergeKey: 'tipe_unit_id', dbId: data.tipe_unit_id, selectValue: data.tipe_unit_id});
-        specDetails.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null, mergeKey: 'merk_unit', dbId: '', selectValue: ''});
-        specDetails.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue), mergeKey: 'model_unit_id', dbId: data.model_unit_id, selectValue: data.model_unit_id});
-        specDetails.push({label: 'Tahun', value: h(data.tahun_po) || '-', fieldName: 'tahun', required: false, dropdownType: null, mergeKey: 'tahun_po', dbId: '', selectValue: data.tahun_po});
-        specDetails.push({label: 'Kapasitas', value: h(data.kapasitas_unit) || '-', fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas', mergeKey: 'kapasitas_id', dbId: data.kapasitas_id, selectValue: data.kapasitas_id});
+        specMain.push({label: 'Jenis Unit', value: h(data.jenis) || '-', fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit', mergeKey: 'tipe_unit_id', dbId: data.tipe_unit_id, selectValue: data.tipe_unit_id});
+        specMain.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null, mergeKey: 'merk_unit', dbId: '', selectValue: ''});
+        specMain.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue), mergeKey: 'model_unit_id', dbId: data.model_unit_id, selectValue: data.model_unit_id});
+        specMain.push({label: 'Tahun', value: h(data.tahun_po) || '-', fieldName: 'tahun', required: false, dropdownType: null, mergeKey: 'tahun_po', dbId: '', selectValue: data.tahun_po});
+        specMain.push({label: 'Kapasitas', value: h(data.kapasitas_unit) || '-', fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas', mergeKey: 'kapasitas_id', dbId: data.kapasitas_id, selectValue: data.kapasitas_id});
         const mastLabel = data.tipe_mast ? (h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : '')) : '-';
-        specDetails.push({label: 'Mast Type', value: mastLabel, fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast', mergeKey: 'mast_id', dbId: data.mast_id, selectValue: data.mast_id});
-        specDetails.push({label: 'Engine Type', value: h(data.merk_mesin) || '-', fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null, mergeKey: '', dbId: '', selectValue: ''});
-        specDetails.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin) || '-', mergeKey: 'mesin_id', dbId: data.mesin_id, selectValue: data.mesin_id});
-        specDetails.push({label: 'Tire Type', value: h(data.tipe_ban) || '-', fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban', mergeKey: 'ban_id', dbId: data.ban_id, selectValue: data.ban_id});
-        specDetails.push({label: 'Wheel Type', value: h(data.tipe_roda) || '-', fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda', mergeKey: 'roda_id', dbId: data.roda_id, selectValue: data.roda_id});
-        specDetails.push({label: 'Valve', value: h(data.jumlah_valve) || '-', fieldName: 'valve', required: false, dropdownType: 'valve', mergeKey: 'valve_id', dbId: data.valve_id, selectValue: data.valve_id});
-        specDetails.push({label: 'Keterangan / catatan PO', value: h(data.keterangan) || '-', fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null, mergeKey: 'keterangan', dbId: '', selectValue: ''});
+        specMain.push({label: 'Mast Type', value: mastLabel, fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast', mergeKey: 'mast_id', dbId: data.mast_id, selectValue: data.mast_id});
+        specMain.push({label: 'Engine Type', value: h(data.merk_mesin) || '-', fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null, mergeKey: '', dbId: '', selectValue: ''});
+        specMain.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin) || '-', mergeKey: 'mesin_id', dbId: data.mesin_id, selectValue: data.mesin_id});
+        specMain.push({label: 'Tire Type', value: h(data.tipe_ban) || '-', fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban', mergeKey: 'ban_id', dbId: data.ban_id, selectValue: data.ban_id});
+        specMain.push({label: 'Wheel Type', value: h(data.tipe_roda) || '-', fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda', mergeKey: 'roda_id', dbId: data.roda_id, selectValue: data.roda_id});
+        specMain.push({label: 'Valve', value: h(data.jumlah_valve) || '-', fieldName: 'valve', required: false, dropdownType: 'valve', mergeKey: 'valve_id', dbId: data.valve_id, selectValue: data.valve_id});
+        specMain.push({label: 'Keterangan / catatan PO', value: h(data.keterangan) || '-', fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null, mergeKey: 'keterangan', dbId: '', selectValue: ''});
         
         const embed = options.embedAccessoryRows || {};
         const embedBat = !!embed.battery;
@@ -1034,32 +1186,91 @@
         const reqChg = !isNonElectricDept && pkgFlags.includes('charger');
         const reqAtt = pkgFlags.includes('attachment');
 
+        specMain.push({label: 'Serial Number Unit', value: h(data.serial_number_po) || 'Belum ada SN', fieldName: 'sn_unit', required: true});
+        specMain.push({label: 'SN Mast', value: h(data.sn_mast_po) || 'Belum ada SN', fieldName: 'sn_mast', required: true});
+        specMain.push({label: 'SN Mesin', value: h(data.sn_mesin_po) || 'Belum ada SN', fieldName: 'sn_mesin', required: true});
+
+        /** Urutan selaras Service → unit_verification: attachment (+SN), baterai (+SN), charger (+SN), fork. */
+        const specKomponen = [];
+        const whAttLbl = (data.wh_attachment_label && String(data.wh_attachment_label).trim()) ? String(data.wh_attachment_label).trim() : '-';
+        const whBatLbl = (data.wh_baterai_label && String(data.wh_baterai_label).trim()) ? String(data.wh_baterai_label).trim() : '-';
+        const whChgLbl = (data.wh_charger_label && String(data.wh_charger_label).trim()) ? String(data.wh_charger_label).trim() : '-';
+        if (reqAtt && !embedAtt) {
+            specKomponen.push({label: 'Attachment (master)', value: whAttLbl === '-' ? '-' : h(whAttLbl), fieldName: 'po_attachment', required: true, noVerifyCheck: false, dropdownType: 'attachment_master', mergeKey: 'attachment_id', dbId: data.attachment_id, selectValue: data.attachment_id});
+            specKomponen.push({label: 'SN Attachment', value: h(data.sn_attachment_po) || 'Belum ada SN', fieldName: 'sn_attachment', required: true, noVerifyCheck: false});
+        }
         if (reqBat && !embedBat) {
-            specDetails.push({label: 'Tipe baterai (master)', value: '-', fieldName: 'po_baterai', required: true, noVerifyCheck: false, dropdownType: 'baterai_master', mergeKey: 'baterai_id', dbId: data.baterai_id, selectValue: data.baterai_id});
+            specKomponen.push({label: 'Tipe baterai (master)', value: whBatLbl === '-' ? '-' : h(whBatLbl), fieldName: 'po_baterai', required: true, noVerifyCheck: false, dropdownType: 'baterai_master', mergeKey: 'baterai_id', dbId: data.baterai_id, selectValue: data.baterai_id});
+            specKomponen.push({label: 'SN Baterai', value: h(data.sn_baterai_po) || 'Belum ada SN', fieldName: 'sn_baterai', required: true, noVerifyCheck: false});
         }
         if (reqChg && !embedChg) {
-            specDetails.push({label: 'Tipe charger (master)', value: '-', fieldName: 'po_charger', required: true, noVerifyCheck: false, dropdownType: 'charger_master', mergeKey: 'charger_id', dbId: data.charger_id, selectValue: data.charger_id});
+            specKomponen.push({label: 'Tipe charger (master)', value: whChgLbl === '-' ? '-' : h(whChgLbl), fieldName: 'po_charger', required: true, noVerifyCheck: false, dropdownType: 'charger_master', mergeKey: 'charger_id', dbId: data.charger_id, selectValue: data.charger_id});
+            specKomponen.push({label: 'SN Charger', value: h(data.sn_charger_po) || 'Belum ada SN', fieldName: 'sn_charger', required: true, noVerifyCheck: false});
         }
-        if (reqAtt && !embedAtt) {
-            specDetails.push({label: 'Attachment (master)', value: '-', fieldName: 'po_attachment', required: true, noVerifyCheck: false, dropdownType: 'attachment_master', mergeKey: 'attachment_id', dbId: data.attachment_id, selectValue: data.attachment_id});
+        if (pkgFlags.includes('fork_standard')) {
+            const fn = data.fork_name_spec || '';
+            const fl = data.fork_length_mm != null && data.fork_length_mm !== '' ? String(data.fork_length_mm) : '';
+            const forkRefText = fn
+                ? (h(fn) + (fl ? ' — ' + fl + ' mm' : ''))
+                : '— Bandingkan fork fisik dengan spesifikasi vendor / PI; pilih master fork di kanan —';
+            const fid = data.fork_id;
+            specKomponen.push({
+                label: 'Fork (master)',
+                value: forkRefText,
+                fieldName: 'fork_package',
+                required: true,
+                dropdownType: 'fork_master',
+                mergeKey: 'fork_id',
+                dbId: fid,
+                selectValue: fid,
+            });
+            specKomponen.push({
+                label: 'SN Fork',
+                value: h(data.sn_fork_po) || 'Belum ada SN',
+                fieldName: 'sn_fork',
+                required: true,
+                noVerifyCheck: false,
+            });
         }
 
-        specDetails.push({label: 'Serial Number Unit', value: h(data.serial_number_po) || 'Belum ada SN', fieldName: 'sn_unit', required: true});
-        specDetails.push({label: 'SN Mast', value: h(data.sn_mast_po) || 'Belum ada SN', fieldName: 'sn_mast', required: true});
-        specDetails.push({label: 'SN Mesin', value: h(data.sn_mesin_po) || 'Belum ada SN', fieldName: 'sn_mesin', required: true});
-        if (reqBat && !embedBat) {
-            specDetails.push({label: 'SN Baterai', value: h(data.sn_baterai_po) || 'Belum ada SN', fieldName: 'sn_baterai', required: true, noVerifyCheck: false});
-        }
-        if (reqChg && !embedChg) {
-            specDetails.push({label: 'SN Charger', value: h(data.sn_charger_po) || 'Belum ada SN', fieldName: 'sn_charger', required: true, noVerifyCheck: false});
-        }
-        if (reqAtt && !embedAtt) {
-            specDetails.push({label: 'SN Attachment', value: h(data.sn_attachment_po) || 'Belum ada SN', fieldName: 'sn_attachment', required: true, noVerifyCheck: false});
+        /** True = kolom referensi PO terstruktur kosong; gudang melengkapi dari vendor spec + fisik (bukan ketidaksesuaian otomatis). */
+        function whIsPoReferenceEmpty(spec, dbValue) {
+            if (spec.noVerifyCheck) {
+                return false;
+            }
+            const v = (dbValue === undefined || dbValue === null) ? '' : String(dbValue).trim();
+            const snField = spec.fieldName && (spec.fieldName.startsWith('sn_') || spec.fieldName === 'sn_unit');
+            if (snField) {
+                return v === '' || v === 'Belum ada SN';
+            }
+            if (spec.isTextarea) {
+                return v === '' || v === '-';
+            }
+            const idFromDb = spec.dbId !== undefined && spec.dbId !== null && spec.dbId !== '' ? parseInt(String(spec.dbId), 10) : NaN;
+            const idFromSel = spec.selectValue !== undefined && spec.selectValue !== null && spec.selectValue !== '' ? parseInt(String(spec.selectValue), 10) : NaN;
+            const hasMasterId = (!isNaN(idFromDb) && idFromDb > 0) || (!isNaN(idFromSel) && idFromSel > 0);
+            /* Fork: teks PI/vendor tidak bisa disamakan otomatis dengan label dropdown API → perlakukan seperti PO terstruktur kosong sampai ada fork_id. */
+            if (spec.fieldName === 'fork_package' || spec.dropdownType === 'fork_master') {
+                return !hasMasterId;
+            }
+            if (spec.dropdownType) {
+                if (spec.fieldName === 'merk') {
+                    return v === '' || v === '-';
+                }
+                if (hasMasterId) {
+                    return false;
+                }
+                return v === '' || v === '-';
+            }
+            return v === '' || v === '-';
         }
         
-        // Build table rows with editable fields (like workorder)
-        let tableRows = '';
-        specDetails.forEach((spec, index) => {
+        // Bangun baris tabel verifikasi (bisa dipakai untuk tabel utama + kartu komponen)
+        let whVerifyRowIndex = 0;
+        function buildWhVerificationTbodyRows(specs) {
+            let html = '';
+            specs.forEach((spec) => {
+            const index = whVerifyRowIndex++;
             const fieldId = `verify_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
             const checkId = `check_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
             const dbId = `db_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
@@ -1080,6 +1291,8 @@
             
             // Nilai awal "Real Lapangan" selalu sama dengan "Database" (akan berubah jika user edit)
             const realValue = dbValue;
+            const poRefEmpty = whIsPoReferenceEmpty(spec, dbValue);
+            const rowPoEmptyAttr = ` data-po-reference-empty="${poRefEmpty ? '1' : '0'}"`;
             
             const rowMerge = spec.mergeKey ? ` data-merge-key="${spec.mergeKey}"` : '';
             const rowDbId = (spec.dbId !== undefined && spec.dbId !== null && spec.dbId !== '') ? ` data-db-id="${spec.dbId}"` : '';
@@ -1100,8 +1313,8 @@
                         </td>`;
             
             if (spec.isTextarea) {
-                tableRows += `
-                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}>
+                html += `
+                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}${rowPoEmptyAttr}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px; vertical-align: middle;">${spec.label}${spec.required ? ' <span class="text-danger">*</span>' : ''}</td>
                         <td style="background-color: #fff; padding: 8px;">
                             <textarea class="form-control form-control-sm" id="${dbId}" readonly rows="2" style="border: none; background: transparent; padding: 0; resize: none;">${dbValue}</textarea>
@@ -1129,6 +1342,9 @@
                     const hasValidValue = realValue && realValue !== '-' && realValue !== '';
                     const selVal = (spec.selectValue !== undefined && spec.selectValue !== null && spec.selectValue !== '') ? String(spec.selectValue) : '';
                     const seedFromId = selVal && dbValue && dbValue !== '-' ? `<option value="${selVal}" selected>${dbValue}</option>` : '';
+                    /* fork_master: jangan pakai teks referensi PO sebagai value <option> (bukan ID) — menghindari merge fork_id=0 / opsi palsu */
+                    const isForkMaster = spec.dropdownType === 'fork_master';
+                    const textSeedOk = hasValidValue && !isForkMaster;
                     
                     realFieldInput = `
                         <select class="form-select form-select-sm verify-field verify-dropdown" 
@@ -1140,11 +1356,10 @@
                                 ${spec.required ? 'required' : ''}
                                 style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
                             <option value="">Pilih ${spec.label}...</option>
-                            ${seedFromId || (hasValidValue ? `<option value="${realValue}" selected>${realValue}</option>` : '')}
+                            ${seedFromId || (textSeedOk ? `<option value="${realValue}" selected>${realValue}</option>` : '')}
                         </select>
                     `;
                 } else {
-                    // Text input for SN fields and other text fields
                     realFieldInput = `
                         <input type="text" class="form-control form-control-sm verify-field" 
                                id="${fieldId}" 
@@ -1159,8 +1374,8 @@
                 // For Database column, use text input for all fields (readonly)
                 const dbFieldInput = `<input type="text" class="form-control form-control-sm" id="${dbId}" value="${dbValue}" readonly style="border: none; background: transparent; padding: 0;">`;
                 
-                tableRows += `
-                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}>
+                html += `
+                    <tr class="verification-data-row${rowOptionalClass}" data-field="${spec.fieldName}"${rowMerge}${rowDbId}${rowPoEmptyAttr}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px; vertical-align: middle;">${spec.label}${spec.required ? ' <span class="text-danger">*</span>' : ''}</td>
                         <td style="background-color: #fff; padding: 8px;">
                             ${dbFieldInput}
@@ -1172,7 +1387,34 @@
                     </tr>
                 `;
             }
-        });
+            });
+            return html;
+        }
+
+        const tableRows = buildWhVerificationTbodyRows(specMain);
+        const komponenTableRows = specKomponen.length ? buildWhVerificationTbodyRows(specKomponen) : '';
+        const theadWhVerify = `
+                                <tr style="background-color: #f8f9fa;">
+                                    <th style="width: 20%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Item</th>
+                                    <th style="width: 25%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Data PO <span class="fw-normal text-muted small d-block">(referensi terstruktur)</span></th>
+                                    <th style="width: 25%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Real Lapangan</th>
+                                    <th style="width: 15%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Sesuai</th>
+                                    <th style="width: 15%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Tidak Sesuai</th>
+                                </tr>`;
+        const komponenSectionHtml = specKomponen.length
+            ? `<div class="card table-card mb-3 border">
+                <div class="card-header py-2 bg-light">
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-puzzle-piece me-2"></i>Verifikasi attachment &amp; komponen</h6>
+                    <p class="small text-muted mb-0">Terpisah dari tabel unit (selaras urutan Service: attachment → baterai → charger → fork).</p>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-bordered mb-0 table-verification-wh">
+                        <thead>${theadWhVerify}</thead>
+                        <tbody>${komponenTableRows}</tbody>
+                    </table>
+                </div>
+            </div>`
+            : '';
         
         let accHtml = '';
         if (pkgFlags.includes('accessories')) {
@@ -1187,15 +1429,59 @@
         }
         
         const vendorSpecEsc = data.vendor_spec_text ? String(data.vendor_spec_text).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-        const vendorCodeLine = data.vendor_model_code ? ('<div><strong>Kode model pabrik (arsip):</strong> ' + h(data.vendor_model_code) + '</div>') : '';
-        const vendorBlock = (data.vendor_model_code || data.vendor_spec_text) ? (
-            '<div class="alert alert-secondary mb-3 small">' +
-            '<div class="fw-semibold mb-1"><i class="fas fa-file-invoice me-1"></i>Acuan vendor (PI)</div>' +
-            vendorCodeLine +
-            (vendorSpecEsc ? '<div class="mt-2"><strong>Teks spesifikasi vendor:</strong><pre class="mb-0 mt-1 p-2 bg-white border rounded" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:0.8rem;">' + vendorSpecEsc + '</pre></div>' : '') +
-            (pkgFlags.length ? '<div class="mt-2 text-muted">Paket dideklarasikan saat PO: ' + pkgFlags.join(', ') + '</div>' : '') +
-            '</div>'
-        ) : '';
+        const vendorBlock =
+            '<div class="card mb-3">' +
+            '<div class="card-header py-2"><strong>Spesifikasi vendor — paste utuh dari baris PI</strong></div>' +
+            '<div class="card-body py-2 small">' +
+            (data.vendor_model_code ? '<div class="mb-2"><strong>Kode model pabrik:</strong> ' + h(data.vendor_model_code) + '</div>' : '') +
+            '<pre class="form-control wh-vendor-spec-pre mb-0 bg-body-secondary border font-monospace small">' + (vendorSpecEsc || '— Belum diisi saat PO —') + '</pre>' +
+            '</div></div>';
+
+        const pkgLabelMap = { fork_standard: 'Fork standar pabrik', battery: 'Baterai', charger: 'Charger', attachment: 'Attachment', accessories: 'Aksesoris' };
+        let pkgBadges = '';
+        Object.keys(pkgLabelMap).forEach(function (k) {
+            const on = pkgFlags.indexOf(k) >= 0;
+            pkgBadges += '<span class="badge ' + (on ? 'badge-soft-success' : 'badge-soft-gray') + ' me-1 mb-1">' + pkgLabelMap[k] + ': ' + (on ? 'Ya' : 'Tidak') + '</span>';
+        });
+        const packageMirrorHtml =
+            '<div class="card mb-3">' +
+            '<div class="card-header py-2"><strong>Isi paket (seperti saat pembuatan PO)</strong></div>' +
+            '<div class="card-body py-2 small">' + pkgBadges +
+            (isNonElectricDept
+                ? '<div class="form-text mt-2"><i class="fas fa-info-circle text-primary me-1"></i>Departemen <strong>DIESEL</strong> / <strong>GASOLINE</strong>: baterai &amp; charger dari paket listrik tidak relevan.</div>'
+                : '') +
+            '<div class="form-text mt-2"><strong>Fork:</strong> ukuran/tipe khusus dari PI harus tercermin pada teks spesifikasi vendor di atas.</div>' +
+            '</div></div>';
+
+        const advParts = [];
+        const mastDisp = data.tipe_mast ? (h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : '')) : '';
+        if (mastDisp) {
+            advParts.push('<div class="col-md-6"><strong>Mast:</strong> ' + mastDisp + '</div>');
+        }
+        if (data.merk_mesin || data.model_mesin) {
+            advParts.push('<div class="col-md-6"><strong>Mesin:</strong> ' + h(data.merk_mesin) + ' ' + h(data.model_mesin) + '</div>');
+        }
+        if (data.tipe_ban) {
+            advParts.push('<div class="col-md-6"><strong>Ban:</strong> ' + h(data.tipe_ban) + '</div>');
+        }
+        if (data.tipe_roda) {
+            advParts.push('<div class="col-md-6"><strong>Roda:</strong> ' + h(data.tipe_roda) + '</div>');
+        }
+        if (data.jumlah_valve) {
+            advParts.push('<div class="col-md-6"><strong>Valve:</strong> ' + h(data.jumlah_valve) + '</div>');
+        }
+        if (pkgFlags.includes('battery') && !isNonElectricDept && data.baterai_id) {
+            advParts.push('<div class="col-md-6"><strong>Baterai (master):</strong> ID ' + h(data.baterai_id) + '</div>');
+        }
+        if (pkgFlags.includes('charger') && !isNonElectricDept && data.charger_id) {
+            advParts.push('<div class="col-md-6"><strong>Charger (master):</strong> ID ' + h(data.charger_id) + '</div>');
+        }
+        if (pkgFlags.includes('attachment') && data.attachment_id) {
+            advParts.push('<div class="col-md-6"><strong>Attachment (master):</strong> ID ' + h(data.attachment_id) + '</div>');
+        }
+        const advancedCardHtml = advParts.length
+            ? '<div class="card mb-3"><div class="card-header py-2"><strong>Komponen lanjutan (diisi saat PO)</strong></div><div class="card-body py-2"><div class="row g-2 small">' + advParts.join('') + '</div></div></div>'
+            : '';
 
         const showNonElectricNote = isNonElectricDept && ((reqBat && !embedBat) || (reqChg && !embedChg));
         const nonElectricNoteHtml = showNonElectricNote
@@ -1203,9 +1489,10 @@
             : '';
 
         const whDel = options.whDeliveryId != null && options.whDeliveryId !== '' ? String(options.whDeliveryId) : '';
+        const vendorSpecPresent = !!(data.vendor_spec_text && String(data.vendor_spec_text).trim());
 
         return `
-            <form id="unitVerificationFormInline" data-unit-id="${data.id_po_unit}" data-po-id="${data.po_id}" data-wh-delivery-id="${whDel}">
+            <form id="unitVerificationFormInline" data-unit-id="${data.id_po_unit}" data-po-id="${data.po_id}" data-wh-delivery-id="${whDel}" data-vendor-spec-present="${vendorSpecPresent ? '1' : '0'}">
                 <div class="card table-card animate__animated animate__fadeIn">
                     <div class="card-header p-3" style="background-color: #f5f5f5; border-bottom: 1px solid #ccc;">
                         <div class="d-flex justify-content-between align-items-center">
@@ -1216,31 +1503,28 @@
                     </div>
                     <div class="card-body p-4">
                         ${vendorBlock}
+                        ${packageMirrorHtml}
+                        ${advancedCardHtml}
                         ${nonElectricNoteHtml}
                         <div class="alert alert-info mb-3" style="font-size: 0.85rem;">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Cara kerja:</strong> 
                             <ul class="mb-0" style="padding-left: 20px;">
-                                <li>Jika data <strong>sama</strong> dengan database → Centang <strong>"Sesuai"</strong></li>
-                                <li>Jika data <strong>berbeda/kosong</strong> → Centang <strong>"Tidak Sesuai"</strong> dan isi data real di kolom "Real Lapangan"</li>
+                                <li>Jika kolom <strong>Data PO</strong> sudah terisi dan fisik <strong>sama</strong> → isi/cek kolom <strong>Real Lapangan</strong>, lalu centang <strong>Sesuai</strong> (mengunci baris).</li>
+                                <li>Jika kolom <strong>Data PO kosong</strong> tetapi ada di <strong>Spesifikasi vendor</strong> / di unit → <strong>lengkapi Real Lapangan</strong> dari cek lapangan, lalu centang <strong>Sesuai</strong>. Ini melengkapi data Purchasing, <strong>bukan</strong> reject otomatis.</li>
+                                <li>Jika fisik <strong>tidak cocok</strong> dengan dokumen (PO / vendor / unit) → centang <strong>Tidak Sesuai</strong>, pastikan Real terisi, dan isi <strong>Alasan reject</strong>.</li>
                             </ul>
-                            <span class="text-danger fw-bold d-block mt-2">⚠️ Semua baris harus memiliki checkbox "Sesuai" atau "Tidak Sesuai" yang dicentang. Field bertanda * wajib diisi jika "Tidak Sesuai".</span>
+                            <span class="text-danger fw-bold d-block mt-2">⚠️ Setiap baris wajib punya <strong>Sesuai</strong> atau <strong>Tidak Sesuai</strong>. SN dan master data yang wajib harus terisi agar unit bisa masuk inventori lengkap.</span>
                         </div>
                         
-                        <table class="table table-sm table-bordered mb-3" style="font-size: 0.875rem;">
-                            <thead>
-                                <tr style="background-color: #f8f9fa;">
-                                    <th style="width: 20%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Item</th>
-                                    <th style="width: 25%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Database</th>
-                                    <th style="width: 25%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Real Lapangan</th>
-                                    <th style="width: 15%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Sesuai</th>
-                                    <th style="width: 15%; text-align: center; font-weight: bold; border: 1px solid #333; padding: 8px;">Tidak Sesuai</th>
-                                </tr>
-                            </thead>
+                        <p class="small text-muted mb-2"><strong>Tabel 1 — Data unit:</strong> spesifikasi utama + SN unit / mast / mesin.</p>
+                        <table class="table table-sm table-bordered mb-3 table-verification-wh">
+                            <thead>${theadWhVerify}</thead>
                             <tbody>
                                 ${tableRows || '<tr><td colspan="5" class="text-center text-muted">Tidak ada data</td></tr>'}
                             </tbody>
                         </table>
+                        ${komponenSectionHtml}
                         ${accHtml}
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -1308,6 +1592,7 @@
                 sn_baterai: snData['sn_baterai'] || '',
                 sn_charger: snData['sn_charger'] || '',
                 sn_attachment: snData['sn_attachment'] || '',
+                sn_fork: snData['sn_fork'] || '',
                 po_unit_fields: JSON.stringify(poUnitFields)
             },
             dataType: "JSON",
@@ -1327,16 +1612,32 @@
                 $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false).text('Submit Verifikasi');
                 
                 if (r.statusCode == 200) {
-                    $('#modalUpdateSN').modal('hide');
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const mEl = document.getElementById('modalUpdateSN');
+                        if (mEl) {
+                            const mi = bootstrap.Modal.getInstance(mEl);
+                            if (mi) mi.hide();
+                        }
+                        const whM = document.getElementById('verifyWhPoModal');
+                        if (whM) {
+                            const wmi = bootstrap.Modal.getInstance(whM);
+                            if (wmi) wmi.hide();
+                        }
+                    } else {
+                        $('#modalUpdateSN').modal('hide');
+                    }
                     const whDel = $('#unitVerificationFormInline').data('whDeliveryId');
                     if (whDel) {
-                        $(`#bundle-line-d${whDel}-u${idUnit}`).remove();
-                        const sisaPl = $(`#lbl-remain-pl-${whDel}`);
-                        let n = parseInt(sisaPl.text(), 10) || 0;
-                        if (n > 0) {
-                            sisaPl.text(n - 1);
-                        }
-                        $('#wh-verification-detail-container').html(`
+                        if (typeof window.whPoVerifyAfterUnitSuccess === 'function') {
+                            window.whPoVerifyAfterUnitSuccess(whDel, idUnit);
+                        } else {
+                            $(`#bundle-line-d${whDel}-u${idUnit}`).remove();
+                            const sisaPl = $(`.wh-lbl-remain-pl[data-delivery-id="${whDel}"]`).first();
+                            let n = parseInt(sisaPl.text(), 10) || 0;
+                            if (n > 0) {
+                                $(`.wh-lbl-remain-pl[data-delivery-id="${whDel}"]`).text(String(n - 1));
+                            }
+                            $('#wh-verification-detail-container').html(`
                             <div class="card table-card">
                                 <div class="card-body text-center p-5">
                                     <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
@@ -1344,6 +1645,7 @@
                                 </div>
                             </div>
                         `);
+                        }
                     } else {
                         let sisaElem = $(`#lbl-remain-po-${poId}`);
                         let sisaCount = parseInt(sisaElem.text(), 10) - 1;
@@ -1403,15 +1705,7 @@
     }
 
     function whBundleParsePkgFlags(d) {
-        try {
-            const p = d.package_flags;
-            if (p == null || p === '') return [];
-            if (typeof p === 'string') {
-                const j = JSON.parse(p);
-                return Array.isArray(j) ? j : [];
-            }
-            return Array.isArray(p) ? p : [];
-        } catch (e) { return []; }
+        return whEffectivePackageFlags(d);
     }
 
     function whBundleDepartemenIsNonElectric(name) {

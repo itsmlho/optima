@@ -3007,8 +3007,11 @@ $(document).ready(function() {
     $(document).on('change', '#unit_id', function() {
         const unitId = $(this).val();
         if (unitId) {
-            // Find unit data from loaded units
-            const unit = window.allUnits.find(u => u.id == unitId);
+            // Try Select2 AJAX data first (has full unit object), fallback to allUnits cache
+            const s2data = $(this).select2('data');
+            const unit = (s2data && s2data[0] && s2data[0].unit)
+                ? s2data[0].unit
+                : (window.allUnits || []).find(function(u) { return u.id == unitId; });
             if (unit && unit.area_name) {
                 // CASE 1: Unit has area - filter staff by area
                 $('#area').val(unit.area_name);
@@ -3131,108 +3134,73 @@ $(document).ready(function() {
         mechanic: [],
         helper: []
     };
+    // XHR tracker: abort stale requests before populating the same dropdown again
+    window._staffXhr = {};
 
     // Units Dropdown Management
     function loadUnitsDropdown() {
-        // console.log('🔄 Loading units dropdown...');
         const unitSelect = $('#unit_id');
-        
-        
-        $.ajax({
-            url: '<?= base_url('service/work-orders/units-dropdown') ?>',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                // console.log('📦 Units response:', response);
-                
-                if (response.success && response.data) {
-                    if (unitSelect.hasClass('select2-hidden-accessible')) {
-                        unitSelect.select2('destroy');
-                    }
-                    unitSelect.empty().append('<option value="">-- Select Unit --</option>');
-                    
-                    if (response.data.length > 0) {
-                        const O = window.OptimaUnitSelect2;
-                        const useShared = typeof O !== 'undefined' && typeof O.optionDataAttributes === 'function';
-                        if (!useShared) {
-                            console.warn('unit-select2.js tidak termuat — dropdown unit memakai label sederhana.');
-                        }
-                        response.data.forEach(function(unit) {
-                            if (useShared) {
-                                const attrs = O.optionDataAttributes(unit);
-                                const label = O.line1FromRow(O.normalizeRow(unit));
-                                const $opt = $('<option></option>').val(unit.id).text(label);
-                                Object.keys(attrs).forEach(function (k) {
-                                    const v = attrs[k];
-                                    if (v !== '' && v != null && v !== false) {
-                                        $opt.attr(k, v);
-                                    }
-                                });
-                                unitSelect.append($opt);
-                            } else {
-                                const jenis = unit.jenis || 'N/A';
-                                const kapasitas = unit.kapasitas || 'N/A';
-                                const status = unit.status || 'N/A';
-                                const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
-                                const lokasi = unit.lokasi || 'N/A';
-                                const displayText = `${unit.no_unit} - ${jenis} - ${kapasitas} - [${status}] (${pelanggan} / ${lokasi})`;
-                                unitSelect.append(`<option value="${unit.id}">${displayText}</option>`);
-                            }
-                        });
-                        
-                        // Store units globally for area auto-fill
-                        window.allUnits = response.data;
-                        // console.log('✅ Units loaded successfully:', response.data.length, 'units');
-                    } else {
-                        unitSelect.append('<option value="">No units available</option>');
-                        console.warn('⚠️ No units found in response');
-                    }
-                    
-                    // Initialize Select2 with search - SIMPLE & DIRECT
-                    setTimeout(function() {
-                        try {
-                            // Always initialize (we already destroyed above if needed)
-                            const O2 = window.OptimaUnitSelect2;
-                            const s2cfg = {
-                                placeholder: '-- Select Unit --',
-                                allowClear: true,
-                                width: '100%',
-                                dropdownParent: $('#workOrderModal'),
-                                minimumInputLength: 0,
-                                minimumResultsForSearch: 0,
-                                language: {
-                                    noResults: function() { return "No results found"; },
-                                    searching: function() { return "Searching..."; }
-                                }
-                            };
-                            if (typeof O2 !== 'undefined' && typeof O2.templateResult === 'function') {
-                                s2cfg.templateResult = function (item) {
-                                    return O2.templateResult(item, {});
-                                };
-                                s2cfg.templateSelection = function (item) {
-                                    return O2.templateSelection(item, {});
-                                };
-                            }
-                            unitSelect.select2(s2cfg);
-                            // console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
-                        } catch (e) {
-                            console.error('❌ Error initializing Select2:', e);
-                        }
-                    }, 150);
-                } else {
-                    unitSelect.empty().append('<option value="">Error: ' + (response.message || 'Failed to load data') + '</option>');
-                    console.error('❌ Error loading units:', response.message || 'Unknown error');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('❌ AJAX Error loading units:', error);
-                console.error('❌ Status:', status);
-                console.error('❌ Response:', xhr.responseText);
-                unitSelect.empty().append('<option value="">Error loading unit data</option>');
-            }
-        });
-    }
 
+        // Destroy existing Select2 instance if present
+        if (unitSelect.hasClass('select2-hidden-accessible')) {
+            unitSelect.select2('destroy');
+        }
+        unitSelect.empty().append('<option value="">-- Select Unit --</option>');
+
+        const O2 = window.OptimaUnitSelect2;
+        const s2cfg = {
+            placeholder: '-- Select Unit --',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#workOrderModal'),
+            minimumInputLength: 1,
+            language: {
+                noResults:     function() { return "Unit tidak ditemukan"; },
+                searching:     function() { return "Mencari..."; },
+                inputTooShort: function() { return "Ketik minimal 1 karakter untuk mencari unit"; }
+            },
+            ajax: {
+                url: '<?= base_url('service/work-orders/units-dropdown') ?>',
+                dataType: 'json',
+                delay: 350,
+                data: function(params) {
+                    return { search: params.term };
+                },
+                processResults: function(data) {
+                    if (!data.success || !data.data) return { results: [] };
+
+                    return {
+                        results: data.data.map(function(unit) {
+                            const label = (O2 && typeof O2.line1FromRow === 'function')
+                                ? O2.line1FromRow(O2.normalizeRow(unit))
+                                : [unit.no_unit, unit.jenis, unit.kapasitas, unit.status ? '[' + unit.status + ']' : ''].filter(Boolean).join(' - ');
+
+                            // Cache for area auto-fill when unit is selected
+                            if (!window.allUnits) window.allUnits = [];
+                            const idx = window.allUnits.findIndex(function(u) { return u.id == unit.id; });
+                            if (idx >= 0) window.allUnits[idx] = unit; else window.allUnits.push(unit);
+
+                            return { id: unit.id, text: label, unit: unit };
+                        })
+                    };
+                },
+                cache: true
+            }
+        };
+
+        if (O2 && typeof O2.templateResult === 'function') {
+            s2cfg.templateResult = function(item) {
+                if (!item.unit) return item.text;
+                return O2.templateResult(item.unit, {});
+            };
+            s2cfg.templateSelection = function(item) {
+                if (!item.unit) return item.text;
+                return O2.templateSelection(item.unit, {});
+            };
+        }
+
+        unitSelect.select2(s2cfg);
+    }
     function displayUnits(units) {
         let unitList = $('#unitDropdownList');
         unitList.empty();
@@ -3335,7 +3303,11 @@ $(document).ready(function() {
     }
     
     function loadStaffDropdown(staffRole, targetId) {
-        console.log(`🔄 Loading ${staffRole} for ${targetId}...`);
+        // Abort any in-flight request for this dropdown to prevent race-condition duplicates
+        if (window._staffXhr[targetId]) {
+            window._staffXhr[targetId].abort();
+            window._staffXhr[targetId] = null;
+        }
         
         // Build data object with CSRF token
         const ajaxData = { 
@@ -3343,7 +3315,7 @@ $(document).ready(function() {
         };
         ajaxData[window.csrfTokenName] = window.csrfTokenValue;
         
-        $.ajax({
+        window._staffXhr[targetId] = $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
             data: ajaxData,
@@ -3408,6 +3380,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
+                if (status === 'abort') return; // Intentionally aborted — ignore
                 console.error(`❌ AJAX Error loading ${staffRole} for ${targetId}:`, error);
                 console.error('Response:', xhr.responseText);
                 
@@ -3418,6 +3391,9 @@ $(document).ready(function() {
                     (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
                 
                 staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
+            },
+            complete: function() {
+                window._staffXhr[targetId] = null;
             }
         });
     }
@@ -3572,8 +3548,12 @@ $(document).ready(function() {
         // Load ALL admins with Select2
         const adminData = { staff_role: 'ADMIN' };
         adminData[window.csrfTokenName] = window.csrfTokenValue;
-        
-        $.ajax({
+
+        if (window._staffXhr['admin_id']) {
+            window._staffXhr['admin_id'].abort();
+            window._staffXhr['admin_id'] = null;
+        }
+        window._staffXhr['admin_id'] = $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
             data: adminData,
@@ -3600,14 +3580,20 @@ $(document).ready(function() {
                     });
                     console.log('✅ Admin dropdown loaded with Select2:', response.data.length, 'items');
                 }
-            }
+            },
+            error: function(xhr, status) { if (status === 'abort') return; },
+            complete: function() { window._staffXhr['admin_id'] = null; }
         });
         
         // Load ALL foremans with Select2
         const foremanData = { staff_role: 'FOREMAN' };
         foremanData[window.csrfTokenName] = window.csrfTokenValue;
-        
-        $.ajax({
+
+        if (window._staffXhr['foreman_id']) {
+            window._staffXhr['foreman_id'].abort();
+            window._staffXhr['foreman_id'] = null;
+        }
+        window._staffXhr['foreman_id'] = $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
             data: foremanData,
@@ -3633,7 +3619,9 @@ $(document).ready(function() {
                     });
                     console.log('✅ Foreman dropdown loaded with Select2:', response.data.length, 'items');
                 }
-            }
+            },
+            error: function(xhr, status) { if (status === 'abort') return; },
+            complete: function() { window._staffXhr['foreman_id'] = null; }
         });
         
         // Load ALL mechanics and helpers (using existing loadStaffDropdown function with Select2)
@@ -3782,6 +3770,12 @@ $(document).ready(function() {
      * Backend auto-applies scope when no explicit filter is sent
      */
     function loadStaffByDepartmentScope(staffRole, targetId) {
+        // Abort any in-flight request for this dropdown to prevent race-condition duplicates
+        if (window._staffXhr[targetId]) {
+            window._staffXhr[targetId].abort();
+            window._staffXhr[targetId] = null;
+        }
+
         const ajaxData = { 
             staff_role: staffRole
         };
@@ -3795,7 +3789,7 @@ $(document).ready(function() {
         
         ajaxData[window.csrfTokenName] = window.csrfTokenValue;
         
-        $.ajax({
+        window._staffXhr[targetId] = $.ajax({
             url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
             type: 'POST',
             data: ajaxData,
@@ -3857,7 +3851,11 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
+                if (status === 'abort') return; // Intentionally aborted — ignore
                 console.error(`❌ Error loading ${staffRole} by dept scope:`, error);
+            },
+            complete: function() {
+                window._staffXhr[targetId] = null;
             }
         });
     }

@@ -367,22 +367,53 @@ function getChecklistItems() {
     return items;
 }
 
-// ── Unit Select (Select2) ──────────────────────────────────────────────────
-function loadUnits(selectedId = null) {
-    $.getJSON(BASE_URL + 'service/work-orders/units-dropdown', function(res) {
-        const $sel = $('#unit-select');
-        $sel.empty().append('<option value="">— Pilih Unit —</option>');
-        const units = res.data || res;
-        if (Array.isArray(units)) {
-            units.forEach(u => {
-                const label = `${u.no_unit ?? u.id} — ${u.merk ?? ''} ${u.model_unit ?? ''} ${u.pelanggan ? '| ' + u.pelanggan : ''}`;
-                $sel.append(new Option(label, u.id, false, u.id == selectedId));
-            });
-        }
-        if ($sel.hasClass('select2-hidden-accessible')) {
-            $sel.trigger('change.select2');
+// ── Unit Select (Select2 AJAX) ─────────────────────────────────────────────
+function initUnitSelect2() {
+    const $sel = $('#unit-select');
+    if ($sel.hasClass('select2-hidden-accessible')) {
+        $sel.select2('destroy');
+    }
+    $sel.empty().append('<option value="">— Pilih Unit —</option>');
+    $sel.select2({
+        dropdownParent: $('#scheduleModal'),
+        placeholder: '— Pilih Unit —',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 1,
+        language: {
+            inputTooShort: function() { return 'Ketik minimal 1 karakter untuk mencari unit'; },
+            noResults:     function() { return 'Unit tidak ditemukan'; },
+            searching:     function() { return 'Mencari...'; }
+        },
+        ajax: {
+            url: BASE_URL + 'service/work-orders/units-dropdown',
+            dataType: 'json',
+            delay: 350,
+            data: function(params) { return { search: params.term }; },
+            processResults: function(res) {
+                if (!res.success || !res.data) return { results: [] };
+                return {
+                    results: res.data.map(function(u) {
+                        const label = (u.no_unit ?? u.id) + (u.merk ? ' — ' + u.merk : '') +
+                                      (u.model_unit ? ' ' + u.model_unit : '') +
+                                      (u.pelanggan ? ' | ' + u.pelanggan : '');
+                        return { id: u.id, text: label };
+                    })
+                };
+            },
+            cache: true
         }
     });
+}
+
+// Pre-populate a single option for edit mode (unit already known from API response)
+function loadUnits(selectedId = null, unitLabel = null) {
+    initUnitSelect2();
+    if (selectedId && unitLabel) {
+        const $sel = $('#unit-select');
+        $sel.append(new Option(unitLabel, selectedId, true, true));
+        $sel.trigger('change.select2');
+    }
 }
 
 // ── Trigger Type Visibility ────────────────────────────────────────────────
@@ -405,7 +436,7 @@ function resetForm() {
     updateTriggerFields();
 
     if ($('#unit-select').hasClass('select2-hidden-accessible')) {
-        $('#unit-select').val('').trigger('change.select2');
+        $('#unit-select').val(null).trigger('change.select2');
     }
 }
 
@@ -424,7 +455,8 @@ function openEditModal(id) {
         if (!res.success) { OptimaNotify.error(res.message || 'Gagal memuat data'); return; }
         const d = res.data;
         $('#scheduleModalLabel').html('<i class="bi bi-pencil me-2 text-warning"></i>Edit Jadwal PM');
-        loadUnits(d.unit_id);
+        const unitLabel = [d.no_unit, d.merk, d.model].filter(Boolean).join(' — ');
+        loadUnits(d.unit_id, unitLabel || null);
         $('#schedule-id').val(d.id);
         $('#schedule-name').val(d.schedule_name);
         $('#trigger-type').val(d.trigger_type);
@@ -494,13 +526,8 @@ function saveSchedule() {
 $(document).ready(function() {
     initTable();
 
-    // Init Select2 on unit dropdown inside modal
-    $('#unit-select').select2({
-        dropdownParent: $('#scheduleModal'),
-        placeholder: '— Pilih Unit —',
-        allowClear: true,
-        width: '100%'
-    });
+    // Init unit Select2 with AJAX search (lazy — no upfront data load)
+    initUnitSelect2();
 
     $('#filter-active').on('change', () => schedulesTable.ajax.reload());
     $('#btn-add-schedule').on('click', openAddModal);

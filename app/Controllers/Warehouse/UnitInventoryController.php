@@ -99,10 +99,11 @@ class UnitInventoryController extends BaseController
             $orderColumn      = $orderMap[$orderColumnIndex] ?? 'iu.created_at';
             $orderDir         = $this->request->getPost('order')[0]['dir'] ?? 'desc';
 
-            $data            = $this->inventoryUnitModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter, $departemenFilter, $scopeFilter);
-            $recordsFiltered = $this->inventoryUnitModel->countFiltered($searchValue, $statusFilter, $departemenFilter, $scopeFilter);
+            $result          = $this->inventoryUnitModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter, $departemenFilter, $scopeFilter);
+            $data            = $result['data'];
+            $recordsFiltered = $result['recordsFiltered'];
             $recordsTotal    = $this->inventoryUnitModel->countAllData();
-            $dynamicStats    = $this->getDynamicStats($searchValue, $departemenFilter);
+            $dynamicStats    = $this->getDynamicStats($departemenFilter);
 
             return $this->response->setJSON([
                 'draw'            => intval($this->request->getPost('draw')),
@@ -1201,7 +1202,7 @@ class UnitInventoryController extends BaseController
         return $data;
     }
 
-    private function getDynamicStats(string $searchValue = '', ?string $departemenFilter = null): array
+    private function getDynamicStats(?string $departemenFilter = null): array
     {
         $db = Database::connect();
 
@@ -1209,14 +1210,6 @@ class UnitInventoryController extends BaseController
             ->select('iu.status_unit_id, COUNT(*) as cnt')
             ->groupBy('iu.status_unit_id');
 
-        if ($searchValue !== '') {
-            $builder->groupStart()
-                ->like('iu.no_unit', $searchValue)
-                ->orLike('iu.no_unit_na', $searchValue)
-                ->orLike('iu.serial_number', $searchValue)
-                ->orLike('iu.lokasi_unit',  $searchValue)
-                ->groupEnd();
-        }
         if ($departemenFilter) {
             $builder->where('iu.departemen_id', $departemenFilter);
         }

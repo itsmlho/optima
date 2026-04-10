@@ -359,6 +359,7 @@ $movement_purposes = $movement_purposes ?? [];
 var _movementBaseUrl = (typeof BASE_URL !== 'undefined') ? BASE_URL : '<?= base_url() ?>';
 const CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
 const CSRF_HASH = '<?= csrf_hash() ?>';
+const _guardSjBaseUrl = '<?= base_url('surat-jalan') ?>';
 
 // Global AJAX setup for CSRF
 $.ajaxSetup({
@@ -451,6 +452,7 @@ function copyDetailSjVerificationToClipboard() {
     var driver = copyDetailDash($('#detailModal').data('copyDriver'));
     var vehicle = copyDetailDash($('#detailModal').data('copyVehicle'));
     var notes = copyDetailDash($('#detailModal').data('copyNotes'));
+    var guardLink = copyDetailDash($('#detailModal').data('copyGuardLink'));
 
     var text = [
         'No. SJ : ' + sj,
@@ -459,6 +461,9 @@ function copyDetailSjVerificationToClipboard() {
         'No. Kendaraan: ' + vehicle,
         'Catatan: ' + notes
     ].join('\n');
+    if (guardLink !== '-') {
+        text += '\nLink Satpam: ' + guardLink;
+    }
 
     if (sj === '-' && code === '-') {
         if (window.OptimaNotify) {
@@ -486,10 +491,41 @@ function copyDetailSjVerificationToClipboard() {
     }
 }
 
+function copyGuardLinkOnly() {
+    var guardLink = copyDetailDash($('#detailModal').data('copyGuardLink'));
+    if (guardLink === '-') {
+        if (window.OptimaNotify) {
+            OptimaNotify.warning('Link satpam belum tersedia');
+        }
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(guardLink).then(function() {
+            if (window.OptimaNotify) {
+                OptimaNotify.success('Link satpam berhasil disalin');
+            }
+        }).catch(function() {
+            copyTextFallback(guardLink);
+            if (window.OptimaNotify) {
+                OptimaNotify.success('Link satpam berhasil disalin');
+            }
+        });
+    } else {
+        copyTextFallback(guardLink);
+        if (window.OptimaNotify) {
+            OptimaNotify.success('Link satpam berhasil disalin');
+        }
+    }
+}
+
 $(document).ready(function() {
     $(document).on('click', '#btnCopySjAndCode', function(e) {
         e.preventDefault();
         copyDetailSjVerificationToClipboard();
+    });
+    $(document).on('click', '#btnCopyGuardLink', function(e) {
+        e.preventDefault();
+        copyGuardLinkOnly();
     });
 
     loadMovements();
@@ -926,6 +962,13 @@ function showMovementDetailModal(data) {
 
     const hasCode = !!movement.verification_code;
     const leftCol = hasCode ? 'col-md-8' : 'col-12';
+    const guardUrl = (_guardSjBaseUrl || '').replace(/\/$/, '');
+    const sjNo = String(movement.surat_jalan_number || '').trim();
+    const verifyCode = String(movement.verification_code || '').trim();
+    const hasGuardLink = !!(guardUrl && sjNo && verifyCode);
+    const guardLink = hasGuardLink
+        ? (guardUrl + '?surat_jalan_number=' + encodeURIComponent(sjNo) + '&verification_code=' + encodeURIComponent(verifyCode))
+        : '';
 
     let content = '<div class="row g-3 align-items-start">';
     content += '<div class="' + leftCol + '">';
@@ -946,6 +989,7 @@ function showMovementDetailModal(data) {
         content += '<div class="text-muted small mb-1">Kode verifikasi (satpam)</div>';
         content += '<div class="display-5 fw-bold text-danger font-monospace lh-sm py-1 user-select-all">' + escDetailHtml(String(movement.verification_code)) + '</div>';
         content += '<p class="small text-muted mb-2 mb-md-3">Konfirmasi satpam</p>';
+        content += '<button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" id="btnCopyGuardLink"><i class="fas fa-link me-1"></i>Salin link satpam</button>';
         content += '<button type="button" class="btn btn-primary btn-sm w-100" id="btnCopySjAndCode"><i class="fas fa-copy me-1"></i>Salin info untuk satpam</button>';
         content += '</div></div>';
     }
@@ -1003,7 +1047,8 @@ function showMovementDetailModal(data) {
         copyCode: String(movement.verification_code || '').trim(),
         copyDriver: movement.driver_name,
         copyVehicle: movement.vehicle_number,
-        copyNotes: movement.notes
+        copyNotes: movement.notes,
+        copyGuardLink: guardLink
     });
 
     // Action buttons
