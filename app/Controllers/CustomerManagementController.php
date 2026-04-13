@@ -1968,13 +1968,8 @@ class CustomerManagementController extends BaseController
     public function getCustomerLocations($customerId)
     {
         try {
-            // First, try to add location_code column if it doesn't exist
-            try {
-                $this->db->query("ALTER TABLE customer_locations ADD COLUMN location_code VARCHAR(50) NULL AFTER location_name");
-            } catch (\Exception $e) {
-                // Column might already exist, ignore error
-            }
-            
+            // location_code column already exists — no runtime ALTER needed
+
             
             $locations = $this->db->table('customer_locations cl')
                 ->select('cl.*')

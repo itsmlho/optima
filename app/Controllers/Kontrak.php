@@ -453,18 +453,42 @@ class Kontrak extends BaseController
         // Load simple logging helper
         helper('simple_activity_log');
         
-        // Get customer_location_id from form to lookup customer_id
-        $customerLocationId = (int)$this->request->getPost('customer_location_id') ?: (int)$this->request->getPost('location_id');
-        $customerId = null;
-        
-        // Query customer_id from customer_location
+        // Resolve customer_id: prefer customer_location (authoritative), else POST customer_id
+        $customerLocationId = (int) $this->request->getPost('customer_location_id') ?: (int) $this->request->getPost('location_id');
+        $postCustomerId     = (int) $this->request->getPost('customer_id');
+        $customerId         = null;
+
         if ($customerLocationId > 0) {
             $location = $this->db->table('customer_locations')
                 ->select('customer_id')
                 ->where('id', $customerLocationId)
                 ->get()
                 ->getRowArray();
-            $customerId = $location['customer_id'] ?? null;
+            if (! $location) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Lokasi customer tidak ditemukan.',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+            $customerId = (int) ($location['customer_id'] ?? 0) ?: null;
+            if ($postCustomerId > 0 && $customerId && $customerId !== $postCustomerId) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Lokasi yang dipilih tidak sesuai dengan customer.',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+        } elseif ($postCustomerId > 0) {
+            $customerId = $postCustomerId;
+        }
+
+        if (empty($customerId)) {
+            return $this->response->setJSON([
+                'success'   => false,
+                'message'   => lang('Marketing.customer') . ' / ' . lang('Marketing.location') . ' wajib dipilih.',
+                'csrf_hash' => csrf_hash(),
+            ]);
         }
         
         // Validasi input menggunakan model validation dengan struktur database baru
@@ -1998,6 +2022,49 @@ class Kontrak extends BaseController
         } catch (\Exception $e) {
             log_message('error', 'Kontrak::export - Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal memproses permintaan. Silakan coba lagi.');
+        }
+    }
+
+    /**
+     * Customer locations for Create Rental modal (and legacy kontrak URLs).
+     * Mirrors Marketing::customerLocations — route registered as kontrak|rental/locations/(:num).
+     */
+    public function getLocationsByCustomer($customerId)
+    {
+        $customerId = (int) $customerId;
+        if ($customerId <= 0) {
+            return $this->response->setJSON([
+                'success'   => false,
+                'message'   => 'Customer tidak valid.',
+                'data'      => [],
+                'count'     => 0,
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        try {
+            $locations = $this->db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->orderBy('location_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'data'      => $locations,
+                'count'     => count($locations),
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Kontrak::getLocationsByCustomer - ' . $e->getMessage());
+
+            return $this->response->setJSON([
+                'success'   => false,
+                'message'   => 'Gagal memuat lokasi customer.',
+                'data'      => [],
+                'count'     => 0,
+                'csrf_hash' => csrf_hash(),
+            ]);
         }
     }
 

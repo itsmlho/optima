@@ -254,7 +254,7 @@ $can_export = can_export('marketing');
 
 <!-- Contract Detail Modal REMOVED: 
      Konten detail sudah tersedia di dedicated page kontrak_detail.php.
-     Tombol "View Detail" di tabel sudah mengarah ke /marketing/kontrak/detail/{id}.
+     Tombol "View Detail" di tabel sudah mengarah ke /marketing/rental/detail/{id}.
      Modal ini dihapus untuk menghindari konflik DOM ID (contractInfoContent, dll). -->
 
 <!-- Direct Contract Creation Modal -->
@@ -571,7 +571,7 @@ function applyFilters() {
 // Load statistics and update tab badges
 function loadStatistics() {
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/stats') ?>',
+        url: '<?= base_url('marketing/rental/stats') ?>',
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -606,7 +606,7 @@ function initializeContractsTable() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: '<?= base_url('marketing/kontrak/getDataTable') ?>',
+            url: '<?= base_url('marketing/rental/getDataTable') ?>',
             type: 'POST',
             beforeSend: function(xhr) {
                 // Add CSRF token to header
@@ -775,7 +775,7 @@ function refreshTable() {
 
 // Export contracts
 function exportContracts() {
-    let url = '<?= base_url('marketing/kontrak/export') ?>?';
+    let url = '<?= base_url('marketing/rental/export') ?>?';
     
     // Add current filters
     if (currentTab !== 'all') {
@@ -800,7 +800,7 @@ function exportContracts() {
 
 // Edit contract — navigate to dedicated edit page
 function editContract(id) {
-    window.location.href = '<?= base_url('marketing/kontrak/edit') ?>/' + id;
+    window.location.href = '<?= base_url('marketing/rental/edit') ?>/' + id;
 }
 
 /**
@@ -823,15 +823,15 @@ function buildActionButtons(id, status, days) {
 
     return `
         <div class="btn-group">
-            <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}" class="btn btn-sm btn-outline-primary" title="${LANG_RENTAL.view_detail}">
+            <a href="<?= base_url('marketing/rental/detail') ?>/${id}" class="btn btn-sm btn-outline-primary" title="${LANG_RENTAL.view_detail}">
                 <i class="fas fa-eye"></i>
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="visually-hidden">Toggle Dropdown</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/detail') ?>/${id}"><i class="fas fa-eye text-primary me-2"></i>${LANG_RENTAL.view_detail}</a></li>
-                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>${LANG_RENTAL.edit_contract}</a></li>
+                <li><a class="dropdown-item" href="<?= base_url('marketing/rental/detail') ?>/${id}"><i class="fas fa-eye text-primary me-2"></i>${LANG_RENTAL.view_detail}</a></li>
+                <li><a class="dropdown-item" href="<?= base_url('marketing/rental/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>${LANG_RENTAL.edit_contract}</a></li>
                 ${renewItem}
                 ${amendItem}
                 ${diItem}
@@ -845,7 +845,7 @@ function buildActionButtons(id, status, days) {
 function viewContractUnits(id) {
     // Open modal with contract units
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/units') ?>/' + id,
+        url: '<?= base_url('marketing/rental/units') ?>/' + id,
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -862,7 +862,7 @@ function deleteContract(id) {
         text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
         onConfirm: function() {
             $.ajax({
-        url: '<?= base_url('marketing/kontrak/delete') ?>/' + id,
+        url: '<?= base_url('marketing/rental/delete') ?>/' + id,
         type: 'POST',
         data: { <?= csrf_token() ?>: '<?= csrf_hash() ?>' },
         success: function(response) {
@@ -901,7 +901,7 @@ function showNotification(message, type = 'info') {
 function openRenewalWizard(contractId) {
     // Load contract data
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/get') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/get') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -947,7 +947,7 @@ function openRenewalWizard(contractId) {
 function openAmendmentModal(contractId) {
     // Populate contract dropdown and select this contract
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/get-active-contracts') ?>',
+        url: '<?= base_url('marketing/rental/get-active-contracts') ?>',
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -981,7 +981,7 @@ function openHistoryModal(contractId) {
     
     // Load contract history
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/getContractHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/getContractHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -1008,7 +1008,7 @@ function openHistoryModal(contractId) {
     
     // Load rate history
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/getRateHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/getRateHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -1190,7 +1190,7 @@ function loadContractOverview(contractId) {
     console.log('📄 Loading contract overview...');
     
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/get') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/get') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -1311,7 +1311,7 @@ function loadContractUnits(contractId) {
     $('#locationsAccordion').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p>Loading units...</p></div>');
     
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/units') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/units') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data && response.data.length > 0) {
@@ -1394,7 +1394,7 @@ function loadContractHistory(contractId) {
     
     // Load timeline
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/getContractHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/getContractHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -1411,7 +1411,7 @@ function loadContractHistory(contractId) {
     
     // Load rate history
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/getRateHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/getRateHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -1433,7 +1433,7 @@ function loadContractDocuments(contractId) {
     console.log('📎 Loading contract documents...');
     
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/documents') ?>/' + contractId,
+        url: '<?= base_url('marketing/rental/documents') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data && response.data.length > 0) {
@@ -1491,7 +1491,7 @@ function editContractFromModal() {
         $('#contractDetailModal').modal('hide');
         // Redirect to edit page
         setTimeout(function() {
-            window.location.href = '<?= base_url('marketing/kontrak/edit') ?>/' + currentContractId;
+            window.location.href = '<?= base_url('marketing/rental/edit') ?>/' + currentContractId;
         }, 300);
     } else {
         console.error('No contract ID selected');
@@ -1512,7 +1512,7 @@ function deleteContractFromModal() {
         cancelText: window.lang('cancel'),
         onConfirm: function() {
             $.ajax({
-                url: '<?= base_url('marketing/kontrak/delete') ?>/' + currentContractId,
+                url: '<?= base_url('marketing/rental/delete') ?>/' + currentContractId,
                 type: 'POST',
                 data: { 
                     [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
@@ -1553,7 +1553,7 @@ function deleteDocument(docId) {
         cancelText: window.lang('cancel'),
         onConfirm: function() {
             $.ajax({
-                url: '<?= base_url('marketing/kontrak/deleteDocument') ?>/' + docId,
+                url: '<?= base_url('marketing/rental/deleteDocument') ?>/' + docId,
                 type: 'POST',
                 data: { 
                     [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
@@ -1608,7 +1608,7 @@ function openAddContractModal() {
  */
 function loadCustomersForContract() {
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/customers-dropdown') ?>',
+        url: '<?= base_url('marketing/rental/customers-dropdown') ?>',
         method: 'GET',
         success: function(response) {
             if (response.success) {
@@ -1679,7 +1679,7 @@ $(document).on('change', '#contractCustomerSelect', function() {
         }
         
         $.ajax({
-            url: `<?= base_url('marketing/kontrak/locations/') ?>${customerId}`,
+            url: `<?= base_url('marketing/rental/locations/') ?>${customerId}`,
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1714,7 +1714,11 @@ $(document).on('change', '#contractCustomerSelect', function() {
             error: function(xhr) {
                 console.error('Location loading error:', xhr);
                 const errorMsg = xhr.responseJSON?.message || 'Error loading locations';
-                showNotification(errorMsg, 'error');
+                if (typeof window.optimaAssistNotify === 'function') {
+                    window.optimaAssistNotify(errorMsg, 'error');
+                } else {
+                    showNotification(errorMsg, 'error');
+                }
             }
         });
     } else {
@@ -1781,7 +1785,7 @@ $(document).on('change', '#modalRentalType', function() {
 function generateContractNumberByType(rentalType) {
     rentalType = rentalType || $('#modalRentalType').val() || 'CONTRACT';
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/generate-number') ?>',
+        url: '<?= base_url('marketing/rental/generate-number') ?>',
         method: 'GET',
         data: { rental_type: rentalType },
         success: function(response) {
@@ -1814,7 +1818,7 @@ $(document).on('submit', '#addContractForm', function(e) {
     OptimaPro.showLoading('Creating contract...');
     
     $.ajax({
-        url: '<?= base_url('marketing/kontrak/store') ?>',
+        url: '<?= base_url('marketing/rental/store') ?>',
         method: 'POST',
         data: $(this).serialize() + '&' + encodeURIComponent(window.csrfTokenName) + '=' + encodeURIComponent(window.csrfToken || ''),
         success: function(response) {
@@ -1830,10 +1834,11 @@ $(document).on('submit', '#addContractForm', function(e) {
                     contractsTable.ajax.reload();
                 }
                 
-                // Open detail modal for new contract
-                if (response.contract_id) {
+                // Open detail for new rental (API returns data.id)
+                const newRentalId = (response.data && response.data.id) ? response.data.id : (response.contract_id || null);
+                if (newRentalId) {
                     setTimeout(() => {
-                        viewContractDetail(response.contract_id);
+                        viewContractDetail(newRentalId);
                     }, 500);
                 }
             } else {
@@ -1963,7 +1968,7 @@ function loadGroupedView(forceReload) {
     
     if (currentRentalType) params.append('rental_type', currentRentalType);
 
-    fetch(`<?= base_url('marketing/kontrak/getGrouped') ?>?${params.toString()}`)
+    fetch(`<?= base_url('marketing/rental/getGrouped') ?>?${params.toString()}`)
         .then(r => r.json())
         .then(resp => {
             if (!resp.success) throw new Error(resp.message || 'Gagal memuat data');

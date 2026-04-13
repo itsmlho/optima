@@ -153,8 +153,8 @@ class ContractStatusService
     {
         // Method 1: Check contract_renewal_workflow table
         $renewal = $this->db->table('contract_renewal_workflow')
-            ->where('original_contract_id', $contractId)
-            ->whereIn('status', ['PENDING', 'APPROVED', 'COMPLETED'])
+            ->where('parent_contract_id', $contractId)
+            ->whereIn('status', ['PENDING_APPROVAL', 'APPROVED', 'COMPLETED'])
             ->get()
             ->getRow();
 
