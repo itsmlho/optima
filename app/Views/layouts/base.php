@@ -31,38 +31,45 @@ $currentLang = service('request')->getLocale();
     <link rel="shortcut icon" href="<?= base_url('favicon.ico') ?>">
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/logo-optima.ico') ?>">
     
-    <!-- Fonts -->
+    <!-- DNS Prefetch & Preconnect for all CDNs -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Metropolis:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap CSS -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.datatables.net" crossorigin>
+    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.datatables.net">
+
+    <!-- Bootstrap CSS (blocking — critical for layout) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Font Awesome -->
+    <!-- Font Awesome (blocking — icons used in navbar/sidebar) -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    
-    <!-- DataTables CSS -->
-    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
-    
+
+    <!-- Non-critical external CSS: load async, render continues without them -->
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Metropolis:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/themes/nano.min.css">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Metropolis:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/themes/nano.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css">
+    </noscript>
+
     <!-- Chart.js (deferred for performance) -->
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    
-    <!-- Flatpickr CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
-    
-    <!-- Date Range Picker CSS -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-    
-    <!-- Pickr CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/themes/nano.min.css" rel="stylesheet">
-    
-    <!-- noUiSlider CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
     <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/optima-pro.css') ?>" rel="stylesheet">
@@ -83,8 +90,8 @@ $currentLang = service('request')->getLocale();
     <!-- OPTIMA Sidebar CodingNepal Style - Floating, expand/collapse -->
     <link href="<?= base_url('assets/css/desktop/optima-sidebar-codingnepal.css') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/css/desktop/optima-sidebar-codingnepal.css') ?>" rel="stylesheet">
 
-    <!-- Material Symbols Rounded (sidebar icons) -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" />
+    <!-- Material Symbols Rounded (sidebar icons) — non-blocking -->
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
 
     <!-- Sidebar Scroll Management (deferred) -->
     <script defer src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(rtrim(FCPATH, '/\\').'/assets/js/sidebar-scroll.js') ?>"></script>
@@ -1121,7 +1128,7 @@ $currentLang = service('request')->getLocale();
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- OPTIMA Language Helper for Multilingual Support (deferred) -->
-    <script defer src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/language-helper.js') ?>"></script>
     <script>
     // Initialize current language from session
     if (typeof LanguageHelper !== 'undefined') {
@@ -1144,13 +1151,13 @@ $currentLang = service('request')->getLocale();
     <script defer src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
     <!-- Global Date Range Picker Script - deferred -->
-    <script defer src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/global-daterange.js') ?>"></script>
     
     <!-- DataTable Date Filter Mixin (deferred) -->
-    <script defer src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/datatable-datefilter-mixin.js') ?>"></script>
 
     <!-- Page Date Filter Helper (deferred) -->
-    <script defer src="<?= base_url('assets/js/page-date-filter-helper.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/page-date-filter-helper.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/page-date-filter-helper.js') ?>"></script>
     
     <!-- Pickr -->
     <script defer src="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/pickr.min.js"></script>
@@ -1244,19 +1251,19 @@ $currentLang = service('request')->getLocale();
     </script>
     
     <!-- Notification Sound Generator (deferred) -->
-    <script defer src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/notification-sound-generator.js') ?>"></script>
 
     <!-- OPTIMA SPA Main System (deferred) -->
-    <script defer src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/optima-spa-main.js') ?>"></script>
 
     <!-- Global Permission System (deferred) -->
-    <script defer src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/global-permission.js') ?>"></script>
 
     <!-- UI Helpers (deferred) -->
-    <script defer src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/ui_helpers.js') ?>"></script>
 
     <!-- OPTIMA Sidebar CodingNepal (deferred) -->
-    <script defer src="<?= base_url('assets/js/sidebar-codingnepal.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/sidebar-codingnepal.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/sidebar-codingnepal.js') ?>"></script>
     
     <!-- Global JavaScript Variables -->
     <script>
@@ -2062,7 +2069,7 @@ $currentLang = service('request')->getLocale();
     </script>
     
     <!-- OPTIMA DataTable Configuration - Centralized Table Behavior (deferred) -->
-    <script defer src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= time() ?>"></script>
+    <script defer src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/optima-datatable-config.js') ?>"></script>
 
     <!-- ============================================================
          OPTIMA COMMAND PALETTE (Ctrl+K / ⌘K)
