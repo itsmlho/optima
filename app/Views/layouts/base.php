@@ -1293,11 +1293,10 @@ $currentLang = service('request')->getLocale();
             
             setTimeout(() => {
                 loading.classList.add('fade-out');
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                    loading.classList.remove('fade-out');
-                    // Keep #pageLoading in DOM — OptimaPro.showLoading() reuses it after first paint
-                }, 400); // Smooth fade-out transition
+                // Keep #pageLoading in DOM for OptimaPro.showLoading() reuse.
+                // NOTE: CSS has display:flex !important so style.display='none' is ignored.
+                // The fade-out class (opacity:0, visibility:hidden) is the only reliable hide.
+                // showLoading() removes 'fade-out' when it needs to reshow.
             }, remainingTime);
         });
         
@@ -1434,10 +1433,9 @@ $currentLang = service('request')->getLocale();
                     }
                 }
                 messageEl.textContent = message;
-                loadingEl.style.display = 'flex';
-                loadingEl.style.opacity = '0';
                 loadingEl.classList.remove('fade-out');
                 loadingEl.classList.add('active');
+                loadingEl.style.opacity = '0';
                 setTimeout(function() {
                     loadingEl.style.opacity = '1';
                 }, 10);
@@ -1451,7 +1449,7 @@ $currentLang = service('request')->getLocale();
                 }
                 loadingEl.style.opacity = '0';
                 setTimeout(function() {
-                    loadingEl.style.display = 'none';
+                    loadingEl.classList.add('fade-out');
                     loadingEl.classList.remove('active');
                 }, 150);
             };

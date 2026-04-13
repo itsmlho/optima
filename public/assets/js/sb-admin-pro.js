@@ -555,9 +555,10 @@ window.OptimaPro = {
     }
     messageEl.textContent = message;
     
-    // Show with fade-in animation
-    loadingEl.style.display = 'flex';
+    // Show with fade-in animation (remove fade-out to unhide, CSS handles display:flex)
+    loadingEl.classList.remove('fade-out');
     loadingEl.classList.add('active');
+    loadingEl.style.opacity = '0';
     
     // Smooth fade-in
     setTimeout(() => {
@@ -569,11 +570,11 @@ window.OptimaPro = {
     const loadingEl = document.getElementById('pageLoading');
     if (!loadingEl) return;
     
-    // Quick fade-out for responsiveness (reduced from 300ms to 150ms)
+    // Quick fade-out for responsiveness (150ms)
     loadingEl.style.opacity = '0';
     
     setTimeout(() => {
-      loadingEl.style.display = 'none';
+      loadingEl.classList.add('fade-out');
       loadingEl.classList.remove('active');
     }, 150);
   },
