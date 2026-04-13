@@ -1281,25 +1281,40 @@ $currentLang = service('request')->getLocale();
             export: true
         };
         
-        // Hide loading screen when page is fully loaded
-        window.addEventListener('load', function() {
-            const loading = document.getElementById('pageLoading');
-            if (!loading) return;
-            
-            // Minimum delay to ensure animation is visible and professional (1.5 seconds)
-            const minLoadTime = 300; // Reduced from 1500ms for better UX
-            const elapsed = performance.now() - (window.pageStartTime || 0);
-            const remainingTime = Math.max(0, minLoadTime - elapsed);
-            
-            setTimeout(() => {
-                loading.classList.add('fade-out');
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                    loading.classList.remove('fade-out');
-                    // Keep #pageLoading in DOM — OptimaPro.showLoading() reuses it after first paint
-                }, 400); // Smooth fade-out transition
-            }, remainingTime);
-        });
+        // Hide loading screen as soon as DOM is ready — do NOT wait for slow CDN fonts/scripts
+        (function() {
+            const hideLoading = (function() {
+                let done = false;
+                return function() {
+                    if (done) return;
+                    done = true;
+                    const loading = document.getElementById('pageLoading');
+                    if (!loading) return;
+                    loading.classList.add('fade-out');
+                    setTimeout(() => {
+                        loading.style.display = 'none';
+                        loading.classList.remove('fade-out');
+                        // Keep #pageLoading in DOM — OptimaPro.showLoading() reuses it after first paint
+                    }, 400);
+                };
+            })();
+
+            // Primary: hide on DOMContentLoaded (HTML parsed, before external CDN resources finish)
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(hideLoading, 300);
+                });
+            } else {
+                // DOM already ready (script at bottom of body)
+                setTimeout(hideLoading, 300);
+            }
+
+            // Safety cap: force-hide after 3 seconds regardless of CDN load status
+            setTimeout(hideLoading, 3000);
+
+            // Also hide on window.load as tertiary (already captured by cap above)
+            window.addEventListener('load', hideLoading);
+        })();
         
         // Global DataTables Processing Safety Monitor
         // Prevents stuck loading indicators across all DataTables
