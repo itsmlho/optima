@@ -138,164 +138,134 @@ class KontrakModel extends Model
     }
 
     /**
-     * Get contracts for DataTables with statistics
+     * Get contracts for DataTables.
+     *
+     * Uses derived-table LEFT JOINs instead of correlated subqueries so the DB
+     * only touches kontrak_unit once per batch instead of once per row.
+     * Stats are intentionally excluded here — the frontend fetches them via
+     * /marketing/rental/stats independently.
      */
     public function getContractsForDataTable($start, $length, $search, $orderColumn, $orderDir, $filters = [])
     {
-        $builder = $this->db->table($this->table . ' k');
-        
-        // Join with customers directly (new schema) and users table for counting
-        $builder->join('customers c', 'c.id = k.customer_id', 'left');
-        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
-        
-        // Filter out invalid IDs (0 or null)
-        $builder->where('k.id >', 0);
-        $builder->where('k.id IS NOT NULL', null, false);
+        $today  = date('Y-m-d');
+        $params = [];
 
-        // Apply tab-based filtering
+        // ── Build WHERE conditions ────────────────────────────────────────────
+        $whereConditions = ['k.id > 0'];
+
         if (!empty($filters['tab'])) {
             switch ($filters['tab']) {
                 case 'active':
-                    $builder->where('k.status', 'ACTIVE');
-                    $builder->where('k.tanggal_berakhir >=', date('Y-m-d')); // Not yet expired
+                    $whereConditions[] = "k.status = 'ACTIVE'";
+                    $whereConditions[] = 'k.tanggal_berakhir >= ?';
+                    $params[]          = $today;
                     break;
                 case 'expired':
-                    // Include both EXPIRED status AND ACTIVE contracts past their end date
-                    $builder->groupStart()
-                        ->where('k.status', 'EXPIRED')
-                        ->orGroupStart()
-                            ->where('k.status', 'ACTIVE')
-                            ->where('k.tanggal_berakhir <', date('Y-m-d'))
-                        ->groupEnd()
-                    ->groupEnd();
+                    $whereConditions[] = "(k.status = 'EXPIRED' OR (k.status = 'ACTIVE' AND k.tanggal_berakhir < ?))";
+                    $params[]          = $today;
                     break;
                 case 'expiring':
-                    // Contracts that will expire within specified days
-                    $builder->where('k.status', 'ACTIVE');
+                    $whereConditions[] = "k.status = 'ACTIVE'";
+                    $whereConditions[] = "k.rental_type != 'PO_ONLY'";
                     if (!empty($filters['expiring_days'])) {
-                        // Future expiring dates only
-                        $expiringDate = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
-                        $builder->where('k.tanggal_berakhir <=', $expiringDate);
-                        $builder->where('k.tanggal_berakhir >=', date('Y-m-d'));
-                    }
-                    break;
-                // 'all' tab - no status filter
-            }
-        }
-
-        // Apply additional filters
-        if (!empty($filters['rental_type'])) {
-            $builder->where('k.rental_type', $filters['rental_type']);
-        }
-        if (!empty($filters['customer_id'])) {
-            $builder->where('c.id', $filters['customer_id']);
-        }
-        
-        // Search functionality for counting with new database structure
-        if (!empty($search)) {
-            $builder->groupStart()
-                    ->like('k.no_kontrak', $search)
-                    ->orLike('c.customer_name', $search)
-                    ->orLike('k.status', $search)
-                    ->groupEnd();
-        }
-
-        // Get total records with search filter
-        $totalRecords = $builder->countAllResults(false);
-
-        // Reset builder for actual data query
-        $builder = $this->db->table($this->table . ' k');
-        
-        // Join again for data query
-        $builder->join('customers c', 'c.id = k.customer_id', 'left');
-        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
-
-        // Re-apply tab-based filtering for data query
-        if (!empty($filters['tab'])) {
-            switch ($filters['tab']) {
-                case 'active':
-                    $builder->where('k.status', 'ACTIVE');
-                    $builder->where('k.tanggal_berakhir >=', date('Y-m-d')); // Not yet expired
-                    break;
-                case 'expired':
-                    // Include both EXPIRED status AND ACTIVE contracts past their end date
-                    $builder->groupStart()
-                        ->where('k.status', 'EXPIRED')
-                        ->orGroupStart()
-                            ->where('k.status', 'ACTIVE')
-                            ->where('k.tanggal_berakhir <', date('Y-m-d'))
-                        ->groupEnd()
-                    ->groupEnd();
-                    break;
-                case 'expiring':
-                    $builder->where('k.status', 'ACTIVE');
-                    $builder->where('k.rental_type !=', 'PO_ONLY'); // PO Bulanan: open-ended, never expires
-                    if (!empty($filters['expiring_days'])) {
-                        // Future expiring dates only
-                        $expiringDate = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
-                        $builder->where('k.tanggal_berakhir <=', $expiringDate);
-                        $builder->where('k.tanggal_berakhir >=', date('Y-m-d'));
+                        $expiringDate      = date('Y-m-d', strtotime("+{$filters['expiring_days']} days"));
+                        $whereConditions[] = 'k.tanggal_berakhir <= ?';
+                        $params[]          = $expiringDate;
+                        $whereConditions[] = 'k.tanggal_berakhir >= ?';
+                        $params[]          = $today;
                     }
                     break;
             }
         }
 
-        // Re-apply additional filters for data query
         if (!empty($filters['rental_type'])) {
-            $builder->where('k.rental_type', $filters['rental_type']);
+            $whereConditions[] = 'k.rental_type = ?';
+            $params[]          = $filters['rental_type'];
         }
         if (!empty($filters['customer_id'])) {
-            $builder->where('c.id', $filters['customer_id']);
+            $whereConditions[] = 'c.id = ?';
+            $params[]          = $filters['customer_id'];
         }
-        
-        // Explicitly select all columns we need with dynamic calculations and user name from new structure
-        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type,
-                         c.customer_name as pelanggan, 
-                         (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic, 
-                         (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as kontak, 
-                         (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi, 
-                         k.jenis_sewa,
-                         (SELECT COALESCE(SUM(CASE WHEN (ku.is_spare IS NULL OR ku.is_spare = 0) THEN COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan) ELSE 0 END), 0) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as nilai_total,
-                         (SELECT COUNT(*) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as total_units,
-                         k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
-                         CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama');
-        
-        // Filter out invalid IDs (0 or null)
-        $builder->where('k.id >', 0);
-        $builder->where('k.id IS NOT NULL', null, false);
-        
-        // Apply search again for data query
         if (!empty($search)) {
-            $builder->groupStart()
-                    ->like('k.no_kontrak', $search)
-                    ->orLike('c.customer_name', $search)
-                    ->orLike('k.status', $search)
-                    ->groupEnd();
+            $s                 = '%' . $search . '%';
+            $whereConditions[] = '(k.no_kontrak LIKE ? OR c.customer_name LIKE ? OR k.status LIKE ?)';
+            $params[]          = $s;
+            $params[]          = $s;
+            $params[]          = $s;
         }
 
-        // Order with new database structure
-        $columns = ['k.no_kontrak', 'c.customer_name', 'k.tanggal_mulai', 'k.tanggal_berakhir', 'k.status'];
-        if (isset($columns[$orderColumn])) {
-            $builder->orderBy($columns[$orderColumn], $orderDir);
-        } else {
-            $builder->orderBy('k.dibuat_pada', 'DESC');
-        }
+        $where = 'WHERE ' . implode(' AND ', $whereConditions);
 
-        // Limit
+        // ── Count queries (2 cheap queries, no subqueries) ───────────────────
+        $totalAll     = (int) $this->db->query(
+            'SELECT COUNT(*) AS cnt FROM kontrak WHERE id > 0'
+        )->getRow()->cnt;
+
+        $totalRecords = (int) $this->db->query(
+            "SELECT COUNT(*) AS cnt FROM kontrak k LEFT JOIN customers c ON c.id = k.customer_id {$where}",
+            $params
+        )->getRow()->cnt;
+
+        // ── Order ─────────────────────────────────────────────────────────────
+        $columns  = ['k.no_kontrak', 'c.customer_name', 'k.tanggal_mulai', 'k.tanggal_berakhir', 'k.status'];
+        $orderCol = $columns[$orderColumn] ?? 'k.dibuat_pada';
+        $orderDir = ($orderDir === 'asc') ? 'ASC' : 'DESC';
+
+        // ── Data query — 2 derived-table JOINs replace 5 correlated subqueries
+        $dataParams = $params;
+        $limitSql   = '';
         if ($length != -1) {
-            $builder->limit($length, $start);
+            $limitSql     = 'LIMIT ? OFFSET ?';
+            $dataParams[] = (int) $length;
+            $dataParams[] = (int) $start;
         }
 
-        $contracts = $builder->get()->getResultArray();
+        $dataSql = "
+            SELECT
+                k.id, k.no_kontrak, k.customer_po_number, k.rental_type,
+                c.customer_name AS pelanggan,
+                kl.contact_person AS pic,
+                kl.phone          AS kontak,
+                kl.location_name  AS lokasi,
+                k.jenis_sewa,
+                COALESCE(us.nilai_total,  0) AS nilai_total,
+                COALESCE(us.total_units,  0) AS total_units,
+                k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
+                CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')) AS dibuat_oleh_nama
+            FROM kontrak k
+            LEFT JOIN customers c   ON c.id = k.customer_id
+            LEFT JOIN users u       ON u.id = k.dibuat_oleh
+            LEFT JOIN (
+                SELECT ku.kontrak_id,
+                       MIN(cl.contact_person) AS contact_person,
+                       MIN(cl.phone)          AS phone,
+                       MIN(cl.location_name)  AS location_name
+                FROM   kontrak_unit ku
+                JOIN   customer_locations cl ON cl.id = ku.customer_location_id
+                GROUP  BY ku.kontrak_id
+            ) kl ON kl.kontrak_id = k.id
+            LEFT JOIN (
+                SELECT ku.kontrak_id,
+                       COALESCE(SUM(CASE WHEN (ku.is_spare IS NULL OR ku.is_spare = 0)
+                                         THEN COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan)
+                                         ELSE 0 END), 0) AS nilai_total,
+                       COUNT(*) AS total_units
+                FROM   kontrak_unit ku
+                JOIN   inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                WHERE  ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                GROUP  BY ku.kontrak_id
+            ) us ON us.kontrak_id = k.id
+            {$where}
+            ORDER BY {$orderCol} {$orderDir}
+            {$limitSql}
+        ";
 
-        // Get statistics
-        $stats = $this->getContractStatistics();
+        $contracts = $this->db->query($dataSql, $dataParams)->getResultArray();
 
         return [
-            'data' => $contracts,
-            'recordsTotal' => $this->countAll(),
+            'data'            => $contracts,
+            'recordsTotal'    => $totalAll,
             'recordsFiltered' => $totalRecords,
-            'stats' => $stats
         ];
     }
 
@@ -367,60 +337,46 @@ class KontrakModel extends Model
     }
 
     /**
-     * Get contract statistics
+     * Get contract statistics — single query via conditional aggregation.
+     * Previously ran 7 separate COUNT queries; now runs 1.
      */
     public function getContractStatistics()
     {
-        // Use separate builders to avoid condition carry-over
-        $total = $this->db->table($this->table)->countAllResults();
+        $today = date('Y-m-d');
+        $d30   = date('Y-m-d', strtotime('+30 days'));
+        $d90   = date('Y-m-d', strtotime('+90 days'));
+        $d180  = date('Y-m-d', strtotime('+180 days'));
 
-        $active = $this->db->table($this->table)
-            ->where('status', 'ACTIVE')
-            ->countAllResults();
+        $sql = "
+            SELECT
+                COUNT(*) AS total,
+                COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir >= ? THEN 1 END) AS active,
+                COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir <= ? AND tanggal_berakhir >= ? THEN 1 END) AS expiring_30,
+                COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir <= ? AND tanggal_berakhir >= ? THEN 1 END) AS expiring_90,
+                COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir <= ? AND tanggal_berakhir >= ? THEN 1 END) AS expiring_180,
+                COUNT(CASE WHEN status = 'ACTIVE' AND tanggal_berakhir < ?  THEN 1 END) AS expired_past,
+                COUNT(CASE WHEN status = 'EXPIRED' OR (status = 'ACTIVE' AND tanggal_berakhir < ?) THEN 1 END) AS expired
+            FROM kontrak
+            WHERE id > 0
+        ";
 
-        // Expiring within 30 days
-        $expiring_30 = $this->db->table($this->table)
-            ->where('status', 'ACTIVE')
-            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
-            ->where('tanggal_berakhir >=', date('Y-m-d'))
-            ->countAllResults();
-
-        // Expiring within 90 days
-        $expiring_90 = $this->db->table($this->table)
-            ->where('status', 'ACTIVE')
-            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+90 days')))
-            ->where('tanggal_berakhir >=', date('Y-m-d'))
-            ->countAllResults();
-
-        // Expiring within 180 days (6 months)
-        $expiring_180 = $this->db->table($this->table)
-            ->where('status', 'ACTIVE')
-            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+180 days')))
-            ->where('tanggal_berakhir >=', date('Y-m-d'))
-            ->countAllResults();
-
-        // Already past end date (Sudah Lewat)
-        $expired_past = $this->db->table($this->table)
-            ->where('status', 'ACTIVE')
-            ->where('tanggal_berakhir <', date('Y-m-d'))
-            ->countAllResults();
-
-        // All expired (status EXPIRED or past date)
-        $expired = $this->db->table($this->table)
-            ->groupStart()
-                ->where('status', 'EXPIRED')
-                ->orWhere('tanggal_berakhir <', date('Y-m-d'))
-            ->groupEnd()
-            ->countAllResults();
+        $row = $this->db->query($sql, [
+            $today,
+            $d30,   $today,
+            $d90,   $today,
+            $d180,  $today,
+            $today,
+            $today,
+        ])->getRowArray();
 
         return [
-            'total' => $total,
-            'active' => $active,
-            'expiring_30' => $expiring_30,
-            'expiring_90' => $expiring_90,
-            'expiring_180' => $expiring_180,
-            'expired_past' => $expired_past,
-            'expired' => $expired,
+            'total'        => (int) ($row['total']        ?? 0),
+            'active'       => (int) ($row['active']       ?? 0),
+            'expiring_30'  => (int) ($row['expiring_30']  ?? 0),
+            'expiring_90'  => (int) ($row['expiring_90']  ?? 0),
+            'expiring_180' => (int) ($row['expiring_180'] ?? 0),
+            'expired_past' => (int) ($row['expired_past'] ?? 0),
+            'expired'      => (int) ($row['expired']      ?? 0),
         ];
     }
 

@@ -1286,18 +1286,11 @@ $currentLang = service('request')->getLocale();
             const loading = document.getElementById('pageLoading');
             if (!loading) return;
             
-            // Minimum delay to ensure animation is visible and professional (1.5 seconds)
-            const minLoadTime = 300; // Reduced from 1500ms for better UX
-            const elapsed = performance.now() - (window.pageStartTime || 0);
-            const remainingTime = Math.max(0, minLoadTime - elapsed);
-            
-            setTimeout(() => {
-                loading.classList.add('fade-out');
-                // Keep #pageLoading in DOM for OptimaPro.showLoading() reuse.
-                // NOTE: CSS has display:flex !important so style.display='none' is ignored.
-                // The fade-out class (opacity:0, visibility:hidden) is the only reliable hide.
-                // showLoading() removes 'fade-out' when it needs to reshow.
-            }, remainingTime);
+            loading.classList.add('fade-out');
+            // Keep #pageLoading in DOM for OptimaPro.showLoading() reuse.
+            // NOTE: CSS has display:flex !important so style.display='none' is ignored.
+            // The fade-out class (opacity:0, visibility:hidden) is the only reliable hide.
+            // showLoading() removes 'fade-out' when it needs to reshow.
         });
         
         // Global DataTables Processing Safety Monitor

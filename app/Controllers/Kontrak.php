@@ -336,7 +336,6 @@ class Kontrak extends BaseController
                 "recordsTotal"    => $result['recordsTotal'],
                 "recordsFiltered" => $result['recordsFiltered'],
                 "data"            => $data,
-                "stats"           => $result['stats']
             ];
             
             return $this->response->setJSON($response);
