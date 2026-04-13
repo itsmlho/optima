@@ -639,6 +639,7 @@ class Marketing extends BaseDataTableController
             foreach ($quotations as $quotation) {
                 $stageBadge = $this->getWorkflowStageBadge($quotation['workflow_stage']);
                 $actions = $this->getQuotationActions($quotation['id_quotation'], $quotation['workflow_stage']);
+                $validityMeta = $this->getQuotationValidityMeta($quotation);
                 
                 $data[] = [
                     'DT_RowId' => 'row_' . $quotation['id_quotation'],
@@ -650,6 +651,9 @@ class Marketing extends BaseDataTableController
                     'quotation_date' => date('d/m/Y', strtotime($quotation['quotation_date'])),
                     'total_amount' => 'Rp ' . number_format($quotation['total_amount'], 0, ',', '.'),
                     'workflow_stage' => $stageBadge,
+                    'validity_badge' => $validityMeta['validity_badge'],
+                    'validity_state' => $validityMeta['state'],
+                    'is_valid_until_expired' => $validityMeta['is_expired'] ? 1 : 0,
                     'actions' => $actions
                 ];
                 $index++;
@@ -692,6 +696,76 @@ class Marketing extends BaseDataTableController
         ];
         
         return $badges[$stage] ?? '<span class="badge bg-secondary">Unknown</span>';
+    }
+
+    /**
+     * Normalisasi tanggal valid_until (Y-m-d) untuk perbandingan.
+     */
+    private function normalizeQuotationValidUntilDate(?string $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        $s = trim((string) $raw);
+        if ($s === '') {
+            return null;
+        }
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $s, $m)) {
+            return $m[1];
+        }
+        $ts = strtotime($s);
+
+        return $ts ? date('Y-m-d', $ts) : null;
+    }
+
+    /**
+     * @return array{state:string,is_expired:bool,validity_badge:string}
+     */
+    private function getQuotationValidityMeta(array $quotation): array
+    {
+        $until = $this->normalizeQuotationValidUntilDate($quotation['valid_until'] ?? null);
+        if ($until === null) {
+            return [
+                'state'          => 'no_date',
+                'is_expired'     => false,
+                'validity_badge' => '<span class="badge bg-secondary">' . lang('Marketing.quotation_validity_no_date') . '</span>',
+            ];
+        }
+        $today = function_exists('date_jakarta') ? date_jakarta('Y-m-d') : date('Y-m-d');
+        if ($until < $today) {
+            return [
+                'state'          => 'expired',
+                'is_expired'     => true,
+                'validity_badge' => '<span class="badge bg-danger">' . lang('Marketing.quotation_validity_expired') . '</span>',
+            ];
+        }
+        if ($until > $today) {
+            return [
+                'state'          => 'valid',
+                'is_expired'     => false,
+                'validity_badge' => '<span class="badge bg-success">' . lang('Marketing.quotation_validity_valid') . '</span>',
+            ];
+        }
+
+        return [
+            'state'          => 'expires_today',
+            'is_expired'     => false,
+            'validity_badge' => '<span class="badge bg-warning text-dark">' . lang('Marketing.quotation_validity_expires_today') . '</span>',
+        ];
+    }
+
+    /**
+     * True jika valid_until sudah lewat (strictly before today).
+     */
+    private function isQuotationValidUntilExpired(?string $raw): bool
+    {
+        $until = $this->normalizeQuotationValidUntilDate($raw);
+        if ($until === null) {
+            return false;
+        }
+        $today = function_exists('date_jakarta') ? date_jakarta('Y-m-d') : date('Y-m-d');
+
+        return $until < $today;
     }
 
     /**
@@ -1112,11 +1186,33 @@ class Marketing extends BaseDataTableController
                 return $this->response->setJSON(['success' => false, 'message' => 'Only prospects can be converted to quotations']);
             }
             
+            $oldSalesStage = (string) ($quotation['stage'] ?? 'PROSPECT');
+
             // Update workflow stage to quotation
             $this->quotationModel->update($quotationId, [
                 'workflow_stage' => 'QUOTATION',
                 'stage' => 'DRAFT'
             ]);
+
+            $this->insertQuotationStageHistoryIfExists(
+                (int) $quotationId,
+                $oldSalesStage,
+                'DRAFT',
+                'convert_to_quotation',
+                'workflow_stage PROSPECT → QUOTATION'
+            );
+
+            $after = array_merge($quotation, [
+                'workflow_stage' => 'QUOTATION',
+                'stage'          => 'DRAFT',
+            ]);
+            $this->logQuotationWorkflowDocumentHistory(
+                (int) $quotationId,
+                'WORKFLOW',
+                'Prospek diubah menjadi quotation (siap isi spesifikasi).',
+                $quotation,
+                $after
+            );
             
             // Log activity
             $this->logActivity('PROSPECT_TO_QUOTATION', 'quotation', $quotationId, 
@@ -1863,6 +1959,15 @@ class Marketing extends BaseDataTableController
                 if ($changedAtCol !== null && isset($r[$changedAtCol]) && ! isset($r['changed_at'])) {
                     $r['changed_at'] = $r[$changedAtCol];
                 }
+                // UI expects "stage" as destination; some DBs use new_stage / stage_to.
+                if (empty($r['stage'])) {
+                    foreach (['new_stage', 'to_stage', 'stage_to'] as $alt) {
+                        if (! empty($r[$alt])) {
+                            $r['stage'] = $r[$alt];
+                            break;
+                        }
+                    }
+                }
             }
             unset($r);
 
@@ -1942,6 +2047,7 @@ class Marketing extends BaseDataTableController
 
     /**
      * Catat satu baris ke quotation_stage_history (jika tabel & user valid).
+     * Menggunakan fallback user id seperti logQuotationChange agar audit tidak hilang diam-diam.
      */
     private function insertQuotationStageHistoryIfExists(
         int $quotationId,
@@ -1972,30 +2078,88 @@ class Marketing extends BaseDataTableController
 
         $stageUserId = (int) (session()->get('user_id') ?? 0);
         if ($stageUserId <= 0 || ! $db->table('users')->where('id', $stageUserId)->countAllResults()) {
-            log_message('debug', 'insertQuotationStageHistoryIfExists: skip (invalid user_id)');
+            log_message('warning', 'insertQuotationStageHistoryIfExists: invalid or missing session user_id for quotation_id=' . $quotationId . '; using fallback id=1 (same policy as quotation_history)');
+            $stageUserId = 1;
+            if (! $db->table('users')->where('id', $stageUserId)->countAllResults()) {
+                log_message('error', 'insertQuotationStageHistoryIfExists: skip (no users.id=1 fallback)');
 
-            return;
+                return;
+            }
         }
         if ($changedByCol === null || $changedAtCol === null) {
             log_message('error', 'insertQuotationStageHistoryIfExists: skip (missing changed_by/changed_at columns)');
+
             return;
         }
+
+        $newStageCol = null;
+        foreach (['stage', 'new_stage', 'to_stage', 'stage_to'] as $c) {
+            if ($db->fieldExists($c, 'quotation_stage_history')) {
+                $newStageCol = $c;
+                break;
+            }
+        }
+        if ($newStageCol === null) {
+            log_message('error', 'insertQuotationStageHistoryIfExists: no target stage column (stage/new_stage/…) on quotation_stage_history');
+
+            return;
+        }
+
         $insert = [
             $quotationIdCol => $quotationId,
-            'stage'         => $newStage,
-            'change_reason' => $changeReason,
-            'change_notes'  => $changeNotes,
+            $newStageCol    => $newStage,
             $changedByCol   => $stageUserId,
             $changedAtCol   => date('Y-m-d H:i:s'),
         ];
         if ($db->fieldExists('stage_from', 'quotation_stage_history')) {
             $insert['stage_from'] = $oldStage;
         }
+        if ($db->fieldExists('change_reason', 'quotation_stage_history')) {
+            $insert['change_reason'] = $changeReason;
+        }
+        if ($db->fieldExists('change_notes', 'quotation_stage_history')) {
+            $insert['change_notes'] = $changeNotes;
+        }
         try {
             $db->table('quotation_stage_history')->insert($insert);
         } catch (\Throwable $e) {
             log_message('error', 'insertQuotationStageHistoryIfExists: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Ringkasan header quotation untuk quotation_history (workflow / kirim / deal).
+     *
+     * @param array<string, mixed>|null $extraBefore
+     * @param array<string, mixed>|null $extraAfter
+     */
+    private function logQuotationWorkflowDocumentHistory(
+        int $quotationId,
+        string $actionType,
+        string $changesSummary,
+        array $before,
+        array $after,
+        ?array $extraBefore = null,
+        ?array $extraAfter = null
+    ): void {
+        $row = $this->quotationModel->find($quotationId);
+        if (! $row) {
+            return;
+        }
+        $version = (int) ($row['version'] ?? 1);
+        $pick = static function (array $q): array {
+            return [
+                'quotation_number' => $q['quotation_number'] ?? null,
+                'workflow_stage'   => $q['workflow_stage'] ?? null,
+                'stage'            => $q['stage'] ?? null,
+                'is_deal'          => $q['is_deal'] ?? null,
+                'total_amount'     => $q['total_amount'] ?? null,
+                'valid_until'      => $q['valid_until'] ?? null,
+            ];
+        };
+        $oldVals = array_merge($pick($before), $extraBefore ?? []);
+        $newVals = array_merge($pick($after), $extraAfter ?? []);
+        $this->logQuotationChange($quotationId, $version, $actionType, $changesSummary, $oldVals, $newVals);
     }
 
     /**
@@ -2850,7 +3014,59 @@ class Marketing extends BaseDataTableController
                 if ($rec && isset($rec['name'])) $enriched[$key.'_name'] = $rec['name'];
             }
         }
-        
+
+        // ── Direct SPK: build synthetic kontrak_spec so print_spk.php Equipment section renders correctly ──
+        if (!$kontrak_spec && ($row['source_type'] ?? '') === 'DIRECT') {
+            $kontrak_spec = [
+                'merk_unit'               => $enriched['merk_unit']              ?? '',
+                'model_unit'              => $enriched['model_unit']             ?? '',
+                'kontrak_jenis_unit'      => '',
+                'kontrak_tipe_unit'       => '',
+                'kontrak_kapasitas_name'  => $enriched['kapasitas_id_name']      ?? '',
+                'kontrak_departemen_name' => $enriched['departemen_id_name']     ?? '',
+                'kontrak_mast_name'       => $enriched['mast_id_name']           ?? '',
+                'kontrak_ban_name'        => $enriched['ban_id_name']            ?? '',
+                'kontrak_valve_name'      => $enriched['valve_id_name']          ?? '',
+                'attachment_tipe'         => $enriched['attachment_tipe']        ?? '',
+                'attachment_merk'         => $enriched['attachment_merk']        ?? '',
+                'attachment_model'        => '',
+                'fork_name'               => '',
+                'fork_class'              => '',
+                'notes'                   => $spec['notes']                      ?? ($row['catatan'] ?? ''),
+                'aksesoris'               => $spec['aksesoris']                  ?? [],
+                'jumlah_dibutuhkan'       => $row['jumlah_unit']                 ?? 1,
+            ];
+
+            // Resolve tipe_unit_id → jenis / tipe
+            if (!empty($spec['tipe_unit_id'])) {
+                $tuRow = $this->db->table('tipe_unit')
+                    ->where('id_tipe_unit', (int) $spec['tipe_unit_id'])
+                    ->get()->getRowArray();
+                if ($tuRow) {
+                    $kontrak_spec['kontrak_jenis_unit'] = $tuRow['jenis'] ?? '';
+                    $kontrak_spec['kontrak_tipe_unit']  = $tuRow['tipe']  ?? '';
+                }
+            }
+
+            // Resolve fork_id → fork name (fork table may not exist on all environments)
+            if (!empty($spec['fork_id']) && $this->db->tableExists('fork')) {
+                $forkRow = $this->db->table('fork')
+                    ->where('id', (int) $spec['fork_id'])
+                    ->get()->getRowArray();
+                if ($forkRow) {
+                    $kontrak_spec['fork_name']  = $forkRow['name']       ?? '';
+                    $kontrak_spec['fork_class'] = $forkRow['fork_class'] ?? '';
+                }
+            }
+
+            // Build attachment display name
+            if (!empty($kontrak_spec['attachment_tipe'])) {
+                $attName = $kontrak_spec['attachment_tipe'];
+                if (!empty($kontrak_spec['attachment_merk'])) $attName .= ' ' . $kontrak_spec['attachment_merk'];
+                $kontrak_spec['attachment_name'] = trim($attName);
+            }
+        }
+
         // Build prepared_units_detail (match Service controller behavior)
         $preparedUnits = [];
         if (!empty($enriched['prepared_units']) && is_array($enriched['prepared_units'])) {
@@ -5630,6 +5846,203 @@ class Marketing extends BaseDataTableController
     }
 
     /**
+     * Create SPK directly without going through the quotation flow.
+     * Accepts spec fields directly in the request body and sets source_type = 'DIRECT'.
+     */
+    public function createDirectSPK()
+    {
+        $this->db = \Config\Database::connect();
+
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $this->db->transStart();
+
+        try {
+            $data = $this->request->getJSON(true) ?: $this->request->getPost();
+
+            $customerId         = $data['customer_id'] ?? null;
+            $customerLocationId = $data['customer_location_id'] ?? null;
+            $contractId         = $data['contract_id'] ?? null;
+            $deliveryDate       = $data['delivery_date'] ?? null;
+            $jumlahUnit         = max(1, (int)($data['jumlah_unit'] ?? 1));
+            $jenisSpk           = in_array($data['jenis_spk'] ?? '', ['UNIT','ATTACHMENT']) ? $data['jenis_spk'] : 'UNIT';
+            $catatan            = $data['catatan'] ?? '';
+            $notes              = $data['notes'] ?? ''; // merged userNotes + [OPTIMA_SPEC_TECH] block from JS
+
+            // ── Resolve quotation-style brand_id → merk_unit / model_unit ──────
+            $merkUnit  = $data['merk_unit']  ?? null;
+            $modelUnit = $data['model_unit'] ?? null;
+            if (!empty($data['brand_id'])) {
+                $brandRow = $this->db->table('model_unit')
+                    ->where('id_model_unit', (int) $data['brand_id'])
+                    ->get()->getRowArray();
+                if ($brandRow) {
+                    $merkUnit  = $brandRow['merk_unit']  ?? $merkUnit;
+                    $modelUnit = $brandRow['model_unit'] ?? $modelUnit;
+                }
+            }
+
+            // ── Resolve attachment_id → attachment_tipe / attachment_merk ────
+            $forkAttachType  = $data['fork_attach_type'] ?? 'none';
+            $attachmentTipe  = $data['attachment_tipe']  ?? null;
+            $attachmentMerk  = $data['attachment_merk']  ?? null;
+            $forkId          = null;
+            if ($forkAttachType === 'attachment' && !empty($data['attachment_id'])) {
+                $attRow = $this->db->table('attachment')
+                    ->where('id_attachment', (int) $data['attachment_id'])
+                    ->get()->getRowArray();
+                if ($attRow) {
+                    $attachmentTipe = $attRow['tipe'] ?? $attRow['nama'] ?? null;
+                    $attachmentMerk = $attRow['merk'] ?? null;
+                }
+            } elseif ($forkAttachType === 'fork' && !empty($data['fork_id'])) {
+                $forkId = (int) $data['fork_id'];
+            } else {
+                $attachmentTipe = null;
+                $attachmentMerk = null;
+            }
+
+            // ── Spec fields ──────────────────────────────────────────────────
+            $spesifikasiData = [
+                'departemen_id'  => $data['departemen_id']  ?? null,
+                'tipe_unit_id'   => $data['tipe_unit_id']   ?? null,
+                'tipe_jenis'     => $data['tipe_jenis']     ?? null,
+                'merk_unit'      => $merkUnit,
+                'model_unit'     => $modelUnit,
+                'kapasitas_id'   => $data['kapasitas_id']   ?? null,
+                'attachment_tipe'=> $attachmentTipe,
+                'attachment_merk'=> $attachmentMerk,
+                'jenis_baterai'  => $data['jenis_baterai']  ?? null,
+                'charger_id'     => $data['charger_id']     ?? null,
+                'mast_id'        => $data['mast_id']        ?? null,
+                'ban_id'         => $data['ban_id']         ?? null,
+                'roda_id'        => $data['roda_id']        ?? null,
+                'valve_id'       => $data['valve_id']       ?? null,
+                'fork_id'        => $forkId,
+                'notes'          => $notes,
+                'aksesoris'      => [],
+            ];
+
+            // Validate
+            if (!$customerId) {
+                throw new \Exception('Customer wajib dipilih');
+            }
+            if (!$deliveryDate) {
+                throw new \Exception('Delivery date wajib diisi');
+            }
+            if (!$spesifikasiData['departemen_id']) {
+                throw new \Exception('Departemen wajib dipilih');
+            }
+            if (!$spesifikasiData['tipe_unit_id']) {
+                throw new \Exception('Tipe unit wajib dipilih');
+            }
+
+            // Resolve customer info
+            $locationRow = null;
+            if ($customerLocationId) {
+                $locationRow = $this->db->table('customer_locations')
+                    ->where('id', $customerLocationId)
+                    ->where('customer_id', $customerId)
+                    ->get()->getRowArray();
+            }
+
+            $customerRow = $this->db->table('customers')
+                ->where('id', $customerId)
+                ->get()->getRowArray();
+
+            if (!$customerRow) {
+                throw new \Exception('Customer tidak ditemukan');
+            }
+
+            // Contract info (optional)
+            $contractRow   = null;
+            $poKontrakNomor = null;
+            if ($contractId) {
+                $contractRow = $this->db->table('kontrak')
+                    ->where('id', $contractId)
+                    ->where('customer_id', $customerId)
+                    ->get()->getRowArray();
+                if ($contractRow) {
+                    $poKontrakNomor = $contractRow['no_kontrak'] ?? null;
+                }
+            }
+
+            $pelanggan = $customerRow['customer_name'];
+            $pic       = $locationRow['contact_person'] ?? ($contractRow['pic'] ?? null);
+            $kontak    = $locationRow['phone']          ?? ($contractRow['kontak'] ?? null);
+            $lokasi    = $locationRow
+                ? (($locationRow['location_name'] ?? '') . ($locationRow['address'] ? ' - ' . $locationRow['address'] : ''))
+                : ($contractRow['lokasi'] ?? null);
+
+            $nomorSPK = $this->spkModel->generateNextNumber();
+
+            $spkPayload = [
+                'nomor_spk'                  => $nomorSPK,
+                'jenis_spk'                  => $jenisSpk,
+                'kontrak_id'                 => $contractRow ? $contractId : null,
+                'quotation_specification_id' => null,
+                'source_type'                => 'DIRECT',
+                'customer_id'                => (int)$customerId,
+                'jumlah_unit'                => $jumlahUnit,
+                'po_kontrak_nomor'           => $poKontrakNomor,
+                'pelanggan'                  => $pelanggan,
+                'pic'                        => $pic,
+                'kontak'                     => $kontak,
+                'lokasi'                     => $lokasi,
+                'delivery_plan'              => $deliveryDate,
+                'spesifikasi'                => json_encode($spesifikasiData),
+                'catatan'                    => $catatan ?: 'Dibuat langsung (Direct SPK)',
+                'status'                     => 'SUBMITTED',
+                'dibuat_oleh'                => session('user_id') ?? 1,
+                'dibuat_pada'                => date('Y-m-d H:i:s'),
+            ];
+
+            $insertResult = $this->spkModel->insert($spkPayload);
+            if (!$insertResult) {
+                $errors = $this->spkModel->errors();
+                throw new \Exception(!empty($errors) ? implode(', ', $errors) : 'Gagal menyimpan SPK');
+            }
+
+            $spkId = $this->spkModel->getInsertID();
+            $this->db->transComplete();
+
+            if (!$this->db->transStatus()) {
+                throw new \Exception('Transaksi gagal. Silakan coba lagi.');
+            }
+
+            // Activity log (outside transaction)
+            $this->logCreate('spk', $spkId, [
+                'spk_id'     => $spkId,
+                'nomor_spk'  => $nomorSPK,
+                'source_type'=> 'DIRECT',
+                'customer_id'=> $customerId,
+                'jumlah_unit'=> $jumlahUnit,
+            ]);
+
+            return $this->response->setJSON([
+                'success'    => true,
+                'message'    => "SPK berhasil dibuat: {$nomorSPK}",
+                'spk_id'     => $spkId,
+                'spk_number' => $nomorSPK,
+                'csrf_hash'  => csrf_hash(),
+            ]);
+
+        } catch (\Exception $e) {
+            if ($this->db->transDepth > 0) {
+                $this->db->transRollback();
+            }
+            log_message('error', 'createDirectSPK failed: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+    }
+
+    /**
      * Check if all specifications in a quotation are fully allocated with SPKs
      * 
      * @param int $quotationId
@@ -5967,7 +6380,8 @@ class Marketing extends BaseDataTableController
     }
 
     /**
-     * Create SPK from Quotation Specifications
+     * Create SPK from Quotation Specifications.
+     * Requires structured specification rows (departemen_id, tipe_unit_id, etc.); free-text-only specs would break SPK/unit rules.
      */
     public function createFromQuotation()
     {
@@ -8270,6 +8684,17 @@ class Marketing extends BaseDataTableController
                     'send_quotation',
                     'workflow_stage → SENT'
                 );
+                $afterSent = array_merge($quotation, [
+                    'workflow_stage' => 'SENT',
+                    'stage'          => 'SENT',
+                ]);
+                $this->logQuotationWorkflowDocumentHistory(
+                    (int) $quotationId,
+                    'SENT',
+                    'Quotation dikirim ke pelanggan (workflow SENT).',
+                    $quotation,
+                    $afterSent
+                );
                 // Log activity
                 $this->logActivity('send_quotation', 'quotations', $quotationId, 'Quotation ' . $quotation['quotation_number'] . ' sent to customer');
 
@@ -8486,6 +8911,26 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
+            $allowExpiredValidUntil = (int) ($this->request->getPost('allow_expired_valid_until') ?? 0) === 1;
+            if ($this->isQuotationValidUntilExpired($quotation['valid_until'] ?? null) && ! $allowExpiredValidUntil) {
+                $db->transRollback();
+
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => lang('Marketing.quotation_deal_expired_blocked'),
+                    'code' => 'valid_until_expired',
+                ])->setStatusCode(422);
+            }
+
+            if ($allowExpiredValidUntil && $this->isQuotationValidUntilExpired($quotation['valid_until'] ?? null)) {
+                log_message('info', sprintf(
+                    'markAsDeal: expired valid_until override — quotation_id=%s user=%s valid_until=%s',
+                    (string) $quotationId,
+                    (string) (session()->get('username') ?? session()->get('email') ?? 'unknown'),
+                    (string) ($quotation['valid_until'] ?? '')
+                ));
+            }
+
             // Update quotation to DEAL status
             $oldSalesStage = $quotation['stage'] ?? 'SENT';
             $updated       = $quotationModel->update($quotationId, [
@@ -8506,6 +8951,19 @@ class Marketing extends BaseDataTableController
                 'ACCEPTED',
                 'mark_as_deal',
                 'workflow_stage → DEAL'
+            );
+
+            $afterDeal = array_merge($quotation, [
+                'workflow_stage' => 'DEAL',
+                'stage'          => 'ACCEPTED',
+                'is_deal'        => 1,
+            ]);
+            $this->logQuotationWorkflowDocumentHistory(
+                (int) $quotationId,
+                'DEAL',
+                'Quotation ditandai Deal (ACCEPTED).',
+                $quotation,
+                $afterDeal
             );
 
             // Auto-create customer from prospect data. If this fails, fallback remains available in DEAL stage.
@@ -8737,6 +9195,18 @@ class Marketing extends BaseDataTableController
                     'REJECTED',
                     'mark_as_not_deal',
                     'workflow_stage → NOT_DEAL'
+                );
+                $afterNotDeal = array_merge($quotation, [
+                    'workflow_stage' => 'NOT_DEAL',
+                    'stage'          => 'REJECTED',
+                    'is_deal'        => 0,
+                ]);
+                $this->logQuotationWorkflowDocumentHistory(
+                    (int) $quotationId,
+                    'REJECTED',
+                    'Quotation ditandai tidak deal (ditutup).',
+                    $quotation,
+                    $afterNotDeal
                 );
                 // Log activity
                 $this->logActivity('mark_as_not_deal', 'quotations', $quotationId, 
@@ -9099,6 +9569,7 @@ class Marketing extends BaseDataTableController
             ->select('v.jumlah_valve as valve_name')
             ->select('chr.merk_charger as charger_brand, chr.tipe_charger as charger_type')
             ->select('att.tipe as attachment_type, att.merk as attachment_brand, att.model as attachment_model')
+            ->select('fk.name as quotation_fork_name, fk.fork_class as quotation_fork_class')
             ->select('bat.merk_baterai as battery_brand, bat.tipe_baterai as battery_type, bat.jenis_baterai as jenis_baterai')
             ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
             ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
@@ -9110,6 +9581,7 @@ class Marketing extends BaseDataTableController
             ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
             ->join('charger chr', 'chr.id_charger = qs.charger_id', 'left')
             ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
+            ->join('fork fk', 'fk.id = qs.fork_id', 'left')
             ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
             ->where('qs.id_quotation', $id)
             ->where('qs.is_active', 1);

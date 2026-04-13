@@ -16,7 +16,7 @@ class SpkModel extends Model
         'nomor_spk','jenis_spk','kontrak_id','kontrak_spesifikasi_id','quotation_specification_id','jumlah_unit','po_kontrak_nomor','pelanggan','pic','kontak','lokasi',
         'delivery_plan','spesifikasi','catatan','status',
         'dibuat_oleh','dibuat_pada','diperbarui_pada',
-        'contract_linked_at','contract_linked_by','source_type',
+        'contract_linked_at','contract_linked_by','source_type','customer_id',
         'persiapan_unit_mekanik','persiapan_unit_estimasi_mulai','persiapan_unit_estimasi_selesai','persiapan_unit_tanggal_approve',
         'persiapan_unit_id','persiapan_aksesoris_tersedia',
         'fabrikasi_mekanik','fabrikasi_estimasi_mulai','fabrikasi_estimasi_selesai','fabrikasi_tanggal_approve',

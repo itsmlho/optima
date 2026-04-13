@@ -1,4 +1,7 @@
 <?php
+
+helper('optima_spec_print');
+
 $spk = $spk ?? [];
 $s   = $spesifikasi ?? [];
 $k   = $kontrak_spesifikasi ?? []; // Data quotation_specifications untuk Equipment section
@@ -42,6 +45,7 @@ if (!function_exists('maskSensitivePrint')) {
         return preg_replace('/\\S/u', '*', $value) ?? str_repeat('*', mb_strlen($value));
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -550,12 +554,39 @@ if (!function_exists('maskSensitivePrint')) {
                 <td class="text-center align-top">2.</td>
                 <td class="align-top"><strong>Equipment :</strong>
                     <?php
-                        // Determine which component row to show: fork OR attachment (not both)
-                        $hasFork = !empty($k['fork_name']) || !empty($k['fork_id']);
-                        $hasAttachment = !empty($k['attachment_tipe']) || !empty($k['attachment_id']);
-                        // Fork takes priority if both somehow set
-                        $showForkRow = $hasFork;
-                        $showAttachmentRow = !$hasFork && $hasAttachment;
+                        $parsedNotes = parse_optima_spec_tech_notes($k['notes'] ?? null);
+                        $techDetail = $parsedNotes['tech'];
+                        $customNotes = $parsedNotes['user_notes'];
+
+                        $attachmentParts = array_filter([
+                            $k['attachment_tipe'] ?? '',
+                            $k['attachment_merk'] ?? '',
+                            $k['attachment_model'] ?? '',
+                        ]);
+                        $attachmentFromMaster = !empty($attachmentParts) ? trim(implode(' ', $attachmentParts)) : '';
+
+                        $forkFromMaster = '';
+                        if (!empty($k['fork_name'])) {
+                            $forkFromMaster = (string) $k['fork_name'];
+                            if (!empty($k['fork_class'])) {
+                                $forkFromMaster .= ' (' . $k['fork_class'] . ')';
+                            }
+                        }
+
+                        $mastFromMaster = trim((string) ($k['kontrak_mast_name'] ?? $k['mast_name'] ?? ''));
+                        $banFromMaster = trim((string) ($k['kontrak_ban_name'] ?? $k['ban_name'] ?? ''));
+                        $valveFromMaster = trim((string) ($k['kontrak_valve_name'] ?? ''));
+
+                        $attachmentDisplay = spk_print_pick_detail($attachmentFromMaster, $techDetail['attachment']);
+                        $forkDisplay = spk_print_pick_detail($forkFromMaster, $techDetail['fork']);
+                        $mastDisplay = spk_print_pick_detail($mastFromMaster, $techDetail['mast']);
+                        $banDisplay = spk_print_pick_detail($banFromMaster, $techDetail['ban']);
+                        $valveDisplay = spk_print_pick_detail($valveFromMaster, $techDetail['valve']);
+
+                        $forkAttachPrintMode = optima_print_fork_or_attachment_mode($k, $techDetail, $forkDisplay, $attachmentDisplay);
+                        $showForkRow = ($forkAttachPrintMode === 'fork');
+                        $showAttachmentRow = ($forkAttachPrintMode === 'attachment');
+                        $showValveRow = $valveDisplay !== '';
                     ?>
                     <div class="mt-2">
                         <div>- Total Unit</div>
@@ -565,12 +596,12 @@ if (!function_exists('maskSensitivePrint')) {
                         <?php if ($showAttachmentRow): ?><div>- Attachment</div><?php endif; ?>
                         <div>- Ban (Tire)</div>
                         <div>- Mast (Tinggi Angkat)</div>
+                        <?php if ($showValveRow): ?><div>- Valve</div><?php endif; ?>
                         <?php if ($showForkRow): ?><div>- Fork / Garpu</div><?php endif; ?>
                     </div>
                 </td>
                 <td class="align-top">
-                    <?php 
-                        // Use quotation_specifications data for Equipment section (data permintaan marketing)
+                    <?php
                         $jumlahUnit = $spk['jumlah_unit'] ?? '';
                         $merkUnit = $k['merk_unit'] ?? '';
                         $modelUnit = $k['model_unit'] ?? '';
@@ -578,58 +609,45 @@ if (!function_exists('maskSensitivePrint')) {
                         $tipeUnit = $k['kontrak_tipe_unit'] ?? $k['tipe_jenis'] ?? '';
                         $kapasitasName = $k['kontrak_kapasitas_name'] ?? $k['kapasitas_name'] ?? '';
                         $departemenName = $k['kontrak_departemen_name'] ?? $k['departemen_name'] ?? '';
-                        $mastName = $k['kontrak_mast_name'] ?? $k['mast_name'] ?? '';
-                        $banName = $k['kontrak_ban_name'] ?? $k['ban_name'] ?? '';
-                        
-                        // Attachment dari quotation_specifications
-                        $attachmentParts = array_filter([
-                            $k['attachment_tipe'] ?? '',
-                            $k['attachment_merk'] ?? '',
-                            $k['attachment_model'] ?? '',
-                        ]);
-                        $attachmentType = !empty($attachmentParts) ? trim(implode(' ', $attachmentParts)) : '';
-
-                        // Fork dari kolom fork_id (JOIN ke tabel fork)
-                        $forkText = '';
-                        if (!empty($k['fork_name'])) {
-                            $forkText = $k['fork_name'];
-                            if (!empty($k['fork_class'])) {
-                                $forkText .= ' (' . $k['fork_class'] . ')';
-                            }
-                        }
-
-                        // Notes untuk custom requirements (Battery, Charger, Valve custom, dll)
-                        $customNotes = $k['notes'] ?? '';
                     ?>
                     <div class="mt-2">
                         <br />
                         <div class="val"><?= esc($jumlahUnit ?: '..............................') ?></div>
                         <div class="val">
                             <?php
-                            // Combine merk and jenis unit info from kontrak
                             $brandTypeInfo = [];
-                            if (!empty($merkUnit)) $brandTypeInfo[] = $merkUnit;
-                            if (!empty($modelUnit)) $brandTypeInfo[] = $modelUnit;
-                            if (!empty($jenisUnit) && !in_array($jenisUnit, $brandTypeInfo)) $brandTypeInfo[] = $jenisUnit;
-                            if (!empty($tipeUnit) && !in_array($tipeUnit, $brandTypeInfo)) $brandTypeInfo[] = $tipeUnit;
-                            
+                            if (!empty($merkUnit)) {
+                                $brandTypeInfo[] = $merkUnit;
+                            }
+                            if (!empty($modelUnit)) {
+                                $brandTypeInfo[] = $modelUnit;
+                            }
+                            if (!empty($jenisUnit) && !in_array($jenisUnit, $brandTypeInfo, true)) {
+                                $brandTypeInfo[] = $jenisUnit;
+                            }
+                            if (!empty($tipeUnit) && !in_array($tipeUnit, $brandTypeInfo, true)) {
+                                $brandTypeInfo[] = $tipeUnit;
+                            }
                             echo !empty($brandTypeInfo) ? esc(implode(' ', $brandTypeInfo)) : '..............................';
                             ?>
                         </div>
-                        <div class="val"><?= esc($departemenName ?: '..............................') ?></div>
-                        <div class="val"><?= esc($kapasitasName ?: '..............................') ?></div>
+                        <div class="val"><?= esc($departemenName !== '' ? $departemenName : '..............................') ?></div>
+                        <div class="val"><?= esc($kapasitasName !== '' ? $kapasitasName : '..............................') ?></div>
                         <?php if ($showAttachmentRow): ?>
-                        <div class="val"><?= esc($attachmentType ?: '..............................') ?></div>
+                        <div class="val"><?= esc($attachmentDisplay !== '' ? $attachmentDisplay : '..............................') ?></div>
                         <?php endif; ?>
-                        <div class="val"><?= esc($banName ?: '..............................') ?></div>
-                        <div class="val"><?= esc($mastName ?: '..............................') ?></div>
+                        <div class="val"><?= esc($banDisplay !== '' ? $banDisplay : '..............................') ?></div>
+                        <div class="val"><?= esc($mastDisplay !== '' ? $mastDisplay : '..............................') ?></div>
+                        <?php if ($showValveRow): ?>
+                        <div class="val"><?= esc($valveDisplay !== '' ? $valveDisplay : '..............................') ?></div>
+                        <?php endif; ?>
                         <?php if ($showForkRow): ?>
-                        <div class="val"><?= esc($forkText ?: '..............................') ?></div>
+                        <div class="val"><?= esc($forkDisplay !== '' ? $forkDisplay : '..............................') ?></div>
                         <?php endif; ?>
                     </div>
                 </td>
             </tr>
-            <?php if (!empty($customNotes)): ?>
+            <?php if (trim((string) $customNotes) !== ''): ?>
             <tr>
                 <td class="text-center align-top" style="background-color: #fff3cd;"></td>
                 <td class="align-top" style="background-color: #fff3cd;"><strong>Custom Requirements :</strong></td>

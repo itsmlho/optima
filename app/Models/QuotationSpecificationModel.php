@@ -4,6 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * Quotation line items. SPK / createFromQuotation / warehouse flows rely on FK fields
+ * (departemen_id, tipe_unit_id, brand_id, …). Use notes for customer-friendly wording; do not drop structured fields.
+ */
 class QuotationSpecificationModel extends Model
 {
     protected $table = 'quotation_specifications';
@@ -23,6 +27,7 @@ class QuotationSpecificationModel extends Model
         'brand_id',
         'battery_id',
         'attachment_id',
+        'fork_id',
         'unit_accessories',
         'notes', // For custom requirements and technical details
         'is_active',

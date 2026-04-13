@@ -121,11 +121,26 @@ $can_export = $permissions['export'];
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                 </button>
                 <?php if ($can_create): ?>
-                <?= ui_button('add', lang('Marketing.create_spk'), [
-                    'data-bs-toggle' => 'modal',
-                    'data-bs-target' => '#spkModal',
-                    'size' => 'sm'
-                ]) ?>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#spkModal">
+                        <i class="fas fa-plus me-1"></i><?= lang('Marketing.create_spk') ?>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#spkModal">
+                                <i class="fas fa-file-alt me-2 text-primary"></i>Via Quotation
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#directSpkModal">
+                                <i class="fas fa-bolt me-2 text-success"></i>Langsung (Direct)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <?php else: ?>
                 <?= ui_button('add', lang('Marketing.create_spk'), [
                     'size' => 'sm',
@@ -562,6 +577,50 @@ $can_export = $permissions['export'];
         const icon = options.icon ? `<i class="${options.icon} me-1"></i>` : '';
         return `<span class="badge ${cls} ${extraClass}">${icon}${text}</span>`;
     }
+
+    /** Optima global assistant: toast / Swal — avoid native alert() */
+    window.optimaAssistNotify = function (message, type) {
+        type = (type || 'info').toLowerCase();
+        if (type === 'danger') {
+            type = 'error';
+        }
+        var msg = (message === null || message === undefined) ? '' : String(message);
+        if (window.OptimaNotify) {
+            if (type === 'error' && typeof OptimaNotify.error === 'function') {
+                return OptimaNotify.error(msg);
+            }
+            if (type === 'warning' && typeof OptimaNotify.warning === 'function') {
+                return OptimaNotify.warning(msg);
+            }
+            if (type === 'success' && typeof OptimaNotify.success === 'function') {
+                return OptimaNotify.success(msg);
+            }
+            if (typeof OptimaNotify.info === 'function') {
+                return OptimaNotify.info(msg);
+            }
+        }
+        if (typeof window.createOptimaToast === 'function') {
+            var title = type === 'error' ? 'Error' : (type === 'success' ? 'Berhasil' : (type === 'warning' ? 'Peringatan' : 'Info'));
+            if (typeof window.lang === 'function') {
+                if (type === 'error') {
+                    title = window.lang('error');
+                } else if (type === 'success') {
+                    title = window.lang('success');
+                }
+            }
+            return window.createOptimaToast({
+                type: type === 'error' ? 'error' : type,
+                title: title,
+                message: msg,
+                duration: type === 'error' ? 6000 : 4500
+            });
+        }
+        if (typeof window.alertSwal === 'function' && typeof Swal !== 'undefined') {
+            window.alertSwal(type === 'success' ? 'success' : (type === 'error' ? 'error' : 'info'), msg, '');
+            return;
+        }
+        window.alert(msg);
+    };
 
     // Map status to Optima badge-soft-* classes per entity
     function statusBadge(entity, status){
@@ -2280,15 +2339,7 @@ $can_export = $permissions['export'];
                 console.log('📦 All FormData:', Object.fromEntries(fd.entries()));
                 
                 if (!targetUnitId) {
-                    if (window.OptimaPro && typeof OptimaPro.showNotification==='function') {
-                        OptimaPro.showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
-                    } else if (typeof showNotification==='function') {
-                        showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
-                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                        OptimaNotify.error('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
-                    } else {
-                        window.alert('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
-                    }
+                    window.optimaAssistNotify('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
                     return;
                 }
                 // Force jumlah_unit to 1 for attachment
@@ -2308,12 +2359,10 @@ $can_export = $permissions['export'];
                         if (spkTable && spkTable.ajax) spkTable.ajax.reload(); // Reload DataTable
                         loadMonitoring();
                         bootstrap.Modal.getInstance(document.getElementById('spkModal')).hide();
-                        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('SPK dibuat: ' + (j.nomor||''), 'success');
-                        else if (typeof showNotification==='function') showNotification('SPK dibuat: ' + (j.nomor||''), 'success');
+                        window.optimaAssistNotify('SPK dibuat: ' + (j.nomor||''), 'success');
                     } else {
                         const msg = j.message || 'Gagal membuat SPK';
-                        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(msg, 'error');
-                        else if (typeof showNotification==='function') showNotification(msg, 'error');
+                        window.optimaAssistNotify(msg, 'error');
                     }
                 });
         });
@@ -2327,41 +2376,25 @@ $can_export = $permissions['export'];
             const tujuanPerintah = fd.get('tujuan_perintah_kerja_id');
             
             if (!jenisPerintah || jenisPerintah.trim() === '') {
-                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
-                    OptimaNotify.warning('Jenis Perintah Kerja harus dipilih.');
-                } else {
-                    window.alert('Jenis Perintah Kerja harus dipilih.');
-                }
+                window.optimaAssistNotify('Jenis Perintah Kerja harus dipilih.', 'warning');
                 return;
             }
             
             if (!tujuanPerintah || tujuanPerintah.trim() === '') {
-                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
-                    OptimaNotify.warning('Tujuan Perintah harus dipilih.');
-                } else {
-                    window.alert('Tujuan Perintah harus dipilih.');
-                }
+                window.optimaAssistNotify('Tujuan Perintah harus dipilih.', 'warning');
                 return;
             }
             
             const customerLocationId = fd.get('customer_location_id');
             if (!customerLocationId || customerLocationId.trim() === '') {
-                if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
-                    OptimaNotify.warning('Customer Location wajib dipilih.');
-                } else {
-                    window.alert('Customer Location wajib dipilih.');
-                }
+                window.optimaAssistNotify('Customer Location wajib dipilih.', 'warning');
                 return;
             }
             const checks = document.querySelectorAll('.di-unit-check');
                 if (checks && checks.length) {
                     const picked = Array.from(checks).filter(ch=>ch.checked).map(ch=>ch.value);
                     if (picked.length === 0) {
-                        if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
-                            OptimaNotify.warning('Select at least one unit for this DI.');
-                        } else {
-                            window.alert('Select at least one unit for this DI.');
-                        }
+                        window.optimaAssistNotify('Select at least one unit for this DI.', 'warning');
                         return;
                     }
                 picked.forEach(v=> fd.append('unit_ids[]', v));
@@ -2382,16 +2415,10 @@ $can_export = $permissions['export'];
                         
                         if (spkTable && spkTable.ajax) spkTable.ajax.reload(); // Reload DataTable
                         loadMonitoring();
-                        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: '+ (j.nomor||''), 'success');
-                        else if (typeof showNotification==='function') showNotification('DI dibuat: '+ (j.nomor||''), 'success');
-                        else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') OptimaNotify.success('DI dibuat: ' + (j.nomor||''));
-                        else window.alert('DI dibuat: '+ (j.nomor||''));
+                        window.optimaAssistNotify('DI dibuat: ' + (j.nomor||''), 'success');
                     } else {
                         const msg = (j && j.message) ? j.message : 'Gagal membuat DI';
-                        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(msg, 'error');
-                        else if (typeof showNotification==='function') showNotification(msg, 'error');
-                        else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') OptimaNotify.error(msg);
-                        else window.alert(msg);
+                        window.optimaAssistNotify(msg, 'error');
                     }
                 });
         });
@@ -3198,15 +3225,7 @@ $can_export = $permissions['export'];
     // Edit SPK function
     function editSpk() {
         if (!currentSpkId) {
-            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
-            } else if (typeof showNotification === 'function') {
-                showNotification('SPK ID tidak ditemukan', 'error');
-            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                OptimaNotify.error('SPK ID tidak ditemukan');
-            } else {
-                window.alert('SPK ID tidak ditemukan');
-            }
+            window.optimaAssistNotify('SPK ID tidak ditemukan', 'error');
             return;
         }
         
@@ -3224,68 +3243,43 @@ $can_export = $permissions['export'];
                     // Show edit modal
                     new bootstrap.Modal(document.getElementById('spkEditModal')).show();
                 } else {
-                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification('Gagal memuat data SPK untuk edit', 'error');
-                    } else if (typeof showNotification === 'function') {
-                        showNotification('Gagal memuat data SPK untuk edit', 'error');
-                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                        OptimaNotify.error('Gagal memuat data SPK untuk edit');
-                    } else {
-                        window.alert('Gagal memuat data SPK untuk edit');
-                    }
+                    window.optimaAssistNotify('Gagal memuat data SPK untuk edit', 'error');
                 }
             })
             .catch(error => {
                 console.error('Error loading SPK for edit:', error);
-                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification('Error loading SPK data', 'error');
-                } else if (typeof showNotification === 'function') {
-                    showNotification('Error loading SPK data', 'error');
-                } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                    OptimaNotify.error('Error loading SPK data');
-                } else {
-                    window.alert('Error loading SPK data');
-                }
+                window.optimaAssistNotify('Error loading SPK data', 'error');
             });
     }
     
     // Delete SPK function with double confirmation
     function deleteSpk() {
         if (!currentSpkId) {
-            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
-            } else if (typeof showNotification === 'function') {
-                showNotification('SPK ID tidak ditemukan', 'error');
-            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                OptimaNotify.error('SPK ID tidak ditemukan');
-            } else {
-                window.alert('SPK ID tidak ditemukan');
-            }
+            window.optimaAssistNotify('SPK ID tidak ditemukan', 'error');
             return;
         }
         
-        // Double confirmation using OptimaConfirm
+        var cancelHtml = '<i class="fas fa-times me-1"></i>' + ((typeof window.lang === 'function') ? window.lang('cancel') : 'Batal');
+        var confirmHtml = '<i class="fas fa-trash me-1"></i>' + ((typeof window.lang === 'function') ? window.lang('confirm_delete_btn') : 'Ya, hapus');
         if (window.OptimaConfirm && typeof OptimaConfirm.danger === 'function') {
             OptimaConfirm.danger({
                 title: 'Hapus SPK?',
-                text: 'Apakah Anda yakin ingin menghapus SPK ini? Tindakan ini tidak dapat dibatalkan.',
-                confirmButtonText: 'Ya, hapus',
-                cancelButtonText: window.lang('cancel')
-            }).then((confirmed) => {
-                if (confirmed) {
+                text: '<p class="mb-2">Apakah Anda yakin ingin menghapus SPK ini?</p><p class="mb-0 text-danger"><strong>PERINGATAN:</strong> Tindakan ini tidak dapat dibatalkan.</p>',
+                confirmText: confirmHtml,
+                cancelText: cancelHtml,
+                onConfirm: function () {
                     proceedDeleteSpk();
                 }
             });
-        } else {
-            // Fallback to double native confirm
-            if (!window.confirm('Apakah Anda yakin ingin menghapus SPK ini?')) {
-                return;
-            }
-            if (!window.confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus SPK ini?')) {
-                return;
-            }
-            proceedDeleteSpk();
+            return;
         }
+        if (!window.confirm('Apakah Anda yakin ingin menghapus SPK ini?')) {
+            return;
+        }
+        if (!window.confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus SPK ini?')) {
+            return;
+        }
+        proceedDeleteSpk();
     }
 
     function proceedDeleteSpk() {
@@ -3309,40 +3303,15 @@ $can_export = $permissions['export'];
                 // Reload SPK DataTable
                 if (spkTable && spkTable.ajax) spkTable.ajax.reload();
                 
-                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification('SPK berhasil dihapus', 'success');
-                } else if (typeof showNotification === 'function') {
-                    showNotification('SPK berhasil dihapus', 'success');
-                } else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
-                    OptimaNotify.success('SPK berhasil dihapus');
-                } else {
-                    window.alert('SPK berhasil dihapus');
-                }
+                window.optimaAssistNotify('SPK berhasil dihapus', 'success');
             } else {
                     const errorMsg = j.message || 'Gagal menghapus SPK';
-                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification(errorMsg, 'error');
-                    } else if (typeof showNotification === 'function') {
-                        showNotification(errorMsg, 'error');
-                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                        OptimaNotify.error(errorMsg);
-                    } else {
-                        window.alert(errorMsg);
-                    }
+                    window.optimaAssistNotify(errorMsg, 'error');
             }
         })
         .catch(error => {
             console.error('Error deleting SPK:', error);
-            const errorMsg = 'Error deleting SPK: ' + error.message;
-            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification(errorMsg, 'error');
-            } else if (typeof showNotification === 'function') {
-                showNotification(errorMsg, 'error');
-            } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                OptimaNotify.error(errorMsg);
-            } else {
-                window.alert(errorMsg);
-            }
+            window.optimaAssistNotify('Error deleting SPK: ' + error.message, 'error');
         });
     }
     
@@ -3404,41 +3373,16 @@ $can_export = $permissions['export'];
                         
                         // Show success notification
                         const successMsg = 'SPK berhasil diperbarui! Status: ' + (j.data?.status || 'Unknown');
-                        if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(successMsg, 'success');
-                        } else if (typeof showNotification === 'function') {
-                            showNotification(successMsg, 'success');
-                        } else if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
-                            OptimaNotify.success(successMsg);
-                        } else {
-                            window.alert(successMsg);
-                        }
+                        window.optimaAssistNotify(successMsg, 'success');
                     } else {
                         // Show error notification
                         const errorMsg = j.message || 'Gagal memperbarui SPK';
-                        if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(errorMsg, 'error');
-                        } else if (typeof showNotification === 'function') {
-                            showNotification(errorMsg, 'error');
-                        } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                            OptimaNotify.error(errorMsg);
-                        } else {
-                            window.alert(errorMsg);
-                        }
+                        window.optimaAssistNotify(errorMsg, 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error updating SPK:', error);
-                    const errorMsg = 'Terjadi kesalahan saat memperbarui SPK: ' + error.message;
-                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification(errorMsg, 'error');
-                    } else if (typeof showNotification === 'function') {
-                        showNotification(errorMsg, 'error');
-                    } else if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                        OptimaNotify.error(errorMsg);
-                    } else {
-                        window.alert(errorMsg);
-                    }
+                    window.optimaAssistNotify('Terjadi kesalahan saat memperbarui SPK: ' + error.message, 'error');
                 });
             });
         }
@@ -3486,11 +3430,7 @@ $can_export = $permissions['export'];
             })
             .catch(error => {
                 console.error('❌ Error loading contracts:', error);
-                if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                    OptimaNotify.error('Failed to load contracts. Please check console for details.');
-                } else {
-                    window.alert('Failed to load contracts. Please check console for details.');
-                }
+                window.optimaAssistNotify('Failed to load contracts. Please check console for details.', 'error');
             });
         
         const modal = new bootstrap.Modal(document.getElementById('linkContractModal'));
@@ -3526,33 +3466,20 @@ $can_export = $permissions['export'];
             submitBtn.innerHTML = originalText;
 
             if (data.success) {
-                const successMsg = `✅ Success! SPK linked to contract.\n\n${data.di_count || 0} Delivery Instruction(s) have been updated and unlocked for invoicing.`;
-                if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
-                    OptimaNotify.success(successMsg);
-                } else {
-                    window.alert(successMsg);
-                }
+                const successMsg = 'SPK berhasil di-link ke kontrak. ' + (data.di_count || 0) + ' Delivery Instruction diperbarui.';
+                window.optimaAssistNotify(successMsg, 'success');
                 bootstrap.Modal.getInstance(document.getElementById('linkContractModal')).hide();
                 if (spkTable && spkTable.ajax) spkTable.ajax.reload(); // Reload DataTable
             } else {
-                const errorMsg = '❌ Error: ' + (data.message || 'Failed to link contract');
-                if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                    OptimaNotify.error(errorMsg);
-                } else {
-                    window.alert(errorMsg);
-                }
+                const errorMsg = 'Error: ' + (data.message || 'Failed to link contract');
+                window.optimaAssistNotify(errorMsg, 'error');
             }
         })
         .catch(error => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
             console.error('Error:', error);
-            const errorMsg = '❌ Failed to link contract. Please try again.';
-            if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
-                OptimaNotify.error(errorMsg);
-            } else {
-                window.alert(errorMsg);
-            }
+            window.optimaAssistNotify('Failed to link contract. Please try again.', 'error');
         });
     }
     </script>
@@ -3637,6 +3564,659 @@ $can_export = $permissions['export'];
     
     <?php endif; ?>
 </div>
+
+<!-- ============================================================
+     DIRECT SPK MODAL
+     ============================================================ -->
+<div class="modal fade" id="directSpkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="fas fa-bolt me-2 text-success"></i>Buat SPK Langsung</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="directSpkForm">
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Buat SPK tanpa melalui alur Quotation. Spesifikasi unit diisi langsung pada form ini.
+                    </div>
+
+                    <!-- ── STEP 1: Customer & Pengiriman ─────────────────────────── -->
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-building me-2"></i>Step 1: Customer &amp; Pengiriman</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Customer <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="dspkCustomerId" name="customer_id" required>
+                                        <option value="">-- Pilih Customer --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Lokasi Customer <small class="text-muted">(opsional)</small></label>
+                                    <select class="form-select" id="dspkLocationId" name="customer_location_id" disabled>
+                                        <option value="">-- Pilih Customer dulu --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Kontrak / PO <small class="text-muted">(opsional)</small></label>
+                                    <select class="form-select" id="dspkContractId" name="contract_id" disabled>
+                                        <option value="">-- Pilih Customer dulu --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tanggal Delivery <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" name="delivery_date" id="dspkDeliveryDate" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Jenis SPK</label>
+                                    <select class="form-select" name="jenis_spk" id="dspkJenis">
+                                        <option value="UNIT" selected>UNIT</option>
+                                        <option value="ATTACHMENT">ATTACHMENT</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Jumlah Unit <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="jumlah_unit" id="dspkJumlahUnit" min="1" value="1" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── STEP 2: Spesifikasi Unit ────────────────────────────────── -->
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Step 2: Spesifikasi Unit</h6>
+                        </div>
+                        <div class="card-body">
+
+                            <!-- Template Selector -->
+                            <div class="card border-0 bg-light mb-3">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <i class="fas fa-layer-group text-success"></i>
+                                        <span class="fw-semibold text-success small">Gunakan Template:</span>
+                                        <select id="dspkTemplateSelect" class="form-select form-select-sm flex-grow-1" style="max-width:280px">
+                                            <option value="">-- Pilih template spesifikasi --</option>
+                                        </select>
+                                        <button type="button" class="btn btn-sm btn-success" id="dspkApplyTemplateBtn" disabled>
+                                            <i class="fas fa-magic me-1"></i>Terapkan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <!-- Departemen -->
+                                <div class="col-md-4">
+                                    <label class="form-label">Departemen <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="departemen_id" id="dspkDepartemen" required>
+                                        <option value="">-- Pilih Departemen --</option>
+                                    </select>
+                                </div>
+                                <!-- Tipe Unit -->
+                                <div class="col-md-4">
+                                    <label class="form-label">Tipe Unit <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="tipe_unit_id" id="dspkTipeUnit" required>
+                                        <option value="">-- Pilih Departemen dulu --</option>
+                                    </select>
+                                </div>
+                                <!-- Kapasitas -->
+                                <div class="col-md-4">
+                                    <label class="form-label">Kapasitas</label>
+                                    <select class="form-select" name="kapasitas_id" id="dspkKapasitas">
+                                        <option value="">-- Pilih Kapasitas --</option>
+                                    </select>
+                                </div>
+                                <!-- Merk / Brand -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Merk / Brand</label>
+                                    <select class="form-select" name="brand_id" id="dspkBrand" disabled>
+                                        <option value="">-- Pilih Departemen dulu --</option>
+                                    </select>
+                                </div>
+
+                                <!-- ── Detail Teks (sama persis dgn Quotation) ───────── -->
+                                <div class="col-12 mt-2">
+                                    <hr class="my-2">
+                                    <h6 class="mb-0">Detail Spesifikasi</h6>
+                                    <p class="small text-muted mb-2">Isi field utama yang diminta customer. Detail baterai, charger, roda &mdash; tuliskan di kolom <strong>Catatan</strong> di bawah.</p>
+                                </div>
+
+                                <!-- Fork / Attachment radio (2 pilihan, tanpa "Tidak Ada") -->
+                                <div class="col-12">
+                                    <label class="form-label">Fork / Attachment</label>
+                                    <div class="btn-group w-100 flex-wrap" role="group">
+                                        <input type="radio" class="btn-check" name="fork_attach_type" id="dspkOptFork" value="fork" checked autocomplete="off">
+                                        <label class="btn btn-outline-primary btn-sm" for="dspkOptFork"><i class="fas fa-tools me-1"></i>Fork / Garpu</label>
+                                        <input type="radio" class="btn-check" name="fork_attach_type" id="dspkOptAttachment" value="attachment" autocomplete="off">
+                                        <label class="btn btn-outline-success btn-sm" for="dspkOptAttachment"><i class="fas fa-paperclip me-1"></i>Attachment</label>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Pilih jenis Fork atau Attachment yang digunakan pada unit ini.</small>
+                                </div>
+
+                                <!-- Fork text detail (visible when fork selected) -->
+                                <div class="col-md-6" id="dspkTextForkWrap">
+                                    <label for="dspkDetailFork" class="form-label">Detail Fork</label>
+                                    <input type="text" class="form-control" id="dspkDetailFork" maxlength="500" autocomplete="off"
+                                        placeholder="e.g. Standard Fork 1150mm, Class IIA">
+                                </div>
+
+                                <!-- Attachment text detail (visible when attachment selected) -->
+                                <div class="col-md-6" id="dspkTextAttachWrap" style="display:none;">
+                                    <label for="dspkDetailAttachment" class="form-label">Detail Attachment</label>
+                                    <input type="text" class="form-control" id="dspkDetailAttachment" maxlength="500" autocomplete="off"
+                                        placeholder="e.g. Rotator side-shift, kapasitas 2T">
+                                </div>
+
+                                <!-- Mast text (always visible) -->
+                                <div class="col-md-6">
+                                    <label for="dspkDetailMast" class="form-label">Mast (Tinggi Angkat)</label>
+                                    <input type="text" class="form-control" id="dspkDetailMast" maxlength="500" autocomplete="off"
+                                        placeholder="e.g. Triplex FFL 5000mm">
+                                </div>
+
+                                <!-- Ban text (always visible) -->
+                                <div class="col-md-6">
+                                    <label for="dspkDetailBan" class="form-label">Ban (Tire)</label>
+                                    <input type="text" class="form-control" id="dspkDetailBan" maxlength="500" autocomplete="off"
+                                        placeholder="e.g. Solid, 200/50-10">
+                                </div>
+
+                                <!-- Valve text (always visible) -->
+                                <div class="col-md-6">
+                                    <label for="dspkDetailValve" class="form-label">Valve</label>
+                                    <input type="text" class="form-control" id="dspkDetailValve" maxlength="500" autocomplete="off"
+                                        placeholder="e.g. 2-way, 3-way hydraulic">
+                                </div>
+
+                                <!-- ── Master IDs (opsional, collapsible) ────────────── -->
+                                <div class="col-12">
+                                    <details class="border rounded p-3 mt-1 bg-light" id="dspkMasterDetails">
+                                        <summary class="fw-semibold">Identitas Master (Opsional)</summary>
+                                        <p class="small text-muted mt-2 mb-2">Pilih master ID jika ingin menghubungkan ke data master forklift. Tidak wajib — cukup isi teks di atas.</p>
+                                        <div class="row g-3">
+                                            <!-- Fork master (follows toggle) -->
+                                            <div class="col-12" id="dspkForkMasterWrap">
+                                                <label class="form-label">Fork Master</label>
+                                                <select class="form-select" name="fork_id" id="dspkForkId">
+                                                    <option value="">-- Pilih Jenis Fork --</option>
+                                                </select>
+                                            </div>
+                                            <!-- Attachment master (follows toggle) -->
+                                            <div class="col-12" id="dspkAttachMasterWrap" style="display:none;">
+                                                <label class="form-label">Attachment Master</label>
+                                                <select class="form-select" name="attachment_id" id="dspkAttachmentId">
+                                                    <option value="">-- Pilih Jenis Attachment --</option>
+                                                </select>
+                                            </div>
+                                            <!-- Mast 2-level -->
+                                            <div class="col-md-4">
+                                                <label class="form-label">Mast Model</label>
+                                                <select class="form-select" id="dspkMastModel">
+                                                    <option value="">-- Pilih Model --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Mast Tinggi</label>
+                                                <select class="form-select" name="mast_id" id="dspkMastHeight">
+                                                    <option value="">-- Pilih model dulu --</option>
+                                                </select>
+                                                <small class="text-muted">Pilih setelah memilih model</small>
+                                            </div>
+                                            <!-- Ban master -->
+                                            <div class="col-md-4">
+                                                <label class="form-label">Ban Master</label>
+                                                <select class="form-select" name="ban_id" id="dspkBan">
+                                                    <option value="">-- Pilih Ban --</option>
+                                                </select>
+                                            </div>
+                                            <!-- Valve master -->
+                                            <div class="col-md-4">
+                                                <label class="form-label">Valve Master</label>
+                                                <select class="form-select" name="valve_id" id="dspkValve">
+                                                    <option value="">-- Pilih Valve --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes (user-facing, same as quotation specNotes) -->
+                    <div class="mb-3">
+                        <label class="form-label">Catatan / Custom Requirements</label>
+                        <textarea class="form-control" id="dspkNotes" rows="3"
+                            placeholder="Ringkasan untuk customer; tambahkan baterai, charger, roda, atau detail lain di sini sebagai teks."></textarea>
+                        <small class="text-muted"><i class="fas fa-lightbulb text-warning me-1"></i>Detail baterai, charger, roda, atau catatan lain sebaiknya dituliskan di sini.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success" id="dspkSubmitBtn">
+                        <i class="fas fa-bolt me-1"></i>Buat SPK
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ================================================================
+   DIRECT SPK MODAL — JavaScript
+   Same pattern as quotation spec form (OPTIMA_SPEC_TECH notes block)
+   ================================================================ */
+(function () {
+    'use strict';
+
+    const BASE   = '<?= base_url() ?>';
+    const SPEC   = BASE + 'marketing/spk/spec-options';
+    const TPL    = BASE + 'marketing/quotations/spec-templates';
+    const CUST   = BASE + 'marketing/kontrak/customers-dropdown';
+    const LOCS   = BASE + 'marketing/customer-management/getCustomerLocations/';
+    const CTRCTS = BASE + 'marketing/customer-management/getCustomerContracts/';
+    const FORKS  = BASE + 'marketing/forks';
+    const TIPE   = BASE + 'marketing/customer-management/getTipeUnit';
+
+    const TECH_START = '[OPTIMA_SPEC_TECH]';
+    const TECH_END   = '[/OPTIMA_SPEC_TECH]';
+
+    let dspkReady   = false;
+    let allTipeUnit = [];
+
+    // ── OPTIMA_SPEC_TECH helpers (mirrors quotations.php) ─────────
+    function extractDspkSpecTech(notesRaw) {
+        const raw = notesRaw || '';
+        const s = raw.indexOf(TECH_START);
+        const e = raw.indexOf(TECH_END);
+        if (s === -1 || e === -1 || e < s) { return { userNotes: raw.trim(), detail: {} }; }
+        const before = raw.slice(0, s).replace(/\s*$/, '');
+        const after  = raw.slice(e + TECH_END.length).replace(/^\s*/, '');
+        const userNotes = [before, after].filter(Boolean).join('\n\n').trim();
+        const inner  = raw.slice(s + TECH_START.length, e).trim();
+        const detail = {};
+        inner.split('\n').forEach(function (line) {
+            const m = /^([a-z_]+):\s*(.*)$/.exec(line.trim());
+            if (m) { detail[m[1]] = m[2]; }
+        });
+        return { userNotes: userNotes, detail: detail };
+    }
+
+    function buildDspkSpecTechBlock() {
+        const fat = (document.querySelector('input[name="fork_attach_type"]:checked') || {}).value || 'fork';
+        const lines = [];
+        const push = function (key, val) { if (val && val.trim()) { lines.push(key + ': ' + val.trim().replace(/\n/g, ' ')); } };
+        push(fat === 'fork' ? 'fork' : 'attachment',
+             fat === 'fork'
+                 ? document.getElementById('dspkDetailFork').value
+                 : document.getElementById('dspkDetailAttachment').value);
+        push('mast',  document.getElementById('dspkDetailMast').value);
+        push('ban',   document.getElementById('dspkDetailBan').value);
+        push('valve', document.getElementById('dspkDetailValve').value);
+        if (!lines.length) { return ''; }
+        return TECH_START + '\n' + lines.join('\n') + '\n' + TECH_END;
+    }
+
+    function mergeDspkNotes() {
+        const userNotes = (document.getElementById('dspkNotes').value || '').trim();
+        const block     = buildDspkSpecTechBlock();
+        if (!block)     { return userNotes; }
+        if (userNotes)  { return userNotes + '\n\n' + block; }
+        return block;
+    }
+
+    // ── generic helpers ────────────────────────────────────────────
+    function fillSelect(selId, rows, placeholder) {
+        const sel = document.getElementById(selId);
+        if (!sel) { return; }
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">' + (placeholder || '-- Pilih --') + '</option>';
+        (rows || []).forEach(function (r) {
+            const o = document.createElement('option');
+            o.value = r.id;
+            o.textContent = r.name;
+            sel.appendChild(o);
+        });
+        if (prev) { sel.value = prev; }
+    }
+
+    function apiGet(url) {
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(function (r) { return r.json(); });
+    }
+
+    // ── load static dropdowns once ────────────────────────────────
+    function loadAllStaticDropdowns() {
+        apiGet(SPEC + '?type=departemen').then(function (j) { fillSelect('dspkDepartemen', j.data, '-- Pilih Departemen --'); });
+        apiGet(SPEC + '?type=kapasitas').then(function (j) {
+            const sorted = (j.data || []).slice().sort(function (a, b) { return parseFloat(a.name) - parseFloat(b.name); });
+            fillSelect('dspkKapasitas', sorted, '-- Pilih Kapasitas --');
+        });
+        apiGet(SPEC + '?type=mast_model').then(function (j) { fillSelect('dspkMastModel', j.data, '-- Pilih Model Mast --'); });
+        apiGet(SPEC + '?type=ban').then(function (j)        { fillSelect('dspkBan', j.data, '-- Pilih Ban --'); });
+        apiGet(SPEC + '?type=valve').then(function (j)      { fillSelect('dspkValve', j.data, '-- Pilih Valve --'); });
+        apiGet(SPEC + '?type=attachment_tipe').then(function (j) { fillSelect('dspkAttachmentId', j.data, '-- Pilih Attachment --'); });
+        apiGet(FORKS).then(function (j) { fillSelect('dspkForkId', j.data, '-- Pilih Fork --'); });
+        apiGet(TIPE).then(function (j) { allTipeUnit = j.data || []; });
+        loadDspkTemplates();
+    }
+
+    function loadDspkTemplates() {
+        apiGet(TPL).then(function (j) {
+            const sel = document.getElementById('dspkTemplateSelect');
+            if (!sel) { return; }
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">-- Pilih template spesifikasi --</option>';
+            (j.data || []).forEach(function (t) {
+                const lbl = t.template_name +
+                    (t.nama_tipe_unit ? ' (' + t.nama_tipe_unit + (t.jenis_tipe_unit ? ' ' + t.jenis_tipe_unit : '') + ')' : '');
+                const o = document.createElement('option');
+                o.value = t.id;
+                o.textContent = lbl;
+                sel.appendChild(o);
+            });
+            if (prev) { sel.value = prev; }
+        });
+    }
+
+    // ── customers ─────────────────────────────────────────────────
+    function loadCustomers() {
+        apiGet(CUST).then(function (j) {
+            const sel = document.getElementById('dspkCustomerId');
+            if (!sel) { return; }
+            sel.innerHTML = '<option value="">-- Pilih Customer --</option>';
+            (j.data || []).forEach(function (c) {
+                const o = document.createElement('option');
+                o.value = c.id;
+                o.textContent = c.customer_name;
+                sel.appendChild(o);
+            });
+            if (window.jQuery && $.fn.select2) {
+                $('#dspkCustomerId').select2({ dropdownParent: $('#directSpkModal'), placeholder: '-- Pilih Customer --', allowClear: true, width: '100%' });
+            }
+        });
+    }
+
+    function loadLocations(cid) {
+        const sel = document.getElementById('dspkLocationId');
+        sel.disabled = true;
+        sel.innerHTML = '<option value="">Loading...</option>';
+        apiGet(LOCS + cid).then(function (j) {
+            fillSelect('dspkLocationId', (j.data || []).map(function (l) {
+                return { id: l.id, name: l.location_name + (l.city ? ' \u2014 ' + l.city : '') };
+            }), '-- Pilih Lokasi --');
+            sel.disabled = false;
+        });
+    }
+
+    function loadContracts(cid) {
+        const sel = document.getElementById('dspkContractId');
+        sel.disabled = true;
+        sel.innerHTML = '<option value="">Loading...</option>';
+        apiGet(CTRCTS + cid).then(function (j) {
+            const rows = (j.data || []).map(function (c) {
+                return { id: c.id, name: (c.no_kontrak || 'ID:' + c.id) + (c.customer_po_number ? ' / ' + c.customer_po_number : '') };
+            });
+            fillSelect('dspkContractId', rows, '-- Pilih Kontrak (opsional) --');
+            sel.disabled = rows.length === 0;
+        });
+    }
+
+    // ── tipe unit cascade ─────────────────────────────────────────
+    function updateTipeUnit(deptId) {
+        const sel = document.getElementById('dspkTipeUnit');
+        sel.innerHTML = '<option value="">-- Pilih Tipe Unit --</option>';
+        if (!deptId || !allTipeUnit.length) { return; }
+        const filtered = allTipeUnit.filter(function (u) { return String(u.id_departemen) === String(deptId); });
+        const unique   = Array.from(new Set(filtered.map(function (u) { return u.jenis; }))).sort();
+        unique.forEach(function (jenis) {
+            const u = filtered.find(function (u) { return u.jenis === jenis; });
+            if (u) {
+                const o = document.createElement('option');
+                o.value = u.id_tipe_unit;
+                o.textContent = jenis;
+                sel.appendChild(o);
+            }
+        });
+    }
+
+    function loadBrands(deptId) {
+        const sel = document.getElementById('dspkBrand');
+        if (!deptId) { sel.innerHTML = '<option value="">-- Pilih Departemen dulu --</option>'; sel.disabled = true; return; }
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">Loading...</option>';
+        apiGet(SPEC + '?type=merk_unit&departemen_id=' + encodeURIComponent(deptId))
+            .then(function (j) { fillSelect('dspkBrand', j.data, '-- Pilih Merk --'); });
+    }
+
+    function loadMastHeights(modelVal, selectAfter) {
+        const sel = document.getElementById('dspkMastHeight');
+        if (!modelVal) { sel.innerHTML = '<option value="">-- Pilih model dulu --</option>'; return; }
+        sel.innerHTML = '<option value="">Loading...</option>';
+        apiGet(SPEC + '?type=mast_height&model=' + encodeURIComponent(modelVal)).then(function (j) {
+            fillSelect('dspkMastHeight', j.data, '-- Pilih Tinggi Mast --');
+            if (selectAfter) { sel.value = selectAfter; }
+        });
+    }
+
+    // ── apply fork/attach toggle UI ───────────────────────────────
+    function applyForkAttachUI(val) {
+        const isFork   = val === 'fork';
+        const isAttach = val === 'attachment';
+        document.getElementById('dspkTextForkWrap').style.display   = isFork   ? '' : 'none';
+        document.getElementById('dspkTextAttachWrap').style.display = isAttach ? '' : 'none';
+        document.getElementById('dspkForkMasterWrap').style.display   = isFork   ? '' : 'none';
+        document.getElementById('dspkAttachMasterWrap').style.display = isAttach ? '' : 'none';
+        if (!isFork)   { document.getElementById('dspkForkId').value = ''; document.getElementById('dspkDetailFork').value = ''; }
+        if (!isAttach) { document.getElementById('dspkAttachmentId').value = ''; document.getElementById('dspkDetailAttachment').value = ''; }
+    }
+
+    // ── apply template ────────────────────────────────────────────
+    function applyDspkTemplate(id) {
+        if (!id) { return; }
+        const btn = document.getElementById('dspkApplyTemplateBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Memuat...';
+
+        apiGet(TPL + '/' + id).then(function (res) {
+            if (!res.success) {
+                window.optimaAssistNotify('Gagal memuat template.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-magic me-1"></i>Terapkan';
+                return;
+            }
+            const t = res.data;
+
+            // 1. Departemen → cascade
+            const deptSel = document.getElementById('dspkDepartemen');
+            deptSel.value = t.departemen_id || '';
+            deptSel.dispatchEvent(new Event('change'));
+
+            // 2. Dependent dropdowns after cascade settles
+            setTimeout(function () {
+                document.getElementById('dspkTipeUnit').value = t.tipe_unit_id || '';
+                document.getElementById('dspkBrand').value    = t.brand_id     || '';
+            }, 450);
+
+            // 3. Kapasitas
+            document.getElementById('dspkKapasitas').value = t.kapasitas_id || '';
+
+            // 4. Fork / Attachment toggle
+            const fat = t.fork_id ? 'fork' : (t.attachment_id ? 'attachment' : 'fork');
+            const radio = document.querySelector('input[name="fork_attach_type"][value="' + fat + '"]');
+            if (radio) { radio.checked = true; }
+            applyForkAttachUI(fat);
+            setTimeout(function () {
+                if (t.fork_id)       { document.getElementById('dspkForkId').value = t.fork_id; }
+                if (t.attachment_id) { document.getElementById('dspkAttachmentId').value = t.attachment_id; }
+            }, 200);
+
+            // 5. Mast 2-level (match model by name, then load heights)
+            if (t.mast_id) {
+                const mastModelSel = document.getElementById('dspkMastModel');
+                // Try matching by text (mast_name from template) or by value
+                let matched = false;
+                if (t.mast_name) {
+                    Array.from(mastModelSel.options).forEach(function (o) {
+                        if (o.text === t.mast_name) { mastModelSel.value = o.value; matched = true; }
+                    });
+                }
+                if (matched || mastModelSel.value) {
+                    loadMastHeights(mastModelSel.value, t.mast_id);
+                }
+            }
+
+            // 6. Ban master
+            document.getElementById('dspkBan').value   = t.ban_id   || '';
+            document.getElementById('dspkValve').value = t.valve_id || '';
+
+            // 7. Parse OPTIMA_SPEC_TECH from template notes → fill text inputs
+            if (t.notes) {
+                const parsed = extractDspkSpecTech(t.notes);
+                document.getElementById('dspkNotes').value = parsed.userNotes || '';
+                document.getElementById('dspkDetailMast').value  = parsed.detail.mast  || '';
+                document.getElementById('dspkDetailBan').value   = parsed.detail.ban   || '';
+                document.getElementById('dspkDetailValve').value = parsed.detail.valve || '';
+                if (fat === 'fork')       { document.getElementById('dspkDetailFork').value       = parsed.detail.fork       || ''; }
+                if (fat === 'attachment') { document.getElementById('dspkDetailAttachment').value = parsed.detail.attachment || ''; }
+            } else {
+                ['dspkNotes','dspkDetailFork','dspkDetailAttachment','dspkDetailMast','dspkDetailBan','dspkDetailValve']
+                    .forEach(function (id) { document.getElementById(id).value = ''; });
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Diterapkan';
+            setTimeout(function () { btn.innerHTML = '<i class="fas fa-magic me-1"></i>Terapkan'; }, 2000);
+        }).catch(function () {
+            window.optimaAssistNotify('Gagal memuat detail template.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic me-1"></i>Terapkan';
+        });
+    }
+
+    // ── bind events ────────────────────────────────────────────────
+    function bindEvents() {
+        // Customer → locations + contracts
+        document.getElementById('dspkCustomerId').addEventListener('change', function () {
+            const cid = this.value;
+            if (cid) { loadLocations(cid); loadContracts(cid); }
+            else {
+                ['dspkLocationId', 'dspkContractId'].forEach(function (id) {
+                    const s = document.getElementById(id);
+                    s.innerHTML = '<option value="">-- Pilih Customer dulu --</option>';
+                    s.disabled = true;
+                });
+            }
+        });
+        if (window.jQuery && $.fn.select2) {
+            $('#dspkCustomerId').on('select2:select select2:unselect', function () { this.dispatchEvent(new Event('change')); });
+        }
+
+        // Departemen → tipe unit + brand
+        document.getElementById('dspkDepartemen').addEventListener('change', function () {
+            updateTipeUnit(this.value);
+            loadBrands(this.value);
+        });
+
+        // Mast model → heights
+        document.getElementById('dspkMastModel').addEventListener('change', function () {
+            loadMastHeights(this.value, null);
+        });
+
+        // Fork/Attachment toggle
+        document.querySelectorAll('input[name="fork_attach_type"]').forEach(function (radio) {
+            radio.addEventListener('change', function () { applyForkAttachUI(this.value); });
+        });
+
+        // Template button
+        document.getElementById('dspkTemplateSelect').addEventListener('change', function () {
+            document.getElementById('dspkApplyTemplateBtn').disabled = !this.value;
+        });
+        document.getElementById('dspkApplyTemplateBtn').addEventListener('click', function () {
+            applyDspkTemplate(document.getElementById('dspkTemplateSelect').value);
+        });
+
+        // Submit
+        document.getElementById('directSpkForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            submitDirectSpk();
+        });
+    }
+
+    // ── form submit ───────────────────────────────────────────────
+    function submitDirectSpk() {
+        const btn = document.getElementById('dspkSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+
+        const form = document.getElementById('directSpkForm');
+        const fd   = new FormData(form);
+        const payload = {};
+        fd.forEach(function (v, k) { payload[k] = v; });
+
+        // Build merged notes (userNotes + [OPTIMA_SPEC_TECH] block) — same as quotation
+        payload.notes = mergeDspkNotes();
+
+        // CSRF
+        payload[window.csrfTokenName] = window.csrfToken || window.csrfTokenValue || '';
+
+        fetch(BASE + 'marketing/spk/createDirect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': window.csrfToken || '' },
+            body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (json) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-bolt me-1"></i>Buat SPK';
+            if (json.csrf_hash) { window.csrfToken = json.csrf_hash; window.csrfTokenValue = json.csrf_hash; }
+            if (json.success) {
+                window.optimaAssistNotify(json.message || 'SPK berhasil dibuat.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('directSpkModal'))?.hide();
+                form.reset();
+                ['dspkDetailFork','dspkDetailAttachment','dspkDetailMast','dspkDetailBan','dspkDetailValve','dspkNotes']
+                    .forEach(function (id) { document.getElementById(id).value = ''; });
+                ['dspkLocationId','dspkContractId'].forEach(function (id) {
+                    const s = document.getElementById(id);
+                    s.disabled = true;
+                    s.innerHTML = '<option value="">-- Pilih Customer dulu --</option>';
+                });
+                document.getElementById('dspkBrand').disabled = true;
+                // re-apply default fork mode
+                const forkRadio = document.getElementById('dspkOptFork');
+                if (forkRadio) { forkRadio.checked = true; applyForkAttachUI('fork'); }
+                if (typeof refreshSPKTable === 'function') { refreshSPKTable(); }
+            } else {
+                window.optimaAssistNotify(json.message || 'Gagal membuat SPK', 'error');
+            }
+        })
+        .catch(function (err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-bolt me-1"></i>Buat SPK';
+            console.error('createDirectSPK error:', err);
+            window.optimaAssistNotify('Terjadi kesalahan jaringan', 'error');
+        });
+    }
+
+    // ── init on first modal open ──────────────────────────────────
+    document.getElementById('directSpkModal').addEventListener('show.bs.modal', function () {
+        if (dspkReady) { return; }
+        dspkReady = true;
+        loadAllStaticDropdowns();
+        loadCustomers();
+        bindEvents();
+        // Default state: fork selected
+        applyForkAttachUI('fork');
+    });
+
+})();
+</script>
+
 <?= $this->endSection() ?>
 
 <!-- svcUnitDetailBlock: see optima-pro.css SPK MARKETING PAGE section -->

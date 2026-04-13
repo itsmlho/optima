@@ -3,6 +3,7 @@ $quotation = $quotation ?? [];
 $specs = $specifications ?? [];
 $status = strtoupper((string)($quotation['stage'] ?? ''));
 helper('accessory');
+helper('optima_spec_print');
 
 // Helper untuk format nama user agar tidak menampilkan username
 function resolvePrintPersonName(array $data, array $keys, string $fallback): string {
@@ -667,6 +668,26 @@ function formatCurrency($amount, $currency = 'IDR') {
                         <td class="col-center"><?= $no++ ?></td>
                         <td>
                             <?php if ($spec['specification_type'] === 'UNIT'): ?>
+                                <?php
+                                $parsedQNotes = parse_optima_spec_tech_notes($spec['notes'] ?? null);
+                                $qTech         = $parsedQNotes['tech'];
+                                $forkFromMasterQ = '';
+                                if (! empty($spec['quotation_fork_name'])) {
+                                    $forkFromMasterQ = (string) $spec['quotation_fork_name'];
+                                    if (! empty($spec['quotation_fork_class'])) {
+                                        $forkFromMasterQ .= ' (' . $spec['quotation_fork_class'] . ')';
+                                    }
+                                }
+                                $attachmentPartsQ = array_filter([
+                                    $spec['attachment_type'] ?? '',
+                                    $spec['attachment_brand'] ?? '',
+                                    $spec['attachment_model'] ?? '',
+                                ]);
+                                $attachmentFromMasterQ = $attachmentPartsQ !== [] ? trim(implode(' ', $attachmentPartsQ)) : '';
+                                $forkDisplayQ          = spk_print_pick_detail($forkFromMasterQ, $qTech['fork'] ?? '');
+                                $attachmentDisplayQ  = spk_print_pick_detail($attachmentFromMasterQ, $qTech['attachment'] ?? '');
+                                $faModeQ              = optima_print_fork_or_attachment_mode($spec, $qTech, $forkDisplayQ, $attachmentDisplayQ);
+                                ?>
                                 <div class="unit-title">
                                     <?= !empty($spec['unit_type']) && !empty($spec['unit_subtype']) ? esc($spec['unit_type']) . ' ' . esc($spec['unit_subtype']) : esc($spec['unit_type'] ?? 'UNIT') ?> 
                                     - <?= strtoupper(esc($spec['department_name'] ?? 'STANDARD')) ?>
@@ -681,7 +702,14 @@ function formatCurrency($amount, $currency = 'IDR') {
                                     <?php if (!empty($spec['department_name']) && (stripos($spec['department_name'], 'electric') !== false || stripos($spec['department_name'], 'battery') !== false)): ?>
                                         <?= !empty($spec['jenis_baterai']) ? '&bull; Baterai: ' . esc($spec['jenis_baterai']) : '' ?>
                                     <?php endif; ?>
-                                    <?= !empty($spec['attachment_type']) ? (!empty($spec['jenis_baterai']) ? ' | ' : '&bull; ') . 'Attachment: ' . esc($spec['attachment_type']) : '' ?>
+                                    <?php
+                                    $faSep = ! empty($spec['jenis_baterai']) ? ' | ' : '&bull; ';
+                                    if ($faModeQ === 'fork' && $forkDisplayQ !== '') {
+                                        echo $faSep . 'Fork: ' . esc($forkDisplayQ);
+                                    } elseif ($faModeQ === 'attachment' && $attachmentDisplayQ !== '') {
+                                        echo $faSep . 'Attachment: ' . esc($attachmentDisplayQ);
+                                    }
+                                    ?>
                                     <br>
                                     <?= (!empty($spec['unit_accessories']) && $spec['unit_accessories'] !== 'null') ? '&bull; Acc: ' . esc(format_accessory_csv($spec['unit_accessories'])) : '' ?>
                                 </div>

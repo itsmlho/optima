@@ -34,7 +34,12 @@ class CustomerLocationModel extends Model
         'gps_latitude',
         'gps_longitude',
         'is_primary',
-        'is_active'
+        'is_active',
+        'approval_status',
+        'requested_by',
+        'approved_by',
+        'approved_at',
+        'approval_notes',
     ];
     
     protected $useTimestamps = true;

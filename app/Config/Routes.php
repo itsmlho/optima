@@ -328,6 +328,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
     $routes->post('spk/createFromQuotation', 'Marketing::createSPKFromQuotation');
+    $routes->post('spk/createDirect', 'Marketing::createDirectSPK');
     $routes->post('marketing/spk/createFromQuotation', 'Marketing::createSPKFromQuotation'); // Full path alias
     $routes->post('spk/update/(:num)', 'Marketing::spkUpdate/$1');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
@@ -734,6 +735,17 @@ $routes->group('service', static function ($routes) {
     $routes->post('spk/assign-items', 'Service::spkAssignItems');
     $routes->get('spk/pdf/(:num)', 'Service::spkPdf/$1');
     
+    // Service Customer Location Management Routes
+    $routes->group('customer-locations', static function($routes) {
+        $routes->get('/', 'ServiceCustomerLocationController::index');
+        $routes->post('getData', 'ServiceCustomerLocationController::getData');
+        $routes->get('(:num)', 'ServiceCustomerLocationController::detail/$1');
+        $routes->post('store', 'ServiceCustomerLocationController::store');
+        $routes->post('update/(:num)', 'ServiceCustomerLocationController::update/$1');
+        $routes->get('(:num)/units', 'ServiceCustomerLocationController::getLocationUnits/$1');
+        $routes->get('(:num)/employees', 'ServiceCustomerLocationController::getLocationEmployees/$1');
+    });
+
     // Service Area & Employee Management Routes  
     $routes->group('area-management', static function($routes) {
         $routes->get('/', 'ServiceAreaManagementController::index');

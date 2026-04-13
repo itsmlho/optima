@@ -618,8 +618,9 @@ class Quotation extends BaseController
                 'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
                 'kapasitas_id' => $this->request->getPost('kapasitas_id') ?: null,
                 'brand_id' => $this->request->getPost('brand_id') ?: null,
-                'battery_id' => $this->request->getPost('battery_id') ?: null,
-                'charger_id' => $this->request->getPost('charger_id') ?: null,
+                // Quotation line: battery/charger/wheels are plain text in notes only (no FK from this UI)
+                'battery_id' => null,
+                'charger_id' => null,
                 'attachment_id' => $this->request->getPost('attachment_id') ?: null,
                 'fork_id' => $this->request->getPost('fork_id') ?: null,
                 'valve_id' => $this->request->getPost('valve_id') ?: null,
@@ -630,7 +631,8 @@ class Quotation extends BaseController
                 'operator_quantity' => (int)$this->request->getPost('operator_quantity') ?: 0,
                 'operator_monthly_rate' => ($operatorMonthly !== '' && $operatorMonthly !== null) ? (float)$operatorMonthly : 0,
                 'operator_daily_rate' => ($operatorDaily !== '' && $operatorDaily !== null) ? (float)$operatorDaily : 0,
-                'is_active' => 1
+                'is_active' => 1,
+                'notes' => $this->normalizeQuotationSpecNotes($this->request->getPost('notes')),
             ];
             
             // DEBUG: Log spare and operator data being saved
@@ -838,7 +840,6 @@ class Quotation extends BaseController
             
             // Remove fields that don't exist in database or shouldn't be updated
             $fieldsToRemove = [
-                'notes',                    // Not a database column
                 'id_quotation',             // Should not be updated
                 'id_specification',         // Should not be updated  
                 'csrf_test_name',           // CSRF token
@@ -850,6 +851,14 @@ class Quotation extends BaseController
                     unset($data[$field]);
                 }
             }
+
+            if (array_key_exists('notes', $data)) {
+                $data['notes'] = $this->normalizeQuotationSpecNotes($data['notes']);
+            }
+
+            $data['battery_id'] = null;
+            $data['charger_id'] = null;
+            $data['roda_id'] = null;
             
             // DEBUG: Log spare and operator data being updated
             log_message('debug', '=== UPDATE SPECIFICATION DATA (Spec ID: ' . $specId . ') ===');
@@ -1290,6 +1299,19 @@ class Quotation extends BaseController
         }
 
         return $s;
+    }
+
+    /**
+     * Trim quotation specification notes; empty string becomes null for DB flexibility.
+     */
+    protected function normalizeQuotationSpecNotes($notes): ?string
+    {
+        if ($notes === null) {
+            return null;
+        }
+        $s = trim((string) $notes);
+
+        return $s === '' ? null : $s;
     }
 
     /**

@@ -102,6 +102,9 @@ helper('permission_helper');
                     <?php if (canNavigateTo('service', 'area_management')): ?>
                     <li class="nav-item"><a href="<?= base_url('/service/area-management') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">map</span><span class="drop-label">Area Management</span></a></li>
                     <?php endif; ?>
+                    <?php if (canNavigateTo('service', 'customer_location')): ?>
+                    <li class="nav-item"><a href="<?= base_url('/service/customer-locations') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">location_on</span><span class="drop-label">Customer Locations</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
             <?php endif; ?>
