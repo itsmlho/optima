@@ -495,6 +495,7 @@ class NotificationController extends BaseController
     public function getCount()
     {
         $userId = session()->get('user_id');
+        session_write_close(); // Release session lock immediately — DB work below doesn't need session
         
         if (!$userId) {
             return $this->response->setJSON(['success' => true, 'count' => 0]);
@@ -528,6 +529,7 @@ class NotificationController extends BaseController
     {
         $userId = session()->get('user_id');
         $lastId = $this->request->getGet('lastId') ?? 0;
+        session_write_close(); // Release session lock immediately — DB work below doesn't need session
         
         if (!$userId) {
             return $this->response->setJSON(['success' => true, 'notifications' => [], 'lastId' => 0]);
