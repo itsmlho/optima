@@ -1295,7 +1295,8 @@ $currentLang = service('request')->getLocale();
                 loading.classList.add('fade-out');
                 setTimeout(() => {
                     loading.style.display = 'none';
-                    loading.remove(); // Clean up DOM
+                    loading.classList.remove('fade-out');
+                    // Keep #pageLoading in DOM — OptimaPro.showLoading() reuses it after first paint
                 }, 400); // Smooth fade-out transition
             }, remainingTime);
         });
@@ -1413,6 +1414,48 @@ $currentLang = service('request')->getLocale();
             var title = (t === 'error') ? lang('error') : (t === 'success') ? lang('success') : (t === 'warning') ? lang('warning') : lang('info');
             return window.createOptimaToast({ type: t, title: title, message: message, duration: duration });
         };
+
+        // Page overlay loading (sb-admin-pro.js may not load on all layouts)
+        if (typeof window.OptimaPro.showLoading !== 'function') {
+            window.OptimaPro.showLoading = function(message) {
+                message = message || 'Loading...';
+                var loadingEl = document.getElementById('pageLoading');
+                if (!loadingEl) {
+                    console.warn('OptimaPro.showLoading: #pageLoading not found');
+                    return;
+                }
+                var messageEl = loadingEl.querySelector('.loading-message');
+                if (!messageEl) {
+                    messageEl = document.createElement('div');
+                    messageEl.className = 'loading-message';
+                    var contentEl = loadingEl.querySelector('.loading-content');
+                    if (contentEl) {
+                        contentEl.appendChild(messageEl);
+                    }
+                }
+                messageEl.textContent = message;
+                loadingEl.style.display = 'flex';
+                loadingEl.style.opacity = '0';
+                loadingEl.classList.remove('fade-out');
+                loadingEl.classList.add('active');
+                setTimeout(function() {
+                    loadingEl.style.opacity = '1';
+                }, 10);
+            };
+        }
+        if (typeof window.OptimaPro.hideLoading !== 'function') {
+            window.OptimaPro.hideLoading = function() {
+                var loadingEl = document.getElementById('pageLoading');
+                if (!loadingEl) {
+                    return;
+                }
+                loadingEl.style.opacity = '0';
+                setTimeout(function() {
+                    loadingEl.style.display = 'none';
+                    loadingEl.classList.remove('active');
+                }, 150);
+            };
+        }
         
         // Global AJAX setup — dynamic CSRF token refreshed per request
         // Using $(function(){}) ensures this runs AFTER jQuery is fully ready

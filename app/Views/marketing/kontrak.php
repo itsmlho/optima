@@ -1815,14 +1815,18 @@ $(document).on('click', '#generateContractNumber', function() {
 $(document).on('submit', '#addContractForm', function(e) {
     e.preventDefault();
     
-    OptimaPro.showLoading('Creating contract...');
+    if (window.OptimaPro && typeof OptimaPro.showLoading === 'function') {
+        OptimaPro.showLoading('Creating contract...');
+    }
     
     $.ajax({
         url: '<?= base_url('marketing/rental/store') ?>',
         method: 'POST',
         data: $(this).serialize() + '&' + encodeURIComponent(window.csrfTokenName) + '=' + encodeURIComponent(window.csrfToken || ''),
         success: function(response) {
-            OptimaPro.hideLoading();
+            if (window.OptimaPro && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
             
             if (response.success) {
                 showNotification(response.message || 'Contract created successfully', 'success');
@@ -1856,7 +1860,9 @@ $(document).on('submit', '#addContractForm', function(e) {
             }
         },
         error: function(xhr) {
-            OptimaPro.hideLoading();
+            if (window.OptimaPro && typeof OptimaPro.hideLoading === 'function') {
+                OptimaPro.hideLoading();
+            }
             let errorMsg = 'System error occurred';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
