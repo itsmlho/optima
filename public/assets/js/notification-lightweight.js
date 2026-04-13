@@ -196,8 +196,8 @@ class OptimaNotificationLightweight {
         // Show notification popup
         await this.showNotificationPopup(notification);
         
-        // After popup is dismissed, update count
-        this.updateCount();
+        // After popup is dismissed, decrement badge locally (avoid extra HTTP request per popup)
+        this._decrementBadge();
         this.animateBellIcon();
         
         // Mark as showing in queue
@@ -394,6 +394,24 @@ class OptimaNotificationLightweight {
         }
     }
     
+    /**
+     * Decrement the badge count locally by 1 (no HTTP request).
+     * Used after a notification popup is dismissed.
+     */
+    _decrementBadge() {
+        const current = parseInt(this.badge?.textContent || '0', 10);
+        const next = Math.max(0, current - 1);
+        if (this.badge) {
+            this.badge.textContent = next;
+            this.badge.style.display = next > 0 ? 'inline-block' : 'none';
+        }
+        const sidebarBadge = document.getElementById('sidebarNotificationCount');
+        if (sidebarBadge) {
+            sidebarBadge.textContent = next;
+            sidebarBadge.style.display = next > 0 ? 'inline' : 'none';
+        }
+    }
+
     async updateCount() {
         try {
             const response = await fetch(`${this.baseUrl}/notifications/count`, {

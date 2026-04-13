@@ -1308,12 +1308,10 @@ $currentLang = service('request')->getLocale();
 
             // Primary: hide on DOMContentLoaded (HTML parsed, before external CDN resources finish)
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    setTimeout(hideLoading, 300);
-                });
+                document.addEventListener('DOMContentLoaded', hideLoading);
             } else {
                 // DOM already ready (script at bottom of body)
-                setTimeout(hideLoading, 300);
+                hideLoading();
             }
 
             // Safety cap: force-hide after 3 seconds regardless of CDN load status
