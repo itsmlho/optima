@@ -29,17 +29,22 @@ class Kontrak extends BaseController
      */
     public function index()
     {
-        // Auto-expire contracts that have passed their end date (lightweight, once per session)
+        // Auto-expire contracts that have passed their end date (lightweight, once per day)
         $session = session();
         $lastExpiry = $session->get('last_contract_expiry_check');
         if (!$lastExpiry || $lastExpiry < date('Y-m-d')) {
+            // Write flag BEFORE heavy work, then release session lock so concurrent
+            // notification requests (same session) are not blocked
+            $session->set('last_contract_expiry_check', date('Y-m-d'));
+            session_write_close(); // Release session lock — DB work below does not need it
             try {
                 $statusService = new \App\Services\ContractStatusService();
                 $statusService->refreshAllStatuses();
-                $session->set('last_contract_expiry_check', date('Y-m-d'));
             } catch (\Throwable $e) {
                 log_message('error', '[Kontrak::index] Auto-expiry failed: ' . $e->getMessage());
             }
+        } else {
+            session_write_close(); // Nothing to do — release session lock immediately
         }
 
         // Load simple_rbac helper
