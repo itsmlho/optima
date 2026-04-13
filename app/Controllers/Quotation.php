@@ -699,17 +699,25 @@ class Quotation extends BaseController
                     ]
                 ]);
             } else {
+                $modelErrors = $this->quotationSpecificationModel->errors();
+                $dbError     = $this->db->error();
+                $errMsg      = !empty($modelErrors)
+                    ? implode('; ', $modelErrors)
+                    : (!empty($dbError['message']) ? $dbError['message'] : 'Insert returned false');
+                log_message('error', 'Quotation addSpecification insert failed: ' . $errMsg);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
+                    'message' => 'Gagal menyimpan spesifikasi: ' . $errMsg,
                 ]);
             }
 
         } catch (\Exception $e) {
+            $dbError = $this->db->error();
+            $errMsg  = !empty($dbError['message']) ? $dbError['message'] : $e->getMessage();
             log_message('error', 'Quotation addSpecification error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
+                'message' => 'Gagal menyimpan spesifikasi: ' . $errMsg,
             ]);
         }
     }
