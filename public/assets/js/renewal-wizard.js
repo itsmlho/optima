@@ -11,6 +11,7 @@ class RenewalWizard {
         this.contractData = {};
         this.selectedUnits = [];
         this.rateAdjustments = {};
+        this.isPreloaded = false; // true when opened from a detail page (contract is already known)
         
         this.init();
     }
@@ -121,6 +122,65 @@ class RenewalWizard {
             console.error('Failed to load contract units:', error);
         }
     }
+
+    /**
+     * Preload a specific contract by ID and jump directly to Step 2.
+     * Called when the wizard is opened from a contract detail page — the contract is already known,
+     * so Step 1 (select contract) is skipped entirely.
+     */
+    async preloadContract(contractId) {
+        this.isPreloaded = true;
+        this.currentStep = 1;
+
+        try {
+            const response = await fetch(`${BASE_URL}marketing/rental/get/${contractId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const result = await response.json();
+
+            if (!result.success || !result.data) {
+                this.showError('Gagal memuat data kontrak');
+                return;
+            }
+
+            const d = result.data;
+            // Normalize DB field names to what the wizard expects
+            this.contractData = {
+                ...d,
+                start_date:     d.tanggal_mulai,
+                end_date:       d.tanggal_berakhir,
+                contract_value: parseFloat(d.total_value) || 0,
+            };
+
+            // Set hidden fields used by submitRenewal
+            $('#parent_contract_id').val(this.contractData.id);
+            $('#renewal_customer_id').val(this.contractData.customer_id);
+
+            // Populate the contract preview panel (same as loadContractDetails)
+            $('#preview_contract_number').text(this.contractData.no_kontrak);
+            $('#preview_customer').text(this.contractData.customer_name);
+            $('#preview_start_date').text(this.formatDate(this.contractData.start_date));
+            $('#preview_end_date').text(this.formatDate(this.contractData.end_date));
+            $('#preview_total_units').text(this.contractData.total_units || 0);
+            $('#preview_contract_value').text(this.formatCurrency(this.contractData.contract_value || 0));
+            $('#preview_billing_method').text(this.getBillingMethodLabel(this.contractData.billing_method));
+            const daysLeft = this.calculateDaysRemaining(this.contractData.end_date);
+            $('#preview_days_remaining').text(`${daysLeft} days`);
+            $('#contractPreview').show();
+
+            // Load units for step 3
+            await this.loadContractUnits();
+
+            // Skip step 1 — go straight to step 2 (New Terms)
+            this.currentStep = 2;
+            this.updateStepDisplay();
+            this.prepareStep2();
+
+        } catch (error) {
+            console.error('preloadContract error:', error);
+            this.showError('Gagal memuat data kontrak');
+        }
+    }
     
     renderUnitsTable() {
         const tbody = $('#currentUnitsTable tbody');
@@ -188,7 +248,9 @@ class RenewalWizard {
         $('#stepperProgress').css('width', `${progress}%`);
         
         // Update buttons
-        $('#wizardPrevBtn').toggle(this.currentStep > 1);
+        // When preloaded from detail page, hide Prev on step 2 (step 1 is irrelevant)
+        const canGoBack = this.currentStep > 1 && !(this.isPreloaded && this.currentStep === 2);
+        $('#wizardPrevBtn').toggle(canGoBack);
         $('#wizardNextBtn').toggle(this.currentStep < this.totalSteps);
         $('#wizardSubmitBtn').toggle(this.currentStep === this.totalSteps);
     }

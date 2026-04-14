@@ -937,39 +937,18 @@ function deleteContract(id) {
 // ── Action functions: Renewal, Amendment, History ────────
 
 function openRenewalWizard(id) {
-    // Step 1 of the renewal wizard has a select for expiring contracts.
-    // We load the expiring list, add this contract if not present, then pre-select it.
-    $.ajax({
-        url: BASE_URL + 'marketing/rental/getExpiringContracts',
-        type: 'GET',
-        success: function(res) {
-            const $sel = $('#renewalSourceContract');
-            if ($sel.length && res.success && res.data) {
-                $sel.empty().append('<option value="">-- Select contract to renew --</option>');
-                res.data.forEach(c => $sel.append(new Option(c.no_kontrak + ' - ' + (c.customer_name||''), c.id)));
-                // If current contract not in expiring list, add it manually
-                if (!res.data.find(c => c.id == id)) {
-                    $.ajax({ url: BASE_URL + 'marketing/rental/get/' + id, type: 'GET',
-                        success: function(r) {
-                            if (r.success && r.data) {
-                                $sel.append(new Option(r.data.no_kontrak + ' (current)', id));
-                            }
-                            $sel.val(id).trigger('change');
-                        }
-                    });
-                } else {
-                    $sel.val(id).trigger('change');
-                }
-            }
-            // Reset wizard to step 1
-            if (typeof goToStep === 'function') goToStep(1);
-            $('#renewalWizardModal').modal('show');
-        },
-        error: function() {
-            // Fallback: just open the modal and let user select
-            $('#renewalWizardModal').modal('show');
-        }
-    });
+    // Opened from the detail page — the contract is already known.
+    // Show the modal then preload the contract, skipping Step 1 entirely.
+    $('#renewalWizardModal').modal('show');
+
+    // renewalWizard may not be initialized yet if the modal hasn't been opened before
+    if (window.renewalWizard) {
+        window.renewalWizard.preloadContract(id);
+    } else {
+        $('#renewalWizardModal').one('shown.bs.modal', function () {
+            if (window.renewalWizard) window.renewalWizard.preloadContract(id);
+        });
+    }
 }
 
 function openAmendmentModal(id) {
