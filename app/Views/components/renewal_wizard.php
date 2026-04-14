@@ -454,12 +454,6 @@
     color: #fff;
 }
 
-.stepper-step.completed .stepper-circle::before {
-    content: '\f00c';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-}
-
 .stepper-label {
     margin-top: 0.5rem;
     font-size: 0.85rem;
