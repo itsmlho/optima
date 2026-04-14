@@ -484,6 +484,7 @@ $canAmend  = ($status === 'ACTIVE');
 
 <?= $this->section('javascript') ?>
 <script src="<?= base_url('assets/js/renewal-wizard.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/renewal-wizard.js') ?>"></script>
+<script src="<?= base_url('assets/js/addendum-prorate.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/addendum-prorate.js') ?>"></script>
 <script>
 const CONTRACT_ID = <?= (int)$id ?>;
 const LANG_TARIK = <?= json_encode(
