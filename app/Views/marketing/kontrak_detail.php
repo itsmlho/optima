@@ -941,19 +941,7 @@ function deleteContract(id) {
 // when called with a contractId it skips Step 1 and preloads the contract.
 
 function openAmendmentModal(id) {
-    $.ajax({
-        url: BASE_URL + 'marketing/rental/get-active-contracts',
-        type: 'GET',
-        success: function(res) {
-            if (res.success) {
-                const $sel = $('#prorateContractId');
-                $sel.empty().append('<option value="">-- Select active contract --</option>');
-                res.data.forEach(c => $sel.append(new Option(c.no_kontrak + ' - ' + c.customer_name, c.id)));
-                $sel.val(id).trigger('change');
-                $('#addendumProrateModal').modal('show');
-            }
-        }
-    });
+    openAddendumProrateCalculator(id);
 }
 
 

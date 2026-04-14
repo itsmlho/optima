@@ -13,12 +13,13 @@ class AddendumProrateCalculator {
         this.effectiveDate = null;
         this.periodStart = null;
         this.periodEnd = null;
-        
+        this.isPreloaded = false;
+
         this.init();
     }
-    
+
     init() {
-        this.loadActiveContracts();
+        // loadActiveContracts() is NOT called here — called lazily in list-page mode only
         this.bindEvents();
     }
     
@@ -36,14 +37,14 @@ class AddendumProrateCalculator {
     
     async loadActiveContracts() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/getActiveContracts`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/get-active-contracts`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
-            
+
             const select = $('#prorateContractId');
             select.html('<option value="">-- Select active contract --</option>');
-            
+
             if (data.success && data.data) {
                 data.data.forEach(contract => {
                     select.append(`
@@ -64,22 +65,22 @@ class AddendumProrateCalculator {
             $('#currentPeriodCard').hide();
             return;
         }
-        
+
         this.contractData = JSON.parse(selectedOption.attr('data-contract'));
-        
-        // Calculate current billing period
+        // Normalize field names from list-page contract data
+        this.contractData.start_date = this.contractData.start_date || this.contractData.tanggal_mulai;
+        this.contractData.end_date   = this.contractData.end_date   || this.contractData.tanggal_berakhir;
+
+        // Sync hidden contract_id field
+        $('#prorateContractIdHidden').val(this.contractData.id);
+
         this.calculateCurrentPeriod();
-        
-        // Display current period
         $('#display_period_start').text(this.formatDate(this.periodStart));
         $('#display_period_end').text(this.formatDate(this.periodEnd));
-        
         const totalDays = this.calculateDays(this.periodStart, this.periodEnd);
         $('#display_total_days').text(`${totalDays} days`);
-        
         $('#currentPeriodCard').show();
-        
-        // Load units
+
         await this.loadContractUnits();
     }
     
@@ -126,11 +127,11 @@ class AddendumProrateCalculator {
     
     async loadContractUnits() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/getContractUnits/${this.contractData.id}`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/units/${this.contractData.id}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
-            
+
             if (data.success && data.data) {
                 this.units = data.data;
                 this.renderUnitsTable();
@@ -143,53 +144,57 @@ class AddendumProrateCalculator {
     renderUnitsTable() {
         const tbody = $('#prorateUnitsTable tbody');
         tbody.empty();
-        
+
+        if (!this.units.length) {
+            tbody.append('<tr><td colspan="4" class="text-center text-muted py-3">No units found for this contract</td></tr>');
+            return;
+        }
+
         this.units.forEach((unit, index) => {
-            const currentRate = parseFloat(unit.monthly_rate) || 0;
-            
+            const currentRate = parseFloat(unit.harga_efektif) || 0;
+
             tbody.append(`
                 <tr>
-                    <td><strong>${unit.nomor_unit}</strong><br><small class="text-muted">${unit.tipe_unit || '-'}</small></td>
+                    <td><strong>${unit.no_unit}</strong><br><small class="text-muted">${unit.jenis_unit || '-'}</small></td>
                     <td>${this.formatCurrency(currentRate)}</td>
                     <td>
-                        <input type="number" class="form-control form-control-sm new-rate-input" 
-                               data-unit-id="${unit.id}" data-old-rate="${currentRate}"
+                        <input type="number" class="form-control form-control-sm new-rate-input"
+                               data-unit-id="${unit.id_inventory_unit}" data-old-rate="${currentRate}"
                                value="${currentRate}" step="1000" min="0" required>
                     </td>
                     <td>
-                        <span class="rate-change-badge" id="change_${unit.id}">
-                            <i class="fas fa-minus"></i> No change
+                        <span class="rate-change-badge" id="change_${unit.id_inventory_unit}">
+                            <span class="badge badge-soft-gray"><i class="fas fa-minus me-1"></i>No change</span>
                         </span>
                     </td>
                 </tr>
             `);
         });
-        
-        // Update change badges
+
         this.updateChangeBadges();
     }
     
     updateChangeBadges() {
         $('.new-rate-input').each((i, input) => {
-            const unitId = $(input).data('unit-id');
+            const unitId  = $(input).data('unit-id');
             const oldRate = parseFloat($(input).data('old-rate'));
             const newRate = parseFloat($(input).val()) || 0;
-            const change = newRate - oldRate;
-            const changePercent = oldRate > 0 ? ((change / oldRate) * 100).toFixed(2) : 0;
-            
-            let html, className;
+            const change  = newRate - oldRate;
+            const pct     = oldRate > 0 ? ((change / oldRate) * 100).toFixed(1) : '0.0';
+
+            let html, cls;
             if (change > 0) {
-                html = `<i class="fas fa-arrow-up"></i> +${this.formatCurrency(change)} (+${changePercent}%)`;
-                className = 'badge bg-success';
+                html = `<i class="fas fa-arrow-up me-1"></i>+${this.formatCurrency(change)} (+${pct}%)`;
+                cls  = 'badge badge-soft-green';
             } else if (change < 0) {
-                html = `<i class="fas fa-arrow-down"></i> ${this.formatCurrency(change)} (${changePercent}%)`;
-                className = 'badge bg-danger';
+                html = `<i class="fas fa-arrow-down me-1"></i>${this.formatCurrency(change)} (${pct}%)`;
+                cls  = 'badge badge-soft-red';
             } else {
-                html = `<i class="fas fa-minus"></i> No change`;
-                className = 'badge bg-secondary';
+                html = `<i class="fas fa-minus me-1"></i>No change`;
+                cls  = 'badge badge-soft-gray';
             }
-            
-            $(`#change_${unitId}`).attr('class', 'rate-change-badge ' + className).html(html);
+
+            $(`#change_${unitId}`).html(`<span class="${cls}">${html}</span>`);
         });
     }
     
@@ -275,11 +280,11 @@ class AddendumProrateCalculator {
         $('#comparison_amount').text(this.formatCurrency(fullMonthOldRate));
         
         if (difference > 0) {
-            $('#comparison_badge').attr('class', 'badge bg-success').text(`+${differencePercent}% higher`);
+            $('#comparison_badge').attr('class', 'badge badge-soft-green').text(`+${differencePercent}% higher`);
         } else if (difference < 0) {
-            $('#comparison_badge').attr('class', 'badge bg-danger').text(`${differencePercent}% lower`);
+            $('#comparison_badge').attr('class', 'badge badge-soft-red').text(`${differencePercent}% lower`);
         } else {
-            $('#comparison_badge').attr('class', 'badge bg-secondary').text('Same');
+            $('#comparison_badge').attr('class', 'badge badge-soft-gray').text('Same');
         }
         
         // Show visualization
@@ -380,6 +385,67 @@ class AddendumProrateCalculator {
     formatCurrency(amount) {
         return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(amount));
     }
+
+    /**
+     * Preload a specific contract by ID (detail-page mode).
+     * Hides the dropdown, shows read-only contract preview, and loads units.
+     */
+    async preloadContract(contractId) {
+        this.isPreloaded = true;
+
+        try {
+            const response = await fetch(`${BASE_URL}marketing/rental/get/${contractId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const result = await response.json();
+
+            if (!result.success || !result.data) {
+                this.showError('Gagal memuat data kontrak');
+                return;
+            }
+
+            const d = result.data;
+            this.contractData = {
+                ...d,
+                start_date: d.tanggal_mulai || d.start_date,
+                end_date:   d.tanggal_berakhir || d.end_date,
+            };
+
+            // Sync hidden contract_id field used by submitAddendum
+            $('#prorateContractIdHidden').val(d.id);
+
+            // Show contract preview
+            $('#preview_amend_contract').text(d.no_kontrak);
+            $('#preview_amend_customer').text(d.customer_name);
+            $('#preview_amend_period').text(
+                `${this.formatDate(this.contractData.start_date)} – ${this.formatDate(this.contractData.end_date)}`
+            );
+            $('#prorateContractPreview').show();
+            $('#prorateContractRow').hide();
+
+            // Calculate and show billing period
+            this.calculateCurrentPeriod();
+            $('#display_period_start').text(this.formatDate(this.periodStart));
+            $('#display_period_end').text(this.formatDate(this.periodEnd));
+            $('#display_total_days').text(`${this.calculateDays(this.periodStart, this.periodEnd)} days`);
+            $('#currentPeriodCard').show();
+
+            // Load units
+            await this.loadContractUnits();
+
+        } catch (error) {
+            console.error('preloadContract error:', error);
+            this.showError('Gagal memuat data kontrak');
+        }
+    }
+
+    showError(message) {
+        if (window.OptimaNotify && typeof window.OptimaNotify.error === 'function') {
+            window.OptimaNotify.error(message, 'Error');
+            return;
+        }
+        alert(message);
+    }
 }
 
 // Initialize
@@ -388,11 +454,39 @@ $(document).ready(function() {
     addendumProrateCalc = new AddendumProrateCalculator();
 });
 
-// Function to open modal from anywhere
+// Function to open Change Rate modal from anywhere
 function openAddendumProrateCalculator(contractId = null) {
-    $('#addendumProrateModal').modal('show');
-    
+    if (!addendumProrateCalc) {
+        addendumProrateCalc = new AddendumProrateCalculator();
+    }
+
+    // Reset state
+    addendumProrateCalc.contractData  = {};
+    addendumProrateCalc.units         = [];
+    addendumProrateCalc.effectiveDate = null;
+    addendumProrateCalc.periodStart   = null;
+    addendumProrateCalc.periodEnd     = null;
+    addendumProrateCalc.isPreloaded   = false;
+
+    // Reset UI
+    $('#prorateSplitVisualization').hide();
+    $('#submitAddendumBtn').hide();
+    $('#currentPeriodCard').hide();
+    $('#prorateUnitsTable tbody').empty();
+    $('#prorateEffectiveDate').val('');
+    $('#prorateReason').val('');
+    $('#prorateNotes').val('');
+
     if (contractId) {
-        $('#prorateContractId').val(contractId).trigger('change');
+        // ── Detail-page mode: preload contract, skip dropdown ────────────────────
+        $('#addendumProrateModal').modal('show');
+        addendumProrateCalc.preloadContract(contractId);
+    } else {
+        // ── List-page mode: show dropdown, lazy-load contracts ───────────────
+        $('#prorateContractPreview').hide();
+        $('#prorateContractRow').show();
+        $('#prorateContractId').val('');
+        addendumProrateCalc.loadActiveContracts();
+        $('#addendumProrateModal').modal('show');
     }
 }

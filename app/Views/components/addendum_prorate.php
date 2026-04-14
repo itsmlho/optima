@@ -10,7 +10,7 @@
 <div class="modal fade" id="addendumProrateModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-gradient-primary text-white">
+            <div class="modal-header modal-header-primary">
                 <div>
                     <h5 class="modal-title">
                         <i class="fas fa-calculator me-2"></i>Addendum Prorate Split Calculator
@@ -22,13 +22,38 @@
             
             <div class="modal-body">
                 <form id="addendumProrateForm">
-                    <!-- Contract Selection -->
-                    <div class="row mb-3">
+                    <input type="hidden" name="contract_id" id="prorateContractIdHidden">
+
+                    <!-- Contract Selection (list-page mode) -->
+                    <div id="prorateContractRow" class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Select Contract <span class="text-danger">*</span></label>
-                            <select class="form-select" id="prorateContractId" name="contract_id" required>
+                            <select class="form-select" id="prorateContractId">
                                 <option value="">-- Select active contract --</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Contract Preview (detail-page / preloaded mode) -->
+                    <div id="prorateContractPreview" class="card border-primary mb-3" style="display:none;">
+                        <div class="card-header bg-primary bg-opacity-10">
+                            <h6 class="mb-0 text-primary"><i class="fas fa-file-contract me-2"></i>Contract</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small class="text-muted d-block">Contract No</small>
+                                    <strong id="preview_amend_contract">-</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted d-block">Customer</small>
+                                    <strong id="preview_amend_customer">-</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted d-block">Contract Period</small>
+                                    <strong id="preview_amend_period">-</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
