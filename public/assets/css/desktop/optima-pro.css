@@ -2805,7 +2805,7 @@ h6, .h6 { font-size: 1rem; }
 .modal-header-primary .modal-title strong,
 .modal-header-primary h5,
 .modal-header-primary small {
-    color: #ffffff;
+    color: #ffffff !important;
 }
 
 .modal-header-primary small {
