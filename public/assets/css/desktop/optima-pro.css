@@ -2796,7 +2796,7 @@ h6, .h6 { font-size: 1rem; }
 
 /* Modal Header - Primary Blue with White Text */
 .modal-header-primary {
-    background-color: #0d6efd;
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
     color: #ffffff;
     border-bottom: none;
 }
