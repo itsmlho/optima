@@ -130,9 +130,9 @@ class RenewalWizard {
             tbody.append(`
                 <tr data-unit-id="${unit.id}">
                     <td><input type="checkbox" class="unit-checkbox" data-index="${index}" checked></td>
-                    <td>${unit.nomor_unit}</td>
-                    <td>${unit.tipe_unit || '-'}</td>
-                    <td>${this.formatCurrency(unit.monthly_rate || 0)}</td>
+                    <td>${unit.no_unit}</td>
+                    <td>${unit.jenis_unit || '-'}</td>
+                    <td>${this.formatCurrency(unit.harga_efektif || 0)}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-warning" onclick="renewalWizard.replaceUnit(${index})">
                             <i class="fas fa-exchange-alt"></i> Replace
@@ -213,14 +213,14 @@ class RenewalWizard {
             const checked = $(`.unit-checkbox[data-index="${index}"]`).is(':checked');
             if (!checked) return;
             
-            const oldRate = parseFloat(unit.monthly_rate) || 0;
+            const oldRate = parseFloat(unit.harga_efektif) || 0;
             const newRate = this.rateAdjustments[unit.id] || oldRate;
             const change = newRate - oldRate;
             const changePercent = oldRate > 0 ? ((change / oldRate) * 100).toFixed(2) : 0;
             
             tbody.append(`
                 <tr>
-                    <td>${unit.nomor_unit}</td>
+                    <td>${unit.no_unit}</td>
                     <td>${this.formatCurrency(oldRate)}</td>
                     <td>${this.formatCurrency(newRate)}</td>
                     <td>
@@ -313,7 +313,7 @@ class RenewalWizard {
             const unit = this.selectedUnits[index];
             unitsData.push({
                 unit_id: unit.id,
-                monthly_rate: this.rateAdjustments[unit.id] || unit.monthly_rate
+                monthly_rate: this.rateAdjustments[unit.id] || unit.harga_efektif
             });
         });
         formData.append('units', JSON.stringify(unitsData));
@@ -355,7 +355,7 @@ class RenewalWizard {
         }
         
         this.selectedUnits.forEach(unit => {
-            const oldRate = parseFloat(unit.monthly_rate) || 0;
+            const oldRate = parseFloat(unit.harga_efektif) || 0;
             let newRate = oldRate;
             
             if (type === 'percentage') {
@@ -379,7 +379,7 @@ class RenewalWizard {
             const data = await response.json();
             
             if (data.success) {
-                $('#renewal_contract_number').val(data.contract_number);
+                $('#renewal_contract_number').val(data.data?.contract_number);
             }
         } catch (error) {
             console.error('Failed to generate contract number:', error);
@@ -401,7 +401,7 @@ class RenewalWizard {
         $('.unit-checkbox:checked').each((i, checkbox) => {
             const index = $(checkbox).data('index');
             const unit = this.selectedUnits[index];
-            const rate = this.rateAdjustments[unit.id] || unit.monthly_rate || 0;
+            const rate = this.rateAdjustments[unit.id] || unit.harga_efektif || 0;
             total += parseFloat(rate);
         });
         return total;

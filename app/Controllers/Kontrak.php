@@ -3168,5 +3168,238 @@ class Kontrak extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.']);
         }
     }
+
+    /**
+     * Get active CONTRACT-type contracts for the Renewal Wizard dropdown.
+     */
+    public function getExpiringContracts()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $contracts = $this->db->query("
+                SELECT
+                    k.id,
+                    k.no_kontrak,
+                    c.customer_name,
+                    k.tanggal_mulai    AS start_date,
+                    k.tanggal_berakhir AS end_date,
+                    k.billing_method,
+                    k.rental_type,
+                    k.customer_id,
+                    (SELECT COUNT(*)
+                     FROM kontrak_unit ku
+                     WHERE ku.kontrak_id = k.id
+                       AND ku.status IN ('ACTIVE','AKTIF','TEMP_ACTIVE')) AS total_units,
+                    (SELECT COALESCE(SUM(ku2.harga_sewa), 0)
+                     FROM kontrak_unit ku2
+                     WHERE ku2.kontrak_id = k.id
+                       AND ku2.status IN ('ACTIVE','AKTIF','TEMP_ACTIVE')
+                       AND ku2.is_spare = 0) AS contract_value,
+                    (SELECT ku3.customer_location_id
+                     FROM kontrak_unit ku3
+                     WHERE ku3.kontrak_id = k.id LIMIT 1) AS location_id
+                FROM kontrak k
+                LEFT JOIN customers c ON c.id = k.customer_id
+                WHERE k.status IN ('ACTIVE','PENDING')
+                  AND k.rental_type = 'CONTRACT'
+                ORDER BY k.tanggal_berakhir ASC
+            ")->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => $contracts,
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getExpiringContracts error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data kontrak',
+            ]);
+        }
+    }
+
+    /**
+     * Update harga_sewa / is_spare for a unit inside a contract.
+     */
+    public function updateUnit()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $kontrakId = (int) $this->request->getPost('kontrak_id');
+            $unitId    = (int) $this->request->getPost('unit_id');
+            $hargaSewa = $this->request->getPost('harga_sewa');
+            $isSpare   = (int) $this->request->getPost('is_spare');
+
+            if (!$kontrakId || !$unitId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Data tidak lengkap', 'csrf_hash' => csrf_hash()]);
+            }
+
+            $update = ['is_spare' => $isSpare];
+            if ($hargaSewa !== null && $hargaSewa !== '') {
+                $update['harga_sewa'] = (float) $hargaSewa;
+            }
+
+            $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->update($update);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil diupdate',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'updateUnit error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal update unit',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+    }
+
+    /**
+     * Deactivate (soft-remove) a unit from a contract.
+     */
+    public function removeUnit()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $kontrakId = (int) $this->request->getPost('kontrak_id');
+            $unitId    = (int) $this->request->getPost('unit_id');
+
+            if (!$kontrakId || !$unitId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Data tidak lengkap', 'csrf_hash' => csrf_hash()]);
+            }
+
+            $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->update(['status' => 'INACTIVE']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil dihapus dari kontrak',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'removeUnit error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menghapus unit',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+    }
+
+    /**
+     * Create a renewal contract from the Renewal Wizard (5-step form).
+     */
+    public function createRenewal()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $parentId      = (int) $this->request->getPost('parent_contract_id');
+            $contractNum   = trim($this->request->getPost('renewal_contract_number') ?? '');
+            $startDate     = $this->request->getPost('renewal_start_date');
+            $endDate       = $this->request->getPost('renewal_end_date') ?: null;
+            $billingMethod = $this->request->getPost('renewal_billing_method') ?: 'CYCLE';
+            $rentalType    = $this->request->getPost('renewal_rental_type') ?: 'CONTRACT';
+            $customerId    = (int) $this->request->getPost('renewal_customer_id');
+            $locationId    = (int) $this->request->getPost('renewal_location_id');
+            $unitsJson     = $this->request->getPost('units');
+
+            if (!$parentId || !$contractNum || !$startDate) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Data kontrak tidak lengkap',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+
+            $parent = $this->kontrakModel->find($parentId);
+            if (!$parent) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Kontrak induk tidak ditemukan',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+
+            $generation = ((int) ($parent['renewal_generation'] ?? 0)) + 1;
+
+            $this->db->transStart();
+
+            $newKontrakId = $this->kontrakModel->insert([
+                'no_kontrak'           => $contractNum,
+                'rental_type'          => $rentalType,
+                'billing_method'       => $billingMethod,
+                'tanggal_mulai'        => $startDate,
+                'tanggal_berakhir'     => $endDate,
+                'status'               => 'ACTIVE',
+                'customer_id'          => $customerId ?: $parent['customer_id'],
+                'parent_contract_id'   => $parentId,
+                'is_renewal'           => 1,
+                'renewal_generation'   => $generation,
+                'renewal_initiated_at' => date('Y-m-d H:i:s'),
+                'renewal_initiated_by' => session()->get('user_id') ?? 1,
+                'dibuat_oleh'          => session()->get('user_id') ?? 1,
+                'total_units'          => 0,
+            ]);
+
+            $units = json_decode($unitsJson ?? '[]', true) ?: [];
+            foreach ($units as $unit) {
+                $unitId = (int) ($unit['unit_id'] ?? 0);
+                if (!$unitId) {
+                    continue;
+                }
+                $this->db->table('kontrak_unit')->insert([
+                    'kontrak_id'           => $newKontrakId,
+                    'unit_id'              => $unitId,
+                    'customer_location_id' => $locationId ?: null,
+                    'harga_sewa'           => (float) ($unit['monthly_rate'] ?? 0),
+                    'status'               => 'ACTIVE',
+                    'is_spare'             => 0,
+                ]);
+            }
+
+            $this->db->transComplete();
+
+            if ($this->db->transStatus() === false) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Gagal membuat kontrak renewal',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Kontrak renewal berhasil dibuat',
+                'data'      => ['id' => $newKontrakId, 'no_kontrak' => $contractNum],
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'createRenewal error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success'   => false,
+                'message'   => 'Gagal membuat kontrak renewal: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+    }
 }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
