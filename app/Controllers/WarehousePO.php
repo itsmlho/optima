@@ -1189,6 +1189,36 @@ class WarehousePO extends BaseController
     }
 
     /**
+     * Prefiks item_number inventory baterai: Lead Acid = B, Lithium = BL (selaras impor CSV).
+     */
+    private function inventoryBatteryItemNumberPrefix(int $batteryTypeId): string
+    {
+        if ($batteryTypeId <= 0) {
+            return 'B';
+        }
+        $db = \Config\Database::connect();
+        $jenis = strtoupper(
+            (string) ($db->table('baterai')->select('jenis_baterai')->where('id', $batteryTypeId)->get()->getRow('jenis_baterai') ?? '')
+        );
+        if ($jenis !== '' && str_contains($jenis, 'LEAD') && str_contains($jenis, 'ACID')) {
+            return 'B';
+        }
+        if ($jenis !== '' && (
+            str_contains($jenis, 'LITHIUM')
+            || str_contains($jenis, 'LI-ION')
+            || str_contains($jenis, 'LI ION')
+            || str_contains($jenis, 'LIFEPO')
+            || str_contains($jenis, 'LFP')
+            || str_contains($jenis, 'NMC')
+            || str_contains($jenis, 'NCA')
+        )) {
+            return 'BL';
+        }
+
+        return 'B';
+    }
+
+    /**
      * Default isi paket untuk validasi / UI ketika po_units.package_flags kosong (data lama).
      *
      * @return list<string>
@@ -1324,7 +1354,10 @@ class WarehousePO extends BaseController
             if ($sn !== '') {
                 $this->inventoryBatteryModel->skipValidation(true);
                 $this->inventoryBatteryModel->insert(array_merge($common, [
-                    'item_number'     => $this->allocateInventoryItemNumber('inventory_batteries', 'B'),
+                    'item_number'     => $this->allocateInventoryItemNumber(
+                        'inventory_batteries',
+                        $this->inventoryBatteryItemNumberPrefix((int) $pu['baterai_id'])
+                    ),
                     'battery_type_id' => (int) $pu['baterai_id'],
                     'serial_number'   => $sn,
                 ]));
@@ -1940,7 +1973,10 @@ class WarehousePO extends BaseController
                         if (!empty($verified['baterai_id'])) {
                             $this->inventoryBatteryModel->skipValidation(true);
                             $okB = $this->inventoryBatteryModel->insert(array_merge($common, [
-                                'item_number'     => $this->allocateInventoryItemNumber('inventory_batteries', 'B'),
+                                'item_number'     => $this->allocateInventoryItemNumber(
+                                    'inventory_batteries',
+                                    $this->inventoryBatteryItemNumberPrefix((int) $verified['baterai_id'])
+                                ),
                                 'battery_type_id' => (int) $verified['baterai_id'],
                                 'serial_number'   => $snAttachment ?: (string) ($verified['serial_number'] ?? ''),
                             ]));

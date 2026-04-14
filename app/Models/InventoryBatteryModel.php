@@ -10,8 +10,7 @@ use CodeIgniter\Model;
  * Model untuk mengelola inventory batteries
  * Table: inventory_batteries
  * 
- * Virtual Column:
- * - item_number: Auto-generated format B-0001, B-0002, dst
+ * item_number: Lead Acid = B#####, Lithium = BL##### (lihat WarehousePO::inventoryBatteryItemNumberPrefix).
  */
 class InventoryBatteryModel extends Model
 {
