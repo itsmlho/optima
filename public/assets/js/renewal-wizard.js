@@ -269,43 +269,72 @@ class RenewalWizard {
     }
     
     prepareStep4() {
-        // Populate rate adjustment table
         const tbody = $('#rateAdjustmentTable tbody');
         tbody.empty();
-        
-        this.selectedUnits.forEach((unit, index) => {
-            const checked = $(`.unit-checkbox[data-index="${index}"]`).is(':checked');
-            if (!checked) return;
-            
+
+        // Collect only the units that were checked in step 3
+        const activeUnits = this.selectedUnits.filter((unit, index) =>
+            $(`.unit-checkbox[data-index="${index}"]`).is(':checked')
+        );
+
+        if (activeUnits.length === 0) {
+            tbody.append('<tr><td colspan="5" class="text-center text-muted py-3">No units selected</td></tr>');
+            return;
+        }
+
+        activeUnits.forEach(unit => {
             const oldRate = parseFloat(unit.harga_efektif) || 0;
-            const newRate = this.rateAdjustments[unit.id] || oldRate;
-            const change = newRate - oldRate;
-            const changePercent = oldRate > 0 ? ((change / oldRate) * 100).toFixed(2) : 0;
-            
+            // Initialise with old rate on first visit to step 4
+            if (this.rateAdjustments[unit.id] === undefined) {
+                this.rateAdjustments[unit.id] = oldRate;
+            }
+            const newRate = this.rateAdjustments[unit.id];
+            const change   = newRate - oldRate;
+            const pct      = oldRate > 0 ? ((change / oldRate) * 100).toFixed(1) : '0.0';
+            const badgeCls = change > 0 ? 'badge-soft-green' : change < 0 ? 'badge-soft-red' : 'badge-soft-gray';
+            const sign     = change > 0 ? '+' : '';
+
             tbody.append(`
-                <tr>
+                <tr data-unit-id="${unit.id}">
                     <td>${unit.no_unit}</td>
-                    <td>${this.formatCurrency(oldRate)}</td>
-                    <td>${this.formatCurrency(newRate)}</td>
-                    <td>
-                        <span class="badge ${change > 0 ? 'bg-success' : change < 0 ? 'bg-danger' : 'bg-secondary'}">
-                            ${change > 0 ? '+' : ''}${this.formatCurrency(change)} (${changePercent}%)
+                    <td class="old-rate-cell">${this.formatCurrency(oldRate)}</td>
+                    <td class="new-rate-cell">${this.formatCurrency(newRate)}</td>
+                    <td class="change-cell">
+                        <span class="badge ${badgeCls}">
+                            ${sign}${this.formatCurrency(change)} (${pct}%)
                         </span>
                     </td>
                     <td>
-                        <input type="number" class="form-control form-control-sm custom-rate" 
-                               data-unit-id="${unit.id}" value="${newRate}" step="1000" min="0">
+                        <input type="number" class="form-control form-control-sm custom-rate"
+                               data-unit-id="${unit.id}" data-old-rate="${oldRate}"
+                               value="${newRate}" step="1000" min="0">
                     </td>
                 </tr>
             `);
         });
-        
-        // Bind custom rate inputs
-        $('.custom-rate').on('change', (e) => {
-            const unitId = $(e.target).data('unit-id');
-            this.rateAdjustments[unitId] = parseFloat($(e.target).val());
-            this.prepareStep4(); // Refresh
-        });
+
+        // Use event delegation — off() first to prevent stacking on re-render
+        $('#rateAdjustmentTable tbody').off('change', '.custom-rate')
+            .on('change', '.custom-rate', (e) => {
+                const $input  = $(e.target);
+                const unitId  = $input.data('unit-id');
+                const oldRate = parseFloat($input.data('old-rate')) || 0;
+                const newRate = parseFloat($input.val()) || 0;
+
+                this.rateAdjustments[unitId] = newRate;
+
+                // Update only the affected row — no full re-render
+                const change   = newRate - oldRate;
+                const pct      = oldRate > 0 ? ((change / oldRate) * 100).toFixed(1) : '0.0';
+                const badgeCls = change > 0 ? 'badge-soft-green' : change < 0 ? 'badge-soft-red' : 'badge-soft-gray';
+                const sign     = change > 0 ? '+' : '';
+
+                const $row = $input.closest('tr');
+                $row.find('.new-rate-cell').text(this.formatCurrency(newRate));
+                $row.find('.change-cell').html(
+                    `<span class="badge ${badgeCls}">${sign}${this.formatCurrency(change)} (${pct}%)</span>`
+                );
+            });
     }
     
     prepareStep5() {
@@ -410,29 +439,30 @@ class RenewalWizard {
     }
     
     applyRateIncrease() {
-        const type = $('#rateIncreaseType').val();
+        const type  = $('#rateIncreaseType').val();
         const value = parseFloat($('#rateIncreaseValue').val());
-        
+
         if (!value || value <= 0) {
             this.showError('Please enter a valid increase value');
             return;
         }
-        
-        this.selectedUnits.forEach(unit => {
+
+        // Apply only to units that are checked in step 3 (visible in the rate table)
+        let appliedCount = 0;
+        this.selectedUnits.forEach((unit, index) => {
+            if (!$(`.unit-checkbox[data-index="${index}"]`).is(':checked')) return;
+
             const oldRate = parseFloat(unit.harga_efektif) || 0;
-            let newRate = oldRate;
-            
-            if (type === 'percentage') {
-                newRate = oldRate * (1 + value / 100);
-            } else {
-                newRate = oldRate + value;
-            }
-            
+            const newRate = type === 'percentage'
+                ? oldRate * (1 + value / 100)
+                : oldRate + value;
+
             this.rateAdjustments[unit.id] = Math.round(newRate);
+            appliedCount++;
         });
-        
+
         this.prepareStep4();
-        this.showSuccess('Rate increase applied to all units');
+        this.showSuccess(`Rate increase applied to ${appliedCount} unit(s)`);
     }
     
     async generateContractNumber() {
