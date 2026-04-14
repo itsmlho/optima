@@ -172,9 +172,8 @@ class RenewalWizard {
             // Load units for step 3
             await this.loadContractUnits();
 
-            // Skip step 1 — go straight to step 2 (Review Terms)
-            // Hide step 1 from the stepper so the user sees a clean 4-step flow
-            $(`.stepper-step[data-step="1"]`).hide();
+            // Step 1 is done automatically — mark it as completed (green ✓)
+            $(`.stepper-step[data-step="1"]`).removeClass('active').addClass('completed').show();
             this.currentStep = 2;
             this.updateStepDisplay();
             this.prepareStep2();
@@ -568,8 +567,8 @@ function openRenewalWizard(contractId = null) {
         renewalWizard.selectedUnits = [];
         renewalWizard.rateAdjustments = {};
         renewalWizard.currentStep = 1;
-        // Re-show step 1 stepper item (it may have been hidden in preload mode)
-        $(`.stepper-step[data-step="1"]`).show();
+        // Re-show and reset step 1 stepper item (may have been completed in preload mode)
+        $(`.stepper-step[data-step="1"]`).show().removeClass('completed');
         renewalWizard.updateStepDisplay();
         renewalWizard.loadExpiringContracts();
         $('#renewalWizardModal').modal('show');
