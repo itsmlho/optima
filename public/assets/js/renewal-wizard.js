@@ -17,7 +17,8 @@ class RenewalWizard {
     }
     
     init() {
-        this.loadExpiringContracts();
+        // loadExpiringContracts() is NOT called here — it is called lazily
+        // only when step 1 is actually shown (list-page mode).
         this.bindEvents();
     }
     
@@ -171,7 +172,9 @@ class RenewalWizard {
             // Load units for step 3
             await this.loadContractUnits();
 
-            // Skip step 1 — go straight to step 2 (New Terms)
+            // Skip step 1 — go straight to step 2 (Review Terms)
+            // Hide step 1 from the stepper so the user sees a clean 4-step flow
+            $(`.stepper-step[data-step="1"]`).hide();
             this.currentStep = 2;
             this.updateStepDisplay();
             this.prepareStep2();
@@ -537,11 +540,38 @@ $(document).ready(function() {
     renewalWizard = new RenewalWizard();
 });
 
-// Function to open renewal wizard from anywhere
+/**
+ * Global entry point for the Renewal Wizard.
+ *
+ * @param {number|null} contractId
+ *   - Provided (detail page): skip Step 1, preload contract automatically.
+ *   - Not provided (list page): show Step 1 so user can select a contract.
+ */
 function openRenewalWizard(contractId = null) {
-    $('#renewalWizardModal').modal('show');
-    
+    if (!renewalWizard) {
+        renewalWizard = new RenewalWizard();
+    }
+
     if (contractId) {
-        $('#renewalSourceContract').val(contractId).trigger('change');
+        // ── Detail-page mode ────────────────────────────────────────────────
+        // The contract is already known — skip Step 1 entirely.
+        renewalWizard.isPreloaded = false; // reset so preloadContract can set it
+        renewalWizard.rateAdjustments = {};
+        renewalWizard.selectedUnits = [];
+        $('#renewalWizardModal').modal('show');
+        renewalWizard.preloadContract(contractId);
+    } else {
+        // ── List-page mode ───────────────────────────────────────────────────
+        // Reset to Step 1 and lazily load the expiring-contracts dropdown.
+        renewalWizard.isPreloaded = false;
+        renewalWizard.contractData = {};
+        renewalWizard.selectedUnits = [];
+        renewalWizard.rateAdjustments = {};
+        renewalWizard.currentStep = 1;
+        // Re-show step 1 stepper item (it may have been hidden in preload mode)
+        $(`.stepper-step[data-step="1"]`).show();
+        renewalWizard.updateStepDisplay();
+        renewalWizard.loadExpiringContracts();
+        $('#renewalWizardModal').modal('show');
     }
 }

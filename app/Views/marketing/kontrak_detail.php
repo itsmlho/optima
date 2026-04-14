@@ -937,20 +937,8 @@ function deleteContract(id) {
 
 // ── Action functions: Renewal, Amendment, History ────────
 
-function openRenewalWizard(id) {
-    // Opened from the detail page — the contract is already known.
-    // Show the modal then preload the contract, skipping Step 1 entirely.
-    $('#renewalWizardModal').modal('show');
-
-    // renewalWizard may not be initialized yet if the modal hasn't been opened before
-    if (window.renewalWizard) {
-        window.renewalWizard.preloadContract(id);
-    } else {
-        $('#renewalWizardModal').one('shown.bs.modal', function () {
-            if (window.renewalWizard) window.renewalWizard.preloadContract(id);
-        });
-    }
-}
+// openRenewalWizard(id) is provided by renewal-wizard.js:
+// when called with a contractId it skips Step 1 and preloads the contract.
 
 function openAmendmentModal(id) {
     $.ajax({
