@@ -612,9 +612,7 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="col-12 mb-1">
                             <label class="form-label d-block"><?= lang('Marketing.spec_detail_fork_attach_mode') ?></label>
                             <div class="btn-group w-100 flex-wrap" role="group" id="forkAttachToggle">
-                                <input type="radio" class="btn-check" name="fork_attach_type" id="optNone" value="none" checked autocomplete="off">
-                                <label class="btn btn-outline-secondary btn-sm" for="optNone"><?= lang('Marketing.spec_master_fork_none') ?></label>
-                                <input type="radio" class="btn-check" name="fork_attach_type" id="optFork" value="fork" autocomplete="off">
+                                <input type="radio" class="btn-check" name="fork_attach_type" id="optFork" value="fork" checked autocomplete="off">
                                 <label class="btn btn-outline-primary btn-sm" for="optFork"><i class="fas fa-tools me-1"></i><?= lang('Marketing.spec_master_fork_standard') ?></label>
                                 <input type="radio" class="btn-check" name="fork_attach_type" id="optAttachment" value="attachment" autocomplete="off">
                                 <label class="btn btn-outline-success btn-sm" for="optAttachment"><i class="fas fa-paperclip me-1"></i><?= lang('Marketing.spec_master_attachment') ?></label>
@@ -847,9 +845,7 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="col-md-6">
                             <label class="form-label">Fork / Attachment</label>
                             <div class="btn-group w-100 mb-2" role="group" id="tplForkAttachToggle">
-                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptNone" value="none" checked autocomplete="off">
-                                <label class="btn btn-outline-secondary btn-sm" for="tplOptNone">Tidak Ada</label>
-                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptFork" value="fork" autocomplete="off">
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptFork" value="fork" checked autocomplete="off">
                                 <label class="btn btn-outline-primary btn-sm" for="tplOptFork"><i class="fas fa-tools me-1"></i>Fork Standar</label>
                                 <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptAttachment" value="attachment" autocomplete="off">
                                 <label class="btn btn-outline-success btn-sm" for="tplOptAttachment"><i class="fas fa-paperclip me-1"></i>Attachment</label>
@@ -3563,11 +3559,11 @@ function proceedWithSpecificationModal() {
     loadMastModelsForSpecification();
     loadTiresForSpecification();
 
-    // Reset fork/attachment mode (none = no fork/attachment text rows)
-    $('input[name="fork_attach_type"][value="none"]').prop('checked', true);
+    // Reset fork/attachment mode — default to fork (all forklift units have fork or attachment)
+    $('input[name="fork_attach_type"][value="fork"]').prop('checked', true);
     $('#specForkId').val('');
     $('#specAttachmentTipe').val('');
-    applyForkAttachTypeToSpecFormUI('none');
+    applyForkAttachTypeToSpecFormUI('fork');
 
     $('#specDetailFork,#specDetailAttachment,#specDetailMast,#specDetailBan,#specDetailValve').val('');
     $('#specApplyMasterIds').prop('checked', false);
@@ -3824,7 +3820,7 @@ function loadForkTypesForSpecification() {
 }
 
 function applyForkAttachTypeToSpecFormUI(val) {
-    val = val || 'none';
+    val = val || 'fork';
     $('#specForkSection').toggle(val === 'fork');
     $('#specAttachSection').toggle(val === 'attachment');
     $('#specTextForkWrap').toggle(val === 'fork');
@@ -4069,7 +4065,7 @@ function extractOptimaSpecTechFromNotes(notesRaw) {
 }
 
 function buildOptimaSpecTechBlockFromInputs() {
-    var fat = $('input[name="fork_attach_type"]:checked').val() || 'none';
+    var fat = $('input[name="fork_attach_type"]:checked').val() || 'fork';
     var detail = {
         fork: '',
         attachment: '',
@@ -4692,7 +4688,7 @@ function editSpecification(specId) {
                 }
                 
                 // Fork vs attachment: FK master first, else from parsed tech text
-                var forkAttachMode = 'none';
+                var forkAttachMode = 'fork'; // default — forklift always has fork or attachment
                 if (spec.fork_id) {
                     forkAttachMode = 'fork';
                 } else if (spec.attachment_id) {
@@ -8018,7 +8014,7 @@ $('#createSPKForm').on('submit', function(e) {
             $form.find('[name="ban_id"]').val(t.ban_id || '');
 
             // Fork / Attachment toggle
-            $('input[name="fork_attach_type"][value="none"]').prop('checked', true).trigger('change');
+            $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
             if (t.fork_id) {
                 $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
                 $form.find('[name="fork_id"]').val(t.fork_id);
