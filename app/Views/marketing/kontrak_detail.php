@@ -39,7 +39,7 @@ $canAmend  = ($status === 'ACTIVE');
         <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Kembali
         </a>
-        <a href="<?= base_url('marketing/kontrak/edit/' . $id) ?>" class="btn btn-primary btn-sm">
+        <a href="<?= base_url('marketing/rental/edit/' . $id) ?>" class="btn btn-primary btn-sm">
             <i class="fas fa-edit me-1" aria-hidden="true"></i>Edit
         </a>
         <?php if ($canRenew): ?>
@@ -500,7 +500,7 @@ function rupiah(v) {
 // ── Load Overview ────────────────────────────────────────
 function loadOverview() {
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/get/' + CONTRACT_ID,
+        url: BASE_URL + 'marketing/rental/get/' + CONTRACT_ID,
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data) {
@@ -566,7 +566,7 @@ function loadOverview() {
 function loadUnits() {
     $('#locationsAccordion').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p>Loading units...</p></div>');
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/units/' + CONTRACT_ID,
+        url: BASE_URL + 'marketing/rental/units/' + CONTRACT_ID,
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data || !res.data.length) {
@@ -704,7 +704,7 @@ function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
             var spare = document.getElementById('editUnitSpare') ? document.getElementById('editUnitSpare').checked : false;
 
             $.ajax({
-                url: BASE_URL + 'marketing/kontrak/updateUnit',
+                url: BASE_URL + 'marketing/rental/updateUnit',
                 type: 'POST',
                 data: {
                     kontrak_id: CONTRACT_ID,
@@ -778,7 +778,7 @@ function removeUnitFromContract(unitId) {
         text: 'Apakah Anda yakin ingin menghapus unit ini dari kontrak?',
         onConfirm: function() {
             $.ajax({
-        url: BASE_URL + 'marketing/kontrak/removeUnit',
+        url: BASE_URL + 'marketing/rental/removeUnit',
         type: 'POST',
         data: {
             kontrak_id: CONTRACT_ID,
@@ -805,7 +805,7 @@ function removeUnitFromContract(unitId) {
 function loadHistory() {
     // Timeline
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/getContractHistory/' + CONTRACT_ID,
+        url: BASE_URL + 'marketing/rental/getContractHistory/' + CONTRACT_ID,
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data) {
@@ -835,7 +835,7 @@ function loadHistory() {
 
     // Rate history
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/getRateHistory/' + CONTRACT_ID,
+        url: BASE_URL + 'marketing/rental/getRateHistory/' + CONTRACT_ID,
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data || !res.data.length) {
@@ -862,7 +862,7 @@ function loadHistory() {
 // ── Load Documents ──────────────────────────────────────
 function loadDocuments() {
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/documents/' + CONTRACT_ID,
+        url: BASE_URL + 'marketing/rental/documents/' + CONTRACT_ID,
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data || !res.data.length) {
@@ -906,7 +906,7 @@ function deleteDocument(docId) {
         title: 'Hapus Dokumen',
         text: 'Apakah Anda yakin ingin menghapus dokumen ini?',
         onConfirm: function() {
-            $.post(BASE_URL + 'marketing/kontrak/deleteDocument/' + docId, {}, function(res) {
+            $.post(BASE_URL + 'marketing/rental/deleteDocument/' + docId, {}, function(res) {
                 if (res.success) { loadDocuments(); } else { alertSwal('error', res.message || 'Gagal menghapus dokumen.'); }
             });
         }
@@ -919,7 +919,7 @@ function deleteContract(id) {
         text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
         onConfirm: function() {
             $.ajax({
-        url: BASE_URL + 'marketing/kontrak/delete/' + id,
+        url: BASE_URL + 'marketing/rental/delete/' + id,
         type: 'POST',
         success: function(res) {
             if (res.success) {
@@ -940,16 +940,16 @@ function openRenewalWizard(id) {
     // Step 1 of the renewal wizard has a select for expiring contracts.
     // We load the expiring list, add this contract if not present, then pre-select it.
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/getExpiringContracts',
+        url: BASE_URL + 'marketing/rental/getExpiringContracts',
         type: 'GET',
         success: function(res) {
-            const $sel = $('#renewalExpiringContracts');
+            const $sel = $('#renewalSourceContract');
             if ($sel.length && res.success && res.data) {
-                $sel.empty().append('<option value="">-- Select contract --</option>');
+                $sel.empty().append('<option value="">-- Select contract to renew --</option>');
                 res.data.forEach(c => $sel.append(new Option(c.no_kontrak + ' - ' + (c.customer_name||''), c.id)));
                 // If current contract not in expiring list, add it manually
                 if (!res.data.find(c => c.id == id)) {
-                    $.ajax({ url: BASE_URL + 'marketing/kontrak/get/' + id, type: 'GET',
+                    $.ajax({ url: BASE_URL + 'marketing/rental/get/' + id, type: 'GET',
                         success: function(r) {
                             if (r.success && r.data) {
                                 $sel.append(new Option(r.data.no_kontrak + ' (current)', id));
@@ -974,7 +974,7 @@ function openRenewalWizard(id) {
 
 function openAmendmentModal(id) {
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/get-active-contracts',
+        url: BASE_URL + 'marketing/rental/get-active-contracts',
         type: 'GET',
         success: function(res) {
             if (res.success) {
@@ -1054,7 +1054,7 @@ async function loadTarikModalData() {
         }
 
         // 3. Load contract info for pelanggan/lokasi
-        const kontrakRes = await fetch(BASE_URL + 'marketing/kontrak/get/' + CONTRACT_ID, {
+        const kontrakRes = await fetch(BASE_URL + 'marketing/rental/get/' + CONTRACT_ID, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const kontrakData = await kontrakRes.json();
@@ -1064,7 +1064,7 @@ async function loadTarikModalData() {
         }
 
         // 4. Load units from this contract
-        const unitsRes = await fetch(BASE_URL + 'marketing/kontrak/units/' + CONTRACT_ID, {
+        const unitsRes = await fetch(BASE_URL + 'marketing/rental/units/' + CONTRACT_ID, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const unitsData = await unitsRes.json();

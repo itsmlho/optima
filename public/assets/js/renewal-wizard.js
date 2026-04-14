@@ -50,7 +50,7 @@ class RenewalWizard {
     
     async loadExpiringContracts() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/getExpiringContracts`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/getExpiringContracts`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
@@ -108,7 +108,7 @@ class RenewalWizard {
     
     async loadContractUnits() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/getContractUnits/${this.contractData.id}`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/units/${this.contractData.id}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
@@ -319,7 +319,7 @@ class RenewalWizard {
         formData.append('units', JSON.stringify(unitsData));
         
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/createRenewal`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/createRenewal`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData
@@ -373,7 +373,7 @@ class RenewalWizard {
     
     async generateContractNumber() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/generateContractNumber`, {
+            const response = await fetch(`${BASE_URL}marketing/rental/generateContractNumber`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();

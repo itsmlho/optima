@@ -308,6 +308,10 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getExpiringContracts', 'Kontrak::getExpiringContracts');
         $routes->get('getAllContracts', 'Kontrak::getAllContracts');
         $routes->get('getAllUnits', 'Kontrak::getAllUnits');
+        $routes->post('updateUnit', 'Kontrak::updateUnit');
+        $routes->post('removeUnit', 'Kontrak::removeUnit');
+        $routes->post('createRenewal', 'Kontrak::createRenewal');
+        $routes->get('generateContractNumber', 'Kontrak::generateNumber');
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
         $routes->get('get-contracts-for-tarik', 'Marketing::getContractsForTarik');
         $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
