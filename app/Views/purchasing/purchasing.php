@@ -728,7 +728,7 @@ $can_export = $permissions['export'];
                         <div class="card-body p-4">
                             <!-- Action Buttons -->
                             <div class="mb-3 d-flex gap-2 flex-wrap">
-                                <?php if (can_create('purchasing')): ?>
+                                <?php if ($can_create): ?>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="openItemModal('unit')">
                                     <i class="fas fa-truck me-1"></i>Add Unit
                                 </button>
@@ -1643,7 +1643,7 @@ function initUnitAttachmentPOCompletedTable() {
                     // For completed items, show status instead of buttons
                     if (row.status === 'Selesai dengan Catatan') {
                         // Special actions for partial rejection
-                        <?php if (can_edit('purchasing')): ?>
+                        <?php if ($can_edit): ?>
                         actionButtons = `
                             <button class="btn btn-sm btn-warning" onclick="reverifyPO(${data}, event)">
                                 <i class="fas fa-redo me-1"></i>Re-verify
@@ -2356,7 +2356,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                 <i class="fas fa-truck fa-2x text-muted mb-3"></i>
                 <h6 class="text-muted">No deliveries yet</h6>
                 <p class="text-muted small">Deliveries will appear once created</p>
-                <?php if (can_edit('purchasing')): ?>
+                <?php if ($can_edit): ?>
                 <button class="btn btn-primary btn-sm" onclick="createDelivery()">
                     <i class="fas fa-plus me-1"></i>Create Delivery
                 </button>
@@ -3402,7 +3402,7 @@ function renderDeliveryItems(po, items) {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0"><i class="fas fa-truck me-2 text-primary"></i>Unit (${items.units.length} items)</h6>
                     <div class="btn-group btn-group-sm">
-                        <?php if (can_create('purchasing')): ?>
+                        <?php if ($can_create): ?>
                         <button type="button" class="btn btn-outline-secondary" onclick="selectAllUnits()">Select All</button>
                         <button type="button" class="btn btn-outline-secondary" onclick="clearAllUnits()">Clear</button>
                         <?php else: ?>
@@ -3662,7 +3662,7 @@ function initCreatePOModal() {
     
     // Button handler to open modal
     $('#btnBuatPO').off('click').on('click', function() {
-        <?php if (!can_create('purchasing')): ?>
+        <?php if (!$can_create): ?>
         OptimaNotify.error('You do not have permission to create Purchase Orders');
         return false;
         <?php endif; ?>

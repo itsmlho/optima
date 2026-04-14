@@ -203,25 +203,23 @@ $routes->group('marketing',  static function ($routes) {
 
     // KONTRAK CRUD
     $routes->group('kontrak', static function ($routes) {
-        $routes->get('/', 'Kontrak::index'); 
-        $routes->post('getDataTable', 'Kontrak::getDataTable');
-        $routes->get('getGrouped', 'Kontrak::getGrouped');
-        $routes->get('generate-number', 'Kontrak::generateNumber');
-        $routes->post('check-duplicate', 'Kontrak::checkDuplicate');
-        $routes->post('store', 'Kontrak::store');
-        $routes->get('edit/(:num)', 'Kontrak::edit/$1');
-        $routes->post('update/(:num)', 'Kontrak::update/$1');
-        $routes->post('delete/(:num)', 'Kontrak::delete/$1');
-        $routes->get('detail/(:num)', 'Kontrak::detail/$1');
+        $routes->get('/', 'Kontrak::index', ['filter' => 'permission:marketing.contract.view']); 
+        $routes->post('getDataTable', 'Kontrak::getDataTable', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('getGrouped', 'Kontrak::getGrouped', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('generate-number', 'Kontrak::generateNumber', ['filter' => 'permission:marketing.contract.create']);
+        $routes->post('check-duplicate', 'Kontrak::checkDuplicate', ['filter' => 'permission:marketing.contract.create']);
+        $routes->post('store', 'Kontrak::store', ['filter' => 'permission:marketing.contract.create']);
+        $routes->get('edit/(:num)', 'Kontrak::edit/$1', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('update/(:num)', 'Kontrak::update/$1', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('delete/(:num)', 'Kontrak::delete/$1', ['filter' => 'permission:marketing.contract.delete']);
+        $routes->get('detail/(:num)', 'Kontrak::detail/$1', ['filter' => 'permission:marketing.contract.view']);
         $routes->get('get/(:num)', 'Kontrak::get/$1');
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
         $routes->get('customers', 'Kontrak::getCustomers');
         $routes->get('customers-dropdown', 'Kontrak::getCustomersDropdown');
         $routes->get('locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
-        $routes->get('stats', 'Kontrak::getStats');
-        $routes->get('export', 'Kontrak::export');
-        
-        // Spesifikasi management
+        $routes->get('stats', 'Kontrak::getStats', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('export', 'Kontrak::export', ['filter' => 'permission:marketing.contract.export']);
         $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
         $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
         $routes->get('spesifikasi-detail/(:num)', 'Kontrak::spesifikasiDetail/$1');
@@ -272,23 +270,23 @@ $routes->group('marketing',  static function ($routes) {
     // Old /marketing/kontrak/* URLs kept for backward compat; primary URL is now /marketing/rental/*
     $routes->addRedirect('marketing/kontrak', 'marketing/rental', 302);
     $routes->group('rental', static function ($routes) {
-        $routes->get('/', 'Kontrak::index');
-        $routes->post('getDataTable', 'Kontrak::getDataTable');
-        $routes->get('getGrouped', 'Kontrak::getGrouped');
-        $routes->get('generate-number', 'Kontrak::generateNumber');
-        $routes->post('check-duplicate', 'Kontrak::checkDuplicate');
-        $routes->post('store', 'Kontrak::store');
-        $routes->get('edit/(:num)', 'Kontrak::edit/$1');
-        $routes->post('update/(:num)', 'Kontrak::update/$1');
-        $routes->post('delete/(:num)', 'Kontrak::delete/$1');
-        $routes->get('detail/(:num)', 'Kontrak::detail/$1');
+        $routes->get('/', 'Kontrak::index', ['filter' => 'permission:marketing.contract.view']);
+        $routes->post('getDataTable', 'Kontrak::getDataTable', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('getGrouped', 'Kontrak::getGrouped', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('generate-number', 'Kontrak::generateNumber', ['filter' => 'permission:marketing.contract.create']);
+        $routes->post('check-duplicate', 'Kontrak::checkDuplicate', ['filter' => 'permission:marketing.contract.create']);
+        $routes->post('store', 'Kontrak::store', ['filter' => 'permission:marketing.contract.create']);
+        $routes->get('edit/(:num)', 'Kontrak::edit/$1', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('update/(:num)', 'Kontrak::update/$1', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('delete/(:num)', 'Kontrak::delete/$1', ['filter' => 'permission:marketing.contract.delete']);
+        $routes->get('detail/(:num)', 'Kontrak::detail/$1', ['filter' => 'permission:marketing.contract.view']);
         $routes->get('get/(:num)', 'Kontrak::get/$1');
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
         $routes->get('customers', 'Kontrak::getCustomers');
         $routes->get('customers-dropdown', 'Kontrak::getCustomersDropdown');
         $routes->get('locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
-        $routes->get('stats', 'Kontrak::getStats');
-        $routes->get('export', 'Kontrak::export');
+        $routes->get('stats', 'Kontrak::getStats', ['filter' => 'permission:marketing.contract.view']);
+        $routes->get('export', 'Kontrak::export', ['filter' => 'permission:marketing.contract.export']);
         $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
         $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
         $routes->get('spesifikasi-detail/(:num)', 'Kontrak::spesifikasiDetail/$1');
@@ -308,9 +306,9 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getExpiringContracts', 'Kontrak::getExpiringContracts');
         $routes->get('getAllContracts', 'Kontrak::getAllContracts');
         $routes->get('getAllUnits', 'Kontrak::getAllUnits');
-        $routes->post('updateUnit', 'Kontrak::updateUnit');
-        $routes->post('removeUnit', 'Kontrak::removeUnit');
-        $routes->post('createRenewal', 'Kontrak::createRenewal');
+        $routes->post('updateUnit', 'Kontrak::updateUnit', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('removeUnit', 'Kontrak::removeUnit', ['filter' => 'permission:marketing.contract.edit']);
+        $routes->post('createRenewal', 'Kontrak::createRenewal', ['filter' => 'permission:marketing.contract.renew']);
         $routes->get('generateContractNumber', 'Kontrak::generateNumber');
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
         $routes->get('get-contracts-for-tarik', 'Marketing::getContractsForTarik');
@@ -666,9 +664,9 @@ $routes->group('service', static function ($routes) {
     $routes->get('unit-audit/inputResults/(:num)', 'UnitAudit::inputAuditResults/$1', ['filter' => 'permission:service.unit_audit.create']);
 
     // PMPS — Preventive Maintenance Planned Service
-    $routes->get('pmps', 'Service::pmps');
-    $routes->get('pm-schedules', 'PmpsController::schedules');
-    $routes->get('pm-job/(:num)', 'PmpsController::jobDetail/$1');
+    $routes->get('pmps', 'Service::pmps', ['filter' => 'permission:service.pmps.view']);
+    $routes->get('pm-schedules', 'PmpsController::schedules', ['filter' => 'permission:service.pmps.manage_schedules']);
+    $routes->get('pm-job/(:num)', 'PmpsController::jobDetail/$1', ['filter' => 'permission:service.pmps.view']);
     // PMPS Dashboard API
     $routes->get('pmps/stats', 'PmpsController::getStats');
     $routes->get('pmps/getPmJobs', 'PmpsController::getPmJobs');
@@ -741,13 +739,13 @@ $routes->group('service', static function ($routes) {
     
     // Service Customer Location Management Routes
     $routes->group('customer-locations', static function($routes) {
-        $routes->get('/', 'ServiceCustomerLocationController::index');
-        $routes->post('getData', 'ServiceCustomerLocationController::getData');
-        $routes->get('(:num)', 'ServiceCustomerLocationController::detail/$1');
-        $routes->post('store', 'ServiceCustomerLocationController::store');
-        $routes->post('update/(:num)', 'ServiceCustomerLocationController::update/$1');
-        $routes->get('(:num)/units', 'ServiceCustomerLocationController::getLocationUnits/$1');
-        $routes->get('(:num)/employees', 'ServiceCustomerLocationController::getLocationEmployees/$1');
+        $routes->get('/', 'ServiceCustomerLocationController::index', ['filter' => 'permission:service.customer_location.view']);
+        $routes->post('getData', 'ServiceCustomerLocationController::getData', ['filter' => 'permission:service.customer_location.view']);
+        $routes->get('(:num)', 'ServiceCustomerLocationController::detail/$1', ['filter' => 'permission:service.customer_location.view']);
+        $routes->post('store', 'ServiceCustomerLocationController::store', ['filter' => 'permission:service.customer_location.create']);
+        $routes->post('update/(:num)', 'ServiceCustomerLocationController::update/$1', ['filter' => 'permission:service.customer_location.edit']);
+        $routes->get('(:num)/units', 'ServiceCustomerLocationController::getLocationUnits/$1', ['filter' => 'permission:service.customer_location.view']);
+        $routes->get('(:num)/employees', 'ServiceCustomerLocationController::getLocationEmployees/$1', ['filter' => 'permission:service.customer_location.view']);
     });
 
     // Service Area & Employee Management Routes  
@@ -1582,12 +1580,12 @@ $routes->post('kontrak/delete/(:num)', 'Kontrak::delete/$1');
 // ======================================================================
 
 // Sprint 1: Renewal Workflow
-$routes->get('kontrak/getExpiringContracts', 'Kontrak::getExpiringContracts');
-$routes->post('kontrak/createRenewal', 'Kontrak::createRenewal');
+$routes->get('kontrak/getExpiringContracts', 'Kontrak::getExpiringContracts', ['filter' => 'permission:marketing.contract.view']);
+$routes->post('kontrak/createRenewal', 'Kontrak::createRenewal', ['filter' => 'permission:marketing.contract.renew']);
 
 // Sprint 3: Contract Amendments (Prorate)
-$routes->get('kontrak/getActiveContracts', 'Kontrak::getActiveContracts');
-$routes->post('kontrak/createProrateAmendment', 'Kontrak::createProrateAmendment');
+$routes->get('kontrak/getActiveContracts', 'Kontrak::getActiveContracts', ['filter' => 'permission:marketing.contract.view']);
+$routes->post('kontrak/createProrateAmendment', 'Kontrak::createProrateAmendment', ['filter' => 'permission:marketing.contract.edit']);
 $routes->get('kontrak/getContractHistory/(:num)', 'Kontrak::getContractHistory/$1');
 $routes->get('kontrak/getRateHistory/(:num)', 'Kontrak::getRateHistory/$1');
 

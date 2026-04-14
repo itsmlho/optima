@@ -27,7 +27,35 @@ class UnitMovementController extends BaseController
         if (!$user) {
             return false;
         }
-        return true;
+
+        $perm = strtolower((string) $permission);
+        if ($perm === 'view') {
+            return $this->hasPermission('warehouse.unit_inventory.view')
+                || $this->hasPermission('warehouse.unit_inventory.index')
+                || $this->hasPermission('warehouse.unit_movement.view')
+                || $this->hasPermission('warehouse.movements.view')
+                || $this->canAccess('warehouse');
+        }
+        if ($perm === 'create') {
+            return $this->hasPermission('warehouse.unit_movement.create')
+                || $this->hasPermission('warehouse.movements.create')
+                || $this->hasPermission('warehouse.unit_inventory.edit')
+                || $this->canManage('warehouse');
+        }
+        if ($perm === 'edit') {
+            return $this->hasPermission('warehouse.unit_movement.edit')
+                || $this->hasPermission('warehouse.movements.edit')
+                || $this->hasPermission('warehouse.unit_inventory.edit')
+                || $this->canManage('warehouse');
+        }
+        if ($perm === 'delete') {
+            return $this->hasPermission('warehouse.unit_movement.delete')
+                || $this->hasPermission('warehouse.movements.delete')
+                || $this->hasPermission('warehouse.unit_inventory.delete')
+                || $this->canDelete('warehouse');
+        }
+
+        return false;
     }
 
     /**

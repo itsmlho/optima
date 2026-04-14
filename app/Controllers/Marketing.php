@@ -872,7 +872,11 @@ class Marketing extends BaseDataTableController
      */
     public function createQuotation()
     {
-        if (!$this->canManage('marketing')) {
+        $canCreate = $this->hasPermission('marketing.quotation.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->hasPermission('marketing.contract.create')
+            || $this->canManage('marketing');
+        if (!$canCreate) {
             return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
         
@@ -898,7 +902,11 @@ class Marketing extends BaseDataTableController
      */
     public function storeQuotation()
     {
-        if (!$this->canManage('marketing')) {
+        $canCreate = $this->hasPermission('marketing.quotation.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->hasPermission('marketing.contract.create')
+            || $this->canManage('marketing');
+        if (!$canCreate) {
             return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
@@ -1043,7 +1051,10 @@ class Marketing extends BaseDataTableController
      */
     public function createProspect()
     {
-        if (!$this->canManage('marketing')) {
+        $canCreate = $this->hasPermission('marketing.quotation.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->canManage('marketing');
+        if (!$canCreate) {
             return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
         
@@ -5501,6 +5512,13 @@ class Marketing extends BaseDataTableController
      */
     public function createSPKFromQuotation()
     {
+        $canCreateSpk = $this->hasPermission('marketing.spk.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->canManage('marketing');
+        if (!$canCreateSpk) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
         // Initialize database connection
         $this->db = \Config\Database::connect();
         
@@ -8269,6 +8287,14 @@ class Marketing extends BaseDataTableController
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
         }
+        $canDeleteSpk = $this->hasPermission('marketing.spk.delete')
+            || $this->hasPermission('marketing.spk.edit')
+            || $this->hasPermission('marketing.kontrak.delete')
+            || $this->canDelete('marketing')
+            || $this->canManage('marketing');
+        if (!$canDeleteSpk) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
 
         try {
             // Validate SPK ID
@@ -8353,6 +8379,13 @@ class Marketing extends BaseDataTableController
     {
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+        $canDeleteDi = $this->hasPermission('marketing.delivery.delete')
+            || $this->hasPermission('marketing.delivery.edit')
+            || $this->canDelete('marketing')
+            || $this->canManage('marketing');
+        if (!$canDeleteDi) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         try {
@@ -9293,6 +9326,13 @@ class Marketing extends BaseDataTableController
         if (!$this->request->isAJAX()) {
             return redirect()->to('/marketing/quotations');
         }
+        $canCreateContract = $this->hasPermission('marketing.kontrak.create')
+            || $this->hasPermission('marketing.contract.create')
+            || $this->hasPermission('marketing.quotation.edit')
+            || $this->canManage('marketing');
+        if (!$canCreateContract) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
 
         try {
             $quotationModel = new \App\Models\QuotationModel();
@@ -9487,6 +9527,12 @@ class Marketing extends BaseDataTableController
     {
         if (!$this->request->isAJAX()) {
             return redirect()->to('/marketing/quotations');
+        }
+        $canCreateSpk = $this->hasPermission('marketing.spk.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->canManage('marketing');
+        if (!$canCreateSpk) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
         try {

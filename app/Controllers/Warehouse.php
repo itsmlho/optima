@@ -1215,6 +1215,16 @@ class Warehouse extends BaseController
                 'message' => 'Akses ditolak.'
             ]);
         }
+        $canDeleteUnit = $this->hasPermission('warehouse.unit_inventory.delete')
+            || $this->hasPermission('warehouse.unit_inventory.edit')
+            || $this->canDelete('warehouse')
+            || $this->canManage('warehouse');
+        if (!$canDeleteUnit) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak.'
+            ]);
+        }
 
         $model = new InventoryUnitModel();
         $unit = $model->find($id);

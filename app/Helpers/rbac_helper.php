@@ -145,6 +145,9 @@ if (!function_exists('can_edit')) {
      */
     function can_edit($permission_key, $user_id = null, $division_id = null)
     {
+        if (!str_contains((string) $permission_key, '.')) {
+            return can_module_action((string) $permission_key, ['edit', 'delete', 'manage'], $user_id);
+        }
         $level = get_permission_level($permission_key, $user_id, $division_id);
         return in_array($level, ['edit', 'delete', 'manage']);
     }
@@ -156,6 +159,9 @@ if (!function_exists('can_delete')) {
      */
     function can_delete($permission_key, $user_id = null, $division_id = null)
     {
+        if (!str_contains((string) $permission_key, '.')) {
+            return can_module_action((string) $permission_key, ['delete', 'manage'], $user_id);
+        }
         $level = get_permission_level($permission_key, $user_id, $division_id);
         return in_array($level, ['delete', 'manage']);
     }
@@ -424,12 +430,128 @@ if (!function_exists('rbac_middleware')) {
     }
 }
 
+if (!function_exists('can_module_action')) {
+    /**
+     * Parse strict-mode module list from environment.
+     *
+     * Env format example:
+     * RBAC_STRICT_MODULES=marketing,purchasing
+     *
+     * @return array<int,string>
+     */
+    function rbac_strict_modules(): array
+    {
+        $raw = (string) (env('RBAC_STRICT_MODULES') ?? '');
+        if ($raw === '') {
+            return [];
+        }
+
+        $modules = array_filter(array_map(
+            static fn($v) => strtolower(trim((string) $v)),
+            explode(',', $raw)
+        ));
+
+        return array_values(array_unique($modules));
+    }
+
+    /**
+     * Check whether strict mode is active for a module.
+     */
+    function is_rbac_module_strict(string $module): bool
+    {
+        return in_array(strtolower(trim($module)), rbac_strict_modules(), true);
+    }
+
+    /**
+     * Check module-level actions from granular permission records.
+     *
+     * @param string $module
+     * @param array<int,string> $actions
+     * @param int|null $user_id
+     * @return bool
+     */
+    function can_module_action(string $module, array $actions, $user_id = null): bool
+    {
+        $module = strtolower(trim($module));
+        $user_id = $user_id ?? session()->get('user_id');
+        if (!$user_id || empty($actions)) {
+            return false;
+        }
+
+        // Respect admin/superadmin/module access bypasses in enhanced helper.
+        helper('permission');
+        $hasModuleAccess = function_exists('hasModuleAccess') && hasModuleAccess($module, $user_id);
+
+        $db = \Config\Database::connect();
+        $placeholders = implode(',', array_fill(0, count($actions), '?'));
+
+        // Priority 1: user-specific overrides
+        $userSql = "
+            SELECT up.granted
+            FROM user_permissions up
+            INNER JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = ?
+              AND p.module = ?
+              AND p.action IN ({$placeholders})
+              AND (up.expires_at IS NULL OR up.expires_at > NOW())
+            ORDER BY up.created_at DESC
+            LIMIT 1
+        ";
+        $userRow = $db->query($userSql, array_merge([$user_id, $module], $actions))->getRowArray();
+        if ($userRow !== null) {
+            return !empty($userRow['granted']);
+        }
+
+        // Priority 2: role permissions
+        $roleSql = "
+            SELECT COUNT(*) AS cnt
+            FROM role_permissions rp
+            INNER JOIN permissions p ON p.id = rp.permission_id
+            INNER JOIN user_roles ur ON ur.role_id = rp.role_id
+            WHERE ur.user_id = ?
+              AND ur.is_active = 1
+              AND rp.granted = 1
+              AND p.module = ?
+              AND p.action IN ({$placeholders})
+        ";
+        $roleRow = $db->query($roleSql, array_merge([$user_id, $module], $actions))->getRowArray();
+        $hasRoleAction = ((int) ($roleRow['cnt'] ?? 0)) > 0;
+
+        // If granular action permissions exist, honor them strictly.
+        $defSql = "
+            SELECT COUNT(*) AS cnt
+            FROM permissions p
+            WHERE p.module = ?
+              AND p.action IN ({$placeholders})
+        ";
+        $defRow = $db->query($defSql, array_merge([$module], $actions))->getRowArray();
+        $hasActionDefinitions = ((int) ($defRow['cnt'] ?? 0)) > 0;
+        $strictMode = is_rbac_module_strict($module);
+
+        if ($hasActionDefinitions || $strictMode) {
+            if ($strictMode && !$hasRoleAction && $hasModuleAccess) {
+                log_message('warning', "[RBAC_STRICT] Strict mode denied fallback for '{$module}' (actions: " . implode(',', $actions) . ")");
+            }
+            return $hasRoleAction;
+        }
+
+        // Backward-compatible fallback for modules that only have broad access keys.
+        if (!$hasRoleAction && $hasModuleAccess) {
+            log_message('warning', "[RBAC_COMPAT] Module fallback active for '{$module}' (actions: " . implode(',', $actions) . ")");
+        }
+        return $hasRoleAction || $hasModuleAccess;
+    }
+}
+
 if (!function_exists('can_create')) {
     /**
      * Check if user can create (edit permission level and above)
      */
     function can_create($permission_key, $user_id = null, $division_id = null)
     {
+        if (!str_contains((string) $permission_key, '.')) {
+            return can_module_action((string) $permission_key, ['create', 'edit', 'delete', 'manage'], $user_id);
+        }
         $level = get_permission_level($permission_key, $user_id, $division_id);
         return in_array($level, ['edit', 'delete', 'manage']);
     }
@@ -441,6 +563,9 @@ if (!function_exists('can_export')) {
      */
     function can_export($permission_key, $user_id = null, $division_id = null)
     {
+        if (!str_contains((string) $permission_key, '.')) {
+            return can_module_action((string) $permission_key, ['export', 'view', 'edit', 'delete', 'manage'], $user_id);
+        }
         $level = get_permission_level($permission_key, $user_id, $division_id);
         return in_array($level, ['view', 'edit', 'delete', 'manage']);
     }

@@ -62,7 +62,7 @@ helper('permission_helper');
                     <?php if (canNavigateTo('marketing', 'customer')): ?>
                     <li class="nav-item"><a href="<?= base_url('/marketing/customer-management') ?>" class="nav-link dropdown-link<?= $isMarketingCustomer ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">group</span><span class="drop-label">Customer Management</span></a></li>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('marketing', 'quotation')): ?>
+                    <?php if (canNavigateTo('marketing', 'contract')): ?>
                     <li class="nav-item"><a href="<?= base_url('/marketing/rental') ?>" class="nav-link dropdown-link<?= $isMarketingKontrak ? ' active' : '' ?>"><span class="material-symbols-rounded drop-icon">contract</span><span class="drop-label">Rental</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'spk')): ?>

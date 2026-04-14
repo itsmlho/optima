@@ -138,47 +138,12 @@ abstract class BaseController extends Controller
     protected function hasPermission(string $permissionKey): bool
     {
         try {
-            $db = \Config\Database::connect();
             $userId = session('user_id');
             if (!$userId) { return false; }
-
-            // Super Administrator shortcut by role name (if present)
-            $super = $db->table('user_roles ur')
-                ->select('1')
-                ->join('roles r', 'r.id = ur.role_id', 'left')
-                ->where('ur.user_id', $userId)
-                ->where('r.name', 'Super Administrator')
-                ->limit(1)->get()->getRowArray();
-            if ($super) return true;
-
-            // Resolve permission id by key_name (updated field)
-            $perm = $db->table('permissions')->select('id')->where('key_name', $permissionKey)->get()->getRowArray();
-            if (!$perm || empty($perm['id'])) {
-                // Permission key not registered yet – do not block
-                return true;
+            helper('permission');
+            if (function_exists('hasPermission')) {
+                return hasPermission($permissionKey, (int) $userId);
             }
-            $permissionId = (int)$perm['id'];
-
-            // Check role based permission
-            $has = $db->table('user_roles ur')
-                ->join('role_permissions rp', 'rp.role_id = ur.role_id', 'left')
-                ->where('ur.user_id', $userId)
-                ->where('rp.permission_id', $permissionId)
-                ->select('1')->limit(1)->get()->getRowArray();
-            if ($has) return true;
-
-            // Optional: direct user_permissions table support if exists
-            try {
-                $direct = $db->table('user_permissions')
-                    ->select('1')
-                    ->where('user_id', $userId)
-                    ->where('permission_id', $permissionId)
-                    ->limit(1)->get()->getRowArray();
-                if ($direct) return true;
-            } catch (\Throwable $e) {
-                // table may not exist – ignore
-            }
-
             return false;
         } catch (\Throwable $e) {
             // Fail-CLOSED: deny access if RBAC check itself errors (e.g. DB timeout).

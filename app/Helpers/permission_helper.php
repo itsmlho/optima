@@ -446,8 +446,16 @@ if (!function_exists('can_edit')) {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
         }
-        
-        // Try to guess page from module for legacy support
+
+        // Delegate to centralized module-action evaluator when available
+        if (!function_exists('can_module_action')) {
+            helper('rbac');
+        }
+        if (function_exists('can_module_action')) {
+            return can_module_action($moduleOrPage, ['edit', 'delete', 'manage'], $userId);
+        }
+
+        // Fallback legacy behavior
         return hasPermission("{$moduleOrPage}.{$moduleOrPage}.edit", $userId);
     }
 }
@@ -461,8 +469,16 @@ if (!function_exists('can_create')) {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
         }
-        
-        // Try to guess page from module for legacy support
+
+        // Delegate to centralized module-action evaluator when available
+        if (!function_exists('can_module_action')) {
+            helper('rbac');
+        }
+        if (function_exists('can_module_action')) {
+            return can_module_action($moduleOrPage, ['create', 'edit', 'delete', 'manage'], $userId);
+        }
+
+        // Fallback legacy behavior
         return hasPermission("{$moduleOrPage}.{$moduleOrPage}.create", $userId);
     }
 }
@@ -476,9 +492,38 @@ if (!function_exists('can_delete')) {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
         }
-        
-        // Try to guess page from module for legacy support
+
+        // Delegate to centralized module-action evaluator when available
+        if (!function_exists('can_module_action')) {
+            helper('rbac');
+        }
+        if (function_exists('can_module_action')) {
+            return can_module_action($moduleOrPage, ['delete', 'manage'], $userId);
+        }
+
+        // Fallback legacy behavior
         return hasPermission("{$moduleOrPage}.{$moduleOrPage}.delete", $userId);
+    }
+}
+
+if (!function_exists('can_export')) {
+    /**
+     * Legacy compatibility - check export permission.
+     */
+    function can_export(string $moduleOrPage, ?int $userId = null): bool
+    {
+        if (str_contains($moduleOrPage, '.')) {
+            return hasPermission($moduleOrPage, $userId);
+        }
+
+        if (!function_exists('can_module_action')) {
+            helper('rbac');
+        }
+        if (function_exists('can_module_action')) {
+            return can_module_action($moduleOrPage, ['export', 'view', 'edit', 'delete', 'manage'], $userId);
+        }
+
+        return hasPermission("{$moduleOrPage}.{$moduleOrPage}.export", $userId);
     }
 }
 

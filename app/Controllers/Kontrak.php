@@ -454,6 +454,17 @@ class Kontrak extends BaseController
 
     public function store()
     {
+        $canCreateContract = (function_exists('hasPermission') && hasPermission('marketing.kontrak.create'))
+            || (function_exists('hasPermission') && hasPermission('marketing.contract.create'))
+            || can_create('marketing');
+        if (!$canCreateContract) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+
         // Load simple logging helper
         helper('simple_activity_log');
         
@@ -712,6 +723,17 @@ class Kontrak extends BaseController
      */
     public function update($id)
     {
+        $canEditContract = (function_exists('hasPermission') && hasPermission('marketing.kontrak.edit'))
+            || (function_exists('hasPermission') && hasPermission('marketing.contract.edit'))
+            || can_edit('marketing');
+        if (!$canEditContract) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+
         // Debug logging untuk semua input
         log_message('debug', "=== Kontrak Update START ===");
         log_message('debug', "Contract ID from URL: $id");
@@ -968,6 +990,17 @@ class Kontrak extends BaseController
      */
     public function delete($id)
     {
+        $canDeleteContract = (function_exists('hasPermission') && hasPermission('marketing.kontrak.delete'))
+            || (function_exists('hasPermission') && hasPermission('marketing.contract.delete'))
+            || can_delete('marketing');
+        if (!$canDeleteContract) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+
         log_message('debug', '=== Kontrak::delete START ===');
         log_message('debug', 'Kontrak::delete called with ID: ' . $id);
         log_message('debug', 'Kontrak::delete - Raw ID: ' . var_export($id, true));

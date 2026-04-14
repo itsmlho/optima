@@ -1,0 +1,100 @@
+-- RBAC Phase 1: Role grant synchronization (legacy -> canonical)
+-- Tujuan: role yang sudah grant key lama ikut grant key canonical baru.
+-- Aman dijalankan berulang (idempotent via LEFT JOIN anti-duplicate).
+
+START TRANSACTION;
+
+-- Mapping legacy -> canonical
+DROP TEMPORARY TABLE IF EXISTS z_rbac_key_alias_map;
+CREATE TEMPORARY TABLE z_rbac_key_alias_map (
+  legacy_key VARCHAR(191) NOT NULL,
+  canonical_key VARCHAR(191) NOT NULL,
+  PRIMARY KEY (legacy_key, canonical_key)
+);
+
+INSERT INTO z_rbac_key_alias_map (legacy_key, canonical_key) VALUES
+-- Marketing contract/kontrak alignment
+('marketing.contract.navigation', 'marketing.kontrak.navigation'),
+('marketing.contract.view',       'marketing.kontrak.view'),
+('marketing.contract.create',     'marketing.kontrak.create'),
+('marketing.contract.edit',       'marketing.kontrak.edit'),
+('marketing.contract.delete',     'marketing.kontrak.delete'),
+('marketing.contract.export',     'marketing.kontrak.export'),
+
+-- Fallback from quotation action to kontrak action during transition
+('marketing.quotation.navigation', 'marketing.kontrak.navigation'),
+('marketing.quotation.create',     'marketing.kontrak.create'),
+('marketing.quotation.edit',       'marketing.kontrak.edit'),
+('marketing.quotation.delete',     'marketing.kontrak.delete'),
+
+-- Service naming alignment
+('service.workorder.navigation', 'service.work_order.navigation'),
+('service.workorder.index',      'service.work_order.view'),
+('service.workorder.view',       'service.work_order.view'),
+('service.workorder.create',     'service.work_order.create'),
+('service.workorder.edit',       'service.work_order.edit'),
+('service.workorder.delete',     'service.work_order.delete'),
+
+-- Warehouse naming alignment
+('warehouse.inventory_unit.navigation', 'warehouse.unit_inventory.navigation'),
+('warehouse.movements.navigation',      'warehouse.unit_movement.view'),
+('warehouse.movements.view',            'warehouse.unit_movement.view'),
+('warehouse.movements.create',          'warehouse.unit_movement.create'),
+('warehouse.movements.edit',            'warehouse.unit_movement.edit'),
+('warehouse.movements.delete',          'warehouse.unit_movement.delete'),
+
+-- Purchasing naming alignment
+('purchasing.purchasing.navigation', 'purchasing.po.navigation'),
+('purchasing.supplier_management.edit', 'purchasing.supplier.edit');
+
+-- Preview: candidate grant insert count
+SELECT COUNT(*) AS to_be_inserted
+FROM role_permissions rp_old
+JOIN permissions p_old ON p_old.id = rp_old.permission_id
+JOIN z_rbac_key_alias_map m ON m.legacy_key = p_old.key_name
+JOIN permissions p_new ON p_new.key_name = m.canonical_key
+LEFT JOIN role_permissions rp_new
+  ON rp_new.role_id = rp_old.role_id
+ AND rp_new.permission_id = p_new.id
+WHERE rp_old.granted = 1
+  AND rp_new.role_id IS NULL;
+
+-- Insert missing grants
+INSERT INTO role_permissions (role_id, permission_id, granted, assigned_at)
+SELECT
+  rp_old.role_id,
+  p_new.id AS permission_id,
+  1 AS granted,
+  NOW() AS assigned_at
+FROM role_permissions rp_old
+JOIN permissions p_old ON p_old.id = rp_old.permission_id
+JOIN z_rbac_key_alias_map m ON m.legacy_key = p_old.key_name
+JOIN permissions p_new ON p_new.key_name = m.canonical_key
+LEFT JOIN role_permissions rp_new
+  ON rp_new.role_id = rp_old.role_id
+ AND rp_new.permission_id = p_new.id
+WHERE rp_old.granted = 1
+  AND rp_new.role_id IS NULL;
+
+SELECT ROW_COUNT() AS inserted_role_grants;
+
+COMMIT;
+
+-- Post-check example: role matrix snapshot for canonical keys
+SELECT
+  r.slug AS role_slug,
+  p.key_name,
+  rp.granted
+FROM role_permissions rp
+JOIN roles r ON r.id = rp.role_id
+JOIN permissions p ON p.id = rp.permission_id
+WHERE rp.granted = 1
+  AND (
+    p.key_name LIKE 'marketing.kontrak.%'
+    OR p.key_name LIKE 'service.work_order.%'
+    OR p.key_name LIKE 'warehouse.unit_movement.%'
+    OR p.key_name LIKE 'warehouse.unit_inventory.%'
+    OR p.key_name LIKE 'purchasing.po.%'
+    OR p.key_name LIKE 'purchasing.supplier.%'
+  )
+ORDER BY r.slug, p.key_name;

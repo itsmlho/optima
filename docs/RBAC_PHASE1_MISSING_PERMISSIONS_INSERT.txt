@@ -1,0 +1,91 @@
+-- RBAC Phase 1: Insert missing permissions from code scan
+-- Prasyarat:
+-- 1) Tabel z_tmp_code_permissions sudah ada dan terisi
+-- 2) Gunakan staging dulu, baru production
+
+START TRANSACTION;
+
+-- Optional preview: berapa key phase-1 yang belum ada di permissions
+SELECT COUNT(*) AS phase1_missing_count
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND (
+    c.key_name LIKE 'marketing.%'
+    OR c.key_name LIKE 'purchasing.%'
+    OR c.key_name LIKE 'warehouse.%'
+    OR c.key_name LIKE 'service.work_order.%'
+    OR c.key_name LIKE 'service.workorder.%'
+  );
+
+-- Insert missing keys (phase-1 scope only)
+INSERT INTO permissions (
+  module,
+  page,
+  action,
+  subaction,
+  component,
+  key_name,
+  display_name,
+  description,
+  category
+)
+SELECT
+  LOWER(SUBSTRING_INDEX(c.key_name, '.', 1)) AS module,
+  LOWER(
+    CASE
+      WHEN (LENGTH(c.key_name) - LENGTH(REPLACE(c.key_name, '.', ''))) >= 2
+      THEN SUBSTRING_INDEX(SUBSTRING_INDEX(c.key_name, '.', 2), '.', -1)
+      ELSE 'general'
+    END
+  ) AS page,
+  LOWER(
+    CASE
+      WHEN (LENGTH(c.key_name) - LENGTH(REPLACE(c.key_name, '.', ''))) >= 2
+      THEN SUBSTRING_INDEX(c.key_name, '.', -1)
+      ELSE 'access'
+    END
+  ) AS action,
+  '' AS subaction,
+  '' AS component,
+  c.key_name,
+  CONCAT('Auto: ', c.key_name) AS display_name,
+  CONCAT('Auto-inserted from code scan (phase1): ', c.key_name) AS description,
+  CASE
+    WHEN c.key_name LIKE '%.navigation' THEN 'navigation'
+    WHEN c.key_name LIKE '%.index' OR c.key_name LIKE '%.view' THEN 'read'
+    WHEN c.key_name LIKE '%.create' OR c.key_name LIKE '%.edit' THEN 'write'
+    WHEN c.key_name LIKE '%.delete' THEN 'delete'
+    WHEN c.key_name LIKE '%.export' OR c.key_name LIKE 'export.%' THEN 'export'
+    WHEN c.key_name LIKE '%.approve' OR c.key_name LIKE '%.verify' THEN 'approval'
+    ELSE 'general'
+  END AS category
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND (
+    c.key_name LIKE 'marketing.%'
+    OR c.key_name LIKE 'purchasing.%'
+    OR c.key_name LIKE 'warehouse.%'
+    OR c.key_name LIKE 'service.work_order.%'
+    OR c.key_name LIKE 'service.workorder.%'
+  );
+
+-- Verification
+SELECT ROW_COUNT() AS inserted_permissions;
+
+COMMIT;
+
+-- Post-check (should be much smaller / zero for phase-1 scope)
+SELECT c.key_name AS phase1_still_missing
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND (
+    c.key_name LIKE 'marketing.%'
+    OR c.key_name LIKE 'purchasing.%'
+    OR c.key_name LIKE 'warehouse.%'
+    OR c.key_name LIKE 'service.work_order.%'
+    OR c.key_name LIKE 'service.workorder.%'
+  )
+ORDER BY c.key_name;

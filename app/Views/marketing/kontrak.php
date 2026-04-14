@@ -36,8 +36,15 @@
  */
 helper('simple_rbac');
 $can_view = can_view('marketing');
-$can_create = can_create('marketing');
-$can_export = can_export('marketing');
+$can_create = (
+    (function_exists('canPerformAction') && canPerformAction('marketing', 'kontrak', 'create'))
+    || (function_exists('hasPermission') && hasPermission('marketing.kontrak.create'))
+    || (function_exists('hasPermission') && hasPermission('marketing.contract.create'))
+);
+$can_export = (
+    (function_exists('hasPermission') && hasPermission('marketing.kontrak.export'))
+    || (function_exists('hasPermission') && hasPermission('marketing.contract.export'))
+);
 ?>
 
 <?= $this->section('content') ?>

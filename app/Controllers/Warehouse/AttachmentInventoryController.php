@@ -880,6 +880,14 @@ class AttachmentInventoryController extends BaseController
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid. Harap kirim data melalui form yang benar.'])->setStatusCode(400);
         }
+        $canDeleteItem = $this->hasPermission('warehouse.attachment_inventory.delete')
+            || $this->hasPermission('warehouse.attachment_inventory.edit')
+            || $this->hasPermission('warehouse.unit_inventory.edit')
+            || $this->canDelete('warehouse')
+            || $this->canManage('warehouse');
+        if (!$canDeleteItem) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+        }
 
         try {
             // Find the item across all tables

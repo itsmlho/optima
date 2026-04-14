@@ -7,6 +7,33 @@
 
 // Load permission helper functions
 helper('permission_helper');
+
+if (!function_exists('optimaCanNav')) {
+    function optimaCanNav(string $module, string $page): bool
+    {
+        if (canNavigateTo($module, $page)) {
+            return true;
+        }
+
+        $aliases = [
+            'marketing' => [
+                'kontrak' => ['contract', 'quotation'],
+                'contract' => ['kontrak', 'quotation'],
+            ],
+            'service' => [
+                'workorder' => ['work_order'],
+                'work_order' => ['workorder'],
+            ],
+        ];
+
+        foreach ($aliases[$module][$page] ?? [] as $alias) {
+            if (canNavigateTo($module, $alias)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 ?>
 
 <!-- Enhanced Sidebar with Advanced Features -->
@@ -53,7 +80,7 @@ helper('permission_helper');
                         <i class="fas fa-users"></i> <?= lang('Marketing.customer_management') ?>
                     </a>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('marketing', 'quotation')): ?>
+                    <?php if (optimaCanNav('marketing', 'kontrak')): ?>
                     <a href="<?= base_url('/marketing/kontrak') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/kontrak') !== false) ? 'active' : '' ?>">
                         <i class="fas fa-file-invoice"></i> Contracts & PO
                     </a>
@@ -79,7 +106,7 @@ helper('permission_helper');
 
             <!-- Service & Maintenance -->
             <!-- Service Section -->
-            <?php if (canNavigateTo('service', 'workorder') || canNavigateTo('service', 'pmps') || canNavigateTo('service', 'area') || canNavigateTo('service', 'user')): ?>
+            <?php if (optimaCanNav('service', 'workorder') || canNavigateTo('service', 'pmps') || canNavigateTo('service', 'area') || canNavigateTo('service', 'user')): ?>
             <li class="nav-item nav-group-item">
                 <a class="nav-link nav-group-link" data-group="service">
                     <i class="fas fa-tools"></i>
@@ -87,7 +114,7 @@ helper('permission_helper');
                 </a>
                 <div class="nav-dropdown">
                     <div class="nav-dropdown-header"><?= lang('App.service_maintenance') ?></div>
-                    <?php if (canNavigateTo('service', 'workorder')): ?>
+                    <?php if (optimaCanNav('service', 'workorder')): ?>
                     <a href="<?= base_url('/service/spk_service') ?>" class="nav-dropdown-item">
                         <i class="fas fa-clipboard-list"></i> <?= lang('App.work_orders_unit_prep') ?>
                     </a>
@@ -100,7 +127,7 @@ helper('permission_helper');
                         <i class="fas fa-calendar-check"></i> <?= lang('App.preventive_maintenance_pmps') ?>
                     </a>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('service', 'workorder')): ?>
+                    <?php if (optimaCanNav('service', 'workorder')): ?>
                     <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false && strpos(current_url(), 'unit-verification') === false) ? 'active' : '' ?>">
                         <i class="fas fa-search"></i> Unit Audit
                     </a>
@@ -370,7 +397,7 @@ helper('permission_helper');
             </li>
 
             <!-- SPK Service -->
-            <?php if (canNavigateTo('service', 'workorder')): ?>
+            <?php if (optimaCanNav('service', 'workorder')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/spk_service') ?>"
                    data-search-terms="spk service unit preparation"
@@ -393,7 +420,7 @@ helper('permission_helper');
             <?php endif; ?>
             
             <!-- Workorders -->
-            <?php if (canNavigateTo('service', 'workorder')): ?>
+            <?php if (optimaCanNav('service', 'workorder')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/work-orders') ?>"
                    data-search-terms="workorder complaint keluhan">
@@ -415,7 +442,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Unit Audit & Unit Verification -->
-            <?php if (canNavigateTo('service', 'workorder')): ?>
+            <?php if (optimaCanNav('service', 'workorder')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'unit-verification') === false && strpos(current_url(), 'inputResults') === false) ? 'active' : '' ?>" 
                    href="<?= base_url('/service/unit-audit') ?>"

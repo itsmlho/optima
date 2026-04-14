@@ -3041,6 +3041,14 @@ class Purchasing extends BaseController
      */
     public function deletePO($poId)
     {
+        $canDeletePo = $this->hasPermission('purchasing.po.delete')
+            || $this->hasPermission('purchasing.po.edit')
+            || $this->canDelete('purchasing')
+            || $this->canManage('purchasing');
+        if (!$canDeletePo) {
+            return $this->respond(['success' => false, 'message' => 'Akses ditolak'], 403);
+        }
+
         $db = \Config\Database::connect();
         $db->transStart();
         
@@ -4570,6 +4578,13 @@ class Purchasing extends BaseController
      */
     public function createDelivery()
     {
+        $canCreateDelivery = $this->hasPermission('purchasing.po.edit')
+            || $this->hasPermission('purchasing.po.create')
+            || $this->canManage('purchasing');
+        if (!$canCreateDelivery) {
+            return $this->respond(['success' => false, 'message' => 'Akses ditolak'], 403);
+        }
+
         try {
             $db = \Config\Database::connect();
             $db->transStart();

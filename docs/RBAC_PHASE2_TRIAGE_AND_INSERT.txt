@@ -1,0 +1,105 @@
+-- RBAC Phase 2 Triage + Insert (outside phase-1 scope)
+-- Prasyarat:
+-- 1) z_tmp_code_permissions sudah berisi key dari code scan terbaru
+-- 2) Jalankan di staging dulu, lalu production
+
+-- ==========================================================
+-- A) TRIAGE: lihat missing_in_db per module
+-- ==========================================================
+SELECT
+  LOWER(SUBSTRING_INDEX(c.key_name, '.', 1)) AS module_name,
+  COUNT(*) AS missing_count
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+GROUP BY LOWER(SUBSTRING_INDEX(c.key_name, '.', 1))
+ORDER BY missing_count DESC, module_name;
+
+-- Detail top missing keys (quick review)
+SELECT c.key_name AS missing_in_db
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+ORDER BY c.key_name
+LIMIT 300;
+
+-- ==========================================================
+-- B) INSERT PHASE 2 (exclude phase-1 modules)
+-- ==========================================================
+START TRANSACTION;
+
+SELECT COUNT(*) AS phase2_missing_count
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND c.key_name NOT LIKE 'marketing.%'
+  AND c.key_name NOT LIKE 'purchasing.%'
+  AND c.key_name NOT LIKE 'warehouse.%'
+  AND c.key_name NOT LIKE 'service.work_order.%'
+  AND c.key_name NOT LIKE 'service.workorder.%';
+
+INSERT INTO permissions (
+  module,
+  page,
+  action,
+  subaction,
+  component,
+  key_name,
+  display_name,
+  description,
+  category
+)
+SELECT
+  LOWER(SUBSTRING_INDEX(c.key_name, '.', 1)) AS module,
+  LOWER(
+    CASE
+      WHEN (LENGTH(c.key_name) - LENGTH(REPLACE(c.key_name, '.', ''))) >= 2
+      THEN SUBSTRING_INDEX(SUBSTRING_INDEX(c.key_name, '.', 2), '.', -1)
+      ELSE 'general'
+    END
+  ) AS page,
+  LOWER(
+    CASE
+      WHEN (LENGTH(c.key_name) - LENGTH(REPLACE(c.key_name, '.', ''))) >= 2
+      THEN SUBSTRING_INDEX(c.key_name, '.', -1)
+      ELSE 'access'
+    END
+  ) AS action,
+  '' AS subaction,
+  '' AS component,
+  c.key_name,
+  CONCAT('Auto: ', c.key_name) AS display_name,
+  CONCAT('Auto-inserted from code scan (phase2): ', c.key_name) AS description,
+  CASE
+    WHEN c.key_name LIKE '%.navigation' THEN 'navigation'
+    WHEN c.key_name LIKE '%.index' OR c.key_name LIKE '%.view' THEN 'read'
+    WHEN c.key_name LIKE '%.create' OR c.key_name LIKE '%.edit' THEN 'write'
+    WHEN c.key_name LIKE '%.delete' THEN 'delete'
+    WHEN c.key_name LIKE '%.export' OR c.key_name LIKE 'export.%' THEN 'export'
+    WHEN c.key_name LIKE '%.approve' OR c.key_name LIKE '%.verify' THEN 'approval'
+    ELSE 'general'
+  END AS category
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND c.key_name NOT LIKE 'marketing.%'
+  AND c.key_name NOT LIKE 'purchasing.%'
+  AND c.key_name NOT LIKE 'warehouse.%'
+  AND c.key_name NOT LIKE 'service.work_order.%'
+  AND c.key_name NOT LIKE 'service.workorder.%';
+
+SELECT ROW_COUNT() AS inserted_phase2_permissions;
+
+COMMIT;
+
+-- Post-check phase-2
+SELECT c.key_name AS phase2_still_missing
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND c.key_name NOT LIKE 'marketing.%'
+  AND c.key_name NOT LIKE 'purchasing.%'
+  AND c.key_name NOT LIKE 'warehouse.%'
+  AND c.key_name NOT LIKE 'service.work_order.%'
+  AND c.key_name NOT LIKE 'service.workorder.%'
+ORDER BY c.key_name;

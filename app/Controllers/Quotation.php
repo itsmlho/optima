@@ -133,7 +133,10 @@ class Quotation extends BaseController
      */
     public function store()
     {
-        if (!can_create('marketing')) {
+        $canCreate = $this->hasPermission('marketing.quotation.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || can_create('marketing');
+        if (!$canCreate) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'You do not have permission to create quotations'
@@ -203,7 +206,10 @@ class Quotation extends BaseController
      */
     public function update($id)
     {
-        if (!can_edit('marketing')) {
+        $canEdit = $this->hasPermission('marketing.quotation.edit')
+            || $this->hasPermission('marketing.kontrak.edit')
+            || can_edit('marketing');
+        if (!$canEdit) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'You do not have permission to edit quotations'
@@ -278,7 +284,10 @@ class Quotation extends BaseController
      */
     public function delete($id)
     {
-        if (!can_delete('marketing')) {
+        $canDelete = $this->hasPermission('marketing.quotation.delete')
+            || $this->hasPermission('marketing.kontrak.delete')
+            || can_delete('marketing');
+        if (!$canDelete) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'You do not have permission to delete quotations'
@@ -365,7 +374,10 @@ class Quotation extends BaseController
      */
     public function markAsDeal($id)
     {
-        if (!can_edit('marketing')) {
+        $canEdit = $this->hasPermission('marketing.quotation.edit')
+            || $this->hasPermission('marketing.kontrak.edit')
+            || can_edit('marketing');
+        if (!$canEdit) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'You do not have permission to mark quotations as deals'

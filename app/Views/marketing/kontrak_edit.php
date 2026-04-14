@@ -6,7 +6,12 @@
  * BADGE/CARD: Optima badge-soft-* for status; card-header bg-light.
  */
 helper('simple_rbac');
-$can_create = can_create('marketing');
+$can_edit = (
+    (function_exists('canPerformAction') && canPerformAction('marketing', 'kontrak', 'edit'))
+    || (function_exists('hasPermission') && hasPermission('marketing.kontrak.edit'))
+    || (function_exists('hasPermission') && hasPermission('marketing.contract.edit'))
+    || can_edit('marketing')
+);
 $status = $contract['status'] ?? '';
 $statusMap = ['ACTIVE' => 'badge-soft-green', 'EXPIRED' => 'badge-soft-red', 'PENDING' => 'badge-soft-yellow', 'CANCELLED' => 'badge-soft-gray'];
 $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
@@ -170,9 +175,11 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 
                     <!-- Actions -->
                     <div class="d-flex gap-2 pt-2 border-top">
+                        <?php if ($can_edit): ?>
                         <button type="submit" class="btn btn-primary px-4" id="btnSave">
                             <i class="fas fa-save me-1"></i>Save Changes
                         </button>
+                        <?php endif; ?>
                         <a href="<?= base_url('marketing/kontrak/detail/' . (int)$contract['id']) ?>" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-1"></i>Cancel
                         </a>

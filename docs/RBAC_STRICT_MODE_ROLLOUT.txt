@@ -1,0 +1,77 @@
+-- RBAC Strict Mode Rollout (per modul)
+-- Gunakan setelah UAT role matrix lulus.
+-- Prinsip: matikan fallback per modul secara bertahap, bukan sekaligus.
+
+-- ==========================================================
+-- 1) Baseline: cek semua key modul sudah ada
+-- ==========================================================
+SELECT c.key_name
+FROM z_tmp_code_permissions c
+LEFT JOIN permissions p ON p.key_name = c.key_name
+WHERE p.id IS NULL
+  AND c.key_name LIKE 'marketing.%'
+ORDER BY c.key_name;
+
+-- Ulangi untuk purchasing/warehouse/service sesuai modul target strict mode.
+
+-- ==========================================================
+-- 2) Freeze grant matrix modul target (backup)
+-- ==========================================================
+SELECT
+  r.slug AS role_slug,
+  p.key_name,
+  rp.granted
+FROM role_permissions rp
+JOIN roles r ON r.id = rp.role_id
+JOIN permissions p ON p.id = rp.permission_id
+WHERE p.module = 'marketing'
+ORDER BY r.slug, p.key_name;
+
+-- Simpan hasil export CSV sebagai rollback reference.
+
+-- ==========================================================
+-- 3) Verifikasi tidak ada fallback warning modul target
+-- ==========================================================
+-- Lakukan dari log aplikasi:
+-- Cari pattern: [RBAC_COMPAT] Module fallback active for 'marketing'
+-- Jika masih ada, tunda strict mode.
+
+-- ==========================================================
+-- 4) Aktivasi strict mode (kode)
+-- ==========================================================
+-- Aktivasi dilakukan via environment variable:
+-- RBAC_STRICT_MODULES=marketing,purchasing
+-- (pisahkan dengan koma, lowercase)
+--
+-- Contoh bertahap:
+-- Tahap A:
+--   RBAC_STRICT_MODULES=marketing
+-- Tahap B:
+--   RBAC_STRICT_MODULES=marketing,purchasing
+-- Tahap C:
+--   RBAC_STRICT_MODULES=marketing,purchasing,warehouse
+-- Tahap D:
+--   RBAC_STRICT_MODULES=marketing,purchasing,warehouse,service
+--
+-- Implementasi sudah ada di helper rbac:
+-- - jika modul masuk daftar strict, fallback module-level DISABLE untuk modul tsb
+-- - log warning saat fallback diblokir:
+--   [RBAC_STRICT] Strict mode denied fallback for '{module}' (...)
+--
+-- Catatan:
+-- - Tidak ada SQL langsung untuk langkah ini.
+-- - Perubahan ini perlu deploy + restart service/app runtime.
+
+-- ==========================================================
+-- 5) Post-deploy smoke (15-30 menit)
+-- ==========================================================
+-- Jalankan kembali UAT ringkas role matrix untuk modul target:
+-- - staff deny/create sesuai grant
+-- - head allow/edit sesuai grant
+-- - admin full allow
+
+-- ==========================================================
+-- 6) Rollback cepat jika incident
+-- ==========================================================
+-- Opsi A (cepat): nonaktifkan strict mode modul di helper -> redeploy.
+-- Opsi B (darurat): restore grant matrix dari backup CSV jika ada perubahan tak sengaja.

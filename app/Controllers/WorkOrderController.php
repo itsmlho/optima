@@ -1218,6 +1218,16 @@ class WorkOrderController extends Controller
     // Menyimpan data work order baru
     public function store()
     {
+        $canCreateWo = (function_exists('hasPermission') && hasPermission('service.work_order.create'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.create'))
+            || can_create('service');
+        if (!$canCreateWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
         try {
             // Handle both JSON and FormData input safely
             $input = [];
@@ -1813,6 +1823,16 @@ class WorkOrderController extends Controller
     // Menyimpan perubahan data work order
     public function update($id)
     {
+        $canEditWo = (function_exists('hasPermission') && hasPermission('service.work_order.edit'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.edit'))
+            || can_edit('service');
+        if (!$canEditWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
         $rules = [
             'unit_id' => 'required|integer',
             'order_type' => 'required',
@@ -1908,6 +1928,16 @@ class WorkOrderController extends Controller
     // Menghapus data work order
     public function delete($id)
     {
+        $canDeleteWo = (function_exists('hasPermission') && hasPermission('service.work_order.delete'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.delete'))
+            || can_delete('service');
+        if (!$canDeleteWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
         try {
             // Validate ID
             if (empty($id) || !is_numeric($id)) {
