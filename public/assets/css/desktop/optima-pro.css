@@ -2611,7 +2611,7 @@ h6, .h6 { font-size: 1rem; }
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
 }
 
-.modal-header * {
+.modal-header:not(.modal-header-primary):not(.modal-header-success):not(.modal-header-warning):not(.modal-header-danger) * {
     color: #212832 !important;
 }
 

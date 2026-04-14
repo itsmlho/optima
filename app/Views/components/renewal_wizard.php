@@ -9,10 +9,10 @@
         <div class="modal-content">
             <div class="modal-header modal-header-primary">
                 <div>
-                    <h5 class="modal-title" id="renewalWizardLabel" style="color: #ffffff !important;">
+                    <h5 class="modal-title" id="renewalWizardLabel">
                         <i class="fas fa-sync-alt me-2"></i>Contract Renewal Wizard
                     </h5>
-                    <small style="color: rgba(255,255,255,0.8) !important;">Step-by-step renewal process with gap-free transition</small>
+                    <small class="text-white-50">Step-by-step renewal process with gap-free transition</small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
