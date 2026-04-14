@@ -36,8 +36,8 @@
 
                     <!-- Contract Preview (detail-page / preloaded mode) -->
                     <div id="prorateContractPreview" class="card border-primary mb-3" style="display:none;">
-                        <div class="card-header bg-primary bg-opacity-10">
-                            <h6 class="mb-0 text-primary"><i class="fas fa-file-contract me-2"></i>Contract</h6>
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0 text-white"><i class="fas fa-file-contract me-2"></i>Contract</h6>
                         </div>
                         <div class="card-body py-2">
                             <div class="row">
