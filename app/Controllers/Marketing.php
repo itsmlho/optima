@@ -8945,26 +8945,12 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Failed to update quotation status');
             }
 
-            $this->insertQuotationStageHistoryIfExists(
-                (int) $quotationId,
-                (string) $oldSalesStage,
-                'ACCEPTED',
-                'mark_as_deal',
-                'workflow_stage → DEAL'
-            );
-
+            // Pre-compute $afterDeal for audit log (pure PHP, no DB ops)
             $afterDeal = array_merge($quotation, [
                 'workflow_stage' => 'DEAL',
                 'stage'          => 'ACCEPTED',
                 'is_deal'        => 1,
             ]);
-            $this->logQuotationWorkflowDocumentHistory(
-                (int) $quotationId,
-                'DEAL',
-                'Quotation ditandai Deal (ACCEPTED).',
-                $quotation,
-                $afterDeal
-            );
 
             // Auto-create customer from prospect data. If this fails, fallback remains available in DEAL stage.
             $customerMessage = '';
@@ -9088,6 +9074,23 @@ class Marketing extends BaseDataTableController
                     'message' => 'Failed to mark as deal: Transaction failed'
                 ]);
             }
+
+            // Audit logs — run OUTSIDE transaction so insert failures cannot rollback
+            // the quotation status change (quotation_history.action_type ENUM may need migration)
+            $this->insertQuotationStageHistoryIfExists(
+                (int) $quotationId,
+                (string) $oldSalesStage,
+                'ACCEPTED',
+                'mark_as_deal',
+                'workflow_stage → DEAL'
+            );
+            $this->logQuotationWorkflowDocumentHistory(
+                (int) $quotationId,
+                'DEAL',
+                'Quotation ditandai Deal (ACCEPTED).',
+                $quotation,
+                $afterDeal
+            );
 
             // Log activity
             $this->logActivity('mark_as_deal', 'quotations', $quotationId, 
