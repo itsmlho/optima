@@ -25,6 +25,21 @@ class UnitMovementPublicController extends BaseController
         ]);
     }
 
+    /**
+     * Flyer / panduan cetak untuk ditempel di ruang satpam.
+     */
+    public function guide()
+    {
+        return view('public/surat_jalan_guard_guide', [
+            'title'       => 'Panduan Satpam - Konfirmasi Surat Jalan',
+            'companyName' => 'PT Sarana Mitra Luas Tbk',
+            'smlLogoUrl'  => base_url('assets/images/company-logo.svg'),
+            'optimaLogoUrl' => base_url('assets/images/logo-optima.png'),
+            'qrImageUrl'  => base_url('assets/images/surat-jalan-qr-satpam.png'),
+            'guardPageUrl' => base_url('surat-jalan'),
+        ]);
+    }
+
     public function lookup()
     {
         $sj = trim((string) $this->request->getGet('surat_jalan_number'));

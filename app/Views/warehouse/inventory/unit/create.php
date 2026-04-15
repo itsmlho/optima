@@ -126,7 +126,7 @@
                         <select name="roda_id" class="form-select">
                             <option value="">-- Select Wheel --</option>
                             <?php foreach($roda as $r): ?>
-                            <option value="<?= $r['id_roda'] ?>"><?= esc($r['nama_roda']) ?></option>
+                            <option value="<?= $r['id_roda'] ?>"><?= esc($r['tipe_roda']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -135,7 +135,7 @@
                         <select name="ban_id" class="form-select">
                             <option value="">-- Select Tyre --</option>
                             <?php foreach($ban as $b): ?>
-                            <option value="<?= $b['id_ban'] ?>"><?= esc($b['nama_ban']) ?></option>
+                            <option value="<?= $b['id_ban'] ?>"><?= esc($b['tipe_ban']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

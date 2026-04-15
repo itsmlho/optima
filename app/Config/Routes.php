@@ -24,6 +24,7 @@ $routes->get('attachment-view/(:alphanum)', 'Warehouse\AttachmentInventoryContro
 $routes->get('surat-jalan', 'Warehouse\UnitMovementPublicController::index');
 $routes->get('surat-jalan/lookup', 'Warehouse\UnitMovementPublicController::lookup');
 $routes->get('surat-jalan/print', 'Warehouse\UnitMovementPublicController::printSj');
+$routes->get('surat-jalan/panduan-satpam', 'Warehouse\UnitMovementPublicController::guide');
 $routes->post('surat-jalan/submit-checkpoint', 'Warehouse\UnitMovementPublicController::submitCheckpoint');
 
 // CSRF token refresh endpoint — returns fresh token for AJAX callers whose

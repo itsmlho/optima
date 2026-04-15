@@ -27,7 +27,14 @@ $movement_purposes = $movement_purposes ?? [];
         </h4>
         <p class="text-muted small mb-0">Record perpindahan unit antar workshop (POS) atau lokasi perusahaan</p>
     </div>
-    <div class="d-flex gap-2"></div>
+    <div class="d-flex gap-2">
+        <a href="<?= base_url('surat-jalan/panduan-satpam') ?>"
+           class="btn btn-outline-primary btn-sm"
+           target="_blank"
+           rel="noopener noreferrer">
+            <i class="fas fa-download me-1"></i>Download Poster Panduan Satpam
+        </a>
+    </div>
 </div>
 
 <!-- Stats Cards -->
