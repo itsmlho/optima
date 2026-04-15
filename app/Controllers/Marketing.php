@@ -1182,8 +1182,11 @@ class Marketing extends BaseDataTableController
      */
     public function convertToQuotation($quotationId)
     {
-        if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        $canAct = $this->hasPermission('marketing.quotation.create')
+            || $this->hasPermission('marketing.quotation.edit')
+            || $this->canManage('marketing');
+        if (!$canAct) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin untuk mengkonversi prospek']);
         }
         
         try {
@@ -1250,7 +1253,7 @@ class Marketing extends BaseDataTableController
      */
     public function viewQuotation($quotationId)
     {
-        if (!$this->canAccess('marketing')) {
+        if (!$this->hasPermission('marketing.quotation.view')) {
             return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
         
@@ -1286,8 +1289,12 @@ class Marketing extends BaseDataTableController
      */
     public function convertToContract($quotationId)
     {
-        if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        $canAct = $this->hasPermission('marketing.quotation.edit')
+            || $this->hasPermission('marketing.contract.create')
+            || $this->hasPermission('marketing.kontrak.create')
+            || $this->canManage('marketing');
+        if (!$canAct) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin untuk membuat kontrak']);
         }
         
         $quotation = $this->quotationModel->find($quotationId);
@@ -2459,7 +2466,7 @@ class Marketing extends BaseDataTableController
      */
     public function exportQuotations()
     {
-        if (!$this->canExport('marketing')) {
+        if (!$this->hasPermission('marketing.quotation.export')) {
             return redirect()->to('/marketing/quotations')->with('error', 'Akses ditolak');
         }
 
@@ -2511,8 +2518,10 @@ class Marketing extends BaseDataTableController
      */
     public function convertToDeal($quotationId)
     {
-        if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        $canAct = $this->hasPermission('marketing.quotation.edit')
+            || $this->canManage('marketing');
+        if (!$canAct) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin']);
         }
 
         $quotation = $this->quotationModel->find($quotationId);
@@ -2545,8 +2554,10 @@ class Marketing extends BaseDataTableController
      */
     public function updateQuotationStage($quotationId)
     {
-        if (!$this->canManage('marketing')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        $canAct = $this->hasPermission('marketing.quotation.edit')
+            || $this->canManage('marketing');
+        if (!$canAct) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin']);
         }
 
         $validation = \Config\Services::validation();

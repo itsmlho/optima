@@ -394,7 +394,7 @@ class Purchasing extends BaseController
     public function index()
     {
         // Check permission
-        if (!$this->canAccess('purchasing')) {
+        if (!$this->hasPermission('purchasing.po.navigation')) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
         
@@ -408,7 +408,7 @@ class Purchasing extends BaseController
     public function purchasingHub()
     {
         // Check permission
-        if (!$this->canAccess('purchasing')) {
+        if (!$this->hasPermission('purchasing.po.navigation')) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
         

@@ -144,7 +144,7 @@ class Service extends BaseController
      */
     public function printSpkSparepartRequest($id)
     {
-        if (!$this->canAccess('service')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return redirect()->to('/')->with('error', 'Akses ditolak');
         }
 
@@ -180,7 +180,7 @@ class Service extends BaseController
      */
     public function saveSparepartRequest($id)
     {
-        if (!$this->canAccess('service')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
@@ -243,7 +243,7 @@ class Service extends BaseController
      */
     public function checkSpkSpareparts($spkId)
     {
-        if (!$this->canAccess('service')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
@@ -267,7 +267,7 @@ class Service extends BaseController
      */
     public function getSpkSpareparts($spkId)
     {
-        if (!$this->canAccess('service')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
@@ -318,7 +318,7 @@ class Service extends BaseController
      */
     public function validateSpareparts($spkId)
     {
-        if (!$this->canAccess('service')) {
+        if (!$this->hasPermission('service.work_order.view')) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
         }
 
@@ -1224,8 +1224,8 @@ class Service extends BaseController
 
     public function spkDetail($id)
     {
-        // Check permission: Service punya service.access (module permission)
-        if (!$this->canAccess('service')) {
+        // Check permission: service.work_order.view
+        if (!$this->hasPermission('service.work_order.view')) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'success' => false,
