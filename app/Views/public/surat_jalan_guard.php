@@ -405,8 +405,8 @@ $apiCheckpoint = $apiCheckpoint ?? base_url('surat-jalan/submit-checkpoint');
                 </div>
             </div>
             <div class="mt-2">
-                <label class="form-label">Alasan <span class="text-danger">*</span></label>
-                <textarea id="notes" class="form-control" rows="2" placeholder="Wajib: misal jam keluar gerbang, plat terlihat, kondisi muatan, dll." required></textarea>
+                <label class="form-label">Alasan <span class="text-muted">(opsional)</span></label>
+                <textarea id="notes" class="form-control" rows="2" placeholder="Opsional: misal jam keluar gerbang, plat terlihat, kondisi muatan, dll."></textarea>
             </div>
 
             <div id="checkpointFeedback" class="mt-3 d-none" role="status" aria-live="polite"></div>
@@ -1101,11 +1101,6 @@ function submitCheckpoint() {
         return;
     }
     const reason = ($('#notes').val() || '').trim();
-    if (!reason) {
-        showMsg('warning', 'Alasan wajib diisi.');
-        showCheckpointFeedback(false, 'Isi kolom Alasan (misalnya jam lewat gerbang atau kondisi barang).');
-        return;
-    }
     const deliveryMatch = $('input[name="deliveryMatch"]:checked').val() || 'match';
     if (deliveryMatch === 'mismatch') {
         const ad = ($('#deliveryActualDriver').val() || '').trim();

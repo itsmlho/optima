@@ -167,15 +167,16 @@ class UnitAreaMappingController extends BaseController
         $length = min($length, 500);
         $start = max($start, 0);
 
-        // Ambil 1 kontrak aktif terbaru per unit agar tidak duplicate row.
+        // Ambil 1 kontrak terbaru per unit (ACTIVE atau EXPIRED) agar unit dengan kontrak
+        // yang baru expire tetap menampilkan info customer di Unit Mapping.
         $latestActiveContractPerUnit = "
             SELECT ku1.id, ku1.unit_id, ku1.kontrak_id, ku1.customer_location_id
             FROM kontrak_unit ku1
-            JOIN kontrak k1 ON k1.id = ku1.kontrak_id AND k1.status = 'ACTIVE'
+            JOIN kontrak k1 ON k1.id = ku1.kontrak_id AND k1.status IN ('ACTIVE', 'EXPIRED')
             JOIN (
                 SELECT ku2.unit_id, MAX(ku2.id) AS max_ku_id
                 FROM kontrak_unit ku2
-                JOIN kontrak k2 ON k2.id = ku2.kontrak_id AND k2.status = 'ACTIVE'
+                JOIN kontrak k2 ON k2.id = ku2.kontrak_id AND k2.status IN ('ACTIVE', 'EXPIRED')
                 WHERE ku2.status = 'ACTIVE'
                 GROUP BY ku2.unit_id
             ) x ON x.max_ku_id = ku1.id
@@ -187,7 +188,7 @@ class UnitAreaMappingController extends BaseController
             LEFT JOIN ({$latestActiveContractPerUnit}) ku
                 ON ku.unit_id = iu.id_inventory_unit
             LEFT JOIN kontrak k
-                ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                ON k.id = ku.kontrak_id AND k.status IN ('ACTIVE', 'EXPIRED')
             LEFT JOIN customer_locations cl
                 ON cl.id = ku.customer_location_id AND cl.is_active = 1
             LEFT JOIN customers c
@@ -275,7 +276,7 @@ class UnitAreaMappingController extends BaseController
                 LEFT JOIN ({$latestActiveContractPerUnit}) ku
                     ON ku.unit_id = iu.id_inventory_unit
                 LEFT JOIN kontrak k
-                    ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                    ON k.id = ku.kontrak_id AND k.status IN ('ACTIVE', 'EXPIRED')
                 LEFT JOIN customer_locations cl
                     ON cl.id = ku.customer_location_id AND cl.is_active = 1
                 LEFT JOIN customers c
@@ -311,7 +312,7 @@ class UnitAreaMappingController extends BaseController
                     LEFT JOIN ({$latestActiveContractPerUnit}) ku
                         ON ku.unit_id = iu.id_inventory_unit
                     LEFT JOIN kontrak k
-                        ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                        ON k.id = ku.kontrak_id AND k.status IN ('ACTIVE', 'EXPIRED')
                     LEFT JOIN customer_locations cl
                         ON cl.id = ku.customer_location_id AND cl.is_active = 1
                     LEFT JOIN customers c

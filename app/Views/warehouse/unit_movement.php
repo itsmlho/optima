@@ -322,8 +322,8 @@ $movement_purposes = $movement_purposes ?? [];
                         </div>
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label class="form-label">Jenis Kendaraan</label>
-                                <input type="text" class="form-control" name="vehicle_type" placeholder="Mis. Pickup, Box, Motor">
+                                <label class="form-label">Jenis Kendaraan <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="vehicle_type" placeholder="Mis. Pickup, Box, Motor" required>
                             </div>
                         </div>
                     </div>
@@ -614,18 +614,34 @@ function renderMovementTable(data) {
         // Build item label: unit or component
         let itemLabel = '<span class="text-muted">-</span>';
         if (item.no_unit || item.no_unit_na) {
-            itemLabel = (item.no_unit_na || item.no_unit) + '<br><small class="text-muted">' + (item.merk_unit || '') + '</small>';
+            itemLabel = escDetailHtml(item.no_unit_na || item.no_unit) + '<br><small class="text-muted">' + escDetailHtml(item.merk_unit || '') + '</small>';
         } else if (item.component_label) {
-            itemLabel = item.component_label;
+            itemLabel = escDetailHtml(item.component_label);
+        }
+
+        const previewItems = Array.isArray(item.item_preview_lines) ? item.item_preview_lines : [];
+        if (previewItems.length > 0) {
+            const itemLinesHtml = previewItems
+                .map(line => '<div class="small text-wrap">' + escDetailHtml(line) + '</div>')
+                .join('');
+            itemLabel = itemLinesHtml;
+        }
+
+        let routeLabel = escDetailHtml(routeText);
+        const previewRoute = Array.isArray(item.route_preview_lines) ? item.route_preview_lines : [];
+        if (previewRoute.length > 0) {
+            routeLabel = previewRoute
+                .map(line => '<div class="small text-wrap">' + escDetailHtml(line) + '</div>')
+                .join('');
         }
 
         html += '<tr>';
-        html += '<td><strong>' + (item.surat_jalan_number || '-') + '</strong></td>';
-        html += '<td><small>' + (item.movement_number || '-') + '</small></td>';
+        html += '<td><strong>' + escDetailHtml(item.surat_jalan_number || '-') + '</strong></td>';
+        html += '<td><small>' + escDetailHtml(item.movement_number || '-') + '</small></td>';
         html += '<td>' + itemLabel + '<br><small class="text-muted">Items: ' + itemsCount + ' · ' + getComponentBadge(item.component_type) + ' · ' + getMovementPurposeBadge(item.movement_purpose) + '</small></td>';
-        html += '<td>' + routeText + '<br><small class="text-muted">Checkpoint: ' + (item.last_checkpoint_status || '-') + '</small></td>';
+        html += '<td>' + routeLabel + '<br><small class="text-muted">Checkpoint: ' + escDetailHtml(item.last_checkpoint_status || '-') + '</small></td>';
         html += '<td>' + date + '</td>';
-        html += '<td>' + (item.driver_name || '-') + '</td>';
+        html += '<td>' + escDetailHtml(item.driver_name || '-') + '</td>';
         html += '<td>' + statusBadge + '</td>';
         html += '<td><button class="btn btn-xs btn-outline-primary" onclick="viewMovementDetail(' + item.id + ')"><i class="fas fa-eye"></i></button></td>';
         html += '</tr>';
@@ -1109,6 +1125,10 @@ function startMovement(id) {
             '<label class="form-label">No. Kendaraan <span class="text-danger">*</span></label>' +
             '<input id="optimaVehicleNumber" class="form-control" placeholder="Contoh: B 1234 ABC">' +
             '</div>' +
+            '<div class="mb-3 text-start">' +
+            '<label class="form-label">Jenis Kendaraan <span class="text-danger">*</span></label>' +
+            '<input id="optimaVehicleType" class="form-control" placeholder="Contoh: Box, Pickup, Truk">' +
+            '</div>' +
             '<div class="text-start">' +
             '<label class="form-label">Alasan (opsional)</label>' +
             '<textarea id="optimaNotes" class="form-control" rows="2" placeholder="Alasan / catatan pengiriman..."></textarea>' +
@@ -1119,13 +1139,15 @@ function startMovement(id) {
         onConfirm: function() {
             var elDriver = document.getElementById('optimaDriverName');
             var elVehicle = document.getElementById('optimaVehicleNumber');
+            var elVehicleType = document.getElementById('optimaVehicleType');
             var elNotes = document.getElementById('optimaNotes');
 
             var driverName = (elDriver && elDriver.value) ? elDriver.value.trim() : '';
             var vehicleNumber = (elVehicle && elVehicle.value) ? elVehicle.value.trim() : '';
+            var vehicleType = (elVehicleType && elVehicleType.value) ? elVehicleType.value.trim() : '';
             var notes = (elNotes && elNotes.value) ? elNotes.value : '';
-            if (!driverName || !vehicleNumber) {
-                OptimaNotify.warning('Nama driver dan no. kendaraan wajib diisi', 'Validasi');
+            if (!driverName || !vehicleNumber || !vehicleType) {
+                OptimaNotify.warning('Nama driver, no. kendaraan, dan jenis kendaraan wajib diisi', 'Validasi');
                 return;
             }
 
@@ -1135,6 +1157,7 @@ function startMovement(id) {
                 data: {
                     driver_name: driverName,
                     vehicle_number: vehicleNumber,
+                    vehicle_type: vehicleType,
                     notes: notes
                 },
                 success: function(res) {

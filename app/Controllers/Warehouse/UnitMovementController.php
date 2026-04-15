@@ -99,6 +99,7 @@ class UnitMovementController extends BaseController
         if ($dateTo) $filters['date_to'] = $dateTo;
 
         $movements = $this->movementModel->getWithUnitInfo($filters);
+        $movements = $this->movementModel->appendListPreview($movements);
 
         return $this->response->setJSON([
             'success' => true,
@@ -208,13 +209,21 @@ class UnitMovementController extends BaseController
         try {
             $driverName    = trim((string) $this->request->getPost('driver_name'));
             $vehicleNumber = trim((string) $this->request->getPost('vehicle_number'));
+            $vehicleType   = trim((string) $this->request->getPost('vehicle_type'));
             $notes         = trim((string) $this->request->getPost('notes'));
 
-            $this->movementModel->update($id, [
+            $updateData = [
                 'driver_name'    => $driverName,
                 'vehicle_number' => $vehicleNumber,
                 'notes'          => $notes,
-            ]);
+            ];
+
+            $db = \Config\Database::connect();
+            if ($db->fieldExists('vehicle_type', 'unit_movements')) {
+                $updateData['vehicle_type'] = $vehicleType;
+            }
+
+            $this->movementModel->update($id, $updateData);
 
             try {
                 $checkpointOk = $this->movementModel->recordDepartureFromWarehouse($id, $driverName, $vehicleNumber, $notes);
@@ -572,6 +581,14 @@ class UnitMovementController extends BaseController
         }
         if (empty($payload['movement_date'])) {
             $errors['movement_date'] = 'Tanggal perpindahan wajib diisi.';
+        }
+        if ($dbVal->fieldExists('vehicle_type', 'unit_movements')) {
+            $vehicleType = trim((string) ($payload['vehicle_type'] ?? ''));
+            if ($vehicleType === '') {
+                $errors['vehicle_type'] = 'Jenis kendaraan wajib diisi.';
+            } elseif (strlen($vehicleType) > 120) {
+                $errors['vehicle_type'] = 'Jenis kendaraan maksimal 120 karakter.';
+            }
         }
         if (trim((string)($payload['notes'] ?? '')) === '') {
             $errors['notes'] = 'Alasan wajib diisi.';

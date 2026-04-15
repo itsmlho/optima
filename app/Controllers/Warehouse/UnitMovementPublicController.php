@@ -115,12 +115,6 @@ class UnitMovementPublicController extends BaseController
         }
 
         $checkpointNotes = trim((string)($post['notes'] ?? ''));
-        if ($checkpointNotes === '') {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Alasan wajib diisi (jelaskan singkat konfirmasi di titik ini).',
-            ]);
-        }
 
         $deliveryMatch = strtolower(trim((string)($post['delivery_match'] ?? 'match')));
         if (! in_array($deliveryMatch, ['match', 'mismatch'], true)) {

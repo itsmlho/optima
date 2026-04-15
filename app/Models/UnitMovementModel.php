@@ -305,6 +305,126 @@ class UnitMovementModel extends Model
     }
 
     /**
+     * Tambahkan preview daftar barang + rute untuk tampilan list (table ringkas).
+     *
+     * @param list<array<string,mixed>> $movements
+     * @return list<array<string,mixed>>
+     */
+    public function appendListPreview(array $movements): array
+    {
+        if ($movements === []) {
+            return $movements;
+        }
+
+        $movementIds = array_values(array_filter(array_map(
+            static fn (array $row): int => (int) ($row['id'] ?? 0),
+            $movements
+        ), static fn (int $id): bool => $id > 0));
+
+        if ($movementIds === []) {
+            return $movements;
+        }
+
+        $itemLinesMap  = $this->buildItemPreviewLinesMap($movementIds);
+        $routeLinesMap = $this->buildRoutePreviewLinesMap($movementIds);
+
+        foreach ($movements as &$movement) {
+            $movementId = (int) ($movement['id'] ?? 0);
+            $movement['item_preview_lines'] = $itemLinesMap[$movementId] ?? [];
+            $movement['route_preview_lines'] = $routeLinesMap[$movementId] ?? [];
+        }
+        unset($movement);
+
+        return $movements;
+    }
+
+    /**
+     * @param list<int> $movementIds
+     * @return array<int, list<string>>
+     */
+    private function buildItemPreviewLinesMap(array $movementIds): array
+    {
+        $result = [];
+        foreach ($movementIds as $movementId) {
+            $result[$movementId] = [];
+        }
+
+        if ($this->db->tableExists('unit_movement_items')) {
+            $rows = $this->db->table('unit_movement_items')
+                ->select('id, movement_id, component_type, unit_id, component_id, qty, item_notes')
+                ->whereIn('movement_id', $movementIds)
+                ->orderBy('movement_id', 'ASC')
+                ->orderBy('id', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            if ($rows !== []) {
+                $rows = $this->enrichItemsForPrint($rows);
+                $counter = [];
+                foreach ($rows as $row) {
+                    $movementId = (int) ($row['movement_id'] ?? 0);
+                    if ($movementId <= 0) {
+                        continue;
+                    }
+                    if (!isset($counter[$movementId])) {
+                        $counter[$movementId] = 0;
+                    }
+                    $counter[$movementId]++;
+                    $qty = max(1, (int) ($row['qty'] ?? 1));
+                    $desc = trim((string) ($row['print_description'] ?? $row['component_type'] ?? '-'));
+                    $result[$movementId][] = '#' . $counter[$movementId] . ' - ' . $desc . ' | qty ' . $qty;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param list<int> $movementIds
+     * @return array<int, list<string>>
+     */
+    private function buildRoutePreviewLinesMap(array $movementIds): array
+    {
+        $result = [];
+        foreach ($movementIds as $movementId) {
+            $result[$movementId] = [];
+        }
+
+        if (! $this->db->tableExists('unit_movement_stops')) {
+            return $result;
+        }
+
+        $rows = $this->db->table('unit_movement_stops')
+            ->select('movement_id, stop_type, location_name')
+            ->whereIn('movement_id', $movementIds)
+            ->orderBy('movement_id', 'ASC')
+            ->orderBy('sequence_no', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        foreach ($rows as $row) {
+            $movementId = (int) ($row['movement_id'] ?? 0);
+            if ($movementId <= 0) {
+                continue;
+            }
+
+            $stopType = strtoupper((string) ($row['stop_type'] ?? ''));
+            $stopLabel = match ($stopType) {
+                'ORIGIN' => 'Asal',
+                'DESTINATION' => 'Tujuan',
+                'TRANSIT' => 'Transit',
+                default => $stopType !== '' ? $stopType : '-',
+            };
+
+            $locationName = trim((string) ($row['location_name'] ?? '-'));
+            $result[$movementId][] = $locationName . ' (' . $stopLabel . ')';
+        }
+
+        return $result;
+    }
+
+    /**
      * Get movements by unit
      */
     public function getByUnit($unitId)
