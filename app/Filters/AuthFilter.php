@@ -45,6 +45,7 @@ class AuthFilter implements FilterInterface
             'unit-view',
             'surat-jalan',
             'comingsoon',
+            'health/ping', // Public lightweight JSON ping for client network / latency checks (login + app)
         ];
         
         // Check if current path is a public path

@@ -1,28 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title><?= $title ?? 'Error' ?></title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .error-container { background: #f8f9fa; padding: 20px; border-left: 4px solid #dc3545; }
-        .error-title { color: #dc3545; font-size: 24px; margin-bottom: 10px; }
-        .error-message { margin-bottom: 20px; }
-        .error-details { background: #f1f1f1; padding: 15px; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
-    </style>
-</head>
-<body>
-    <div class="error-container">
-        <h1 class="error-title"><?= $title ?? 'Error' ?></h1>
-        <div class="error-message">
-            <?= $message ?? 'Terjadi kesalahan yang tidak diketahui.' ?>
-        </div>
-        <?php if (isset($details) && ENVIRONMENT === 'development'): ?>
-        <details>
-            <summary>Error Details (Development Mode)</summary>
-            <div class="error-details"><?= $details ?></div>
-        </details>
-        <?php endif; ?>
-        <p><a href="<?= base_url() ?>">← Kembali ke Dashboard</a></p>
-    </div>
-</body>
-</html> 
+<?php
+/**
+ * Generic error view — used when a specific error_* status view is missing,
+ * or for custom error payloads with $title / $message.
+ *
+ * @var string|null $title
+ * @var string|null $message
+ * @var int|null    $code    Optional HTTP-style code from handler
+ */
+$htmlTitle = $title ?? lang('Errors.whoops');
+$heading   = $title ?? lang('Errors.heading_error');
+$body      = $message ?? lang('Errors.weHitASnag');
+$messageHtml = '<p class="mb-0">' . nl2br(esc($body)) . '</p>';
+
+$isLoggedIn = function_exists('session') && session()->get('isLoggedIn');
+$homeUrl    = $isLoggedIn ? base_url('welcome') : base_url();
+$homeLabel  = lang('Errors.backHome');
+$showLogin  = !$isLoggedIn;
+
+$errorDisplayCode = isset($code) && is_numeric($code) ? (string) (int) $code : '—';
+
+include __DIR__ . DIRECTORY_SEPARATOR . 'optima_error_shell.php';

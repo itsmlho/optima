@@ -23,6 +23,8 @@
     
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <?= $this->include('auth/partials/network_indicator_head') ?>
     
     <style>
         /* Register page - matches login page style */
@@ -222,6 +224,7 @@
 </head>
 <body>
     <div class="auth-container">
+        <?= $this->include('auth/partials/network_indicator_markup') ?>
         <div class="auth-card">
             <div class="auth-header">
                 <div class="auth-logo">
@@ -851,5 +854,6 @@ const registerI18n = {
             });
         }
     </script>
+    <?= $this->include('auth/partials/network_indicator_scripts') ?>
 </body>
 </html>

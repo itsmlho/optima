@@ -322,6 +322,21 @@ return [
     'quick_search' => 'Quick Search',
     'quick_search_title' => 'Quick Search — Ctrl+K',
 
+    // Network status (header + auth pages)
+    'network_good' => 'Connection good',
+    'network_slow' => 'Connection slow',
+    'network_offline' => 'Offline',
+    'network_server_unreachable' => 'Server unreachable',
+    'network_checking' => 'Checking…',
+    'network_unknown' => '—',
+    'network_banner_offline' => 'No internet connection. Some features will not work until you are back online.',
+    'network_banner_server' => 'Cannot reach the OPTIMA server. Check your connection or try again later.',
+    'network_status_title' => 'Connection status',
+    'header_more_menu' => 'Language & display',
+    'header_more_menu_short' => 'More',
+    'header_menu_language' => 'Language',
+    'header_menu_theme' => 'Light / dark mode',
+
     'system_settings' => 'System Settings',
     'system_info' => 'System Info',
     'clear_cache' => 'Clear Cache',

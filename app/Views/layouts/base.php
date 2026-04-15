@@ -891,11 +891,9 @@ $currentLang = service('request')->getLocale();
                     </span>
                 </a>
             </div>
-            
-            <!-- Right Section: Controls -->
-            <div class="header-right">
 
-                <!-- Ctrl+K Search Trigger (Command Palette) -->
+            <!-- Center: command palette (frees space on the right) -->
+            <div class="header-center header-center-search">
                 <button type="button" id="header-search-btn"
                     onclick="window.openCommandPalette ? window.openCommandPalette() : null"
                     aria-label="<?= lang('App.quick_search_title') ?>"
@@ -904,38 +902,21 @@ $currentLang = service('request')->getLocale();
                     <span class="header-search-label"><?= lang('App.search_placeholder') ?></span>
                     <span class="header-search-kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
                 </button>
+            </div>
+            
+            <!-- Right: compact actions -->
+            <div class="header-right header-right-toolbar">
+                <?php $currentLang = service('request')->getLocale(); ?>
 
-                <!-- Language Switcher -->
-                <div class="dropdown">
-                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="<?= lang('App.select_language') ?>">
-                        <?php 
-                        $currentLang = service('request')->getLocale();
-                        $langCode = strtoupper($currentLang);
-                        ?>
-                        <span class="fw-semibold"><?= $langCode ?></span>
+                <!-- Connection: dot only in header (details in tooltip / screen reader) -->
+                <div class="optima-network-status optima-network-status--header d-flex align-items-center" id="optima-network-root">
+                    <button type="button" class="header-control-btn header-network-btn"
+                        id="optima-network-status-btn"
+                        aria-live="polite"
+                        title="<?= esc(lang('App.network_status_title')) ?>">
+                        <span class="optima-network-dot optima-network-dot--unknown" id="optima-network-dot" aria-hidden="true"></span>
+                        <span class="visually-hidden" id="optima-network-label"><?= esc(lang('App.network_unknown')) ?></span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <a class="dropdown-item <?= $currentLang === 'id' ? 'active' : '' ?>" 
-                               href="<?= base_url('language/switch/id') ?>">
-                                <span class="me-2">🇮🇩</span>
-                                Bahasa Indonesia
-                                <?php if ($currentLang === 'id'): ?>
-                                    <i class="fas fa-check float-end text-success mt-1"></i>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?= $currentLang === 'en' ? 'active' : '' ?>" 
-                               href="<?= base_url('language/switch/en') ?>">
-                                <span class="me-2">🇬🇧</span>
-                                English
-                                <?php if ($currentLang === 'en'): ?>
-                                    <i class="fas fa-check float-end text-success mt-1"></i>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                    </ul>
                 </div>
                 
                 <!-- Notifications -->
@@ -966,11 +947,41 @@ $currentLang = service('request')->getLocale();
                         </a></li>
                     </ul>
                 </div>
-                
-                <!-- Theme Toggle -->
-                <button class="header-control-btn theme-toggle" type="button" title="Toggle Dark Mode">
-                    <i class="fas fa-moon"></i>
-                </button>
+
+                <!-- Language + theme (single menu to reduce header clutter) -->
+                <div class="dropdown">
+                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="<?= esc(lang('App.header_more_menu')) ?>"
+                        aria-label="<?= esc(lang('App.header_more_menu')) ?>">
+                        <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                        <span class="visually-hidden"><?= esc(lang('App.header_more_menu_short')) ?></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end header-utilities-menu shadow-sm">
+                        <li><h6 class="dropdown-header text-uppercase small text-muted mb-0"><?= esc(lang('App.header_menu_language')) ?></h6></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between <?= $currentLang === 'id' ? 'active' : '' ?>"
+                               href="<?= base_url('language/switch/id') ?>">
+                                <span><span class="me-2" aria-hidden="true">🇮🇩</span> Bahasa Indonesia</span>
+                                <?php if ($currentLang === 'id'): ?><i class="fas fa-check text-success"></i><?php endif; ?>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center justify-content-between <?= $currentLang === 'en' ? 'active' : '' ?>"
+                               href="<?= base_url('language/switch/en') ?>">
+                                <span><span class="me-2" aria-hidden="true">🇬🇧</span> English</span>
+                                <?php if ($currentLang === 'en'): ?><i class="fas fa-check text-success"></i><?php endif; ?>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button type="button" class="dropdown-item d-flex align-items-center gap-2 theme-toggle" title="Toggle Dark Mode">
+                                <i class="fas fa-moon" aria-hidden="true"></i>
+                                <span><?= esc(lang('App.header_menu_theme')) ?></span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
                 
                 <!-- User Profile -->
                 <div class="dropdown">
@@ -1012,6 +1023,9 @@ $currentLang = service('request')->getLocale();
     
     <!-- Main Content -->
     <main class="main-content cn-main-content" id="mainContent">
+        <div id="optima-offline-banner" class="alert alert-warning border-0 rounded-0 mb-0 py-2 px-3 d-none text-center small optima-offline-banner" role="alert">
+            <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i><span id="optima-offline-banner-text"></span>
+        </div>
         <!-- Content Body -->
         <div class="content-body">
             <?php
@@ -1119,6 +1133,27 @@ $currentLang = service('request')->getLocale();
     </script>
     <!-- Bootstrap Bundle -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    window.OPTIMA_NETWORK_CONFIG = {
+        pingUrl: <?= json_encode(base_url('health/ping')) ?>,
+        intervalMs: 45000,
+        requestTimeoutMs: 8000,
+        slowLatencyMs: 400,
+        labels: {
+            good: <?= json_encode(lang('App.network_good')) ?>,
+            slow: <?= json_encode(lang('App.network_slow')) ?>,
+            offline: <?= json_encode(lang('App.network_offline')) ?>,
+            server_unreachable: <?= json_encode(lang('App.network_server_unreachable')) ?>,
+            checking: <?= json_encode(lang('App.network_checking')) ?>,
+            unknown: <?= json_encode(lang('App.network_unknown')) ?>,
+            banner_offline: <?= json_encode(lang('App.network_banner_offline')) ?>,
+            banner_server: <?= json_encode(lang('App.network_banner_server')) ?>,
+            status_title: <?= json_encode(lang('App.network_status_title')) ?>
+        }
+    };
+    </script>
+    <script defer src="<?= base_url('assets/js/optima-network-status.js') ?>?v=<?= file_exists(FCPATH . 'assets/js/optima-network-status.js') ? (int) @filemtime(FCPATH . 'assets/js/optima-network-status.js') : time() ?>"></script>
     
     <!-- OPTIMA Language Helper for Multilingual Support (deferred) -->
     <script defer src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= time() ?>"></script>
@@ -1560,89 +1595,74 @@ $currentLang = service('request')->getLocale();
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            // Enhanced Theme toggle system
-            const themeToggle = document.querySelector('.theme-toggle');
-            
-            // Initialize icon based on current theme
+            // Theme toggle: support header menu + any other .theme-toggle controls
+            const themeToggles = document.querySelectorAll('.theme-toggle');
+
             function updateThemeIcon() {
-                if (!themeToggle) return;
-                
                 const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
-                const icon = themeToggle.querySelector('i');
-                if (icon) {
-                    icon.className = currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-                }
-                themeToggle.title = `Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} Mode`;
+                themeToggles.forEach(function (themeToggle) {
+                    const icon = themeToggle.querySelector('i');
+                    if (icon) {
+                        icon.className = currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                    }
+                    themeToggle.title = 'Switch to ' + (currentTheme === 'dark' ? 'Light' : 'Dark') + ' Mode';
+                });
             }
-            
-            if (themeToggle) {
-                // Set initial icon
+
+            function applyTheme(newTheme) {
+                document.documentElement.style.transition = 'all 0.3s ease';
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                safeSaveTheme(newTheme);
                 updateThemeIcon();
-                
-                themeToggle.addEventListener('click', function() {
+                window.dispatchEvent(new CustomEvent('themeChanged', {
+                    detail: { theme: newTheme }
+                }));
+                if (window.OPTIMA && window.OPTIMA.initialized) {
+                    window.OPTIMA.state.theme = newTheme;
+                    window.OPTIMA.log('Theme switched to ' + newTheme + ' mode');
+                }
+                setTimeout(function () {
+                    document.documentElement.style.transition = '';
+                }, 300);
+            }
+
+            function safeGetTheme() {
+                try {
+                    return localStorage.getItem('optima-theme');
+                } catch (e) {
+                    try {
+                        return sessionStorage.getItem('optima-theme');
+                    } catch (e2) {
+                        const cookies = document.cookie.split(';');
+                        const themeCookie = cookies.find(function (cookie) {
+                            return cookie.trim().startsWith('optima-theme=');
+                        });
+                        return themeCookie ? themeCookie.split('=')[1] : null;
+                    }
+                }
+            }
+
+            updateThemeIcon();
+
+            themeToggles.forEach(function (themeToggle) {
+                themeToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
                     const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
                     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                    
-                    // Set theme with smooth transition
-                    document.documentElement.style.transition = 'all 0.3s ease';
-                    document.documentElement.setAttribute('data-bs-theme', newTheme);
-                    
-                    // Safe theme saving
-                    safeSaveTheme(newTheme);
-                    
-                    // Update icon
-                    updateThemeIcon();
-                    
-                    // Trigger custom event for other components
-                    window.dispatchEvent(new CustomEvent('themeChanged', { 
-                        detail: { theme: newTheme } 
-                    }));
-                    
-                    // Update OPTIMA state if available
-                    if (window.OPTIMA && window.OPTIMA.initialized) {
-                        window.OPTIMA.state.theme = newTheme;
-                        window.OPTIMA.log(`Theme switched to ${newTheme} mode`);
-                    }
-                    
-                    // Remove transition after theme change
-                    setTimeout(() => {
-                        document.documentElement.style.transition = '';
-                    }, 300);
-                    
+                    applyTheme(newTheme);
                 });
-                
-                // Safe theme retrieval function
-                function safeGetTheme() {
-                    try {
-                        return localStorage.getItem('optima-theme');
-                    } catch (e) {
-                        try {
-                            return sessionStorage.getItem('optima-theme');
-                        } catch (e2) {
-                            // Check cookies as final fallback
-                            const cookies = document.cookie.split(';');
-                            const themeCookie = cookies.find(cookie => cookie.trim().startsWith('optima-theme='));
-                            return themeCookie ? themeCookie.split('=')[1] : null;
+            });
+
+            if (window.matchMedia) {
+                try {
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+                        if (!safeGetTheme()) {
+                            applyTheme(e.matches ? 'dark' : 'light');
                         }
-                    }
+                    });
+                } catch (e) {
+                    console.warn('System theme detection not available:', e.message);
                 }
-                
-                // Listen for system theme changes
-                if (window.matchMedia) {
-                    try {
-                        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                            if (!safeGetTheme()) {
-                                const newTheme = e.matches ? 'dark' : 'light';
-                                document.documentElement.setAttribute('data-bs-theme', newTheme);
-                                updateThemeIcon();
-                            }
-                        });
-                    } catch (e) {
-                        console.warn('System theme detection not available:', e.message);
-                    }
-                }
-                
-                // Final initialization complete
             }
         });
 

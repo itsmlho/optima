@@ -26,6 +26,7 @@ return [
     'login_message' => 'Please login to your account to continue',
     'login_welcome' => 'Welcome Back',
     'login_subtitle' => 'Please login to your account',
+    'login_error_banner_title' => 'Notice',
     'email_or_username' => 'Email or Username',
     'username_or_email' => 'Username or Email',
     'email' => 'Email',

@@ -26,6 +26,7 @@ return [
     'login_message' => 'Silakan masuk ke akun Anda untuk melanjutkan',
     'login_welcome' => 'Selamat Datang Kembali',
     'login_subtitle' => 'Silakan masuk ke akun Anda',
+    'login_error_banner_title' => 'Informasi',
     'email_or_username' => 'Email atau Username',
     'username_or_email' => 'Username atau Email',
     'email' => 'Email',

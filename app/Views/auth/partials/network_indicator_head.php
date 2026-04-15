@@ -1,0 +1,1 @@
+<link href="<?= base_url('assets/css/optima-network-status.css') ?>?v=<?= file_exists(FCPATH . 'assets/css/optima-network-status.css') ? (int) @filemtime(FCPATH . 'assets/css/optima-network-status.css') : time() ?>" rel="stylesheet">

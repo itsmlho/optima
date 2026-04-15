@@ -316,6 +316,21 @@ return [
     'quick_search' => 'Pencarian Cepat',
     'quick_search_title' => 'Pencarian Cepat — Ctrl+K',
 
+    // Network status (header + auth pages)
+    'network_good' => 'Jaringan baik',
+    'network_slow' => 'Jaringan lambat',
+    'network_offline' => 'Offline',
+    'network_server_unreachable' => 'Server tidak terjangkau',
+    'network_checking' => 'Memeriksa…',
+    'network_unknown' => '—',
+    'network_banner_offline' => 'Tidak ada koneksi internet. Beberapa fitur tidak akan berfungsi hingga koneksi kembali.',
+    'network_banner_server' => 'Tidak dapat menjangkau server OPTIMA. Periksa koneksi atau coba lagi nanti.',
+    'network_status_title' => 'Status koneksi',
+    'header_more_menu' => 'Bahasa & tampilan',
+    'header_more_menu_short' => 'Lainnya',
+    'header_menu_language' => 'Bahasa',
+    'header_menu_theme' => 'Mode terang / gelap',
+
     'system_settings' => 'Pengaturan Sistem',
     'system_info' => 'Info Sistem',
     'clear_cache' => 'Bersihkan Cache',

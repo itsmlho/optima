@@ -23,6 +23,8 @@
     
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <?= $this->include('auth/partials/network_indicator_head') ?>
     
     <style>
         /* Modern Professional Auth Page */
@@ -488,6 +490,7 @@
 </head>
 <body>
     <div class="auth-container">
+        <?= $this->include('auth/partials/network_indicator_markup') ?>
         <div class="auth-card">
             <div class="auth-header">
                 <div class="auth-logo">
@@ -499,10 +502,16 @@
                 <p class="auth-subtitle">Sign in to your OPTIMA account</p>
             </div>
             
-            <?php if (session()->getFlashdata('error')): ?>
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <?= session()->getFlashdata('error') ?>
+            <?php $loginFlashError = session()->getFlashdata('error'); ?>
+            <?php if ($loginFlashError): ?>
+                <div class="alert alert-danger border-0 border-start border-4 border-danger shadow-sm py-3 mb-3" role="alert">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas fa-lock fa-lg mt-1 text-danger" aria-hidden="true"></i>
+                        <div>
+                            <div class="fw-semibold mb-1"><?= esc(lang('Auth.login_error_banner_title')) ?></div>
+                            <div class="small mb-0"><?= esc($loginFlashError) ?></div>
+                        </div>
+                    </div>
                 </div>
             <?php endif; ?>
             
@@ -625,5 +634,6 @@
             }, 100);
         });
     </script>
+    <?= $this->include('auth/partials/network_indicator_scripts') ?>
 </body>
 </html>
