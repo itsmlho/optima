@@ -257,7 +257,7 @@ $movement_purposes = $movement_purposes ?? [];
                         <div class="mb-3">
                             <div class="d-flex align-items-center justify-content-between mb-2">
                                 <label class="form-label mb-0">Transit (opsional)</label>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTransitRow()">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="addTransitRow()">
                                     <i class="fas fa-plus me-1"></i>Tambah Transit
                                 </button>
                             </div>
@@ -300,7 +300,7 @@ $movement_purposes = $movement_purposes ?? [];
                     <div class="border rounded p-3 mb-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <div class="fw-semibold"><i class="fas fa-boxes me-1 text-primary"></i>Barang yang Dibawa</div>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addItemRow()">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addItemRow()">
                                 <i class="fas fa-plus me-1"></i>Tambah Barang
                             </button>
                         </div>
@@ -1263,10 +1263,16 @@ function addItemRow() {
                         <option value="OTHERS">Others</option>
                     </select>
                 </div>
-                <div class="col-12 col-lg-5">
+                <div class="col-12 col-lg-6">
                     <div class="item-unit-wrap">
                         <label class="form-label form-label-sm mb-1">Pilih Barang / Unit</label>
                         <select class="form-select form-select-sm item-unit" data-kind="unit"></select>
+                    </div>
+                    <div class="item-component-wrap" style="display:none;">
+                        <label class="form-label form-label-sm mb-1 item-component-label">Pilih Komponen</label>
+                        <select class="form-select form-select-sm item-component" data-kind="component">
+                            <option value="">-- Pilih komponen --</option>
+                        </select>
                     </div>
                     <div class="item-others-wrap" style="display:none;">
                         <label class="form-label form-label-sm mb-1">Keterangan barang <span class="text-danger">*</span></label>
@@ -1277,17 +1283,8 @@ function addItemRow() {
                     <label class="form-label form-label-sm mb-1">Qty</label>
                     <input type="number" class="form-control form-control-sm item-qty" value="1" min="1">
                 </div>
-                <div class="col-6 col-lg-3 text-lg-end">
-                    <label class="form-label form-label-sm mb-1 d-none d-lg-block">&nbsp;</label>
-                    <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removeItemRow(${idx})"><i class="fas fa-trash me-1"></i>Hapus</button>
-                </div>
-            </div>
-            <div class="row g-2 mt-1 item-component-row" style="display:none;">
-                <div class="col-12">
-                    <label class="form-label form-label-sm mb-1">Pilih Komponen</label>
-                    <select class="form-select form-select-sm item-component" data-kind="component">
-                        <option value="">-- Pilih komponen --</option>
-                    </select>
+                <div class="col-6 col-lg-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeItemRow(${idx})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         </div>`;
@@ -1347,35 +1344,54 @@ function onItemTypeChange(idx, type) {
     const $comp = $row.find('.item-component');
     const $unitWrap = $row.find('.item-unit-wrap');
     const $othersWrap = $row.find('.item-others-wrap');
-    const $compRow = $row.find('.item-component-row');
+    const $compWrap = $row.find('.item-component-wrap');
     if (type === 'FORKLIFT') {
         $unitWrap.show();
-        $compRow.hide();
+        $compWrap.hide();
         $othersWrap.hide();
         $row.find('.item-others-notes').val('');
         return;
     }
     if (type === 'OTHERS') {
         $unitWrap.hide();
-        $compRow.hide();
+        $compWrap.hide();
         $othersWrap.show();
         return;
     }
     $unitWrap.hide();
-    $compRow.show();
+    $compWrap.show();
     $othersWrap.hide();
     $row.find('.item-others-notes').val('');
+    const labels = {
+        'ATTACHMENT': 'Pilih Attachment',
+        'CHARGER':    'Pilih Charger',
+        'BATTERY':    'Pilih Baterai',
+        'FORK':       'Pilih Fork',
+        'SPAREPART':  'Pilih Sparepart'
+    };
+    $row.find('.item-component-label').text(labels[type] || 'Pilih Komponen');
     loadComponentOptions($comp, type);
 }
 
 function loadComponentOptions($target, type) {
-    $.get(_movementBaseUrl + 'warehouse/movements/getComponentsByType', { type: type }, function(res) {
-        let html = '<option value="">-- pilih --</option>';
-        if (res.success && Array.isArray(res.data)) {
-            res.data.forEach(function(c){ html += '<option value="' + c.id + '">' + c.label + '</option>'; });
-        }
-        $target.html(html);
-    });
+    $target.html('<option value="">Memuat...</option>').prop('disabled', true);
+    $.get(_movementBaseUrl + 'warehouse/movements/getComponentsByType', { type: type })
+        .done(function(res) {
+            let html = '<option value="">-- Pilih --</option>';
+            if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+                res.data.forEach(function(c) {
+                    const loc = c.location ? ' — ' + c.location : '';
+                    const status = c.status ? ' [' + c.status + ']' : '';
+                    html += '<option value="' + c.id + '">' + c.label + loc + status + '</option>';
+                });
+            } else {
+                html = '<option value="">-- Tidak ada data --</option>';
+            }
+            $target.html(html).prop('disabled', false);
+        })
+        .fail(function() {
+            $target.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
+        });
 }
 
 function addTransitRow() {
@@ -1389,7 +1405,7 @@ function addTransitRow() {
                     <option value="CUSTOMER_SITE">Customer Site</option><option value="OTHER">Other</option>
                 </select>
             </div>
-            <div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="$(this).closest('.transit-row').remove()"><i class="fas fa-times"></i></button></div>
+            <div class="col-md-2"><button type="button" class="btn btn-sm btn-danger w-100" onclick="$(this).closest('.transit-row').remove()"><i class="fas fa-times"></i></button></div>
         </div>`;
     $('#transitContainer').append(html);
 }

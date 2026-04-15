@@ -300,9 +300,8 @@ $guardPageUrl = $guardPageUrl ?? base_url('surat-jalan');
     </section>
 
     <div class="footer">
-        <strong>Catatan:</strong> Jika No SJ atau kode verifikasi tidak sesuai, silakan hubungi pembuat surat jalan.</strong>
+        <strong>Catatan:</strong> Jika No SJ atau kode verifikasi tidak sesuai, silakan hubungi pembuat surat jalan.
     </div>
 </div>
 </body>
 </html>
-

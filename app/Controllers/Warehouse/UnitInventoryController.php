@@ -986,20 +986,21 @@ class UnitInventoryController extends BaseController
 
         $data = $this->collectFormFields();
 
+        // Auto-generate no_unit_na BEFORE insert if no asset number provided
+        if (empty($data['no_unit']) && empty($data['no_unit_na'])) {
+            try {
+                $data['no_unit_na'] = $this->inventoryUnitModel->generateNonAssetNumber();
+            } catch (\Throwable $e) {
+                return redirect()->back()->withInput()->with('error', 'Gagal generate nomor Non-Asset: ' . $e->getMessage());
+            }
+        }
+
         try {
             $id = $this->inventoryUnitModel->insert($data, true);
             if (!$id) {
                 return redirect()->back()->withInput()->with('error', 'Gagal menyimpan unit.');
             }
-            if (empty($data['no_unit']) && empty($data['no_unit_na'])) {
-                try {
-                    $na = $this->inventoryUnitModel->generateNonAssetNumber();
-                    $this->inventoryUnitModel->update($id, ['no_unit_na' => $na]);
-                } catch (\Throwable $e) {
-                    log_message('warning', 'Auto-assign NA number failed. Silakan coba lagi.');
-                }
-            }
-            
+
             // Log to system_activity_log
             $unitNumber = $data['no_unit'] ?? $data['no_unit_na'] ?? "ID #{$id}";
             $this->logCreate('inventory_unit', $id, $data, [

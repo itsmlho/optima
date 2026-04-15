@@ -133,29 +133,29 @@ class UnitMovementModel extends Model
         $hasBatteryTable = $this->db->tableExists('inventory_batteries');
         $hasForkTables = $this->db->tableExists('inventory_forks') && $this->db->tableExists('fork');
         $hasSparepartTables = $this->db->tableExists('inventory_spareparts') && $this->db->tableExists('sparepart');
-        $extraSelect = 'CASE WHEN um.unit_id IS NOT NULL OR um.component_id IS NOT NULL THEN 1 ELSE 0 END as total_items, 0 as total_stops, um.destination_location as last_stop_name, "" as last_checkpoint_status, NULL as last_checkpoint_at';
+        $extraSelect = "CASE WHEN um.unit_id IS NOT NULL OR um.component_id IS NOT NULL THEN 1 ELSE 0 END as total_items, 0 as total_stops, um.destination_location as last_stop_name, '' as last_checkpoint_status, NULL as last_checkpoint_at";
         if ($hasItemsTable || $hasStopsTable || $hasCheckpointTable) {
-            $extraSelect = 'IFNULL(mi_stats.total_items, CASE WHEN um.unit_id IS NOT NULL OR um.component_id IS NOT NULL THEN 1 ELSE 0 END) as total_items, IFNULL(stop_stats.total_stops, 0) as total_stops, IFNULL(stop_stats.last_stop_name, um.destination_location) as last_stop_name, IFNULL(cp_stats.last_checkpoint_status, "") as last_checkpoint_status, cp_stats.last_checkpoint_at';
+            $extraSelect = "IFNULL(mi_stats.total_items, CASE WHEN um.unit_id IS NOT NULL OR um.component_id IS NOT NULL THEN 1 ELSE 0 END) as total_items, IFNULL(stop_stats.total_stops, 0) as total_stops, IFNULL(stop_stats.last_stop_name, um.destination_location) as last_stop_name, IFNULL(cp_stats.last_checkpoint_status, '') as last_checkpoint_status, cp_stats.last_checkpoint_at";
         }
         $componentCase = [];
         if ($hasAttachmentTables) {
-            $componentCase[] = 'WHEN um.component_type = "ATTACHMENT" THEN CONCAT(COALESCE(att.tipe,""), " ", COALESCE(att.merk,""), " ", COALESCE(att.model,""), " [", COALESCE(ia.item_number,""), "]")';
+            $componentCase[] = "WHEN um.component_type = 'ATTACHMENT' THEN CONCAT(COALESCE(att.tipe,''), ' ', COALESCE(att.merk,''), ' ', COALESCE(att.model,''), ' [', COALESCE(ia.item_number,''), ']')";
         }
         if ($hasChargerTable) {
-            $componentCase[] = 'WHEN um.component_type = "CHARGER" THEN CONCAT("Charger ", COALESCE(ic.item_number,""), " SN:", COALESCE(ic.serial_number,""))';
+            $componentCase[] = "WHEN um.component_type = 'CHARGER' THEN CONCAT('Charger ', COALESCE(ic.item_number,''), ' SN:', COALESCE(ic.serial_number,''))";
         }
         if ($hasBatteryTable) {
-            $componentCase[] = 'WHEN um.component_type = "BATTERY" THEN CONCAT("Battery ", COALESCE(ib.item_number,""), " SN:", COALESCE(ib.serial_number,""))';
+            $componentCase[] = "WHEN um.component_type = 'BATTERY' THEN CONCAT('Battery ', COALESCE(ib.item_number,''), ' SN:', COALESCE(ib.serial_number,''))";
         }
         if ($hasForkTables) {
-            $componentCase[] = 'WHEN um.component_type = "FORK" THEN CONCAT(COALESCE(fk.name,""), " [", COALESCE(ifork.item_number,""), "]")';
+            $componentCase[] = "WHEN um.component_type = 'FORK' THEN CONCAT(COALESCE(fk.name,''), ' [', COALESCE(ifork.item_number,''), ']')";
         }
         if ($hasSparepartTables) {
-            $componentCase[] = 'WHEN um.component_type = "SPAREPART" THEN CONCAT(COALESCE(sp.kode,""), " - ", LEFT(COALESCE(sp.desc_sparepart,""), 40))';
+            $componentCase[] = "WHEN um.component_type = 'SPAREPART' THEN CONCAT(COALESCE(sp.kode,''), ' - ', LEFT(COALESCE(sp.desc_sparepart,''), 40))";
         }
-        $componentLabelSql = '""';
+        $componentLabelSql = "''";
         if ($componentCase !== []) {
-            $componentLabelSql = 'CASE ' . implode(' ', $componentCase) . ' ELSE "" END';
+            $componentLabelSql = 'CASE ' . implode(' ', $componentCase) . " ELSE '' END";
         }
 
         $builder->select('um.*,
@@ -165,10 +165,10 @@ class UnitMovementModel extends Model
             mu.merk_unit,
             mu.model_unit,
             tu.tipe as tipe_unit,
-            CONCAT(creator.first_name, " ", COALESCE(creator.last_name, "")) as creator_name,
-            CONCAT(confirmer.first_name, " ", COALESCE(confirmer.last_name, "")) as confirmer_name,
+            CONCAT(creator.first_name, \' \', COALESCE(creator.last_name, \'\')) as creator_name,
+            CONCAT(confirmer.first_name, \' \', COALESCE(confirmer.last_name, \'\')) as confirmer_name,
             ' . $componentLabelSql . ' as component_label,
-            ' . $extraSelect);
+            ' . $extraSelect, false);
 
         $builder->join('inventory_unit iu', 'um.unit_id = iu.id_inventory_unit', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
@@ -177,21 +177,21 @@ class UnitMovementModel extends Model
         $builder->join('users confirmer', 'um.confirmed_by_user_id = confirmer.id', 'left');
         // Component joins (conditional via matching component_type)
         if ($hasAttachmentTables) {
-            $builder->join('inventory_attachments ia', 'ia.id = um.component_id AND um.component_type = "ATTACHMENT"', 'left');
+            $builder->join('inventory_attachments ia', "ia.id = um.component_id AND um.component_type = 'ATTACHMENT'", 'left');
             $builder->join('attachment att', 'att.id_attachment = ia.attachment_type_id', 'left');
         }
         if ($hasChargerTable) {
-            $builder->join('inventory_chargers ic', 'ic.id = um.component_id AND um.component_type = "CHARGER"', 'left');
+            $builder->join('inventory_chargers ic', "ic.id = um.component_id AND um.component_type = 'CHARGER'", 'left');
         }
         if ($hasBatteryTable) {
-            $builder->join('inventory_batteries ib', 'ib.id = um.component_id AND um.component_type = "BATTERY"', 'left');
+            $builder->join('inventory_batteries ib', "ib.id = um.component_id AND um.component_type = 'BATTERY'", 'left');
         }
         if ($hasForkTables) {
-            $builder->join('inventory_forks ifork', 'ifork.id = um.component_id AND um.component_type = "FORK"', 'left');
+            $builder->join('inventory_forks ifork', "ifork.id = um.component_id AND um.component_type = 'FORK'", 'left');
             $builder->join('fork fk', 'fk.id = ifork.fork_id', 'left');
         }
         if ($hasSparepartTables) {
-            $builder->join('inventory_spareparts isp', 'isp.id = um.component_id AND um.component_type = "SPAREPART"', 'left');
+            $builder->join('inventory_spareparts isp', "isp.id = um.component_id AND um.component_type = 'SPAREPART'", 'left');
             $builder->join('sparepart sp', 'sp.id_sparepart = isp.sparepart_id', 'left');
         }
         if ($hasItemsTable) {
