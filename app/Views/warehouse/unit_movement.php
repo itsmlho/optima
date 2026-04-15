@@ -1224,6 +1224,12 @@ function addItemRow() {
                     </select>
                 </div>
             </div>
+            <div class="row g-2 mt-1 item-others-row" style="display:none;">
+                <div class="col-12">
+                    <label class="form-label form-label-sm mb-1">Keterangan barang <span class="text-danger">*</span></label>
+                    <textarea class="form-control form-control-sm item-others-notes" rows="2" maxlength="5000" placeholder="Tulis nama / jenis barang yang dibawa (mis. pallet, dokumen, perlengkapan, dll.)"></textarea>
+                </div>
+            </div>
         </div>`;
     $('#movementItemsContainer').append(html);
     setupItemUnitSelect(idx);
@@ -1281,18 +1287,24 @@ function onItemTypeChange(idx, type) {
     const $comp = $row.find('.item-component');
     const $unitWrap = $row.find('.item-unit-wrap');
     const $compRow = $row.find('.item-component-row');
+    const $othersRow = $row.find('.item-others-row');
     if (type === 'FORKLIFT') {
         $unitWrap.show();
         $compRow.hide();
+        $othersRow.hide();
+        $row.find('.item-others-notes').val('');
         return;
     }
     if (type === 'OTHERS') {
         $unitWrap.hide();
         $compRow.hide();
+        $othersRow.show();
         return;
     }
     $unitWrap.hide();
     $compRow.show();
+    $othersRow.hide();
+    $row.find('.item-others-notes').val('');
     loadComponentOptions($comp, type);
 }
 
@@ -1327,11 +1339,15 @@ function collectItemsPayload() {
     $('#movementItemsContainer .movement-item-row').each(function() {
         const $row = $(this);
         const type = ($row.find('.item-type').val() || 'FORKLIFT').toUpperCase();
+        const othersNotes = type === 'OTHERS'
+            ? String($row.find('.item-others-notes').val() || '').trim()
+            : '';
         items.push({
             component_type: type,
             unit_id: type === 'FORKLIFT' ? ($row.find('.item-unit').val() || null) : null,
             component_id: (type !== 'FORKLIFT' && type !== 'OTHERS') ? ($row.find('.item-component').val() || null) : null,
-            qty: parseInt($row.find('.item-qty').val() || '1', 10)
+            qty: parseInt($row.find('.item-qty').val() || '1', 10),
+            item_notes: type === 'OTHERS' ? othersNotes : null
         });
     });
     return items;

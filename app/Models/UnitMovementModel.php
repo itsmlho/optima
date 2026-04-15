@@ -833,6 +833,9 @@ class UnitMovementModel extends Model
             } elseif ($cid > 0 && $this->db->tableExists('inventory_batteries') && $type === 'BATTERY') {
                 $b = $this->db->table('inventory_batteries')->select('item_number, serial_number')->where('id', $cid)->get()->getRowArray();
                 $printDescription = $b ? ('Battery ' . ($b['item_number'] ?? '') . ' SN:' . ($b['serial_number'] ?? '')) : 'Battery #' . $cid;
+            } elseif ($type === 'OTHERS') {
+                $notes = trim((string) ($it['item_notes'] ?? ''));
+                $printDescription = $notes !== '' ? $notes : 'Others';
             } else {
                 $printDescription = $type . ($cid > 0 ? ' #' . $cid : '') . ($uid > 0 ? ' (unit ' . $uid . ')' : '');
             }

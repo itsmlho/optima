@@ -588,6 +588,9 @@ class UnitMovementController extends BaseController
             if ($type !== 'FORKLIFT' && $type !== 'OTHERS' && empty($item['component_id'])) {
                 $errors["items_{$idx}_component_id"] = 'Komponen wajib dipilih.';
             }
+            if ($type === 'OTHERS' && trim((string) ($item['item_notes'] ?? '')) === '') {
+                $errors["items_{$idx}_item_notes"] = 'Keterangan barang wajib diisi untuk tipe Others.';
+            }
         }
 
         if (count($stops) < 2) {
