@@ -302,11 +302,50 @@ class UnitAreaMappingController extends BaseController
             }
             $recordsTotal = (int) (($this->db->query('SELECT COUNT(*) AS cnt ' . $totalFromSql, $totalParams)->getRowArray()['cnt'] ?? 0));
 
+            // Build customer list using only dept+assign filters (no customer/location constraint)
+            // so the dropdown always shows all customers, regardless of which customer is selected.
+            $allCustomers = [];
+            try {
+                $custBaseSql = "
+                    FROM inventory_unit iu
+                    LEFT JOIN ({$latestActiveContractPerUnit}) ku
+                        ON ku.unit_id = iu.id_inventory_unit
+                    LEFT JOIN kontrak k
+                        ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                    LEFT JOIN customer_locations cl
+                        ON cl.id = ku.customer_location_id AND cl.is_active = 1
+                    LEFT JOIN customers c
+                        ON c.id = cl.customer_id
+                    WHERE iu.status_unit_id != 13
+                ";
+                $custBaseParams = [];
+                if (!empty($filterDept) && is_numeric($filterDept)) {
+                    $custBaseSql .= ' AND iu.departemen_id = ?';
+                    $custBaseParams[] = (int) $filterDept;
+                }
+                if ($filterAssign === 'assigned') {
+                    $custBaseSql .= ' AND iu.area_id IS NOT NULL';
+                } elseif ($filterAssign === 'unassigned') {
+                    $custBaseSql .= ' AND iu.area_id IS NULL';
+                }
+                $allCustomers = array_column(
+                    $this->db->query(
+                        'SELECT DISTINCT c.customer_name ' . $custBaseSql
+                        . ' AND c.customer_name IS NOT NULL ORDER BY c.customer_name',
+                        $custBaseParams
+                    )->getResultArray(),
+                    'customer_name'
+                );
+            } catch (\Throwable $e) {
+                // non-critical — dropdown will be empty but table still works
+            }
+
             return $this->response->setJSON([
-                'draw' => $draw,
-                'recordsTotal' => $recordsTotal,
+                'draw'            => $draw,
+                'recordsTotal'    => $recordsTotal,
                 'recordsFiltered' => $recordsFiltered,
-                'data' => $rows,
+                'data'            => $rows,
+                'allCustomers'    => $allCustomers,
             ]);
         }
 

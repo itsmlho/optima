@@ -3164,178 +3164,157 @@ function updateBulkLocBar() {
 }
 
 function loadLocationUnits() {
-    const deptFilter     = $('#filterLocDept').val();
-    const assignFilter   = $('#filterLocAreaAssign').val();
-    const customerFilter = $('#filterLocCustomer').val();
-    const locationFilter = $('#filterLocLocation').val();
-
-    // Cancel request sebelumnya agar response tidak balapan (race condition).
-    if (locLoadXhr && locLoadXhr.readyState !== 4) {
-        locLoadXhr.abort();
-    }
-    const reqId = ++locLoadReqId;
-
     if ($.fn.DataTable.isDataTable('#tableLocationUnits')) {
         $('#tableLocationUnits').DataTable().destroy();
     }
     locSelectedUnits.clear();
     updateBulkLocBar();
-    $('#bodyLocationUnits').html(TABLE_LOCATION_LOADING_HTML);
+    locInfoMap = {};
 
-    locLoadXhr = $.post(BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations',
-        csrfData({ dept_filter: deptFilter, area_filter: assignFilter, limit: 25, offset: 0 }),
-        function(resp) {
-            // Abaikan response lama yang sudah tidak relevan.
-            if (reqId !== locLoadReqId) {
-                return;
-            }
-            const tbody = $('#bodyLocationUnits');
-            tbody.empty();
-            locInfoMap = {};
-
-            if (!resp.success || !resp.data.length) {
-                tbody.html('<tr><td colspan="8" class="text-center py-3 text-muted">Tidak ada data unit aktif</td></tr>');
-                return;
-            }
-
-            // Apply client-side customer / location filters
-            let rows = resp.data;
-            if (customerFilter) rows = rows.filter(r => r.customer_name === customerFilter);
-            if (locationFilter) rows = rows.filter(r => String(r.location_id) === String(locationFilter));
-
-            if (!rows.length) {
-                tbody.html('<tr><td colspan="8" class="text-center py-3 text-muted">Tidak ada data untuk filter yang dipilih</td></tr>');
-                return;
-            }
-
-            // Populate customer dropdown from full response (always refresh)
-            const prevCust = $('#filterLocCustomer').val();
-            $('#filterLocCustomer').find('option[value!=""]').remove();
-            const customers = [...new Set(resp.data.map(r => r.customer_name))].sort();
-            customers.forEach(c => {
-                $('#filterLocCustomer').append(`<option value="${c}"${c === prevCust ? ' selected' : ''}>${c}</option>`);
-            });
-
-            // Build ordered location list per customer (preserves response order)
-            // custLocOrder[customer_name] = [loc_id_1, loc_id_2, ...]
-            const custLocOrder = {};
-            resp.data.forEach(row => {
-                if (!custLocOrder[row.customer_name]) custLocOrder[row.customer_name] = [];
-                const list = custLocOrder[row.customer_name];
-                if (!list.includes(String(row.location_id))) list.push(String(row.location_id));
-            });
-
-            // Build locInfoMap for PIC modal
-            resp.data.forEach(row => {
-                if (!locInfoMap[row.location_id]) {
-                    locInfoMap[row.location_id] = {
-                        location_name:  row.location_name,
-                        customer_name:  row.customer_name,
-                        contact_person: row.contact_person || '',
-                        phone:          row.phone || '',
-                    };
+    locationUnitsTable = $('#tableLocationUnits').DataTable({
+        serverSide: true,
+        processing: true,
+        ajax: {
+            url: BASE_URL + 'service/area-management/unit-mapping/getCustomerLocations',
+            type: 'POST',
+            data: function(d) {
+                // Read live filter values on every request (sort, page, search all re-use these)
+                d[window.csrfTokenName] = window.getCsrfToken();
+                d.dept_filter   = $('#filterLocDept').val();
+                d.area_filter   = $('#filterLocAreaAssign').val();
+                d.customer_name = $('#filterLocCustomer').val();
+                d.location_id   = $('#filterLocLocation').val();
+                return d;
+            },
+            dataSrc: function(json) {
+                // Populate customer dropdown from server metadata (all customers for current base filter)
+                if (json.allCustomers && json.allCustomers.length) {
+                    const prevCust = $('#filterLocCustomer').val();
+                    $('#filterLocCustomer').find('option[value!=""]').remove();
+                    json.allCustomers.forEach(function(c) {
+                        const opt = $('<option>', { value: c, text: c });
+                        if (c === prevCust) { opt.prop('selected', true); }
+                        $('#filterLocCustomer').append(opt);
+                    });
                 }
-            });
 
-            // Refresh opsi lokasi TANPA trigger event change (hindari reload rekursif).
-            (function refreshLocationOptionsSilently() {
-                const customer = $('#filterLocCustomer').val();
-                const prevLoc  = $('#filterLocLocation').val();
-                const $locSel  = $('#filterLocLocation');
-                $locSel.empty().append('<option value="">Semua Lokasi</option>').prop('disabled', !customer);
-                if (!customer) return;
-                const seen = new Set();
-                Object.entries(locInfoMap).forEach(([locId, loc]) => {
-                    if (loc.customer_name === customer && !seen.has(locId)) {
-                        seen.add(locId);
-                        const selected = (String(locId) === String(prevLoc)) ? ' selected' : '';
-                        $locSel.append(`<option value="${locId}"${selected}>${loc.location_name}</option>`);
+                // Build locInfoMap from current page rows (accumulates across page navigations)
+                (json.data || []).forEach(function(row) {
+                    if (row.location_id && !locInfoMap[row.location_id]) {
+                        locInfoMap[row.location_id] = {
+                            location_name:  row.location_name,
+                            customer_name:  row.customer_name,
+                            contact_person: row.contact_person || '',
+                            phone:          row.phone || '',
+                        };
                     }
                 });
-            }());
 
-            rows.forEach(row => {
-                const hasPic   = row.contact_person;
-                const picTitle = hasPic
-                    ? `PIC: ${row.contact_person}${row.phone ? ' · ' + row.phone : ''}`
-                    : 'Belum ada data PIC · klik untuk mengisi';
-                const picIcon  = hasPic
-                    ? '<i class="bi bi-person-check-fill text-success"></i>'
-                    : '<i class="bi bi-person-plus text-muted"></i>';
-
-                // Show "Lokasi 1", "Lokasi 2" ... only when customer has >1 location
-                const locList  = custLocOrder[row.customer_name] || [];
-                const locIndex = locList.indexOf(String(row.location_id)) + 1;
-                const locTag   = locList.length > 1
-                    ? `<span class="badge badge-soft-blue ms-1" title="${row.location_name}">Lokasi ${locIndex}</span>`
-                    : '';
-
-                tbody.append(`
-                    <tr data-unit-id="${row.id_inventory_unit}" data-loc-id="${row.location_id}">
-                        <td class="text-center">
-                            <input type="checkbox" class="chk-loc-unit" data-unit-id="${row.id_inventory_unit}">
-                        </td>
-                        <td><strong>${row.customer_name}</strong>${locTag}</td>
-                        <td>
-                            ${row.location_name}
-                            <button class="btn btn-link btn-sm p-0 ms-1 btn-edit-pic"
-                                data-loc-id="${row.location_id}" title="${picTitle}">${picIcon}</button>
-                        </td>
-                        <td><strong>${row.no_unit}</strong></td>
-                        <td><small>${row.model || '-'}</small></td>
-                        <td><small>${row.nama_departemen || '-'}</small></td>
-                        <td>
-                            <select class="form-select form-select-sm unit-area-select"
-                                data-unit-id="${row.id_inventory_unit}">
-                                ${buildAreaOptions(row.area_id, row.area_code, row.area_name)}
-                            </select>
-                        </td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-primary btn-save-unit-area"
-                                data-unit-id="${row.id_inventory_unit}" title="Simpan Area">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
-            });
-
-            locationUnitsTable = $('#tableLocationUnits').DataTable({
-                pageLength: 25,
-                order: [[1, 'asc'], [2, 'asc']],
-                searching: true,
-                columnDefs: [{ orderable: false, targets: [0, 6, 7] }],
-                language: {
-                    emptyTable:    'Tidak ada data',
-                    info:          'Menampilkan _START_ \u2013 _END_ dari _TOTAL_ unit',
-                    infoEmpty:     '0 unit',
-                    search:        'Cari:',
-                    searchPlaceholder: 'Cari unit / customer / lokasi...',
-                    lengthMenu:    'Tampilkan _MENU_ entri',
-                    paginate:      { previous: '&laquo;', next: '&raquo;' }
-                },
-                drawCallback: function() {
-                    // Re-tick checkboxes that are still in the selection set
-                    $('#bodyLocationUnits .chk-loc-unit').each(function() {
-                        const uid = parseInt($(this).data('unit-id'));
-                        $(this).prop('checked', locSelectedUnits.has(uid));
+                // Refresh location cascade dropdown silently (no event trigger)
+                const currentCustomer = $('#filterLocCustomer').val();
+                const $locSel = $('#filterLocLocation');
+                if (currentCustomer) {
+                    const prevLoc = $locSel.val();
+                    $locSel.empty().append('<option value="">Semua Lokasi</option>').prop('disabled', false);
+                    const seen = new Set();
+                    Object.keys(locInfoMap).forEach(function(locId) {
+                        const loc = locInfoMap[locId];
+                        if (loc.customer_name === currentCustomer && !seen.has(locId)) {
+                            seen.add(locId);
+                            const opt = $('<option>', { value: locId, text: loc.location_name });
+                            if (String(locId) === String(prevLoc)) { opt.prop('selected', true); }
+                            $locSel.append(opt);
+                        }
                     });
-                    const total   = $('#bodyLocationUnits .chk-loc-unit').length;
-                    const checked = $('#bodyLocationUnits .chk-loc-unit:checked').length;
-                    $('#chkSelectAllLoc')
-                        .prop('indeterminate', checked > 0 && checked < total)
-                        .prop('checked', total > 0 && checked === total);
                 }
-            });
+
+                return json.data;
+            }
+        },
+        pageLength: 25,
+        order: [[1, 'asc'], [2, 'asc']],
+        columns: [
+            {
+                data: null, orderable: false, className: 'text-center',
+                render: function(_, __, row) {
+                    return '<input type="checkbox" class="chk-loc-unit" data-unit-id="' + row.id_inventory_unit + '">';
+                }
+            },
+            {
+                data: 'customer_name',
+                render: function(val) { return '<strong>' + (val || '-') + '</strong>'; }
+            },
+            {
+                data: 'location_name',
+                render: function(val, _, row) {
+                    const hasPic   = row.contact_person;
+                    const picTitle = hasPic
+                        ? 'PIC: ' + row.contact_person + (row.phone ? ' \u00b7 ' + row.phone : '')
+                        : 'Belum ada data PIC \u00b7 klik untuk mengisi';
+                    const picIcon  = hasPic
+                        ? '<i class="bi bi-person-check-fill text-success"></i>'
+                        : '<i class="bi bi-person-plus text-muted"></i>';
+                    return (val || '-')
+                        + ' <button class="btn btn-link btn-sm p-0 ms-1 btn-edit-pic"'
+                        + ' data-loc-id="' + row.location_id + '" title="' + picTitle + '">'
+                        + picIcon + '</button>';
+                }
+            },
+            {
+                data: 'no_unit',
+                render: function(val) { return '<strong>' + (val || '-') + '</strong>'; }
+            },
+            {
+                data: 'model',
+                render: function(val) { return '<small>' + (val || '-') + '</small>'; }
+            },
+            {
+                data: 'nama_departemen',
+                render: function(val) { return '<small>' + (val || '-') + '</small>'; }
+            },
+            {
+                data: 'area_id', orderable: false,
+                render: function(val, _, row) {
+                    return '<select class="form-select form-select-sm unit-area-select"'
+                        + ' data-unit-id="' + row.id_inventory_unit + '">'
+                        + buildAreaOptions(val, row.area_code, row.area_name)
+                        + '</select>';
+                }
+            },
+            {
+                data: null, orderable: false, className: 'text-center',
+                render: function(_, __, row) {
+                    return '<button class="btn btn-sm btn-primary btn-save-unit-area"'
+                        + ' data-unit-id="' + row.id_inventory_unit + '" title="Simpan Area">'
+                        + '<i class="bi bi-check-lg"></i></button>';
+                }
+            }
+        ],
+        createdRow: function(row, data) {
+            $(row).attr('data-unit-id', data.id_inventory_unit)
+                  .attr('data-loc-id', data.location_id);
+            if (locSelectedUnits.has(parseInt(data.id_inventory_unit))) {
+                $(row).find('.chk-loc-unit').prop('checked', true);
+            }
+        },
+        language: {
+            emptyTable:    'Tidak ada data unit aktif',
+            info:          'Menampilkan _START_ \u2013 _END_ dari _TOTAL_ unit',
+            infoEmpty:     '0 unit',
+            infoFiltered:  '(difilter dari _MAX_ unit)',
+            search:        'Cari:',
+            searchPlaceholder: 'Cari unit / customer / lokasi...',
+            lengthMenu:    'Tampilkan _MENU_ entri',
+            paginate:      { previous: '\u00ab', next: '\u00bb' },
+            processing:    '<div class="spinner-border spinner-border-sm text-primary me-2"></div> Memuat...'
+        },
+        drawCallback: function() {
+            const total   = $('#bodyLocationUnits .chk-loc-unit').length;
+            const checked = $('#bodyLocationUnits .chk-loc-unit:checked').length;
+            $('#chkSelectAllLoc')
+                .prop('indeterminate', checked > 0 && checked < total)
+                .prop('checked', total > 0 && checked === total);
         }
-    ).fail(function(xhr, statusText) {
-        if (statusText === 'abort') {
-            return;
-        }
-        if (reqId !== locLoadReqId) {
-            return;
-        }
-        $('#bodyLocationUnits').html('<tr><td colspan="8" class="text-center py-3 text-danger">Gagal memuat data. Coba lagi.</td></tr>');
     });
 }
 

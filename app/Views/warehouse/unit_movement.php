@@ -215,7 +215,8 @@ $movement_purposes = $movement_purposes ?? [];
                     <div class="border rounded p-3 mb-3">
                         <div class="fw-semibold mb-2"><i class="fas fa-route me-1 text-primary"></i>Rute Perjalanan</div>
                         <div class="small text-muted mb-3">
-                            <strong>Lokasi Asal/Tujuan</strong> = nama tempat fisik. <strong>Tipe Asal/Tujuan</strong> = kategori lokasi (POS/Gudang/Customer).
+                            <strong>Lokasi Asal / Tujuan</strong> = nama titik yang dipakai semua pihak (contoh: &ldquo;Gate Loading Gudang&rdquo;, &ldquo;Workshop POS 2&rdquo;, &ldquo;Lobby Customer X&rdquo;) — boleh gedung, ruangan, atau nama area; ini yang muncul di SJ/cetak dan diisi satpam per <em>titik rute</em>.
+                            <strong>Tipe Asal / Tujuan</strong> = klasifikasi internal perusahaan (POS 1–5 = area operasi bernomor, <strong>bukan</strong> wajib ada pos satpam bernama &ldquo;POS 1&rdquo;; Gudang/Customer/Lainnya untuk pelaporan &amp; filter). Pilih tipe yang paling mendekati, lalu tulis lokasi bebas yang jelas di kolom lokasi.
                         </div>
 
                         <div class="row">
@@ -283,6 +284,10 @@ $movement_purposes = $movement_purposes ?? [];
                                 <input type="text" class="form-control" id="destinationTypeOtherInput" placeholder="Misal: Site Proyek B">
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="destinationRecipientInput">Nama penerima di tujuan <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="destination_recipient_name" id="destinationRecipientInput" maxlength="120" placeholder="Petugas / penerima barang di lokasi tujuan" required>
+                        </div>
                     </div>
 
                     <div class="border rounded p-3 mb-3">
@@ -297,29 +302,35 @@ $movement_purposes = $movement_purposes ?? [];
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Tanggal Perpindahan <span class="text-danger">*</span></label>
                                 <input type="datetime-local" class="form-control" name="movement_date" required>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Nama Driver</label>
                                 <input type="text" class="form-control" name="driver_name" placeholder="Nama driver">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">No. Kendaraan</label>
                                 <input type="text" class="form-control" name="vehicle_number" placeholder="Contoh: B 1234 ABC">
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Jenis Kendaraan</label>
+                                <input type="text" class="form-control" name="vehicle_type" placeholder="Mis. Pickup, Box, Motor">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Catatan</label>
-                        <textarea class="form-control" name="notes" rows="2" placeholder="Catatan tambahan..."></textarea>
+                        <label class="form-label">Alasan <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Alasan pengiriman / perpindahan barang..." required></textarea>
                     </div>
                 </form>
             </div>
@@ -360,6 +371,15 @@ var _movementBaseUrl = (typeof BASE_URL !== 'undefined') ? BASE_URL : '<?= base_
 const CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
 const CSRF_HASH = '<?= csrf_hash() ?>';
 const _guardSjBaseUrl = '<?= base_url('surat-jalan') ?>';
+
+/** Label titik rute untuk tampilan (nilai DB tetap ORIGIN / TRANSIT / DESTINATION). */
+function stopTypeDisplayLabel(code) {
+    const u = String(code || '').toUpperCase();
+    if (u === 'ORIGIN') return 'Asal';
+    if (u === 'DESTINATION') return 'Tujuan';
+    if (u === 'TRANSIT') return 'Transit';
+    return code || '-';
+}
 
 // Global AJAX setup for CSRF
 $.ajaxSetup({
@@ -451,15 +471,19 @@ function copyDetailSjVerificationToClipboard() {
     var code = copyDetailDash($('#detailModal').data('copyCode'));
     var driver = copyDetailDash($('#detailModal').data('copyDriver'));
     var vehicle = copyDetailDash($('#detailModal').data('copyVehicle'));
+    var vehicleType = copyDetailDash($('#detailModal').data('copyVehicleType'));
     var notes = copyDetailDash($('#detailModal').data('copyNotes'));
+    var recipient = copyDetailDash($('#detailModal').data('copyRecipient'));
     var guardLink = copyDetailDash($('#detailModal').data('copyGuardLink'));
 
     var text = [
         'No. SJ : ' + sj,
         'Kode Verifikasi : ' + code,
+        'Nama penerima (tujuan): ' + recipient,
         'Driver: ' + driver,
         'No. Kendaraan: ' + vehicle,
-        'Catatan: ' + notes
+        'Jenis Kendaraan: ' + vehicleType,
+        'Alasan: ' + notes
     ].join('\n');
     if (guardLink !== '-') {
         text += '\nLink Satpam: ' + guardLink;
@@ -840,10 +864,12 @@ function submitMovement() {
         origin_location: formData.get('origin_location'),
         origin_type: formData.get('origin_type'),
         destination_location: formData.get('destination_location'),
+        destination_recipient_name: (formData.get('destination_recipient_name') || '').trim(),
         destination_type: formData.get('destination_type'),
         movement_date: formData.get('movement_date'),
         driver_name: formData.get('driver_name') || '',
         vehicle_number: formData.get('vehicle_number') || '',
+        vehicle_type: formData.get('vehicle_type') || '',
         notes: formData.get('notes') || '',
         movement_purpose: formData.get('movement_purpose') || 'INTERNAL_TRANSFER',
         items: itemsPayload,
@@ -1005,6 +1031,7 @@ function showMovementDetailModal(data) {
     content += '<div class="col-md-6"><div class="alert alert-info mb-0">';
     content += '<h6 class="fw-bold">Tujuan:</h6>';
     content += '<p class="mb-1"><strong>Lokasi:</strong> ' + movement.destination_location + '</p>';
+    content += '<p class="mb-1"><strong>Nama penerima:</strong> ' + escDetailHtml(movement.destination_recipient_name || '-') + '</p>';
     content += '<p class="mb-0"><strong>Tipe:</strong> ' + movement.destination_type + '</p>';
     content += '</div></div>';
     content += '</div><hr>';
@@ -1013,7 +1040,8 @@ function showMovementDetailModal(data) {
     content += '<h6 class="fw-bold">Detail Pengiriman:</h6>';
     content += '<p class="mb-1"><strong>Driver:</strong> ' + (movement.driver_name || '-') + '</p>';
     content += '<p class="mb-1"><strong>No. Kendaraan:</strong> ' + (movement.vehicle_number || '-') + '</p>';
-    content += '<p class="mb-0"><strong>Catatan:</strong> ' + (movement.notes || '-') + '</p>';
+    content += '<p class="mb-1"><strong>Jenis Kendaraan:</strong> ' + (movement.vehicle_type || '-') + '</p>';
+    content += '<p class="mb-0"><strong>Alasan:</strong> ' + (movement.notes || '-') + '</p>';
     content += '</div>';
 
     if (items.length > 0) {
@@ -1027,7 +1055,7 @@ function showMovementDetailModal(data) {
     if (stops.length > 0) {
         content += '<h6 class="fw-bold">Rute</h6><ol class="mb-0">';
         stops.forEach(function(st) {
-            content += '<li>' + (st.location_name || '-') + ' <small class="text-muted">(' + (st.stop_type || '-') + ')</small></li>';
+            content += '<li>' + (st.location_name || '-') + ' <small class="text-muted">(' + stopTypeDisplayLabel(st.stop_type) + ')</small></li>';
         });
         content += '</ol>';
     }
@@ -1045,8 +1073,10 @@ function showMovementDetailModal(data) {
     $('#detailModal').data({
         copySj: String(movement.surat_jalan_number || '').trim(),
         copyCode: String(movement.verification_code || '').trim(),
+        copyRecipient: movement.destination_recipient_name,
         copyDriver: movement.driver_name,
         copyVehicle: movement.vehicle_number,
+        copyVehicleType: movement.vehicle_type,
         copyNotes: movement.notes,
         copyGuardLink: guardLink
     });
@@ -1080,8 +1110,8 @@ function startMovement(id) {
             '<input id="optimaVehicleNumber" class="form-control" placeholder="Contoh: B 1234 ABC">' +
             '</div>' +
             '<div class="text-start">' +
-            '<label class="form-label">Catatan (opsional)</label>' +
-            '<textarea id="optimaNotes" class="form-control" rows="2" placeholder="Catatan pengiriman..."></textarea>' +
+            '<label class="form-label">Alasan (opsional)</label>' +
+            '<textarea id="optimaNotes" class="form-control" rows="2" placeholder="Alasan / catatan pengiriman..."></textarea>' +
             '</div>',
         confirmText: '<i class="fas fa-truck me-1"></i> Mulai Kirim',
         cancelText: 'Batal',
@@ -1203,9 +1233,15 @@ function addItemRow() {
                         <option value="OTHERS">Others</option>
                     </select>
                 </div>
-                <div class="col-12 col-lg-5 item-unit-wrap">
-                    <label class="form-label form-label-sm mb-1">Pilih Barang / Unit</label>
-                    <select class="form-select form-select-sm item-unit" data-kind="unit"></select>
+                <div class="col-12 col-lg-5">
+                    <div class="item-unit-wrap">
+                        <label class="form-label form-label-sm mb-1">Pilih Barang / Unit</label>
+                        <select class="form-select form-select-sm item-unit" data-kind="unit"></select>
+                    </div>
+                    <div class="item-others-wrap" style="display:none;">
+                        <label class="form-label form-label-sm mb-1">Keterangan barang <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm item-others-notes" maxlength="5000" placeholder="Nama / jenis barang (Others)">
+                    </div>
                 </div>
                 <div class="col-6 col-lg-2">
                     <label class="form-label form-label-sm mb-1">Qty</label>
@@ -1222,12 +1258,6 @@ function addItemRow() {
                     <select class="form-select form-select-sm item-component" data-kind="component">
                         <option value="">-- Pilih komponen --</option>
                     </select>
-                </div>
-            </div>
-            <div class="row g-2 mt-1 item-others-row" style="display:none;">
-                <div class="col-12">
-                    <label class="form-label form-label-sm mb-1">Keterangan barang <span class="text-danger">*</span></label>
-                    <textarea class="form-control form-control-sm item-others-notes" rows="2" maxlength="5000" placeholder="Tulis nama / jenis barang yang dibawa (mis. pallet, dokumen, perlengkapan, dll.)"></textarea>
                 </div>
             </div>
         </div>`;
@@ -1286,24 +1316,24 @@ function onItemTypeChange(idx, type) {
     const $row = $('[data-row="' + idx + '"]');
     const $comp = $row.find('.item-component');
     const $unitWrap = $row.find('.item-unit-wrap');
+    const $othersWrap = $row.find('.item-others-wrap');
     const $compRow = $row.find('.item-component-row');
-    const $othersRow = $row.find('.item-others-row');
     if (type === 'FORKLIFT') {
         $unitWrap.show();
         $compRow.hide();
-        $othersRow.hide();
+        $othersWrap.hide();
         $row.find('.item-others-notes').val('');
         return;
     }
     if (type === 'OTHERS') {
         $unitWrap.hide();
         $compRow.hide();
-        $othersRow.show();
+        $othersWrap.show();
         return;
     }
     $unitWrap.hide();
     $compRow.show();
-    $othersRow.hide();
+    $othersWrap.hide();
     $row.find('.item-others-notes').val('');
     loadComponentOptions($comp, type);
 }

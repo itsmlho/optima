@@ -268,6 +268,10 @@ $component_types = $component_types ?? [];
                             </div>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nama penerima di tujuan <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="destination_recipient_name" maxlength="120" placeholder="Petugas / penerima barang di lokasi tujuan" required>
+                    </div>
 
                     <div class="row">
                         <div class="col-md-4">
@@ -575,6 +579,7 @@ function showMovementDetailModal(data) {
     content += '<div class="col-md-6"><div class="alert alert-info mb-0">';
     content += '<h6 class="fw-bold">Tujuan:</h6>';
     content += '<p class="mb-1"><strong>Lokasi:</strong> ' + movement.destination_location + '</p>';
+    content += '<p class="mb-1"><strong>Nama penerima:</strong> ' + (movement.destination_recipient_name || '-') + '</p>';
     content += '<p class="mb-0"><strong>Tipe:</strong> ' + movement.destination_type + '</p>';
     content += '</div></div>';
     content += '</div><hr>';

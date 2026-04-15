@@ -19,11 +19,13 @@ class UnitMovementModel extends Model
         'component_type',
         'origin_location',
         'destination_location',
+        'destination_recipient_name',
         'origin_type',
         'destination_type',
         'movement_date',
         'driver_name',
         'vehicle_number',
+        'vehicle_type',
         'notes',
         'surat_jalan_number',
         'status',
@@ -46,6 +48,7 @@ class UnitMovementModel extends Model
         'movement_number'       => 'required|max_length[50]',
         'origin_location'      => 'required|max_length[100]',
         'destination_location' => 'required|max_length[100]',
+        'destination_recipient_name' => 'permit_empty|max_length[120]',
         'origin_type'           => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
         'destination_type'      => 'required|in_list[POS_1,POS_2,POS_3,POS_4,POS_5,CUSTOMER_SITE,WAREHOUSE,OTHER]',
         'movement_date'         => 'required|valid_date',
@@ -862,7 +865,31 @@ class UnitMovementModel extends Model
         }
         $bundle['items'] = $this->enrichItemsForPrint($bundle['items']);
 
+        $m = &$bundle['movement'];
+        $cn = trim((string) ($m['creator_name'] ?? ''));
+        if ($cn === '' && ! empty($m['created_by_user_id']) && $this->db->tableExists('users')) {
+            $u = $this->db->table('users')
+                ->select('first_name, last_name')
+                ->where('id', (int) $m['created_by_user_id'])
+                ->get()->getRowArray();
+            if ($u) {
+                $m['creator_name'] = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+            }
+        }
+
         return $bundle;
+    }
+
+    /**
+     * Jumlah baris unit_movement_items untuk satu movement (0 jika tabel tidak ada).
+     */
+    public function countItemsForMovement(int $movementId): int
+    {
+        if (! $this->db->tableExists('unit_movement_items')) {
+            return 0;
+        }
+
+        return (int) $this->db->table('unit_movement_items')->where('movement_id', $movementId)->countAllResults();
     }
 
     public function submitCheckpoint(int $movementId, int $stopId, string $status, array $meta = []): bool

@@ -138,11 +138,13 @@ class UnitMovementController extends BaseController
                 'component_type'        => strtoupper((string)($payload['component_type'] ?? 'FORKLIFT')),
                 'origin_location'       => trim((string)$payload['origin_location']),
                 'destination_location'  => trim((string)$payload['destination_location']),
+                'destination_recipient_name' => trim((string)($payload['destination_recipient_name'] ?? '')),
                 'origin_type'           => strtoupper((string)$payload['origin_type']),
                 'destination_type'      => strtoupper((string)$payload['destination_type']),
                 'movement_date'         => $payload['movement_date'],
                 'driver_name'           => trim((string)($payload['driver_name'] ?? '')),
                 'vehicle_number'        => trim((string)($payload['vehicle_number'] ?? '')),
+                'vehicle_type'          => trim((string)($payload['vehicle_type'] ?? '')),
                 'notes'                 => trim((string)($payload['notes'] ?? '')),
                 'movement_number'       => $this->movementModel->generateMovementNumber(),
                 'surat_jalan_number'    => $this->movementModel->generateSuratJalanNumber(),
@@ -156,6 +158,12 @@ class UnitMovementController extends BaseController
                 $mp = strtoupper(trim((string)($payload['movement_purpose'] ?? UnitMovementModel::PURPOSE_INTERNAL_TRANSFER)));
                 $allowedMp = array_keys(UnitMovementModel::getMovementPurposes());
                 $header['movement_purpose'] = in_array($mp, $allowedMp, true) ? $mp : UnitMovementModel::PURPOSE_INTERNAL_TRANSFER;
+            }
+            if (!$db->fieldExists('vehicle_type', 'unit_movements')) {
+                unset($header['vehicle_type']);
+            }
+            if (! $db->fieldExists('destination_recipient_name', 'unit_movements')) {
+                unset($header['destination_recipient_name']);
             }
 
             $result = $this->movementModel->createWithDetails($header, $items, $stops);
@@ -547,6 +555,15 @@ class UnitMovementController extends BaseController
         if (empty($payload['destination_location'])) {
             $errors['destination_location'] = 'Lokasi tujuan wajib diisi.';
         }
+        $dbVal = \Config\Database::connect();
+        if ($dbVal->fieldExists('destination_recipient_name', 'unit_movements')) {
+            $recName = trim((string) ($payload['destination_recipient_name'] ?? ''));
+            if ($recName === '') {
+                $errors['destination_recipient_name'] = 'Nama penerima di tujuan wajib diisi.';
+            } elseif (strlen($recName) > 120) {
+                $errors['destination_recipient_name'] = 'Nama penerima maksimal 120 karakter.';
+            }
+        }
         if (empty($payload['origin_type']) || !in_array(strtoupper((string)$payload['origin_type']), $locationTypes, true)) {
             $errors['origin_type'] = 'Tipe asal tidak valid.';
         }
@@ -555,6 +572,9 @@ class UnitMovementController extends BaseController
         }
         if (empty($payload['movement_date'])) {
             $errors['movement_date'] = 'Tanggal perpindahan wajib diisi.';
+        }
+        if (trim((string)($payload['notes'] ?? '')) === '') {
+            $errors['notes'] = 'Alasan wajib diisi.';
         }
 
         $purposes = array_keys(UnitMovementModel::getMovementPurposes());

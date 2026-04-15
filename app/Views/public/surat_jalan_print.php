@@ -33,6 +33,44 @@ if (! function_exists('sj_print_format_dt')) {
     }
 }
 
+if (! function_exists('sj_print_location_type_label')) {
+    /** Label tipe lokasi titik rute (selaras opsi form gudang). */
+    function sj_print_location_type_label(string $code): string
+    {
+        $u = strtoupper(trim($code));
+        $map = [
+            'POS_1'         => 'POS 1 (Workshop Utama)',
+            'POS_2'         => 'POS 2',
+            'POS_3'         => 'POS 3',
+            'POS_4'         => 'POS 4',
+            'POS_5'         => 'POS 5',
+            'WAREHOUSE'     => 'Gudang',
+            'CUSTOMER_SITE' => 'Lokasi Customer',
+            'OTHER'         => 'Lainnya',
+        ];
+
+        return $map[$u] ?? ($u !== '' ? $u : '—');
+    }
+}
+
+if (! function_exists('sj_print_stop_ttd_hint')) {
+    /** Teks kecil di kolom TTD satpam — berbasis nama lokasi titik, bukan label POS internal. */
+    function sj_print_stop_ttd_hint(array $stop): string
+    {
+        $loc = trim((string) ($stop['location_name'] ?? ''));
+        $loc = $loc !== '' ? $loc : '—';
+        $t = strtoupper((string) ($stop['stop_type'] ?? ''));
+        if ($t === 'ORIGIN') {
+            return 'Keluar dari: ' . $loc;
+        }
+        if ($t === 'DESTINATION') {
+            return 'Tiba / masuk: ' . $loc;
+        }
+
+        return 'Transit: ' . $loc;
+    }
+}
+
 $purpose     = strtoupper((string) ($movement['movement_purpose'] ?? 'INTERNAL_TRANSFER'));
 $purposeText = $purpose === 'SCRAP_SALE' ? 'Keluar jual scrab' : 'Pindah / operasional internal';
 
@@ -64,7 +102,34 @@ if ($stops !== []) {
 
 $dn = trim((string) ($movement['driver_name'] ?? ''));
 $vn = trim((string) ($movement['vehicle_number'] ?? ''));
+$vt = trim((string) ($movement['vehicle_type'] ?? ''));
 $nt = trim((string) ($movement['notes'] ?? ''));
+$recipient = trim((string) ($movement['destination_recipient_name'] ?? ''));
+
+// Kolom TTD: Pembuat SJ + Pengirim + satu kolom per titik rute (asal / transit / tujuan) + Penerima
+$sortedStops = $stops;
+if ($sortedStops !== []) {
+    usort($sortedStops, static function ($a, $b) {
+        return ((int) ($a['sequence_no'] ?? 0)) <=> ((int) ($b['sequence_no'] ?? 0));
+    });
+    $ttdStops = $sortedStops;
+} else {
+    $ttdStops = [
+        [
+            'stop_type'      => 'ORIGIN',
+            'location_name'  => $originLabel !== '' && $originLabel !== '-' ? $originLabel : (trim((string) ($movement['origin_location'] ?? '')) ?: '—'),
+            'location_type'  => (string) ($movement['origin_type'] ?? ''),
+        ],
+        [
+            'stop_type'      => 'DESTINATION',
+            'location_name'  => $destinationLabel !== '' && $destinationLabel !== '-' ? $destinationLabel : (trim((string) ($movement['destination_location'] ?? '')) ?: '—'),
+            'location_type'  => (string) ($movement['destination_type'] ?? ''),
+        ],
+    ];
+}
+$creatorName = trim((string) ($movement['creator_name'] ?? ''));
+$ttdColCount = 2 + count($ttdStops) + 1;
+$penerimaLokasi = $destinationLabel !== '' && $destinationLabel !== '-' ? $destinationLabel : (trim((string) ($movement['destination_location'] ?? '')) ?: 'tujuan');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -272,23 +337,15 @@ $nt = trim((string) ($movement['notes'] ?? ''));
 
         .muted { color: var(--muted); font-size: 8pt; }
 
-        .print-footnote {
-            font-size: 6.5pt;
-            color: #6b7280;
-            margin: 4px 0 0;
-            line-height: 1.3;
-            text-align: center;
-        }
-
         .block-ttd {
             margin-top: 4mm;
             padding-top: 2mm;
             page-break-inside: avoid;
         }
-        /* Empat TTD sebaris: di A4 (~180mm isi) ≈ 45mm/kolom — muat untuk cap & tangan */
+        /* TTD dinamis: jumlah kolom = --ttd-cols (Pembuat + Pengirim + N titik rute + Penerima) */
         .sign-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(var(--ttd-cols, 5), minmax(0, 1fr));
             gap: 4px 4px;
             border: 1px solid var(--line);
             border-radius: 3px;
@@ -323,6 +380,15 @@ $nt = trim((string) ($movement['notes'] ?? ''));
             font-size: 6.5pt;
             color: var(--muted);
             margin-top: 2px;
+            line-height: 1.3;
+        }
+        .sign-cell .sub .sign-creator-name {
+            display: block;
+            font-size: 7.1pt;
+            font-weight: 600;
+            color: var(--ink);
+            margin-top: 1px;
+            line-height: 1.25;
         }
         /* Layar sempit: 2×2 — border hanya antara kolom & baris */
         @media (max-width: 720px) {
@@ -357,7 +423,7 @@ $nt = trim((string) ($movement['notes'] ?? ''));
             table.items-table tr { page-break-inside: avoid; }
             .block-ttd { page-break-inside: avoid; page-break-before: auto; }
             .sign-grid {
-                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                grid-template-columns: repeat(var(--ttd-cols, 5), minmax(0, 1fr)) !important;
                 gap: 6pt 5pt;
                 padding: 6pt 3pt 8pt;
             }
@@ -374,7 +440,7 @@ $nt = trim((string) ($movement['notes'] ?? ''));
     </style>
 </head>
 <body>
-<div class="sheet">
+<div class="sheet" style="--ttd-cols: <?= (int) $ttdColCount ?>;">
     <div class="noprint">
         <button type="button" onclick="window.print()">Cetak / PDF</button>
         <button type="button" onclick="window.close()">Tutup</button>
@@ -430,10 +496,18 @@ $nt = trim((string) ($movement['notes'] ?? ''));
             <td colspan="3"><?= esc($destinationLabel) ?> <span class="muted">(<?= esc($movement['destination_type'] ?? '') ?>)</span></td>
         </tr>
         <tr>
+            <td class="k">Nama penerima</td>
+            <td colspan="3"><?= $recipient !== '' ? esc($recipient) : '<span class="v-empty">—</span>' ?></td>
+        </tr>
+        <tr>
             <td class="k">Driver</td>
             <td><?= $dn !== '' ? esc($dn) : '<span class="v-empty">—</span>' ?></td>
             <td class="k">No. kendaraan</td>
             <td><?= $vn !== '' ? esc($vn) : '<span class="v-empty">—</span>' ?></td>
+        </tr>
+        <tr>
+            <td class="k">Jenis kendaraan</td>
+            <td colspan="3"><?= $vt !== '' ? esc($vt) : '<span class="v-empty">—</span>' ?></td>
         </tr>
         <?php if ($routeLine !== ''): ?>
         <tr>
@@ -442,7 +516,7 @@ $nt = trim((string) ($movement['notes'] ?? ''));
         </tr>
         <?php endif; ?>
         <tr>
-            <td class="k">Catatan</td>
+            <td class="k">Alasan</td>
             <td colspan="3"><?= $nt !== '' ? esc($nt) : '<span class="v-empty">—</span>' ?></td>
         </tr>
     </table>
@@ -478,7 +552,7 @@ $nt = trim((string) ($movement['notes'] ?? ''));
                 <th>Waktu</th>
                 <th>Status</th>
                 <th>Petugas</th>
-                <th>Catatan</th>
+                <th>Alasan</th>
             </tr>
         </thead>
         <tbody>
@@ -498,29 +572,29 @@ $nt = trim((string) ($movement['notes'] ?? ''));
         <p class="section-title" style="margin-top:0">Tanda tangan</p>
         <div class="sign-grid">
             <div class="sign-cell">
-                <p class="hint">Yang menyerahkan / sopir</p>
+                <p class="hint">Pembuat Surat Jalan</p>
+                <div class="line">Petugas gudang</div>
+                <div class="sub">Nama &amp; stempel<br><span class="sign-creator-name"><?= $creatorName !== '' ? esc($creatorName) : '—' ?></span></div>
+            </div>
+            <div class="sign-cell">
+                <p class="hint">Yang membawa barang / sopir</p>
                 <div class="line">Pengirim / Driver</div>
                 <div class="sub">Nama &amp; tanggal</div>
             </div>
+            <?php foreach ($ttdStops as $stopRow) : ?>
             <div class="sign-cell">
-                <p class="hint">Satpam <strong><?= esc($originLabel) ?></strong> — keluar</p>
-                <div class="line">Satpam lokasi asal</div>
-                <div class="sub">Nama &amp; stempel</div>
-            </div>
-            <div class="sign-cell">
-                <p class="hint">Satpam <strong><?= esc($destinationLabel) ?></strong> — masuk</p>
-                <div class="line">Satpam lokasi tujuan</div>
-                <div class="sub">Nama &amp; stempel</div>
-            </div>
-            <div class="sign-cell">
-                <p class="hint">Penerima di tujuan</p>
-                <div class="line">Penerima</div>
+                <p class="hint"><?= esc(sj_print_stop_ttd_hint($stopRow)) ?></p>
+                <div class="line"><?= esc(sj_print_location_type_label((string) ($stopRow['location_type'] ?? ''))) ?></div>
                 <div class="sub">Nama &amp; tanggal</div>
+            </div>
+            <?php endforeach; ?>
+            <div class="sign-cell">
+                <p class="hint">Penerima barang di <?= esc($penerimaLokasi) ?></p>
+                <div class="line">Penerima</div>
+                <div class="sub">Nama &amp; tanda tangan<br><span class="sign-creator-name"><?= $recipient !== '' ? esc($recipient) : '—' ?></span></div>
             </div>
         </div>
     </div>
-
-    <p class="print-footnote">TTD satpam asal dan tujuan untuk petugas berbeda. Tabel barang dapat berlanjut ke halaman berikutnya.</p>
 </div>
 <?php if ($autoPrint): ?>
 <script>
