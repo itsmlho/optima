@@ -486,6 +486,121 @@
     </div>
 </div>
 
+<!-- Modal: Edit SILO -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-edit me-2 text-primary"></i>Edit Data SILO
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" enctype="multipart/form-data">
+                <input type="hidden" id="edit_silo_id">
+                <div class="modal-body">
+                    <div id="editAlert" class="d-none mb-3"></div>
+
+                    <!-- Section: PJK3 -->
+                    <div class="card border-0 bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="fw-semibold mb-3 text-primary"><i class="fas fa-building me-2"></i>Data PJK3</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Nama PT PJK3</label>
+                                    <input type="text" class="form-control form-control-sm" name="nama_pt_pjk3" id="edit_nama_pt_pjk3">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Tanggal Pengajuan PJK3</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_pengajuan_pjk3" id="edit_tanggal_pengajuan_pjk3">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Tanggal Testing PJK3</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_testing_pjk3" id="edit_tanggal_testing_pjk3">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Hasil Testing PJK3</label>
+                                    <input type="text" class="form-control form-control-sm" name="hasil_testing_pjk3" id="edit_hasil_testing_pjk3" placeholder="Lulus / Tidak Lulus / ...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Nomor Surat Keterangan PJK3</label>
+                                    <input type="text" class="form-control form-control-sm" name="nomor_surat_keterangan_pjk3" id="edit_nomor_sk_pjk3">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Tanggal Surat Keterangan PJK3</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_surat_keterangan_pjk3" id="edit_tanggal_sk_pjk3">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Catatan Pengajuan PJK3</label>
+                                    <textarea class="form-control form-control-sm" name="catatan_pengajuan_pjk3" id="edit_catatan_pjk3" rows="2"></textarea>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Upload/Ganti File PJK3 <span class="text-muted">(PDF/JPG/PNG, maks 15MB)</span></label>
+                                    <input type="file" class="form-control form-control-sm" name="file_pjk3" id="edit_file_pjk3" accept=".pdf,.jpg,.jpeg,.png">
+                                    <div id="edit_pjk3_current" class="mt-1 small text-muted d-none">
+                                        File saat ini: <a href="#" id="edit_pjk3_link" target="_blank"><i class="fas fa-file me-1"></i><span id="edit_pjk3_name"></span></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: UPTD -->
+                    <div class="card border-0 bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="fw-semibold mb-3 text-warning"><i class="fas fa-landmark me-2"></i>Data UPTD / DISNAKER</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Tanggal Pengajuan UPTD</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_pengajuan_uptd" id="edit_tanggal_pengajuan_uptd">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Lokasi DISNAKER</label>
+                                    <input type="text" class="form-control form-control-sm" name="lokasi_disnaker" id="edit_lokasi_disnaker" placeholder="Alamat kantor DISNAKER">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: SILO -->
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="fw-semibold mb-3 text-success"><i class="fas fa-certificate me-2"></i>Data SILO</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Nomor SILO</label>
+                                    <input type="text" class="form-control form-control-sm" name="nomor_silo" id="edit_nomor_silo">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tanggal Terbit</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_terbit_silo" id="edit_tanggal_terbit_silo">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tanggal Kedaluwarsa</label>
+                                    <input type="date" class="form-control form-control-sm" name="tanggal_expired_silo" id="edit_tanggal_expired_silo">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small">Upload/Ganti File SILO <span class="text-muted">(PDF/JPG/PNG, maks 15MB)</span></label>
+                                    <input type="file" class="form-control form-control-sm" name="file_silo" id="edit_file_silo" accept=".pdf,.jpg,.jpeg,.png">
+                                    <div id="edit_silo_current" class="mt-1 small text-muted d-none">
+                                        File saat ini: <a href="#" id="edit_silo_link" target="_blank"><i class="fas fa-file me-1"></i><span id="edit_silo_name"></span></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="btnEditSubmit">
+                        <i class="fas fa-save me-1"></i> Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Update Status -->
 <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
