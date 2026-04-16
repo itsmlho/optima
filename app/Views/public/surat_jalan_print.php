@@ -589,9 +589,9 @@ $penerimaLokasi = $destinationLabel !== '' && $destinationLabel !== '-' ? $desti
             </div>
             <?php endforeach; ?>
             <div class="sign-cell">
-                <p class="hint">Penerima barang di <?= esc($penerimaLokasi) ?></p>
-                <div class="line">Penerima</div>
-                <div class="sub">Nama &amp; tanda tangan<br><span class="sign-creator-name"><?= $recipient !== '' ? esc($recipient) : '—' ?></span></div>
+                <p class="hint">Mengetahui</p>
+                <div class="line">Head / Manager</div>
+                <div class="sub">Nama &amp; tanggal</div>
             </div>
         </div>
     </div>
