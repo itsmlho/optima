@@ -876,6 +876,14 @@ class Quotation extends BaseController
                 $data['notes'] = $this->normalizeQuotationSpecNotes($data['notes']);
             }
 
+            // Sanitize nullable FK integer fields — empty string causes strict-mode error on INT UNSIGNED
+            foreach (['fork_id', 'attachment_id', 'mast_id', 'ban_id', 'valve_id', 'brand_id',
+                      'tipe_unit_id', 'kapasitas_id', 'departemen_id'] as $fkField) {
+                if (isset($data[$fkField]) && $data[$fkField] === '') {
+                    $data[$fkField] = null;
+                }
+            }
+
             $data['battery_id'] = null;
             $data['charger_id'] = null;
             $data['roda_id'] = null;
