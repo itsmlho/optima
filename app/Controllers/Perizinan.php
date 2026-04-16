@@ -479,6 +479,113 @@ class Perizinan extends BaseController
     }
 
     /**
+     * Get SILO data for edit form (AJAX)
+     */
+    public function getSiloEdit($id)
+    {
+        if (!$this->canManagePerizinan()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ])->setStatusCode(403);
+        }
+
+        $silo = $this->siloModel->find($id);
+        if (!$silo) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'SILO tidak ditemukan'
+            ])->setStatusCode(404);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $silo,
+        ]);
+    }
+
+    /**
+     * Update SILO record (edit all editable fields)
+     */
+    public function updateSilo($id)
+    {
+        if (!$this->canManagePerizinan()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ])->setStatusCode(403);
+        }
+
+        $silo = $this->siloModel->find($id);
+        if (!$silo) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'SILO tidak ditemukan'
+            ])->setStatusCode(404);
+        }
+
+        try {
+            $updateData = [
+                'nama_pt_pjk3'                   => $this->request->getPost('nama_pt_pjk3') ?: null,
+                'tanggal_pengajuan_pjk3'          => $this->request->getPost('tanggal_pengajuan_pjk3') ?: null,
+                'catatan_pengajuan_pjk3'          => $this->request->getPost('catatan_pengajuan_pjk3') ?: null,
+                'tanggal_testing_pjk3'            => $this->request->getPost('tanggal_testing_pjk3') ?: null,
+                'hasil_testing_pjk3'              => $this->request->getPost('hasil_testing_pjk3') ?: null,
+                'nomor_surat_keterangan_pjk3'     => $this->request->getPost('nomor_surat_keterangan_pjk3') ?: null,
+                'tanggal_surat_keterangan_pjk3'   => $this->request->getPost('tanggal_surat_keterangan_pjk3') ?: null,
+                'tanggal_pengajuan_uptd'          => $this->request->getPost('tanggal_pengajuan_uptd') ?: null,
+                'lokasi_disnaker'                 => $this->request->getPost('lokasi_disnaker') ?: null,
+                'nomor_silo'                      => $this->request->getPost('nomor_silo') ?: null,
+                'tanggal_terbit_silo'             => $this->request->getPost('tanggal_terbit_silo') ?: null,
+                'tanggal_expired_silo'            => $this->request->getPost('tanggal_expired_silo') ?: null,
+                'updated_by'                      => session()->get('user_id'),
+            ];
+
+            // Handle PJK3 file upload
+            $pjk3File = $this->request->getFile('file_pjk3');
+            if ($pjk3File && $pjk3File->isValid() && !$pjk3File->hasMoved()) {
+                $uploadPath = FCPATH . 'uploads/silo/pjk3/';
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                $newName = 'pjk3_' . $id . '_' . time() . '.' . $pjk3File->getExtension();
+                $pjk3File->move($uploadPath, $newName);
+                $updateData['file_surat_keterangan_pjk3'] = 'uploads/silo/pjk3/' . $newName;
+            }
+
+            // Handle SILO file upload
+            $siloFile = $this->request->getFile('file_silo');
+            if ($siloFile && $siloFile->isValid() && !$siloFile->hasMoved()) {
+                $uploadPath = FCPATH . 'uploads/silo/silo/';
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                $newName = 'silo_' . $id . '_' . time() . '.' . $siloFile->getExtension();
+                $siloFile->move($uploadPath, $newName);
+                $updateData['file_silo'] = 'uploads/silo/silo/' . $newName;
+            }
+
+            if ($this->siloModel->update($id, $updateData)) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Data SILO berhasil diperbarui',
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menyimpan perubahan',
+            ])->setStatusCode(500);
+        } catch (\Exception $e) {
+            log_message('error', 'Perizinan::updateSilo Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada sistem.',
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
      * Update SILO status
      */
     public function updateSiloStatus($id)

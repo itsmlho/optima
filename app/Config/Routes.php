@@ -1202,6 +1202,8 @@ $routes->group('perizinan', static function ($routes) {
     $routes->get('get-silo-detail/(:num)', 'Perizinan::getSiloDetail/$1');
     $routes->post('update-silo-status/(:num)', 'Perizinan::updateSiloStatus/$1');
     $routes->post('upload-file/(:num)', 'Perizinan::uploadFile/$1');
+    $routes->get('get-silo-edit/(:num)', 'Perizinan::getSiloEdit/$1');
+    $routes->post('update-silo/(:num)', 'Perizinan::updateSilo/$1');
     $routes->get('preview-file/(:num)/(:segment)', 'Perizinan::previewFile/$1/$2');
     $routes->get('download-file/(:num)/(:segment)', 'Perizinan::downloadFile/$1/$2');
     $routes->get('emisi', 'Perizinan::emisi');

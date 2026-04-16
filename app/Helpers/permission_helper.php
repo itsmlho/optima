@@ -115,6 +115,17 @@ if (!function_exists('hasPermission')) {
             // granted = 0 → DENY (revoke, even if role has it)
             return isset($userPermission['granted']) ? (bool) $userPermission['granted'] : false;
         }
+
+        // Broad module gate fallback (non-admin modules):
+        // jika diminta `{module}.access` untuk modul operasional, selaraskan dengan hasModuleAccess().
+        // Sengaja TIDAK mencakup `admin.access` agar gate admin tetap ketat.
+        if (preg_match('/^([a-z0-9_]+)\.access$/', $permissionKey, $m)) {
+            $moduleFromKey = $m[1];
+            static $accessKeysAlignedWithModule = ['marketing', 'warehouse', 'purchasing', 'service'];
+            if (in_array($moduleFromKey, $accessKeysAlignedWithModule, true) && hasModuleAccess($moduleFromKey, $userId)) {
+                return true;
+            }
+        }
         
         // ═══════════════════════════════════════════════════════════════
         // PRIORITY 2: Check Role Permissions (DEFAULT BEHAVIOR)

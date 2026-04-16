@@ -2,13 +2,34 @@
 
 <?= $this->section('content') ?>
 
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= base_url('/dashboard') ?>">Dashboard</a></li>
+        <li class="breadcrumb-item active">SILO Management</li>
+    </ol>
+</nav>
+
 <!-- Page Header -->
-<div class="mb-3">
-    <h4 class="fw-bold mb-1">
-        <i class="bi bi-file-earmark-check me-2 text-primary"></i>
-        SILO (Surat Izin Layak Operasi) Management
-    </h4>
-    <p class="text-muted mb-0">Track and manage operational permits for all units with expiry monitoring and renewal alerts</p>
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-file-earmark-check me-2 text-primary"></i>
+            SILO (Surat Izin Layak Operasi)
+        </h4>
+        <p class="text-muted mb-0 small">Kelola izin operasional unit dan pantau masa berlaku</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="<?= base_url('perizinan/export-silo') ?>" class="btn btn-outline-success btn-sm">
+            <i class="fas fa-file-excel me-1"></i> Export Excel
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshAllTables()">
+            <i class="fas fa-sync-alt me-1"></i> Refresh
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="showCreateModal()">
+            <i class="fas fa-plus me-1"></i> Buat Pengajuan SILO
+        </button>
+    </div>
 </div>
 
 <!-- Statistics Cards -->
@@ -86,43 +107,39 @@
                         <button class="nav-link" id="sudah-ada-tab" data-bs-toggle="tab" data-bs-target="#sudah-ada" type="button" role="tab" aria-controls="sudah-ada" aria-selected="false">
                             <i class="fas fa-check-circle"></i>
                             <span><?= lang('App.already_have_silo') ?></span>
-                            <span class="badge bg-success ms-2" id="badge-sudah-ada"><?= $stats['sudah_ada'] ?? 0 ?></span>
+                            <span class="badge badge-soft-green ms-2" id="badge-sudah-ada"><?= $stats['sudah_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres" type="button" role="tab" aria-controls="progres" aria-selected="false">
                             <i class="fas fa-clock"></i>
                             <span><?= lang('Common.progress') ?></span>
-                            <span class="badge bg-warning ms-2" id="badge-progres"><?= $stats['progres'] ?? 0 ?></span>
+                            <span class="badge badge-soft-yellow ms-2" id="badge-progres"><?= $stats['progres'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="belum-ada-tab" data-bs-toggle="tab" data-bs-target="#belum-ada" type="button" role="tab" aria-controls="belum-ada" aria-selected="false">
                             <i class="fas fa-exclamation-triangle"></i>
                             <span><?= lang('App.no_silo_yet') ?></span>
-                            <span class="badge bg-danger ms-2" id="badge-belum-ada"><?= $stats['belum_ada'] ?? 0 ?></span>
+                            <span class="badge badge-soft-red ms-2" id="badge-belum-ada"><?= $stats['belum_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="akan-expired-tab" data-bs-toggle="tab" data-bs-target="#akan-expired" type="button" role="tab" aria-controls="akan-expired" aria-selected="false">
                             <i class="fas fa-exclamation-circle"></i>
                             <span><?= lang('App.expiring_soon_30d') ?></span>
-                            <span class="badge bg-warning ms-2" id="badge-akan-expired"><?= $stats['expiring_soon'] ?? 0 ?></span>
+                            <span class="badge badge-soft-orange ms-2" id="badge-akan-expired"><?= $stats['expiring_soon'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sudah-expired-tab" data-bs-toggle="tab" data-bs-target="#sudah-expired" type="button" role="tab" aria-controls="sudah-expired" aria-selected="false">
                             <i class="fas fa-times-circle"></i>
                             <span><?= lang('App.expired') ?></span>
-                            <span class="badge bg-danger ms-2" id="badge-sudah-expired"><?= $stats['expired'] ?? 0 ?></span>
+                            <span class="badge badge-soft-red ms-2" id="badge-sudah-expired"><?= $stats['expired'] ?? 0 ?></span>
                         </button>
                     </li>
                 </ul>
-                <div class="px-3">
-                    <a href="<?= base_url('perizinan/export-silo') ?>" class="btn btn-success btn-sm">
-                        <i class="fas fa-file-excel me-1"></i> Export Excel
-                    </a>
-                </div>
+
             </div>
 
         <!-- Tab Content -->
@@ -555,7 +572,7 @@ function getColumnDefinitions(tableId) {
                     if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
                         label = OptimaSearch.highlightForTable($('#siloTable4').DataTable(), label);
                     }
-                    return '<span class="badge bg-secondary">' + label + '</span>';
+                    return '<span class="badge badge-soft-blue">' + label + '</span>';
                 }
             },
             { 
@@ -575,8 +592,8 @@ function getColumnDefinitions(tableId) {
                 data: 'id_silo',
                 orderable: false,
                 render: function(data, type, row) {
-                    return '<button type="button" class="btn btn-sm btn-success w-100" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO Submission">' +
-                        '<i class="fas fa-plus me-1"></i>Create</button>';
+                    return '<button type="button" class="btn btn-xs btn-soft-green" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan">' +
+                        '<i class="fas fa-plus me-1"></i>Buat</button>';
                 }
             }
         ];
@@ -605,7 +622,7 @@ function getColumnDefinitions(tableId) {
                     if (window.OptimaSearch && typeof OptimaSearch.highlightForTable === 'function') {
                         label = OptimaSearch.highlightForTable($(tableId).DataTable(), label);
                     }
-                    return '<span class="badge bg-secondary">' + label + '</span>';
+                    return '<span class="badge badge-soft-blue">' + label + '</span>';
                 }
             },
             { 
@@ -628,24 +645,24 @@ function getColumnDefinitions(tableId) {
                     return '<span class="badge bg-danger">No SILO</span>';
                 }
                 const statusLabels = {
-                    'BELUM_ADA': 'No SILO',
-                    'PENGAJUAN_PJK3': 'PJK3 Submit',
-                    'SURAT_KETERANGAN_PJK3': 'PJK3 Letter',
-                    'PENGAJUAN_UPTD': 'UPTD Submit',
-                    'SILO_TERBIT': 'SILO Issued',
+                    'BELUM_ADA': 'Belum Ada',
+                    'PENGAJUAN_PJK3': 'Pengajuan PJK3',
+                    'SURAT_KETERANGAN_PJK3': 'Surat Ket. PJK3',
+                    'PENGAJUAN_UPTD': 'Pengajuan UPTD',
+                    'SILO_TERBIT': 'SILO Terbit',
                     'SILO_EXPIRED': 'Expired'
                 };
-                const statusColors = {
-                    'BELUM_ADA': 'danger',
-                    'PENGAJUAN_PJK3': 'warning',
-                    'SURAT_KETERANGAN_PJK3': 'info',
-                    'PENGAJUAN_UPTD': 'warning',
-                    'SILO_TERBIT': 'success',
-                    'SILO_EXPIRED': 'danger'
+                const statusClasses = {
+                    'BELUM_ADA': 'badge-soft-red',
+                    'PENGAJUAN_PJK3': 'badge-soft-yellow',
+                    'SURAT_KETERANGAN_PJK3': 'badge-soft-blue',
+                    'PENGAJUAN_UPTD': 'badge-soft-yellow',
+                    'SILO_TERBIT': 'badge-soft-green',
+                    'SILO_EXPIRED': 'badge-soft-red'
                 };
                 const label = statusLabels[data] || data;
-                const color = statusColors[data] || 'secondary';
-                return '<span class="badge bg-' + color + '">' + label + '</span>';
+                const cls = statusClasses[data] || 'badge-soft-gray';
+                return '<span class="badge ' + cls + '">' + label + '</span>';;
             }
         },
         { 
@@ -680,22 +697,22 @@ function getColumnDefinitions(tableId) {
                     
                     // For units without SILO, show create button
                     if (!row.status || row.status === null) {
-                        buttons.push('<button type="button" class="btn btn-sm btn-success w-100 mb-1" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO"><i class="fas fa-plus me-1"></i>Create</button>');
+                        buttons.push('<button type="button" class="btn btn-xs btn-soft-green" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan"><i class="fas fa-plus"></i></button>');
                     } else {
                         // Always show detail button
-                        buttons.push('<button type="button" class="btn btn-sm btn-outline-primary w-100 mb-1" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
-                        
+                        buttons.push('<button type="button" class="btn btn-xs btn-soft-blue" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye"></i></button>');
+                        // Edit button
+                        buttons.push('<button type="button" class="btn btn-xs btn-soft-yellow" onclick="showEditModal(' + data + ')" title="Edit"><i class="fas fa-edit"></i></button>');
                         // Show update button based on status (stage by stage)
                         if (row.status !== 'SILO_TERBIT' && row.status !== 'SILO_EXPIRED') {
                             const actionLabel = getActionButtonLabel(row.status);
                             if (actionLabel) {
-                                buttons.push('<button type="button" class="btn btn-sm btn-primary w-100" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '">' + actionLabel + '</button>');
+                                buttons.push('<button type="button" class="btn btn-xs btn-soft-primary" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '"><i class="fas fa-arrow-right"></i></button>');
                             }
                         }
-                        
                     }
                     
-                    return '<div class="btn-group-vertical btn-group-sm" role="group">' + buttons.join('') + '</div>';
+                    return '<div class="d-flex justify-content-center gap-1">' + buttons.join('') + '</div>';
                 }
             }
         ];
@@ -1188,7 +1205,7 @@ function showUpdateModal(siloId) {
                 
                 let html = '<div class="mb-3">';
                 html += '<label class="form-label">Unit: <strong>' + (silo.no_unit || 'N/A') + '</strong></label><br>';
-                html += '<label class="form-label">Current Status: <span class="badge bg-secondary">' + getStatusLabel(silo.status) + '</span></label><br>';
+                html += '<label class="form-label">Current Status: <span class="badge badge-soft-blue">' + getStatusLabel(silo.status) + '</span></label><br>';
                 html += '<label class="form-label">Next Status: <span class="badge bg-primary">' + getStatusLabel(nextStatus) + '</span></label>';
                 html += '</div>';
 
