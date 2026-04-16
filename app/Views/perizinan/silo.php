@@ -10,28 +10,6 @@
     </ol>
 </nav>
 
-<!-- Page Header -->
-<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <div>
-        <h4 class="fw-bold mb-1">
-            <i class="bi bi-file-earmark-check me-2 text-primary"></i>
-            SILO (Surat Izin Layak Operasi)
-        </h4>
-        <p class="text-muted mb-0 small">Kelola izin operasional unit dan pantau masa berlaku</p>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a href="<?= base_url('perizinan/export-silo') ?>" class="btn btn-outline-success btn-sm">
-            <i class="fas fa-file-excel me-1"></i> Export Excel
-        </a>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshAllTables()">
-            <i class="fas fa-sync-alt me-1"></i> Refresh
-        </button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="showCreateModal()">
-            <i class="fas fa-plus me-1"></i> Buat Pengajuan SILO
-        </button>
-    </div>
-</div>
-
 <!-- Statistics Cards -->
 <div class="row mt-3 mb-4">
     <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
@@ -92,11 +70,32 @@
 
 <!-- Main Content Card -->
 <div class="card table-card mb-4">
-    
+
+        <!-- Card Header: Title + Action Buttons -->
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-earmark-check me-2 text-primary"></i>
+                    SILO Management
+                </h5>
+                <p class="text-muted small mb-0">Kelola izin operasional unit dan pantau masa berlaku</p>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0">
+                <button type="button" class="btn btn-primary btn-sm" onclick="showCreateModal()">
+                    <i class="fas fa-plus me-1"></i>Buat Pengajuan
+                </button>
+                <a href="<?= base_url('perizinan/export-silo') ?>" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel me-1"></i>Export
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="refreshAllTables()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- Tab Navigation -->
-        <div class="card table-card shadow mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <ul class="nav nav-tabs flex-grow-1" id="statusTabs" role="tablist">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs px-3 pt-2" id="statusTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="true">
                             <i class="fas fa-list"></i>
@@ -139,8 +138,7 @@
                         </button>
                     </li>
                 </ul>
-
-            </div>
+            </div><!-- /card-body tabs row -->
 
         <!-- Tab Content -->
         <div class="card-body p-3">
@@ -636,7 +634,10 @@
                 <!-- Content will be dynamically loaded -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="detailEditBtn" onclick="openEditFromDetail()" style="display:none">
+                    <i class="fas fa-edit me-1"></i>Edit Data
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
@@ -809,24 +810,22 @@ function getColumnDefinitions(tableId) {
                 orderable: false,
                 render: function(data, type, row) {
                     let buttons = [];
-                    
+
                     // For units without SILO, show create button
                     if (!row.status || row.status === null) {
-                        buttons.push('<button type="button" class="btn btn-xs btn-soft-green" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan"><i class="fas fa-plus"></i></button>');
+                        buttons.push('<button type="button" class="btn btn-xs btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan"><i class="fas fa-plus"></i></button>');
                     } else {
                         // Always show detail button
-                        buttons.push('<button type="button" class="btn btn-xs btn-soft-blue" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye"></i></button>');
-                        // Edit button
-                        buttons.push('<button type="button" class="btn btn-xs btn-soft-yellow" onclick="showEditModal(' + data + ')" title="Edit"><i class="fas fa-edit"></i></button>');
+                        buttons.push('<button type="button" class="btn btn-xs btn-primary" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye"></i></button>');
                         // Show update button based on status (stage by stage)
                         if (row.status !== 'SILO_TERBIT' && row.status !== 'SILO_EXPIRED') {
                             const actionLabel = getActionButtonLabel(row.status);
                             if (actionLabel) {
-                                buttons.push('<button type="button" class="btn btn-xs btn-soft-primary" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '"><i class="fas fa-arrow-right"></i></button>');
+                                buttons.push('<button type="button" class="btn btn-xs btn-warning" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '"><i class="fas fa-arrow-right"></i></button>');
                             }
                         }
                     }
-                    
+
                     return '<div class="d-flex justify-content-center gap-1">' + buttons.join('') + '</div>';
                 }
             }
@@ -1321,7 +1320,7 @@ function showUpdateModal(siloId) {
                 let html = '<div class="mb-3">';
                 html += '<label class="form-label">Unit: <strong>' + (silo.no_unit || 'N/A') + '</strong></label><br>';
                 html += '<label class="form-label">Current Status: <span class="badge badge-soft-blue">' + getStatusLabel(silo.status) + '</span></label><br>';
-                html += '<label class="form-label">Next Status: <span class="badge bg-primary">' + getStatusLabel(nextStatus) + '</span></label>';
+                html += '<label class="form-label">Next Status: ' + getStatusBadge(nextStatus) + '</label>';
                 html += '</div>';
 
                 // Add fields based on next status
@@ -1476,183 +1475,167 @@ function uploadFile(siloId, file, fileType) {
     });
 }
 
+let currentDetailSiloId = null;
+
+function openEditFromDetail() {
+    if (!currentDetailSiloId) return;
+    $('#detailModal').modal('hide');
+    showEditModal(currentDetailSiloId);
+}
+
 function showDetail(siloId) {
+    currentDetailSiloId = siloId;
+    // Show modal immediately with spinner
+    $('#detailModal').find('#detailEditBtn').hide();
+    $('#detailModalBody').html('<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted small">Memuat data...</div></div>');
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+
     $.ajax({
         url: '<?= base_url('perizinan/get-silo-detail/') ?>' + siloId,
         type: 'GET',
         dataType: 'json',
         success: function(response) {
-            if (response.success) {
-                const silo = response.data;
-                const history = response.history || [];
-                
-                let html = '<div class="row"><div class="col-md-6">';
-                html += '<h6>Unit Information</h6>';
-                html += '<table class="table table-sm">';
-                html += '<tr><th>Unit Number:</th><td><strong>' + (silo.no_unit || 'N/A') + '</strong></td></tr>';
-                html += '<tr><th>Serial Number:</th><td>' + (silo.serial_number || '-') + '</td></tr>';
-                html += '<tr><th>Unit Year:</th><td>' + (silo.tahun_unit || '-') + '</td></tr>';
-                html += '<tr><th>Unit Type:</th><td>' + (silo.tipe_unit || '-') + '</td></tr>';
-                html += '<tr><th>Unit Category:</th><td>' + (silo.jenis_unit || '-') + '</td></tr>';
-                html += '<tr><th>Unit Model:</th><td>' + (silo.model_unit || '-') + '</td></tr>';
-                html += '<tr><th>Unit Capacity:</th><td>' + (silo.kapasitas_unit || '-') + '</td></tr>';
-                html += '<tr><th>Department:</th><td>' + (silo.departemen || '-') + '</td></tr>';
-                html += '<tr><th>Unit Location:</th><td>' + (silo.lokasi_unit || '-') + '</td></tr>';
-                html += '<tr><th>Company Name:</th><td>' + (silo.nama_perusahaan || '-') + '</td></tr>';
-                if (silo.alamat) {
-                    html += '<tr><th>Customer Address:</th><td>' + silo.alamat;
-                    if (silo.kota) {
-                        html += ', ' + silo.kota;
-                    }
-                    if (silo.provinsi) {
-                        html += ', ' + silo.provinsi;
-                    }
-                    html += '</td></tr>';
-                }
-                html += '</table></div>';
-                
-                html += '<div class="col-md-6"><h6>SILO Information</h6>';
-                html += '<table class="table table-sm">';
-                html += '<tr><th>Status:</th><td><span class="badge bg-' + getStatusColor(silo.status) + '">' + getStatusLabel(silo.status) + '</span></td></tr>';
-                if (silo.nomor_silo) {
-                    html += '<tr><th>SILO Number:</th><td>' + silo.nomor_silo + '</td></tr>';
-                    html += '<tr><th>Issue Date:</th><td>' + formatDate(silo.tanggal_terbit_silo) + '</td></tr>';
-                    html += '<tr><th>Expiration Date:</th><td>' + formatDate(silo.tanggal_expired_silo) + '</td></tr>';
-                }
-                if (silo.nama_pt_pjk3) {
-                    html += '<tr><th>PT PJK3 Name:</th><td>' + silo.nama_pt_pjk3 + '</td></tr>';
-                }
-                if (silo.nomor_surat_keterangan_pjk3) {
-                    html += '<tr><th>PJK3 Letter Number:</th><td>' + silo.nomor_surat_keterangan_pjk3 + '</td></tr>';
-                    html += '<tr><th>PJK3 Letter Date:</th><td>' + formatDate(silo.tanggal_surat_keterangan_pjk3) + '</td></tr>';
-                }
-                if (silo.tanggal_pengajuan_uptd) {
-                    html += '<tr><th>DISNAKER Submission Date:</th><td>' + formatDate(silo.tanggal_pengajuan_uptd) + '</td></tr>';
-                    if (silo.lokasi_disnaker) {
-                        html += '<tr><th>DISNAKER Location:</th><td><strong>' + silo.lokasi_disnaker + '</strong></td></tr>';
-                    }
-                }
-                html += '</table></div></div>';
-                
-                // Horizontal Timeline with Dates
-                html += '<hr><h6 class="mb-3">Process Timeline</h6>';
-                html += '<div class="d-flex justify-content-between align-items-start mb-4" style="position: relative; padding: 1.5rem 0;">';
-                const statuses = ['PENGAJUAN_PJK3', 'SURAT_KETERANGAN_PJK3', 'PENGAJUAN_UPTD', 'SILO_TERBIT'];
-                const currentIndex = getStatusIndex(silo.status);
-                
-                // Function to get date for each status
-                function getStatusDate(status, silo) {
-                    switch(status) {
-                        case 'PENGAJUAN_PJK3': return silo.tanggal_pengajuan_pjk3 || null;
-                        case 'SURAT_KETERANGAN_PJK3': return silo.tanggal_surat_keterangan_pjk3 || null;
-                        case 'PENGAJUAN_UPTD': return silo.tanggal_pengajuan_uptd || null;
-                        case 'SILO_TERBIT': return silo.tanggal_terbit_silo || null;
-                        default: return null;
-                    }
-                }
-                
-                statuses.forEach(function(status, index) {
-                    const isCompleted = currentIndex > index;
-                    const isActive = currentIndex === index;
-                    const statusDate = getStatusDate(status, silo);
-                    
-                    html += '<div class="text-center" style="flex: 1; position: relative; min-width: 120px;">';
-                    
-                    // Circle with number
-                    html += '<div class="mb-2" style="width: 50px; height: 50px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 3px solid ';
-                    if (isCompleted) {
-                        html += '#28a745; background-color: #28a745; color: white;';
-                    } else if (isActive) {
-                        html += '#0d6efd; background-color: #0d6efd; color: white;';
-                    } else {
-                        html += '#e9ecef; background-color: #ffffff; color: #6c757d;';
-                    }
-                    html += '">' + (index + 1) + '</div>';
-                    
-                    // Status label
-                    html += '<div style="font-size: 0.75rem; font-weight: ' + (isActive ? '600' : (isCompleted ? '600' : '500')) + '; color: ' + (isActive ? '#0d6efd' : (isCompleted ? '#28a745' : '#6c757d')) + '; margin-bottom: 0.25rem;">';
-                    html += getStatusLabel(status);
-                    html += '</div>';
-                    
-                    // Date
-                    if (statusDate) {
-                        html += '<div style="font-size: 0.7rem; color: #6c757d; font-weight: 500;">';
-                        html += formatDate(statusDate);
-                        html += '</div>';
-                    } else {
-                        html += '<div style="font-size: 0.7rem; color: #adb5bd; font-style: italic;">-</div>';
-                    }
-                    
-                    html += '</div>';
-                    
-                    // Connector line
-                    if (index < statuses.length - 1) {
-                        html += '<div style="flex: 1; height: 3px; background-color: ' + (isCompleted ? '#28a745' : '#e9ecef') + '; margin: 0 0.5rem; position: relative; top: -30px; z-index: -1;"></div>';
-                    }
-                });
-                html += '</div>';
-                
-                // File Preview Tabs
-                const hasPjk3File = silo.file_surat_keterangan_pjk3 && silo.file_surat_keterangan_pjk3.trim() !== '';
-                const hasSiloFile = silo.file_silo && silo.file_silo.trim() !== '';
-                
-                if (hasPjk3File || hasSiloFile) {
-                    html += '<hr><h6 class="mb-3">Documents</h6>';
-                    html += '<ul class="nav nav-tabs mb-3" role="tablist">';
-                    if (hasPjk3File) {
-                        html += '<li class="nav-item"><button class="nav-link active" id="tab-pjk3-btn" data-bs-toggle="tab" data-bs-target="#tab-pjk3" type="button" role="tab">PJK3 File</button></li>';
-                    }
-                    if (hasSiloFile) {
-                        html += '<li class="nav-item"><button class="nav-link' + (hasPjk3File ? '' : ' active') + '" id="tab-silo-btn" data-bs-toggle="tab" data-bs-target="#tab-silo" type="button" role="tab">SILO File</button></li>';
-                    }
-                    html += '</ul>';
-                    html += '<div class="tab-content" id="fileTabContent">';
-                    if (hasPjk3File) {
-                        const pjk3PreviewUrl = '<?= base_url('perizinan/preview-file/') ?>' + siloId + '/pjk3';
-                        const pjk3DownloadUrl = '<?= base_url('perizinan/download-file/') ?>' + siloId + '/pjk3';
-                        const pjk3FileName = silo.file_surat_keterangan_pjk3.split('/').pop();
-                        const pjk3FileExt = pjk3FileName.split('.').pop().toLowerCase();
-                        html += '<div class="tab-pane fade show active" id="tab-pjk3" role="tabpanel">';
-                        // Download button
-                        html += '<div class="mb-3 text-end"><a href="' + pjk3DownloadUrl + '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-download me-1"></i>Download File PJK3</a></div>';
-                        // Preview content
-                        if (['jpg', 'jpeg', 'png', 'gif'].includes(pjk3FileExt)) {
-                            html += '<div class="text-center"><img src="' + pjk3PreviewUrl + '" class="img-fluid" style="max-height: 600px; width: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Error Loading Image. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></div>';
-                        } else if (pjk3FileExt === 'pdf') {
-                            html += '<iframe src="' + pjk3PreviewUrl + '" style="width: 100%; height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Error Loading PDF. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></iframe>';
-                        } else {
-                            html += '<div class="text-center p-4"><a href="' + pjk3DownloadUrl + '" target="_blank" class="btn btn-primary btn-lg"><i class="fas fa-download me-2"></i>Download File PJK3</a></div>';
-                        }
-                        html += '</div>';
-                    }
-                    if (hasSiloFile) {
-                        const siloPreviewUrl = '<?= base_url('perizinan/preview-file/') ?>' + siloId + '/silo';
-                        const siloDownloadUrl = '<?= base_url('perizinan/download-file/') ?>' + siloId + '/silo';
-                        const siloFileName = silo.file_silo.split('/').pop();
-                        const siloFileExt = siloFileName.split('.').pop().toLowerCase();
-                        html += '<div class="tab-pane fade' + (hasPjk3File ? '' : ' show active') + '" id="tab-silo" role="tabpanel">';
-                        // Download button
-                        html += '<div class="mb-3 text-end"><a href="' + siloDownloadUrl + '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-download me-1"></i>Download File SILO</a></div>';
-                        // Preview content
-                        if (['jpg', 'jpeg', 'png', 'gif'].includes(siloFileExt)) {
-                            html += '<div class="text-center"><img src="' + siloPreviewUrl + '" class="img-fluid" style="max-height: 600px; width: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Gagal memuat gambar. <a href=\\\'' + siloDownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></div>';
-                        } else if (siloFileExt === 'pdf') {
-                            html += '<iframe src="' + siloPreviewUrl + '" style="width: 100%; height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Gagal memuat PDF. <a href=\\\'' + siloDownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></iframe>';
-                        } else {
-                            html += '<div class="text-center p-4"><a href="' + siloDownloadUrl + '" target="_blank" class="btn btn-primary btn-lg"><i class="fas fa-download me-2"></i>Download File SILO</a></div>';
-                        }
-                        html += '</div>';
-                    }
-                    html += '</div>';
-                } else {
-                    html += '<hr><div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Belum ada dokumen yang diupload</div>';
-                }
-                
-                $('#detailModalBody').html(html);
-                new bootstrap.Modal(document.getElementById('detailModal')).show();
+            if (!response.success) {
+                $('#detailModalBody').html('<div class="alert alert-danger">Gagal memuat data.</div>');
+                return;
             }
+            // Show Edit button in footer
+            $('#detailEditBtn').show();
+            const silo = response.data;
+            const history = response.history || [];
+
+            // ── Info cards ──
+            let html = '<div class="row g-3 mb-3">';
+
+            // Unit info
+            html += '<div class="col-md-6"><div class="card border-0 bg-light h-100"><div class="card-body">';
+            html += '<h6 class="fw-semibold text-primary mb-3"><i class="fas fa-truck me-2"></i>Informasi Unit</h6>';
+            html += '<table class="table table-sm table-borderless mb-0">';
+            html += '<tr><td class="text-muted small w-45">No. Unit</td><td class="small"><strong>' + (silo.no_unit || '-') + '</strong></td></tr>';
+            html += '<tr><td class="text-muted small">Serial Number</td><td class="small">' + (silo.serial_number || '-') + '</td></tr>';
+            html += '<tr><td class="text-muted small">Tipe Unit</td><td class="small">' + (silo.tipe_unit || '-') + '</td></tr>';
+            html += '<tr><td class="text-muted small">Model</td><td class="small">' + (silo.model_unit || '-') + '</td></tr>';
+            html += '<tr><td class="text-muted small">Kapasitas</td><td class="small">' + (silo.kapasitas_unit || '-') + '</td></tr>';
+            html += '<tr><td class="text-muted small">Departemen</td><td class="small"><span class="badge badge-soft-blue">' + (silo.departemen || '-') + '</span></td></tr>';
+            html += '<tr><td class="text-muted small">Customer</td><td class="small">' + (silo.nama_perusahaan || '-') + '</td></tr>';
+            html += '</table>';
+            html += '</div></div></div>';
+
+            // SILO info
+            html += '<div class="col-md-6"><div class="card border-0 bg-light h-100"><div class="card-body">';
+            html += '<h6 class="fw-semibold text-success mb-3"><i class="fas fa-certificate me-2"></i>Informasi SILO</h6>';
+            html += '<table class="table table-sm table-borderless mb-0">';
+            html += '<tr><td class="text-muted small w-45">Status</td><td class="small">' + getStatusBadge(silo.status) + '</td></tr>';
+            if (silo.nomor_silo) {
+                html += '<tr><td class="text-muted small">Nomor SILO</td><td class="small"><strong>' + silo.nomor_silo + '</strong></td></tr>';
+                html += '<tr><td class="text-muted small">Tanggal Terbit</td><td class="small">' + formatDate(silo.tanggal_terbit_silo) + '</td></tr>';
+                html += '<tr><td class="text-muted small">Kedaluwarsa</td><td class="small">' + formatDate(silo.tanggal_expired_silo) + '</td></tr>';
+            }
+            if (silo.nama_pt_pjk3) { html += '<tr><td class="text-muted small">PT PJK3</td><td class="small">' + silo.nama_pt_pjk3 + '</td></tr>'; }
+            if (silo.nomor_surat_keterangan_pjk3) {
+                html += '<tr><td class="text-muted small">No. SK PJK3</td><td class="small">' + silo.nomor_surat_keterangan_pjk3 + '</td></tr>';
+                html += '<tr><td class="text-muted small">Tgl. SK PJK3</td><td class="small">' + formatDate(silo.tanggal_surat_keterangan_pjk3) + '</td></tr>';
+            }
+            if (silo.lokasi_disnaker) { html += '<tr><td class="text-muted small">DISNAKER</td><td class="small">' + silo.lokasi_disnaker + '</td></tr>'; }
+            html += '</table>';
+            html += '</div></div></div>';
+            html += '</div>'; // row
+
+            // ── Timeline ──
+            html += '<div class="card border-0 bg-light mb-3"><div class="card-body">';
+            html += '<h6 class="fw-semibold mb-3"><i class="fas fa-route me-2 text-primary"></i>Alur Proses</h6>';
+            const tlStatuses = ['PENGAJUAN_PJK3', 'SURAT_KETERANGAN_PJK3', 'PENGAJUAN_UPTD', 'SILO_TERBIT'];
+            const currentIndex = getStatusIndex(silo.status);
+            html += '<div class="d-flex align-items-start" style="overflow-x:auto;">';
+            tlStatuses.forEach(function(st, i) {
+                const done   = currentIndex > i;
+                const active = currentIndex === i;
+                const dates  = {'PENGAJUAN_PJK3': silo.tanggal_pengajuan_pjk3, 'SURAT_KETERANGAN_PJK3': silo.tanggal_surat_keterangan_pjk3, 'PENGAJUAN_UPTD': silo.tanggal_pengajuan_uptd, 'SILO_TERBIT': silo.tanggal_terbit_silo};
+                const cStyle = done   ? 'background:#198754;border-color:#198754;color:#fff;'
+                             : active ? 'background:#0d6efd;border-color:#0d6efd;color:#fff;'
+                                      : 'background:#fff;border-color:#dee2e6;color:#adb5bd;';
+                const lColor = done ? '#198754' : active ? '#0d6efd' : '#adb5bd';
+                html += '<div class="text-center flex-shrink-0" style="min-width:100px;">';
+                html += '<div style="width:44px;height:44px;border-radius:50%;border:3px solid;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;' + cStyle + '">' + (done ? '<i class="fas fa-check"></i>' : (i+1)) + '</div>';
+                html += '<div style="font-size:.72rem;font-weight:600;color:' + lColor + ';">' + getStatusLabel(st) + '</div>';
+                html += '<div style="font-size:.67rem;color:#adb5bd;">' + (dates[st] ? formatDate(dates[st]) : '—') + '</div>';
+                html += '</div>';
+                if (i < tlStatuses.length - 1) {
+                    html += '<div style="flex:1;height:3px;background:' + (done ? '#198754' : '#dee2e6') + ';margin-top:20px;min-width:20px;"></div>';
+                }
+            });
+            html += '</div>';
+            html += '</div></div>';
+
+            // ── Documents (lazy load) ──
+            const hasPjk3File = !!(silo.file_surat_keterangan_pjk3 && silo.file_surat_keterangan_pjk3.trim());
+            const hasSiloFile = !!(silo.file_silo && silo.file_silo.trim());
+            html += '<div class="card border-0 bg-light"><div class="card-body">';
+            html += '<h6 class="fw-semibold mb-3"><i class="fas fa-paperclip me-2 text-primary"></i>Dokumen</h6>';
+            if (!hasPjk3File && !hasSiloFile) {
+                html += '<div class="text-muted small"><i class="fas fa-info-circle me-1"></i>Belum ada dokumen yang diupload.</div>';
+            } else {
+                html += '<div class="row g-2">';
+                if (hasPjk3File) {
+                    const pjk3DownloadUrl = '<?= base_url('perizinan/download-file/') ?>' + siloId + '/pjk3';
+                    html += '<div class="col-md-6"><div class="border rounded p-3 text-center bg-white">';
+                    html += '<div class="mb-2"><i class="fas fa-file-alt fa-2x text-primary"></i></div>';
+                    html += '<div class="fw-semibold small mb-2">Surat Keterangan PJK3</div>';
+                    html += '<button class="btn btn-sm btn-outline-primary me-1" onclick="loadDocPreview(' + siloId + ', \'pjk3\', this)" data-loaded="0"><i class="fas fa-eye me-1"></i>Lihat</button>';
+                    html += '<a href="' + pjk3DownloadUrl + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-download me-1"></i>Unduh</a>';
+                    html += '<div id="doc_preview_pjk3_' + siloId + '" class="mt-2"></div>';
+                    html += '</div></div>';
+                }
+                if (hasSiloFile) {
+                    const siloDownloadUrl = '<?= base_url('perizinan/download-file/') ?>' + siloId + '/silo';
+                    html += '<div class="col-md-6"><div class="border rounded p-3 text-center bg-white">';
+                    html += '<div class="mb-2"><i class="fas fa-certificate fa-2x text-success"></i></div>';
+                    html += '<div class="fw-semibold small mb-2">File SILO</div>';
+                    html += '<button class="btn btn-sm btn-outline-success me-1" onclick="loadDocPreview(' + siloId + ', \'silo\', this)" data-loaded="0"><i class="fas fa-eye me-1"></i>Lihat</button>';
+                    html += '<a href="' + siloDownloadUrl + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-download me-1"></i>Unduh</a>';
+                    html += '<div id="doc_preview_silo_' + siloId + '" class="mt-2"></div>';
+                    html += '</div></div>';
+                }
+                html += '</div>';
+            }
+            html += '</div></div>';
+
+            $('#detailModalBody').html(html);
+        },
+        error: function() {
+            $('#detailModalBody').html('<div class="alert alert-danger">Gagal memuat data. Silakan coba lagi.</div>');
         }
     });
+}
+
+// Lazy-load document preview in detail modal
+function loadDocPreview(siloId, type, btn) {
+    const $btn = $(btn);
+    const $preview = $('#doc_preview_' + type + '_' + siloId);
+
+    // If already loaded, toggle visibility
+    if ($btn.data('loaded') == 1) {
+        $preview.toggle();
+        $btn.html($preview.is(':visible') ? '<i class="fas fa-eye-slash me-1"></i>Sembunyikan' : '<i class="fas fa-eye me-1"></i>Lihat');
+        return;
+    }
+
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Memuat...');
+    const previewUrl = '<?= base_url('perizinan/preview-file/') ?>' + siloId + '/' + type;
+
+    // Try as image first; on error fall back to iframe (PDF)
+    const $img = $('<img>').addClass('img-fluid rounded border mt-1').css('max-height', '500px')
+        .on('load', function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-eye-slash me-1"></i>Sembunyikan').data('loaded', 1);
+        })
+        .on('error', function() {
+            // Likely PDF — use iframe
+            const $fr = $('<iframe>').attr('src', previewUrl).css({width: '100%', height: '600px', border: '1px solid #dee2e6', borderRadius: '0.375rem'});
+            $preview.html($fr);
+            $btn.prop('disabled', false).html('<i class="fas fa-eye-slash me-1"></i>Sembunyikan').data('loaded', 1);
+        })
+        .attr('src', previewUrl);
+    $preview.html($img);
 }
 
 function previewFile(input, type) {
@@ -1673,6 +1656,115 @@ function previewFile(input, type) {
 }
 
 // Helper functions
+function getStatusBadge(status) {
+    const classes = {
+        'BELUM_ADA':             'badge-soft-red',
+        'PENGAJUAN_PJK3':        'badge-soft-yellow',
+        'SURAT_KETERANGAN_PJK3': 'badge-soft-blue',
+        'PENGAJUAN_UPTD':        'badge-soft-yellow',
+        'SILO_TERBIT':           'badge-soft-green',
+        'SILO_EXPIRED':          'badge-soft-red',
+    };
+    return '<span class="badge ' + (classes[status] || 'badge-soft-gray') + '">' + getStatusLabel(status) + '</span>';
+}
+
+// Kept for backward compat (updateModal still uses getStatusColor indirectly via html construction)
+function getStatusColor(status) {
+    const colors = {
+        'BELUM_ADA': 'danger', 'PENGAJUAN_PJK3': 'warning',
+        'SURAT_KETERANGAN_PJK3': 'info', 'PENGAJUAN_UPTD': 'warning',
+        'SILO_TERBIT': 'success', 'SILO_EXPIRED': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function showEditModal(siloId) {
+    // Reset form
+    $('#editForm')[0].reset();
+    $('#editAlert').addClass('d-none').html('');
+    $('#edit_pjk3_current, #edit_silo_current').addClass('d-none');
+
+    $.ajax({
+        url: '<?= base_url('perizinan/get-silo-edit/') ?>' + siloId,
+        type: 'GET',
+        dataType: 'json',
+        success: function(r) {
+            if (!r.success) { OptimaNotify.error(r.message || 'Gagal memuat data'); return; }
+            const d = r.data;
+            $('#edit_silo_id').val(d.id_silo);
+            $('#edit_nama_pt_pjk3').val(d.nama_pt_pjk3 || '');
+            $('#edit_tanggal_pengajuan_pjk3').val(d.tanggal_pengajuan_pjk3 || '');
+            $('#edit_tanggal_testing_pjk3').val(d.tanggal_testing_pjk3 || '');
+            $('#edit_hasil_testing_pjk3').val(d.hasil_testing_pjk3 || '');
+            $('#edit_nomor_sk_pjk3').val(d.nomor_surat_keterangan_pjk3 || '');
+            $('#edit_tanggal_sk_pjk3').val(d.tanggal_surat_keterangan_pjk3 || '');
+            $('#edit_catatan_pjk3').val(d.catatan_pengajuan_pjk3 || '');
+            $('#edit_tanggal_pengajuan_uptd').val(d.tanggal_pengajuan_uptd || '');
+            $('#edit_lokasi_disnaker').val(d.lokasi_disnaker || '');
+            $('#edit_nomor_silo').val(d.nomor_silo || '');
+            $('#edit_tanggal_terbit_silo').val(d.tanggal_terbit_silo || '');
+            $('#edit_tanggal_expired_silo').val(d.tanggal_expired_silo || '');
+
+            if (d.file_surat_keterangan_pjk3) {
+                const n = d.file_surat_keterangan_pjk3.split('/').pop();
+                $('#edit_pjk3_name').text(n);
+                $('#edit_pjk3_link').attr('href', '<?= base_url() ?>' + d.file_surat_keterangan_pjk3);
+                $('#edit_pjk3_current').removeClass('d-none');
+            }
+            if (d.file_silo) {
+                const n2 = d.file_silo.split('/').pop();
+                $('#edit_silo_name').text(n2);
+                $('#edit_silo_link').attr('href', '<?= base_url() ?>' + d.file_silo);
+                $('#edit_silo_current').removeClass('d-none');
+            }
+
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+        },
+        error: function() { OptimaNotify.error('Gagal memuat data SILO'); }
+    });
+}
+
+$('#editForm').on('submit', function(e) {
+    e.preventDefault();
+    const siloId = $('#edit_silo_id').val();
+    const $btn = $('#btnEditSubmit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
+    const fd = new FormData(this);
+
+    $.ajax({
+        url: '<?= base_url('perizinan/update-silo/') ?>' + siloId,
+        type: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(r) {
+            if (r.success) {
+                OptimaNotify.success(r.message || 'Data berhasil disimpan');
+                $('#editModal').modal('hide');
+                refreshAllTables();
+            } else {
+                $('#editAlert').removeClass('d-none').addClass('alert alert-danger').html(r.message || 'Gagal menyimpan');
+            }
+        },
+        error: function(xhr) {
+            $('#editAlert').removeClass('d-none').addClass('alert alert-danger').html((xhr.responseJSON && xhr.responseJSON.message) || 'Terjadi kesalahan');
+        },
+        complete: function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan Perubahan');
+        }
+    });
+});
+
+function refreshAllTables() {
+    if (siloTable)  siloTable.ajax.reload();
+    if (siloTable2) siloTable2.ajax.reload();
+    if (siloTable3) siloTable3.ajax.reload();
+    if (siloTable4) siloTable4.ajax.reload();
+    if (siloTable5) siloTable5.ajax.reload();
+    if (siloTable6) siloTable6.ajax.reload();
+    updateTabBadges();
+}
+
 function getNextStatus(currentStatus) {
     const workflow = {
         'BELUM_ADA': 'PENGAJUAN_PJK3',

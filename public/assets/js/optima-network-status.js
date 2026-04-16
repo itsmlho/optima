@@ -26,6 +26,8 @@
         var banner = $('optima-offline-banner');
         var bannerText = $('optima-offline-banner-text');
         var btn = $('optima-network-status-btn');
+        var root = $('optima-network-root');
+        var isHeaderCompact = !!(root && root.classList && root.classList.contains('optima-network-status--header'));
 
         var textMap = {
             good: labels.good || 'OK',
@@ -35,12 +37,20 @@
             checking: labels.checking || '…',
             unknown: labels.unknown || '…'
         };
+        var shortTextMap = {
+            good: 'GOOD',
+            slow: 'SLOW',
+            offline: 'OFF',
+            server_unreachable: 'NO SRV',
+            checking: 'CHK',
+            unknown: '...'
+        };
 
         if (dot) {
             dot.className = 'optima-network-dot optima-network-dot--' + state;
         }
         if (label) {
-            label.textContent = textMap[state] || state;
+            label.textContent = isHeaderCompact ? (shortTextMap[state] || '...') : (textMap[state] || state);
         }
         if (btn) {
             var tip = textMap[state] || '';

@@ -908,14 +908,14 @@ $currentLang = service('request')->getLocale();
             <div class="header-right header-right-toolbar">
                 <?php $currentLang = service('request')->getLocale(); ?>
 
-                <!-- Connection: dot only in header (details in tooltip / screen reader) -->
+                <!-- Connection: dot + compact text label -->
                 <div class="optima-network-status optima-network-status--header d-flex align-items-center" id="optima-network-root">
                     <button type="button" class="header-control-btn header-network-btn"
                         id="optima-network-status-btn"
                         aria-live="polite"
                         title="<?= esc(lang('App.network_status_title')) ?>">
                         <span class="optima-network-dot optima-network-dot--unknown" id="optima-network-dot" aria-hidden="true"></span>
-                        <span class="visually-hidden" id="optima-network-label"><?= esc(lang('App.network_unknown')) ?></span>
+                        <span class="optima-network-label" id="optima-network-label"><?= esc(lang('App.network_unknown')) ?></span>
                     </button>
                 </div>
                 
