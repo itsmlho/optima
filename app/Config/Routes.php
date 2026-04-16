@@ -1148,6 +1148,17 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('print_po/(:num)', 'Purchasing::printPO/$1');
     $routes->get('print-po/(:num)', 'Purchasing::printPO/$1');
     $routes->get('print-packing-list', 'Purchasing::printPackingList');
+
+    // --- Penjualan Unit Routes ---
+    $routes->group('unit-sale', static function ($routes) {
+        $routes->get('/',                 'Purchasing\UnitSaleController::index');
+        $routes->get('getSalesData',      'Purchasing\UnitSaleController::getSalesData');
+        $routes->get('getEligibleUnits',  'Purchasing\UnitSaleController::getEligibleUnits');
+        $routes->get('generateNumber',    'Purchasing\UnitSaleController::generateNumber');
+        $routes->post('store',            'Purchasing\UnitSaleController::store');
+        $routes->get('detail/(:num)',     'Purchasing\UnitSaleController::detail/$1');
+        $routes->post('cancel/(:num)',    'Purchasing\UnitSaleController::cancel/$1');
+    });
     
 });
 
