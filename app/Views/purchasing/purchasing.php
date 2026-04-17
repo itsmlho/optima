@@ -940,22 +940,20 @@ $can_export = $permissions['export'];
         });
 
         // Ensure Progress tab is active on page load and reload progress table
-        $(document).ready(function() {
-            // Force Progress tab to be active
-            $('#progres-tab').addClass('active').attr('aria-selected', 'true');
-            $('#completed-tab').removeClass('active').attr('aria-selected', 'false');
-            
-            // Show Progress pane and hide Completed pane
-            $('#progres-pane').addClass('show active');
-            $('#completed-pane').removeClass('show active');
-            
-            // Reload progress table to ensure data is loaded
-            setTimeout(function() {
-                if (unitAttachmentPOTable) {
-                    unitAttachmentPOTable.ajax.reload();
-                }
-            }, 100);
-        });
+        // Force Progress tab to be active
+        $('#progres-tab').addClass('active').attr('aria-selected', 'true');
+        $('#completed-tab').removeClass('active').attr('aria-selected', 'false');
+        
+        // Show Progress pane and hide Completed pane
+        $('#progres-pane').addClass('show active');
+        $('#completed-pane').removeClass('show active');
+        
+        // Reload progress table to ensure data is loaded
+        setTimeout(function() {
+            if (unitAttachmentPOTable) {
+                unitAttachmentPOTable.ajax.reload();
+            }
+        }, 100);
     });
 })();
 
@@ -3098,6 +3096,7 @@ function updateDeliveryStatus(deliveryId, status) {
         url: '<?= base_url('/purchasing/api/update-delivery-status') ?>',
         type: 'POST',
         data: {
+            [window.csrfTokenName]: window.getCsrfToken(),
             delivery_id: deliveryId,
             status: status
         },
@@ -3221,6 +3220,7 @@ function reverifyPO(poId) {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/reverify-po/') ?>' + poId,
+                data: { [window.csrfTokenName]: window.getCsrfToken() },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
@@ -3248,6 +3248,7 @@ function cancelPO(poId) {
             $.ajax({
                 type: 'POST',
                 url: '<?= base_url('/purchasing/cancel-po/') ?>' + poId,
+                data: { [window.csrfTokenName]: window.getCsrfToken() },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
@@ -3682,7 +3683,7 @@ function initCreatePOModal() {
                 dropdownParent: $('#createPoModal'),
                 width: '100%',
                 placeholder: 'Cari supplier...',
-                allowClear: true,
+                allowClear: false,
                 minimumInputLength: 0
             });
         }
@@ -4625,6 +4626,7 @@ function initializeChargerDropdowns() {
             }
             
             const formData = {
+                [window.csrfTokenName]: window.getCsrfToken(),
                 po_id: currentPOId,
                 delivery_date: $('input[name="delivery_date"]').val(),
                 packing_list_no: $('input[name="packing_list_no"]').val(),
@@ -4690,6 +4692,7 @@ function initializeChargerDropdowns() {
                 url: '<?= base_url('/purchasing/api/assign-sn') ?>',
                 type: 'POST',
                 data: {
+                    [window.csrfTokenName]: window.getCsrfToken(),
                     delivery_id: currentDeliveryId,
                     serial_numbers: JSON.stringify(serialNumbers)
                 },

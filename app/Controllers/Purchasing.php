@@ -749,15 +749,11 @@ class Purchasing extends BaseController
                 throw new \Exception('Delivery ID tidak ditemukan');
             }
 
-            // Get delivery data
             $db = \Config\Database::connect();
-            // Use purchase_orders and suppliers tables
+
+            // Single query: get delivery header
             $delivery = $db->table('po_deliveries pd')
-                ->select('
-                    pd.*,
-                    po.no_po,
-                    s.nama_supplier
-                ')
+                ->select('pd.*, po.no_po, s.nama_supplier, po.id_po')
                 ->join('purchase_orders po', 'po.id_po = pd.po_id', 'left')
                 ->join('suppliers s', 's.id_supplier = po.supplier_id', 'left')
                 ->where('pd.id_delivery', $deliveryId)
@@ -768,520 +764,126 @@ class Purchasing extends BaseController
                 throw new \Exception('Delivery tidak ditemukan');
             }
 
-            // Get packing list data
-            $packingList = [
-                'packing_list_no' => $delivery['packing_list_no'] ?? '-',
-                'delivery_date' => $delivery['delivery_date'] ?? $delivery['expected_date'] ?? date('Y-m-d'),
-                'driver_name' => $delivery['driver_name'] ?? $delivery['driver'] ?? '-',
-                'status' => $delivery['status'] ?? 'PENDING'
-            ];
+            // Single query: all delivery items with full specs in one JOIN
+            $rows = $db->query("
+                SELECT
+                    pdi.id_delivery_item,
+                    pdi.item_type,
+                    pdi.item_name,
+                    pdi.id_po_unit,
+                    pdi.id_po_attachment,
+                    pdi.serial_number,
+                    pdi.sn_mast_po,
+                    pdi.sn_mesin_po,
+                    pu.vendor_spec_text,
+                    pu.merk_unit,
+                    pu.tahun_po,
+                    mu.model_unit,
+                    tu.tipe        AS jenis_unit,
+                    d.nama_departemen,
+                    k.kapasitas_unit,
+                    a.merk         AS merk_attachment,
+                    a.model        AS model_attachment,
+                    a.tipe         AS tipe_attachment,
+                    b.merk_baterai,
+                    b.tipe_baterai,
+                    b.jenis_baterai,
+                    c.merk_charger,
+                    c.tipe_charger
+                FROM  po_delivery_items pdi
+                LEFT JOIN po_units pu       ON pdi.id_po_unit       = pu.id_po_unit
+                LEFT JOIN model_unit mu     ON pu.model_unit_id     = mu.id_model_unit
+                LEFT JOIN tipe_unit tu      ON pu.tipe_unit_id      = tu.id_tipe_unit
+                LEFT JOIN departemen d      ON tu.id_departemen     = d.id_departemen
+                LEFT JOIN kapasitas k       ON pu.kapasitas_id      = k.id_kapasitas
+                LEFT JOIN po_attachment pa  ON pdi.id_po_attachment = pa.id_po_attachment
+                LEFT JOIN attachment a      ON pa.attachment_id     = a.id_attachment
+                LEFT JOIN baterai b         ON pa.baterai_id        = b.id
+                LEFT JOIN charger c         ON pa.charger_id        = c.id_charger
+                WHERE pdi.delivery_id = ?
+                ORDER BY pdi.item_type, COALESCE(pdi.id_po_unit, 0), COALESCE(pdi.id_po_attachment, 0), pdi.id_delivery_item
+            ", [$deliveryId])->getResultArray();
 
-            // Get delivery items with full specifications
-            // Each item from po_delivery_items represents one individual item with assigned SN
-            $items = [];
-            
-            // Try to get from po_delivery_items first (if exists) - each row is one item with SN
-            // Use same query structure as getPODetail to ensure consistency
-            if ($db->tableExists('po_delivery_items')) {
-                try {
-                    // Use EXACT same query as getPODetail to ensure consistency
-                    $deliveryItems = $db->table('po_delivery_items pdi')
-                        ->select('
-                            pdi.*,
-                            pdi.item_name,
-                            pdi.item_type,
-                            pdi.serial_number,
-                            pdi.qty,
-                            "Belum Dicek" as status_verifikasi
-                        ')
-                        ->where('pdi.delivery_id', $deliveryId)
-                        ->orderBy('pdi.id_delivery_item', 'ASC')
-                        ->get()
-                        ->getResultArray();
-                    
-                    log_message('debug', 'Print Packing List - po_delivery_items found: ' . count($deliveryItems));
-                    
-                    if (!empty($deliveryItems)) {
-                        // For each delivery item (individual item with SN), get full specifications
-                        foreach ($deliveryItems as $deliveryItem) {
-                            // Debug: Log raw data first
-                            log_message('debug', 'Print Packing List - Raw Delivery Item: ' . json_encode($deliveryItem));
-                            
-                            // Normalize item_type (handle case sensitivity - database might use lowercase)
-                            $itemTypeRaw = $deliveryItem['item_type'] ?? 'unit';
-                            $itemType = ucfirst(strtolower($itemTypeRaw)); // Normalize to 'Unit', 'Attachment', etc.
-                            $itemName = $deliveryItem['item_name'] ?? '';
-                            
-                            // Get SN - use same method as getPODetail (direct access)
-                            $serialNumber = isset($deliveryItem['serial_number']) ? trim((string)$deliveryItem['serial_number']) : '';
-                            
-                            // Debug logging for SN - log all delivery item data
-                            log_message('debug', 'Print Packing List - Item: ' . $itemName . ', Type (raw): ' . $itemTypeRaw . ', Type (normalized): ' . $itemType . ', SN from po_delivery_items: [' . $serialNumber . ']');
-                            log_message('debug', 'Print Packing List - All columns: ' . implode(', ', array_keys($deliveryItem)));
-                            log_message('debug', 'Print Packing List - serial_number value: ' . var_export($deliveryItem['serial_number'] ?? 'NOT SET', true));
-                            
-                            // Get full specifications based on item type
-                            if ($itemType === 'Unit' && !empty($delivery['po_id'])) {
-                                // Get unit specs from po_units with complete details
-                                // SAME QUERY STRUCTURE AS whVerification
-                                $unitSpec = $db->table('po_units pu')
-                                    ->select('
-                                        pu.*,
-                                        pu.merk_unit as brand_name_po,
-                                        mu.model_unit,
-                                        mu.merk_unit as brand_from_model_table,
-                                        tu.tipe as jenis_unit,
-                                        tu.tipe as tipe_unit,
-                                        pu.tahun_po as tahun_unit,
-                                        d.nama_departemen,
-                                        k.kapasitas_unit,
-                                        tm.tipe_mast,
-                                        m.merk_mesin,
-                                        m.model_mesin,
-                                        tb.tipe_ban,
-                                        jr.tipe_roda,
-                                        v.jumlah_valve,
-                                        pu.keterangan
-                                    ')
-                                    ->join('model_unit mu', 'mu.id_model_unit = pu.model_unit_id', 'left')
-                                    ->join('tipe_unit tu', 'tu.id_tipe_unit = pu.tipe_unit_id', 'left')
-                                    ->join('departemen d', 'd.id_departemen = tu.id_departemen', 'left')
-                                    ->join('kapasitas k', 'k.id_kapasitas = pu.kapasitas_id', 'left')
-                                    ->join('tipe_mast tm', 'tm.id_mast = pu.mast_id', 'left')
-                                    ->join('mesin m', 'm.id = pu.mesin_id', 'left')
-                                    ->join('tipe_ban tb', 'tb.id_ban = pu.ban_id', 'left')
-                                    ->join('jenis_roda jr', 'jr.id_roda = pu.roda_id', 'left')
-                                    ->join('valve v', 'v.id_valve = pu.valve_id', 'left')
-                                    ->where('pu.po_id', $delivery['po_id']);
-                                
-                                // Get first unit from PO (matching will be done by item_name from po_delivery_items)
-                                $unitSpec = $unitSpec->limit(1)->get()->getRowArray();
-                                
-                                // If no match found, get first unit from PO
-                                if (!$unitSpec) {
-                                    $unitSpec = $db->table('po_units pu')
-                                        ->select('
-                                            pu.*,
-                                            pu.merk_unit as brand_name_po,
-                                            mu.model_unit,
-                                            mu.merk_unit as brand_from_model_table,
-                                            tu.tipe as jenis_unit,
-                                            tu.tipe as tipe_unit,
-                                            pu.tahun_po as tahun_unit,
-                                            d.nama_departemen,
-                                            k.kapasitas_unit,
-                                            tm.tipe_mast,
-                                            m.merk_mesin,
-                                            m.model_mesin,
-                                            tb.tipe_ban,
-                                            jr.tipe_roda,
-                                            v.jumlah_valve,
-                                            pu.keterangan
-                                        ')
-                                        ->join('model_unit mu', 'mu.id_model_unit = pu.model_unit_id', 'left')
-                                        ->join('tipe_unit tu', 'tu.id_tipe_unit = pu.tipe_unit_id', 'left')
-                                        ->join('departemen d', 'd.id_departemen = tu.id_departemen', 'left')
-                                        ->join('kapasitas k', 'k.id_kapasitas = pu.kapasitas_id', 'left')
-                                        ->join('tipe_mast tm', 'tm.id_mast = pu.mast_id', 'left')
-                                        ->join('mesin m', 'm.id = pu.mesin_id', 'left')
-                                        ->join('tipe_ban tb', 'tb.id_ban = pu.ban_id', 'left')
-                                        ->join('jenis_roda jr', 'jr.id_roda = pu.roda_id', 'left')
-                                        ->join('valve v', 'v.id_valve = pu.valve_id', 'left')
-                                        ->where('pu.po_id', $delivery['po_id'])
-                                        ->limit(1)
-                                        ->get()
-                                        ->getRowArray();
-                                }
-                                
-                                if ($unitSpec) {
-                                    // Use brand_name_po from po_units (VARCHAR), fallback to brand_from_model_table
-                                    $brandValue = $unitSpec['brand_name_po'] ?? $unitSpec['brand_from_model_table'] ?? '-';
-                                    
-                                    $items[] = [
-                                        'item_type' => 'Unit',
-                                        'item_name' => $itemName ?: trim($brandValue . ' ' . ($unitSpec['model_unit'] ?? '')),
-                                        'serial_number' => $serialNumber, // Use SN from delivery (even if empty, don't fallback to PO SN)
-                                        'merk_unit' => $brandValue,
-                                        'model_unit' => $unitSpec['model_unit'] ?? '-',
-                                        'jenis_unit' => $unitSpec['jenis_unit'] ?? '-',
-                                        'tipe_unit' => $unitSpec['tipe_unit'] ?? '-',
-                                        'tahun_unit' => $unitSpec['tahun_unit'] ?? '-',
-                                        'nama_departemen' => $unitSpec['nama_departemen'] ?? '-',
-                                        'kapasitas_unit' => $unitSpec['kapasitas_unit'] ?? '-',
-                                        'tipe_mast' => $unitSpec['tipe_mast'] ?? '-',
-                                        'merk_mesin' => $unitSpec['merk_mesin'] ?? '-',
-                                        'model_mesin' => $unitSpec['model_mesin'] ?? '-',
-                                        'tipe_ban' => $unitSpec['tipe_ban'] ?? '-',
-                                        'tipe_roda' => $unitSpec['tipe_roda'] ?? '-',
-                                        'jumlah_valve' => $unitSpec['jumlah_valve'] ?? '-',
-                                        'keterangan' => $unitSpec['keterangan'] ?? '-',
-                                        'qty' => 1 // Each delivery item is one unit
-                                    ];
-                                }
-                            } elseif (($itemType === 'Attachment' || $itemTypeRaw === 'attachment') && !empty($delivery['po_id'])) {
-                                // Get attachment specs from po_attachment with complete details
-                                $attachmentSpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        a.merk as merk_attachment,
-                                        a.model as model_attachment,
-                                        a.tipe as tipe_attachment
-                                    ')
-                                    ->join('attachment a', 'a.id_attachment = pa.attachment_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Attachment');
-                                
-                                // Get first attachment from PO (matching will be done by item_name from po_delivery_items)
-                                $attachmentSpec = $attachmentSpec->limit(1)->get()->getRowArray();
-                                
-                                // If no match found, get first attachment from PO
-                                if (!$attachmentSpec) {
-                                    $attachmentSpec = $db->table('po_attachment pa')
-                                        ->select('
-                                            pa.*,
-                                            a.merk as merk_attachment,
-                                            a.model as model_attachment,
-                                            a.tipe as tipe_attachment
-                                        ')
-                                        ->join('attachment a', 'a.id_attachment = pa.attachment_id', 'left')
-                                        ->where('pa.po_id', $delivery['po_id'])
-                                        ->where('pa.item_type', 'Attachment')
-                                        ->limit(1)
-                                        ->get()
-                                        ->getRowArray();
-                                }
-                                
-                                if ($attachmentSpec) {
-                                    $items[] = [
-                                        'item_type' => 'Attachment',
-                                        'item_name' => $itemName ?: trim(($attachmentSpec['tipe_attachment'] ?? '') . ' ' . ($attachmentSpec['merk_attachment'] ?? '') . ' ' . ($attachmentSpec['model_attachment'] ?? '')),
-                                        'serial_number' => $serialNumber, // Use SN from delivery (even if empty, don't fallback to PO SN)
-                                        'merk_attachment' => $attachmentSpec['merk_attachment'] ?? '-',
-                                        'model_attachment' => $attachmentSpec['model_attachment'] ?? '-',
-                                        'tipe_attachment' => $attachmentSpec['tipe_attachment'] ?? '-',
-                                        'keterangan' => $attachmentSpec['keterangan'] ?? '-',
-                                        'qty' => 1 // Each delivery item is one unit
-                                    ];
-                                }
-                            } elseif (($itemType === 'Battery' || $itemTypeRaw === 'battery') && !empty($delivery['po_id'])) {
-                                // Get battery specs from po_attachment with complete details
-                                $batterySpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        b.merk_baterai,
-                                        b.tipe_baterai,
-                                        b.jenis_baterai
-                                    ')
-                                    ->join('baterai b', 'b.id = pa.baterai_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Battery');
-                                
-                                // Get first battery from PO (matching will be done by item_name from po_delivery_items)
-                                $batterySpec = $batterySpec->limit(1)->get()->getRowArray();
-                                
-                                // If no match found, get first battery from PO
-                                if (!$batterySpec) {
-                                    $batterySpec = $db->table('po_attachment pa')
-                                        ->select('
-                                            pa.*,
-                                            b.merk_baterai,
-                                            b.tipe_baterai,
-                                            b.jenis_baterai
-                                        ')
-                                        ->join('baterai b', 'b.id = pa.baterai_id', 'left')
-                                        ->where('pa.po_id', $delivery['po_id'])
-                                        ->where('pa.item_type', 'Battery')
-                                        ->limit(1)
-                                        ->get()
-                                        ->getRowArray();
-                                }
-                                
-                                if ($batterySpec) {
-                                    $items[] = [
-                                        'item_type' => 'Battery',
-                                        'item_name' => $itemName ?: trim(($batterySpec['merk_baterai'] ?? '') . ' ' . ($batterySpec['tipe_baterai'] ?? '') . ' ' . ($batterySpec['jenis_baterai'] ?? '')),
-                                        'serial_number' => $serialNumber, // Use SN from delivery (even if empty, don't fallback to PO SN)
-                                        'merk_baterai' => $batterySpec['merk_baterai'] ?? '-',
-                                        'tipe_baterai' => $batterySpec['tipe_baterai'] ?? '-',
-                                        'jenis_baterai' => $batterySpec['jenis_baterai'] ?? '-',
-                                        'keterangan' => $batterySpec['keterangan'] ?? '-',
-                                        'qty' => 1 // Each delivery item is one unit
-                                    ];
-                                }
-                            } elseif (($itemType === 'Charger' || $itemTypeRaw === 'charger') && !empty($delivery['po_id'])) {
-                                // Get charger specs from po_attachment with complete details
-                                $chargerSpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        c.merk_charger,
-                                        c.tipe_charger
-                                    ')
-                                    ->join('charger c', 'c.id_charger = pa.charger_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Charger');
-                                
-                                // Get first charger from PO (matching will be done by item_name from po_delivery_items)
-                                $chargerSpec = $chargerSpec->limit(1)->get()->getRowArray();
-                                
-                                // If no match found, get first charger from PO
-                                if (!$chargerSpec) {
-                                    $chargerSpec = $db->table('po_attachment pa')
-                                        ->select('
-                                            pa.*,
-                                            c.merk_charger,
-                                            c.tipe_charger
-                                        ')
-                                        ->join('charger c', 'c.id_charger = pa.charger_id', 'left')
-                                        ->where('pa.po_id', $delivery['po_id'])
-                                        ->where('pa.item_type', 'Charger')
-                                        ->limit(1)
-                                        ->get()
-                                        ->getRowArray();
-                                }
-                                
-                                if ($chargerSpec) {
-                                    $items[] = [
-                                        'item_type' => 'Charger',
-                                        'item_name' => $itemName ?: trim(($chargerSpec['merk_charger'] ?? '') . ' ' . ($chargerSpec['tipe_charger'] ?? '')),
-                                        'serial_number' => $serialNumber, // Use SN from delivery (even if empty, don't fallback to PO SN)
-                                        'merk_charger' => $chargerSpec['merk_charger'] ?? '-',
-                                        'tipe_charger' => $chargerSpec['tipe_charger'] ?? '-',
-                                        'keterangan' => $chargerSpec['keterangan'] ?? '-',
-                                        'qty' => 1 // Each delivery item is one unit
-                                    ];
-                                }
-                            }
+            // Group items: same po_unit / po_attachment = same row in packing list
+            $groups = [];
+            foreach ($rows as $row) {
+                $type = strtolower($row['item_type'] ?? 'unit');
+                if ($type === 'unit') {
+                    $groupKey = 'unit_' . ($row['id_po_unit'] ?? 'x');
+                    if (!isset($groups[$groupKey])) {
+                        // Build spec: prefer vendor PI text, fallback to structured fields
+                        $spec = trim($row['vendor_spec_text'] ?? '');
+                        if ($spec === '') {
+                            $parts = array_filter([
+                                $row['merk_unit'],
+                                $row['model_unit'],
+                                $row['jenis_unit'],
+                                $row['nama_departemen'],
+                                $row['kapasitas_unit'] ? $row['kapasitas_unit'] : null,
+                                $row['tahun_po'] ? 'Tahun ' . $row['tahun_po'] : null,
+                            ]);
+                            $spec = implode(', ', $parts) ?: ($row['item_name'] ?? '-');
                         }
+                        $groups[$groupKey] = [
+                            'item_type'      => 'Unit',
+                            'item_name'      => $row['item_name'] ?? ($row['merk_unit'] . ' ' . $row['model_unit']),
+                            'spec'           => $spec,
+                            'qty'            => 0,
+                            'serial_numbers' => [],
+                        ];
                     }
-                } catch (\Exception $e) {
-                    log_message('debug', 'po_delivery_items query failed: ' . $e->getMessage());
-                }
-            }
-            
-            // Fallback: If items exist but SN is empty, try to get from serial_numbers JSON
-            // Also check if po_delivery_items exists but SN is empty
-            if (!empty($items)) {
-                // Check if any items have empty SN, try to get from serial_numbers JSON
-                foreach ($items as $index => $item) {
-                    if (empty($item['serial_number']) && !empty($delivery['serial_numbers'])) {
-                        try {
-                            $serialData = json_decode($delivery['serial_numbers'], true);
-                            if (is_array($serialData)) {
-                                // Try to find matching item in serial_numbers JSON
-                                foreach ($serialData as $serialItem) {
-                                    $serialItemType = ucfirst(strtolower($serialItem['type'] ?? 'Unit'));
-                                    $serialItemName = trim($serialItem['item_name'] ?? '');
-                                    $itemNameMatch = trim($item['item_name'] ?? '');
-                                    
-                                    if ($serialItemType === $item['item_type'] && 
-                                        ($serialItemName === $itemNameMatch || empty($itemNameMatch))) {
-                                        $items[$index]['serial_number'] = trim($serialItem['serial_number'] ?? '');
-                                        log_message('debug', 'Print Packing List - Found SN from serial_numbers JSON for: ' . $itemNameMatch . ' = [' . $items[$index]['serial_number'] . ']');
-                                        break;
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            log_message('debug', 'serial_numbers JSON parsing failed for item: ' . $e->getMessage());
+                    $groups[$groupKey]['qty']++;
+                    // Build SN entry: body / mast / engine
+                    $snParts = [];
+                    if (!empty($row['serial_number'])) {
+                        $snParts[] = $row['serial_number'];
+                    }
+                    if (!empty($row['sn_mast_po'])) {
+                        $snParts[] = 'Mast: ' . $row['sn_mast_po'];
+                    }
+                    if (!empty($row['sn_mesin_po'])) {
+                        $snParts[] = 'Mesin: ' . $row['sn_mesin_po'];
+                    }
+                    $groups[$groupKey]['serial_numbers'][] = implode(' | ', $snParts);
+
+                } else {
+                    $groupKey = $type . '_' . ($row['id_po_attachment'] ?? 'x');
+                    if (!isset($groups[$groupKey])) {
+                        if ($type === 'attachment') {
+                            $spec = trim(implode(' ', array_filter([$row['tipe_attachment'], $row['merk_attachment'], $row['model_attachment']])));
+                        } elseif ($type === 'battery') {
+                            $spec = trim(implode(' ', array_filter([$row['merk_baterai'], $row['tipe_baterai'], $row['jenis_baterai']])));
+                        } elseif ($type === 'charger') {
+                            $spec = trim(implode(' ', array_filter([$row['merk_charger'], $row['tipe_charger']])));
+                        } else {
+                            $spec = $row['item_name'] ?? '-';
                         }
+                        $groups[$groupKey] = [
+                            'item_type'      => ucfirst($type),
+                            'item_name'      => $row['item_name'] ?? $spec,
+                            'spec'           => $spec ?: ($row['item_name'] ?? '-'),
+                            'qty'            => 0,
+                            'serial_numbers' => [],
+                        ];
                     }
-                }
-            }
-            
-            // Fallback: If no items from po_delivery_items, parse from serial_numbers JSON
-            if (empty($items) && !empty($delivery['serial_numbers'])) {
-                try {
-                    $serialData = json_decode($delivery['serial_numbers'], true);
-                    if (is_array($serialData)) {
-                        log_message('debug', 'Print Packing List - Parsing serial_numbers JSON: ' . count($serialData) . ' items');
-                        
-                        foreach ($serialData as $serialItem) {
-                            $itemType = ucfirst(strtolower($serialItem['type'] ?? 'Unit'));
-                            $itemName = $serialItem['item_name'] ?? '';
-                            $serialNumber = trim($serialItem['serial_number'] ?? '');
-                            
-                            // Get full specifications based on item type (same as above)
-                            if ($itemType === 'Unit' && !empty($delivery['po_id'])) {
-                                // SAME QUERY STRUCTURE AS whVerification
-                                $unitSpec = $db->table('po_units pu')
-                                    ->select('
-                                        pu.*,
-                                        pu.merk_unit as brand_name_po,
-                                        mu.model_unit,
-                                        mu.merk_unit as brand_from_model_table,
-                                        tu.tipe as jenis_unit,
-                                        tu.tipe as tipe_unit,
-                                        pu.tahun_po as tahun_unit,
-                                        d.nama_departemen,
-                                        k.kapasitas_unit,
-                                        tm.tipe_mast,
-                                        m.merk_mesin,
-                                        m.model_mesin,
-                                        tb.tipe_ban,
-                                        jr.tipe_roda,
-                                        v.jumlah_valve,
-                                        pu.keterangan
-                                    ')
-                                    ->join('model_unit mu', 'mu.id_model_unit = pu.model_unit_id', 'left')
-                                    ->join('tipe_unit tu', 'tu.id_tipe_unit = pu.tipe_unit_id', 'left')
-                                    ->join('departemen d', 'd.id_departemen = tu.id_departemen', 'left')
-                                    ->join('kapasitas k', 'k.id_kapasitas = pu.kapasitas_id', 'left')
-                                    ->join('tipe_mast tm', 'tm.id_mast = pu.mast_id', 'left')
-                                    ->join('mesin m', 'm.id = pu.mesin_id', 'left')
-                                    ->join('tipe_ban tb', 'tb.id_ban = pu.ban_id', 'left')
-                                    ->join('jenis_roda jr', 'jr.id_roda = pu.roda_id', 'left')
-                                    ->join('valve v', 'v.id_valve = pu.valve_id', 'left')
-                                    ->where('pu.po_id', $delivery['po_id'])
-                                    ->limit(1)
-                                    ->get()
-                                    ->getRowArray();
-                                
-                                if ($unitSpec) {
-                                    // Use brand_name_po from po_units (VARCHAR), fallback to brand_from_model_table
-                                    $brandValue = $unitSpec['brand_name_po'] ?? $unitSpec['brand_from_model_table'] ?? '-';
-                                    
-                                    $items[] = [
-                                        'item_type' => 'Unit',
-                                        'item_name' => $itemName ?: trim($brandValue . ' ' . ($unitSpec['model_unit'] ?? '')),
-                                        'serial_number' => $serialNumber,
-                                        'merk_unit' => $brandValue,
-                                        'model_unit' => $unitSpec['model_unit'] ?? '-',
-                                        'jenis_unit' => $unitSpec['jenis_unit'] ?? '-',
-                                        'tipe_unit' => $unitSpec['tipe_unit'] ?? '-',
-                                        'tahun_unit' => $unitSpec['tahun_unit'] ?? '-',
-                                        'nama_departemen' => $unitSpec['nama_departemen'] ?? '-',
-                                        'kapasitas_unit' => $unitSpec['kapasitas_unit'] ?? '-',
-                                        'tipe_mast' => $unitSpec['tipe_mast'] ?? '-',
-                                        'merk_mesin' => $unitSpec['merk_mesin'] ?? '-',
-                                        'model_mesin' => $unitSpec['model_mesin'] ?? '-',
-                                        'tipe_ban' => $unitSpec['tipe_ban'] ?? '-',
-                                        'tipe_roda' => $unitSpec['tipe_roda'] ?? '-',
-                                        'jumlah_valve' => $unitSpec['jumlah_valve'] ?? '-',
-                                        'keterangan' => $unitSpec['keterangan'] ?? '-',
-                                        'qty' => 1
-                                    ];
-                                }
-                            } elseif ($itemType === 'Attachment' && !empty($delivery['po_id'])) {
-                                $attachmentSpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        a.merk as merk_attachment,
-                                        a.model as model_attachment,
-                                        a.tipe as tipe_attachment
-                                    ')
-                                    ->join('attachment a', 'a.id_attachment = pa.attachment_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Attachment')
-                                    ->limit(1)
-                                    ->get()
-                                    ->getRowArray();
-                                
-                                if ($attachmentSpec) {
-                                    $items[] = [
-                                        'item_type' => 'Attachment',
-                                        'item_name' => $itemName ?: trim(($attachmentSpec['tipe_attachment'] ?? '') . ' ' . ($attachmentSpec['merk_attachment'] ?? '') . ' ' . ($attachmentSpec['model_attachment'] ?? '')),
-                                        'serial_number' => $serialNumber,
-                                        'merk_attachment' => $attachmentSpec['merk_attachment'] ?? '-',
-                                        'model_attachment' => $attachmentSpec['model_attachment'] ?? '-',
-                                        'tipe_attachment' => $attachmentSpec['tipe_attachment'] ?? '-',
-                                        'keterangan' => $attachmentSpec['keterangan'] ?? '-',
-                                        'qty' => 1
-                                    ];
-                                }
-                            } elseif ($itemType === 'Battery' && !empty($delivery['po_id'])) {
-                                $batterySpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        b.merk_baterai,
-                                        b.tipe_baterai,
-                                        b.jenis_baterai
-                                    ')
-                                    ->join('baterai b', 'b.id = pa.baterai_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Battery')
-                                    ->limit(1)
-                                    ->get()
-                                    ->getRowArray();
-                                
-                                if ($batterySpec) {
-                                    $items[] = [
-                                        'item_type' => 'Battery',
-                                        'item_name' => $itemName ?: trim(($batterySpec['merk_baterai'] ?? '') . ' ' . ($batterySpec['tipe_baterai'] ?? '') . ' ' . ($batterySpec['jenis_baterai'] ?? '')),
-                                        'serial_number' => $serialNumber,
-                                        'merk_baterai' => $batterySpec['merk_baterai'] ?? '-',
-                                        'tipe_baterai' => $batterySpec['tipe_baterai'] ?? '-',
-                                        'jenis_baterai' => $batterySpec['jenis_baterai'] ?? '-',
-                                        'keterangan' => $batterySpec['keterangan'] ?? '-',
-                                        'qty' => 1
-                                    ];
-                                }
-                            } elseif ($itemType === 'Charger' && !empty($delivery['po_id'])) {
-                                $chargerSpec = $db->table('po_attachment pa')
-                                    ->select('
-                                        pa.*,
-                                        c.merk_charger,
-                                        c.tipe_charger
-                                    ')
-                                    ->join('charger c', 'c.id_charger = pa.charger_id', 'left')
-                                    ->where('pa.po_id', $delivery['po_id'])
-                                    ->where('pa.item_type', 'Charger')
-                                    ->limit(1)
-                                    ->get()
-                                    ->getRowArray();
-                                
-                                if ($chargerSpec) {
-                                    $items[] = [
-                                        'item_type' => 'Charger',
-                                        'item_name' => $itemName ?: trim(($chargerSpec['merk_charger'] ?? '') . ' ' . ($chargerSpec['tipe_charger'] ?? '')),
-                                        'serial_number' => $serialNumber,
-                                        'merk_charger' => $chargerSpec['merk_charger'] ?? '-',
-                                        'tipe_charger' => $chargerSpec['tipe_charger'] ?? '-',
-                                        'keterangan' => $chargerSpec['keterangan'] ?? '-',
-                                        'qty' => 1
-                                    ];
-                                }
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    log_message('debug', 'serial_numbers JSON parsing failed: ' . $e->getMessage());
+                    $groups[$groupKey]['qty']++;
+                    $groups[$groupKey]['serial_numbers'][] = $row['serial_number'] ?? '';
                 }
             }
 
-            // Debug logging
-            log_message('debug', 'Print Packing List - Delivery ID: ' . $deliveryId);
-            log_message('debug', 'Print Packing List - PO ID: ' . ($delivery['po_id'] ?? 'N/A'));
-            log_message('debug', 'Print Packing List - Items count: ' . count($items));
-            
-            // Log SN for each item
-            foreach ($items as $idx => $item) {
-                log_message('debug', 'Print Packing List - Item #' . ($idx + 1) . ': ' . ($item['item_name'] ?? 'N/A') . ' (Type: ' . ($item['item_type'] ?? 'N/A') . '), SN: [' . ($item['serial_number'] ?? 'EMPTY') . ']');
-            }
-            
-            if (empty($items)) {
-                log_message('debug', 'Print Packing List - No items found, checking po_delivery_items table exists: ' . ($db->tableExists('po_delivery_items') ? 'YES' : 'NO'));
-                if (!empty($delivery['serial_numbers'])) {
-                    log_message('debug', 'Print Packing List - serial_numbers JSON exists: ' . substr($delivery['serial_numbers'], 0, 200));
-                }
-            }
-
-            $data = [
+            return view('purchasing/print_packing_list', [
                 'delivery' => $delivery,
-                'packingList' => $packingList,
-                'items' => $items
-            ];
-
-            return view('purchasing/print_packing_list', $data);
+                'groups'   => array_values($groups),
+            ]);
 
         } catch (\Exception $e) {
             log_message('error', '[Purchasing::printPackingList] ' . $e->getMessage());
-            log_message('error', '[Purchasing::printPackingList] ' . $e->getTraceAsString());
 
             $errorDetail = ENVIRONMENT === 'development'
                 ? '<pre style="white-space:pre-wrap;font-size:12px;color:#842029;background:#f8d7da;padding:12px;border-radius:8px;">' . esc($e->getMessage() . "\n\n" . $e->getTraceAsString()) . '</pre>'
                 : '';
 
-            $html = '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Print Packing List Error</title><style>body{font-family:Arial,sans-serif;background:#f8f9fa;padding:32px;color:#212529}.card{max-width:840px;margin:0 auto;background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.08)}h1{margin-top:0;font-size:22px}.muted{color:#6c757d}</style></head><body><div class="card"><h1>Gagal mencetak Packing List</h1><p class="muted">Sistem menemukan error saat menyiapkan dokumen print. Detail error sudah dicatat ke log aplikasi.</p>' . $errorDetail . '</div></body></html>';
+            $html = '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Error</title><style>body{font-family:Arial,sans-serif;background:#f8f9fa;padding:32px;color:#212529}.card{max-width:840px;margin:0 auto;background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:24px}</style></head><body><div class="card"><h1>Gagal mencetak Packing List</h1>' . $errorDetail . '</div></body></html>';
 
             return $this->response
                 ->setStatusCode(500)
@@ -1289,7 +891,6 @@ class Purchasing extends BaseController
                 ->setBody($html);
         }
     }
-
     public function printPO($poId)
     {
         try {
@@ -1573,7 +1174,10 @@ class Purchasing extends BaseController
             $builder->where('po.tanggal_po <=', date('Y') . '-12-31');
         }
         
-        // Search
+        // Get total records (before search filter)
+        $totalRecords = $builder->countAllResults(false);
+        
+        // Apply search filter
         if (!empty($searchValue)) {
             $builder->groupStart()
                 ->like('po.no_po', $searchValue)
@@ -1582,10 +1186,7 @@ class Purchasing extends BaseController
                 ->groupEnd();
         }
         
-        // Get total records
-        $totalRecords = $builder->countAllResults(false);
-        
-        // Get filtered records
+        // Get filtered records (after search)
         $filteredRecords = $builder->countAllResults(false);
         
         // Get data
@@ -1669,67 +1270,24 @@ class Purchasing extends BaseController
                 throw new \Exception('Supplier harus dipilih');
             }
             
-            // Debug logging for PO data
-            log_message('info', '[storeUnifiedPO] PO Data to insert: ' . json_encode($poData));
-            log_message('info', '[storeUnifiedPO] All POST data: ' . json_encode($this->request->getPost()));
-            
-            // Test with minimal data first - ensure no id_po field
-            $testData = [
-                'no_po' => $poData['no_po'],
-                'tanggal_po' => $poData['tanggal_po'],
-                'supplier_id' => $poData['supplier_id'],
-                'tipe_po' => $poData['tipe_po'],
-                'status' => $poData['status']
-            ];
-            
             // Remove any potential id_po field that might cause auto-increment issues
-            unset($testData['id_po']);
             unset($poData['id_po']);
             
-            log_message('info', '[storeUnifiedPO] Test data (minimal): ' . json_encode($testData));
+            $builder = $db->table('purchase_orders');
+            $result = $builder->insert($poData);
             
-            try {
-                // Use direct database insert to avoid model issues
-                log_message('info', '[storeUnifiedPO] Attempting direct database insert');
-                $db = \Config\Database::connect();
-                $builder = $db->table('purchase_orders');
-                
-                // Ensure we don't include id_po in the insert
-                $insertData = $testData;
-                unset($insertData['id_po']);
-                
-                log_message('info', '[storeUnifiedPO] Insert data (final): ' . json_encode($insertData));
-                
-                $result = $builder->insert($insertData);
-                
-                if ($result) {
-                    $poId = $db->insertID();
-                    log_message('info', '[storeUnifiedPO] Direct insert successful with ID: ' . $poId);
-                } else {
-                    $error = $db->error();
-                    log_message('error', '[storeUnifiedPO] Direct insert failed: ' . json_encode($error));
-                    throw new \Exception('Database insert failed: ' . $error['message']);
-                }
-                
-            } catch (\Exception $e) {
-                log_message('error', '[storeUnifiedPO] Exception during insert: ' . $e->getMessage());
-                log_message('error', '[storeUnifiedPO] Exception trace: ' . $e->getTraceAsString());
-                throw $e;
+            if ($result) {
+                $poId = $db->insertID();
+            } else {
+                $error = $db->error();
+                throw new \Exception('Database insert failed: ' . $error['message']);
             }
             
             if (!$poId) {
                 throw new \Exception('Failed to create PO record');
             }
             
-            // Debug logging
-            log_message('info', '[storeUnifiedPO] Items JSON: ' . $itemsJson);
-            log_message('info', '[storeUnifiedPO] Decoded items: ' . json_encode($items));
-            log_message('info', '[storeUnifiedPO] Detected tipe_po: ' . $tipePo);
-            
-            // Process items - totals will be auto-calculated by database triggers
             foreach ($items as $item) {
-                // Debug logging for each item
-                log_message('info', '[storeUnifiedPO] Processing item: ' . json_encode($item));
                 
                 // Extract item details based on type
                 $itemType = $item['item_type'];
@@ -1758,16 +1316,12 @@ class Purchasing extends BaseController
                 $insertResult = false;
                 if ($itemType === 'unit') {
                     $insertResult = $this->insertUnitItem($poId, $item, $itemData);
-                    log_message('info', '[storeUnifiedPO] Unit insert result: ' . ($insertResult ? 'SUCCESS' : 'FAILED'));
                 } elseif ($itemType === 'attachment') {
                     $insertResult = $this->insertAttachmentItem($poId, $item, $itemData);
-                    log_message('info', '[storeUnifiedPO] Attachment insert result: ' . ($insertResult ? 'SUCCESS' : 'FAILED'));
                 } elseif ($itemType === 'battery') {
                     $insertResult = $this->insertBatteryItem($poId, $item, $itemData);
-                    log_message('info', '[storeUnifiedPO] Battery insert result: ' . ($insertResult ? 'SUCCESS' : 'FAILED'));
                 } elseif ($itemType === 'charger') {
                     $insertResult = $this->insertChargerItem($poId, $item, $itemData);
-                    log_message('info', '[storeUnifiedPO] Charger insert result: ' . ($insertResult ? 'SUCCESS' : 'FAILED'));
                 }
                 
                 if (!$insertResult) {
@@ -1776,11 +1330,6 @@ class Purchasing extends BaseController
             }
             
             // Delivery schedule will be created later when needed
-            
-            // Note: Totals are automatically calculated by database triggers
-            // After all items are inserted, triggers have already updated:
-            // - total_unit, total_attachment, total_battery, total_charger in purchase_orders
-            log_message('info', '[storeUnifiedPO] All items inserted. Totals auto-calculated by database triggers.');
             
             $db->transComplete();
             
@@ -1913,8 +1462,6 @@ class Purchasing extends BaseController
         $qty = intval($item['qty'] ?? 1);
         $successCount = 0;
         
-        log_message('info', '[storeUnifiedPO] Inserting ' . $qty . ' unit items');
-        
         // Create base data structure
         $pkg = $item['package_flags'] ?? null;
         if (is_array($pkg)) {
@@ -1960,18 +1507,15 @@ class Purchasing extends BaseController
                 $this->poUnitsModel->skipValidation(false);
                 if ($result) {
                     $successCount++;
-                    log_message('info', "[storeUnifiedPO] Unit #{$i} inserted with ID: {$result}");
                 } else {
                     $errors = $this->poUnitsModel->errors();
                     log_message('error', "[storeUnifiedPO] Unit #{$i} model insert failed: " . json_encode($errors));
 
-                    $dbIns = \Config\Database::connect();
-                    $builder = $dbIns->table('po_units');
-                    if ($builder->insert($unitData)) {
+                    // Use the same $this->db connection to stay within the active transaction
+                    if ($this->db->table('po_units')->insert($unitData)) {
                         $successCount++;
-                        log_message('info', "[storeUnifiedPO] Unit #{$i} direct insert successful");
                     } else {
-                        $dbErr = $dbIns->error();
+                        $dbErr = $this->db->error();
                         $detail = trim((string) ($dbErr['message'] ?? ''));
                         if ($detail === '') {
                             $detail = json_encode($errors, JSON_UNESCAPED_UNICODE);
@@ -1986,7 +1530,6 @@ class Purchasing extends BaseController
             }
         }
         
-        log_message('info', "[storeUnifiedPO] Successfully inserted {$successCount}/{$qty} unit items");
         return $successCount > 0 ? $successCount : false;
     }
 
@@ -1998,8 +1541,6 @@ class Purchasing extends BaseController
     {
         $qty = intval($item['qty'] ?? 1);
         $successCount = 0;
-        
-        log_message('info', '[storeUnifiedPO] Inserting ' . $qty . ' attachment items');
         
         $attachmentDataTemplate = [
             'po_id' => $poId,
@@ -2019,7 +1560,6 @@ class Purchasing extends BaseController
                 $result = $this->poItemsModel->insert($attachmentData);
                 if ($result) {
                     $successCount++;
-                    log_message('info', "[storeUnifiedPO] Attachment #{$i} inserted with ID: {$result}");
                 } else {
                     $errors = $this->poItemsModel->errors();
                     log_message('error', "[storeUnifiedPO] Attachment #{$i} insert failed: " . json_encode($errors));
@@ -2029,7 +1569,6 @@ class Purchasing extends BaseController
             }
         }
         
-        log_message('info', "[storeUnifiedPO] Successfully inserted {$successCount}/{$qty} attachment items");
         return $successCount > 0 ? $successCount : false;
     }
 
@@ -2041,8 +1580,6 @@ class Purchasing extends BaseController
     {
         $qty = intval($item['qty'] ?? 1);
         $successCount = 0;
-        
-        log_message('info', '[storeUnifiedPO] Inserting ' . $qty . ' battery items');
         
         $batteryDataTemplate = [
             'po_id' => $poId,
@@ -2072,7 +1609,6 @@ class Purchasing extends BaseController
             }
         }
         
-        log_message('info', "[storeUnifiedPO] Successfully inserted {$successCount}/{$qty} battery items");
         return $successCount > 0 ? $successCount : false;
     }
 
@@ -2084,8 +1620,6 @@ class Purchasing extends BaseController
     {
         $qty = intval($item['qty'] ?? 1);
         $successCount = 0;
-        
-        log_message('info', '[storeUnifiedPO] Inserting ' . $qty . ' charger items');
         
         $chargerDataTemplate = [
             'po_id' => $poId,
@@ -2105,7 +1639,6 @@ class Purchasing extends BaseController
                 $result = $this->poItemsModel->insert($chargerData);
                 if ($result) {
                     $successCount++;
-                    log_message('info', "[storeUnifiedPO] Charger #{$i} inserted with ID: {$result}");
                 } else {
                     $errors = $this->poItemsModel->errors();
                     log_message('error', "[storeUnifiedPO] Charger #{$i} insert failed: " . json_encode($errors));
@@ -2115,7 +1648,6 @@ class Purchasing extends BaseController
             }
         }
         
-        log_message('info', "[storeUnifiedPO] Successfully inserted {$successCount}/{$qty} charger items");
         return $successCount > 0 ? $successCount : false;
     }
 
@@ -3045,7 +2577,7 @@ class Purchasing extends BaseController
     public function cancelPO($poId)
     {
         try {
-            $result = $this->purchaseModel->update($poId, ['status' => 'Cancelled']);
+            $result = $this->purchaseModel->update($poId, ['status' => 'cancelled']);
             
             if ($result) {
                 // Send notification: PO Rejected/Cancelled
@@ -3090,8 +2622,11 @@ class Purchasing extends BaseController
         $db->transStart();
         
         try {
-            // Delete items first
+            // Delete items first (po_attachment)
             $this->poItemsModel->where('po_id', $poId)->delete();
+            
+            // Delete po_units rows for this PO
+            $db->table('po_units')->where('po_id', $poId)->delete();
             
             // Delete deliveries (cascade will handle delivery_items)
             $this->poDeliveryModel->where('po_id', $poId)->delete();
@@ -4499,8 +4034,6 @@ class Purchasing extends BaseController
             $start = $this->request->getPost('start') ?? 0;
             $length = $this->request->getPost('length') ?? 10;
             
-            // Debug logging
-            log_message('info', 'getDeliveryData - draw: ' . $draw . ', start: ' . $start . ', length: ' . $length);
             $searchValue = $this->request->getPost('search')['value'] ?? '';
             $orderColumn = $this->request->getPost('order')[0]['column'] ?? 0;
             $orderDir = $this->request->getPost('order')[0]['dir'] ?? 'desc';
@@ -4586,10 +4119,6 @@ class Purchasing extends BaseController
             // Execute query
             $results = $db->query($query, $params)->getResultArray();
             
-            // Debug logging
-            log_message('info', 'getDeliveryData - Found ' . count($results) . ' deliveries');
-            log_message('info', 'getDeliveryData - Results: ' . json_encode($results));
-            
             return $this->respond([
                 'draw' => intval($draw),
                 'recordsTotal' => $totalRecords,
@@ -4636,13 +4165,6 @@ class Purchasing extends BaseController
             $notes = $this->request->getPost('notes');
             $items = $this->request->getPost('items'); // Array of selected items for delivery
             
-            // Debug logging
-            log_message('info', 'Create Delivery Debug - PO ID: ' . $poId);
-            log_message('info', 'Create Delivery Debug - Delivery Date: ' . $deliveryDate);
-            log_message('info', 'Create Delivery Debug - Packing List No: ' . $packingListNo);
-            log_message('info', 'Create Delivery Debug - Items (raw): ' . $items);
-            log_message('info', 'Create Delivery Debug - Items type: ' . gettype($items));
-            
             // Validate required fields
             if (empty($poId) || empty($deliveryDate) || empty($packingListNo)) {
                 return $this->respond([
@@ -4663,13 +4185,10 @@ class Purchasing extends BaseController
             // Parse items from JSON string
             if (is_string($items)) {
                 $items = json_decode($items, true);
-                log_message('info', 'Create Delivery Debug - Items after JSON decode: ' . json_encode($items));
             }
             
             // Validate items selection
             if (empty($items) || !is_array($items) || count($items) === 0) {
-                log_message('error', 'Create Delivery Debug - Items validation failed. Items: ' . json_encode($items));
-                log_message('error', 'Create Delivery Debug - Items count: ' . (is_array($items) ? count($items) : 'not array'));
                 return $this->respond([
                     'success' => false,
                     'message' => 'Pilih minimal satu item untuk dikirim'
@@ -4736,19 +4255,14 @@ class Purchasing extends BaseController
             
             $db->table('po_deliveries')->insert($deliveryData);
             $deliveryId = $db->insertID();
-            
-            log_message('info', 'Create Delivery Debug - Insert ID: ' . $deliveryId);
 
             // Insert selected items to po_delivery_items with proper foreign keys
             if (!empty($items) && is_array($items)) {
-                log_message('info', 'Create Delivery Debug - Processing ' . count($items) . ' selected items');
-                
                 foreach ($items as $item) {
                     $itemType = $item['type'] ?? 'unit';
                     $itemId = intval($item['id'] ?? 0);
                     
                     if ($itemId <= 0) {
-                        log_message('warning', 'Create Delivery Debug - Skipping item with invalid ID: ' . $itemId);
                         continue;
                     }
                     
@@ -4881,9 +4395,8 @@ class Purchasing extends BaseController
                     
                     try {
                         $db->table('po_delivery_items')->insert($itemData);
-                        log_message('info', 'Create Delivery Debug - Inserted item: ' . $itemData['item_name']);
                     } catch (\Exception $e) {
-                        log_message('error', 'Create Delivery Debug - Failed to insert item: ' . $e->getMessage());
+                        log_message('error', '[createDelivery] Failed to insert item: ' . $e->getMessage());
                         $db->transRollback();
                         return $this->respond([
                             'success' => false,
@@ -4891,15 +4404,13 @@ class Purchasing extends BaseController
                         ]);
                     }
                 }
-                
-                log_message('info', 'Create Delivery Debug - Completed inserting items to po_delivery_items');
             }
             
             $db->transComplete();
             
             if ($db->transStatus() === false) {
                 $error = $db->error();
-                log_message('error', 'Create Delivery Debug - Transaction failed: ' . json_encode($error));
+                log_message('error', '[createDelivery] Transaction failed: ' . json_encode($error));
                 
                 // Provide specific error messages based on the error
                 if (isset($error['code'])) {
@@ -5427,8 +4938,6 @@ class Purchasing extends BaseController
         try {
             $db = \Config\Database::connect();
             
-            log_message('info', 'getDeliveryItemsForSN called with deliveryId: ' . $deliveryId);
-            
             // Get delivery with serial_numbers
             $deliveryQuery = $db->query("
                 SELECT 
@@ -5442,7 +4951,6 @@ class Purchasing extends BaseController
             ", [$deliveryId]);
             
             $delivery = $deliveryQuery->getRow();
-            log_message('info', 'Delivery query result: ' . json_encode($delivery));
             
             if (!$delivery) {
                 log_message('error', 'Delivery not found for ID: ' . $deliveryId);
@@ -5454,7 +4962,6 @@ class Purchasing extends BaseController
             
             // Get delivery ID for querying po_delivery_items
             $deliveryId = $delivery->id_delivery;
-            log_message('info', 'Getting delivery items for delivery ID: ' . $deliveryId);
             
             // Get items from po_delivery_items table (only items for this delivery)
             $deliveryItemsQuery = $db->query("
@@ -5495,8 +5002,6 @@ class Purchasing extends BaseController
             
             $deliveryItems = $deliveryItemsQuery->getResult();
             
-            log_message('info', 'Found ' . count($deliveryItems) . ' items in po_delivery_items for delivery: ' . $deliveryId);
-            
             // Build items array from po_delivery_items
             $items = [
                 'units' => [],
@@ -5521,8 +5026,6 @@ class Purchasing extends BaseController
             }
 
             [$unitBundles, $orphans] = DeliveryBundleLibrary::pairDeliveryItemsIntoBundles($deliveryItems);
-            
-            log_message('info', 'Final items array: ' . json_encode($items));
             
             return $this->respond([
                 'success' => true,
@@ -5553,9 +5056,6 @@ class Purchasing extends BaseController
             $deliveryId = $this->request->getPost('delivery_id');
             $serialNumbers = $this->request->getPost('serial_numbers'); // JSON array
             
-            log_message('info', 'Assign SN Debug - Delivery ID: ' . $deliveryId);
-            log_message('info', 'Assign SN Debug - Serial Numbers: ' . $serialNumbers);
-            
             if (empty($deliveryId) || empty($serialNumbers)) {
                 return $this->respond([
                     'success' => false,
@@ -5572,8 +5072,6 @@ class Purchasing extends BaseController
                 ]);
             }
             
-            log_message('info', 'Assign SN Debug - Parsed SN Data: ' . json_encode($snData));
-            
             // Get delivery items to match with SN data
             $deliveryItems = $db->query("
                 SELECT id_delivery_item, item_type, id_po_unit, id_po_attachment
@@ -5582,8 +5080,6 @@ class Purchasing extends BaseController
                 ORDER BY id_delivery_item ASC
             ", [$deliveryId])->getResult();
             
-            log_message('info', 'Assign SN Debug - Found ' . count($deliveryItems) . ' delivery items');
-
             $snByLineId = [];
             foreach ($snData as $snItem) {
                 if (! is_array($snItem)) {
@@ -5605,18 +5101,12 @@ class Purchasing extends BaseController
                     $matchingSnData = $snByLineId[$lineId];
                     $updateData = $this->buildSnUpdateColumnsForDeliveryItem((string) $item->item_type, $matchingSnData);
 
-                    log_message('info', 'Assign SN Debug - By id_delivery_item ' . $lineId .
-                        ' type: ' . $item->item_type . ' payload: ' . json_encode($matchingSnData));
-
                     if ($updateData !== []) {
                         $updateData['updated_at'] = date('Y-m-d H:i:s');
                         $db->table('po_delivery_items')
                             ->where('id_delivery_item', $lineId)
                             ->where('delivery_id', $deliveryId)
                             ->update($updateData);
-
-                        log_message('info', 'Assign SN Debug - Updated item ' . $lineId .
-                            ' (' . $item->item_type . '): ' . json_encode($updateData));
                     }
 
                     $itemCounts[$item->item_type]++;
@@ -5638,10 +5128,6 @@ class Purchasing extends BaseController
                     }
                 }
                 
-                log_message('info', 'Assign SN Debug - Processing item ' . $item->id_delivery_item . 
-                    ' type: ' . $item->item_type . ' typeIndex: ' . $typeIndex . 
-                    ' matchingData: ' . ($matchingSnData ? 'found' : 'not found'));
-                
                 if ($matchingSnData) {
                     $updateData = [];
                     
@@ -5662,9 +5148,6 @@ class Purchasing extends BaseController
                            ->where('id_delivery_item', $item->id_delivery_item)
                            ->where('delivery_id', $deliveryId)
                            ->update($updateData);
-                           
-                        log_message('info', 'Assign SN Debug - Updated item ' . $item->id_delivery_item . 
-                            ' (' . $item->item_type . '): ' . json_encode($updateData));
                     }
                 }
                 
@@ -5686,14 +5169,12 @@ class Purchasing extends BaseController
             
             if ($db->transStatus() === false) {
                 $error = $db->error();
-                log_message('error', 'Assign SN Debug - Transaction failed: ' . json_encode($error));
+                log_message('error', '[assignSerialNumbers] Transaction failed: ' . json_encode($error));
                 return $this->respond([
                     'success' => false,
                     'message' => 'Gagal menyimpan serial numbers: ' . ($error['message'] ?? 'Unknown error')
                 ]);
             }
-            
-            log_message('info', 'Assign SN Debug - Successfully saved SN for delivery: ' . $deliveryId);
             
             return $this->respond([
                 'success' => true,

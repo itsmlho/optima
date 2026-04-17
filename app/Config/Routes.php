@@ -1030,8 +1030,6 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('po-unit', 'Purchasing::poUnit'); // Menampilkan halaman utama
     $routes->get('po-unitForm', 'Purchasing::newPoUnit'); // Tampilkan form tambah
     $routes->get('print-po-unit/(:num)', 'Purchasing::printPOUnit/$1'); // Print PO
-    $routes->post('reverify-po/(:num)', 'WarehousePO::reverifyPO/$1');
-    $routes->post('cancel-po/(:num)', 'WarehousePO::cancelPO/$1');
     $routes->get('get-unit-form', 'Purchasing::getUnitFormFragment');
     
     // --- Form PO Dinamis Routes ---
@@ -1082,7 +1080,6 @@ $routes->group('purchasing', static function ($routes) {
     $routes->post('cancel-po/(:num)', 'Purchasing::cancelPO/$1');
     $routes->post('complete-po/(:num)', 'Purchasing::completePO/$1');
     $routes->delete('delete-po/(:num)', 'Purchasing::deletePO/$1');
-    $routes->post('update-delivery-status', 'Purchasing::updateDeliveryStatus');
     $routes->post('verify-delivery-items', 'Purchasing::verifyDeliveryItems');
     $routes->get('api/get-item-form/(:any)', 'Purchasing::getItemForm/$1');
     $routes->get('api/get-model-units', 'Purchasing::getModelUnits');

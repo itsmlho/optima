@@ -1,678 +1,245 @@
-<?php
+﻿<?php
 $delivery = $delivery ?? [];
-$packingList = $packingList ?? [];
-$items = $items ?? [];
+$groups   = $groups   ?? [];
+
+$plNo      = esc($delivery['packing_list_no'] ?? '-');
+$poNo      = esc($delivery['no_po']           ?? '-');
+$supplier  = esc($delivery['nama_supplier']   ?? '-');
+$drv       = esc($delivery['driver_name']     ?? '-');
+$veh       = trim(($delivery['vehicle_info'] ?? '') . ' ' . ($delivery['vehicle_plate'] ?? '')) ?: '-';
+$vehicle   = esc($veh);
+$status    = esc($delivery['status']          ?? '-');
+$date      = !empty($delivery['delivery_date']) ? date('d M Y', strtotime($delivery['delivery_date'])) : '-';
+$printDate = date('d M Y, H:i');
+$totalQty  = array_sum(array_column($groups, 'qty'));
+$typeLabel = ['unit' => 'Unit', 'attachment' => 'Attachment', 'battery' => 'Battery', 'charger' => 'Charger'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= 'Packing List-' . esc($packingList['packing_list_no'] ?? 'Unknown') ?></title>
-    <!-- jQuery for consistency -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        @page {
-            size: A4;
-            margin: 1cm;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 8pt;
-            line-height: 1.2;
-            color: #333;
-        }
-        
-        .print-container { width: 100%; }
-        
-        /* --- Header --- */
-        .document-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 6px;
-        }
-        
-        .header-left { 
-            display: flex; 
-            align-items: center; 
-            flex: 1;
-        }
-        
-        .company-logo {
-            width: 80px;
-            height: auto;
-            margin-right: 15px;
-            flex-shrink: 0;
-        }
-        
-        .company-info {
-            flex: 1;
-            text-align: center;
-        }
-        
-        .company-name {
-            font-size: 12pt;
-            font-weight: bold;
-            color: #000;
-            margin-bottom: 2px;
-        }
-        
-        .company-tagline {
-            font-size: 8pt;
-            color: #666;
-            font-style: italic;
-        }
-        
-        .company-address {
-            font-size: 7pt;
-            color: #666;
-        }
-        
-        .company-phone {
-            font-size: 7pt;
-            color: #666;
-        }
-        
-        .header-right { border: 1px solid #aaa; }
-        .meta-table { border-collapse: collapse; }
-        .meta-table td {
-            padding: 2px 6px;
-            font-size: 8pt;
-            border: 1px solid #aaa;
-        }
-        .meta-table td:first-child {
-            font-weight: bold;
-            background-color: #f5f5f5;
-        }
-        
-        .document-title {
-            text-align: center;
-            font-size: 11pt;
-            font-weight: bold;
-            text-decoration: underline;
-            margin-bottom: 6px;
-            color: #000;
-        }
-        
-        /* --- Panel Konten --- */
-        .content-panel {
-            border: 1px solid #ccc;
-            margin-bottom: 8px;
-            page-break-inside: auto;
-        }
-        
-        .panel-title {
-            font-size: 8pt;
-            font-weight: bold;
-            text-align: center;
-            padding: 4px;
-            border-bottom: 1px solid #ccc;
-            background-color: #f5f5f5;
-            color: #000;
-        }
-        
-        .panel-body { 
-            padding: 6px; 
-        }
-        
-        /* Info Section */
-        .info-section {
-            margin-bottom: 12px;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            font-weight: bold;
-            font-size: 9pt;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 4px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 2px 1fr;
-            gap: 20px;
-            margin-bottom: 10px;
-        }
-        
-        .info-divider { 
-            width: 2px;
-            background-color: #ddd; 
-            margin: 0;
-        }
-        
-        .info-table { 
-            width: 100%; 
-            border-collapse: collapse;
-            font-size: 8pt;
-        }
-        
-        .info-table td { 
-            vertical-align: top; 
-            padding: 3px 6px;
-            border: none;
-        }
-        
-        .info-table .label { 
-            width: 40%; 
-            font-weight: bold;
-            color: #555;
-        }
-        
-        .info-table .separator { 
-            width: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        .info-table .value {
-            font-weight: normal;
-            color: #000;
-        }
-        
-        /* --- Verification Table --- */
-        .verification-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 7pt;
-            margin: 0;
-            table-layout: fixed;
-        }
-        
-        .verification-table th,
-        .verification-table td {
-            border: 1px solid #333;
-            padding: 3px 4px;
-            text-align: left;
-            vertical-align: middle;
-            word-wrap: break-word;
-            line-height: 1.3;
-        }
-        
-        .verification-table th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-            text-align: center;
-            font-size: 7pt;
-            color: #000;
-            padding: 4px;
-        }
-        
-        /* Column widths for better layout */
-        .verification-table th:nth-child(1) { width: 25%; } /* Item */
-        .verification-table th:nth-child(2) { width: 30%; } /* Database */
-        .verification-table th:nth-child(3) { width: 30%; } /* Real Lapangan */
-        .verification-table th:nth-child(4) { width: 15%; } /* Sesuai */
-        
-        .verification-table td:nth-child(1) { 
-            font-weight: 500;
-            background-color: #fafafa;
-            font-size: 7pt;
-        }
-        
-        .verification-table td:nth-child(2) {
-            font-family: Arial, sans-serif;
-            font-size: 7pt;
-            background-color: #fff;
-        }
-        
-        .verification-table td:nth-child(3) {
-            background-color: #fff;
-            font-size: 7pt;
-        }
-        
-        .verification-table td:nth-child(4) {
-            text-align: center;
-            background-color: #fafafa;
-            font-size: 7pt;
-        }
-        
-        .text-center { text-align: center; }
-        
-        .required {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .real-field {
-            border-bottom: 1px solid #333;
-            min-height: 16px;
-            display: inline-block;
-            width: 95%;
-            padding: 2px 4px;
-            margin: 0;
-            font-size: 7pt;
-        }
-        
-        .checkbox-symbol {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        /* --- Page Layout --- */
-        .page {
-            padding: 0;
-            margin: 0 auto;
-            background: white;
-            min-height: 100vh;
-        }
-        
-        main {
-            margin-bottom: 10px;
-        }
-        
-        /* --- Lain-lain --- */
-        @media print {
-            @page {
-                margin: 10mm 8mm 15mm 8mm; /* Bottom margin for footer area */
-                size: A4;
-                @top-left { content: ""; }
-                @top-center { content: ""; }
-                @top-right { content: ""; }
-                @bottom-left { 
-                    content: "PT SARANA MITRA LUAS Tbk | Sistem OPTIMA - Document Management";
-                    font-size: 7px;
-                    color: #666;
-                }
-                @bottom-center { 
-                    content: "Tanggal Cetak: <?= date('d/m/Y H:i') ?>";
-                    font-size: 7px;
-                    color: #666;
-                }
-                @bottom-right { 
-                    content: "Halaman " counter(page) " | Packing List: <?= esc($packingList['packing_list_no'] ?? 'Unknown') ?>";
-                    font-size: 7px;
-                    color: #666;
-                }
-            }
-            
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            .page {
-                padding-bottom: 0 !important;
-                margin-bottom: 0 !important;
-            }
-            
-            .no-print {
-                display: none !important;
-            }
-            
-            /* Hide HTML footer in print - using @page @bottom instead */
-            .print-footer {
-                display: none !important;
-            }
-            
-            /* Allow tables to break across pages cleanly */
-            table {
-                page-break-inside: auto;
-                page-break-after: auto;
-                margin-bottom: 8px !important;
-            }
-            
-            /* Allow table rows to break */
-            tr {
-                page-break-inside: auto;
-                page-break-after: auto;
-            }
-            
-            /* Prevent breaking inside table header */
-            thead {
-                display: table-header-group;
-            }
-            
-            /* Allow content panels to break across pages if needed */
-            .content-panel {
-                page-break-inside: auto;
-                page-break-after: auto;
-                margin-bottom: 8px !important;
-            }
-            
-            /* Prevent orphaned content */
-            .verification-table tbody {
-                orphans: 3;
-                widows: 3;
-            }
-            
-            /* Ensure content doesn't overlap with footer */
-            .page {
-                padding-bottom: 0 !important;
-                margin-bottom: 0 !important;
-            }
-            
-            body {
-                margin-bottom: 0 !important;
-                padding-bottom: 0 !important;
-            }
-            
-            /* Add spacing to prevent content from going too close to footer area */
-            .content-panel {
-                margin-bottom: 6px !important;
-            }
-            
-            .info-section {
-                margin-bottom: 6px !important;
-            }
-            
-            main {
-                margin-bottom: 6px !important;
-            }
-            
-            /* Ensure last section has enough space before footer */
-            .content-panel:last-of-type {
-                margin-bottom: 10px !important;
-            }
-            
-            /* Reduce spacing in verification table */
-            .verification-table td {
-                padding: 2px 4px !important;
-            }
-            
-            /* Ensure sections have proper spacing */
-            .content-panel,
-            .info-section {
-                margin-bottom: 8px !important;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Packing List - <?= $plNo ?></title>
+<style>
+@page { size: A4; margin: 12mm 10mm 15mm 10mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; background: #fff; }
+
+.hdr { display: flex; justify-content: space-between; align-items: flex-start;
+       border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+.hdr-left { display: flex; align-items: center; gap: 12px; }
+.hdr-logo  { width: 160px; height: auto; margin-right: 12px; }
+.hdr-co .name   { font-size: 12pt; font-weight: bold; }
+.hdr-co .sub    { font-size: 7.5pt; color: #555; margin-top: 2px; }
+.hdr-co .addr   { font-size: 7pt; color: #666; margin-top: 2px; }
+.hdr-meta table { border-collapse: collapse; }
+.hdr-meta td    { border: 1px solid #bbb; padding: 3px 8px; font-size: 8.5pt; white-space: nowrap; }
+.hdr-meta td:first-child { font-weight: bold; background: #f4f4f4; }
+
+.doc-title { text-align: center; font-size: 13pt; font-weight: bold;
+             letter-spacing: 2px; margin: 6px 0; text-transform: uppercase; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px;
+             border: 1px solid #ccc; padding: 6px 10px; margin-bottom: 8px; background: #fafafa; }
+.info-row  { display: flex; gap: 4px; font-size: 8.5pt; padding: 2px 0; }
+.info-row .lbl { width: 110px; font-weight: bold; color: #444; flex-shrink: 0; }
+
+.items-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.items-table th {
+    background: #1a3a5c; color: #fff; padding: 5px 6px;
+    text-align: left; border: 1px solid #1a3a5c; font-size: 8.5pt; }
+.items-table th.center, .items-table td.center { text-align: center; }
+.items-table td { border: 1px solid #ccc; padding: 5px 6px; vertical-align: top; }
+.items-table tbody tr:nth-child(even) td { background: #f9f9f9; }
+.col-no   { width: 28px; }
+.col-type { width: 70px; }
+.col-qty  { width: 36px; }
+.col-sn   { width: 220px; }
+
+.type-badge { display: inline-block; padding: 1px 6px; border-radius: 3px;
+              font-size: 7.5pt; font-weight: bold; color: #fff; white-space: nowrap; }
+.type-unit       { background: #1a6bab; }
+.type-attachment { background: #7b4fa6; }
+.type-battery    { background: #c47b0a; }
+.type-charger    { background: #1a8a4a; }
+
+.sn-list { list-style: none; padding: 0; margin: 0; }
+.sn-list li { padding: 1px 0; font-size: 8pt; line-height: 1.5; }
+.sn-list li .sn-num { color: #666; margin-right: 4px; }
+.sn-empty { color: #aaa; font-style: italic; font-size: 8pt; }
+
+.approval-section { margin-top: 20px; margin-bottom: 10px; }
+.approval-title { font-weight: bold; font-size: 9pt; border-bottom: 1px solid #000;
+                  padding-bottom: 3px; margin-bottom: 12px; text-transform: uppercase;
+                  letter-spacing: 1px; }
+.approval-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.approval-col  { text-align: center; }
+.approval-col .role  { font-weight: bold; font-size: 9pt; margin-bottom: 3px; }
+.approval-col .desc  { font-size: 8pt; color: #666; margin-bottom: 10px; }
+.approval-col .space { height: 44px; }
+.approval-col .sig-line { border-bottom: 1px solid #000; margin: 4px 16px 2px 16px; }
+.approval-col .sig-name { font-size: 8pt; color: #666; }
+.approval-col .sig-date { font-size: 8pt; color: #666; margin-top: 4px; }
+
+.print-footer { position: fixed; bottom: 0; left: 10mm; right: 10mm;
+                padding-top: 4px; border-top: 1px solid #ccc;
+                display: flex; justify-content: space-between; align-items: center;
+                font-size: 7pt; color: #666; background: #fff; }
+/* Push body content up so it doesn't get hidden behind fixed footer */
+body { padding-bottom: 20px; }
+
+@media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
 </head>
 <body>
-    <div class="print-container">
-        
-        <header class="document-header">
-            <div class="header-left">
-                <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="company-logo" alt="Logo" onerror="this.style.display='none'"/>
-                <div class="company-info">
-                    <div class="company-name">PT. SARANA MITRA LUAS Tbk</div>
-                    <div class="company-tagline">FORKLIFT & MATERIAL HANDLING EQUIPMENT SOLUTIONS</div>
-                    <div class="company-address">Jl. Kenari Utama II Blk. C No.03 & 05A, Cibatu, Kec. Cikarang Pusat, 17550</div>
-                    <div class="company-phone">Phone: (021) - 3973 9988, (021) - 8990 2188</div>
-                </div>
-            </div>
-            <div class="header-right">
-                <table class="meta-table">
-                    <tr>
-                        <td>Packing List No</td>
-                        <td><?= esc($packingList['packing_list_no'] ?? '-') ?></td>
-                    </tr>
-                    <tr>
-                        <td>PO Number</td>
-                        <td><?= esc($delivery['no_po'] ?? '-') ?></td>
-                    </tr>
-                    <tr>
-                        <td>Tanggal</td>
-                        <td><?= date('d M Y', strtotime($delivery['delivery_date'] ?? date('Y-m-d'))) ?></td>
-                    </tr>
-                </table>
-            </div>
-        </header>
-        <h1 class="document-title">PACKING LIST</h1>
-        
-        <!-- Document Information -->
-        <div class="info-section">
-            <div class="section-title">INFORMASI PACKING LIST</div>
-            <div class="info-grid">
-                <div>
-                    <table class="info-table">
-                        <tr>
-                            <td class="label">Packing List No:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= esc($packingList['packing_list_no'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <td class="label">PO Number:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= esc($delivery['no_po'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <td class="label">Supplier:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= esc($delivery['nama_supplier'] ?? '-') ?></td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="info-divider"></div>
-                <div>
-                    <table class="info-table">
-                        <tr>
-                            <td class="label">Delivery Date:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= date('d/m/Y', strtotime($delivery['delivery_date'] ?? date('Y-m-d'))) ?></td>
-                        </tr>
-                        <tr>
-                            <td class="label">Driver:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= esc($delivery['driver_name'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <td class="label">Status:</td>
-                            <td class="separator">:</td>
-                            <td class="value"><?= esc($delivery['status'] ?? 'PENDING') ?></td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
 
-        <div style="display: flex; justify-content: flex-start; align-items: center; margin-bottom: 4px;">
-            <div style="font-size: 5pt; color: #666; text-align: left;">
-                <span class="required">*</span> Field yang ditandai wajib diverifikasi
-            </div>
+<header class="hdr">
+    <div class="hdr-left">
+        <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="hdr-logo"
+             alt="Logo" onerror="this.style.display='none'">
+        <div class="hdr-co">
+            <div class="name">PT. SARANA MITRA LUAS Tbk</div>
+            <div class="sub">FORKLIFT &amp; MATERIAL HANDLING EQUIPMENT SOLUTIONS</div>
+            <div class="addr">Jl. Kenari Utama II Blk. C No.03 &amp; 05A, Cibatu, Kec. Cikarang Pusat, 17550</div>
+            <div class="addr">Phone: (021) 3973-9988 &nbsp;|&nbsp; (021) 8990-2188</div>
         </div>
-
-        <main>
-            <?php if (!empty($items)): ?>
-                <?php 
-                // Display each item individually with #1, #2, etc. labels
-                // Each item from $items is already an individual item with assigned SN
-                foreach ($items as $itemIndex => $item):
-                    // Normalize item_type (handle case sensitivity - database might use lowercase)
-                    $itemTypeRaw = $item['item_type'] ?? 'Unit';
-                    $itemType = ucfirst(strtolower($itemTypeRaw)); // Normalize to 'Unit', 'Attachment', etc.
-                    $itemNumber = $itemIndex + 1;
-                    
-                    // Get SN directly from item array (same as tab Pengiriman)
-                    $serialNumber = '';
-                    if (isset($item['serial_number'])) {
-                        $serialNumber = trim((string)$item['serial_number']);
-                    }
-                    
-                    // Initialize specDetails as empty array first
-                    $specDetails = [];
-                    
-                    // Get specification details based on item type - same format as Detail Purchase Order > Daftar Items
-                    if (strtolower($itemType) === 'unit' || $itemType === 'Unit') {
-                        // Format sesuai PO Verification - KONSISTEN
-                        $specDetails = [
-                            'Departemen' => $item['nama_departemen'] ?? '-',
-                            'Jenis Unit' => $item['jenis_unit'] ?? '-',
-                            'Brand' => $item['merk_unit'] ?? '-',
-                            'Model' => $item['model_unit'] ?? '-',  // SELALU TAMPILKAN (seperti verification)
-                            'Tahun' => $item['tahun_unit'] ?? '-',
-                            'Kapasitas' => $item['kapasitas_unit'] ?? '-',
-                            'Mast Type' => $item['tipe_mast'] ?? '-',
-                            'Engine Type' => $item['merk_mesin'] ?? '-',
-                            'Model Mesin' => $item['model_mesin'] ?? '-',
-                            'Tire Type' => $item['tipe_ban'] ?? '-',
-                            'Wheel Type' => $item['tipe_roda'] ?? '-',
-                            'Valve' => $item['jumlah_valve'] ?? '-',
-                            'Keterangan' => $item['keterangan'] ?? '-',
-                            'Serial Number' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN',
-                            'SN Mast' => 'Belum ada SN',  // Tambah agar konsisten dengan verification
-                            'SN Mesin' => 'Belum ada SN'  // Tambah agar konsisten dengan verification
-                        ];
-                    } elseif (strtolower($itemType) === 'attachment' || $itemType === 'Attachment') {
-                        // Format sesuai renderSpecificationDetails di purchasing.php
-                        $specDetails = [
-                            'Tipe Attachment' => $item['tipe_attachment'] ?? '-',
-                            'Merk' => $item['merk_attachment'] ?? '-',
-                            'Model' => $item['model_attachment'] ?? '-',
-                            'Keterangan' => $item['keterangan'] ?? '-',
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    } elseif (strtolower($itemType) === 'battery' || $itemType === 'Battery') {
-                        // Format sesuai renderSpecificationDetails di purchasing.php
-                        $specDetails = [
-                            'Jenis Battery' => $item['jenis_baterai'] ?? '-',
-                            'Merk Battery' => $item['merk_baterai'] ?? '-',
-                            'Tipe Battery' => $item['tipe_baterai'] ?? '-',
-                            'Keterangan' => $item['keterangan'] ?? '-',
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    } elseif (strtolower($itemType) === 'charger' || $itemType === 'Charger') {
-                        // Format sesuai renderSpecificationDetails di purchasing.php
-                        $specDetails = [
-                            'Merk Charger' => $item['merk_charger'] ?? '-',
-                            'Tipe Charger' => $item['tipe_charger'] ?? '-',
-                            'Keterangan' => $item['keterangan'] ?? '-',
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    } else {
-                        // Fallback for unknown item types
-                        $specDetails = [
-                            'Item Name' => $item['item_name'] ?? '-',
-                            'Item Type' => $itemType,
-                            'Keterangan' => $item['keterangan'] ?? '-',
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    }
-                    
-                    // Ensure specDetails is always an array
-                    if (empty($specDetails) || !is_array($specDetails)) {
-                        $specDetails = [
-                            'Item' => $item['item_name'] ?? 'Unknown Item',
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    }
-                    
-                    // Final safety check - ensure specDetails exists and is array
-                    if (!isset($specDetails) || !is_array($specDetails)) {
-                        $specDetails = [
-                            'Item Name' => $item['item_name'] ?? 'Unknown Item',
-                            'Item Type' => $itemType,
-                            'SN' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
-                        ];
-                    }
-                ?>
-                <div class="content-panel">
-                    <div class="panel-title"><?= strtoupper($itemType) ?> #<?= $itemNumber ?></div>
-                    <div class="panel-body">
-                        <table class="verification-table">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Database</th>
-                                    <th>Real Lapangan</th>
-                                    <th>Sesuai</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (!empty($specDetails) && is_array($specDetails)): ?>
-                                <?php foreach ($specDetails as $label => $value): ?>
-                                    <?php
-                                    // Always show Model and all SN fields (konsisten dengan verification)
-                                    $isModelOrSN = ($label === 'Model' || strpos($label, 'SN') !== false || strpos($label, 'Serial') !== false);
-                                    
-                                    // Skip empty values EXCEPT Model and SN fields
-                                    if (!$isModelOrSN && (empty($value) || ($value === '-' && $label !== 'Keterangan'))) {
-                                        continue;
-                                    }
-                                    
-                                    // Determine if required field (all SN fields)
-                                    $isRequired = in_array($label, ['Serial Number', 'SN', 'SN Mast', 'SN Mesin']);
-                                    ?>
-                                    <tr>
-                                        <td><?= esc($label) ?><?= $isRequired ? ' <span class="required">*</span>' : '' ?></td>
-                                        <td><?= esc($value) ?></td>
-                                        <td><span class="real-field"></span></td>
-                                        <td class="text-center"><span class="checkbox-symbol">☐</span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" style="text-align: center; color: #999; font-style: italic;">
-                                            Tidak ada data spesifikasi untuk item ini
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-                <br><br>
-                <!-- Simple Signature Section - same as print_verification.php -->
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-top: 15px; margin-bottom: 10px; font-size: 8pt; page-break-inside: avoid;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 7pt; margin-bottom: 4px;">Tgl: ___/___/_____</div>
-                        <div style="font-weight: bold; margin-bottom: 20px;">Diverifikasi Oleh</div><br>
-                        <div style="border-bottom: 1px solid #000; width: 150px; margin: 0 auto 4px; height: 20px;"></div>
-                        <div>Verifikator</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 7pt; margin-bottom: 4px;">Tgl: ___/___/_____</div>
-                        <div style="font-weight: bold; margin-bottom: 20px;">Disahkan Oleh</div><br>
-                        <div style="border-bottom: 1px solid #000; width: 150px; margin: 0 auto 4px; height: 20px;"></div>
-                        <div>Supervisor</div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="content-panel">
-                    <div class="panel-title">VERIFIKASI DATA</div>
-                    <div class="panel-body">
-                        <p style="text-align: center; color: #666; font-style: italic;">Tidak ada item dalam packing list ini</p>
-                        <p style="text-align: center; color: #999; font-size: 7pt; margin-top: 5px;">
-                            Debug: Items count = <?= count($items ?? []) ?>
-                        </p>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </main>
-        
     </div>
-    
-    <script>
-        // Auto print functionality
-        function initiatePrint() {
-            if (window.matchMedia && window.matchMedia('print').matches) {
-                return;
-            }
-            
-            setTimeout(function() {
-                try {
-                    window.print();
-                } catch (e) {
-                    console.log('Print failed:', e);
-                }
-            }, 1000);
-        }
-        
-        // Initialize
-        if (document.readyState === 'complete') {
-            initiatePrint();
-        } else {
-            window.addEventListener('load', function() {
-                initiatePrint();
-            });
-        }
-        
-        // Close window after print
-        window.addEventListener('afterprint', () => {
-            setTimeout(function() {
-                window.close();
-            }, 100);
-        });
-    </script>
+    <div class="hdr-meta">
+        <table>
+            <tr><td>Packing List No</td><td><?= $plNo ?></td></tr>
+            <tr><td>PO Number</td>      <td><?= $poNo ?></td></tr>
+            <tr><td>Tanggal Kirim</td>  <td><?= $date ?></td></tr>
+        </table>
+    </div>
+</header>
+
+<div class="doc-title">Packing List</div>
+
+<div class="info-grid">
+    <div>
+        <div class="info-row"><span class="lbl">Supplier</span><span>: <?= $supplier ?></span></div>
+        <div class="info-row"><span class="lbl">Driver</span><span>: <?= $drv ?></span></div>
+        <div class="info-row"><span class="lbl">Kendaraan</span><span>: <?= $vehicle ?></span></div>
+    </div>
+    <div>
+        <div class="info-row"><span class="lbl">Tanggal Kirim</span><span>: <?= $date ?></span></div>
+        <div class="info-row"><span class="lbl">Status</span><span>: <?= $status ?></span></div>
+        <div class="info-row"><span class="lbl">Total Item</span><span>: <?= $totalQty ?> unit</span></div>
+    </div>
+</div>
+
+<table class="items-table">
+    <thead>
+        <tr>
+            <th class="col-no center">No</th>
+            <th class="col-type center">Tipe</th>
+            <th>Deskripsi / Spesifikasi Vendor (PI)</th>
+            <th class="col-qty center">Qty</th>
+            <th class="col-sn">Serial Number</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php if (empty($groups)): ?>
+        <tr><td colspan="5" style="text-align:center;color:#999;padding:16px;">
+            Tidak ada item dalam packing list ini.
+        </td></tr>
+    <?php else: ?>
+        <?php foreach ($groups as $i => $grp):
+            $typeLower  = strtolower($grp['item_type'] ?? 'unit');
+            $badgeClass = 'type-' . $typeLower;
+            $typeText   = $typeLabel[$typeLower] ?? ucfirst($typeLower);
+            $spec       = esc($grp['spec'] ?? $grp['item_name'] ?? '-');
+            $qty        = (int)($grp['qty'] ?? 1);
+            $sns        = $grp['serial_numbers'] ?? [];
+        ?>
+        <tr>
+            <td class="center"><?= $i + 1 ?></td>
+            <td class="center">
+                <span class="type-badge <?= $badgeClass ?>"><?= $typeText ?></span>
+            </td>
+            <td><?= $spec ?></td>
+            <td class="center"><strong><?= $qty ?></strong></td>
+            <td>
+                <?php if (empty(array_filter($sns, fn($s) => trim($s) !== ''))): ?>
+                    <span class="sn-empty">Belum ada SN</span>
+                <?php else: ?>
+                    <ul class="sn-list">
+                    <?php foreach ($sns as $j => $sn): ?>
+                        <li>
+                            <span class="sn-num"><?= $j + 1 ?>.</span>
+                            <?php if (trim((string)$sn) !== ''): ?>
+                                <?= esc($sn) ?>
+                            <?php else: ?>
+                                <span class="sn-empty">â€”</span>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    <?php endif; ?>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3" style="text-align:right;font-weight:bold;padding:5px 8px;">Total</td>
+            <td class="center"><strong><?= $totalQty ?></strong></td>
+            <td></td>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="approval-section">
+    <div class="approval-grid">
+        <div class="approval-col">
+            <div class="role">Purchasing</div>
+            <div class="desc">Pembuat Packing List</div>
+            <div class="space"></div>
+            <div class="sig-line"></div>
+            <div class="sig-name">(...........................)</div>
+            <div class="sig-date">Tanggal: __________</div>
+        </div>
+        <div class="approval-col">
+            <div class="role">Admin Warehouse</div>
+            <div class="desc">Verifikator Penerimaan</div>
+            <div class="space"></div>
+            <div class="sig-line"></div>
+            <div class="sig-name">(...........................)</div>
+            <div class="sig-date">Tanggal: __________</div>
+        </div>
+        <div class="approval-col">
+            <div class="role">Head Warehouse</div>
+            <div class="desc">Mengetahui</div>
+            <div class="space"></div>
+            <div class="sig-line"></div>
+            <div class="sig-name">(...........................)</div>
+            <div class="sig-date">Tanggal: __________</div>
+        </div>
+    </div>
+</div>
+
+<div class="print-footer">
+    <div style="text-align:left;flex:1;"><strong>PT SARANA MITRA LUAS Tbk</strong> | <span style="color:#888;">Sistem OPTIMA - Document Management</span></div>
+    <div style="text-align:center;flex:1;">Tanggal Cetak: <?= date('d/m/Y H:i') ?></div>
+    <div style="text-align:right;flex:1;">Packing List: <?= $plNo ?> | PO: <?= $poNo ?></div>
+</div>
+
+<script>
+    function initiatePrint() {
+        setTimeout(function() {
+            try { window.print(); } catch(e) {}
+        }, 500);
+    }
+    if (document.readyState === 'complete') {
+        initiatePrint();
+    } else {
+        window.addEventListener('load', initiatePrint);
+    }
+    window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 100);
+    });
+</script>
 </body>
 </html>
