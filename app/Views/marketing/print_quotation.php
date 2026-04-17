@@ -689,17 +689,17 @@ function formatCurrency($amount, $currency = 'IDR') {
                                 $faModeQ              = optima_print_fork_or_attachment_mode($spec, $qTech, $forkDisplayQ, $attachmentDisplayQ);
                                 ?>
                                 <div class="unit-title">
-                                    <?= !empty($spec['unit_type']) && !empty($spec['unit_subtype']) ? esc($spec['unit_type']) . ' ' . esc($spec['unit_subtype']) : esc($spec['unit_type'] ?? 'UNIT') ?> 
-                                    - <?= strtoupper(esc($spec['department_name'] ?? 'STANDARD')) ?>
+                                    <?= !empty($spec['display_unit_type']) ? esc($spec['display_unit_type']) : esc($spec['unit_type'] ?? 'UNIT') ?> 
+                                    - <?= strtoupper(esc($spec['display_department'] ?? $spec['department_name'] ?? 'STANDARD')) ?>
                                 </div>
                                 <div class="unit-specs">
-                                    <?= !empty($spec['brand_name']) ? '&bull; Merk: ' . esc($spec['brand_name']) : '' ?>
-                                    <?= !empty($spec['capacity_name']) ? ' | Cap. ' . esc($spec['capacity_name']) : '' ?>
+                                    <?= !empty($spec['display_brand']) ? '&bull; Merk: ' . esc($spec['display_brand']) : '' ?>
+                                    <?= !empty($spec['display_capacity']) ? ' | Cap. ' . esc($spec['display_capacity']) : '' ?>
                                     <br>
                                     <?= !empty($spec['mast_name']) ? '&bull; Mast ' . esc($spec['mast_name']) : '' ?>
                                     <?= !empty($spec['wheel_name']) ? ' | ' . esc($spec['wheel_name']) : '' ?>
                                     <br>
-                                    <?php if (!empty($spec['department_name']) && (stripos($spec['department_name'], 'electric') !== false || stripos($spec['department_name'], 'battery') !== false)): ?>
+                                    <?php if (!empty($spec['display_department']) && (stripos($spec['display_department'], 'electric') !== false || stripos($spec['display_department'], 'battery') !== false)): ?>
                                         <?= !empty($spec['jenis_baterai']) ? '&bull; Baterai: ' . esc($spec['jenis_baterai']) : '' ?>
                                     <?php endif; ?>
                                     <?php

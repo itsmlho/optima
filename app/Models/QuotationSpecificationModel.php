@@ -43,7 +43,11 @@ class QuotationSpecificationModel extends Model
         'operator_quantity',        // NEW: Number of operators
         'operator_monthly_rate',    // NEW: Monthly rate per operator
         'operator_daily_rate',      // NEW: Daily rate per operator
-        'original_kontrak_id'
+        'original_kontrak_id',
+        'departemen_text',          // Free-text: Department
+        'tipe_unit_text',           // Free-text: Unit Type
+        'kapasitas_text',           // Free-text: Capacity
+        'merk_unit_text',           // Free-text: Brand
     ];
 
     protected $useTimestamps = true;
@@ -90,6 +94,10 @@ qs.departemen_id,
             qs.is_active,
             qs.created_at,
             qs.updated_at,
+            qs.departemen_text,
+            qs.tipe_unit_text,
+            qs.kapasitas_text,
+            qs.merk_unit_text,
             d.nama_departemen,
             tu.tipe as nama_tipe_unit,
             tu.jenis as jenis_tipe_unit,

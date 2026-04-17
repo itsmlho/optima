@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
@@ -583,26 +583,20 @@ window.addEventListener('DOMContentLoaded', function() {
                         
                         <div class="col-md-4">
                             <label class="form-label"><?= lang('App.department') ?> <span class="text-danger">*</span></label>
-                            <select class="form-select" name="departemen_id" id="specDepartemen" required></select>
+                            <input type="text" class="form-control" name="departemen_text" id="specDepartemen" required autocomplete="off" placeholder="Contoh: Electric, IC Diesel">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label"><?= lang('Marketing.unit_type') ?> <span class="text-danger">*</span></label>
-                            <select class="form-select" name="tipe_unit_id" id="specTipeUnit" required>
-                                <option value=""><?= lang('Marketing.select_unit_type') ?></option>
-                            </select>
+                            <input type="text" class="form-control" name="tipe_unit_text" id="specTipeUnit" required autocomplete="off" placeholder="Contoh: Counterbalance, Reach Truck">
                         </div>
                         
                         <div class="col-md-4">
                             <label class="form-label"><?= lang('Marketing.capacity') ?></label>
-                            <select class="form-select" name="kapasitas_id" id="specKapasitas">
-                                <option value=""><?= lang('Marketing.select_capacity') ?></option>
-                            </select>
+                            <input type="text" class="form-control" name="kapasitas_text" id="specKapasitas" autocomplete="off" placeholder="Contoh: 1.5 Ton, 3 Ton">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.unit_brand') ?></label>
-                            <select class="form-select" name="brand_id" id="specMerkUnit">
-                                <option value=""><?= lang('Marketing.select_brand') ?></option>
-                            </select>
+                            <input type="text" class="form-control" name="merk_unit_text" id="specMerkUnit" autocomplete="off" placeholder="Contoh: Toyota, Komatsu">
                         </div>
                         <div class="col-12 mt-2">
                             <hr class="my-2">
@@ -3257,20 +3251,23 @@ function displayQuotationSpecifications(specifications) {
         // Build specification details
         const details = [];
         
-        // Department and Unit Type
-        if (spec.nama_departemen) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Department</small><div class="fw-bold">${spec.nama_departemen}</div></div>`);
+        // Department and Unit Type — prefer new text fields, fallback to joined names for old records
+        const displayDept = spec.departemen_text || spec.nama_departemen || spec.department_name || '';
+        const displayUnitType = spec.tipe_unit_text || spec.jenis_tipe_unit || spec.nama_tipe_unit || spec.unit_type || '';
+        const displayCapacity = spec.kapasitas_text || spec.nama_kapasitas || spec.capacity_name || '';
+        const displayBrand = spec.merk_unit_text || spec.merk_unit || spec.brand_name || '';
+
+        if (displayDept) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Department</small><div class="fw-bold">${displayDept}</div></div>`);
         }
         
-        if (spec.jenis_tipe_unit) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Unit Type</small><div class="fw-bold">${spec.jenis_tipe_unit}</div></div>`);
-        } else if (spec.nama_tipe_unit) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Unit Type</small><div class="fw-bold">${spec.nama_tipe_unit}</div></div>`);
+        if (displayUnitType) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Unit Type</small><div class="fw-bold">${displayUnitType}</div></div>`);
         }
         
         // Capacity
-        if (spec.nama_kapasitas) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Capacity</small><div class="fw-bold">${spec.nama_kapasitas}</div></div>`);
+        if (displayCapacity) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Capacity</small><div class="fw-bold">${displayCapacity}</div></div>`);
         }
         
         // Quantity and Spare Unit Badge
@@ -3549,10 +3546,7 @@ function proceedWithSpecificationModal() {
     // Ã¢Å“â€¦ Modal size controlled by CSS (modal-xl = 1140px)
     // No JavaScript forcing needed
     
-    // Load dropdown data
-    loadDepartemenForSpecification();
-    loadTipeUnitForSpecification(); // This will load data but not populate options until dept is selected
-    loadKapasitasForSpecification();
+    // Load dropdown data (technical spec fields are now free-text; only load master dropdowns)
     loadAttachmentTypesForSpecification();
     loadForkTypesForSpecification();
     loadValvesForSpecification();
@@ -3572,10 +3566,8 @@ function proceedWithSpecificationModal() {
         specMasterEl.open = false;
     }
 
-    // Unit Brand must follow selected department to prevent cross-department selection
-    $('#specMerkUnit')
-        .prop('disabled', true)
-        .html('<option value="">-- Select Department First --</option>');
+    // Clear technical spec text inputs
+    $('#specDepartemen, #specTipeUnit, #specKapasitas, #specMerkUnit').val('');
     
     $('#addSpecificationModal').modal('show');
 }
@@ -3604,206 +3596,14 @@ function openAddAttachmentModal() {
     }, 300);
 }
 
-// Department change handler - handle electric/non-electric filtering
-$(document).on('change', '#specDepartemen', function() {
-    const selectedDept = $(this).val();
-
-    // Update Unit Type options based on selected department
-    updateTipeUnitOptions();
-
-    // Unit Brand is strictly department-based
-    if (selectedDept) {
-        $('#specMerkUnit').prop('disabled', false);
-        loadUnitBrandsForSpecification();
-    } else {
-        $('#specMerkUnit')
-            .val('')
-            .prop('disabled', true)
-            .html('<option value="">-- Select Department First --</option>');
-    }
-});
-
 $(document).on('change', '#specMastModel', function() {
     loadMastHeightsForSpecification($(this).val());
 });
 
-// Unit Type change handler - handle cascading to other components
-$(document).on('change', '#specTipeUnit', function() {
-    const selectedTipeUnit = $(this).val();
-    const selectedText = $(this).find('option:selected').text();
-    
-    if (selectedTipeUnit) {
-        // Filter kapasitas based on unit type if needed
-        // For now we load all kapasitas, but this can be enhanced
-        loadKapasitasForSpecification();
-        
-        // Load other components that may depend on unit type
-        loadUnitBrandsForSpecification();
-        loadAttachmentTypesForSpecification();
-    } else {
-        // Clear dependent dropdowns
-        $('#specKapasitas').html('<option value="">-- Select Capacity --</option>');
-    }
-});
+// Technical Specification fields (Department, Unit Type, Capacity, Brand) are now free-text inputs.
+// Cascade dropdown logic removed.
 
-// Functions to load dropdown data - consistent with kontrak spesifikasi pattern
-function loadDepartemenForSpecification() {
-    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen', function(response) {
-        if (response.success) {
-            let options = '<option value="">-- Select Department --</option>';
-            response.data.forEach(dept => {
-                options += `<option value="${dept.id}">${dept.name}</option>`;
-            });
-            $('#specDepartemen').html(options);
-        } else {
-            console.error('Departemen API error:', response.message);
-            $('#specDepartemen').html('<option value="">Error: ' + (response.message || 'Unknown error') + '</option>');
-        }
-    }).fail(function(xhr) {
-        console.error('Failed to load departments:', {
-            status: xhr.status,
-            statusText: xhr.statusText,
-            responseText: xhr.responseText
-        });
-        $('#specDepartemen').html('<option value="">Error loading departments</option>');
-    });
-}
-
-function loadTipeUnitForSpecification() {
-    return $.ajax({
-        url: '<?= base_url('marketing/customer-management/getTipeUnit') ?>',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                // Store all unit type data globally for filtering
-                window.allTipeUnitData = response.data;
-                
-                // Initially show placeholder only
-                $('#specTipeUnit').html('<option value="">-- Pilih Tipe Unit --</option>');
-            } else {
-                console.error('API returned error:', response.message);
-                $('#specTipeUnit').html('<option value="">Error: ' + (response.message || 'Unknown error') + '</option>');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error loading tipe unit:', {
-                status: xhr.status,
-                statusText: xhr.statusText,
-                responseText: xhr.responseText,
-                error: error
-            });
-            $('#specTipeUnit').html('<option value="">Error loading unit types</option>');
-        }
-    });
-}
-
-// Function to update Unit Type options based on selected department
-function updateTipeUnitOptions() {
-    const selectedDept = $('#specDepartemen').val();
-    const selectedDeptText = $('#specDepartemen option:selected').text();
-    const select = $('#specTipeUnit');
-    
-    select.empty().append('<option value="">-- Pilih Tipe Unit --</option>');
-    
-    if (!selectedDept || !window.allTipeUnitData) {
-        if (!window.allTipeUnitData) {
-            // Try to load tipe unit data if it's not loaded
-            loadTipeUnitForSpecification();
-        }
-        return;
-    }
-    
-    // Filter and show only units for selected department
-    const filteredUnits = window.allTipeUnitData.filter(unit => {
-        return unit.id_departemen == selectedDept;
-    });
-    
-    if (filteredUnits.length === 0) {
-        select.append('<option value="">No unit types available for this department</option>');
-        return;
-    }
-    
-    // Group by jenis to avoid duplicates
-    const uniqueJenis = [...new Set(filteredUnits.map(unit => unit.jenis))];
-    
-    uniqueJenis.sort().forEach(jenis => {
-        // Find the first unit with this jenis to get the id
-        const unitWithJenis = filteredUnits.find(unit => unit.jenis === jenis);
-        if (unitWithJenis) {
-            select.append(`<option value="${unitWithJenis.id_tipe_unit}" data-dept="${selectedDept}">${jenis}</option>`);
-        }
-    });
-    
-    // Also clear dependent dropdowns when unit type changes
-    $('#specKapasitas').html('<option value="">-- Select Capacity --</option>');
-}
-
-function loadKapasitasForSpecification() {
-    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
-        if (response.success) {
-            // Sort capacity data by numeric value (from smallest to largest)
-            const sortedData = response.data.sort((a, b) => {
-                // Extract numeric value from capacity name (e.g., "1.5 TON" -> 1.5)
-                const numA = parseFloat(a.name.replace(/[^\d.]/g, '')) || 0;
-                const numB = parseFloat(b.name.replace(/[^\d.]/g, '')) || 0;
-                return numA - numB;
-            });
-            
-            let options = '<option value="">-- Select Capacity --</option>';
-            sortedData.forEach(cap => {
-                options += `<option value="${cap.id}">${cap.name}</option>`;
-            });
-            $('#specKapasitas').html(options);
-        } else {
-            console.error('Kapasitas API error:', response.message);
-            $('#specKapasitas').html('<option value="">Error: ' + (response.message || 'Unknown error') + '</option>');
-        }
-    }).fail(function(xhr) {
-        console.error('Failed to load capacities:', {
-            status: xhr.status,
-            statusText: xhr.statusText,
-            responseText: xhr.responseText
-        });
-        $('#specKapasitas').html('<option value="">Error loading capacities</option>');
-    });
-}
-
-function loadUnitBrandsForSpecification() {
-    const selectedDeptId = $('#specDepartemen').val();
-
-    if (!selectedDeptId) {
-        $('#specMerkUnit')
-            .val('')
-            .prop('disabled', true)
-            .html('<option value="">-- Select Department First --</option>');
-        return Promise.resolve();
-    }
-
-    let endpoint = '<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit';
-    endpoint += `&departemen_id=${encodeURIComponent(selectedDeptId)}`;
-
-    $('#specMerkUnit')
-        .prop('disabled', false)
-        .html('<option value="">Loading brands...</option>');
-
-    return $.get(endpoint, function(response) {
-        if (response.success) {
-            let options = '<option value="">-- Select Brand --</option>';
-            if (response.data.length === 0) {
-                options = '<option value="">No brands available for selected department</option>';
-            } else {
-                response.data.forEach(brand => {
-                    // Backend returns {id: model_unit_id, name: "Brand - Model"}
-                    options += `<option value="${brand.id}">${brand.name}</option>`;
-                });
-            }
-            $('#specMerkUnit').html(options);
-        }
-    }).fail(function(xhr) {
-        console.error('Ã¢ÂÅ’ Failed to load unit brands:', xhr.responseText);
-        $('#specMerkUnit').html('<option value="">Error loading brands</option>');
-    });
-}
+// Functions to load master dropdown data for specification form
 
 function loadForkTypesForSpecification() {
     return $.get('<?= base_url('marketing/forks') ?>', function(response) {
@@ -4154,7 +3954,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     if (!departemen) {
         OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
-            tr('Silakan pilih departemen', 'Please select a department'),
+            tr('Silakan isi departemen', 'Please fill in the department'),
             'warning'
         );
         return;
@@ -4163,7 +3963,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     if (!tipeUnit) {
         OptimaUI.fire(
             tr('Validasi Gagal', 'Validation Error'),
-            tr('Silakan pilih tipe unit', 'Please select a unit type'),
+            tr('Silakan isi tipe unit', 'Please fill in the unit type'),
             'warning'
         );
         $('#specTipeUnit').focus();
@@ -4579,33 +4379,27 @@ function editSpecification(specId) {
                 console.log('Ã¢â€žÂ¹Ã¯Â¸Â EDIT - No spare units');
             }
             
-            console.log('Ã°Å¸â€œâ€¹ Starting to load all dropdown data...');
+            console.log('Starting to load master dropdowns for edit...');
             
-            // STEP 1: Load independent dropdowns first (parallel)
+            // Load master dropdowns (attachment, fork, valve, mast, tire)
             Promise.all([
-                loadDepartemenForSpecification(),
-                loadKapasitasForSpecification(),
-                loadUnitBrandsForSpecification(),
                 loadAttachmentTypesForSpecification(),
                 loadForkTypesForSpecification(),
                 loadValvesForSpecification(),
                 loadMastModelsForSpecification(),
-                loadTiresForSpecification(),
-                loadTipeUnitForSpecification()
+                loadTiresForSpecification()
             ]).then(() => {
-                console.log('Ã¢Å“â€¦ Independent dropdowns loaded');
+                console.log('Master dropdowns loaded for edit');
                 
-                // Set independent dropdown values IMMEDIATELY after load
-                console.log('Ã°Å¸â€œÅ’ Setting Capacity:', spec.kapasitas_id);
-                $('#specKapasitas').val(spec.kapasitas_id || '');
+                // Technical Spec text inputs - use saved text, fallback to joined names for old records
+                $('#specDepartemen').val(spec.departemen_text || spec.nama_departemen || spec.department_name || '');
+                $('#specTipeUnit').val(spec.tipe_unit_text || spec.nama_tipe_unit || spec.unit_type || '');
+                $('#specKapasitas').val(spec.kapasitas_text || spec.nama_kapasitas || spec.capacity_name || '');
+                $('#specMerkUnit').val(spec.merk_unit_text || spec.merk_unit || spec.brand_name || '');
                 
-                console.log('Ã°Å¸â€œÅ’ Setting Attachment Type:', spec.attachment_tipe);
                 $('#specAttachmentTipe').val(spec.attachment_id || '');
-                
-                console.log('Ã°Å¸â€œÅ’ Setting Valve:', spec.valve_id);
                 $('#specValve').val(spec.valve_id || '');
                 
-                console.log('Ã°Å¸â€œÅ’ Setting Mast:', spec.mast_id);
                 if (spec.mast_name) {
                     const mastModelName = String(spec.mast_name).split(' - ')[0].trim();
                     const mastModelOption = $('#specMastModel option').filter(function() {
@@ -4619,27 +4413,7 @@ function editSpecification(specId) {
                     $('#specMastHeight').val(spec.mast_id);
                 }
                 
-                console.log('Ã°Å¸â€œÅ’ Setting Tire:', spec.ban_id);
                 $('#specBan').val(spec.ban_id || '');
-                
-                // STEP 2: Set department and handle cascading
-                $('#specDepartemen').val(spec.departemen_id || '');
-                console.log('Ã¢Å“â€¦ Department set to:', spec.departemen_id);
-
-                // Reload Unit Brand after department is selected to ensure strict department filtering
-                loadUnitBrandsForSpecification().then(() => {
-                    console.log('Ã°Å¸â€œÅ’ Setting Unit Brand:', spec.merk_unit);
-                    $('#specMerkUnit').val(spec.brand_id || '');
-                });
-                
-                // STEP 3: Update Unit Type dropdown based on department
-                if (spec.departemen_id && window.allTipeUnitData) {
-                    console.log('Ã°Å¸â€œâ€¹ Filtering tipe unit for department:', spec.departemen_id);
-                    updateEditTipeUnitOptions(spec.departemen_id).then(() => {
-                        $('#specTipeUnit').val(spec.tipe_unit_id || '');
-                        console.log('Ã¢Å“â€¦ Unit Type set to:', spec.tipe_unit_id);
-                    });
-                }
                 
                 // Handle operator service
                 const includeOperator = spec.include_operator == 1;
@@ -5412,16 +5186,16 @@ function openPrintSpecModal(quotationId) {
                     let desc = '';
                     if (spec.specification_type === 'UNIT') {
                         // Format seperti di print
-                        const unitTitle = (spec.unit_type && spec.unit_subtype) 
-                            ? `${spec.unit_type} ${spec.unit_subtype}` 
-                            : (spec.unit_type || 'UNIT');
-                        const dept = spec.department_name ? spec.department_name.toUpperCase() : 'STANDARD';
+                        const unitTitle = (spec.tipe_unit_text || spec.unit_type || 'UNIT');
+                        const dept = (spec.departemen_text || spec.department_name || 'STANDARD').toUpperCase();
                         desc = `${unitTitle} - ${dept}`;
                         
                         // Tambahkan spesifikasi detail
                         let details = [];
-                        if (spec.brand_name) details.push(`Merk: ${spec.brand_name}`);
-                        if (spec.capacity_name) details.push(`Cap. ${spec.capacity_name}`);
+                        const dispBrand = spec.merk_unit_text || spec.brand_name;
+                        const dispCap = spec.kapasitas_text || spec.capacity_name;
+                        if (dispBrand) details.push(`Merk: ${dispBrand}`);
+                        if (dispCap) details.push(`Cap. ${dispCap}`);
                         if (spec.mast_name) details.push(`Mast ${spec.mast_name}`);
                         if (spec.attachment_type) details.push(`Attachment: ${spec.attachment_type}`);
                         if (spec.unit_accessories && spec.unit_accessories !== 'null') {
@@ -7186,10 +6960,7 @@ function testCascadingDropdowns() {
     
     openAddSpecificationModal();
     
-    setTimeout(() => {
-        loadDepartemenForSpecification();
-        loadTipeUnitForSpecification();
-    }, 500);
+    // Technical Spec fields are now free-text inputs — no AJAX load needed
 }
 
 // Smart Customer Search Functions
@@ -7644,16 +7415,16 @@ function showSPKCreationModal(quotation, specifications) {
                     
                     <div class="row g-2 small">
                         <div class="col-md-3">
-                            <strong>Department:</strong> ${spec.nama_departemen || '-'}
+                            <strong>Department:</strong> ${spec.departemen_text || spec.nama_departemen || '-'}
                         </div>
                         <div class="col-md-3">
-                            <strong>Unit Type:</strong> ${spec.jenis_tipe_unit || spec.nama_tipe_unit || '-'}
+                            <strong>Unit Type:</strong> ${spec.tipe_unit_text || spec.jenis_tipe_unit || spec.nama_tipe_unit || '-'}
                         </div>
                         <div class="col-md-3">
-                            <strong>Brand & Model:</strong> ${spec.merk_unit || '-'} ${spec.model_unit ? '- ' + spec.model_unit : ''}
+                            <strong>Brand:</strong> ${spec.merk_unit_text || spec.merk_unit || '-'}
                         </div>
                         <div class="col-md-3">
-                            <strong>Capacity:</strong> ${spec.nama_kapasitas || '-'}
+                            <strong>Capacity:</strong> ${spec.kapasitas_text || spec.nama_kapasitas || '-'}
                         </div>
                     </div>
                     
@@ -7760,19 +7531,13 @@ function buildSpecificationDescription(spec) {
     let parts = [];
     
     // Basic Info - Department and Unit Type
-    if (spec.nama_departemen) {
-        parts.push(`<strong>Department:</strong> ${spec.nama_departemen}`);
-    }
-    
-    if (spec.jenis_tipe_unit) {
-        parts.push(`<strong>Unit Type:</strong> ${spec.jenis_tipe_unit}`);
-    } else if (spec.nama_tipe_unit) {
-        parts.push(`<strong>Unit Type:</strong> ${spec.nama_tipe_unit}`);
-    }
+    const dispDept2 = spec.departemen_text || spec.nama_departemen || '';
+    const dispType2 = spec.tipe_unit_text || spec.jenis_tipe_unit || spec.nama_tipe_unit || '';
+    const dispCap2  = spec.kapasitas_text || spec.nama_kapasitas || '';
+    if (dispDept2) parts.push(`<strong>Department:</strong> ${dispDept2}`);
+    if (dispType2) parts.push(`<strong>Unit Type:</strong> ${dispType2}`);
     // Capacity
-    if (spec.nama_kapasitas) {
-        parts.push(`<strong>Capacity:</strong> ${spec.nama_kapasitas}`);
-    }
+    if (dispCap2) parts.push(`<strong>Capacity:</strong> ${dispCap2}`);
     
     // Brand and Model
     if (spec.merk_unit) {

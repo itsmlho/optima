@@ -626,10 +626,14 @@ class Quotation extends BaseController
                 'is_spare_unit' => (int)$this->request->getPost('is_spare_unit') ?: 0,
                 'monthly_price' => ($unitPrice !== '' && $unitPrice !== null) ? (float)$unitPrice : 0,
                 'daily_price' => ($dailyPrice !== '' && $dailyPrice !== null) ? (float)$dailyPrice : 0,
-                'departemen_id' => $this->request->getPost('departemen_id') ?: null,
-                'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
-                'kapasitas_id' => $this->request->getPost('kapasitas_id') ?: null,
-                'brand_id' => $this->request->getPost('brand_id') ?: null,
+                'departemen_id' => null,
+                'tipe_unit_id'  => null,
+                'kapasitas_id'  => null,
+                'brand_id'      => null,
+                'departemen_text' => $this->request->getPost('departemen_text') ?: null,
+                'tipe_unit_text'  => $this->request->getPost('tipe_unit_text') ?: null,
+                'kapasitas_text'  => $this->request->getPost('kapasitas_text') ?: null,
+                'merk_unit_text'  => $this->request->getPost('merk_unit_text') ?: null,
                 // Quotation line: battery/charger/wheels are plain text in notes only (no FK from this UI)
                 'battery_id' => null,
                 'charger_id' => null,
@@ -876,9 +880,13 @@ class Quotation extends BaseController
                 $data['notes'] = $this->normalizeQuotationSpecNotes($data['notes']);
             }
 
+            // Force FK fields to null — Technical Specs now use free-text columns
+            foreach (['departemen_id', 'tipe_unit_id', 'kapasitas_id', 'brand_id'] as $fkField) {
+                $data[$fkField] = null;
+            }
+
             // Sanitize nullable FK integer fields — empty string causes strict-mode error on INT UNSIGNED
-            foreach (['fork_id', 'attachment_id', 'mast_id', 'ban_id', 'valve_id', 'brand_id',
-                      'tipe_unit_id', 'kapasitas_id', 'departemen_id'] as $fkField) {
+            foreach (['fork_id', 'attachment_id', 'mast_id', 'ban_id', 'valve_id'] as $fkField) {
                 if (isset($data[$fkField]) && $data[$fkField] === '') {
                     $data[$fkField] = null;
                 }

@@ -9623,6 +9623,11 @@ class Marketing extends BaseDataTableController
             ->select('k.kapasitas_unit as capacity_name')
             ->select('d.nama_departemen as department_name')
             ->select('mu.merk_unit as brand_name, mu.model_unit as model_name')
+            // Text columns override JOIN values for new free-text records
+            ->select('COALESCE(qs.departemen_text, d.nama_departemen) as display_department')
+            ->select('COALESCE(qs.tipe_unit_text, tu.jenis) as display_unit_type')
+            ->select('COALESCE(qs.kapasitas_text, k.kapasitas_unit) as display_capacity')
+            ->select('COALESCE(qs.merk_unit_text, mu.merk_unit) as display_brand')
             ->select('tm.tipe_mast as mast_name')
             ->select('jr.tipe_roda as wheel_name')
             ->select('tb.tipe_ban as tire_name')
