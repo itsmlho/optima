@@ -100,6 +100,17 @@
 
   </div>
 
+  <!-- Global Department Filter -->
+  <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+      <label class="form-label mb-0 fw-semibold small text-muted"><i class="fas fa-filter me-1"></i>Filter Departemen:</label>
+      <select class="form-select form-select-sm" id="globalDeptFilter" style="width:200px;" onchange="onGlobalDeptFilterChange()">
+          <option value="">Semua Departemen</option>
+          <?php foreach ($departemen as $d): ?>
+          <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
+          <?php endforeach; ?>
+      </select>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- MAIN TABBED CARD                                                  -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -174,31 +185,7 @@
                               </table>
                           </div>
 
-                          <!-- Area unit drill-down panel -->
-                          <div id="panelAreaUnits" class="d-none mt-3">
-                              <div class="card border-primary">
-                                  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-                                      <span id="panelAreaTitle"><i class="bi bi-list-ul me-1"></i> <?= lang('App.area_units_panel') ?></span>
-                                      <button class="btn btn-sm btn-outline-light" id="btnClosePanelUnits"><i class="bi bi-x-lg"></i></button>
-                                  </div>
-                                  <div class="card-body p-2">
-                                      <div class="table-responsive">
-                                          <table class="table table-sm table-striped mb-0" id="tableAreaUnits">
-                                              <thead class="table-light">
-                                                  <tr>
-                                                      <th><?= lang('App.unit_number') ?></th><th>Model</th><th><?= lang('Common.status') ?></th>
-                                                      <th>Customer</th><th><?= lang('App.customer_location') ?></th>
-                                                      <th><?= lang('App.contract_number') ?></th><th><?= lang('App.contract_end') ?></th>
-                                                  </tr>
-                                              </thead>
-                                              <tbody id="bodyAreaUnits">
-                                                  <tr><td colspan="7" class="text-center py-3 text-muted"><?= lang('App.select_area') ?></td></tr>
-                                              </tbody>
-                                          </table>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
+                          <!-- Area unit detail is now shown in #modalAreaUnits (at bottom of page) -->
 
                       </div>
 
@@ -1179,6 +1166,30 @@
 </div>
 <!-- /Edit Location Info Modal -->
 
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Area Units Detail                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalAreaUnits" tabindex="-1" aria-labelledby="modalAreaUnitsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width:95vw !important; width:95vw !important;">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title mb-0" id="modalAreaUnitsLabel">
+                    <i class="bi bi-list-ul me-1"></i> Unit di Area
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light" id="btnPrintAreaUnits" title="Print">
+                        <i class="bi bi-printer me-1"></i>Print
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-3" id="modalAreaUnitsBody">
+                <div class="text-center py-4 text-muted">Memuat data...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('styles') ?>
@@ -1452,6 +1463,7 @@ function initializeAreaTable() {
         timeout: 30000, // 30 second timeout
         data: function(d) {
           d[window.csrfTokenName] = window.getCsrfToken();
+          d.departemen_id = $('#globalDeptFilter').val();
           return d;
         },
         dataSrc: function(json) {
@@ -1588,19 +1600,14 @@ function initializeAreaTable() {
     },
     columnDefs: [{ orderable: false, targets: [2, 3, 7] }],
     drawCallback: function() {
-      // Row click → show unit drill-down
+      // Row click → show unit modal
       $('#areasTable tbody').off('click', 'tr').on('click', 'tr', function(e) {
         if ($(e.target).closest('.btn-edit-area').length) return;
         const data = areasTable.row(this).data();
         if (!data) return;
-        // Highlight selection
         $('#areasTable tbody tr').removeClass('table-active');
         $(this).addClass('table-active');
-        // Show unit drill-down panel
-        $('#panelAreaTitle').html(`<i class="bi bi-list-ul me-1"></i> Unit di [${data.area_code}] ${data.area_name}`);
-        $('#bodyAreaUnits').html('<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>');
-        $('#panelAreaUnits').removeClass('d-none');
-        loadAreaUnits(data.id);
+        showAreaUnitsModal(data.id, data.area_code, data.area_name);
       });
     }
   });
@@ -2967,6 +2974,10 @@ function refreshAssignments() {
   }
 }
 
+function onGlobalDeptFilterChange() {
+  if (areasTable) areasTable.ajax.reload();
+}
+
 function refreshCurrentTab() {
   const activeTab = window.currentActiveTab || 'areasTab';
   
@@ -3132,21 +3143,12 @@ function loadAreaSummary() {
 }
 
 $(document).on('click', '.area-row', function() {
-    // .area-row exists only in Unit Mapping tab (Unit Mapping Controller)
     const areaId   = $(this).data('area-id');
     const areaName = $(this).data('area-name');
+    const areaCode = $(this).data('area-code') || '';
     $('.area-row').removeClass('table-active');
     $(this).addClass('table-active');
-    $('#panelAreaTitle').html(`<i class="bi bi-list-ul me-1"></i> Unit di ${areaName}`);
-    $('#bodyAreaUnits').html('<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>');
-    $('#panelAreaUnits').removeClass('d-none');
-    loadAreaUnits(areaId);
-});
-
-$('#btnClosePanelUnits').on('click', function() {
-    $('#panelAreaUnits').addClass('d-none');
-    $('#areasTable tbody tr').removeClass('table-active');
-    $('.area-row').removeClass('table-active');
+    showAreaUnitsModal(areaId, areaCode, areaName);
 });
 
 // ----------------------------------------------------------------
@@ -3686,31 +3688,142 @@ $('#subtabUnassignedLink').on('shown.bs.tab', function() {
 });
 
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// HTML escape helper
+// ----------------------------------------------------------------
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ----------------------------------------------------------------
 // Load units for a given area id (shared drill-down helper)
 // ----------------------------------------------------------------
 function loadAreaUnits(areaId) {
     $.post(BASE_URL + 'service/area-management/unit-mapping/getAreaUnits', csrfData({area_id: areaId}), function(resp) {
-        const tbody = $('#bodyAreaUnits');
-        tbody.empty();
+        const body = $('#modalAreaUnitsBody');
+        body.empty();
         if (!resp.success || !resp.data.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Tidak ada unit di area ini</td></tr>');
+            body.html('<div class="text-center py-4 text-muted">Tidak ada unit di area ini</div>');
             return;
         }
+
+        // Group by customer → location
+        const groups = {};
         resp.data.forEach(u => {
-            tbody.append(`
-                <tr>
-                    <td><strong>${u.no_unit}</strong></td>
-                    <td>${u.model || '-'}</td>
-                    <td><span class="badge badge-soft-blue">${u.status || '-'}</span></td>
-                    <td>${u.customer_name || '<span class="text-muted">-</span>'}</td>
-                    <td>${u.location_name || '<span class="text-muted">-</span>'}</td>
-                    <td><small>${u.no_kontrak || '-'}</small></td>
-                    <td><small>${u.tanggal_berakhir || '-'}</small></td>
-                </tr>
-            `);
+            const custKey = u.customer_name || '(Tanpa Customer)';
+            const locKey  = u.location_name || '(Tanpa Lokasi)';
+            if (!groups[custKey]) groups[custKey] = {};
+            if (!groups[custKey][locKey]) groups[custKey][locKey] = { pic: u.location_pic || '-', phone: u.location_phone || '-', units: [] };
+            groups[custKey][locKey].units.push(u);
         });
+
+        let html = '<div id="areaUnitsPrintArea">';
+        let totalUnits = resp.data.length;
+        html += `<div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Total: <strong>${totalUnits}</strong> unit</span>
+        </div>`;
+
+        for (const [customer, locations] of Object.entries(groups)) {
+            const custUnitCount = Object.values(locations).reduce((sum, loc) => sum + loc.units.length, 0);
+            html += `<div class="mb-4">
+                <h6 class="fw-bold text-primary mb-2">
+                    <i class="bi bi-building me-1"></i>${esc(customer)}
+                    <span class="badge badge-soft-blue ms-1">${custUnitCount} unit</span>
+                </h6>`;
+
+            for (const [location, locData] of Object.entries(locations)) {
+                html += `<div class="ms-3 mb-3">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <span class="fw-semibold"><i class="bi bi-geo-alt me-1 text-muted"></i>${esc(location)}</span>
+                        <span class="text-muted small"><i class="bi bi-person me-1"></i>PIC: ${esc(locData.pic)}</span>
+                        <span class="text-muted small"><i class="bi bi-telephone me-1"></i>${esc(locData.phone)}</span>
+                        <span class="badge badge-soft-cyan">${locData.units.length} unit</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped table-bordered mb-0 w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px">No</th>
+                                    <th>Unit No.</th>
+                                    <th>Model</th>
+                                    <th>Departemen</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                locData.units.forEach((u, idx) => {
+                    html += `<tr>
+                        <td class="text-center">${idx + 1}</td>
+                        <td><strong>${esc(u.no_unit)}</strong></td>
+                        <td>${esc(u.model) || '-'}</td>
+                        <td>${esc(u.departemen) || '-'}</td>
+                        <td><span class="badge badge-soft-${getStatusColor(u.status)}">${esc(u.status) || '-'}</span></td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+            html += `</div>`;
+        }
+        html += '</div>';
+        body.html(html);
     });
 }
+
+function getStatusColor(status) {
+    if (!status) return 'gray';
+    const s = status.toUpperCase();
+    if (s.includes('ACTIVE') || s === 'AVAILABLE') return 'green';
+    if (s === 'BREAKDOWN' || s === 'SOLD') return 'red';
+    if (s === 'RETURNED') return 'yellow';
+    if (s === 'STANDBY') return 'cyan';
+    return 'blue';
+}
+
+function showAreaUnitsModal(areaId, areaCode, areaName) {
+    $('#modalAreaUnitsLabel').html(`<i class="bi bi-list-ul me-1"></i> Unit di [${areaCode}] ${areaName}`);
+    $('#modalAreaUnitsBody').html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> Memuat data...</div>');
+    const modal = new bootstrap.Modal(document.getElementById('modalAreaUnits'));
+    modal.show();
+    loadAreaUnits(areaId);
+}
+
+// Print area units table
+$('#btnPrintAreaUnits').on('click', function() {
+    const printContent = document.getElementById('areaUnitsPrintArea');
+    if (!printContent) return;
+    const title = $('#modalAreaUnitsLabel').text();
+    const win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
+            h5, h6 { margin: 8px 0; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+            th { background: #f0f0f0; font-weight: bold; }
+            .badge { padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+            .text-muted { color: #777; }
+            .fw-bold { font-weight: bold; }
+            .fw-semibold { font-weight: 600; }
+            .text-primary { color: #0d6efd; }
+            .ms-3 { margin-left: 16px; }
+            .mb-2 { margin-bottom: 8px; }
+            .mb-3 { margin-bottom: 12px; }
+            .mb-4 { margin-bottom: 16px; }
+            .d-flex { display: flex; }
+            .gap-3 { gap: 12px; }
+            .align-items-center { align-items: center; }
+            @media print { body { padding: 0; } }
+        </style>
+    </head><body>
+        <h5 style="text-align:center;margin-bottom:16px">${title}</h5>
+        <p style="text-align:center;color:#777;margin-bottom:20px">Dicetak: ${new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+        ${printContent.innerHTML}
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+});
 
 // ----------------------------------------------------------------
 // Stats update helper

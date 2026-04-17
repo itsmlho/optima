@@ -226,6 +226,13 @@ class ServiceAreaManagementController extends BaseController
                 $whereClause .= " AND (areas.area_name LIKE ? OR areas.area_code LIKE ? OR areas.area_description LIKE ?)";
                 $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%"]);
             }
+
+            // Department filter
+            $departemenId = $request['departemen_id'] ?? null;
+            if ($departemenId) {
+                $whereClause .= " AND areas.departemen_id = ?";
+                $params[] = (int) $departemenId;
+            }
             
             // Count total records (with scope, without search) — active areas only
             if ($scope !== null && !empty($scope['areas'])) {

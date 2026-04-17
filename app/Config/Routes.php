@@ -641,6 +641,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:service.unit_audit.view']);
+    $routes->get('unit-audit/getDepartments', 'UnitAudit::getDepartments', ['filter' => 'permission:service.unit_audit.view']);
     $routes->get('unit-audit/getLocationDetails/(:num)', 'UnitAudit::getLocationDetails/$1', ['filter' => 'permission:service.unit_audit.view']);
     $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:service.unit_audit.create']);
     $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:service.unit_audit.view']);
@@ -1150,16 +1151,22 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('print-po/(:num)', 'Purchasing::printPO/$1');
     $routes->get('print-packing-list', 'Purchasing::printPackingList');
 
-    // --- Penjualan Unit Routes ---
-    $routes->group('unit-sale', static function ($routes) {
-        $routes->get('/',                 'Purchasing\UnitSaleController::index');
-        $routes->get('getSalesData',      'Purchasing\UnitSaleController::getSalesData');
-        $routes->get('getEligibleUnits',  'Purchasing\UnitSaleController::getEligibleUnits');
-        $routes->get('generateNumber',    'Purchasing\UnitSaleController::generateNumber');
-        $routes->post('store',            'Purchasing\UnitSaleController::store');
-        $routes->get('detail/(:num)',     'Purchasing\UnitSaleController::detail/$1');
-        $routes->post('cancel/(:num)',    'Purchasing\UnitSaleController::cancel/$1');
+    // --- Asset Disposal Routes ---
+    $routes->group('asset-disposal', static function ($routes) {
+        $routes->get('/',                          'Purchasing\AssetDisposalController::index');
+        $routes->get('getSalesData',               'Purchasing\AssetDisposalController::getSalesData');
+        $routes->get('getEligibleUnits',           'Purchasing\AssetDisposalController::getEligibleUnits');
+        $routes->get('getEligibleComponents',      'Purchasing\AssetDisposalController::getEligibleComponents');
+        $routes->get('getUnitComponents/(:num)',   'Purchasing\AssetDisposalController::getUnitComponents/$1');
+        $routes->get('generateNumber',             'Purchasing\AssetDisposalController::generateNumber');
+        $routes->post('store',                     'Purchasing\AssetDisposalController::store');
+        $routes->get('detail/(:segment)/(:num)',   'Purchasing\AssetDisposalController::detail/$1/$2');
+        $routes->post('cancel/(:segment)/(:num)',  'Purchasing\AssetDisposalController::cancel/$1/$2');
     });
+
+    // Redirect old unit-sale URL
+    $routes->get('unit-sale',            'Purchasing\AssetDisposalController::index');
+    $routes->get('unit-sale/(:any)',     'Purchasing\AssetDisposalController::index');
     
 });
 

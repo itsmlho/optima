@@ -124,17 +124,21 @@ class UnitAreaMappingController extends BaseController
                 su.status_unit                           AS status,
                 c.customer_name,
                 cl.location_name,
+                cl.contact_person                        AS location_pic,
+                cl.phone                                 AS location_phone,
+                dep.nama_departemen                      AS departemen,
                 k.no_kontrak,
                 k.tanggal_berakhir
             FROM inventory_unit iu
             LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
             LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+            LEFT JOIN departemen dep ON dep.id_departemen = iu.departemen_id
             LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
             LEFT JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
             LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN customer_locations cl ON cl.id = ku.customer_location_id
             WHERE iu.area_id = ?
-            ORDER BY c.customer_name, iu.no_unit
+            ORDER BY c.customer_name, cl.location_name, iu.no_unit
         ", [$areaId])->getResultArray();
 
         return $this->response->setJSON(['success' => true, 'data' => $rows]);

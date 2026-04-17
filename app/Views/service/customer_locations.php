@@ -61,7 +61,7 @@
                     </select>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <label class="form-label small mb-1">Status Approval</label>
                     <select id="filterStatus" class="form-select form-select-sm">
                         <option value="">Semua Status</option>
@@ -81,6 +81,16 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-2">
+                    <label class="form-label small mb-1">Departemen</label>
+                    <select id="filterDepartemen" class="form-select form-select-sm">
+                        <option value="">Semua Dept</option>
+                        <?php foreach ($departemen as $d): ?>
+                        <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label small mb-1">&nbsp;</label>
                     <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetFilters()">
                         <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px">filter_alt_off</span>
                         Reset Filter
@@ -371,6 +381,7 @@ $(document).ready(function() {
                 d.filter_area          = $('#filterArea').val();
                 d.filter_status        = $('#filterStatus').val();
                 d.filter_location_type = $('#filterLocType').val();
+                d.filter_departemen    = $('#filterDepartemen').val();
             },
             dataSrc: function(json) {
                 return json.data || [];
@@ -407,14 +418,14 @@ $(document).ready(function() {
     });
 
     // Re-draw on filter change (filterCustomer handled by Select2 above)
-    ['#filterStatus','#filterLocType'].forEach(sel => {
+    ['#filterStatus','#filterLocType','#filterDepartemen'].forEach(sel => {
         $(sel).on('change', () => locationsTable.ajax.reload());
     });
 });
 
 function resetFilters() {
     $('#filterCustomer').val(null).trigger('change');
-    ['#filterStatus','#filterLocType'].forEach(sel => $(sel).val(''));
+    ['#filterStatus','#filterLocType','#filterDepartemen'].forEach(sel => $(sel).val(''));
     locationsTable.ajax.reload();
 }
 

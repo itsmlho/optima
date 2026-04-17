@@ -393,6 +393,25 @@ class UnitAudit extends BaseController
     }
 
     /**
+     * Get all departments for filter dropdown
+     */
+    public function getDepartments()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $departments = $db->table('departemen')
+                ->select('id_departemen, nama_departemen')
+                ->orderBy('nama_departemen', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON(['success' => true, 'data' => $departments]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
+        }
+    }
+
+    /**
      * Get all areas for dropdown (with departemen for DIESEL/ELECTRIC badge)
      */
     public function getAreas()
@@ -500,7 +519,9 @@ class UnitAudit extends BaseController
     public function getLocationUnits($locationId)
     {
         try {
-            $units = $this->auditLocationModel->getUnitsForLocation((int) $locationId);
+            $departemenId = $this->request->getGet('departemen_id');
+            $departemenId = $departemenId ? (int) $departemenId : null;
+            $units = $this->auditLocationModel->getUnitsForLocation((int) $locationId, $departemenId);
             return $this->response->setJSON(['success' => true, 'data' => $units]);
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);

@@ -165,7 +165,7 @@ helper('permission_helper');
                     <li class="nav-item"><a href="<?= base_url('/warehouse/purchase-orders/rejected-items') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">block</span><span class="drop-label">PO Reject</span></a></li>
                     <?php endif; ?>
                     <?php if (canNavigateTo('purchasing', 'unit_sale')): ?>
-                    <li class="nav-item"><a href="<?= base_url('/purchasing/unit-sale') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">sell</span><span class="drop-label">Penjualan Unit</span></a></li>
+                    <li class="nav-item"><a href="<?= base_url('/purchasing/asset-disposal') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">sell</span><span class="drop-label">Asset Disposal</span></a></li>
                     <?php endif; ?>
                     <?php if (hasModuleAccess('purchasing')): ?>
                     <li class="nav-item"><a href="<?= base_url('/purchasing/supplier-management-page') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">business</span><span class="drop-label">Supplier Management</span></a></li>

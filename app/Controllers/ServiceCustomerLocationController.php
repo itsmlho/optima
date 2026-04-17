@@ -72,6 +72,7 @@ class ServiceCustomerLocationController extends BaseController
             'totalLocations' => $totalLocations,
             'pendingCount'   => $pendingCount,
             'customers'      => $customers,
+            'departemen'     => $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray(),
             'can_create'     => $this->hasPermission('service.customer_location.create'),
             'can_edit'       => $this->hasPermission('service.customer_location.edit'),
         ]);
@@ -102,6 +103,7 @@ class ServiceCustomerLocationController extends BaseController
         $filterCustomer  = $this->request->getPost('filter_customer');
         $filterStatus    = $this->request->getPost('filter_status');
         $filterLocType   = $this->request->getPost('filter_location_type');
+        $filterDepartemen = $this->request->getPost('filter_departemen');
 
         // Base query
         $builder = $db->table('customer_locations cl')
@@ -140,6 +142,12 @@ class ServiceCustomerLocationController extends BaseController
         }
         if ($filterLocType) {
             $builder->where('cl.location_type', $filterLocType);
+        }
+        if ($filterDepartemen) {
+            $builder->where(
+                "EXISTS (SELECT 1 FROM kontrak_unit ku3 JOIN inventory_unit iu3 ON iu3.id_inventory_unit = ku3.unit_id WHERE ku3.customer_location_id = cl.id AND iu3.departemen_id = " . (int) $filterDepartemen . ")",
+                null, false
+            );
         }
 
         // Global search

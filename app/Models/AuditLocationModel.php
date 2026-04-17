@@ -487,9 +487,9 @@ class AuditLocationModel extends Model
     /**
      * Get units at a specific location from kontrak_unit
      */
-    public function getUnitsForLocation(int $locationId): array
+    public function getUnitsForLocation(int $locationId, ?int $departemenId = null): array
     {
-        return $this->db->table('kontrak_unit ku')
+        $builder = $this->db->table('kontrak_unit ku')
             ->select('ku.id as kontrak_unit_id,
                 ku.kontrak_id,
                 ku.unit_id,
@@ -508,19 +508,25 @@ class AuditLocationModel extends Model
                 mu.merk_unit,
                 mu.model_unit,
                 tu.tipe as tipe_unit,
-                tc.kapasitas_unit as kapasitas')
+                tc.kapasitas_unit as kapasitas,
+                dep.nama_departemen as departemen')
             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id', 'left')
             ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
             ->join('kapasitas tc', 'tc.id_kapasitas = iu.kapasitas_unit_id', 'left')
+            ->join('departemen dep', 'dep.id_departemen = iu.departemen_id', 'left')
             ->where('ku.customer_location_id', $locationId)
             ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE', 'Aktif'])
             ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)', null, false)
-            ->orderBy('iu.no_unit', 'ASC')
-            ->get()
-            ->getResultArray();
+            ->orderBy('iu.no_unit', 'ASC');
+
+        if ($departemenId !== null) {
+            $builder->where('iu.departemen_id', $departemenId);
+        }
+
+        return $builder->get()->getResultArray();
     }
 
     /**

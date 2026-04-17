@@ -30,6 +30,7 @@ class UnitSaleModel extends Model
         'cancelled_at',
         'cancelled_by_user_id',
         'cancelled_reason',
+        'has_bundled_components',
     ];
 
     protected $useTimestamps = true;
@@ -60,13 +61,14 @@ class UnitSaleModel extends Model
         $year   = date('Y');
         $prefix = 'SALE-' . $year . '-';
 
-        $last = $this->db->table($this->table)
-            ->select('no_dokumen')
-            ->like('no_dokumen', $prefix, 'after')
-            ->orderBy('id', 'DESC')
-            ->limit(1)
-            ->get()
-            ->getRowArray();
+        // Query MAX from BOTH tables for unified sequential numbering
+        $sql = "SELECT no_dokumen FROM (
+            SELECT no_dokumen FROM unit_sale_records WHERE no_dokumen LIKE ?
+            UNION ALL
+            SELECT no_dokumen FROM component_sale_records WHERE no_dokumen LIKE ?
+        ) AS combined ORDER BY no_dokumen DESC LIMIT 1";
+
+        $last = $this->db->query($sql, [$prefix . '%', $prefix . '%'])->getRowArray();
 
         $nextNum = 1;
         if ($last) {
@@ -190,6 +192,35 @@ class UnitSaleModel extends Model
             'this_year'     => $thisYear,
             'this_month'    => $thisMonth,
             'total_revenue' => (float) ($revenueRow['total_revenue'] ?? 0),
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Unified stats across both unit + component tables
+    // ─────────────────────────────────────────────────────────
+    public function getUnifiedStats(): array
+    {
+        $year  = date('Y');
+        $month = date('Y-m');
+
+        $sql = "SELECT
+            COUNT(*)                                                   AS total,
+            SUM(CASE WHEN YEAR(tanggal_jual) = ? THEN 1 ELSE 0 END)   AS this_year,
+            SUM(CASE WHEN DATE_FORMAT(tanggal_jual,'%%Y-%%m') = ? THEN 1 ELSE 0 END) AS this_month,
+            SUM(harga_jual)                                            AS total_revenue
+        FROM (
+            SELECT tanggal_jual, harga_jual FROM unit_sale_records      WHERE status = 'COMPLETED'
+            UNION ALL
+            SELECT tanggal_jual, harga_jual FROM component_sale_records WHERE status = 'COMPLETED'
+        ) AS combined";
+
+        $row = $this->db->query($sql, [$year, $month])->getRowArray();
+
+        return [
+            'total'         => (int)   ($row['total'] ?? 0),
+            'this_year'     => (int)   ($row['this_year'] ?? 0),
+            'this_month'    => (int)   ($row['this_month'] ?? 0),
+            'total_revenue' => (float) ($row['total_revenue'] ?? 0),
         ];
     }
 }

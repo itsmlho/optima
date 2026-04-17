@@ -80,7 +80,16 @@ $can_edit    = $permissions['edit'];
         </div>
     </div>
 </div>
-
+<!-- Global Department Filter -->
+<div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+    <label class="form-label mb-0 fw-semibold small text-muted"><i class="fas fa-filter me-1"></i>Filter Departemen:</label>
+    <select class="form-select form-select-sm" id="globalDeptFilter" style="width:200px;">
+        <option value="">Semua Departemen</option>
+        <?php foreach ($departemen as $d): ?>
+        <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
+        <?php endforeach; ?>
+    </select>
+</div>
 <!-- ── PM Jobs Table ──────────────────────────────────────────────────────── -->
 <div class="card table-card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -236,6 +245,7 @@ function initTable() {
             data: function(d) {
                 d.status = $('#filter-status').val();
                 d.month  = $('#filter-month').val();
+                d.departemen_id = $('#globalDeptFilter').val();
                 return d;
             }
         },
@@ -314,10 +324,11 @@ $(document).ready(function() {
     initTable();
 
     // Filter
-    $('#filter-status, #filter-month').on('change', () => pmTable.ajax.reload());
+    $('#filter-status, #filter-month, #globalDeptFilter').on('change', () => pmTable.ajax.reload());
     $('#btn-clear-filters').on('click', function() {
         $('#filter-status').val('');
         $('#filter-month').val('<?= date('Y-m') ?>');
+        $('#globalDeptFilter').val('');
         pmTable.ajax.reload();
     });
 

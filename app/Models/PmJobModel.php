@@ -71,6 +71,9 @@ class PmJobModel extends Model
         if (!empty($filters['month'])) {
             $builder->where("DATE_FORMAT(pj.due_date, '%Y-%m')", $filters['month']);
         }
+        if (!empty($filters['departemen_id'])) {
+            $builder->where('iu.departemen_id', (int) $filters['departemen_id']);
+        }
         if (!empty($search)) {
             $builder->groupStart()
                 ->like('pj.pm_number', $search)

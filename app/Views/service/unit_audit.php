@@ -66,6 +66,14 @@ helper('ui');
     </div>
 </div>
 
+<!-- Global Department Filter -->
+<div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+    <label class="form-label mb-0 fw-semibold small text-muted"><i class="fas fa-filter me-1"></i>Filter Departemen:</label>
+    <select class="form-select form-select-sm" id="departemenFilter" style="width:200px;" onchange="onDepartemenFilterChange()">
+        <option value="">Semua Departemen</option>
+    </select>
+</div>
+
 <!-- Step 1: Pilih Customer (Select2 + total lokasi + badge audit) -->
 <div class="card shadow-sm mb-3">
     <div class="card-header bg-light">
@@ -523,6 +531,7 @@ let selectedLocationData = {};
 
 $(document).ready(function() {
     loadCustomerList();
+    loadDepartments();
     loadAuditHistory();
     loadAudlocHistory();
 });
@@ -715,7 +724,7 @@ function renderLocationList(locations) {
                     <div class="table-responsive loc-units-table" data-loc-id="${loc.id}" style="display:none;">
                         <table class="table table-sm table-hover mb-0 bg-white">
                             <thead class="table-light">
-                                <tr><th>No Unit</th><th>S/N</th><th>Merk / Model</th><th>Status</th><th>Spare</th></tr>
+                                <tr><th>No Unit</th><th>S/N</th><th>Merk / Model</th><th>Departemen</th><th>Status</th><th>Spare</th></tr>
                             </thead>
                             <tbody class="loc-units-tbody"></tbody>
                         </table>
@@ -772,16 +781,18 @@ function loadUnitsIntoLocation(locationId) {
     $placeholder.show();
     $tableWrap.hide();
 
-    $.get(BASE + 'service/unit-audit/getLocationUnits/' + locationId, function(res) {
+    const depFilter = $('#departemenFilter').val();
+    const depParam = depFilter ? '?departemen_id=' + encodeURIComponent(depFilter) : '';
+    $.get(BASE + 'service/unit-audit/getLocationUnits/' + locationId + depParam, function(res) {
         $placeholder.hide();
         if (!res.success) {
-            $tbody.html('<tr><td colspan="5" class="text-center text-danger py-3">' + (res.message || 'Gagal') + '</td></tr>');
+            $tbody.html('<tr><td colspan="6" class="text-center text-danger py-3">' + (res.message || 'Gagal') + '</td></tr>');
             $tableWrap.show();
             return;
         }
         const units = res.data || [];
         if (units.length === 0) {
-            $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada unit di lokasi ini</td></tr>');
+            $tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada unit di lokasi ini</td></tr>');
         } else {
             let html = '';
             units.forEach(u => {
@@ -790,6 +801,7 @@ function loadUnitsIntoLocation(locationId) {
                     <td><strong>${esc(u.no_unit || '—')}</strong></td>
                     <td class="small text-muted">${esc(u.serial_number || '—')}</td>
                     <td>${esc((u.merk_unit || '') + ' ' + (u.model_unit || ''))}</td>
+                    <td class="small">${esc(u.departemen || '—')}</td>
                     <td><span class="badge ${u.ku_status === 'ACTIVE' ? 'badge-soft-green' : 'badge-soft-yellow'}">${u.ku_status || '—'}</span></td>
                     <td>${spare}</td>
         </tr>`;
@@ -799,8 +811,29 @@ function loadUnitsIntoLocation(locationId) {
         $tableWrap.show();
     }).fail(function() {
         $placeholder.hide();
-        $tbody.html('<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat unit</td></tr>');
+        $tbody.html('<tr><td colspan="6" class="text-center text-danger py-3">Gagal memuat unit</td></tr>');
         $tableWrap.show();
+    });
+}
+
+// ─── Department Filter ───────────────────────────────────────────
+
+function loadDepartments() {
+    $.get(BASE + 'service/unit-audit/getDepartments', function(res) {
+        if (!res.success) return;
+        let opts = '<option value="">Semua Departemen</option>';
+        (res.data || []).forEach(d => {
+            opts += '<option value="' + d.id_departemen + '">' + esc(d.nama_departemen) + '</option>';
+        });
+        $('#departemenFilter').html(opts);
+    });
+}
+
+function onDepartemenFilterChange() {
+    // Reload units in all currently expanded locations
+    $('.location-item-units.show').each(function() {
+        const locId = $(this).data('loc-id');
+        if (locId) loadUnitsIntoLocation(locId);
     });
 }
 

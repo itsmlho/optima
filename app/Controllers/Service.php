@@ -566,10 +566,12 @@ class Service extends BaseController
 
     public function pmps()
     {
+        $db = \Config\Database::connect();
         return view('service/pmps', [
             'title'       => 'PMPS | OPTIMA',
             'page_title'  => 'Preventive Maintenance Planned Service',
             'breadcrumbs' => ['/' => 'Dashboard', '/service/pmps' => 'PMPS'],
+            'departemen'  => $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray(),
         ]);
     }
 

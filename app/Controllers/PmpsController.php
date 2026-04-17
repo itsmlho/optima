@@ -110,9 +110,10 @@ class PmpsController extends BaseController
             $search = $this->request->getGet('search')['value'] ?? '';
 
             $filters = [
-                'status'  => $this->request->getGet('status') ?? '',
-                'unit_id' => $this->request->getGet('unit_id') ?? '',
-                'month'   => $this->request->getGet('month') ?? '',
+                'status'        => $this->request->getGet('status') ?? '',
+                'unit_id'       => $this->request->getGet('unit_id') ?? '',
+                'month'         => $this->request->getGet('month') ?? '',
+                'departemen_id' => $this->request->getGet('departemen_id') ?? '',
             ];
 
             $this->pmJobModel->markOverdueJobs();
