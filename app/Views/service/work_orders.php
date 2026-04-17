@@ -815,12 +815,7 @@ $(document).ready(function() {
     //     window.sparepartsData = [];
     // <?php endif; ?>
     
-    // Initialize global units data for KANIBAL source selection
-    <?php if (!empty($units)): ?>
-        window.unitsData = <?= json_encode($units, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
-    <?php else: ?>
-        window.unitsData = [];
-    <?php endif; ?>
+    // unitsData: REMOVED - KANIBAL dropdown now uses Select2 AJAX (see toggleKanibalFields)
     
     // Initialize user department scope for filtering
     <?php if (!empty($user_departemen_ids)): ?>
@@ -3644,16 +3639,7 @@ $(document).ready(function() {
             return;
         }
         
-        // Find unit in unitsData
-        const selectedUnit = window.unitsData.find(u => u.id_inventory_unit == unitId);
-        
-        if (!selectedUnit || !selectedUnit.area_id) {
-            console.warn('⚠️ Unit has no area assigned, loading all staff');
-            loadAllStaffFallback();
-            return;
-        }
-        
-        // Get department from area
+        // Fetch unit area via AJAX (no pre-loaded data needed)
         const unitAreaData = { unit_id: unitId };
         unitAreaData[window.csrfTokenName] = window.csrfTokenValue;
         
@@ -4417,54 +4403,40 @@ $(document).ready(function() {
             sourceUnitSelect.attr('required', 'required');
             sourceNotesTextarea.attr('required', 'required');
             
-            // Populate unit dropdown if not already populated
-            if (sourceUnitSelect.children().length <= 1) {
-                // Populate with full unit data like main Unit field
-                if (window.unitsData && Array.isArray(window.unitsData) && window.unitsData.length > 0) {
-                    const Ok = window.OptimaUnitSelect2;
-                    const useKanibalTpl = typeof Ok !== 'undefined' && typeof Ok.optionDataAttributes === 'function';
-                    window.unitsData.forEach(function(unit) {
-                        const row = Object.assign({}, unit, {
-                            id: unit.id_inventory_unit || unit.id,
-                            id_inventory_unit: unit.id_inventory_unit,
-                            no_unit: unit.no_unit || unit.unit_number,
-                            merk: unit.merk_unit || unit.merk,
-                            pelanggan: unit.pelanggan || unit.customer_name
-                        });
-                        if (useKanibalTpl) {
-                            const attrs = Ok.optionDataAttributes(row);
-                            const label = Ok.line1FromRow(Ok.normalizeRow(row));
-                            const $opt = $('<option></option>').val(unit.id_inventory_unit).text(label);
-                            Object.keys(attrs).forEach(function (k) {
-                                const v = attrs[k];
-                                if (v !== '' && v != null && v !== false) {
-                                    $opt.attr(k, v);
-                                }
-                            });
-                            sourceUnitSelect.append($opt);
-                        } else {
-                            const unitNumber = unit.no_unit || unit.unit_number;
-                            const unitLabel = `${unitNumber} - ${unit.pelanggan || unit.customer_name || 'No Customer'} - ${unit.merk_unit || ''}`;
-                            sourceUnitSelect.append(`<option value="${unit.id_inventory_unit}">${unitLabel}</option>`);
-                        }
-                    });
-                    const kcfg = {
-                        placeholder: '-- Pilih Unit Sumber --',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: $('#workOrderModal'),
-                        minimumInputLength: 0,
-                        language: {
-                            noResults: function() { return "Unit tidak ditemukan"; },
-                            searching: function() { return "Mencari..."; }
-                        }
-                    };
-                    if (useKanibalTpl) {
-                        kcfg.templateResult = function (item) { return Ok.templateResult(item, {}); };
-                        kcfg.templateSelection = function (item) { return Ok.templateSelection(item, {}); };
+            // Initialize Select2 AJAX for KANIBAL source unit (lazy-load, no pre-load)
+            if (!sourceUnitSelect.hasClass('select2-hidden-accessible')) {
+                sourceUnitSelect.select2({
+                    placeholder: '-- Ketik no unit / pelanggan --',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#workOrderModal'),
+                    minimumInputLength: 2,
+                    language: {
+                        noResults: function() { return 'Unit tidak ditemukan'; },
+                        searching: function() { return 'Mencari...'; },
+                        inputTooShort: function() { return 'Ketik minimal 2 karakter...'; }
+                    },
+                    ajax: {
+                        url: base_url + 'service/work-orders/units-dropdown',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function(params) {
+                            return { search: params.term || '', kanibal: '1' };
+                        },
+                        processResults: function(resp) {
+                            const units = resp.data || [];
+                            return {
+                                results: units.map(function(u) {
+                                    const label = u.no_unit
+                                        + (u.pelanggan && u.pelanggan !== 'Belum Ada Kontrak' ? ' – ' + u.pelanggan : '')
+                                        + (u.merk ? ' [' + u.merk + ']' : '');
+                                    return { id: u.id, text: label };
+                                })
+                            };
+                        },
+                        cache: true
                     }
-                    sourceUnitSelect.select2(kcfg);
-                }
+                });
             }
             
             console.log(`✅ KANIBAL fields shown for row ${rowId}`);

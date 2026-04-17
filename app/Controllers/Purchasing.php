@@ -2321,10 +2321,47 @@ class Purchasing extends BaseController
     {
         $data = [
             'suppliers' => $this->supplierModel->findAll(),
-            'spareparts' => $this->sparepartModel->findAll(),
+            // spareparts: REMOVED - was findAll() of 14k+ items, now uses AJAX search
         ];
         
         return view('purchasing/create_po_sparepart', $data);
+    }
+
+    /**
+     * AJAX endpoint: sparepart search for Select2 (purchasing PO form)
+     * Returns id_sparepart as value (integer) unlike WorkOrder endpoint
+     */
+    public function searchSparepartsAjax()
+    {
+        $q      = trim($this->request->getGet('q') ?? '');
+        $page   = max(1, (int)($this->request->getGet('page') ?? 1));
+        $perPage = 30;
+
+        $db      = \Config\Database::connect();
+        $builder = $db->table('sparepart')
+            ->select('id_sparepart, kode, desc_sparepart');
+
+        if ($q !== '') {
+            $builder->groupStart()
+                ->like('kode', $q)
+                ->orLike('desc_sparepart', $q)
+                ->groupEnd();
+        }
+
+        $total   = $builder->countAllResults(false);
+        $rows    = $builder->orderBy('kode', 'ASC')
+            ->limit($perPage, ($page - 1) * $perPage)
+            ->get()->getResultArray();
+
+        $results = array_map(fn($r) => [
+            'id'   => $r['id_sparepart'],
+            'text' => $r['kode'] . ' - ' . $r['desc_sparepart'],
+        ], $rows);
+
+        return $this->response->setJSON([
+            'results'    => $results,
+            'pagination' => ['more' => ($page * $perPage) < $total],
+        ]);
     }
 
     /**

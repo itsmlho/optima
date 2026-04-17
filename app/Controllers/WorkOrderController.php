@@ -81,11 +81,11 @@ class WorkOrderController extends Controller
         
         $data = [
             'title' => 'Work Orders Management',
-            'workOrders' => $this->workOrderModel->getAllWorkOrders(),
+            // workOrders: REMOVED - DataTable loads via AJAX (server-side), no need to pre-load all rows
             'statuses' => $this->workOrderModel->getStatuses(),
             'priorities' => $this->workOrderModel->getPriorities(),
             'categories' => $this->workOrderModel->getCategories(),
-            'units' => $this->getUnits(),
+            'units' => [], // REMOVED: Pre-loading all units - KANIBAL dropdown now uses AJAX search
             'areas' => $this->areaModel->getActiveAreas(),
             'spareparts' => [], // REMOVED: Pre-loading 14k+ items - now using AJAX search
             'staff' => [
@@ -2680,14 +2680,19 @@ class WorkOrderController extends Controller
             // Exclude SOLD (13), UNDER_REPAIR (10), MAINTENANCE (11) units
             $sql .= " AND iu.status_unit_id NOT IN (10, 11, 13)";
             
-            // Exclude units that already have an active (non-CLOSED/COMPLETED) work order
-            $sql .= " AND NOT EXISTS (
-                SELECT 1 FROM work_orders wo_check
-                JOIN work_order_statuses wos_check ON wo_check.status_id = wos_check.id
-                WHERE wo_check.unit_id = iu.id_inventory_unit
-                AND wo_check.deleted_at IS NULL
-                AND wos_check.status_code NOT IN ('CLOSED','COMPLETED')
-            )";
+            // In kanibal mode (sparepart source selection), skip the active-WO exclusion
+            // so technicians can select any unit as a donor.
+            $isKanibal = $this->request->getGet('kanibal') === '1';
+            if (!$isKanibal) {
+                // Exclude units that already have an active (non-CLOSED/COMPLETED) work order
+                $sql .= " AND NOT EXISTS (
+                    SELECT 1 FROM work_orders wo_check
+                    JOIN work_order_statuses wos_check ON wo_check.status_id = wos_check.id
+                    WHERE wo_check.unit_id = iu.id_inventory_unit
+                    AND wo_check.deleted_at IS NULL
+                    AND wos_check.status_code NOT IN ('CLOSED','COMPLETED')
+                )";
+            }
 
             // Server-side search: filter by keyword across key columns, limit results for performance
             $search = $this->request->getGet('search');

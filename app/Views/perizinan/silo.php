@@ -865,9 +865,9 @@ function initDataTable(tableId, searchInputId, status, filterStatusId = null, fi
     
     return $(tableId).DataTable({
         processing: true,
-        serverSide: false,
+        serverSide: true,
         deferRender: true,
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', // l = length, f = filter/search, r = processing, t = table, i = info, p = pagination
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
         language: {
             processing: "Loading...",
             search: "Search:",
@@ -888,40 +888,33 @@ function initDataTable(tableId, searchInputId, status, filterStatusId = null, fi
             url: '<?= base_url('perizinan/get-silo-list') ?>',
             type: 'GET',
             data: function(d) {
-                const requestData = {
-                    status: status,
-                    // Ikutkan nilai pencarian global DataTables (jika ada)
-                    search: (d && d.search && typeof d.search.value === 'string') ? d.search.value : ''
-                };
-                
+                // Pass DataTables server-side params + our custom filters
+                d.status = status;
+                // DataTables built-in search is in d.search.value; also pass as flat 'search'
+                d.search = (d.search && typeof d.search.value === 'string') ? d.search.value : '';
+
                 if (statusFilterId && $('#' + statusFilterId).length) {
                     const statusValue = $('#' + statusFilterId).val();
-                    if (statusValue) requestData.filter_status = statusValue;
+                    if (statusValue) d.filter_status = statusValue;
                 }
                 if (deptFilterId && $('#' + deptFilterId).length) {
                     const deptValue = $('#' + deptFilterId).val();
-                    if (deptValue) requestData.filter_departemen = deptValue;
+                    if (deptValue) d.filter_departemen = deptValue;
                 }
                 if (expiredFilterId && $('#' + expiredFilterId).length) {
                     const expiredValue = $('#' + expiredFilterId).val();
                     if (expiredValue) {
                         if (expiredValue === 'expired') {
-                            requestData.expired = true;
+                            d.expired = true;
                         } else {
-                            requestData.expiring_soon = expiredValue;
+                            d.expiring_soon = expiredValue;
                         }
                     }
                 }
-                return requestData;
+                return d;
             },
-            dataSrc: function(json) {
-                if (json && json.success && json.data) {
-                    return json.data;
-                }
-                return [];
-            },
+            dataSrc: 'data',
             error: function(xhr, error, thrown) {
-                // Ignore abort errors (happens when table is destroyed/reinitialized)
                 if (error !== 'abort' && thrown !== 'abort') {
                     console.error('DataTable AJAX Error for status ' + status + ':', error, thrown);
                 }
@@ -930,11 +923,9 @@ function initDataTable(tableId, searchInputId, status, filterStatusId = null, fi
         columns: getColumnDefinitions(tableId),
         order: [[1, 'asc']],
         pageLength: 25,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         responsive: true,
-        autoWidth: false,
-        deferRender: true,  // Only render rows when they are needed (prevents stacking)
-        deferRender: true  // Only render rows when they are needed (prevents stacking)
+        autoWidth: false
     });
 }
 

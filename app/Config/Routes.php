@@ -1039,6 +1039,7 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('api/get-unit-form', 'Purchasing::getUnitFormAPI'); // API untuk load form unit
     $routes->get('api/get-attachment-form', 'Purchasing::getAttachmentFormAPI'); // API untuk load form attachment
     $routes->get('api/get-sparepart-form', 'Purchasing::getSparepartFormAPI'); // API untuk load form sparepart
+    $routes->get('api/search-spareparts', 'Purchasing::searchSparepartsAjax'); // Select2 AJAX search (returns id_sparepart as id)
     
 
     $routes->post('store-po-unit', 'Purchasing::storePoUnit'); // Simpan data baru  

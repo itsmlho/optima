@@ -77,123 +77,105 @@ class Perizinan extends BaseController
     }
 
     /**
-     * Get SILO list (AJAX)
+     * Get SILO list (AJAX) — supports DataTables server-side pagination.
+     * Parameters: start, length, draw (DataTables), status, search, filter_status, filter_departemen
      */
     public function getSiloList()
     {
         if (!$this->canViewPerizinan()) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Akses ditolak'
-            ])->setStatusCode(403);
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
         try {
-            $status = $this->request->getGet('status');
-            
-            // If status is 'BELUM_ADA', return units without SILO
+            $req    = $this->request;
+            $draw   = (int)($req->getGet('draw')   ?? 1);
+            $start  = (int)($req->getGet('start')  ?? 0);
+            $length = (int)($req->getGet('length') ?? 25);
+            $length = max(1, $length);
+
+            $status          = $req->getGet('status');
+            $search          = (string)($req->getGet('search') ?? '');
+            $filterStatus    = $req->getGet('filter_status');
+            $filterDepartemen = $req->getGet('filter_departemen') ? (int)$req->getGet('filter_departemen') : null;
+
+            // ── Tab: Belum Ada SILO ──────────────────────────────────────────
             if ($status === 'BELUM_ADA') {
-                $search = $this->request->getGet('search') ?? '';
-                $filterDepartemen = $this->request->getGet('filter_departemen');
-                log_message('debug', 'Perizinan::getSiloList - BELUM_ADA status requested, search: ' . $search);
-                $data = $this->siloModel->getUnitsWithoutSilo($search, $filterDepartemen);
-                log_message('debug', 'Perizinan::getSiloList - BELUM_ADA status, found ' . count($data) . ' units');
-                if (count($data) > 0) {
-                    log_message('debug', 'Perizinan::getSiloList - Sample unit: ' . json_encode($data[0]));
-                }
+                $total    = $this->siloModel->countUnitsWithoutSilo('', $filterDepartemen);
+                $filtered = $this->siloModel->countUnitsWithoutSilo($search, $filterDepartemen);
+                $data     = $this->siloModel->getPaginatedUnitsWithoutSilo($search, $filterDepartemen, $start, $length);
                 return $this->response->setJSON([
-                    'success' => true,
-                    'data' => $data
+                    'success' => true, 'draw' => $draw,
+                    'recordsTotal' => $total, 'recordsFiltered' => $filtered,
+                    'data' => $data,
                 ]);
             }
 
-            // Handle special statuses for expired
+            // ── Build filters for SILO-based tabs ───────────────────────────
+            $baseFilters = array_filter([
+                'search'           => $search,
+                'filter_status'    => $filterStatus,
+                'filter_departemen'=> $filterDepartemen,
+                'expiring_soon'    => $req->getGet('expiring_soon'),
+                'expired'          => $req->getGet('expired'),
+            ], fn($v) => $v !== null && $v !== '');
+
             if ($status === 'akan-expired') {
-                $filters = [
-                    'status' => 'SILO_TERBIT',
-                    'search' => $this->request->getGet('search'),
-                    'filter_departemen' => $this->request->getGet('filter_departemen'),
-                    'expiring_soon' => 30, // Will expire in 30 days
-                ];
-                $data = $this->siloModel->getAllWithUnit($filters);
-                return $this->response->setJSON([
-                    'success' => true,
-                    'data' => $data
-                ]);
-            }
-            
-            if ($status === 'sudah-expired') {
-                $filters = [
-                    'status' => 'SILO_TERBIT',
-                    'search' => $this->request->getGet('search'),
-                    'filter_departemen' => $this->request->getGet('filter_departemen'),
-                    'expired' => true,
-                ];
-                $data = $this->siloModel->getAllWithUnit($filters);
-                return $this->response->setJSON([
-                    'success' => true,
-                    'data' => $data
-                ]);
+                $baseFilters = array_merge($baseFilters, ['status' => 'SILO_TERBIT', 'expiring_soon' => 30]);
+            } elseif ($status === 'sudah-expired') {
+                $baseFilters = array_merge($baseFilters, ['status' => 'SILO_TERBIT', 'expired' => true]);
+            } elseif (!empty($status) && $status !== 'all') {
+                $baseFilters['status'] = $status;
             }
 
-            // If status is 'all', combine data with SILO and units without SILO
+            // ── Tab: Semua (SILO rows + units without SILO combined) ─────────
             if ($status === 'all' || empty($status)) {
-                $filters = [
-                    'search' => $this->request->getGet('search'),
-                    'filter_status' => $this->request->getGet('filter_status'),
-                    'filter_departemen' => $this->request->getGet('filter_departemen'),
-                    'expiring_soon' => $this->request->getGet('expiring_soon'),
-                    'expired' => $this->request->getGet('expired'),
-                ];
+                $siloFilters = $baseFilters;
+                unset($siloFilters['filter_departemen']);
+                if ($filterDepartemen) $siloFilters['filter_departemen'] = $filterDepartemen;
 
-                // Remove empty filters
-                $filters = array_filter($filters, function($value) {
-                    return $value !== null && $value !== '';
-                });
+                $totalSilo     = $this->siloModel->countWithUnit($siloFilters);
+                $totalNoSilo   = empty($filterStatus) ? $this->siloModel->countUnitsWithoutSilo('', $filterDepartemen) : 0;
+                $filteredSilo  = $this->siloModel->countWithUnit($siloFilters);
+                $filteredNoSilo = empty($filterStatus) ? $this->siloModel->countUnitsWithoutSilo($search, $filterDepartemen) : 0;
 
-                // Get data with SILO
-                $dataWithSilo = $this->siloModel->getAllWithUnit($filters);
-                
-                // Get units without SILO (only if no filter_status is applied)
-                $dataWithoutSilo = [];
-                if (empty($filters['filter_status'])) {
-                    $search = $filters['search'] ?? '';
-                    $filterDepartemen = $filters['filter_departemen'] ?? null;
-                    $dataWithoutSilo = $this->siloModel->getUnitsWithoutSilo($search, $filterDepartemen);
+                $total    = $totalSilo + $totalNoSilo;
+                $filtered = $filteredSilo + $filteredNoSilo;
+
+                // Paginate across combined virtual dataset
+                $siloData  = $this->siloModel->getPaginatedWithUnit($siloFilters, $start, $length);
+                $fetched   = count($siloData);
+                $data      = $siloData;
+
+                if ($fetched < $length && empty($filterStatus)) {
+                    $noSiloStart  = max(0, $start - $filteredSilo);
+                    $noSiloLength = $length - $fetched;
+                    $noSiloData   = $this->siloModel->getPaginatedUnitsWithoutSilo($search, $filterDepartemen, $noSiloStart, $noSiloLength);
+                    $data         = array_merge($data, $noSiloData);
                 }
-                
-                // Combine both datasets
-                $data = array_merge($dataWithSilo, $dataWithoutSilo);
-            } else {
-                $filters = [
-                    'status' => $status,
-                    'search' => $this->request->getGet('search'),
-                    'filter_status' => $this->request->getGet('filter_status'),
-                    'filter_departemen' => $this->request->getGet('filter_departemen'),
-                    'expiring_soon' => $this->request->getGet('expiring_soon'),
-                    'expired' => $this->request->getGet('expired'),
-                ];
 
-                // Remove empty filters
-                $filters = array_filter($filters, function($value) {
-                    return $value !== null && $value !== '';
-                });
-
-                $data = $this->siloModel->getAllWithUnit($filters);
+                return $this->response->setJSON([
+                    'success' => true, 'draw' => $draw,
+                    'recordsTotal' => $total, 'recordsFiltered' => $filtered,
+                    'data' => $data,
+                ]);
             }
+
+            // ── All other single-status tabs ─────────────────────────────────
+            $total    = $this->siloModel->countWithUnit($baseFilters);
+            $filtered = $total;
+            $data     = $this->siloModel->getPaginatedWithUnit($baseFilters, $start, $length);
 
             return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
+                'success' => true, 'draw' => $draw,
+                'recordsTotal' => $total, 'recordsFiltered' => $filtered,
+                'data' => $data,
             ]);
+
         } catch (\Exception $e) {
             log_message('error', 'Perizinan::getSiloList Error: ' . $e->getMessage());
-            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
-            
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data. Silakan coba lagi.',
-                'data' => []
+                'success' => false, 'message' => 'Gagal memuat data. Silakan coba lagi.',
+                'draw' => 1, 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [],
             ])->setStatusCode(500);
         }
     }

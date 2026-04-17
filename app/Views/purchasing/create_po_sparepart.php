@@ -111,16 +111,12 @@
 </div>
 
 <!-- Template untuk baris baru sparepart (disembunyikan) -->
+<!-- sparepart options: REMOVED forEach - now loaded via Select2 AJAX -->
 <template id="sparepart-row-template">
     <tr>
         <td>
             <select class="form-select select2-sparepart" name="sparepart_id[]" required>
                 <option value="">Pilih Sparepart...</option>
-                <?php if (isset($spareparts) && is_array($spareparts)): ?>
-                    <?php foreach ($spareparts as $item): ?>
-                        <option value="<?= $item['id_sparepart'] ?>"><?= esc($item['kode'] . ' - ' . $item['desc_sparepart']) ?></option>
-                    <?php endforeach; ?>
-                <?php endif; ?>
             </select>
         </td>
         <td><input type="number" class="form-control" name="qty[]" min="1" value="1" required></td>
@@ -175,11 +171,23 @@
             const newRow = $(template);
             $('#sparepart-table tbody').append(newRow);
             
-            // Initialize Select2 for newly added row
-            newRow.find('.select2-sparepart').select2({ 
-                theme: "bootstrap-5", 
+            // Initialize Select2 AJAX for newly added row (avoids loading 14k+ items)
+            newRow.find('.select2-sparepart').select2({
+                theme: 'bootstrap-5',
                 placeholder: 'Cari kode atau deskripsi...',
-                width: '100%'
+                width: '100%',
+                minimumInputLength: 2,
+                ajax: {
+                    url: (typeof BASE_URL !== 'undefined' ? BASE_URL : '<?= base_url() ?>') + 'purchasing/api/search-spareparts',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { q: params.term, page: params.page || 1 };
+                    },
+                    processResults: function(data) {
+                        return { results: data.results, pagination: data.pagination };
+                    }
+                }
             });
         }
 

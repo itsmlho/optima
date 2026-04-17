@@ -58,6 +58,124 @@ class SiloModel extends Model
     const STATUS_SILO_EXPIRED = 'SILO_EXPIRED';
 
     /**
+     * Build a base query builder for SILO+unit (shared by count & paginated fetch).
+     * Returns a CI4 BaseBuilder already joined & filtered.
+     */
+    private function buildSiloQuery(array $filters)
+    {
+        $builder = $this->db->table($this->table . ' s');
+        $hasCustomerLocationId = $this->db->fieldExists('customer_location_id', 'kontrak');
+
+        if ($hasCustomerLocationId) {
+            $builder->select('s.*,
+                COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
+                iu.serial_number,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                c.customer_name as nama_perusahaan,
+                cl.address as alamat,
+                d.nama_departemen as departemen');
+            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kontrak_unit ku', "ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0", 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+        } else {
+            $builder->select('s.*,
+                COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
+                iu.serial_number,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                c.customer_name as nama_perusahaan,
+                NULL as alamat,
+                d.nama_departemen as departemen');
+            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kontrak_unit ku', "ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0", 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customers c', 'c.id = ktr.customer_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'progres') {
+                $builder->whereIn('s.status', [
+                    self::STATUS_PENGAJUAN_PJK3,
+                    self::STATUS_SURAT_KETERANGAN_PJK3,
+                    self::STATUS_PENGAJUAN_UPTD,
+                ]);
+            } else {
+                $builder->where('s.status', $filters['status']);
+            }
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $builder->groupStart();
+            $builder->like('iu.serial_number', $search);
+            $builder->orLike('iu.no_unit', $search);
+            $builder->orLike('s.nomor_silo', $search);
+            $builder->orLike('s.nomor_surat_keterangan_pjk3', $search);
+            $builder->groupEnd();
+        }
+        if (!empty($filters['expiring_soon'])) {
+            $days = (int)$filters['expiring_soon'];
+            $builder->where('s.tanggal_expired_silo IS NOT NULL');
+            $builder->where('s.tanggal_expired_silo <=', date('Y-m-d', strtotime("+{$days} days")));
+            $builder->where('s.tanggal_expired_silo >=', date('Y-m-d'));
+            $builder->where('s.status', self::STATUS_SILO_TERBIT);
+        }
+        if (!empty($filters['expired'])) {
+            $builder->where('s.tanggal_expired_silo IS NOT NULL');
+            $builder->where('s.tanggal_expired_silo <', date('Y-m-d'));
+            $builder->where('s.status', self::STATUS_SILO_TERBIT);
+        }
+        if (!empty($filters['filter_status'])) {
+            $builder->where('s.status', $filters['filter_status']);
+        }
+        if (!empty($filters['filter_departemen'])) {
+            $builder->where('iu.departemen_id', $filters['filter_departemen']);
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Count filtered SILO rows (for DataTables recordsFiltered).
+     */
+    public function countWithUnit(array $filters): int
+    {
+        try {
+            if (!$this->db->tableExists($this->table)) return 0;
+            $builder = $this->buildSiloQuery($filters);
+            return $builder->countAllResults();
+        } catch (\Exception $e) {
+            log_message('error', 'SiloModel::countWithUnit Error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Get paginated SILO rows (for DataTables server-side).
+     */
+    public function getPaginatedWithUnit(array $filters, int $start, int $length): array
+    {
+        try {
+            if (!$this->db->tableExists($this->table)) return [];
+            $builder = $this->buildSiloQuery($filters);
+            $builder->orderBy('s.created_at', 'DESC');
+            $builder->limit($length, $start);
+            return $builder->get()->getResultArray();
+        } catch (\Exception $e) {
+            log_message('error', 'SiloModel::getPaginatedWithUnit Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Get all SILO with unit information
      */
     public function getAllWithUnit($filters = [])
@@ -190,6 +308,111 @@ class SiloModel extends Model
     public function getByUnitId($unitId)
     {
         return $this->where('unit_id', $unitId)->first();
+    }
+
+    /**
+     * Build base query for units without SILO (shared by count & paginated fetch).
+     */
+    private function buildUnitsWithoutSiloQuery(string $search = '', ?int $filterDepartemen = null)
+    {
+        $builder = $this->db->table('inventory_unit iu');
+        $hasCustomerLocationId = $this->db->fieldExists('customer_location_id', 'kontrak');
+
+        if ($hasCustomerLocationId) {
+            $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number,
+                NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                c.customer_name as nama_perusahaan,
+                cl.address as alamat,
+                d.nama_departemen as departemen');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kontrak_unit ku', "ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0", 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+        } else {
+            $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number,
+                NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                c.customer_name as nama_perusahaan,
+                NULL as alamat,
+                d.nama_departemen as departemen');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('kontrak_unit ku', "ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0", 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customers c', 'c.id = ktr.customer_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+        }
+
+        $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
+        $builder->groupStart();
+        $builder->where('iu.status_unit_id IS NULL');
+        $builder->orGroupStart();
+        $builder->whereNotIn('su.status_unit', ['SOLD', 'BREAKDOWN']);
+        $builder->groupEnd();
+        $builder->groupEnd();
+
+        if ($this->db->tableExists($this->table)) {
+            $activeSiloIds = $this->db->table('silo')
+                ->select('unit_id')
+                ->where('status', self::STATUS_SILO_TERBIT)
+                ->groupStart()
+                    ->where('tanggal_expired_silo IS NULL')
+                    ->orWhere('tanggal_expired_silo >=', date('Y-m-d'))
+                ->groupEnd()
+                ->get()->getResultArray();
+            $activeSiloUnitIds = array_column($activeSiloIds, 'unit_id');
+            if (!empty($activeSiloUnitIds)) {
+                $builder->whereNotIn('iu.id_inventory_unit', $activeSiloUnitIds);
+            }
+        }
+
+        if (!empty($search)) {
+            $builder->groupStart();
+            $builder->like('iu.serial_number', $search);
+            $builder->orLike('iu.no_unit', $search);
+            $builder->groupEnd();
+        }
+
+        if (!empty($filterDepartemen)) {
+            $builder->where('iu.departemen_id', $filterDepartemen);
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Count units without SILO (for DataTables recordsFiltered).
+     */
+    public function countUnitsWithoutSilo(string $search = '', ?int $filterDepartemen = null): int
+    {
+        try {
+            return $this->buildUnitsWithoutSiloQuery($search, $filterDepartemen)->countAllResults();
+        } catch (\Exception $e) {
+            log_message('error', 'SiloModel::countUnitsWithoutSilo Error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Get paginated units without SILO (for DataTables server-side).
+     */
+    public function getPaginatedUnitsWithoutSilo(string $search = '', ?int $filterDepartemen = null, int $start = 0, int $length = 25): array
+    {
+        try {
+            $builder = $this->buildUnitsWithoutSiloQuery($search, $filterDepartemen);
+            $builder->orderBy('iu.no_unit', 'ASC');
+            $builder->limit($length, $start);
+            return $builder->get()->getResultArray();
+        } catch (\Exception $e) {
+            log_message('error', 'SiloModel::getPaginatedUnitsWithoutSilo Error: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
