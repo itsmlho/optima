@@ -6569,9 +6569,9 @@ class Marketing extends BaseDataTableController
         log_message('debug', 'SPK Update - Processed data: ' . json_encode($data));
 
         // Validate required fields
-        if (empty($data['jenis_spk']) || empty($data['po_kontrak_nomor']) || empty($data['pelanggan'])) {
+        if (empty($data['jenis_spk']) || empty($data['pelanggan'])) {
             log_message('error', 'SPK Update - Validation failed. Data: ' . json_encode($data));
-            return $this->response->setJSON(['success'=>false,'message'=>'Jenis SPK, PO Kontrak, dan Pelanggan wajib diisi. Data received: ' . json_encode($data)]);
+            return $this->response->setJSON(['success'=>false,'message'=>'Jenis SPK dan Pelanggan wajib diisi.']);
         }
 
         // Validate status
