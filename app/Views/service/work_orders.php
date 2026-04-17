@@ -767,8 +767,7 @@ $can_export = $permissions['export'];
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- Select2 JS sudah dimuat di base layout -->
 
 <script>
 // Global permission variables (accessible from all functions)

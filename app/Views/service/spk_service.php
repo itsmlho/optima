@@ -474,10 +474,7 @@ $can_export = true;
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- Select2 CSS/JS sudah dimuat di base layout -->
 <script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
 <?= $this->include('partials/accessory_js') ?>
 

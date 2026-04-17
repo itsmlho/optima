@@ -68,7 +68,7 @@ class CustomerManagementController extends BaseController
                 '/' => 'Dashboard',
                 '/marketing/customer_management' => 'Customer Management'
             ],
-            'customers' => $this->customerModel->findAll(),
+            // customers: REMOVED findAll() - DataTable loads via AJAX (getCustomers endpoint)
             'areas' => $this->areaModel->findAll(),
             'totalCustomers' => $this->customerModel->countAllResults(),
             'totalLocations' => $this->locationModel->countAllResults(),

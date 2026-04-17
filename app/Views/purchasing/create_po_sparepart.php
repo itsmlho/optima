@@ -153,8 +153,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.full.min.js"></script>
+<!-- Select2 JS sudah dimuat di base layout -->
 <script>
     $(document).ready(function() {
         // Inisialisasi Select2 untuk supplier dengan search
@@ -176,7 +175,7 @@
                 theme: 'bootstrap-5',
                 placeholder: 'Cari kode atau deskripsi...',
                 width: '100%',
-                minimumInputLength: 2,
+                minimumInputLength: 1,
                 ajax: {
                     url: (typeof BASE_URL !== 'undefined' ? BASE_URL : '<?= base_url() ?>') + 'purchasing/api/search-spareparts',
                     dataType: 'json',
@@ -211,15 +210,10 @@
             }
         });
 
-        // Initialize DataTable for sorting and search functionality
-        $('#sparepart-table').DataTable({
-            processing: true,
-            pageLength: 25,
-            order: [[1, 'asc']], // Sort by sparepart name
-            columnDefs: [
-                { orderable: false, targets: [-1] } // Disable sorting on last column (actions)
-            ]
-        });
+        // NOTE: DataTable REMOVED from #sparepart-table.
+        // This is a dynamic form input table — DataTable is not compatible:
+        // it would add a search box on form rows, reorder inputs, and ignore
+        // dynamically appended rows. No pagination/search needed here.
     });
 </script>
 <?= $this->endSection() ?>

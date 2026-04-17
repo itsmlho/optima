@@ -585,7 +585,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- Select2 JS sudah dimuat di base layout -->
 <script>
     // Inventory Attachment & Battery Management - Updated <?= date('Y-m-d H:i:s') ?>
     // Global variables - Initialize with default values

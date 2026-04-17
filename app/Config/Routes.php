@@ -1061,7 +1061,7 @@ $routes->group('purchasing', static function ($routes) {
     // PO Sparepart Routes
     $routes->get('po-sparepart-list', 'Purchasing::poSparepartList'); // Show PO Sparepart list page
     $routes->get('create-po-sparepart', 'Purchasing::createPOSparepart'); // Show PO Sparepart form
-    $routes->post('store-po-sparepart-unified', 'Purchasing::storePOSparepartUnified');
+    $routes->post('store-po-sparepart-unified', 'Purchasing::storePoSparepart');
     $routes->get('api/get-sparepart-po-data', 'Purchasing::getSparepartPOData'); // API for DataTable
     $routes->get('export-sparepart-po', 'Purchasing::exportSparepartPO');
     
