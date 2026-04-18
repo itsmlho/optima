@@ -219,6 +219,7 @@ return [
     'po_sparepart' => 'PO Sparepart',
     'po_reject' => 'PO Reject',
     'supplier_management' => 'Supplier Management',
+    'asset_requests' => 'Asset Number Requests',
     'delivery_process' => 'Delivery Process',
     'unit_inventory' => 'Unit Inventory',
     'attachment_battery_inventory' => 'Attachment & Battery Inventory',

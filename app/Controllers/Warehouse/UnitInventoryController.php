@@ -4,6 +4,7 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\InventoryUnitModel;
+use App\Models\UnitAssetRequestModel;
 use App\Models\SiloModel;
 use App\Traits\ActivityLoggingTrait;
 use Config\Database;
@@ -320,7 +321,7 @@ class UnitInventoryController extends BaseController
             if ($db->tableExists('spk_unit_stages') && $db->tableExists('spk')) {
                 // Avoid sus.status conflict - use column names that actually exist
                 $spk_history = $db->table('spk_unit_stages sus')
-                    ->select('s.nomor_spk, s.pelanggan, s.dibuat_pada AS spk_date, sus.stage_notes, sus.created_at AS stage_date')
+                    ->select('s.nomor_spk, s.pelanggan, s.dibuat_pada AS spk_date, sus.catatan AS stage_notes, sus.created_at AS stage_date')
                     ->join('spk s', 's.id = sus.spk_id', 'left')
                     ->where('sus.unit_id', (int)$id)
                     ->orderBy('sus.created_at', 'DESC')
@@ -373,23 +374,24 @@ class UnitInventoryController extends BaseController
         }
 
         return view('warehouse/inventory/unit/show', [
-            'title'            => 'Detail Unit: ' . ($unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-' . $id)),
-            'unit'             => $unit,
-            'work_orders'      => $work_orders,
-            'sparepart_usages' => $sparepart_usages,
-            'rental_history'   => $rental_history,
-            'spk_history'      => $spk_history,
-            'current_components' => $current_components,
+            'title'                => 'Detail Unit: ' . ($unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-' . $id)),
+            'unit'                 => $unit,
+            'work_orders'          => $work_orders,
+            'sparepart_usages'     => $sparepart_usages,
+            'rental_history'       => $rental_history,
+            'spk_history'          => $spk_history,
+            'current_components'   => $current_components,
             // For inline edit
-            'tipe_mast'        => $lookup['tipe_mast']      ?? [],
-            'mesin'            => $lookup['mesin']           ?? [],
-            'tipe_ban'         => $lookup['ban']             ?? [],
-            'kapasitas'        => $lookup['kapasitas_unit']  ?? [],
-            'jenis_roda'       => $lookup['roda']            ?? [],
-            'valve'            => $lookup['valve']           ?? [],
-            'active_booking'   => $active_booking,
-            'silo'             => $silo,
-            'public_view_url'  => $publicViewUrl,
+            'tipe_mast'            => $lookup['tipe_mast']      ?? [],
+            'mesin'                => $lookup['mesin']           ?? [],
+            'tipe_ban'             => $lookup['ban']             ?? [],
+            'kapasitas'            => $lookup['kapasitas_unit']  ?? [],
+            'jenis_roda'           => $lookup['roda']            ?? [],
+            'valve'                => $lookup['valve']           ?? [],
+            'active_booking'       => $active_booking,
+            'silo'                 => $silo,
+            'public_view_url'      => $publicViewUrl,
+            'pending_asset_request' => (new UnitAssetRequestModel())->getPendingForUnit((int) $id),
         ]);
     }
 
@@ -986,13 +988,9 @@ class UnitInventoryController extends BaseController
 
         $data = $this->collectFormFields();
 
-        // Auto-generate no_unit_na BEFORE insert if no asset number provided
+        // Auto-assign STOCK-xxxx ke no_unit_na jika belum punya no_unit maupun no_unit_na
         if (empty($data['no_unit']) && empty($data['no_unit_na'])) {
-            try {
-                $data['no_unit_na'] = $this->inventoryUnitModel->generateNonAssetNumber();
-            } catch (\Throwable $e) {
-                return redirect()->back()->withInput()->with('error', 'Gagal generate nomor Non-Asset: ' . $e->getMessage());
-            }
+            $data['no_unit_na'] = $this->generateStockNumber();
         }
 
         try {
@@ -1656,6 +1654,98 @@ class UnitInventoryController extends BaseController
         } catch (\Throwable $e) {
             log_message('error', 'apiSearchQuotations: ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'data' => []]);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  STOCK NUMBER GENERATION & ASSET REQUEST
+    // ──────────────────────────────────────────────────────
+
+    /**
+     * Generate the next sequential STOCK-xxxx number.
+     * Queries max existing STOCK-xxxx value from inventory_unit.no_unit_na.
+     */
+    private function generateStockNumber(): string
+    {
+        $db = Database::connect();
+
+        // Use REGEXP filter + CAST to get true integer max (avoids decimal edge cases)
+        $row = $db->query(
+            "SELECT MAX(CAST(REGEXP_REPLACE(no_unit_na, '^STOCK-0*', '') AS UNSIGNED)) AS max_seq
+             FROM inventory_unit
+             WHERE no_unit_na REGEXP '^STOCK-[0-9]+$'"
+        )->getRowArray();
+
+        $next = 1;
+        if (!empty($row['max_seq']) && (int)$row['max_seq'] > 0) {
+            $next = (int)$row['max_seq'] + 1;
+        }
+
+        // Ensure uniqueness (handle race conditions)
+        do {
+            $candidate = 'STOCK-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+            $exists = $db->table('inventory_unit')
+                ->where('no_unit_na', $candidate)
+                ->countAllResults();
+            if ($exists > 0) {
+                $next++;
+            } else {
+                break;
+            }
+        } while (true);
+
+        return $candidate;
+    }
+
+    /**
+     * POST warehouse/inventory/unit/{id}/request-asset
+     * Submits an asset number request to Purchasing using the existing STOCK number.
+     */
+    public function requestAsset(int $id)
+    {
+        try {
+            $unit = $this->inventoryUnitModel->find($id);
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
+            }
+
+            // Unit must not already have an official asset number
+            if (!empty($unit['no_unit'])) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit sudah memiliki nomor aset.']);
+            }
+
+            // Unit must already have a STOCK number
+            $stockNumber = $unit['no_unit_na'] ?? '';
+            if (empty($stockNumber)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit belum memiliki nomor STOCK. Hubungi administrator.']);
+            }
+
+            $assetRequestModel = new UnitAssetRequestModel();
+
+            // Prevent duplicate pending requests
+            if ($assetRequestModel->hasPendingRequest($id)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Permintaan nomor aset sudah diajukan dan sedang menunggu persetujuan.']);
+            }
+
+            $userId = session()->get('user_id') ?? null;
+
+            // Create request record — STOCK number already exists in no_unit_na
+            $assetRequestModel->insert([
+                'id_inventory_unit' => $id,
+                'stock_number'      => $stockNumber,
+                'status'            => 'PENDING',
+                'requested_by'      => $userId,
+                'requested_at'      => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->response->setJSON([
+                'success'      => true,
+                'message'      => 'Permintaan nomor aset untuk ' . $stockNumber . ' berhasil diajukan ke Purchasing.',
+                'stock_number' => $stockNumber,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[UnitInventoryController::requestAsset] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
         }
     }
 }

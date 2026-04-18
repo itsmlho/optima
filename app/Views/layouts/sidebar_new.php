@@ -173,6 +173,11 @@ if (!function_exists('optimaCanNav')) {
                         <i class="fas fa-building"></i> <?= lang('App.supplier_management') ?>
                     </a>
                     <?php endif; ?>
+                    <?php if (canNavigateTo('purchasing', 'po')): ?>
+                    <a href="<?= base_url('/purchasing/asset-requests') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'asset-requests') !== false ? 'active' : '' ?>">
+                        <i class="fas fa-tag"></i> Permintaan Nomor Aset
+                    </a>
+                    <?php endif; ?>
                     <?php if (canNavigateTo('operational', 'delivery')): ?>
                     <a href="<?= base_url('/operational/delivery') ?>" class="nav-dropdown-item">
                         <i class="fas fa-shipping-fast"></i> <?= lang('App.delivery_process') ?>
@@ -556,6 +561,18 @@ if (!function_exists('optimaCanNav')) {
                     <span class="nav-link-text"><?= lang('App.supplier_management') ?></span>
                 </a>
             </li>
+
+            <!-- Asset Number Requests -->
+            <?php if (canNavigateTo('purchasing', 'asset_requests')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'asset-requests') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/purchasing/asset-requests') ?>"
+                   data-search-terms="asset number request stock nomor aset purchasing">
+                    <i class="fas fa-tag"></i>
+                    <span class="nav-link-text"><?= lang('App.asset_requests') ?></span>
+                </a>
+            </li>
+            <?php endif; ?>
             <?php endif; ?>
 
             <!-- WAREHOUSE DIVISION -->

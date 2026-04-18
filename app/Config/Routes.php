@@ -991,6 +991,7 @@ $routes->group('warehouse', static function ($routes) {
             $routes->post('(:num)/book',            'Warehouse\UnitInventoryController::bookUnit/$1');
             $routes->post('(:num)/scrap',           'Warehouse\UnitInventoryController::scrapUnit/$1');
             $routes->post('(:num)/change-status',   'Warehouse\UnitInventoryController::changeStatus/$1');
+            $routes->post('(:num)/request-asset',   'Warehouse\UnitInventoryController::requestAsset/$1');
         });
         $routes->get('get-unit-detail/(:num)', 'Warehouse::getUnitDetail/$1');
         $routes->get('get-unit-full-detail/(:num)', 'Warehouse::getUnitFullDetail/$1'); // Full detail with all joins
@@ -1011,6 +1012,13 @@ $routes->group('warehouse', static function ($routes) {
 // Purchasing Division Routes
 $routes->group('purchasing', static function ($routes) {
     $routes->get('/', 'Purchasing::index'); // Main entry point (redirects to purchasingHub)
+
+    // --- Asset Number Requests (from Warehouse) ---
+    $routes->get('asset-requests',                      'AssetRequestController::index');
+    $routes->get('asset-requests/suggest-number',       'AssetRequestController::suggestNumber');
+    $routes->post('asset-requests/datatable',           'AssetRequestController::datatable');
+    $routes->post('asset-requests/(:num)/approve',      'AssetRequestController::approve/$1');
+    $routes->post('asset-requests/(:num)/reject',       'AssetRequestController::reject/$1');
     
     // --- Unified Purchasing Hub ---
     $routes->get('purchasing-hub', 'Purchasing::purchasingHub'); // Alias for hub

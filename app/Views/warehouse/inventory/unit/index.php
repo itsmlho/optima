@@ -248,8 +248,14 @@ $(document).ready(function() {
                 data: 'no_unit',
                 className: 'ps-3 fw-bold',
                 render: function(data, type, row, meta) {
-                    if (!data) return '<span class="badge badge-soft-gray">TEMP-' + row.id_inventory_unit + '</span>';
-                    let label = String(data);
+                    // nomor_aset = real no_unit (not COALESCE), data = COALESCE(no_unit, no_unit_na)
+                    if (!row.nomor_aset) {
+                        if (row.no_unit_na && String(row.no_unit_na).startsWith('STOCK-')) {
+                            return '<span class="badge badge-soft-cyan">' + row.no_unit_na + '</span>';
+                        }
+                        return '<span class="badge badge-soft-gray">Belum diajukan</span>';
+                    }
+                    let label = String(row.nomor_aset);
                     if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
                         label = OptimaSearch.highlightForMeta(meta, label);
                     }

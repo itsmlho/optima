@@ -73,12 +73,17 @@ class ServiceAreaManagementController extends BaseController
             $areaBuilder = $db->table('areas');
             $areaBuilder->select('areas.id, areas.area_code, areas.area_name, areas.area_type, areas.departemen_id');
             $areaBuilder->where('areas.is_active', 1);
-            
-            // Apply scope filter
+
+            // Apply area scope filter
             if ($scope !== null && !empty($scope['areas'])) {
                 $areaBuilder->whereIn('areas.id', $scope['areas']);
             }
-            
+
+            // Apply department scope to areas (e.g. admin service electric only sees electric areas)
+            if ($scope !== null && !empty($scope['departments'])) {
+                $areaBuilder->whereIn('areas.departemen_id', $scope['departments']);
+            }
+
             $areaBuilder->orderBy('areas.area_type', 'ASC');
             $areaBuilder->orderBy('areas.area_name', 'ASC');
             $areas = $areaBuilder->get()->getResultArray();
@@ -210,37 +215,44 @@ class ServiceAreaManagementController extends BaseController
             log_message('debug', 'User role from session: ' . session()->get('role'));
             log_message('debug', 'User ID from session: ' . session()->get('user_id'));
             
-            // Build query with scope filtering
-            $whereClause = " WHERE areas.is_active = 1";
-            $params = [];
-            
-            // Apply role-based scope filtering
+            // Build base scope clause (used for totalRecords count)
+            $scopeClause = " WHERE areas.is_active = 1";
+            $scopeParams = [];
+
+            // Apply role-based area scope filtering
             if ($scope !== null && !empty($scope['areas'])) {
-                $whereClause .= " AND areas.id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
-                $params = $scope['areas'];
+                $scopeClause .= " AND areas.id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
+                $scopeParams = array_merge($scopeParams, $scope['areas']);
                 log_message('debug', 'Applied area filtering: ' . implode(',', $scope['areas']));
             }
-            
+
+            // Apply department scope to areas (e.g. admin service electric only sees electric areas)
+            if ($scope !== null && !empty($scope['departments'])) {
+                $scopeClause .= " AND areas.departemen_id IN (" . implode(',', array_fill(0, count($scope['departments']), '?')) . ")";
+                $scopeParams = array_merge($scopeParams, $scope['departments']);
+                log_message('debug', 'Applied department filtering: ' . implode(',', $scope['departments']));
+            }
+
+            // Start where clause from scope
+            $whereClause = $scopeClause;
+            $params = $scopeParams;
+
             // Add search condition
             if ($searchValue) {
                 $whereClause .= " AND (areas.area_name LIKE ? OR areas.area_code LIKE ? OR areas.area_description LIKE ?)";
                 $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%"]);
             }
 
-            // Department filter
+            // Department filter (manual filter from UI dropdown)
             $departemenId = $request['departemen_id'] ?? null;
             if ($departemenId) {
                 $whereClause .= " AND areas.departemen_id = ?";
                 $params[] = (int) $departemenId;
             }
-            
-            // Count total records (with scope, without search) — active areas only
-            if ($scope !== null && !empty($scope['areas'])) {
-                $totalSql = "SELECT COUNT(*) as total FROM areas WHERE areas.is_active = 1 AND areas.id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
-                $totalResult = $this->db->query($totalSql, $scope['areas']);
-            } else {
-                $totalResult = $this->db->query("SELECT COUNT(*) as total FROM areas WHERE is_active = 1");
-            }
+
+            // Count total records (scope only, no search)
+            $totalSql = "SELECT COUNT(*) as total FROM areas" . $scopeClause;
+            $totalResult = $this->db->query($totalSql, $scopeParams);
             $totalRecords = $totalResult->getRow()->total;
             
             // Count filtered records (with scope and search)

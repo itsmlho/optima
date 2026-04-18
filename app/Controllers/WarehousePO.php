@@ -1547,7 +1547,10 @@ class WarehousePO extends BaseController
                             $inventoryData = array_filter($inventoryData, function($value) {
                                 return !($value === null || $value === '');
                             });
-                            
+
+                            // Auto-assign STOCK-xxxx ke no_unit_na (unit belum punya no_unit resmi)
+                            $inventoryData['no_unit_na'] = $this->generateStockNumber();
+
                             log_message('debug', '[WarehousePO] Attempting to insert to inventory_unit: ' . json_encode($inventoryData));
                             
                             $this->inventoryUnitModel->skipValidation(true);
@@ -3135,5 +3138,39 @@ class WarehousePO extends BaseController
                        ($sparepartStats['sesuai'] + $sparepartStats['tidak_sesuai']);
         
         return $totalPOs > 0 ? round(($completedPOs / $totalPOs) * 100, 2) : 0;
+    }
+
+    /**
+     * Generate next STOCK-xxxx number for NON_ASSET_STOCK units.
+     * Uses REGEXP on no_unit_na to find the current max sequence.
+     */
+    private function generateStockNumber(): string
+    {
+        $db = \Config\Database::connect();
+
+        $row = $db->query(
+            "SELECT MAX(CAST(REGEXP_REPLACE(no_unit_na, '^STOCK-0*', '') AS UNSIGNED)) AS max_seq
+             FROM inventory_unit
+             WHERE no_unit_na REGEXP '^STOCK-[0-9]+$'"
+        )->getRowArray();
+
+        $next = 1;
+        if (!empty($row['max_seq']) && (int)$row['max_seq'] > 0) {
+            $next = (int)$row['max_seq'] + 1;
+        }
+
+        do {
+            $candidate = 'STOCK-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+            $exists = $db->table('inventory_unit')
+                ->where('no_unit_na', $candidate)
+                ->countAllResults();
+            if ($exists > 0) {
+                $next++;
+            } else {
+                break;
+            }
+        } while (true);
+
+        return $candidate;
     }
 }

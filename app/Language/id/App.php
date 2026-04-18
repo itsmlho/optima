@@ -214,6 +214,7 @@ return [
     'po_sparepart' => 'PO Sparepart',
     'po_reject' => 'PO Reject',
     'supplier_management' => 'Manajemen Supplier',
+    'asset_requests' => 'Permintaan Nomor Aset',
     'delivery_process' => 'Proses Pengiriman',
     'unit_inventory' => 'Inventaris Unit',
     'attachment_battery_inventory' => 'Inventaris Attachment & Baterai',

@@ -745,6 +745,13 @@ if (!function_exists('maskSensitivePrint')) {
                     }
                 ?></td>
             </tr>
+            <?php if (!empty(trim((string)($spk['catatan'] ?? '')))): ?>
+            <tr>
+                <td class="text-center align-top">4.</td>
+                <td class="align-top"><strong>Catatan SPK :</strong></td>
+                <td class="align-top" style="white-space: pre-line;"><?= nl2br(esc($spk['catatan'])) ?></td>
+            </tr>
+            <?php endif; ?>
         </tbody>
     </table>
     

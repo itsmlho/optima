@@ -7971,6 +7971,7 @@ class Marketing extends BaseDataTableController
                     if ($searchValue !== '') {
                         $base->groupStart()
                             ->like('iu.no_unit', $searchValue)
+                            ->orLike('iu.no_unit_na', $searchValue)
                             ->orLike('iu.serial_number', $searchValue)
                             ->orLike('mu.merk_unit', $searchValue)
                             ->orLike('mu.model_unit', $searchValue)
@@ -7981,6 +7982,7 @@ class Marketing extends BaseDataTableController
 
                         $count->groupStart()
                             ->like('iu.no_unit', $searchValue)
+                            ->orLike('iu.no_unit_na', $searchValue)
                             ->orLike('iu.serial_number', $searchValue)
                             ->orLike('mu.merk_unit', $searchValue)
                             ->orLike('mu.model_unit', $searchValue)
@@ -8004,7 +8006,7 @@ class Marketing extends BaseDataTableController
                         $realId = isset($r['id_inventory_unit']) ? (int)$r['id_inventory_unit'] : 0;
                         $data[] = [
                             'id'              => $realId,
-                            'no_unit'         => $r['no_unit'],
+                            'no_unit'         => $r['no_unit'] ?: ($r['no_unit_na'] ?? null),
                             'serial_number'   => $r['serial_number'],
                             'brand'           => $r['merk_unit'],
                             'model'           => $r['model_unit'],
@@ -8040,7 +8042,7 @@ class Marketing extends BaseDataTableController
     private function baseQuery(): BaseBuilder
     {
         $qb = $this->db->table('inventory_unit iu')
-            ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.status_unit_id, iu.lokasi_unit, iu.created_at')
+            ->select('iu.id_inventory_unit, iu.no_unit, iu.no_unit_na, iu.serial_number, iu.status_unit_id, iu.lokasi_unit, iu.created_at')
             ->select('COALESCE(mu.merk_unit, "-") AS merk_unit, COALESCE(mu.model_unit, "") AS model_unit')
             ->select('COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "-") AS tipe_full')
             ->select('COALESCE(kap.kapasitas_unit, "-") AS kapasitas_unit')

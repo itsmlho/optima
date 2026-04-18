@@ -170,6 +170,9 @@ helper('permission_helper');
                     <?php if (hasModuleAccess('purchasing')): ?>
                     <li class="nav-item"><a href="<?= base_url('/purchasing/supplier-management-page') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">business</span><span class="drop-label">Supplier Management</span></a></li>
                     <?php endif; ?>
+                    <?php if (canNavigateTo('purchasing', 'asset_requests')): ?>
+                    <li class="nav-item"><a href="<?= base_url('/purchasing/asset-requests') ?>" class="nav-link dropdown-link <?= strpos(current_url(), 'asset-requests') !== false ? 'active' : '' ?>"><span class="material-symbols-rounded drop-icon">tag</span><span class="drop-label"><?= lang('App.asset_requests') ?></span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
             <?php endif; ?>

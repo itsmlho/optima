@@ -23,7 +23,10 @@ elseif ($statusId === 13)                          { $badgeClass = 'dark';      
 elseif ($statusId === 14)                          { $badgeClass = 'secondary'; $statusIcon = 'fa-pause-circle'; }
 elseif ($statusId === 16)                          { $badgeClass = 'dark';      $statusIcon = 'fa-ban'; }
 
-$unitNo = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: 'TEMP-'.$unit['id_inventory_unit']);
+// Determine display number: asset number > STOCK number > fallback
+$hasAssetNumber = !empty($unit['no_unit']);
+$hasStockNumber = !empty($unit['no_unit_na']) && str_starts_with((string)$unit['no_unit_na'], 'STOCK-');
+$unitNo = $unit['no_unit'] ?: ($hasStockNumber ? $unit['no_unit_na'] : 'Belum ada nomor');
 $serialNo = $unit['serial_number'] ?? ($unit['serial_no'] ?? null);
 // Fall back to tipe_unit (tipe/jenis) when model_unit FK is missing (id=0)
 $brand = !empty($unit['merk_unit']) ? $unit['merk_unit'] : ($unit['unit_tipe'] ?? 'N/A');
@@ -94,6 +97,18 @@ if ($aksesorisRaw) {
             <i class="fas fa-exchange-alt me-1"></i>Ubah Status
         </button>
         <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($can_edit && !$hasAssetNumber && !empty($unit['no_unit_na'])): ?>
+            <?php if (!empty($pending_asset_request)): ?>
+            <button type="button" class="btn btn-outline-info btn-sm" disabled>
+                <i class="fas fa-hourglass-half me-1"></i>Menunggu Approval
+                <span class="badge badge-soft-cyan ms-1"><?= esc($unit['no_unit_na']) ?></span>
+            </button>
+            <?php else: ?>
+            <button type="button" class="btn btn-primary btn-sm" id="btnRequestAsset" onclick="requestAssetNumber()">
+                <i class="fas fa-tag me-1"></i>Request Nomor Aset
+            </button>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -1923,5 +1938,42 @@ if ($aksesorisRaw) {
             if (window.OptimaNotify) OptimaNotify.error('Gagal generate barcode label.');
         }
     }
+
+    // ── REQUEST ASSET NUMBER ──────────────────────────────
+    function requestAssetNumber() {
+        const stockNo = <?= json_encode($unit['no_unit_na'] ?? '') ?>;
+
+        OptimaConfirm.submit({
+            title: 'Request Nomor Aset?',
+            text: 'Ajukan permintaan nomor aset untuk unit <strong>' + stockNo + '</strong> ke Purchasing?',
+            confirmText: 'Ya, Ajukan!',
+            cancelText: window.lang ? window.lang('cancel') : 'Batal',
+            onConfirm: function() {
+                const btn = document.getElementById('btnRequestAsset');
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mengajukan...'; }
+
+                $.ajax({
+                    url: <?= json_encode(base_url('warehouse/inventory/unit/' . ($unit['id_inventory_unit'] ?? 0) . '/request-asset')) ?>,
+                    type: 'POST',
+                    data: { [window.csrfTokenName]: window.csrfTokenValue },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.success) {
+                            if (window.OptimaNotify) OptimaNotify.success(res.message);
+                            setTimeout(function() { location.reload(); }, 1500);
+                        } else {
+                            if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal mengajukan permintaan.');
+                            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-tag me-1"></i>Request Nomor Aset'; }
+                        }
+                    },
+                    error: function() {
+                        if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan jaringan.');
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-tag me-1"></i>Request Nomor Aset'; }
+                    }
+                });
+            }
+        });
+    }
+    window.requestAssetNumber = requestAssetNumber;
 </script>
 <?= $this->endSection() ?>
