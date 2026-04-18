@@ -4666,28 +4666,37 @@ class Marketing extends BaseDataTableController
             $data = $query->getResultArray();
         }
         
-        // Add items information for each DI
-        foreach ($data as &$row) {
-            $items = $this->diItemModel
+        // Batch-load items for all DI rows in one query (instead of 1 query per DI)
+        $batchItems = [];
+        $diIds = array_column($data, 'id');
+        if (!empty($diIds)) {
+            $allItems = $this->diItemModel
                 ->select('
-                    delivery_items.*, 
-                    iu.no_unit, 
-                    mu.merk_unit, 
+                    delivery_items.*,
+                    iu.no_unit,
+                    mu.merk_unit,
                     mu.model_unit,
-                    a.tipe as att_tipe, 
-                    a.merk as att_merk, 
+                    a.tipe as att_tipe,
+                    a.merk as att_merk,
                     a.model as att_model
                 ')
-                ->join('inventory_unit iu','iu.id_inventory_unit = delivery_items.unit_id','left')
-                ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = delivery_items.unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('attachment a', 'a.id_attachment = delivery_items.attachment_id', 'left')
-                ->where('delivery_items.di_id', $row['id'])
+                ->whereIn('delivery_items.di_id', $diIds)
                 ->findAll();
-                
+            foreach ($allItems as $item) {
+                $batchItems[(int)$item['di_id']][] = $item;
+            }
+        }
+
+        // Build item labels from batched data
+        foreach ($data as &$row) {
+            $items = $batchItems[(int)$row['id']] ?? [];
             $itemLabels = [];
             $unitCount = 0;
             $attachmentCount = 0;
-            
+
             foreach ($items as $item) {
                 if ($item['item_type'] === 'UNIT') {
                     $label = trim(($item['no_unit'] ?: 'Unit') . ' - ' . ($item['merk_unit'] ?: '') . ' ' . ($item['model_unit'] ?: ''));
@@ -4699,7 +4708,7 @@ class Marketing extends BaseDataTableController
                     $attachmentCount++;
                 }
             }
-            
+
             $row['items'] = $itemLabels;
             $row['total_units'] = $unitCount;
             $row['total_attachments'] = $attachmentCount;

@@ -269,30 +269,47 @@ class ServiceAreaManagementController extends BaseController
             $dataResult = $this->db->query($dataSql, $dataParams);
             $areas = $dataResult->getResultArray();
             
-            // Format data
-            $data = [];
-            foreach ($areas as $area) {
-                // Get customer count (via active-contract units in this area)
-                $customerSql = "SELECT COUNT(DISTINCT k.customer_id) as count
-                    FROM inventory_unit iu
-                    JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
-                    JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
-                    WHERE iu.area_id = ?";
-                $customerResult = $this->db->query($customerSql, [$area['id']]);
-                $customerCount = $customerResult->getRow()->count ?? 0;
-                
-                // Get employee breakdown from area_employee_assignments table
-                $employeeBreakdown = [
-                    'foreman' => 0,
-                    'mechanic' => 0,
-                    'helper' => 0
-                ];
-                
-                $foremans  = '';
-                $mechanics = '';
+            // ── Batch queries (4 queries total, not 4 per row) ──────────────────
+            $areaIds = array_column($areas, 'id');
+
+            // 1. Customer counts per area (batch)
+            $batchCustomerCounts = [];
+            if (!empty($areaIds)) {
+                $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                $rows = $this->db->query(
+                    "SELECT iu.area_id, COUNT(DISTINCT k.customer_id) as cnt
+                     FROM inventory_unit iu
+                     JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
+                     JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
+                     WHERE iu.area_id IN ($ph) GROUP BY iu.area_id",
+                    $areaIds
+                )->getResultArray();
+                foreach ($rows as $r) {
+                    $batchCustomerCounts[(int)$r['area_id']] = (int)$r['cnt'];
+                }
+            }
+
+            // 2. Unit counts per area (batch)
+            $batchUnitCounts = [];
+            if (!empty($areaIds)) {
+                $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                $rows = $this->db->query(
+                    "SELECT area_id, COUNT(*) as cnt FROM inventory_unit WHERE area_id IN ($ph) GROUP BY area_id",
+                    $areaIds
+                )->getResultArray();
+                foreach ($rows as $r) {
+                    $batchUnitCounts[(int)$r['area_id']] = (int)$r['cnt'];
+                }
+            }
+
+            // 3. Employee breakdown per area (batch, single tableExists check)
+            $batchEmployeeData = [];
+            $hasAssignmentsTable = $this->db->tableExists('area_employee_assignments');
+            if ($hasAssignmentsTable && !empty($areaIds)) {
                 try {
-                    if ($this->db->tableExists('area_employee_assignments')) {
-                        $empSql = "SELECT
+                    $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                    $rows = $this->db->query(
+                        "SELECT aea.area_id,
                             SUM(CASE WHEN e.staff_role LIKE '%FOREMAN%' THEN 1 ELSE 0 END) as foreman,
                             SUM(CASE WHEN e.staff_role LIKE '%MECHANIC%' THEN 1 ELSE 0 END) as mechanic,
                             SUM(CASE WHEN e.staff_role LIKE '%HELPER%' THEN 1 ELSE 0 END) as helper,
@@ -300,40 +317,53 @@ class ServiceAreaManagementController extends BaseController
                                 THEN e.staff_name END ORDER BY e.staff_name SEPARATOR ', ') as foremans,
                             GROUP_CONCAT(DISTINCT CASE WHEN e.staff_role LIKE '%MECHANIC%'
                                 THEN e.staff_name END ORDER BY e.staff_name SEPARATOR ', ') as mechanics
-                        FROM area_employee_assignments aea
-                        JOIN employees e ON e.id = aea.employee_id
-                        WHERE aea.area_id = ? AND aea.is_active = 1 AND e.is_active = 1";
-                        $empRow = $this->db->query($empSql, [$area['id']])->getRow();
-                        $employeeBreakdown = [
-                            'foreman'  => (int)($empRow->foreman  ?? 0),
-                            'mechanic' => (int)($empRow->mechanic ?? 0),
-                            'helper'   => (int)($empRow->helper   ?? 0),
-                        ];
-                        $foremans  = $empRow->foremans  ?? '';
-                        $mechanics = $empRow->mechanics ?? '';
+                         FROM area_employee_assignments aea
+                         JOIN employees e ON e.id = aea.employee_id
+                         WHERE aea.area_id IN ($ph) AND aea.is_active = 1 AND e.is_active = 1
+                         GROUP BY aea.area_id",
+                        $areaIds
+                    )->getResultArray();
+                    foreach ($rows as $r) {
+                        $batchEmployeeData[(int)$r['area_id']] = $r;
                     }
                 } catch (\Exception $e) {
-                    log_message('error', 'Employee count error for area ' . $area['id'] . ': ' . $e->getMessage());
+                    log_message('error', 'Batch employee count error: ' . $e->getMessage());
                 }
+            }
 
-                // Unit count (all units mapped to this area)
-                $unitCount = (int) ($this->db->query(
-                    "SELECT COUNT(*) as cnt FROM inventory_unit WHERE area_id = ?",
-                    [$area['id']]
-                )->getRow()->cnt ?? 0);
-
-                // Location count (active locations that have at least one unit mapped to this area)
-                $locationCount = (int) ($this->db->query(
-                    "SELECT COUNT(DISTINCT ku.customer_location_id) as cnt
+            // 4. Location counts per area (batch)
+            $batchLocationCounts = [];
+            if (!empty($areaIds)) {
+                $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                $rows = $this->db->query(
+                    "SELECT iu.area_id, COUNT(DISTINCT ku.customer_location_id) as cnt
                      FROM inventory_unit iu
                      JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
                      JOIN customer_locations cl ON cl.id = ku.customer_location_id AND cl.is_active = 1
-                     WHERE iu.area_id = ?",
-                    [$area['id']]
-                )->getRow()->cnt ?? 0);
+                     WHERE iu.area_id IN ($ph) GROUP BY iu.area_id",
+                    $areaIds
+                )->getResultArray();
+                foreach ($rows as $r) {
+                    $batchLocationCounts[(int)$r['area_id']] = (int)$r['cnt'];
+                }
+            }
+            // ── End batch queries ────────────────────────────────────────────────
 
+            // Format data
+            $data = [];
+            foreach ($areas as $area) {
+                $aId = (int)$area['id'];
+
+                $emp = $batchEmployeeData[$aId] ?? null;
+                $employeeBreakdown = [
+                    'foreman'  => (int)($emp['foreman']  ?? 0),
+                    'mechanic' => (int)($emp['mechanic'] ?? 0),
+                    'helper'   => (int)($emp['helper']   ?? 0),
+                ];
+                $foremans  = $emp['foremans']  ?? '';
+                $mechanics = $emp['mechanics'] ?? '';
                 $totalEmployees = $employeeBreakdown['foreman'] + $employeeBreakdown['mechanic'] + $employeeBreakdown['helper'];
-                
+
                 $data[] = [
                     'id' => $area['id'],
                     'area_code' => $area['area_code'],
@@ -342,9 +372,9 @@ class ServiceAreaManagementController extends BaseController
                     'departemen_id' => $area['departemen_id'] ?? null,
                     'departemen_name' => $area['departemen_name'] ?? null,
                     'description' => $area['area_description'] ?? '',
-                    'customers_count' => (int) $customerCount,
-                    'location_count' => $locationCount,
-                    'unit_count' => $unitCount,
+                    'customers_count' => $batchCustomerCounts[$aId] ?? 0,
+                    'location_count' => $batchLocationCounts[$aId] ?? 0,
+                    'unit_count' => $batchUnitCounts[$aId] ?? 0,
                     'employees_count' => $totalEmployees,
                     'employees_breakdown' => $employeeBreakdown,
                     'foreman_count' => $employeeBreakdown['foreman'],

@@ -99,6 +99,9 @@ class UnitAuditRequestModel extends Model
         if (!empty($filters['submitted_by'])) {
             $builder->where('uar.submitted_by', $filters['submitted_by']);
         }
+        if (!empty($filters['id'])) {
+            $builder->where('uar.id', (int) $filters['id']);
+        }
 
         $builder->orderBy('uar.created_at', 'DESC');
 
@@ -137,7 +140,7 @@ class UnitAuditRequestModel extends Model
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
             ->where('k.customer_id', $customerId)
-            ->whereIn('ku.status', ['ACTIVE', 'PULLED', 'REPLACED'])
+            ->where('ku.status', 'ACTIVE')
             ->where('ku.is_temporary', 0)
             ->orderBy('k.no_kontrak', 'ASC')
             ->orderBy('iu.no_unit', 'ASC')
@@ -155,7 +158,7 @@ class UnitAuditRequestModel extends Model
                 COUNT(DISTINCT ku.unit_id) as total_units,
                 COUNT(DISTINCT k.id) as total_contracts')
             ->join('kontrak k', 'k.customer_id = c.id')
-            ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","PULLED","REPLACED") AND ku.is_temporary = 0')
+            ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status = "ACTIVE" AND ku.is_temporary = 0')
             ->where('c.is_active', 1)
             ->groupBy('c.id')
             ->having('total_units >', 0)
@@ -165,20 +168,22 @@ class UnitAuditRequestModel extends Model
     }
 
     /**
-     * Get statistics
+     * Get statistics (single query)
      */
     public function getStats(): array
     {
-        $total     = $this->countAllResults(false);
-        $submitted = $this->where('status', 'SUBMITTED')->countAllResults(false);
-        $approved  = $this->where('status', 'APPROVED')->countAllResults(false);
-        $rejected  = $this->where('status', 'REJECTED')->countAllResults(false);
+        $row = $this->db->table('unit_audit_requests')
+            ->select("COUNT(*) as total,
+                SUM(status='SUBMITTED') as submitted,
+                SUM(status='APPROVED')  as approved,
+                SUM(status='REJECTED')  as rejected")
+            ->get()->getRowArray();
 
         return [
-            'total'     => $total,
-            'submitted' => $submitted,
-            'approved'  => $approved,
-            'rejected'  => $rejected,
+            'total'     => (int) ($row['total']     ?? 0),
+            'submitted' => (int) ($row['submitted'] ?? 0),
+            'approved'  => (int) ($row['approved']  ?? 0),
+            'rejected'  => (int) ($row['rejected']  ?? 0),
         ];
     }
 
@@ -212,6 +217,11 @@ class UnitAuditRequestModel extends Model
         $hargaSewa     = $overrides['harga_sewa']     ?? $proposed['harga_sewa'] ?? null;
         $isSpare       = isset($overrides['is_spare']) ? (int) $overrides['is_spare'] : (int) ($proposed['is_spare'] ?? 0);
         $missingAction = $overrides['missing_action'] ?? 'record';
+        // For transfer releases, always pull regardless of UI selection —
+        // the purpose of this request IS to release the unit from its source contract.
+        if (!empty($proposed['is_transfer'])) {
+            $missingAction = 'pull';
+        }
 
         // ADD_UNIT requires a contract
         if ($request['request_type'] === 'ADD_UNIT' && empty($kontrakId)) {
@@ -247,14 +257,34 @@ class UnitAuditRequestModel extends Model
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
                            ->where('kontrak_id', $kontrakId)
-                           ->whereIn('status', ['ACTIVE', 'PULLED', 'REPLACED'])
+                           ->where('status', 'ACTIVE')
                            ->update(['is_spare' => 1]);
+
+                        // Option 2: sync inventory_unit status to SPARE (id=15)
+                        // so the inventory list reflects the unit is a backup/spare unit.
+                        $db->table('inventory_unit')
+                           ->where('id_inventory_unit', $unitId)
+                           ->update(['status_unit_id' => 15]);
                     }
                     break;
 
                 case 'ADD_UNIT':
                     // $kontrakId already validated above (not empty)
                     if (!empty($proposed['unit_id'])) {
+                        // If this ADD_UNIT is part of a transfer, the paired release request
+                        // (UNIT_MISSING/pull) must be APPROVED first to avoid double-contract.
+                        if (!empty($proposed['linked_release_id'])) {
+                            $releaseReq = $this->find((int) $proposed['linked_release_id']);
+                            if ($releaseReq && $releaseReq['status'] !== 'APPROVED') {
+                                $db->transRollback();
+                                $releaseAudit = $releaseReq['audit_number'] ?? '#' . $proposed['linked_release_id'];
+                                return [
+                                    'success' => false,
+                                    'message' => "Harap approve dulu request pelepasan unit dari kontrak asal (No. Audit: {$releaseAudit}) sebelum meng-approve request tambah ini.",
+                                ];
+                            }
+                        }
+
                         $db->table('kontrak_unit')->insert([
                             'kontrak_id'           => $kontrakId,
                             'unit_id'              => $proposed['unit_id'],
@@ -266,11 +296,24 @@ class UnitAuditRequestModel extends Model
                             'created_by'           => $reviewerId,
                             'created_at'           => date('Y-m-d H:i:s'),
                         ]);
+
+                        // Option 2: sync inventory_unit status when unit enters a contract as spare
+                        $db->table('inventory_unit')
+                           ->where('id_inventory_unit', $proposed['unit_id'])
+                           ->update(['status_unit_id' => $isSpare ? 15 : 7]); // 15=SPARE, 7=RENTAL_ACTIVE
                     }
                     break;
 
                 case 'UNIT_SWAP':
                     if ($unitId && !empty($proposed['new_unit_id']) && $kontrakId) {
+                        // Fetch old kontrak_unit to inherit is_spare
+                        $oldKu = $db->table('kontrak_unit')
+                            ->where('unit_id', $unitId)
+                            ->where('kontrak_id', $kontrakId)
+                            ->where('status', 'ACTIVE')
+                            ->get()->getRowArray();
+                        $inheritSpare = $oldKu ? (int) $oldKu['is_spare'] : 0;
+
                         // Pull old unit
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
@@ -278,27 +321,63 @@ class UnitAuditRequestModel extends Model
                            ->where('status', 'ACTIVE')
                            ->update(['status' => 'PULLED']);
 
-                        // Insert new unit
+                        // Insert new unit (inherit spare status and location from old unit)
                         $db->table('kontrak_unit')->insert([
-                            'kontrak_id'    => $kontrakId,
-                            'unit_id'       => $proposed['new_unit_id'],
-                            'status'        => 'ACTIVE',
-                            'is_spare'      => 0,
-                            'harga_sewa'    => $hargaSewa ?: null,
-                            'tanggal_mulai' => date('Y-m-d'),
-                            'created_by'    => $reviewerId,
-                            'created_at'    => date('Y-m-d H:i:s'),
+                            'kontrak_id'           => $kontrakId,
+                            'unit_id'              => $proposed['new_unit_id'],
+                            'status'               => 'ACTIVE',
+                            'is_spare'             => $inheritSpare,
+                            'harga_sewa'           => $hargaSewa ?: null,
+                            'tanggal_mulai'        => date('Y-m-d'),
+                            'customer_location_id' => $oldKu['customer_location_id'] ?? null,
+                            'created_by'           => $reviewerId,
+                            'created_at'           => date('Y-m-d H:i:s'),
                         ]);
+
+                        // Option 2: sync inventory status
+                        $db->table('inventory_unit')
+                           ->where('id_inventory_unit', $unitId)
+                           ->update(['status_unit_id' => 12]); // 12=RETURNED
+                        $db->table('inventory_unit')
+                           ->where('id_inventory_unit', $proposed['new_unit_id'])
+                           ->update(['status_unit_id' => 7]); // 7=RENTAL_ACTIVE
                     }
                     break;
 
                 case 'UNIT_MISSING':
                     if ($missingAction === 'pull' && $unitId && $kontrakId) {
-                        $db->table('kontrak_unit')
-                           ->where('unit_id', $unitId)
-                           ->where('kontrak_id', $kontrakId)
-                           ->where('status', 'ACTIVE')
-                           ->update(['status' => 'PULLED']);
+                        // If a specific kontrak_unit row is specified (e.g. transfer flow), pull by ID.
+                        // Otherwise fall back to unit_id + kontrak_id lookup.
+                        if (!empty($proposed['kontrak_unit_id'])) {
+                            $db->table('kontrak_unit')
+                               ->where('id', (int) $proposed['kontrak_unit_id'])
+                               ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE', 'Aktif'])
+                               ->update(['status' => 'PULLED', 'tanggal_selesai' => date('Y-m-d')]);
+                        } else {
+                            $db->table('kontrak_unit')
+                               ->where('unit_id', $unitId)
+                               ->where('kontrak_id', $kontrakId)
+                               ->where('status', 'ACTIVE')
+                               ->update(['status' => 'PULLED']);
+                        }
+
+                        // Option 2: after pulling, check if unit is still spare in another active contract.
+                        // If not, revert inventory status to RETURNED (12).
+                        $stillSpare = $db->table('kontrak_unit')
+                            ->where('unit_id', $unitId)
+                            ->where('is_spare', 1)
+                            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                            ->countAllResults();
+                        if (!$stillSpare) {
+                            $stillActive = $db->table('kontrak_unit')
+                                ->where('unit_id', $unitId)
+                                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                                ->countAllResults();
+                            $revertStatus = $stillActive ? 7 : 12; // 7=RENTAL_ACTIVE, 12=RETURNED
+                            $db->table('inventory_unit')
+                               ->where('id_inventory_unit', $unitId)
+                               ->update(['status_unit_id' => $revertStatus]);
+                        }
                     }
                     // 'record' → no DB change, already marked APPROVED above
                     break;
@@ -330,7 +409,7 @@ class UnitAuditRequestModel extends Model
     }
 
     /**
-     * Reject request
+     * Reject request — cascades to paired transfer request if applicable
      */
     public function rejectRequest(int $id, int $reviewerId, ?string $notes = null): array
     {
@@ -342,12 +421,52 @@ class UnitAuditRequestModel extends Model
             return ['success' => false, 'message' => 'Request sudah diproses'];
         }
 
+        $proposed = json_decode($request['proposed_data'] ?? '{}', true);
+        $now      = date('Y-m-d H:i:s');
+
+        $this->db->transStart();
+
         $this->update($id, [
             'status'       => 'REJECTED',
             'reviewed_by'  => $reviewerId,
-            'reviewed_at'  => date('Y-m-d H:i:s'),
+            'reviewed_at'  => $now,
             'review_notes' => $notes,
         ]);
+
+        // Cascade: reject the paired transfer request
+        $pairedId = null;
+        if ($request['request_type'] === 'ADD_UNIT' && !empty($proposed['linked_release_id'])) {
+            // ADD_UNIT rejected → also reject the paired UNIT_MISSING release
+            $pairedId = (int) $proposed['linked_release_id'];
+        } elseif ($request['request_type'] === 'UNIT_MISSING' && !empty($proposed['is_transfer'])) {
+            // UNIT_MISSING release rejected → find the paired ADD_UNIT that references this ID
+            // Use JSON_EXTRACT for reliable matching (LIKE can miss spaces in stored JSON)
+            $paired = $this->db->table('unit_audit_requests')
+                ->where('request_type', 'ADD_UNIT')
+                ->where('status', 'SUBMITTED')
+                ->where('CAST(JSON_UNQUOTE(JSON_EXTRACT(proposed_data, "$.linked_release_id")) AS UNSIGNED)', $id)
+                ->get()->getRowArray();
+            $pairedId = $paired ? (int) $paired['id'] : null;
+        }
+
+        if ($pairedId) {
+            $this->db->table('unit_audit_requests')
+                ->where('id', $pairedId)
+                ->where('status', 'SUBMITTED')
+                ->update([
+                    'status'       => 'REJECTED',
+                    'reviewed_by'  => $reviewerId,
+                    'reviewed_at'  => $now,
+                    'review_notes' => 'Dibatalkan karena request pasangan ditolak',
+                    'updated_at'   => $now,
+                ]);
+        }
+
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return ['success' => false, 'message' => 'Gagal menolak request'];
+        }
 
         return ['success' => true, 'message' => 'Request rejected'];
     }

@@ -1198,17 +1198,28 @@ class Service extends BaseController
             }
         }
 
-        foreach ($spkRecords as &$spk) {
-            try {
-                $stageStatus = $this->getSpkStageStatusData($spk['id']);
-                if ($stageStatus) {
-                    $spk['stage_status'] = $stageStatus;
-                }
-            } catch (\Exception $e) {
-                log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
+        // Batch-load stage data for all displayed SPKs (1 query instead of 2 per row)
+        $batchStages = [];
+        if (!empty($spkIds)) {
+            $stageRows = $db->table('spk_unit_stages')
+                ->select('spk_id, unit_index, stage_name, tanggal_approve, mekanik')
+                ->whereIn('spk_id', $spkIds)
+                ->get()->getResultArray();
+            foreach ($stageRows as $sr) {
+                $sid = (int)$sr['spk_id'];
+                $batchStages[$sid][$sr['unit_index']][$sr['stage_name']] = [
+                    'completed'      => !empty($sr['tanggal_approve']),
+                    'tanggal_approve' => $sr['tanggal_approve'],
+                    'mekanik'        => $sr['mekanik'],
+                ];
             }
-            $spk['has_spareparts'] = isset($sparepartCounts[(int)$spk['id']]) && $sparepartCounts[(int)$spk['id']] > 0;
-            $spk['has_unvalidated_spareparts'] = isset($unvalidatedCounts[(int)$spk['id']]) && $unvalidatedCounts[(int)$spk['id']] > 0;
+        }
+
+        foreach ($spkRecords as &$spk) {
+            $sid = (int)$spk['id'];
+            $spk['stage_status'] = ['spk' => $spk, 'unit_stages' => $batchStages[$sid] ?? []];
+            $spk['has_spareparts'] = isset($sparepartCounts[$sid]) && $sparepartCounts[$sid] > 0;
+            $spk['has_unvalidated_spareparts'] = isset($unvalidatedCounts[$sid]) && $unvalidatedCounts[$sid] > 0;
         }
 
         $paginatedData = $spkRecords;
@@ -1228,60 +1239,35 @@ class Service extends BaseController
      */
     public function spkStats()
     {
-        $statusFilter = $this->request->getPost('status_filter') ?? 'all';
-        
         // Get division-based department filtering
         $allowedDeptIds = get_user_division_departments();
-        
-        // Get all SPK with department filtering
-        $builder = $this->spkModel->builder();
-        $allSpk = $builder->get()->getResultArray();
-        
-        // Filter by department
-        $filteredSpk = [];
-        foreach ($allSpk as $spk) {
-            if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
-                $spesifikasi = [];
-                if (!empty($spk['spesifikasi'])) {
-                    $decoded = json_decode($spk['spesifikasi'], true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                        $spesifikasi = $decoded;
-                    }
-                }
-                
-                $spkDeptId = null;
-                if (isset($spesifikasi['departemen_id'])) {
-                    $deptId = $spesifikasi['departemen_id'];
-                    $spkDeptId = is_numeric($deptId) ? (int)$deptId : null;
-                }
-                
-                if ($spkDeptId && in_array($spkDeptId, $allowedDeptIds)) {
-                    $filteredSpk[] = $spk;
-                }
-            } else {
-                $filteredSpk[] = $spk;
-            }
+
+        $db = \Config\Database::connect();
+        $builder = $db->table('spk')->select('status, COUNT(*) as cnt');
+
+        // Apply department filter at DB level with JSON_EXTRACT (avoids loading all rows into PHP)
+        if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
+            $deptIdsStr = implode(',', array_map('intval', $allowedDeptIds));
+            $builder->where("JSON_UNQUOTE(JSON_EXTRACT(spesifikasi, '\$.departemen_id')) IN ($deptIdsStr)", null, false);
         }
-        
-        // Count by status
-        $total = count($filteredSpk);
-        $inProgress = count(array_filter($filteredSpk, function($spk) {
-            return ($spk['status'] ?? '') === 'IN_PROGRESS';
-        }));
-        $ready = count(array_filter($filteredSpk, function($spk) {
-            return ($spk['status'] ?? '') === 'READY';
-        }));
-        $completed = count(array_filter($filteredSpk, function($spk) {
-            return in_array($spk['status'] ?? '', ['COMPLETED', 'DELIVERED']);
-        }));
-        
+
+        $rows = $builder->groupBy('status')->get()->getResultArray();
+
+        $statusCounts = [];
+        foreach ($rows as $r) {
+            $statusCounts[$r['status']] = (int)$r['cnt'];
+        }
+
+        $total     = array_sum($statusCounts);
+        $completed = ($statusCounts['COMPLETED'] ?? 0) + ($statusCounts['DELIVERED'] ?? 0);
+
         return $this->response->setJSON([
             'success' => true,
             'stats' => [
-                'total' => $total,
-                'in_progress' => $inProgress,
-                'ready' => $ready,
-                'completed' => $completed
+                'total'       => $total,
+                'in_progress' => $statusCounts['IN_PROGRESS'] ?? 0,
+                'ready'       => $statusCounts['READY']       ?? 0,
+                'completed'   => $completed,
             ]
         ]);
     }

@@ -526,7 +526,15 @@ function renderUnitRequestsTable(data) {
     const typeMap = { 'LOCATION_MISMATCH':'Lokasi Berbeda','UNIT_SWAP':'Tukar Unit','ADD_UNIT':'Tambah Unit','MARK_SPARE':'Tandai Spare','UNIT_MISSING':'Unit Hilang','OTHER':'Lainnya' };
     const statusMap = { 'SUBMITTED':'<span class="badge badge-soft-yellow">Menunggu</span>','APPROVED':'<span class="badge badge-soft-green">Approved</span>','REJECTED':'<span class="badge badge-soft-red">Rejected</span>' };
     tbody.innerHTML = data.map(item => {
+        const proposed = typeof item.proposed_data === 'string' ? JSON.parse(item.proposed_data || '{}') : (item.proposed_data || {});
         const typeLabel = typeMap[item.request_type] || item.request_type;
+        // Show transfer indicator when applicable
+        let typeDisplay = typeLabel;
+        if (proposed.linked_release_id) {
+            typeDisplay = typeLabel + `<br><span class="badge badge-soft-orange" style="font-size:0.7em">Transfer — Tambah</span><br><small class="text-muted">Lepas: ${proposed.linked_release_audit_number || '#' + proposed.linked_release_id}</small>`;
+        } else if (proposed.is_transfer) {
+            typeDisplay = typeLabel + '<br><span class="badge badge-soft-orange" style="font-size:0.7em">Transfer — Lepas</span>';
+        }
         const statusBadge = statusMap[item.status] || item.status;
 
         // Unit info: for ADD_UNIT show proposed unit, for others show existing unit
@@ -541,7 +549,6 @@ function renderUnitRequestsTable(data) {
                 : '-';
         }
 
-        const proposed = typeof item.proposed_data === 'string' ? JSON.parse(item.proposed_data || '{}') : (item.proposed_data || {});
         let action;
         if (item.status === 'SUBMITTED') {
             action = `<button class="btn btn-sm btn-primary" onclick="openUnitRequestReview(${item.id})"><i class="fas fa-eye me-1"></i>Review</button>`;
@@ -549,10 +556,10 @@ function renderUnitRequestsTable(data) {
             action = `<button class="btn btn-sm btn-outline-secondary" onclick="openUnitRequestDetail(${item.id})">Detail</button>`;
         }
         return `<tr>
-            <td><strong>${item.audit_number || '-'}</strong></td>
-            <td>${item.customer_name || '-'}</td>
-            <td>${item.lokasi_kontrak || '-'}</td>
-            <td>${typeLabel}</td>
+            <td><strong>${escHtml(item.audit_number) || '-'}</strong></td>
+            <td>${escHtml(item.customer_name) || '-'}</td>
+            <td>${escHtml(item.lokasi_kontrak) || '-'}</td>
+            <td>${typeDisplay}</td>
             <td class="small">${unitInfo}</td>
             <td>${statusBadge}</td>
             <td>${action}</td>
@@ -562,6 +569,17 @@ function renderUnitRequestsTable(data) {
 
 function openUnitRequestReview(id) { openUnitRequestModal(id, true); }
 function openUnitRequestDetail(id) { openUnitRequestModal(id, false); }
+
+// Escape HTML special chars to prevent XSS when inserting data into innerHTML
+function escHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function formatRp(n) {
     return parseInt(n || 0).toLocaleString('id-ID');
@@ -600,7 +618,7 @@ function openUnitRequestModal(id, isReview) {
     document.getElementById('unitRequestHint').textContent = '';
     $('#unitRequestModal').modal('show');
 
-    fetch(URL_GET_AUDIT_DETAIL + '/' + id)
+    fetchWithTimeout(URL_GET_AUDIT_DETAIL + '/' + id)
         .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
         .then(res => {
             if (!res.success) { body.innerHTML = '<div class="alert alert-danger">Gagal memuat detail</div>'; return; }
@@ -679,18 +697,22 @@ function openUnitRequestModal(id, isReview) {
                 // Load contracts async
                 if (item.customer_id) {
                     fetch(`<?= base_url('marketing/unit-audit/getContractsForCustomer/') ?>${item.customer_id}`)
-                        .then(r => r.json())
+                        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                         .then(r => {
                             const sel = document.getElementById('reviewKontrakId');
                             if (!sel) return;
                             if (r.success && r.data.length) {
                                 sel.innerHTML = '<option value="">-- Pilih Kontrak --</option>' +
-                                    r.data.map(c => `<option value="${c.id}">${c.no_kontrak}${c.customer_po_number ? ' / ' + c.customer_po_number : ''} (${c.status})</option>`).join('');
+                                    r.data.map(c => `<option value="${c.id}">${escHtml(c.no_kontrak)}${c.customer_po_number ? ' / ' + escHtml(c.customer_po_number) : ''} (${escHtml(c.status)})</option>`).join('');
                                 // Pre-select if request already has kontrak_id
                                 if (item.kontrak_id) sel.value = item.kontrak_id;
                             } else {
                                 sel.innerHTML = '<option value="">Tidak ada kontrak aktif</option>';
                             }
+                        })
+                        .catch(() => {
+                            const sel = document.getElementById('reviewKontrakId');
+                            if (sel) sel.innerHTML = '<option value="">-- Gagal memuat kontrak --</option>';
                         });
                 }
                 // Init Rp formatting and spare toggle after DOM is ready
@@ -760,6 +782,7 @@ function openUnitRequestModal(id, isReview) {
                 </div>`;
                 // Init Rp format for UNIT_SWAP harga input
                 setTimeout(() => initRpInput('reviewHargaSewaDisplay', 'reviewHargaSewa'), 50);
+            } else if (item.request_type === 'MARK_SPARE') {
                 hint = 'Review dan konfirmasi penandaan spare unit.';
                 detailHtml = `
                 <div class="card">
@@ -815,12 +838,16 @@ function openUnitRequestModal(id, isReview) {
                 </div>`;
 
             } else if (item.request_type === 'UNIT_MISSING') {
-                hint = 'Pilih tindakan yang akan diambil untuk unit yang hilang.';
+                const isTransferRelease = !!proposed.is_transfer;
+                hint = isTransferRelease
+                    ? 'Request ini melepas unit dari kontrak asal sebagai bagian dari transfer. Harus di-approve sebelum request ADD_UNIT-nya dapat diproses.'
+                    : 'Pilih tindakan yang akan diambil untuk unit yang hilang.';
                 detailHtml = `
+                ${isTransferRelease ? `<div class="alert alert-warning mb-3"><i class="fas fa-exchange-alt me-2"></i><strong>Request Transfer Unit</strong> — Ini adalah tahap <strong>pelepasan</strong> dari kontrak asal. Harus diapprove <em>sebelum</em> request tambah unit ke kontrak tujuan dapat diproses.</div>` : ''}
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="card h-100">
-                            <div class="card-header py-2 bg-warning"><strong>Unit Dilaporkan Hilang</strong></div>
+                            <div class="card-header py-2 ${isTransferRelease ? 'bg-warning text-dark' : 'bg-warning'}"><strong>${isTransferRelease ? '&#9889; Transfer: Lepas dari Kontrak Asal' : 'Unit Dilaporkan Hilang'}</strong></div>
                             <div class="card-body py-3">
                                 <table class="table table-sm table-borderless mb-0">
                                     <tr><th class="text-muted" style="width:110px">No. Unit</th><td><strong>${item.no_unit || '-'}</strong></td></tr>
@@ -832,20 +859,20 @@ function openUnitRequestModal(id, isReview) {
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card h-100 border-primary">
-                            <div class="card-header py-2 bg-primary text-white"><strong>Tindakan</strong></div>
+                        <div class="card h-100 ${isTransferRelease ? 'border-warning' : 'border-primary'}">
+                            <div class="card-header py-2 ${isTransferRelease ? 'bg-warning text-dark' : 'bg-primary text-white'}"><strong>Tindakan</strong></div>
                             <div class="card-body py-3">
                                 <label class="form-label fw-bold">Tindakan yang Diambil <span class="text-danger">*</span></label>
                                 <div class="d-flex flex-column gap-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="missingAction" id="missingRecord" value="record" checked>
+                                    <div class="form-check ${isTransferRelease ? 'opacity-50' : ''}">
+                                        <input class="form-check-input" type="radio" name="missingAction" id="missingRecord" value="record" ${isTransferRelease ? 'disabled' : 'checked'}>
                                         <label class="form-check-label" for="missingRecord">
                                             <strong>Catat Saja</strong>
-                                            <div class="text-muted small">Unit tetap di kontrak, dicatat sebagai laporan hilang</div>
+                                            <div class="text-muted small">${isTransferRelease ? 'Tidak tersedia untuk transfer' : 'Unit tetap di kontrak, dicatat sebagai laporan hilang'}</div>
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="missingAction" id="missingPull" value="pull">
+                                        <input class="form-check-input" type="radio" name="missingAction" id="missingPull" value="pull" ${isTransferRelease ? 'checked' : ''}>
                                         <label class="form-check-label" for="missingPull">
                                             <strong>Pull dari Kontrak</strong>
                                             <div class="text-muted small">Unit dikeluarkan dari kontrak (status PULLED)</div>
@@ -876,6 +903,7 @@ function openUnitRequestModal(id, isReview) {
         })
         .catch(() => {
             body.innerHTML = '<div class="alert alert-danger">Gagal memuat detail. Coba lagi.</div>';
+            footer.style.display = 'none'; // keep footer hidden on error — no actions available
         });
 }
 
@@ -885,6 +913,26 @@ function processUnitRequest(action) {
     const requestType = document.getElementById('unitRequestType').value;
     const endpoint    = action === 'APPROVE' ? 'approveRequest' : 'rejectRequest';
 
+    // Fix #6: confirm before irreversible reject
+    if (action === 'REJECT') {
+        const doReject = () => _doProcessUnitRequest(action, id, notes, requestType, endpoint);
+        if (window.OptimaConfirm && window.OptimaConfirm.danger) {
+            OptimaConfirm.danger({
+                title: 'Tolak Request',
+                text: 'Yakin ingin menolak pengajuan ini? Tindakan ini tidak dapat dibatalkan.',
+                confirmText: '<i class="fas fa-times me-1"></i>Ya, Tolak',
+                onConfirm: doReject,
+            });
+        } else {
+            if (confirm('Yakin ingin menolak pengajuan ini?')) doReject();
+        }
+        return;
+    }
+
+    _doProcessUnitRequest(action, id, notes, requestType, endpoint);
+}
+
+function _doProcessUnitRequest(action, id, notes, requestType, endpoint) {
     let extraData = {};
 
     if (action === 'APPROVE') {
@@ -1198,11 +1246,16 @@ function doApproveLocationRequest(locId, kontrakId, unitPrices) {
             if (window.OptimaNotify) OptimaNotify.success(data.message);
             else alert(data.message);
             loadPendingLocationRequests();
+            loadUnitRequests();   // Fix #4: unit requests may have changed (e.g. paired transfer request)
             loadApprovalHistory();
         } else {
             if (window.OptimaNotify) OptimaNotify.error(data.message);
             else alert(data.message);
         }
+    })
+    .catch(() => {
+        if (window.OptimaNotify) OptimaNotify.error('Koneksi gagal. Coba lagi.');
+        else alert('Koneksi gagal. Coba lagi.');
     });
 }
 
@@ -1228,10 +1281,15 @@ function confirmRejectLocation() {
             else alert(data.message);
             $('#rejectLocationModal').modal('hide');
             loadPendingLocationRequests();
+            loadUnitRequests();   // Fix #4: paired transfer requests may be auto-rejected
         } else {
             if (window.OptimaNotify) OptimaNotify.error(data.message);
             else alert(data.message);
         }
+    })
+    .catch(() => {
+        if (window.OptimaNotify) OptimaNotify.error('Koneksi gagal. Coba lagi.');
+        else alert('Koneksi gagal. Coba lagi.');
     });
 }
 
@@ -1694,8 +1752,12 @@ function confirmReject() {
     })
     .then(res => res.json())
     .then(data => {
-        if (window.OptimaNotify) OptimaNotify.info(data.message);
-        else alert(data.message);
+        if (window.OptimaNotify) {
+            if (data.success) OptimaNotify.success(data.message);
+            else { OptimaNotify.error(data.message || 'Gagal menolak audit'); return; }
+        } else {
+            alert(data.message);
+        }
         $('#rejectModal').modal('hide');
         loadPendingApprovals();
         loadApprovalHistory();

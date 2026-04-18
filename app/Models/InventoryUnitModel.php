@@ -656,7 +656,9 @@ class InventoryUnitModel extends Model
                     mu.merk_unit AS merk,
                     mu.model_unit,
                     tu.tipe AS tipe,
-                    su.status_unit AS status
+                    su.status_unit AS status,
+                    ku.id AS current_kontrak_unit_id,
+                    ku.kontrak_id AS current_kontrak_id
                 FROM inventory_unit iu
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
                     AND ku.status IN ('ACTIVE','TEMP_ACTIVE','Aktif')
@@ -689,12 +691,9 @@ class InventoryUnitModel extends Model
         }
 
         if ($purpose === 'add_location') {
-            $sql .= " AND NOT EXISTS (
-                SELECT 1 FROM kontrak_unit ku_busy
-                WHERE ku_busy.unit_id = iu.id_inventory_unit
-                  AND ku_busy.status IN ('ACTIVE','TEMP_ACTIVE','Aktif')
-                  AND (ku_busy.is_temporary IS NULL OR ku_busy.is_temporary = 0)
-            )";
+            // NOTE: RENTAL_ACTIVE units are intentionally allowed here.
+            // If selected, the submit flow will create a paired UNIT_MISSING/pull request
+            // alongside ADD_UNIT so Marketing approves the release before the transfer.
         }
 
         if ($byId) {
@@ -728,6 +727,8 @@ class InventoryUnitModel extends Model
             $unit['model_unit'] = $unit['model_unit'] ?? '';
             $unit['status']    = $unit['status'] ?? '';
             $unit['tipe']      = $unit['tipe'] ?? '';
+            $unit['current_kontrak_unit_id'] = $unit['current_kontrak_unit_id'] ?? null;
+            $unit['current_kontrak_id']      = $unit['current_kontrak_id'] ?? null;
         }
 
         return $rows;

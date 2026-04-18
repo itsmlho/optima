@@ -342,19 +342,38 @@ helper('ui');
                 <input type="hidden" id="tuCustomerId">
                 <input type="hidden" id="tuLocationId">
                 <input type="hidden" id="tuKontrakId">
+                <input type="hidden" id="tuIsTransfer" value="0">
+                <input type="hidden" id="tuCurrentKontrakUnitId" value="">
+                <input type="hidden" id="tuCurrentKontrakId" value="">
 
                 <div class="alert alert-light border mb-3">
                     <strong>Lokasi:</strong> <span id="tuLocationName">—</span>
                     <br><span class="small text-muted" id="tuLocationKontrak"></span>
-                    </div>
+                </div>
 
-                    <div class="mb-3">
+                <!-- Warning: unit already on another contract (transfer flow) -->
+                <div class="alert alert-warning d-none mb-3" id="tuTransferWarning">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-exclamation-triangle me-2 mt-1 text-warning"></i>
+                        <div>
+                            <strong>Unit ini sudah aktif di kontrak lain!</strong><br>
+                            <span id="tuTransferWarningText"></span><br>
+                            <span class="small mt-1 d-block">Jika dilanjutkan, sistem akan membuat <strong>2 request approval</strong> ke Marketing:
+                            <ol class="mb-0 mt-1">
+                                <li>Lepas unit dari kontrak asal</li>
+                                <li>Tambah unit ke lokasi ini</li>
+                            </ol></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label fw-semibold">Pilih Unit yang Akan Ditambahkan <span class="text-danger">*</span></label>
                     <select class="form-select" id="tuUnitSelect">
                         <option value="">-- Pilih Unit --</option>
                     </select>
-                    <div class="form-text">Unit yang tersedia (belum dalam kontrak aktif). Cari by No Unit, SN, model, atau merk — ketik minimal 1 karakter (nomor tunggal 1–9 juga bisa); data tidak dimuat sekaligus.</div>
-                    </div>
+                    <div class="form-text">Cari by No Unit, SN, model, atau merk — ketik minimal 1 karakter; data tidak dimuat sekaligus.</div>
+                </div>
 
                 <div class="mt-2 d-flex align-items-center">
                     <div class="form-check">
@@ -1219,6 +1238,7 @@ function submitVerifikasi() {
     formData.append('mechanic_name', mechanicName);
     formData.append('field_status', fieldStatus);
     formData.append('audit_summary', auditSummary);
+    formData.append(window.csrfTokenName, window.csrfTokenValue);
     items.forEach((it, i) => {
         formData.append('items[' + i + '][unit_id]', it.unit_id);
         formData.append('items[' + i + '][result]', it.result);
@@ -1279,6 +1299,13 @@ function openTambahUnit(locationId) {
     $('#tuLocationId').val(locationId);
     $('#tuLocationName').text(locName || 'Lokasi #' + locationId);
     $('#tuLocationKontrak').text(locKontrak);
+
+    // Reset transfer state
+    $('#tuIsTransfer').val('0');
+    $('#tuCurrentKontrakUnitId').val('');
+    $('#tuCurrentKontrakId').val('');
+    $('#tuTransferWarning').addClass('d-none');
+
     const $tuUnit = $('#tuUnitSelect');
     if ($tuUnit.hasClass('select2-hidden-accessible')) {
         $tuUnit.select2('destroy');
@@ -1288,6 +1315,32 @@ function openTambahUnit(locationId) {
     $('#tuNotes').val('');
 
     $tuUnit.select2(buildAuditUnitSelect2AjaxConfig('add_location', $('#tambahUnitModal')));
+
+    // Detect RENTAL_ACTIVE selection → show transfer warning
+    $tuUnit.off('select2:select.tuTransfer').on('select2:select.tuTransfer', function(e) {
+        const u = e.params.data;
+        const isRentalActive = String(u.status || '').toUpperCase() === 'RENTAL_ACTIVE';
+        const kontrakUnitId  = u.current_kontrak_unit_id || '';
+        const kontrakId      = u.current_kontrak_id || '';
+
+        if (isRentalActive && kontrakUnitId) {
+            $('#tuIsTransfer').val('1');
+            $('#tuCurrentKontrakUnitId').val(kontrakUnitId);
+            $('#tuCurrentKontrakId').val(kontrakId);
+            const pelanggan = u.pelanggan || 'pelanggan lain';
+            const lokasi    = u.lokasi || '—';
+            $('#tuTransferWarningText').html(
+                'Unit <strong>' + (u.no_unit || u.text || '') + '</strong> saat ini aktif di kontrak '
+                + '<strong>' + pelanggan + '</strong> (Lokasi: ' + lokasi + ').'
+            );
+            $('#tuTransferWarning').removeClass('d-none');
+        } else {
+            $('#tuIsTransfer').val('0');
+            $('#tuCurrentKontrakUnitId').val('');
+            $('#tuCurrentKontrakId').val('');
+            $('#tuTransferWarning').addClass('d-none');
+        }
+    });
 
     // Try to get kontrak_id for location
     $.get(BASE + 'service/unit-audit/getLocationDetails/' + locationId, function(res) {
@@ -1299,23 +1352,50 @@ function openTambahUnit(locationId) {
     $('#tambahUnitModal').modal('show');
 }
 
-function submitTambahUnit() {
+async function submitTambahUnit() {
     const custId  = $('#tuCustomerId').val();
     const unitId  = $('#tuUnitSelect').val();
     const notes   = $('#tuNotes').val().trim();
 
     if (!unitId) { OptimaNotify.warning('Pilih unit terlebih dahulu'); return; }
 
+    const $btn = $('#tambahUnitModal .btn-success');
+    const isTransfer           = $('#tuIsTransfer').val() === '1';
+    const currentKontrakUnitId  = $('#tuCurrentKontrakUnitId').val();
+    const currentKontrakId      = $('#tuCurrentKontrakId').val();
+
+    if (isTransfer) {
+        const confirmed = await Swal.fire({
+            title: 'Konfirmasi Transfer Unit',
+            html: 'Unit ini akan <strong>dilepas dari kontrak asal</strong> dan ditambahkan ke lokasi ini.<br><br>'
+                + 'Sistem akan membuat <strong>2 request approval</strong> ke Marketing.<br>'
+                + 'Marketing harus approve <em>request pelepasan</em> terlebih dahulu sebelum <em>request tambah</em>.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Ajukan Transfer',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#d97706',
+        });
+        if (!confirmed.isConfirmed) {
+            $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Ajukan ke Marketing');
+            return;
+        }
+    }
+
     const formData = new FormData();
     formData.append('customer_id', custId);
     formData.append('request_type', 'ADD_UNIT');
     formData.append('customer_location_id', $('#tuLocationId').val());
     formData.append('proposed_unit_id', unitId);
-    // Harga sewa tidak diisi di sini; akan diatur oleh Marketing
     formData.append('proposed_is_spare', $('#tuIsSpare').is(':checked') ? '1' : '0');
     formData.append('notes', notes);
+    if (isTransfer) {
+        formData.append('is_transfer', '1');
+        formData.append('current_kontrak_unit_id', currentKontrakUnitId);
+        formData.append('current_kontrak_id', currentKontrakId);
+    }
+    formData.append(window.csrfTokenName, window.csrfTokenValue);
 
-    const $btn = $('#tambahUnitModal .btn-success');
     $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
 
     $.ajax({
@@ -1328,7 +1408,14 @@ function submitTambahUnit() {
             $btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i>Ajukan ke Marketing');
             if (res.success) {
                 $('#tambahUnitModal').modal('hide');
-                OptimaNotify.success(res.message + ' — No. Audit: ' + (res.data?.audit_number || ''));
+                let msg = res.message;
+                if (res.data?.release_audit_number) {
+                    msg += '<br><small>No. Lepas: <strong>' + res.data.release_audit_number + '</strong>'
+                         + ' | No. Tambah: <strong>' + res.data.audit_number + '</strong></small>';
+                } else {
+                    msg += ' — No. Audit: ' + (res.data?.audit_number || '');
+                }
+                OptimaNotify.success(msg);
                 loadAuditHistory();
             } else {
                 OptimaNotify.error('Error: ' + res.message);
@@ -1460,6 +1547,7 @@ function submitAddLocation() {
     formData.append('contact_person', contactPerson);
     formData.append('phone', phone);
     formData.append('notes', notes);
+    formData.append(window.csrfTokenName, window.csrfTokenValue);
     
     const $btn = $('#addLocationModal .btn-success');
     $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');

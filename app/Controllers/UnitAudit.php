@@ -134,8 +134,75 @@ class UnitAudit extends BaseController
         }
 
         try {
-            $data = [
-                'audit_number'  => $this->auditModel->generateAuditNumber(),
+            // ── Check: Is this ADD_UNIT a transfer (unit already on another contract)? ──
+            $isTransfer         = $requestType === 'ADD_UNIT'
+                                  && (int) $this->request->getPost('is_transfer') === 1;
+            $srcKontrakUnitId   = (int) ($this->request->getPost('current_kontrak_unit_id') ?: 0);
+            $srcKontrakId       = (int) ($this->request->getPost('current_kontrak_id') ?: 0);
+
+            if ($isTransfer && (!$srcKontrakUnitId || !$srcKontrakId)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Data kontrak asal tidak lengkap untuk proses transfer.']);
+            }
+
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            $releaseAuditNumber = null;
+            $releaseId          = null; // Fix F: ensure defined even when !$isTransfer
+
+            if ($isTransfer) {
+                // ── Request 1: UNIT_MISSING/pull — lepas unit dari kontrak lama ──
+                $releaseAuditNumber = $this->auditModel->generateAuditNumber();
+
+                // Build current_data snapshot for release request
+                $releaseCurrentData = [];
+                if ($unitId) {
+                    $unit = $this->unitModel->find($unitId);
+                    if ($unit) {
+                        $releaseCurrentData = [
+                            'no_unit'   => $unit['no_unit'] ?? null,
+                            'serial'    => $unit['serial_number'] ?? null,
+                            'lokasi'    => $unit['lokasi_unit'] ?? null,
+                            'status_id' => $unit['status_unit_id'] ?? null,
+                        ];
+                    }
+                }
+
+                $this->auditModel->insert([
+                    'audit_number'  => $releaseAuditNumber,
+                    'customer_id'   => $customerId,
+                    'kontrak_id'    => $srcKontrakId,
+                    'unit_id'       => $unitId ?: null,
+                    'request_type'  => 'UNIT_MISSING',
+                    'current_data'  => json_encode($releaseCurrentData),
+                    'proposed_data' => json_encode([
+                        'missing_action'         => 'pull',
+                        'kontrak_unit_id'        => $srcKontrakUnitId,
+                        'is_transfer'            => true,
+                        'transfer_reason'        => 'Unit ditransfer ke lokasi/kontrak lain melalui audit',
+                    ]),
+                    'notes'         => 'Lepas unit dari kontrak asal (bagian dari transfer). Audit pasangan: akan dilampirkan.',
+                    'status'        => 'SUBMITTED',
+                    'submitted_by'  => $userId,
+                ]);
+                $releaseId = $db->insertID();
+
+                // ── Request 2: ADD_UNIT — tambah ke kontrak baru, linked ke release ──
+                $proposedData['linked_release_id']           = $releaseId;
+                $proposedData['linked_release_audit_number'] = $releaseAuditNumber;
+            }
+
+            $addAuditNumber = $this->auditModel->generateAuditNumber();
+
+            // Back-patch notes on release request to include ADD_UNIT audit number
+            if ($isTransfer && !empty($releaseId)) {
+                $db->table($this->auditModel->getTable())
+                   ->where('id', $releaseId)
+                   ->update(['notes' => 'Lepas unit dari kontrak asal (bagian dari transfer). Audit tambah: ' . $addAuditNumber]);
+            }
+
+            $insertData = [
+                'audit_number'  => $addAuditNumber,
                 'customer_id'   => $customerId,
                 'kontrak_id'    => $kontrakId ?: null,
                 'unit_id'       => $unitId ?: null,
@@ -147,14 +214,29 @@ class UnitAudit extends BaseController
                 'submitted_by'  => $userId,
             ];
 
-            $result = $this->auditModel->insert($data);
+            $result = $this->auditModel->insert($insertData);
+
+            $db->transComplete();
+            if ($db->transStatus() === false) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan request. Silakan coba lagi.']);
+            }
+
+            $message = $isTransfer
+                ? 'Transfer unit berhasil diajukan! 2 request telah dikirim ke Marketing.'
+                : 'Audit request berhasil disubmit!';
+
+            $responseData = ['id' => $result, 'audit_number' => $addAuditNumber];
+            if ($isTransfer) {
+                $responseData['release_audit_number'] = $releaseAuditNumber;
+            }
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Audit request berhasil disubmit!',
-                'data'    => ['id' => $result, 'audit_number' => $data['audit_number']],
+                'message' => $message,
+                'data'    => $responseData,
             ]);
         } catch (\Exception $e) {
+            log_message('error', 'UnitAudit::createAuditRequest - ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.']);
         }
     }
@@ -190,14 +272,8 @@ class UnitAudit extends BaseController
     public function getAuditDetail($id)
     {
         try {
-            $data = $this->auditModel->getWithDetails();
-            $item = null;
-            foreach ($data as $row) {
-                if ((int) $row['id'] === (int) $id) {
-                    $item = $row;
-                    break;
-                }
-            }
+            $results = $this->auditModel->getWithDetails(['id' => (int) $id]);
+            $item = $results[0] ?? null;
             if (!$item) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Not found']);
             }
@@ -989,7 +1065,14 @@ class UnitAudit extends BaseController
     public function approvalLocation()
     {
         $data['title'] = 'Audit Approval';
-        $data['stats'] = $this->auditLocationModel->getStats();
+        // Stats reflect unit audit requests (the primary subject of this page)
+        $unitStats = $this->auditModel->getStats();
+        $data['stats'] = [
+            'total'           => $unitStats['total'],
+            'pending_approval'=> $unitStats['submitted'],
+            'approved'        => $unitStats['approved'],
+            'rejected'        => $unitStats['rejected'],
+        ];
         return view('marketing/audit_approval_location', $data);
     }
 
@@ -1352,6 +1435,20 @@ class UnitAudit extends BaseController
                         $tanggalMulai = $kontrakInfo['tanggal_mulai'] ?? date('Y-m-d');
                         $tanggalSelesai = $kontrakInfo['tanggal_berakhir'] ?? null;
 
+                        // Transfer guard: if this ADD_UNIT is part of a transfer, the paired
+                        // UNIT_MISSING/pull release must be APPROVED first to avoid double-contract.
+                        if (!empty($proposed['linked_release_id'])) {
+                            $releaseRow = $db->table('unit_audit_requests')
+                                ->select('id, status, audit_number')
+                                ->where('id', (int) $proposed['linked_release_id'])
+                                ->get()->getRowArray();
+                            if ($releaseRow && $releaseRow['status'] !== 'APPROVED') {
+                                // Leave as SUBMITTED; skip so Marketing can approve release first
+                                log_message('info', 'approveLocationRequest: ADD_UNIT #' . $reqId . ' skipped, linked release not yet APPROVED');
+                                continue;
+                            }
+                        }
+
                         $existing = $db->table('kontrak_unit')
                             ->where('kontrak_id', $kontrakId)
                             ->where('unit_id', $unitId)
@@ -1368,6 +1465,19 @@ class UnitAudit extends BaseController
                             $unitsRejected++;
                             continue;
                         }
+                        // Guard: proposed unit_id must exist
+                        if (!$unitId) {
+                            $db->table('unit_audit_requests')->where('id', $reqId)->update([
+                                'status'       => 'REJECTED',
+                                'reviewed_by'  => $userId,
+                                'reviewed_at'  => date('Y-m-d H:i:s'),
+                                'review_notes' => 'Data unit tidak valid',
+                                'updated_at'   => date('Y-m-d H:i:s'),
+                            ]);
+                            $unitsRejected++;
+                            continue;
+                        }
+
                         $insertData = [
                                 'kontrak_id'           => $kontrakId,
                                 'unit_id'              => $unitId,
@@ -1381,6 +1491,11 @@ class UnitAudit extends BaseController
                             ];
                             $db->table('kontrak_unit')->insert($insertData);
                             $unitIdsAlreadyAdded[] = $unitId;
+
+                            // Fix #1: sync inventory_unit status when unit enters contract via location approval
+                            $db->table('inventory_unit')
+                               ->where('id_inventory_unit', $unitId)
+                               ->update(['status_unit_id' => $isSpare ? 15 : 7]); // 15=SPARE, 7=RENTAL_ACTIVE
 
                             $db->table('unit_audit_requests')->where('id', $reqId)->update([
                                 'status'       => 'APPROVED',
@@ -1464,16 +1579,25 @@ class UnitAudit extends BaseController
                 'updated_at'      => date('Y-m-d H:i:s'),
             ]);
 
-            // Reject linked ADD_UNIT requests
+            // Reject linked ADD_UNIT requests (match by location id OR by customer_id+location_name)
             $addUnits = $db->table('unit_audit_requests')
                 ->where('request_type', 'ADD_UNIT')
                 ->where('status', 'SUBMITTED')
                 ->get()
                 ->getResultArray();
+            $locKey = (int) $location['customer_id'] . '|' . ($location['location_name'] ?? '');
             foreach ($addUnits as $au) {
                 $proposed = json_decode($au['proposed_data'] ?? '{}', true);
                 $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
-                if ($locId === (int) $id) {
+                $match = ($locId === (int) $id);
+                if (!$match && $locId && $locKey) {
+                    $refLoc = $db->table('customer_locations')->where('id', $locId)->get()->getRowArray();
+                    if ($refLoc) {
+                        $refKey = (int) $refLoc['customer_id'] . '|' . ($refLoc['location_name'] ?? '');
+                        $match = ($refKey === $locKey);
+                    }
+                }
+                if ($match) {
                     $db->table('unit_audit_requests')->where('id', $au['id'])->update([
                         'status'       => 'REJECTED',
                         'reviewed_by'  => $userId,
@@ -1481,6 +1605,19 @@ class UnitAudit extends BaseController
                         'review_notes' => 'Lokasi ditolak',
                         'updated_at'   => date('Y-m-d H:i:s'),
                     ]);
+                    // Also reject paired UNIT_MISSING release if this was a transfer request
+                    if (!empty($proposed['linked_release_id'])) {
+                        $db->table('unit_audit_requests')
+                            ->where('id', (int) $proposed['linked_release_id'])
+                            ->where('status', 'SUBMITTED')
+                            ->update([
+                                'status'       => 'REJECTED',
+                                'reviewed_by'  => $userId,
+                                'reviewed_at'  => date('Y-m-d H:i:s'),
+                                'review_notes' => 'Lokasi ditolak — transfer dibatalkan',
+                                'updated_at'   => date('Y-m-d H:i:s'),
+                            ]);
+                    }
                 }
             }
             $db->transComplete();
@@ -1544,6 +1681,14 @@ class UnitAudit extends BaseController
                     ->where('unit_id', $unitId)
                     ->where('customer_location_id', $id)
                     ->delete();
+                // Revert inventory_unit status after removal from contract
+                $stillActive = $db->table('kontrak_unit')
+                    ->where('unit_id', $unitId)
+                    ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                    ->countAllResults();
+                $db->table('inventory_unit')
+                    ->where('id_inventory_unit', $unitId)
+                    ->update(['status_unit_id' => $stillActive ? 7 : 12]); // 7=RENTAL_ACTIVE, 12=RETURNED
                 // Revert unit_audit_requests ke SUBMITTED
                 $db->table('unit_audit_requests')->where('id', $au['id'])->update([
                     'status'       => 'SUBMITTED',
@@ -1553,6 +1698,41 @@ class UnitAudit extends BaseController
                     'kontrak_id'   => null,
                     'updated_at'   => date('Y-m-d H:i:s'),
                 ]);
+                // Also revert paired UNIT_MISSING release request if this was a transfer
+                if (!empty($proposed['linked_release_id'])) {
+                    $releaseRow = $db->table('unit_audit_requests')
+                        ->where('id', (int) $proposed['linked_release_id'])
+                        ->where('status', 'APPROVED')
+                        ->get()->getRowArray();
+                    if ($releaseRow) {
+                        // Re-insert the unit back into kontrak_unit if it was pulled
+                        $relProposed = json_decode($releaseRow['proposed_data'] ?? '{}', true);
+                        if (($relProposed['missing_action'] ?? '') === 'pull' && !empty($relProposed['kontrak_unit_id'])) {
+                            $kuSnapshot = $db->table('kontrak_unit')
+                                ->where('id', (int) $relProposed['kontrak_unit_id'])->get()->getRowArray();
+                            if (!$kuSnapshot) {
+                                // Row was deleted — restore it from the release request snapshot
+                                $relCurrent = json_decode($releaseRow['current_data'] ?? '{}', true);
+                                // Re-insert minimal record; use release request's own kontrak_id
+                                $db->table('kontrak_unit')->insert([
+                                    'kontrak_id'  => $releaseRow['kontrak_id'],
+                                    'unit_id'     => $releaseRow['unit_id'],
+                                    'status'      => 'ACTIVE',
+                                    'tanggal_mulai' => date('Y-m-d'),
+                                    'is_spare'    => 0,
+                                    'created_at'  => date('Y-m-d H:i:s'),
+                                ]);
+                            }
+                        }
+                        $db->table('unit_audit_requests')->where('id', $releaseRow['id'])->update([
+                            'status'       => 'SUBMITTED',
+                            'reviewed_by'  => null,
+                            'reviewed_at'  => null,
+                            'review_notes' => null,
+                            'updated_at'   => date('Y-m-d H:i:s'),
+                        ]);
+                    }
+                }
             }
 
             // Revert location ke PENDING
