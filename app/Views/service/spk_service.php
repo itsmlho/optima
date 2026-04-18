@@ -120,6 +120,14 @@ $can_export = true;
             <li class="nav-item">
                 <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Service.cancelled') ?></a>
             </li>
+            <li class="nav-item ms-auto">
+                <select class="form-select form-select-sm" id="globalDeptFilter" style="width:160px;margin-top:4px;">
+                    <option value="">Semua Departemen</option>
+                    <?php foreach ($departemen_list as $dept): ?>
+                    <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </li>
         </ul>
         
         <div class="card-body">
@@ -303,13 +311,20 @@ $can_export = true;
 
 					<!-- History sparepart tersimpan — collapsible, di atas form -->
 					<div id="existingSparepartHistory" style="display:none" class="mb-3">
-						<button class="btn btn-sm btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
-								type="button" data-bs-toggle="collapse" data-bs-target="#existingSparepartHistoryCollapse" aria-expanded="false">
-							<span><i class="fas fa-history me-1"></i>Sparepart Tersimpan Sebelumnya <span id="existingSparepartCount" class="badge badge-soft-blue ms-1"></span></span>
-							<i class="fas fa-chevron-down"></i>
-						</button>
-						<div class="collapse" id="existingSparepartHistoryCollapse">
-							<div id="existingSparepartHistoryBody" class="border rounded-bottom p-2" style="max-height:220px; overflow-y:auto; background:#f8f9fa;"></div>
+						<div class="card border-0 shadow-sm">
+							<div class="card-header py-2 d-flex justify-content-between align-items-center"
+								 style="background:linear-gradient(90deg,#e8f5e9,#f1f8ff);cursor:pointer"
+								 data-bs-toggle="collapse" data-bs-target="#existingSparepartHistoryCollapse">
+								<span class="fw-semibold small">
+									<i class="fas fa-clipboard-list me-1 text-success"></i>
+									Sparepart Tersimpan
+									<span id="existingSparepartCount" class="badge badge-soft-blue ms-1"></span>
+								</span>
+								<i class="fas fa-chevron-down text-muted small"></i>
+							</div>
+							<div class="collapse show" id="existingSparepartHistoryCollapse">
+								<div id="existingSparepartHistoryBody" class="p-0" style="max-height:300px;overflow-y:auto;"></div>
+							</div>
 						</div>
 					</div>
 
@@ -473,6 +488,13 @@ $can_export = true;
 
 <?= $this->endSection() ?>
 
+<?= $this->section('css') ?>
+<style>
+/* btn-xs for sparepart management panel */
+.btn-xs { padding: 1px 5px; font-size: 11px; line-height: 1.5; border-radius: 3px; }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('javascript') ?>
 <!-- Select2 CSS/JS sudah dimuat di base layout -->
 <script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
@@ -525,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				type: 'POST',
 				data: function(d) {
 					d.status_filter = currentFilter;
+					d.dept_filter   = $('#globalDeptFilter').val();
 					return d;
 				},
 				error: function(xhr) {
@@ -731,7 +754,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	// Load initial statistics
 	loadStatistics();
-	
+
+	// Global dept filter change
+	document.getElementById('globalDeptFilter').addEventListener('change', function() {
+		if (spkTable && spkTable.ajax) {
+			spkTable.ajax.reload();
+		}
+	});
+
 	// Make functions global for compatibility
 	window.loadStatistics = loadStatistics;
 	window.reloadSpkTable = function() {
@@ -5953,6 +5983,160 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 	// ============================================================
 	let _spkSpRowCount = 0;
 
+	// ---- helpers for sparepart management panel ----
+	const _SP_STAGE_COLORS  = {persiapan_unit:'primary', fabrikasi:'purple', painting:'orange', pdi:'success'};
+	const _SP_STAGE_LABELS  = {persiapan_unit:'Persiapan', fabrikasi:'Fabrikasi', painting:'Painting', pdi:'PDI'};
+	const _SP_STATUS_MAP    = {
+		PENDING : {cls:'badge-soft-yellow', label:'Menunggu'},
+		DIAMBIL : {cls:'badge-soft-green',  label:'Diambil'},
+		KOSONG  : {cls:'badge-soft-red',    label:'Kosong'},
+	};
+	const _SP_BASE = '<?= base_url('service/spk/sparepart/') ?>';
+	const _SP_CSRF = () => ({[window.csrfTokenName]: window.csrfTokenValue});
+
+	function _renderSpHistory(spareparts) {
+		const historySection = document.getElementById('existingSparepartHistory');
+		const historyBody    = document.getElementById('existingSparepartHistoryBody');
+		const historyCount   = document.getElementById('existingSparepartCount');
+
+		if (!spareparts || spareparts.length === 0) {
+			historySection.style.display = 'none';
+			return;
+		}
+
+		let pendingCount  = spareparts.filter(i => i.pickup_status === 'PENDING').length;
+		let diambilCount  = spareparts.filter(i => i.pickup_status === 'DIAMBIL').length;
+		let kosongCount   = spareparts.filter(i => i.pickup_status === 'KOSONG').length;
+
+		const rows = spareparts.map(item => {
+			const st   = _SP_STATUS_MAP[item.pickup_status] || _SP_STATUS_MAP.PENDING;
+			const stage = _SP_STAGE_LABELS[item.stage_name] || item.stage_name || '-';
+			const stageCls = _SP_STAGE_COLORS[item.stage_name] || 'gray';
+			const src  = parseInt(item.is_from_warehouse) === 1
+				? '<span class="badge badge-soft-blue" style="font-size:10px">WH</span>'
+				: '<span class="badge badge-soft-yellow" style="font-size:10px">Non-WH</span>';
+
+			// Row style by status
+			let rowStyle = '';
+			if (item.pickup_status === 'DIAMBIL') rowStyle = 'background:rgba(25,135,84,0.06)';
+			if (item.pickup_status === 'KOSONG')  rowStyle = 'background:rgba(220,53,69,0.06)';
+
+			// Action buttons
+			let actionBtns = '';
+			if (item.pickup_status === 'PENDING') {
+				actionBtns = `
+					<button class="btn btn-xs btn-outline-success py-0 px-1 sp-status-btn"
+						data-id="${item.id}" data-status="DIAMBIL" title="Tandai Diambil">
+						<i class="fas fa-check"></i> Diambil
+					</button>
+					<button class="btn btn-xs btn-outline-danger py-0 px-1 ms-1 sp-status-btn"
+						data-id="${item.id}" data-status="KOSONG" title="Tandai Kosong">
+						<i class="fas fa-times"></i> Kosong
+					</button>`;
+			} else if (item.pickup_status === 'DIAMBIL') {
+				actionBtns = `
+					<button class="btn btn-xs btn-outline-warning py-0 px-1 sp-status-btn"
+						data-id="${item.id}" data-status="PENDING" title="Reset ke Menunggu">
+						<i class="fas fa-undo"></i>
+					</button>`;
+			} else if (item.pickup_status === 'KOSONG') {
+				actionBtns = `
+					<button class="btn btn-xs btn-outline-warning py-0 px-1 sp-status-btn"
+						data-id="${item.id}" data-status="PENDING" title="Reset ke Menunggu">
+						<i class="fas fa-undo"></i>
+					</button>
+					<button class="btn btn-xs btn-outline-danger py-0 px-1 ms-1 sp-delete-btn"
+						data-id="${item.id}" title="Hapus Item">
+						<i class="fas fa-trash"></i>
+					</button>`;
+			}
+
+			return `<tr style="${rowStyle}" data-sp-id="${item.id}">
+				<td class="small text-capitalize">${item.item_type||'-'}</td>
+				<td class="small fw-semibold">${item.sparepart_name||item.sparepart_code||'-'}</td>
+				<td class="small text-center">${item.quantity_brought||0} <span class="text-muted">${item.satuan||''}</span></td>
+				<td class="small">${src}</td>
+				<td class="small"><span class="badge badge-soft-${stageCls}" style="font-size:10px">${stage}</span></td>
+				<td class="small"><span class="badge ${st.cls}" style="font-size:10px">${st.label}</span></td>
+				<td class="small text-nowrap">${actionBtns}</td>
+			</tr>`;
+		}).join('');
+
+		historyBody.innerHTML = `
+			<div class="d-flex gap-2 px-2 pt-2 pb-1 flex-wrap">
+				<span class="badge badge-soft-yellow" style="font-size:11px"><i class="fas fa-clock me-1"></i>Menunggu: ${pendingCount}</span>
+				<span class="badge badge-soft-green"  style="font-size:11px"><i class="fas fa-check me-1"></i>Diambil: ${diambilCount}</span>
+				<span class="badge badge-soft-red"    style="font-size:11px"><i class="fas fa-times me-1"></i>Kosong: ${kosongCount}</span>
+			</div>
+			<table class="table table-sm table-bordered mb-0" style="font-size:12px">
+				<thead class="table-light">
+					<tr>
+						<th>Type</th><th>Item</th><th class="text-center">Qty</th>
+						<th>Sumber</th><th>Stage</th><th>Status</th><th>Aksi</th>
+					</tr>
+				</thead>
+				<tbody>${rows}</tbody>
+			</table>`;
+
+		historyCount.textContent = spareparts.length;
+		historySection.style.display = 'block';
+	}
+
+	// Delegated events for status update & delete buttons inside history panel
+	document.getElementById('existingSparepartHistoryBody').addEventListener('click', async function(e) {
+		const statusBtn = e.target.closest('.sp-status-btn');
+		const deleteBtn = e.target.closest('.sp-delete-btn');
+
+		if (statusBtn) {
+			const id     = statusBtn.dataset.id;
+			const status = statusBtn.dataset.status;
+			statusBtn.disabled = true;
+			const fd = new FormData();
+			fd.append('pickup_status', status);
+			Object.entries(_SP_CSRF()).forEach(([k,v]) => fd.append(k, v));
+			try {
+				const r = await fetch(_SP_BASE + id + '/status', {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}});
+				const d = await r.json();
+				if (d.success) {
+					// Reload the history for this SPK
+					const spkId = document.getElementById('inputSparepartSpkId').value;
+					_reloadSpHistory(spkId);
+				} else {
+					notify(d.message || 'Gagal memperbarui status', 'error');
+					statusBtn.disabled = false;
+				}
+			} catch { notify('Terjadi kesalahan', 'error'); statusBtn.disabled = false; }
+		}
+
+		if (deleteBtn) {
+			const id = deleteBtn.dataset.id;
+			if (!confirm('Hapus item ini? Tindakan tidak dapat dibatalkan.')) return;
+			deleteBtn.disabled = true;
+			const fd = new FormData();
+			Object.entries(_SP_CSRF()).forEach(([k,v]) => fd.append(k, v));
+			try {
+				const r = await fetch(_SP_BASE + id + '/delete', {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}});
+				const d = await r.json();
+				if (d.success) {
+					const spkId = document.getElementById('inputSparepartSpkId').value;
+					_reloadSpHistory(spkId);
+				} else {
+					notify(d.message || 'Gagal menghapus item', 'error');
+					deleteBtn.disabled = false;
+				}
+			} catch { notify('Terjadi kesalahan', 'error'); deleteBtn.disabled = false; }
+		}
+	});
+
+	function _reloadSpHistory(spkId) {
+		const historyBody = document.getElementById('existingSparepartHistoryBody');
+		historyBody.innerHTML = '<div class="text-muted small p-2"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
+		fetch(`<?= base_url('service/spk/get-spareparts/') ?>${spkId}`, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+			.then(r => r.json())
+			.then(sp => { if (sp.success) _renderSpHistory(sp.spareparts); })
+			.catch(() => {});
+	}
+
 	window.openInputSparepart = function(id, nomor_spk, unit_id) {
 		_spkSpRowCount = 0;
 		document.getElementById('inputSparepartSpkId').value = id;
@@ -5961,55 +6145,16 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 		document.getElementById('sparepartInputRows').innerHTML = '';
 		_addSpkSparepartRow();
 
-		// Load & tampilkan history sparepart yang sudah tersimpan
-		const historySection = document.getElementById('existingSparepartHistory');
+		// Load & tampilkan panel manajemen sparepart tersimpan
 		const historyBody = document.getElementById('existingSparepartHistoryBody');
-		const historyCount = document.getElementById('existingSparepartCount');
-		const historyCollapse = document.getElementById('existingSparepartHistoryCollapse');
-		historySection.style.display = 'none';
-		// Reset collapse ke tertutup dulu
-		bootstrap.Collapse.getOrCreateInstance(historyCollapse, {toggle: false}).hide();
-		historyBody.innerHTML = '<div class="text-muted small p-1"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
+		historyBody.innerHTML = '<div class="text-muted small p-2"><i class="fas fa-spinner fa-spin me-1"></i>Memuat...</div>';
+		document.getElementById('existingSparepartHistory').style.display = 'none';
+
 		fetch(`<?= base_url('service/spk/get-spareparts/') ?>${id}`, {
 			headers: {'X-Requested-With': 'XMLHttpRequest'}
 		}).then(r => r.json()).then(sp => {
-			if (sp.success && sp.spareparts && sp.spareparts.length > 0) {
-				const stageColors = {persiapan_unit:'primary', fabrikasi:'purple', painting:'orange', pdi:'success'};
-				const stageLabels = {persiapan_unit:'Persiapan', fabrikasi:'Fabrikasi', painting:'Painting', pdi:'PDI'};
-				let rows = sp.spareparts.map(item => {
-					const stageBadge = item.stage_name
-						? `<span class="badge badge-soft-${stageColors[item.stage_name]||'gray'}">${stageLabels[item.stage_name]||item.stage_name}</span>`
-						: '<span class="badge badge-soft-gray">-</span>';
-					const srcBadge = parseInt(item.is_from_warehouse) === 1
-						? '<span class="badge badge-soft-blue" style="font-size:10px">WH</span>'
-						: '<span class="badge badge-soft-yellow" style="font-size:10px">Non-WH</span>';
-					const validBadge = parseInt(item.is_validated) === 1
-						? '<span class="badge badge-soft-green" style="font-size:10px">✓ Valid</span>'
-						: '';
-					return `<tr>
-						<td class="small">${item.item_type||'-'}</td>
-						<td class="small fw-semibold">${item.item_name||'-'}</td>
-						<td class="small text-center">${item.quantity||'-'} ${item.unit||''}</td>
-						<td class="small">${srcBadge}</td>
-						<td class="small">${stageBadge}</td>
-						<td class="small">${validBadge}</td>
-					</tr>`;
-				}).join('');
-				historyBody.innerHTML = `<table class="table table-sm table-bordered mb-0">
-					<thead class="table-light"><tr>
-						<th class="small">Type</th><th class="small">Item</th><th class="small">Qty</th>
-						<th class="small">Source</th><th class="small">Stage</th><th class="small">Status</th>
-					</tr></thead>
-					<tbody>${rows}</tbody>
-				</table>`;
-				historyCount.textContent = sp.spareparts.length;
-				historySection.style.display = 'block';
-				// Expand otomatis supaya langsung terlihat
-				bootstrap.Collapse.getOrCreateInstance(historyCollapse).show();
-			} else {
-				historySection.style.display = 'none';
-			}
-		}).catch(() => { historySection.style.display = 'none'; });
+			if (sp.success) _renderSpHistory(sp.spareparts);
+		}).catch(() => {});
 
 		bootstrap.Modal.getOrCreateInstance(document.getElementById('spkInputSparepartModal')).show();
 	};
@@ -6353,7 +6498,11 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 			btn.innerHTML = '<i class="fas fa-save me-1"></i>Simpan Sparepart';
 			if (res.success) {
 				notify(res.message || 'Sparepart berhasil disimpan', 'success');
-				bootstrap.Modal.getInstance(document.getElementById('spkInputSparepartModal')).hide();
+				// Reset form rows and reload management panel
+				document.getElementById('sparepartInputRows').innerHTML = '';
+				_spkSpRowCount = 0;
+				_addSpkSparepartRow();
+				_reloadSpHistory(spkId);
 				window.reloadSpkTable();
 			} else {
 				notify(res.message || 'Gagal menyimpan sparepart', 'error');

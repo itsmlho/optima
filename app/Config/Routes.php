@@ -705,6 +705,8 @@ $routes->group('service', static function ($routes) {
     $routes->post('spk/save-sparepart/(:num)', 'Service::saveSparepartRequest/$1');
     $routes->get('spk/check-spareparts/(:num)', 'Service::checkSpkSpareparts/$1');
     $routes->get('spk/get-spareparts/(:num)', 'Service::getSpkSpareparts/$1');
+    $routes->post('spk/sparepart/(:num)/status', 'Service::updateSparepartPickupStatus/$1');
+    $routes->post('spk/sparepart/(:num)/delete', 'Service::deleteSparepartItem/$1');
     $routes->post('spk/validate-spareparts/(:num)', 'Service::validateSpareparts/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');

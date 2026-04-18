@@ -858,15 +858,11 @@ if (!function_exists('maskSensitivePrint')) {
         <div class="col sig">
             <div class="muted">Marketing</div>
             <?php 
-                // Auto-approve untuk marketing karena yang buat SPK adalah marketing
-                $currentUser = trim(((string)session()->get('first_name')) . ' ' . ((string)session()->get('last_name')));
-                if ($currentUser === '') {
-                    $currentUser = session()->get('nama') ?? null;
-                }
+                // Resolve the SPK creator's name — NOT the current viewer's session
                 $createdBy = resolvePrintSignerName(
                     $spk,
                     ['created_by_name', 'created_by_full_name', 'marketing_name', 'dibuat_oleh_name'],
-                    $currentUser ?: 'MARKETING'
+                    'MARKETING'
                 );
                 $createdAt = $spk['created_at'] ?? $spk['dibuat_pada'] ?? null;
                 

@@ -3451,7 +3451,22 @@ class Marketing extends BaseDataTableController
         // Add stage_status data for print view
         $stageStatus = $this->getSpkStageStatusData($id);
         $row['stage_status'] = $stageStatus;
-        
+
+        // Resolve SPK creator name from users table (for Marketing signature section)
+        if (!empty($row['created_by'])) {
+            $creator = $this->db->table('users')
+                ->select("id, username, TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) AS full_name, nama")
+                ->where('id', (int)$row['created_by'])
+                ->get()->getRowArray();
+            if ($creator) {
+                $creatorName = trim($creator['full_name'] ?? '');
+                if ($creatorName === '') {
+                    $creatorName = $creator['nama'] ?? $creator['username'] ?? '';
+                }
+                $row['created_by_name'] = $creatorName;
+            }
+        }
+
         // Process prepared units data for print view
         $preparedUnitsDetail = $this->getPreparedUnitsDetail($id, $stageStatus);
         $row['prepared_units_detail'] = $preparedUnitsDetail;

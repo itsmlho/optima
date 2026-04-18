@@ -263,6 +263,56 @@ class Service extends BaseController
     }
 
     /**
+     * Update pickup_status of a single sparepart item (PENDING → DIAMBIL / KOSONG)
+     */
+    public function updateSparepartPickupStatus($itemId)
+    {
+        if (!$this->hasPermission('service.work_order.view')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $itemId = (int)$itemId;
+        $status = $this->request->getPost('pickup_status');
+        $allowed = ['PENDING', 'DIAMBIL', 'KOSONG'];
+        if (!in_array($status, $allowed, true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Status tidak valid']);
+        }
+
+        $item = $this->db->table('spk_spareparts')->where('id', $itemId)->get()->getRowArray();
+        if (!$item) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Item tidak ditemukan']);
+        }
+
+        $this->db->table('spk_spareparts')->where('id', $itemId)->update(['pickup_status' => $status]);
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Status diperbarui', 'pickup_status' => $status]);
+    }
+
+    /**
+     * Delete a sparepart item — only allowed when pickup_status = 'KOSONG'
+     */
+    public function deleteSparepartItem($itemId)
+    {
+        if (!$this->hasPermission('service.work_order.view')) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak']);
+        }
+
+        $itemId = (int)$itemId;
+        $item = $this->db->table('spk_spareparts')->where('id', $itemId)->get()->getRowArray();
+        if (!$item) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Item tidak ditemukan']);
+        }
+
+        if ($item['pickup_status'] !== 'KOSONG') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Hanya item dengan status KOSONG yang dapat dihapus']);
+        }
+
+        $this->db->table('spk_spareparts')->where('id', $itemId)->delete();
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Item berhasil dihapus']);
+    }
+
+    /**
      * Get spareparts for a specific SPK (for validation table)
      */
     public function getSpkSpareparts($spkId)
@@ -772,6 +822,7 @@ class Service extends BaseController
             $autoOpenSpkId = (int)$segments[3];
         }
         
+        $db = \Config\Database::connect();
         $data = [
             'title' => 'Work Orders (SPK) | OPTIMA',
             'page_title' => 'Work Orders (SPK) from Marketing',
@@ -779,7 +830,8 @@ class Service extends BaseController
                 '/' => 'Dashboard',
                 '/service/spk_service' => 'Work Orders (SPK)'
             ],
-            'autoOpenSpkId' => $autoOpenSpkId
+            'autoOpenSpkId' => $autoOpenSpkId,
+            'departemen_list' => $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray(),
         ];
     // Use single view (modular content merged into spk_service.php)
     return view('service/spk_service', $data);
@@ -1043,6 +1095,7 @@ class Service extends BaseController
         $length = $request->getPost('length') ?? 25;
         $search = $request->getPost('search')['value'] ?? '';
         $statusFilter = $request->getPost('status_filter') ?? 'all';
+        $deptFilterParam = $request->getPost('dept_filter') ?? '';
 
         // Block BRANCH (Service Area) users — SPK hanya untuk Service Pusat (CENTRAL)
         $areaScope = get_user_area_department_scope();
@@ -1095,8 +1148,17 @@ class Service extends BaseController
         $totalRecords = $builder->countAllResults(false);
 
         // Apply department filter using MySQL JSON extraction if available
-        if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
-            $deptIdsStr = implode(',', array_map('intval', $allowedDeptIds));
+        // Priority: manual dept_filter param > auto division filter
+        $effectiveDeptIds = $allowedDeptIds;
+        if (!empty($deptFilterParam) && is_numeric($deptFilterParam)) {
+            $manualDeptId = (int)$deptFilterParam;
+            // If user has restricted access, manual filter must be within allowed depts
+            if ($allowedDeptIds === null || in_array($manualDeptId, $allowedDeptIds)) {
+                $effectiveDeptIds = [$manualDeptId];
+            }
+        }
+        if ($effectiveDeptIds !== null && is_array($effectiveDeptIds)) {
+            $deptIdsStr = implode(',', array_map('intval', $effectiveDeptIds));
             // MySQL JSON_EXTRACT to filter departemen_id in spesifikasi JSON
             $builder->where("JSON_UNQUOTE(JSON_EXTRACT(spesifikasi, '\$.departemen_id')) IN ($deptIdsStr)", null, false);
         }
@@ -3935,10 +3997,23 @@ EOF;
             }
             
             // Apply department filter (from unit's departemen_id)
+            // BUT: MECHANIC_UNIT_PREP and MECHANIC_FABRICATION are cross-department roles
+            // → they must always appear regardless of the unit's department
             if (!empty($departmentParam)) {
                 $deptIds = array_filter(array_map('trim', explode(',', $departmentParam)));
-                $builder->whereIn('departemen_id', $deptIds);
-                log_message('info', 'Filtering mechanics by departemen_id: ' . implode(', ', $deptIds));
+                $crossDeptRoles = ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION'];
+                // Intersect with what was actually requested (if any)
+                if (!empty($rolesParam)) {
+                    $requestedRolesForDept = array_filter(array_map('trim', explode(',', $rolesParam)));
+                    $crossDeptRoles = array_intersect($crossDeptRoles, $requestedRolesForDept);
+                }
+                $builder->groupStart()
+                    ->whereIn('departemen_id', $deptIds);
+                if (!empty($crossDeptRoles)) {
+                    $builder->orWhereIn('staff_role', array_values($crossDeptRoles));
+                }
+                $builder->groupEnd();
+                log_message('info', 'Filtering mechanics by departemen_id: ' . implode(', ', $deptIds) . ' (cross-dept: ' . implode(',', $crossDeptRoles) . ')');
             }
             
             $employees = $builder

@@ -1341,6 +1341,21 @@
 #employeesTable tbody td {
     vertical-align: middle;
 }
+
+/* Unit mapping: green highlight for rows that already have an area */
+#tableLocationUnits tbody tr.row-has-area td {
+    background-color: rgba(25, 135, 84, 0.06) !important;
+}
+#tableLocationUnits tbody tr.row-has-area .unit-area-select + .select2-container .select2-selection {
+    border-color: #198754;
+    background-color: rgba(25, 135, 84, 0.08);
+}
+.unit-area-assigned-icon {
+    color: #198754;
+    font-size: 1rem;
+    margin-left: 4px;
+    vertical-align: middle;
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -3124,7 +3139,7 @@ function buildAreaOptions(selectedId, selectedCode = null, selectedName = null) 
         const label = (selectedCode && selectedName)
             ? `[${selectedCode}] ${selectedName}`
             : `Area ID ${selectedId}`;
-        html += `<option value="${selectedId}" selected>${label} (di luar scope)</option>`;
+        html += `<option value="${selectedId}" selected>${label}</option>`;
     }
     return html;
 }
@@ -3198,6 +3213,10 @@ function loadLocationUnits() {
                         if (c === prevCust) { opt.prop('selected', true); }
                         $('#filterLocCustomer').append(opt);
                     });
+                    // Refresh Select2 display after options are rebuilt
+                    if ($('#filterLocCustomer').hasClass('select2-hidden-accessible')) {
+                        $('#filterLocCustomer').trigger('change.select2');
+                    }
                 }
 
                 // Build locInfoMap from current page rows (accumulates across page navigations)
@@ -3298,6 +3317,10 @@ function loadLocationUnits() {
             if (locSelectedUnits.has(parseInt(data.id_inventory_unit))) {
                 $(row).find('.chk-loc-unit').prop('checked', true);
             }
+            // Mark rows that already have an area with a green class
+            if (data.area_id) {
+                $(row).addClass('row-has-area');
+            }
         },
         language: {
             emptyTable:    'Tidak ada data unit aktif',
@@ -3316,6 +3339,29 @@ function loadLocationUnits() {
             $('#chkSelectAllLoc')
                 .prop('indeterminate', checked > 0 && checked < total)
                 .prop('checked', total > 0 && checked === total);
+
+            // Initialize Select2 on per-row area selects
+            $('#tableLocationUnits .unit-area-select').each(function() {
+                const $sel = $(this);
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    $sel.select2('destroy');
+                }
+                $sel.select2({
+                    dropdownParent: $(document.body),
+                    width: '100%',
+                    placeholder: '-- Tidak Ada --',
+                    allowClear: true
+                });
+                // Toggle green row class when area changes
+                $sel.off('change.greenStyle').on('change.greenStyle', function() {
+                    const $row = $(this).closest('tr');
+                    if ($(this).val()) {
+                        $row.addClass('row-has-area');
+                    } else {
+                        $row.removeClass('row-has-area');
+                    }
+                });
+            });
         }
     });
 }
@@ -3341,13 +3387,44 @@ $('#filterLocCustomer').on('change', function() {
 $('#btnRefreshLocationUnits').on('click', function() { loadLocationUnits(); });
 $('#filterLocAreaAssign').on('change', function() {
     // Hindari filter turunan nyangkut saat ganti assigned/unassigned
-    $('#filterLocCustomer').val('');
+    if ($('#filterLocCustomer').hasClass('select2-hidden-accessible')) {
+        $('#filterLocCustomer').val(null).trigger('change');
+    } else {
+        $('#filterLocCustomer').val('');
+    }
     $('#filterLocLocation').val('').prop('disabled', true).empty().append('<option value="">Semua Lokasi</option>');
     loadLocationUnits();
 });
 $('#filterLocCustomer, #filterLocLocation, #filterLocDept').on('change', function() {
     loadLocationUnits();
 });
+
+// ----------------------------------------------------------------
+// Initialize Select2 on static bulk-area and customer-filter selects
+// ----------------------------------------------------------------
+function initStaticAreaSelect2() {
+    if (typeof $.fn.select2 !== 'function') {
+        // Select2 not yet loaded (deferred script), wait for window.load
+        $(window).one('load.initAreaSelect2', function() { initStaticAreaSelect2(); });
+        return;
+    }
+    $('#bulkLocArea').select2({
+        placeholder: '-- Pilih Area --',
+        allowClear: true,
+        width: '250px'
+    });
+    $('#bulkUnitArea').select2({
+        placeholder: '-- Pilih Area --',
+        allowClear: true,
+        width: '230px'
+    });
+    $('#filterLocCustomer').select2({
+        placeholder: 'Semua Customer',
+        allowClear: true,
+        width: '190px'
+    });
+}
+initStaticAreaSelect2();
 
 // Select all (current page)
 $(document).on('change', '#chkSelectAllLoc', function() {
