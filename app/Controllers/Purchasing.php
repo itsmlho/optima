@@ -271,8 +271,8 @@ class Purchasing extends BaseController
                     po_units.sn_attachment_po,
                     po_units.sn_baterai_po,
                     po_units.keterangan,
-                    model_unit.merk_unit,
-                    model_unit.model_unit,
+                    COALESCE(po_units.merk_unit, model_unit.merk_unit, \'\') as merk_unit,
+                    COALESCE(po_units.vendor_model_code, model_unit.model_unit, \'\') as model_unit,
                     CONCAT(tipe_unit.tipe, " ", tipe_unit.jenis) AS nama_tipe_unit,
                     kapasitas.kapasitas_unit,
                     tipe_mast.tipe_mast,
@@ -776,9 +776,9 @@ class Purchasing extends BaseController
                     pdi.sn_mast_po,
                     pdi.sn_mesin_po,
                     pu.vendor_spec_text,
-                    pu.merk_unit,
+                    COALESCE(pu.merk_unit, mu.merk_unit, '') AS merk_unit,
                     pu.tahun_po,
-                    mu.model_unit,
+                    COALESCE(pu.vendor_model_code, mu.model_unit, '') AS model_unit,
                     tu.tipe        AS jenis_unit,
                     d.nama_departemen,
                     k.kapasitas_unit,
@@ -916,11 +916,11 @@ class Purchasing extends BaseController
                     1 as qty_received,
                     pu.status_verifikasi,
                     pu.keterangan as catatan_verifikasi,
-                    CONCAT(mu.merk_unit, " ", mu.model_unit) as item_name,
+                    TRIM(CONCAT(COALESCE(pu.merk_unit, mu.merk_unit, \'\'), \' \', COALESCE(pu.vendor_model_code, mu.model_unit, \'\'))) as item_name,
                     pu.serial_number_po as serial_number,
                     pu.keterangan,
-                    mu.merk_unit,
-                    mu.model_unit,
+                    COALESCE(pu.merk_unit, mu.merk_unit, \'\') as merk_unit,
+                    COALESCE(pu.vendor_model_code, mu.model_unit, \'\') as model_unit,
                     tu.tipe as jenis_unit,
                     d.nama_departemen,
                     k.kapasitas_unit,
@@ -2339,11 +2339,11 @@ class Purchasing extends BaseController
                     1 as qty_received,
                     pu.status_verifikasi,
                     pu.keterangan as catatan_verifikasi,
-                    CONCAT(mu.merk_unit, " ", mu.model_unit) as item_name,
+                    TRIM(CONCAT(COALESCE(pu.merk_unit, mu.merk_unit, \'\'), \' \', COALESCE(pu.vendor_model_code, mu.model_unit, \'\'))) as item_name,
                     pu.serial_number_po as serial_number,
                     pu.keterangan,
-                    mu.merk_unit,
-                    mu.model_unit,
+                    COALESCE(pu.merk_unit, mu.merk_unit, \'\') as merk_unit,
+                    COALESCE(pu.vendor_model_code, mu.model_unit, \'\') as model_unit,
                     tu.tipe as jenis_unit,
                     d.nama_departemen,
                     k.kapasitas_unit,
@@ -4286,11 +4286,11 @@ class Purchasing extends BaseController
                             SELECT 
                                 pu.*,
                                 pu.kapasitas_id,
-                                COALESCE(mu.model_unit, 'Unknown Model') as model_name,
-                                COALESCE(mu.merk_unit, 'Unknown Brand') as brand_name,
-                                COALESCE(tu.jenis, 'Unknown Jenis') as jenis,
-                                COALESCE(d.nama_departemen, 'Unknown Departemen') as departemen,
-                                COALESCE(k.kapasitas_unit, 'Unknown Kapasitas') as kapasitas
+                                COALESCE(pu.vendor_model_code, mu.model_unit, '') as model_name,
+                                COALESCE(pu.merk_unit, mu.merk_unit, '') as brand_name,
+                                tu.jenis,
+                                d.nama_departemen,
+                                k.kapasitas_unit
                             FROM po_units pu
                             LEFT JOIN model_unit mu ON pu.model_unit_id = mu.id_model_unit
                             LEFT JOIN tipe_unit tu ON pu.tipe_unit_id = tu.id_tipe_unit
@@ -4305,7 +4305,14 @@ class Purchasing extends BaseController
                             $unit = false;
                         }
                         if ($unit) {
-                            $itemData['item_name'] = $unit->brand_name . ' | ' . $unit->model_name . ' | ' . $unit->jenis . ' | ' . $unit->departemen . ' | ' . $unit->kapasitas;
+                            $nameParts = array_filter([
+                                $unit->brand_name,
+                                $unit->model_name,
+                                $unit->jenis,
+                                $unit->nama_departemen,
+                                $unit->kapasitas_unit,
+                            ], fn($v) => $v !== null && trim((string)$v) !== '');
+                            $itemData['item_name'] = implode(' | ', $nameParts) ?: 'Unit Item';
                             $itemData['item_description'] = '';
                         } else {
                             $itemData['item_name'] = 'Unit Item';
@@ -4705,8 +4712,8 @@ class Purchasing extends BaseController
                         pu.po_line_group_id,
                         pu.vendor_model_code,
                         pu.vendor_spec_text,
-                        COALESCE(mu.model_unit, 'Unknown Model') as model_name,
-                        COALESCE(mu.merk_unit, 'Unknown Brand') as brand_name,
+                        COALESCE(pu.vendor_model_code, mu.model_unit, 'Unknown Model') as model_name,
+                        COALESCE(pu.merk_unit, mu.merk_unit, 'Unknown Brand') as brand_name,
                         COALESCE(tu.jenis, 'Unknown Jenis') as jenis,
                         COALESCE(d.nama_departemen, 'Unknown Departemen') as departemen,
                         COALESCE(k.kapasitas_unit, 'Unknown Kapasitas') as kapasitas
@@ -4722,8 +4729,8 @@ class Purchasing extends BaseController
                 $units = $unitsQuery->getResult();
                 $groups = [];
                 foreach ($units as $unit) {
-                    $isDelivered = in_array($unit->id_po_unit, $deliveredUnits, true);
-                    log_message('info', 'Unit ' . $unit->id_po_unit . ' is_delivered: ' . ($isDelivered ? 'true' : 'false'));
+                    // Cast to int: PDO returns strings, $deliveredUnits has ints — strict in_array would fail without cast
+                    $isDelivered = in_array((int) $unit->id_po_unit, $deliveredUnits, true);
                     
                     $lineLabel = trim((string) ($unit->vendor_model_code ?? ''));
                     if ($lineLabel === '') {
@@ -4758,17 +4765,13 @@ class Purchasing extends BaseController
                             'vendor_model_code' => $unit->vendor_model_code,
                             'unit_ids' => [],
                             'qty_ordered' => 0,
-                            'qty_delivered' => 0,
                         ];
                     }
                     $groups[$gkey]['unit_ids'][] = (int) $unit->id_po_unit;
                     $groups[$gkey]['qty_ordered']++;
-                    if ($isDelivered) {
-                        $groups[$gkey]['qty_delivered']++;
-                    }
                 }
+                // Derive qty_delivered and qty_remaining from undelivered_unit_ids (single source of truth)
                 foreach ($groups as &$g) {
-                    $g['qty_remaining'] = max(0, $g['qty_ordered'] - $g['qty_delivered']);
                     sort($g['unit_ids']);
                     $g['undelivered_unit_ids'] = [];
                     foreach ($g['unit_ids'] as $uid) {
@@ -4776,6 +4779,8 @@ class Purchasing extends BaseController
                             $g['undelivered_unit_ids'][] = $uid;
                         }
                     }
+                    $g['qty_remaining'] = count($g['undelivered_unit_ids']);
+                    $g['qty_delivered'] = $g['qty_ordered'] - $g['qty_remaining'];
                 }
                 unset($g);
                 $items['unit_groups'] = array_values($groups);
@@ -4973,8 +4978,8 @@ class Purchasing extends BaseController
                     pa.baterai_id AS line_pa_baterai,
                     pa.charger_id AS line_pa_charger,
                     pa.attachment_id AS line_pa_attachment,
-                    mu.model_unit,
-                    mu.merk_unit,
+                    COALESCE(pu.vendor_model_code, mu.model_unit, '') as model_unit,
+                    COALESCE(pu.merk_unit, mu.merk_unit, '') as merk_unit,
                     tu.tipe as jenis,
                     d.nama_departemen,
                     k.kapasitas_unit,
@@ -5013,6 +5018,20 @@ class Purchasing extends BaseController
             foreach ($deliveryItems as $item) {
                 $itemData = DeliveryBundleLibrary::formatDeliveryItemRow($item);
                 $t = strtolower((string) ($item->item_type ?? ''));
+
+                // Rebuild item_name for units using live join data (avoids stale "Unknown X" from stored string)
+                if ($t === 'unit') {
+                    $nameParts = array_filter([
+                        isset($item->merk_unit) ? trim((string) $item->merk_unit) : '',
+                        isset($item->model_unit) ? trim((string) $item->model_unit) : '',
+                        isset($item->jenis) ? trim((string) $item->jenis) : '',
+                        isset($item->nama_departemen) ? trim((string) $item->nama_departemen) : '',
+                        isset($item->kapasitas_unit) ? trim((string) $item->kapasitas_unit) : '',
+                    ], fn($v) => $v !== '');
+                    if (!empty($nameParts)) {
+                        $itemData['item_name'] = implode(' | ', $nameParts);
+                    }
+                }
 
                 if ($t === 'unit') {
                     $items['units'][] = $itemData;

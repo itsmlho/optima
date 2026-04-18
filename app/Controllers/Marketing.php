@@ -3453,15 +3453,16 @@ class Marketing extends BaseDataTableController
         $row['stage_status'] = $stageStatus;
 
         // Resolve SPK creator name from users table (for Marketing signature section)
-        if (!empty($row['created_by'])) {
+        $creatorUserId = $row['dibuat_oleh'] ?? $row['created_by'] ?? null;
+        if (!empty($creatorUserId)) {
             $creator = $this->db->table('users')
-                ->select("id, username, TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) AS full_name, nama")
-                ->where('id', (int)$row['created_by'])
+                ->select("id, username, TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) AS full_name")
+                ->where('id', (int)$creatorUserId)
                 ->get()->getRowArray();
             if ($creator) {
                 $creatorName = trim($creator['full_name'] ?? '');
                 if ($creatorName === '') {
-                    $creatorName = $creator['nama'] ?? $creator['username'] ?? '';
+                    $creatorName = $creator['username'] ?? '';
                 }
                 $row['created_by_name'] = $creatorName;
             }

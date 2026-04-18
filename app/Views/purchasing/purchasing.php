@@ -2736,6 +2736,17 @@ function snEscapeAttr(val) {
         .replace(/</g, '&lt;');
 }
 
+/**
+ * Strip residual "Unknown X" placeholders from stored item_name values.
+ * E.g. "awdaw | awdaw | Unknown Jenis | Unknown Departemen | Unknown Kapasitas"
+ * becomes "awdaw | awdaw"
+ */
+function cleanUnitItemName(name) {
+    if (!name) return 'Unit';
+    const parts = name.split('|').map(p => p.trim()).filter(p => p && !/^Unknown\s/i.test(p));
+    return parts.length ? parts.join(' | ') : 'Unit';
+}
+
 /** Kumpulkan payload Assign SN dari input bertanda data-sn-delivery-item */
 function collectSnAssignmentPayload() {
     const byId = {};
@@ -2848,7 +2859,7 @@ function renderSNAssignmentForm(items) {
                             <div class="d-flex align-items-center flex-wrap gap-1">
                                 <i class="fas fa-truck me-2"></i>
                                 <strong>Paket Unit #${bundleIndex + 1}</strong>
-                                <span class="ms-md-auto small text-muted text-truncate" style="max-width:100%">${unit.item_name || 'Unit'}</span>
+                                <span class="ms-md-auto small text-muted text-truncate" style="max-width:100%">${cleanUnitItemName(unit.item_name)}</span>
                             </div>
                         </div>
                         <div class="card-body py-3">
@@ -2894,7 +2905,7 @@ function renderSNAssignmentForm(items) {
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-truck me-2"></i>
                                 <strong>Unit Item #${index + 1}</strong>
-                                <span class="ms-auto small text-muted">${unit.item_name || 'Unit Item'}</span>
+                                <span class="ms-auto small text-muted">${cleanUnitItemName(unit.item_name)}</span>
                             </div>
                         </div>
                         <div class="card-body py-2">
@@ -3825,11 +3836,7 @@ function openItemModal(itemType, index = -1) {
                 }
                 
                 // Ensure disabled state for cascading dropdowns
-                if (currentItemType === 'unit') {
-                    $('#unit_jenis').prop('disabled', true).trigger('change.select2');
-                    $('#unit_model').prop('disabled', true).trigger('change.select2');
-                    syncPurchasingUnitPkgBatteryChargerFromDepartemen();
-                } else if (currentItemType === 'attachment') {
+                if (currentItemType === 'attachment') {
                     $('#att_merk').prop('disabled', true).trigger('change.select2');
                     $('#att_model').prop('disabled', true).trigger('change.select2');
                 } else if (currentItemType === 'battery') {
@@ -3855,20 +3862,9 @@ function openItemModal(itemType, index = -1) {
 
 function populateFormForEdit(item) {
     if (!item || item.item_type !== 'unit') return;
-    if (item.departemen_id) $('#unit_departemen').val(String(item.departemen_id)).trigger('change');
-    setTimeout(() => {
-        if (item.tipe_unit_id) $('#unit_jenis').val(String(item.tipe_unit_id)).trigger('change');
-    }, 200);
-    setTimeout(() => {
-        const mid = item.merk_unit_id || item.merk_unit;
-        if (mid) $('#unit_merk').val(String(mid)).trigger('change');
-    }, 400);
-    setTimeout(() => {
-        if (item.model_unit_id) $('#unit_model').val(String(item.model_unit_id)).trigger('change');
-    }, 600);
+    $('#unit_merk_text').val(item.merk_unit || '');
+    $('#unit_model_text').val(item.vendor_model_code || item._display?.model_text || '');
     if (item.tahun_unit) $('#unit_tahun').val(item.tahun_unit);
-    if (item.kapasitas_id) $('#unit_kapasitas').val(String(item.kapasitas_id)).trigger('change');
-    if (item.kondisi_penjualan) $('#unit_kondisi').val(item.kondisi_penjualan);
     $('#unit_qty').val(item.qty || 1);
     if ($('#unit_vendor_spec_text').length) $('#unit_vendor_spec_text').val(item.vendor_spec_text || '');
     if ($('#unit_keterangan').length) $('#unit_keterangan').val(item.keterangan || '');
@@ -3884,9 +3880,6 @@ function populateFormForEdit(item) {
     if (item.ban_id) $('#unit_ban').val(String(item.ban_id)).trigger('change');
     if (item.roda_id) $('#unit_roda').val(String(item.roda_id)).trigger('change');
     if (item.valve_id) $('#unit_valve').val(String(item.valve_id)).trigger('change');
-    setTimeout(function() {
-        syncPurchasingUnitPkgBatteryChargerFromDepartemen();
-    }, 0);
 }
 
 // Collect data from modal form based on item type
@@ -3896,71 +3889,39 @@ function collectItemData() {
     };
     
     if (currentItemType === 'unit') {
-        // Collect unit data (simplified - no tipe)
-        data.departemen_id = $('#unit_departemen').val();
-        data.tipe_unit_id = $('#unit_jenis').val(); // This is actually jenis/tipe_unit_id
-        const merkOpt = $('#unit_merk option:selected');
-        data.merk_unit_id = $('#unit_merk').val() || '';
-        data.merk_unit = (merkOpt.attr('data-merk') || merkOpt.text() || '').trim();
-        if (!data.merk_unit && data.merk_unit_id) {
-            data.merk_unit = merkOpt.text().trim();
-        }
-        data.model_unit_id = $('#unit_model').val();
-        data.tahun_unit = $('#unit_tahun').val();
-        data.kapasitas_id = $('#unit_kapasitas').val();
-        data.kondisi_penjualan = $('#unit_kondisi').val();
-        
-        // Mast components (tinggi_mast will be fetched from tipe_mast table via mast_id)
-        data.mast_id = $('#unit_mast').val();
-        data.sn_mast = $('#unit_sn_mast').val();
-        
-        // Engine components
-        data.mesin_id = $('#unit_mesin').val();
-        data.sn_mesin = $('#unit_sn_mesin').val();
-        
-        // Other components
-        data.ban_id = $('#unit_ban').val();
-        data.roda_id = $('#unit_roda').val();
-        data.valve_id = $('#unit_valve').val();
-        
-        data.qty = $('#unit_qty').val();
-        data.keterangan = $('#unit_keterangan').val();
+        data.merk_unit        = ($('#unit_merk_text').val() || '').trim();
+        data.vendor_model_code = ($('#unit_model_text').val() || '').trim();
+        data.tahun_unit       = $('#unit_tahun').val();
+        data.mast_id          = $('#unit_mast').val();
+        data.mesin_id         = $('#unit_mesin').val();
+        data.ban_id           = $('#unit_ban').val();
+        data.roda_id          = $('#unit_roda').val();
+        data.valve_id         = $('#unit_valve').val();
+        data.qty              = $('#unit_qty').val();
+        data.keterangan       = $('#unit_keterangan').val();
         data.vendor_spec_text = ($('#unit_vendor_spec_text').val() || '').trim();
         data.po_line_group_id = window._currentPoLineGroupId || '';
-        const deptNameUpper = ($('#unit_departemen option:selected').text() || '').trim().toUpperCase();
-        const isDieselOrGasoline = deptNameUpper === 'DIESEL' || deptNameUpper === 'GASOLINE';
-        const pkg = [];
-        $('input[name="pkg_flags[]"]:checked').each(function () { pkg.push($(this).val()); });
-        data.package_flags = isDieselOrGasoline
-            ? pkg.filter(function (f) { return f !== 'battery' && f !== 'charger'; })
-            : pkg;
+        data.kondisi_penjualan = 'Baru';
         if (typeof editIndex !== 'undefined' && editIndex >= 0 && poItems[editIndex] && poItems[editIndex].item_type === 'unit' && poItems[editIndex].unit_accessories) {
             data.unit_accessories = poItems[editIndex].unit_accessories;
         } else {
             data.unit_accessories = '';
         }
-        if ($('#unit_baterai_id').length) {
-            data.baterai_id = isDieselOrGasoline ? '' : ($('#unit_baterai_id').val() || '');
-        }
-        if ($('#unit_charger_id').length) {
-            data.charger_id = isDieselOrGasoline ? '' : ($('#unit_charger_id').val() || '');
-        }
-        if ($('#unit_attachment_id').length) {
-            data.attachment_id = $('#unit_attachment_id').val() || '';
-        }
-        
-        // Collect text labels for display
+        const pkg = [];
+        $('input[name="pkg_flags[]"]:checked').each(function () { pkg.push($(this).val()); });
+        data.package_flags = pkg;
+        if ($('#unit_baterai_id').length) data.baterai_id = $('#unit_baterai_id').val() || '';
+        if ($('#unit_charger_id').length) data.charger_id = $('#unit_charger_id').val() || '';
+        if ($('#unit_attachment_id').length) data.attachment_id = $('#unit_attachment_id').val() || '';
+
         data._display = {
-            departemen_text: $('#unit_departemen option:selected').text(),
-            jenis_text: $('#unit_jenis option:selected').text(),
-            merk_text: $('#unit_merk option:selected').text(),
-            model_text: $('#unit_model option:selected').text(),
-            kapasitas_text: $('#unit_kapasitas option:selected').text(),
-            kondisi_text: $('#unit_kondisi option:selected').text()
+            merk_text:  data.merk_unit,
+            model_text: data.vendor_model_code
         };
-        
-        // Validation — inti PO: jenis, brand, model, qty, kondisi
-        if (!data.tipe_unit_id || !data.merk_unit_id || !data.model_unit_id || !data.qty) {
+
+        // Validation
+        if (!data.merk_unit || !data.vendor_model_code || !data.qty) {
+            OptimaNotify.warning('Brand, Model, dan Quantity wajib diisi', 'Perhatian');
             return null;
         }
         
@@ -4056,7 +4017,7 @@ function updateItemsTable() {
         
         let description = '';
         if (item.item_type === 'unit') {
-            description = `${item._display.merk_text} ${item._display.model_text} | ${item._display.departemen_text} - ${item._display.jenis_text} | ${item._display.kapasitas_text} | Tahun ${item.tahun_unit || '-'} (${item._display.kondisi_text})`;
+            description = `${item._display.merk_text} ${item._display.model_text} | Tahun ${item.tahun_unit || '-'}`;
             if (item.vendor_spec_text) {
                 const specShort = item.vendor_spec_text.length > 180 ? item.vendor_spec_text.substring(0, 180) + '…' : item.vendor_spec_text;
                 description += `<br><small class="text-muted">${specShort.replace(/</g, '&lt;')}</small>`;

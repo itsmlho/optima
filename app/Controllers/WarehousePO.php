@@ -106,7 +106,7 @@ class WarehousePO extends BaseController
                 purchase_orders.no_po, 
                 purchase_orders.id_po as po_id,
                 po_units.merk_unit as brand_name_po,
-                mu.model_unit, 
+                COALESCE(po_units.vendor_model_code, mu.model_unit, \'\') as model_unit, 
                 mu.merk_unit as brand_from_model_table,
                 tu.jenis as jenis, 
                 d.id_departemen,
