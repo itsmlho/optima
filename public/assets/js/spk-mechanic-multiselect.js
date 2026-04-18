@@ -253,12 +253,30 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         container.innerHTML = html;
     }
     
+    getRoleOrder(role) {
+        const order = {
+            'MECHANIC_UNIT_PREP': 0,
+            'MECHANIC_FABRICATION': 1,
+            'MECHANIC': 2,
+            'HELPER': 3,
+            'FOREMAN': 4,
+            'SUPERVISOR': 5,
+            'MECHANIC_SERVICE_AREA': 6,
+        };
+        return order[role] !== undefined ? order[role] : 99;
+    }
+
     groupEmployeesByRole(employees) {
-        return employees.reduce((groups, emp) => {
+        const groups = employees.reduce((groups, emp) => {
             if (!groups[emp.role]) groups[emp.role] = [];
             groups[emp.role].push(emp);
             return groups;
         }, {});
+
+        // Return sorted by role order (UNIT_PREP/FABRICATION first, then MECHANIC, then HELPER)
+        return Object.fromEntries(
+            Object.entries(groups).sort((a, b) => this.getRoleOrder(a[0]) - this.getRoleOrder(b[0]))
+        );
     }
     
     bindEvents() {
