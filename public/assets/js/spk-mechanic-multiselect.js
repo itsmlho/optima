@@ -36,6 +36,8 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     
     getDefaultRoles(stage) {
         if (stage === 'pdi') return ['FOREMAN', 'SUPERVISOR'];
+        if (stage === 'persiapan_unit') return ['MECHANIC', 'MECHANIC_UNIT_PREP', 'HELPER'];
+        if (stage === 'fabrikasi') return ['MECHANIC', 'MECHANIC_FABRICATION', 'HELPER'];
         return ['MECHANIC', 'HELPER'];
     }
     
