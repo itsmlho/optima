@@ -2855,10 +2855,7 @@ function renderSNAssignmentForm(items) {
             html += `
                 <div class="col-12">
                     <div class="card border-primary shadow-sm">
-                        <div class="card-header bg-primary text-dark py-2">
-                            <div class="d-flex align-items-center flex-wrap gap-1">
-                                <i class="fas fa-truck me-2"></i>
-                                <strong>Paket Unit #${bundleIndex + 1}</strong>
+                        <div class="card-header bg-primary text-white py-2">
                                 <span class="ms-md-auto small text-muted text-truncate" style="max-width:100%">${cleanUnitItemName(unit.item_name)}</span>
                             </div>
                         </div>
@@ -2901,10 +2898,7 @@ function renderSNAssignmentForm(items) {
                 html += `
                 <div class="col-12">
                     <div class="card border-primary">
-                        <div class="card-header bg-primary text-dark py-2">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-truck me-2"></i>
-                                <strong>Unit Item #${index + 1}</strong>
+                        <div class="card-header bg-primary text-white py-2">
                                 <span class="ms-auto small text-muted">${cleanUnitItemName(unit.item_name)}</span>
                             </div>
                         </div>
