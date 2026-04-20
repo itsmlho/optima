@@ -122,10 +122,13 @@ class Warehouse extends BaseController
         return $alerts;
     }
 
-    //INVENTORY SPAREPART
+    // ─── MASTER DATA SPAREPART ────────────────────────────────────────────────
+
+    /**
+     * Master data sparepart — list page + server-side DataTable
+     */
     public function inventSparepart()
     {
-        // Check permission for viewing sparepart inventory
         if (!$this->hasPermission('warehouse.sparepart_inventory.view')) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
@@ -135,35 +138,172 @@ class Warehouse extends BaseController
             }
             return redirect()->to('/')->with('error', 'Akses ditolak: Anda tidak memiliki izin');
         }
-        
-        $inventoryModel = new InventorySparepartModel();
+
+        $sparepartModel = new \App\Models\SparepartModel();
 
         if ($this->request->isAJAX()) {
-            $start = $this->request->getPost('start') ?? 0;
-            $length = $this->request->getPost('length') ?? 10;
-            $searchValue = $this->request->getPost('search')['value'] ?? '';
-            
-            $orderMap = ['id', 'kode', 'desc_sparepart', 'stok', 'lokasi_rak', 'updated_at'];
-            $orderColumnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
-            $orderColumn = $orderMap[$orderColumnIndex] ?? 'id';
-            $orderDir = $this->request->getPost('order')[0]['dir'] ?? 'desc';
+            $start  = (int)($this->request->getPost('start')  ?? 0);
+            $length = (int)($this->request->getPost('length') ?? 25);
+            $search = $this->request->getPost('search')['value'] ?? '';
 
-            $data = $inventoryModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue);
-            
+            $orderMap     = ['id_sparepart', 'kode', 'desc_sparepart', 'created_at', 'updated_at'];
+            $colIndex     = (int)($this->request->getPost('order')[0]['column'] ?? 1);
+            $orderColumn  = $orderMap[$colIndex] ?? 'kode';
+            $orderDir     = $this->request->getPost('order')[0]['dir'] ?? 'asc';
+
             return $this->response->setJSON([
-                "draw" => $this->request->getPost('draw'),
-                "recordsTotal" => $inventoryModel->countAllData(),
-                "recordsFiltered" => $inventoryModel->countFiltered($searchValue),
-                "data" => $data,
+                'draw'            => $this->request->getPost('draw'),
+                'recordsTotal'    => $sparepartModel->countAllData(),
+                'recordsFiltered' => $sparepartModel->countFiltered($search),
+                'data'            => $sparepartModel->getDataTable($start, $length, $orderColumn, $orderDir, $search),
             ]);
         }
-        
+
         $data = [
-            'title' => 'Inventory - Stok Sparepart',
-            'stats' => $inventoryModel->getStats(),
+            'title'      => 'Master Data Sparepart',
+            'page_title' => 'Master Data Sparepart',
+            'total'      => $sparepartModel->countAllData(),
         ];
 
         return view('warehouse/inventory/invent_sparepart', $data);
+    }
+
+    /**
+     * POST: create new sparepart master record
+     */
+    public function saveSparepartMaster()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid'])->setStatusCode(405);
+        }
+
+        if (!$this->hasPermission('warehouse.sparepart_inventory.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+        }
+
+        $kode = trim($this->request->getPost('kode') ?? '');
+        $desc = trim($this->request->getPost('desc_sparepart') ?? '');
+
+        if (empty($kode) || empty($desc)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Kode dan nama sparepart wajib diisi']);
+        }
+
+        $sparepartModel = new \App\Models\SparepartModel();
+
+        if ($sparepartModel->kodeExists($kode)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Kode sparepart sudah digunakan']);
+        }
+
+        $result = $sparepartModel->insert(['kode' => $kode, 'desc_sparepart' => $desc]);
+
+        if ($result) {
+            return $this->response->setJSON([
+                'success'    => true,
+                'message'    => 'Sparepart berhasil ditambahkan',
+                'csrf_hash'  => csrf_hash(),
+            ]);
+        }
+
+        return $this->response->setJSON(['success' => false, 'message' => 'Gagal menambahkan sparepart']);
+    }
+
+    /**
+     * GET: fetch single sparepart for edit modal
+     */
+    public function getSparepartMasterDetail(int $id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid'])->setStatusCode(405);
+        }
+
+        if (!$this->hasPermission('warehouse.sparepart_inventory.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+        }
+
+        $sparepartModel = new \App\Models\SparepartModel();
+        $item = $sparepartModel->find($id);
+
+        if (!$item) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak ditemukan'])->setStatusCode(404);
+        }
+
+        return $this->response->setJSON(['success' => true, 'data' => $item]);
+    }
+
+    /**
+     * POST: update sparepart master record
+     */
+    public function updateSparepartMaster(int $id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid'])->setStatusCode(405);
+        }
+
+        if (!$this->hasPermission('warehouse.sparepart_inventory.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+        }
+
+        $kode = trim($this->request->getPost('kode') ?? '');
+        $desc = trim($this->request->getPost('desc_sparepart') ?? '');
+
+        if (empty($kode) || empty($desc)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Kode dan nama sparepart wajib diisi']);
+        }
+
+        $sparepartModel = new \App\Models\SparepartModel();
+
+        if (!$sparepartModel->find($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak ditemukan'])->setStatusCode(404);
+        }
+
+        if ($sparepartModel->kodeExists($kode, $id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Kode sparepart sudah digunakan oleh data lain']);
+        }
+
+        $sparepartModel->update($id, ['kode' => $kode, 'desc_sparepart' => $desc]);
+
+        return $this->response->setJSON([
+            'success'   => true,
+            'message'   => 'Sparepart berhasil diperbarui',
+            'csrf_hash' => csrf_hash(),
+        ]);
+    }
+
+    /**
+     * POST: delete sparepart master record (only if not in use)
+     */
+    public function deleteSparepartMaster(int $id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Request tidak valid'])->setStatusCode(405);
+        }
+
+        if (!$this->hasPermission('warehouse.sparepart_inventory.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+        }
+
+        $sparepartModel = new \App\Models\SparepartModel();
+
+        if (!$sparepartModel->find($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak ditemukan'])->setStatusCode(404);
+        }
+
+        // Check if sparepart is linked to inventory stock
+        $inUse = $this->db->table('inventory_spareparts')->where('sparepart_id', $id)->countAllResults();
+        if ($inUse > 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Sparepart tidak dapat dihapus karena sudah memiliki data stok inventory',
+            ]);
+        }
+
+        $sparepartModel->delete($id);
+
+        return $this->response->setJSON([
+            'success'   => true,
+            'message'   => 'Sparepart berhasil dihapus',
+            'csrf_hash' => csrf_hash(),
+        ]);
     }
 
     public function getInventorySparepart($id)

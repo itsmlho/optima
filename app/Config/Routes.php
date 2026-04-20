@@ -964,6 +964,12 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('invent_sparepart', 'Warehouse::inventSparepart'); // Untuk AJAX DataTable
         $routes->get('get_sparepart/(:num)', 'Warehouse::getInventorySparepart/$1'); // Untuk mengambil data edit
         $routes->post('update_sparepart/(:num)', 'Warehouse::updateInventorySparepart/$1'); // Untuk menyimpan data edit
+
+        // Sparepart Master Data CRUD (API)
+        $routes->post('sparepart-master/create',          'Warehouse::saveSparepartMaster');
+        $routes->get('sparepart-master/(:num)',            'Warehouse::getSparepartMasterDetail/$1');
+        $routes->post('sparepart-master/update/(:num)',    'Warehouse::updateSparepartMaster/$1');
+        $routes->post('sparepart-master/delete/(:num)',    'Warehouse::deleteSparepartMaster/$1');
         
         // Manual Entry Management Routes
         $routes->get('manual-entries', 'Warehouse::manualEntriesManagement');

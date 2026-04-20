@@ -1268,8 +1268,24 @@ class UnitInventoryController extends BaseController
             }
         };
 
+        // tipe_unit: use GROUP BY to hide duplicate (tipe, jenis) rows that exist in the DB.
+        // MIN(id_tipe_unit) ensures a consistent canonical ID is used for new unit creation.
+        $tipeUnit = [];
+        try {
+            if ($db->tableExists('tipe_unit')) {
+                $tipeUnit = $db->table('tipe_unit')
+                    ->select('MIN(id_tipe_unit) AS id_tipe_unit, tipe, jenis')
+                    ->groupBy('tipe, jenis')
+                    ->orderBy('tipe', 'ASC')
+                    ->orderBy('jenis', 'ASC')
+                    ->get()->getResultArray();
+            }
+        } catch (\Throwable $e) {
+            $tipeUnit = [];
+        }
+
         return [
-            'tipe_unit'      => $get('tipe_unit',      'id_tipe_unit, tipe, jenis',           'tipe'),
+            'tipe_unit'      => $tipeUnit,
             'model_unit'     => $get('model_unit',     'id_model_unit, merk_unit, model_unit', 'merk_unit'),
             'departemen'     => $get('departemen',     'id_departemen, nama_departemen',       'nama_departemen'),
             'status_unit'    => $get('status_unit',    'id_status, status_unit',               'id_status'),
