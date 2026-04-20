@@ -496,7 +496,7 @@ $can_export = true;
 
 <?= $this->section('javascript') ?>
 <!-- Select2 CSS/JS sudah dimuat di base layout -->
-<script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
+<script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/spk-mechanic-multiselect.js') ?>"></script>
 <?= $this->include('partials/accessory_js') ?>
 
 <script>

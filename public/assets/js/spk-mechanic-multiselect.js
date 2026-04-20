@@ -54,7 +54,12 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
             // Build URL: filter by stage roles, optionally by unit's departemen_id
             const baseUrl = (window.BASE_URL || window.base_url || '/').replace(/\/$/, '');
             const stageRoles = this.getDefaultRoles(this.options.stage);
-            let apiUrl = `${baseUrl}/service/employees/by-roles?roles=${stageRoles.join(',')}`;
+
+            // Ensure cross-dept roles are always included (e.g. MECHANIC_UNIT_PREP for persiapan_unit)
+            const crossDeptRoles = this.getCrossDeptRoles ? this.getCrossDeptRoles() : [];
+            const allRoles = [...new Set([...stageRoles, ...crossDeptRoles])];
+
+            let apiUrl = `${baseUrl}/service/employees/by-roles?roles=${allRoles.join(',')}`;
             if (this.options.departmentId) {
                 apiUrl += `&department_id=${this.options.departmentId}`;
                 console.log(`🔍 Loading ${stageRoles} for department: ${this.options.departmentId}`);
@@ -302,7 +307,8 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         const searchContainer = container.querySelector('.search-input-container');
         if (searchContainer) {
             searchContainer.addEventListener('click', (e) => {
-                // Container clicked
+                // If click came from the search input itself, ignore — focus event already handles opening
+                if (e.target === searchInput) return;
                 this.isOpen ? this.closeDropdown() : this.openDropdown();
             });
         }
@@ -566,6 +572,13 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         this.selectedItems = previousSelection;
         this.updateSelectedDisplay();
         this.updateDropdownOptions();
+    }
+
+    // Returns roles that must always appear regardless of department filter (cross-department workshop roles)
+    getCrossDeptRoles() {
+        if (this.options.stage === 'persiapan_unit') return ['MECHANIC_UNIT_PREP'];
+        if (this.options.stage === 'fabrikasi')      return ['MECHANIC_FABRICATION'];
+        return [];
     }
 }
 
