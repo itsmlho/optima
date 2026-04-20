@@ -21,8 +21,8 @@ $items = $audit['items'] ?? [];
             <i class="fas fa-edit me-2 text-primary"></i>Input Hasil Audit
         </h4>
         <p class="text-muted small mb-0">
-            Audit: <strong><?= $audit['audit_number'] ?? '-' ?></strong> |
-            <?= $audit['customer_name'] ?? '-' ?> - <?= $audit['location_name'] ?? '-' ?>
+            Audit: <strong><?= esc($audit['audit_number'] ?? '-') ?></strong> |
+            <?= esc($audit['customer_name'] ?? '-') ?> - <?= esc($audit['location_name'] ?? '-') ?>
         </p>
     </div>
     <div class="d-flex gap-2">
@@ -112,26 +112,26 @@ $items = $audit['items'] ?? [];
                         <?php $no = 1; foreach ($items as $item): ?>
                         <tr>
                             <td class="text-center"><?= $no++ ?></td>
-                            <td><?= $item['expected_no_unit'] ?? '-' ?></td>
-                            <td><?= $item['expected_serial'] ?? '-' ?></td>
-                            <td><?= ($item['expected_merk'] ?? '') . ' ' . ($item['expected_model'] ?? '') ?></td>
+                            <td><?= esc($item['expected_no_unit'] ?? '-') ?></td>
+                            <td><?= esc($item['expected_serial'] ?? '-') ?></td>
+                            <td><?= esc(($item['expected_merk'] ?? '') . ' ' . ($item['expected_model'] ?? '')) ?></td>
                             <td class="text-center"><?= ($item['expected_is_spare'] ?? 0) == 1 ? '<span class="badge badge-soft-yellow">YES</span>' : 'NO' ?></td>
                             <td>
                                 <input type="text" class="form-control form-control-sm"
                                     name="items[<?= $item['id'] ?>][actual_no_unit]"
-                                    value="<?= $item['actual_no_unit'] ?? '' ?>"
+                                    value="<?= esc($item['actual_no_unit'] ?? '') ?>"
                                     placeholder="No Unit Actual">
                             </td>
                             <td>
                                 <input type="text" class="form-control form-control-sm"
                                     name="items[<?= $item['id'] ?>][actual_serial]"
-                                    value="<?= $item['actual_serial'] ?? '' ?>"
+                                    value="<?= esc($item['actual_serial'] ?? '') ?>"
                                     placeholder="Serial Actual">
                             </td>
                             <td>
                                 <input type="text" class="form-control form-control-sm"
                                     name="items[<?= $item['id'] ?>][actual_merk]"
-                                    value="<?= $item['actual_merk'] ?? '' ?>"
+                                    value="<?= esc($item['actual_merk'] ?? '') ?>"
                                     placeholder="Merk/Model Actual">
                             </td>
                             <td class="text-center">
@@ -325,6 +325,10 @@ fetch('<?= base_url('unit_audit/getAvailableUnits') ?>')
             const templateSelect = document.querySelector('#addUnitRowTemplate .unit-select-add');
             if (templateSelect) renderUnitSelectOptions(templateSelect);
         }
+    })
+    .catch(err => {
+        console.error('[getAvailableUnits]', err);
+        if (window.OptimaNotify) OptimaNotify.error('Gagal memuat daftar unit tersedia.');
     });
 
 function renderUnitSelectOptions(selectEl) {
@@ -467,6 +471,10 @@ function submitToMarketing() {
                 } else {
                     OptimaNotify.error(data.message);
                 }
+            })
+            .catch(err => {
+                console.error('[submitToMarketing]', err);
+                OptimaNotify.error('Gagal mengirim audit ke Marketing. Periksa koneksi dan coba lagi.');
             });
         }
     });

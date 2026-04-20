@@ -493,6 +493,14 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUnitRequests();
     loadPendingApprovals();
     loadApprovalHistory();
+
+    // Reset approveLocationWithUnitsModal fields on close to prevent stale data
+    document.getElementById('approveLocationWithUnitsModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('approveLocKontrakSelect').value = '';
+        const tbody = document.getElementById('approveLocUnitsBody');
+        if (tbody) tbody.innerHTML = '';
+        document.getElementById('approveLocName').textContent = '';
+    });
 });
 
 // ─── Pengajuan Unit (ADD_UNIT, dll) ─────────────────────────────────

@@ -65,9 +65,9 @@ class UnitAuditRequestModel extends Model
     {
         $builder = $this->db->table('unit_audit_requests uar');
         $builder->select('uar.*,
-            COALESCE(iu.no_unit, iu.no_unit_na, (SELECT iu2.no_unit FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.unit_id")) AS UNSIGNED) LIMIT 1)) as no_unit,
+            COALESCE(iu.no_unit, iu.no_unit_na, (SELECT iu2.no_unit FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(uar.proposed_data, \'{}\'), "$.unit_id")) AS UNSIGNED) LIMIT 1)) as no_unit,
             iu.no_unit_na,
-            COALESCE(iu.serial_number, (SELECT iu2.serial_number FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.unit_id")) AS UNSIGNED) LIMIT 1)) as serial_number,
+            COALESCE(iu.serial_number, (SELECT iu2.serial_number FROM inventory_unit iu2 WHERE iu2.id_inventory_unit = CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(uar.proposed_data, \'{}\'), "$.unit_id")) AS UNSIGNED) LIMIT 1)) as serial_number,
             iu.lokasi_unit,
             c.customer_name,
             c.customer_code,
@@ -77,7 +77,7 @@ class UnitAuditRequestModel extends Model
             CONCAT(reviewer.first_name, " ", COALESCE(reviewer.last_name, "")) as reviewer_name,
             k.no_kontrak,
             COALESCE(
-                (SELECT cl_loc.location_name FROM customer_locations cl_loc WHERE cl_loc.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(uar.proposed_data, "$.customer_location_id")) AS UNSIGNED) LIMIT 1),
+                (SELECT cl_loc.location_name FROM customer_locations cl_loc WHERE cl_loc.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(COALESCE(uar.proposed_data, \'{}\'), "$.customer_location_id")) AS UNSIGNED) LIMIT 1),
                 (SELECT cl_ku.location_name FROM kontrak_unit ku_loc JOIN customer_locations cl_ku ON cl_ku.id = ku_loc.customer_location_id WHERE ku_loc.kontrak_id = uar.kontrak_id LIMIT 1)
             ) as lokasi_kontrak')
             ->join('customers c', 'c.id = uar.customer_id', 'left')

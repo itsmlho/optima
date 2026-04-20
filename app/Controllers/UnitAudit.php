@@ -1361,29 +1361,44 @@ class UnitAudit extends BaseController
         if (!$userId) {
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
+        if (!$this->hasPermission('marketing.audit_approval.navigation')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Anda tidak memiliki akses untuk melakukan approval'])->setStatusCode(403);
+        }
 
         try {
             $db = \Config\Database::connect();
 
-            // Check if location exists and is pending
-            $location = $db->table('customer_locations')->where('id', $id)->get()->getRowArray();
-            if (!$location) {
+            // Check if location exists (pre-check, no lock yet)
+            $locationCheck = $db->table('customer_locations')->where('id', $id)->get()->getRowArray();
+            if (!$locationCheck) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Lokasi tidak ditemukan']);
             }
-            if ($location['approval_status'] !== 'PENDING') {
+
+            $notes      = $this->request->getPost('notes') ?? '';
+            $kontrakId  = $this->request->getPost('kontrak_id');
+            $unitPrices = $this->request->getPost('unit_prices'); // JSON: { request_id: price }
+
+            $kontrakInfo = null;
+            if ($kontrakId) {
+                $kontrakInfo = $db->table('kontrak')->where('id', $kontrakId)->get()->getRowArray();
+            }
+
+            $db->transStart();
+
+            // Re-fetch with FOR UPDATE inside transaction to prevent race condition
+            $location = $db->query('SELECT * FROM customer_locations WHERE id = ? FOR UPDATE', [(int) $id])->getRowArray();
+            if (!$location || $location['approval_status'] !== 'PENDING') {
+                $db->transRollback();
                 return $this->response->setJSON(['success' => false, 'message' => 'Lokasi sudah diproses']);
             }
 
-            $notes = $this->request->getPost('notes') ?? '';
-
-            // Get ADD_UNIT requests for this location (match by id or by customer_id+location_name)
+            // Fetch ADD_UNIT requests for this location (inside transaction for consistency)
             $addUnits = $db->table('unit_audit_requests')
                 ->where('request_type', 'ADD_UNIT')
                 ->where('status', 'SUBMITTED')
-                ->get()
-                ->getResultArray();
+                ->get()->getResultArray();
             $addUnitsForLoc = [];
-            $locKey = $location ? ((int) $location['customer_id'] . '|' . ($location['location_name'] ?? '')) : null;
+            $locKey = (int) $location['customer_id'] . '|' . ($location['location_name'] ?? '');
             foreach ($addUnits as $au) {
                 $proposed = json_decode($au['proposed_data'] ?? '{}', true);
                 $locId = isset($proposed['customer_location_id']) ? (int) $proposed['customer_location_id'] : null;
@@ -1399,16 +1414,6 @@ class UnitAudit extends BaseController
                     $addUnitsForLoc[] = $au;
                 }
             }
-
-            $kontrakId = $this->request->getPost('kontrak_id');
-            $unitPrices = $this->request->getPost('unit_prices'); // JSON: { request_id: price } - hanya yang di-include
-
-            $kontrakInfo = null;
-            if ($kontrakId) {
-                $kontrakInfo = $db->table('kontrak')->where('id', $kontrakId)->get()->getRowArray();
-            }
-
-            $db->transStart();
 
             // Approve location
             $db->table('customer_locations')->where('id', $id)->update([
@@ -1431,6 +1436,19 @@ class UnitAudit extends BaseController
                     $unitId = isset($proposed['unit_id']) ? (int) $proposed['unit_id'] : null;
                     if ($unitId) {
                         $hargaSewa = isset($prices[$reqId]) ? (float) $prices[$reqId] : (isset($prices[(string)$reqId]) ? (float) $prices[(string)$reqId] : 0);
+                        // Validate harga_sewa: non-spare unit must have a price > 0
+                        if (!$isSpare && $hargaSewa <= 0) {
+                            log_message('warning', 'approveLocationRequest: ADD_UNIT #' . $reqId . ' harga_sewa=0 for non-spare unit, rejecting');
+                            $db->table('unit_audit_requests')->where('id', $reqId)->update([
+                                'status'       => 'REJECTED',
+                                'reviewed_by'  => $userId,
+                                'reviewed_at'  => date('Y-m-d H:i:s'),
+                                'review_notes' => 'Harga sewa tidak valid (harus > 0 untuk unit non-spare)',
+                                'updated_at'   => date('Y-m-d H:i:s'),
+                            ]);
+                            $unitsRejected++;
+                            continue;
+                        }
                         $isSpare = !empty($proposed['is_spare']);
                         $tanggalMulai = $kontrakInfo['tanggal_mulai'] ?? date('Y-m-d');
                         $tanggalSelesai = $kontrakInfo['tanggal_berakhir'] ?? null;
@@ -1442,7 +1460,20 @@ class UnitAudit extends BaseController
                                 ->select('id, status, audit_number')
                                 ->where('id', (int) $proposed['linked_release_id'])
                                 ->get()->getRowArray();
-                            if ($releaseRow && $releaseRow['status'] !== 'APPROVED') {
+                            if (!$releaseRow) {
+                                // Paired release request no longer exists — reject to avoid dangling reference
+                                log_message('warning', 'approveLocationRequest: ADD_UNIT #' . $reqId . ' paired release_id ' . $proposed['linked_release_id'] . ' not found, rejecting');
+                                $db->table('unit_audit_requests')->where('id', $reqId)->update([
+                                    'status'       => 'REJECTED',
+                                    'reviewed_by'  => $userId,
+                                    'reviewed_at'  => date('Y-m-d H:i:s'),
+                                    'review_notes' => 'Request transfer berpasangan tidak ditemukan',
+                                    'updated_at'   => date('Y-m-d H:i:s'),
+                                ]);
+                                $unitsRejected++;
+                                continue;
+                            }
+                            if ($releaseRow['status'] !== 'APPROVED') {
                                 // Leave as SUBMITTED; skip so Marketing can approve release first
                                 log_message('info', 'approveLocationRequest: ADD_UNIT #' . $reqId . ' skipped, linked release not yet APPROVED');
                                 continue;
@@ -1492,10 +1523,13 @@ class UnitAudit extends BaseController
                             $db->table('kontrak_unit')->insert($insertData);
                             $unitIdsAlreadyAdded[] = $unitId;
 
-                            // Fix #1: sync inventory_unit status when unit enters contract via location approval
-                            $db->table('inventory_unit')
+                            // Sync inventory_unit status; log warning if no rows updated (unit may not exist)
+                            $invUpdated = $db->table('inventory_unit')
                                ->where('id_inventory_unit', $unitId)
                                ->update(['status_unit_id' => $isSpare ? 15 : 7]); // 15=SPARE, 7=RENTAL_ACTIVE
+                            if (!$invUpdated || $db->affectedRows() === 0) {
+                                log_message('warning', 'approveLocationRequest: inventory_unit not updated for unit_id=' . $unitId . ' — row may not exist');
+                            }
 
                             $db->table('unit_audit_requests')->where('id', $reqId)->update([
                                 'status'       => 'APPROVED',
@@ -1553,6 +1587,9 @@ class UnitAudit extends BaseController
         $userId = session()->get('user_id');
         if (!$userId) {
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
+        }
+        if (!$this->hasPermission('marketing.audit_approval.navigation')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Anda tidak memiliki akses untuk melakukan penolakan'])->setStatusCode(403);
         }
 
         try {

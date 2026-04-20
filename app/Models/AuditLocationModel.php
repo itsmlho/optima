@@ -1119,7 +1119,12 @@ class AuditLocationModel extends Model
                     $itemsModel->update($item['id'], $updateData);
                 } else {
                     // Insert new item (ADD_UNIT - unit kurang)
-                    if ($result === 'ADD_UNIT' && !empty($item['unit_id'])) {
+                    if ($result === 'ADD_UNIT') {
+                        if (empty($item['unit_id'])) {
+                            // unit_id is required for ADD_UNIT — skip and log rather than insert invalid row
+                            log_message('warning', "submitAuditResults: ADD_UNIT item missing unit_id for audit_id={$id}, skipping");
+                            continue;
+                        }
                         $itemsModel->insert([
                             'audit_location_id'   => $id,
                             'kontrak_unit_id'     => null,
@@ -1190,6 +1195,13 @@ class AuditLocationModel extends Model
         $db->transStart();
 
         try {
+            // Re-check status inside transaction with FOR UPDATE to prevent double-approval race condition
+            $locked = $db->query('SELECT status FROM unit_audit_locations WHERE id = ? FOR UPDATE', [$id])->getRowArray();
+            if (!$locked || $locked['status'] !== 'PENDING_APPROVAL') {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Audit sudah diproses'];
+            }
+
             // Use kontrak_id from existing audit record
             $kontrakId = $audit['kontrak_id'];
 
@@ -1489,6 +1501,28 @@ class AuditLocationModel extends Model
             $this->update($id, ['status' => 'APPROVED']);
             return ['success' => true, 'message' => 'Tidak ada selisih. Audit ditandai sebagai verifikasi selesai tanpa perlu approval Marketing.', 'no_approval' => true];
         }
+
+        // Validate: every MISMATCH_NO_UNIT item must have a reason in notes JSON
+        $items = $this->db->table('unit_audit_location_items')
+            ->where('audit_location_id', $id)
+            ->where('result', 'MISMATCH_NO_UNIT')
+            ->get()->getResultArray();
+
+        foreach ($items as $item) {
+            $notes = $item['notes'] ?? '';
+            $decoded = null;
+            if ($notes && str_starts_with(trim($notes), '{')) {
+                $decoded = json_decode($notes, true);
+            }
+            $reasons = $decoded['reasons'] ?? [];
+            if (empty($reasons)) {
+                return [
+                    'success' => false,
+                    'message' => 'Terdapat unit dengan hasil "No Unit Berbeda" yang belum memiliki alasan. Harap lengkapi alasan (UNIT_SWAP / LOCATION_MISMATCH) sebelum mengirim ke Marketing.',
+                ];
+            }
+        }
+
         $this->update($id, ['status' => 'PENDING_APPROVAL']);
         return ['success' => true, 'message' => 'Audit dikirim ke Marketing untuk approval', 'no_approval' => false];
     }
