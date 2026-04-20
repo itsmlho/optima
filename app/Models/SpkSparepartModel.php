@@ -29,7 +29,8 @@ class SpkSparepartModel extends Model
         'source_notes',
         'quantity_used',
         'is_additional',
-        'sparepart_validated'
+        'sparepart_validated',
+        'pickup_status'
     ];
 
     protected $useTimestamps = true;

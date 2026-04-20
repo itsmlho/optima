@@ -103,6 +103,19 @@
         .sig { text-align: center; }
         .sig-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 4px; font-size: 9px; color: #555; }
 
+        /* Status badge in print */
+        .sp-status {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 8.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .sp-status-pending  { background: #fff3cd; color: #856404; border: 1px solid #ffe083; }
+        .sp-status-diambil  { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
+        .sp-status-kosong   { background: #f8d7da; color: #842029; border: 1px solid #f1aeb5; }
+
         /* Notes box */
         .notes-box { border: 1px solid #9aa1a7; padding: 8px; margin-bottom: 12px; min-height: 40px; font-size: 10px; }
 
@@ -183,13 +196,15 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th style="width:5%">No</th>
-                    <th style="width:10%">Tipe</th>
-                    <th style="width:35%">Nama Item</th>
-                    <th style="width:8%">Qty</th>
-                    <th style="width:8%">Satuan</th>
-                    <th style="width:14%">Sumber</th>
-                    <th style="width:20%">Catatan</th>
+                    <th style="width:4%">No</th>
+                    <th style="width:9%">Tipe</th>
+                    <th style="width:26%">Nama Item</th>
+                    <th style="width:7%">Qty</th>
+                    <th style="width:6%">Satuan</th>
+                    <th style="width:10%">Sumber</th>
+                    <th style="width:11%">Stage</th>
+                    <th style="width:11%">Status</th>
+                    <th style="width:16%">Catatan</th>
                 </tr>
             </thead>
             <tbody>
@@ -199,7 +214,12 @@
                         <tr>
                             <td class="text-center"><?= $no++ ?></td>
                             <td class="text-center"><?= esc(strtoupper($item['item_type'] ?? 'SPAREPART')) ?></td>
-                            <td><?= esc($item['sparepart_name'] ?? '-') ?></td>
+                            <td>
+                                <?php if (!empty($item['sparepart_code'])): ?>
+                                    <small style="font-size:8.5px;color:#666;"><?= esc($item['sparepart_code']) ?></small><br>
+                                <?php endif; ?>
+                                <?= esc($item['sparepart_name'] ?? '-') ?>
+                            </td>
                             <td class="text-center"><?= esc($item['quantity_brought'] ?? 0) ?></td>
                             <td class="text-center"><?= esc(strtoupper($item['satuan'] ?? 'PCS')) ?></td>
                             <td class="text-center">
@@ -209,6 +229,34 @@
                                 if ($source === 'KANIBAL' && !empty($item['source_unit_no'])) {
                                     echo '<br><small style="font-size:9px;color:#555;">Unit: ' . esc($item['source_unit_no']) . '</small>';
                                 }
+                                ?>
+                            </td>
+                            <td class="text-center">
+                                <?php
+                                $stageMap = [
+                                    'persiapan_unit' => 'Persiapan',
+                                    'fabrikasi'      => 'Fabrikasi',
+                                    'painting'       => 'Painting',
+                                    'pdi'            => 'PDI',
+                                ];
+                                $stageName = $item['stage_name'] ?? '';
+                                echo esc($stageMap[$stageName] ?? ($stageName ?: '-'));
+                                ?>
+                            </td>
+                            <td class="text-center">
+                                <?php
+                                $pStatus = strtoupper($item['pickup_status'] ?? 'PENDING');
+                                $pClass  = match($pStatus) {
+                                    'DIAMBIL' => 'sp-status sp-status-diambil',
+                                    'KOSONG'  => 'sp-status sp-status-kosong',
+                                    default   => 'sp-status sp-status-pending',
+                                };
+                                $pLabel  = match($pStatus) {
+                                    'DIAMBIL' => 'Diambil',
+                                    'KOSONG'  => 'Kosong',
+                                    default   => 'Menunggu',
+                                };
+                                echo '<span class="' . $pClass . '">' . $pLabel . '</span>';
                                 ?>
                             </td>
                             <td style="font-size:10px;">
@@ -224,7 +272,7 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="7" class="text-center" style="padding:20px; font-style:italic; color:#999;">
+                        <td colspan="9" class="text-center" style="padding:20px; font-style:italic; color:#999;">
                             Tidak ada sparepart yang direncanakan
                         </td>
                     </tr>
@@ -243,17 +291,22 @@
         <!-- Signature Section -->
         <table class="table" style="margin-top:30px;">
             <tr>
-                <td style="width:33%; text-align:center; height:80px; vertical-align:top;">
+                <td style="width:25%; text-align:center; height:80px; vertical-align:top;">
                     <strong>Diminta Oleh</strong><br>
                     <small style="color:#555;">(Service)</small>
                     <div class="sig-line">Nama &amp; Tanggal</div>
                 </td>
-                <td style="width:33%; text-align:center; height:80px; vertical-align:top;">
+                <td style="width:25%; text-align:center; height:80px; vertical-align:top;">
+                    <strong>Mengetahui</strong><br>
+                    <small style="color:#555;">(Head Service)</small>
+                    <div class="sig-line">Nama &amp; Tanggal</div>
+                </td>
+                <td style="width:25%; text-align:center; height:80px; vertical-align:top;">
                     <strong>Disetujui Oleh</strong><br>
                     <small style="color:#555;">(Warehouse)</small>
                     <div class="sig-line">Nama &amp; Tanggal</div>
                 </td>
-                <td style="width:33%; text-align:center; height:80px; vertical-align:top;">
+                <td style="width:25%; text-align:center; height:80px; vertical-align:top;">
                     <strong>Diterima Oleh</strong><br>
                     <small style="color:#555;">(Service)</small>
                     <div class="sig-line">Nama &amp; Tanggal</div>
