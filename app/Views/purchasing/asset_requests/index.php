@@ -46,13 +46,14 @@
             <table id="tblAssetRequests" class="table table-hover align-middle mb-0 w-100">
                 <thead class="table-light">
                     <tr>
-                        <th>STOCK No</th>
+                        <th>STOCK No / No Saat Ini</th>
+                        <th>Jenis Request</th>
                         <th>Unit</th>
                         <th>Serial Number</th>
                         <th>Diminta Oleh</th>
                         <th>Tgl Request</th>
                         <th>Status</th>
-                        <th>Nomor Aset</th>
+                        <th>Nomor Aset / Baru</th>
                         <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -179,6 +180,13 @@ $(document).ready(function () {
                 }
             },
             {
+                data: 'request_type',
+                render: function (data) {
+                    if (data === 'CHANGE') return '<span class="badge badge-soft-orange">CHANGE</span>';
+                    return '<span class="badge badge-soft-blue">NEW</span>';
+                }
+            },
+            {
                 data: 'merk_unit',
                 render: function (data, type, row) {
                     const brand   = data || '-';
@@ -207,8 +215,13 @@ $(document).ready(function () {
             },
             {
                 data: 'assigned_no_unit',
-                render: function (data) {
-                    return data ? '<span class="badge badge-soft-green">' + data + '</span>' : '<span class="text-muted">-</span>';
+                render: function (data, type, row) {
+                    if (data) return '<span class="badge badge-soft-green">' + data + '</span>';
+                    // For pending CHANGE, show requested number
+                    if (row.status === 'PENDING' && row.request_type === 'CHANGE' && row.requested_no_unit) {
+                        return '<span class="badge badge-soft-yellow" title="Nomor yang diminta">→ ' + row.requested_no_unit + '</span>';
+                    }
+                    return '<span class="text-muted">-</span>';
                 }
             },
             {
@@ -217,8 +230,10 @@ $(document).ready(function () {
                 className: 'text-center',
                 render: function (data, type, row) {
                     if (row.status !== 'PENDING') return '<span class="text-muted">-</span>';
+                    const reqType = row.request_type || 'NEW';
+                    const reqNo   = row.requested_no_unit || '';
                     return '<div class="d-flex gap-1 justify-content-center">'
-                        + '<button class="btn btn-success btn-sm btn-approve" data-id="' + row.id + '" data-stock="' + row.stock_number + '">'
+                        + '<button class="btn btn-success btn-sm btn-approve" data-id="' + row.id + '" data-stock="' + row.stock_number + '" data-reqtype="' + reqType + '" data-reqno="' + reqNo + '">'
                         + '<i class="fas fa-check me-1"></i>Setujui</button>'
                         + '<button class="btn btn-outline-danger btn-sm btn-reject" data-id="' + row.id + '" data-stock="' + row.stock_number + '">'
                         + '<i class="fas fa-times me-1"></i>Tolak</button>'
@@ -256,42 +271,55 @@ $(document).ready(function () {
 
     // ── Approve button (delegate) ────────────────────────────
     $('#tblAssetRequests').on('click', '.btn-approve', function () {
-        $('#approveRequestId').val($(this).data('id'));
-        $('#approveStockLabel').text($(this).data('stock'));
+        const id          = $(this).data('id');
+        const stock       = $(this).data('stock');
+        const reqType     = $(this).data('reqtype') || 'NEW';
+        const reqNo       = $(this).data('reqno') || '';
+        $('#approveRequestId').val(id);
+        $('#approveStockLabel').text(stock);
         $('#approveAssetNumber').val('');
         $('#approvedSuggestedNumber').val('');
-        $('#lastNoUnitInfo').html('<i class="fas fa-spinner fa-spin text-muted me-2"></i><span class="small text-muted">Memuat nomor terakhir...</span>');
-        $('#btnUseSuggested').prop('disabled', true);
+        // Show context-aware info based on request type
+        if (reqType === 'CHANGE') {
+            $('#lastNoUnitInfo').html(
+                '<i class="fas fa-exchange-alt text-warning me-2"></i>'
+                + '<span class="small">Ganti nomor dari <strong>' + stock + '</strong> ke <strong>' + (reqNo || '?') + '</strong> (diminta warehouse)</span>'
+            );
+            $('#approveAssetNumber').val(reqNo); // pre-fill with requested number
+            $('#btnUseSuggested').prop('disabled', true);
+        } else {
+            $('#lastNoUnitInfo').html('<i class="fas fa-spinner fa-spin text-muted me-2"></i><span class="small text-muted">Memuat nomor terakhir...</span>');
+            $('#btnUseSuggested').prop('disabled', true);
+            // Fetch last no_unit + suggestion for NEW type
+            $.ajax({
+                url: approveBaseUrl + 'suggest-number',
+                type: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        const last    = res.last_no_unit || '-';
+                        const suggest = res.suggested    || '';
+                        $('#approvedSuggestedNumber').val(suggest);
+                        $('#lastNoUnitInfo').html(
+                            '<i class="fas fa-tag text-primary me-2"></i>'
+                            + '<span class="small">'
+                            + 'No. aset terakhir: <strong class="text-dark">' + last + '</strong>'
+                            + ' &nbsp;|&nbsp; '
+                            + 'Saran berikutnya: <strong class="text-success">' + suggest + '</strong>'
+                            + '</span>'
+                        );
+                        $('#btnUseSuggested').prop('disabled', false);
+                    } else {
+                        $('#lastNoUnitInfo').html('<i class="fas fa-exclamation-circle text-warning me-2"></i><span class="small text-muted">Tidak dapat memuat nomor terakhir.</span>');
+                    }
+                },
+                error: function () {
+                    $('#lastNoUnitInfo').html('<i class="fas fa-exclamation-circle text-danger me-2"></i><span class="small text-muted">Gagal memuat nomor terakhir.</span>');
+                }
+            });
+        }
 
         $('#modalApprove').modal('show');
-
-        // Fetch last no_unit + suggestion
-        $.ajax({
-            url: approveBaseUrl + 'suggest-number',
-            type: 'GET',
-            dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    const last    = res.last_no_unit || '-';
-                    const suggest = res.suggested    || '';
-                    $('#approvedSuggestedNumber').val(suggest);
-                    $('#lastNoUnitInfo').html(
-                        '<i class="fas fa-tag text-primary me-2"></i>'
-                        + '<span class="small">'
-                        + 'No. aset terakhir: <strong class="text-dark">' + last + '</strong>'
-                        + ' &nbsp;|&nbsp; '
-                        + 'Saran berikutnya: <strong class="text-success">' + suggest + '</strong>'
-                        + '</span>'
-                    );
-                    $('#btnUseSuggested').prop('disabled', false);
-                } else {
-                    $('#lastNoUnitInfo').html('<i class="fas fa-exclamation-circle text-warning me-2"></i><span class="small text-muted">Tidak dapat memuat nomor terakhir.</span>');
-                }
-            },
-            error: function () {
-                $('#lastNoUnitInfo').html('<i class="fas fa-exclamation-circle text-danger me-2"></i><span class="small text-muted">Gagal memuat nomor terakhir.</span>');
-            }
-        });
     });
 
     // "Gunakan Saran" button

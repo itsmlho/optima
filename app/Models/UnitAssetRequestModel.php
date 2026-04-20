@@ -14,8 +14,8 @@ class UnitAssetRequestModel extends Model
     protected $protectFields    = true;
     protected $allowedFields    = [
         'id_inventory_unit',
-        'stock_number',
-        'status',
+        'stock_number',        'request_type',
+        'requested_no_unit',        'status',
         'requested_by',
         'requested_at',
         'reviewed_by',
@@ -39,12 +39,36 @@ class UnitAssetRequestModel extends Model
     }
 
     /**
+     * Check if a unit already has a PENDING CHANGE request.
+     */
+    public function hasPendingChangeRequest(int $unitId): bool
+    {
+        return $this->where('id_inventory_unit', $unitId)
+                    ->where('status', 'PENDING')
+                    ->where('request_type', 'CHANGE')
+                    ->countAllResults() > 0;
+    }
+
+    /**
      * Get pending request for a specific unit (for display on unit detail).
      */
     public function getPendingForUnit(int $unitId): ?array
     {
         return $this->where('id_inventory_unit', $unitId)
                     ->where('status', 'PENDING')
+                    ->where('request_type', 'NEW')
+                    ->orderBy('created_at', 'DESC')
+                    ->first();
+    }
+
+    /**
+     * Get pending CHANGE request for a specific unit.
+     */
+    public function getPendingChangeForUnit(int $unitId): ?array
+    {
+        return $this->where('id_inventory_unit', $unitId)
+                    ->where('status', 'PENDING')
+                    ->where('request_type', 'CHANGE')
                     ->orderBy('created_at', 'DESC')
                     ->first();
     }
@@ -58,6 +82,7 @@ class UnitAssetRequestModel extends Model
             ->select([
                 'r.*',
                 'iu.serial_number',
+                'iu.no_unit AS current_no_unit',
                 'mu.merk_unit',
                 'mu.model_unit',
                 'tu.jenis AS unit_jenis',

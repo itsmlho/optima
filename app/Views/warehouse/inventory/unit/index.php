@@ -375,11 +375,9 @@ $(document).ready(function() {
                 orderable: false,
                 className: 'text-end pe-3',
                 render: function (data, type, row) {
-                    return `
-                        <a href="<?= base_url('warehouse/inventory/unit/') ?>${row.id_inventory_unit}" class="btn btn-sm btn-light text-primary hover-shadow" data-bs-toggle="tooltip" title="View Details">
-                            <i class="fas fa-chevron-right"></i>
-                        </a>
-                    `;
+                    return `<a href="<?= base_url('warehouse/inventory/unit/') ?>${row.id_inventory_unit}" class="btn btn-sm btn-light text-primary hover-shadow" data-bs-toggle="tooltip" title="View Details">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>`;
                 }
             }
         ],
@@ -449,6 +447,7 @@ $(document).ready(function() {
         const breakdownSoldCount = (stats.under_repair||0) + (stats.sold||0);
         $('#count-breakdown-sold').text(breakdownSoldCount);
     }
+
 });
 </script>
 <style>

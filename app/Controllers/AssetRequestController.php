@@ -155,12 +155,21 @@ class AssetRequestController extends BaseController
 
             $userId = session()->get('user_id') ?? null;
 
-            // Update inventory_unit: set no_unit, clear no_unit_na, change status to AVAILABLE_STOCK (1)
-            $this->inventoryUnitModel->update((int)$request['id_inventory_unit'], [
-                'no_unit'        => $assignedNoUnit,
-                'no_unit_na'     => null,
-                'status_unit_id' => 1, // AVAILABLE_STOCK
-            ]);
+            $requestType = $request['request_type'] ?? 'NEW';
+
+            if ($requestType === 'CHANGE') {
+                // CHANGE: only update no_unit — don't touch no_unit_na or status
+                $this->inventoryUnitModel->update((int)$request['id_inventory_unit'], [
+                    'no_unit' => $assignedNoUnit,
+                ]);
+            } else {
+                // NEW: set no_unit, clear no_unit_na, change status to AVAILABLE_STOCK (1)
+                $this->inventoryUnitModel->update((int)$request['id_inventory_unit'], [
+                    'no_unit'        => $assignedNoUnit,
+                    'no_unit_na'     => null,
+                    'status_unit_id' => 1, // AVAILABLE_STOCK
+                ]);
+            }
 
             // Update request record
             $this->assetRequestModel->update($id, [
@@ -201,11 +210,15 @@ class AssetRequestController extends BaseController
 
             $rejectNotes = trim($this->request->getPost('reject_notes') ?? '');
             $userId      = session()->get('user_id') ?? null;
+            $requestType = $request['request_type'] ?? 'NEW';
 
-            // Clear STOCK number from unit so it can be re-requested
-            $this->inventoryUnitModel->update((int)$request['id_inventory_unit'], [
-                'no_unit_na' => null,
-            ]);
+            if ($requestType !== 'CHANGE') {
+                // For NEW requests only: clear STOCK number so unit can re-request
+                $this->inventoryUnitModel->update((int)$request['id_inventory_unit'], [
+                    'no_unit_na' => null,
+                ]);
+            }
+            // For CHANGE requests: don't modify no_unit — original number stays as-is
 
             // Update request record
             $this->assetRequestModel->update($id, [

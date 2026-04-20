@@ -994,10 +994,12 @@ $routes->group('warehouse', static function ($routes) {
             $routes->get('(:num)/movements',        'Warehouse\UnitInventoryController::getMovementHistory/$1');
             $routes->get('(:num)/print',            'Warehouse\UnitInventoryController::printUnit/$1');
             $routes->post('(:num)/inline-update',   'Warehouse\UnitInventoryController::inlineUpdate/$1');
-            $routes->post('(:num)/book',            'Warehouse\UnitInventoryController::bookUnit/$1');
-            $routes->post('(:num)/scrap',           'Warehouse\UnitInventoryController::scrapUnit/$1');
-            $routes->post('(:num)/change-status',   'Warehouse\UnitInventoryController::changeStatus/$1');
-            $routes->post('(:num)/request-asset',   'Warehouse\UnitInventoryController::requestAsset/$1');
+            $routes->post('(:num)/book',              'Warehouse\UnitInventoryController::bookUnit/$1');
+            $routes->post('(:num)/scrap',             'Warehouse\UnitInventoryController::scrapUnit/$1');
+            $routes->post('(:num)/change-status',     'Warehouse\UnitInventoryController::changeStatus/$1');
+            $routes->post('(:num)/request-asset',     'Warehouse\UnitInventoryController::requestAsset/$1');
+            $routes->post('(:num)/delete',            'Warehouse\UnitInventoryController::deleteUnit/$1');
+            $routes->post('(:num)/request-no-change', 'Warehouse\UnitInventoryController::requestNoUnitChange/$1');
         });
         $routes->get('get-unit-detail/(:num)', 'Warehouse::getUnitDetail/$1');
         $routes->get('get-unit-full-detail/(:num)', 'Warehouse::getUnitFullDetail/$1'); // Full detail with all joins

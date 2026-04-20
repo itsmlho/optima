@@ -68,9 +68,12 @@
 </div>
 <?= $this->endSection() ?>
 
+<?= $this->section('css') ?><?= $this->endSection() ?>
+
 <?= $this->section('javascript') ?>
 <script>
 (() => {
+    const BASE_URL = '<?= base_url() ?>';
     const entitySelector = document.getElementById('entitySelector');
     const info = document.getElementById('entityInfo');
     const head = document.getElementById('masterDataHead');
@@ -90,20 +93,58 @@
     let mode = 'create';
     let selectedId = null;
     let dataTableInstance = null;
+    const fkOptionsCache = {};
+
+    // ── Utility ──────────────────────────────────────────────────────────────
+
+    function currentEntity() { return entitySelector.value; }
+
+    function escHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])
+        );
+    }
+
+    /** Convert a DB field name to a human-readable label. FK fields use their display_label. */
+    function fieldLabel(fieldName, fkDef) {
+        if (fkDef) return fkDef.display_label || fieldName;
+        return fieldName.replace(/_id$/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    async function fetchJson(url, options = {}) {
+        const res = await fetch(url, options);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+            throw new Error(data.message || `HTTP ${res.status}`);
+        }
+        return data;
+    }
+
+    // ── FK options cache ──────────────────────────────────────────────────────
+
+    async function loadFkOptions(entityKey) {
+        if (fkOptionsCache[entityKey]) return fkOptionsCache[entityKey];
+        try {
+            const resp = await fetchJson(`${BASE_URL}master-data/options/${entityKey}`);
+            const opts = (resp.data || []).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+            fkOptionsCache[entityKey] = opts;
+            return opts;
+        } catch (e) {
+            return [];
+        }
+    }
+
+    // ── Select2 for entity selector ───────────────────────────────────────────
 
     function initEntitySelect2() {
         if (!(window.jQuery && $.fn && $.fn.select2)) return false;
         const $entity = $('#entitySelector');
-        if ($entity.data('select2')) {
-            $entity.select2('destroy');
-        }
+        if ($entity.data('select2')) $entity.select2('destroy');
         $entity.select2({
             width: '100%',
             placeholder: 'Cari entitas master...',
-            allowClear: false
+            allowClear: false,
         });
-
-        // Bind to Select2 events (native change sometimes not fired consistently)
         $entity.off('select2:select.masterdata change.masterdata');
         $entity.on('select2:select.masterdata', () => loadSchemaAndData());
         $entity.on('change.masterdata', () => loadSchemaAndData());
@@ -112,15 +153,14 @@
 
     function ensureSelect2Ready(attempt = 0) {
         if (initEntitySelect2()) return;
-        if (attempt >= 40) return; // ~4s max retry
+        if (attempt >= 40) return;
         setTimeout(() => ensureSelect2Ready(attempt + 1), 100);
     }
 
+    // ── Modal helpers ─────────────────────────────────────────────────────────
+
     function showModalSafe() {
-        if (modal) {
-            modal.show();
-            return;
-        }
+        if (modal) { modal.show(); return; }
         modalElement.classList.add('show');
         modalElement.style.display = 'block';
         modalElement.removeAttribute('aria-hidden');
@@ -129,16 +169,15 @@
     }
 
     function hideModalSafe() {
-        if (modal) {
-            modal.hide();
-            return;
-        }
+        if (modal) { modal.hide(); return; }
         modalElement.classList.remove('show');
         modalElement.style.display = 'none';
         modalElement.setAttribute('aria-hidden', 'true');
         modalElement.removeAttribute('aria-modal');
         document.body.classList.remove('modal-open');
     }
+
+    // ── Notify helpers ────────────────────────────────────────────────────────
 
     function notifyOk(message) {
         if (window.OptimaNotify?.success) return OptimaNotify.success(message);
@@ -150,18 +189,7 @@
         alert(message);
     }
 
-    function currentEntity() {
-        return entitySelector.value;
-    }
-
-    async function fetchJson(url, options = {}) {
-        const res = await fetch(url, options);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) {
-            throw new Error(data.message || `HTTP ${res.status}`);
-        }
-        return data;
-    }
+    // ── DataTable ─────────────────────────────────────────────────────────────
 
     function destroyDataTableSafe() {
         if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable('#masterDataTable')) {
@@ -181,9 +209,7 @@
             pageLength: 25,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             order: [[0, 'desc']],
-            columnDefs: [
-                { orderable: false, targets: -1, searchable: false }
-            ],
+            columnDefs: [{ orderable: false, targets: -1, searchable: false }],
             language: {
                 search: 'Search:',
                 lengthMenu: 'Show _MENU_ entries',
@@ -195,30 +221,42 @@
         });
     }
 
+    // ── Render table ──────────────────────────────────────────────────────────
+
     function renderTable() {
         if (!schema) return;
         destroyDataTableSafe();
 
-        const fields = schema.fields || [];
+        // Exclude virtual __label columns from column structure
+        const displayFields = (schema.fields || []).filter(f => !f.name.endsWith('__label'));
+        const fk = schema.fk || {};
         const pk = schema.pk;
 
         head.innerHTML = `<tr>
-            ${fields.map(f => `<th>${f.name}</th>`).join('')}
+            ${displayFields.map(f => `<th>${escHtml(fieldLabel(f.name, fk[f.name]))}</th>`).join('')}
             <th class="md-actions">Aksi</th>
         </tr>`;
 
         if (!rows.length) {
-            body.innerHTML = `<tr><td class="text-center text-muted" colspan="${fields.length + 1}">Tidak ada data.</td></tr>`;
+            body.innerHTML = `<tr><td class="text-center text-muted" colspan="${displayFields.length + 1}">Tidak ada data.</td></tr>`;
             return;
         }
 
         body.innerHTML = rows.map(row => {
-            const cols = fields.map(f => `<td class="md-cell">${row[f.name] ?? ''}</td>`).join('');
+            const cols = displayFields.map(f => {
+                let val = row[f.name] ?? '';
+                // For FK columns, show the resolved label value instead of the raw ID
+                const labelKey = f.name + '__label';
+                if (fk[f.name] && row[labelKey] !== undefined) {
+                    val = row[labelKey] !== null ? row[labelKey] : '-';
+                }
+                return `<td class="md-cell">${escHtml(String(val))}</td>`;
+            }).join('');
             return `<tr>
                 ${cols}
                 <td class="md-actions">
-                    <button class="btn btn-sm btn-outline-primary md-btn me-1" data-action="edit" data-id="${row[pk]}"><i class="fas fa-pen me-1"></i>Edit</button>
-                    <button class="btn btn-sm btn-outline-danger md-btn" data-action="delete" data-id="${row[pk]}"><i class="fas fa-trash me-1"></i>Delete</button>
+                    <button class="btn btn-sm btn-outline-primary md-btn me-1" data-action="edit" data-id="${escHtml(String(row[pk]))}"><i class="fas fa-pen me-1"></i>Edit</button>
+                    <button class="btn btn-sm btn-outline-danger md-btn" data-action="delete" data-id="${escHtml(String(row[pk]))}"><i class="fas fa-trash me-1"></i>Delete</button>
                 </td>
             </tr>`;
         }).join('');
@@ -226,65 +264,101 @@
         initDataTableSafe();
     }
 
-    function buildForm(row = null) {
+    // ── Build form ────────────────────────────────────────────────────────────
+
+    async function buildForm(row = null) {
         if (!schema) return;
         const pk = schema.pk;
+        const fk = schema.fk || {};
         const fields = (schema.fields || []).filter(f =>
             !f.primary_key &&
             f.name !== pk &&
-            !['created_at', 'updated_at', 'deleted_at'].includes(f.name)
+            !['created_at', 'updated_at', 'deleted_at'].includes(f.name) &&
+            !f.name.endsWith('__label')
         );
 
         form.innerHTML = fields.map(f => {
             const value = row ? (row[f.name] ?? '') : '';
+            const label = escHtml(fieldLabel(f.name, fk[f.name]));
+            const required = f.nullable ? '' : 'required';
+            const requiredMark = f.nullable ? '' : ' <span class="text-danger">*</span>';
+
+            if (fk[f.name]) {
+                // Render a <select> placeholder; options populated asynchronously below
+                return `<div class="col-md-6">
+                    <label class="form-label fw-semibold">${label}${requiredMark}</label>
+                    <select class="form-select" name="${f.name}" id="fk_sel_${f.name}" ${required}>
+                        <option value="">-- Pilih ${label} --</option>
+                    </select>
+                </div>`;
+            }
+
             const inputType = (f.type.includes('int') || f.type.includes('decimal') || f.type.includes('float')) ? 'number' : 'text';
-            const step = f.type.includes('decimal') || f.type.includes('float') ? 'step="any"' : '';
+            const step = (f.type.includes('decimal') || f.type.includes('float')) ? 'step="any"' : '';
+            const safeVal = String(value).replace(/"/g, '&quot;');
             return `<div class="col-md-6">
-                <label class="form-label">${f.name}</label>
-                <input type="${inputType}" ${step} class="form-control" name="${f.name}" value="${String(value).replace(/"/g, '&quot;')}" ${f.nullable ? '' : 'required'}>
+                <label class="form-label fw-semibold">${label}</label>
+                <input type="${inputType}" ${step} class="form-control" name="${f.name}" value="${safeVal}" ${required}>
             </div>`;
         }).join('');
+
+        // Populate FK <select> dropdowns asynchronously
+        for (const [fieldName, fkDef] of Object.entries(fk)) {
+            const select = form.querySelector(`#fk_sel_${fieldName}`);
+            if (!select) continue;
+            const currentVal = row ? String(row[fieldName] ?? '') : '';
+            const options = await loadFkOptions(fkDef.entity);
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.id;
+                el.textContent = opt.name;
+                if (String(opt.id) === currentVal) el.selected = true;
+                select.appendChild(el);
+            });
+        }
     }
+
+    // ── Load schema + data ────────────────────────────────────────────────────
 
     async function loadSchemaAndData() {
         const entity = currentEntity();
         if (!entity) return;
 
         try {
-            const schemaResp = await fetchJson(`<?= base_url('master-data/schema') ?>/${entity}`);
+            const schemaResp = await fetchJson(`${BASE_URL}master-data/schema/${entity}`);
             schema = schemaResp.data;
+
+            const listResp = await fetchJson(`${BASE_URL}master-data/list/${entity}`);
+            rows = listResp.data || [];
+            if (listResp.meta?.effective_pk) schema.pk = listResp.meta.effective_pk;
+
             info.innerHTML = `<div class="md-entity-meta">
-                <span class="md-badge">Entity: ${schema.entity}</span>
-                <span class="md-badge">Table: ${schema.table}</span>
-                <span class="md-badge">PK: ${schema.pk}</span>
+                <span class="md-badge">Entity: ${escHtml(schema.entity)}</span>
+                <span class="md-badge">Table: ${escHtml(schema.table)}</span>
+                <span class="md-badge">PK: ${escHtml(schema.pk)}</span>
                 <span class="md-badge">Rows: ${rows.length}</span>
             </div>`;
 
-            const listResp = await fetchJson(`<?= base_url('master-data/list') ?>/${entity}`);
-            rows = listResp.data || [];
-            if (listResp.meta?.effective_pk) {
-                schema.pk = listResp.meta.effective_pk;
-            }
             renderTable();
         } catch (e) {
             destroyDataTableSafe();
-            schema = null;
-            rows = [];
+            schema = null; rows = [];
             head.innerHTML = '';
-            body.innerHTML = `<tr><td class="text-danger text-center">Gagal memuat data: ${e.message}</td></tr>`;
+            body.innerHTML = `<tr><td class="text-danger text-center">Gagal memuat data: ${escHtml(e.message)}</td></tr>`;
             info.innerHTML = '';
         }
     }
 
-    btnRefresh.addEventListener('click', loadSchemaAndData);
-    // change handler attached via Select2 initEntitySelect2()
+    // ── Event listeners ───────────────────────────────────────────────────────
 
-    btnAdd.addEventListener('click', () => {
+    btnRefresh.addEventListener('click', loadSchemaAndData);
+
+    btnAdd.addEventListener('click', async () => {
         if (!schema) return;
         mode = 'create';
         selectedId = null;
         modalTitle.textContent = `Tambah Data - ${schema.title}`;
-        buildForm();
+        await buildForm();
         showModalSafe();
     });
 
@@ -301,7 +375,7 @@
             mode = 'update';
             selectedId = id;
             modalTitle.textContent = `Edit Data - ${schema.title}`;
-            buildForm(row);
+            await buildForm(row);
             showModalSafe();
             return;
         }
@@ -309,7 +383,7 @@
         if (action === 'delete') {
             if (!confirm('Yakin hapus data ini?')) return;
             try {
-                await fetchJson(`<?= base_url('master-data/delete') ?>/${currentEntity()}/${id}`, { method: 'DELETE' });
+                await fetchJson(`${BASE_URL}master-data/delete/${currentEntity()}/${id}`, { method: 'DELETE' });
                 notifyOk('Data berhasil dihapus');
                 await loadSchemaAndData();
             } catch (err) {
@@ -324,8 +398,8 @@
         const entity = currentEntity();
         const isUpdate = mode === 'update' && selectedId !== null;
         const url = isUpdate
-            ? `<?= base_url('master-data/update') ?>/${entity}/${selectedId}`
-            : `<?= base_url('master-data/create') ?>/${entity}`;
+            ? `${BASE_URL}master-data/update/${entity}/${selectedId}`
+            : `${BASE_URL}master-data/create/${entity}`;
         const method = isUpdate ? 'PUT' : 'POST';
 
         try {

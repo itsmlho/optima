@@ -391,7 +391,11 @@ class UnitInventoryController extends BaseController
             'active_booking'       => $active_booking,
             'silo'                 => $silo,
             'public_view_url'      => $publicViewUrl,
-            'pending_asset_request' => (new UnitAssetRequestModel())->getPendingForUnit((int) $id),
+            'pending_asset_request'    => (new UnitAssetRequestModel())->getPendingForUnit((int) $id),
+            'pending_no_change_request' => (new UnitAssetRequestModel())->getPendingChangeForUnit((int) $id),
+            'model_unit_options'        => $lookup['model_unit'] ?? [],
+            'tipe_unit_options'           => $lookup['tipe_unit'] ?? [],
+            'departemen_options'          => $this->getDepartemenOptions(),
         ]);
     }
 
@@ -559,11 +563,13 @@ class UnitInventoryController extends BaseController
 
         // Only allow these spec fields to be changed inline
         $allowed = [
+            'serial_number', 'model_unit_id',
+            'tipe_unit_id', 'departemen_id', 'tahun_unit',
             'model_mast_id', 'tinggi_mast', 'sn_mast',
             'model_mesin_id', 'sn_mesin',
             'ban_id', 'roda_id', 'valve_id',
             'kapasitas_unit_id',
-            'fuel_type', 'ownership_status',
+            'fuel_type',
             'hour_meter',
             'keterangan',
         ];
@@ -1761,6 +1767,164 @@ class UnitInventoryController extends BaseController
             ]);
         } catch (\Throwable $e) {
             log_message('error', '[UnitInventoryController::requestAsset] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  DELETE UNIT (Warehouse only — hard delete)
+    // ──────────────────────────────────────────────────────
+
+    /**
+     * POST warehouse/inventory/unit/{id}/delete
+     * Permanently delete a unit. Warehouse permission only.
+     * Blocked if unit has active contracts, open work orders, or is in active rental.
+     */
+    public function deleteUnit(int $id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request.']);
+        }
+
+        $permissions = get_global_permission('warehouse');
+        if (!($permissions['delete'] ?? false)) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak. Hanya user Warehouse yang dapat menghapus unit.']);
+        }
+
+        $unit = $this->inventoryUnitModel->find($id);
+        if (!$unit) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
+        }
+
+        $statusId = (int)$unit['status_unit_id'];
+
+        // Block if unit is actively in use
+        if (in_array($statusId, [4, 5, 6, 7, 8], true)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'success' => false,
+                'message' => 'Unit tidak dapat dihapus karena sedang dalam status aktif (In Preparation / Ready / In Delivery / Rental).',
+            ]);
+        }
+
+        $db = Database::connect();
+
+        // Block if unit has any active contract
+        $activeContract = $db->table('kontrak_unit')
+            ->where('unit_id', $id)
+            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+            ->countAllResults();
+        if ($activeContract > 0) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'success' => false,
+                'message' => 'Unit tidak dapat dihapus karena masih terikat kontrak aktif.',
+            ]);
+        }
+
+        // Block if unit has open work order
+        if ($db->tableExists('work_orders')) {
+            $openWO = $db->table('work_orders')
+                ->where('unit_id', $id)
+                ->whereNotIn('status', ['COMPLETED', 'CANCELLED', 'CLOSED'])
+                ->countAllResults();
+            if ($openWO > 0) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak dapat dihapus karena masih memiliki Work Order yang belum selesai.',
+                ]);
+            }
+        }
+
+        try {
+            $unitNumber = $unit['no_unit'] ?? $unit['no_unit_na'] ?? "ID #{$id}";
+
+            // Log before delete (activity log)
+            $this->logDelete('inventory_unit', $id, $unit, [
+                'module_name'     => 'warehouse',
+                'description'     => "Unit {$unitNumber} dihapus permanen oleh " . (session()->get('username') ?? 'unknown'),
+                'business_impact' => 'CRITICAL',
+                'is_critical'     => true,
+            ]);
+
+            $this->inventoryUnitModel->delete($id);
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => "Unit {$unitNumber} berhasil dihapus.",
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[UnitInventoryController::deleteUnit] ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  REQUEST NO UNIT CHANGE (Warehouse → Purchasing approval)
+    // ──────────────────────────────────────────────────────
+
+    /**
+     * POST warehouse/inventory/unit/{id}/request-no-change
+     * Warehouse requests to change no_unit. Requires Purchasing approval.
+     */
+    public function requestNoUnitChange(int $id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request.']);
+        }
+
+        try {
+            $unit = $this->inventoryUnitModel->find($id);
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
+            }
+
+            if (empty($unit['no_unit'])) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit belum memiliki nomor unit resmi. Gunakan "Request Nomor Aset".']);
+            }
+
+            $requestedNo = trim($this->request->getPost('requested_no_unit') ?? '');
+            if ($requestedNo === '') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Nomor unit baru tidak boleh kosong.']);
+            }
+            if ($requestedNo === $unit['no_unit']) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Nomor unit baru sama dengan nomor saat ini.']);
+            }
+
+            // Check requested number not already in use by another unit
+            $db = Database::connect();
+            $exists = $db->table('inventory_unit')
+                ->where('no_unit', $requestedNo)
+                ->where('id_inventory_unit !=', $id)
+                ->countAllResults();
+            if ($exists > 0) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Nomor unit ' . $requestedNo . ' sudah digunakan oleh unit lain.']);
+            }
+
+            $assetRequestModel = new UnitAssetRequestModel();
+
+            if ($assetRequestModel->hasPendingChangeRequest($id)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Sudah ada permintaan perubahan nomor unit yang sedang menunggu persetujuan.']);
+            }
+
+            $userId = session()->get('user_id') ?? null;
+
+            $assetRequestModel->insert([
+                'id_inventory_unit' => $id,
+                'stock_number'      => $unit['no_unit'],
+                'request_type'      => 'CHANGE',
+                'requested_no_unit' => $requestedNo,
+                'status'            => 'PENDING',
+                'requested_by'      => $userId,
+                'requested_at'      => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'message'   => 'Permintaan perubahan nomor unit dari ' . $unit['no_unit'] . ' ke ' . $requestedNo . ' berhasil diajukan ke Purchasing.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[UnitInventoryController::requestNoUnitChange] ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
         }
     }

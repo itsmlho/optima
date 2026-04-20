@@ -4,7 +4,8 @@
 helper('global_permission');
 helper('accessory');
 $permissions = get_global_permission('warehouse');
-$can_edit = $permissions['edit'];
+$can_edit   = $permissions['edit'];
+$can_delete = $permissions['delete'];
 
 // Setup status badges
 // status_unit_id canonical mapping:
@@ -109,6 +110,22 @@ if ($aksesorisRaw) {
                 <i class="fas fa-tag me-1"></i>Request Nomor Aset
             </button>
             <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($can_edit && $hasAssetNumber): ?>
+            <?php if (!empty($pending_no_change_request)): ?>
+            <button type="button" class="btn btn-outline-warning btn-sm" disabled title="Permintaan ganti nomor unit sedang diproses Purchasing">
+                <i class="fas fa-hourglass-half me-1"></i>Ganti Nomor (Menunggu)
+            </button>
+            <?php else: ?>
+            <button type="button" class="btn btn-outline-warning btn-sm" onclick="openChangeNoUnitModal()">
+                <i class="fas fa-exchange-alt me-1"></i>Ganti Nomor Unit
+            </button>
+            <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($can_delete): ?>
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteUnit()">
+            <i class="fas fa-trash-alt me-1"></i>Hapus Unit
+        </button>
         <?php endif; ?>
     </div>
 </div>
@@ -389,28 +406,126 @@ if ($aksesorisRaw) {
                         </div>
                         <?php endif; ?>
 
-                        <div class="row g-3">
-                            <!-- ── Engine, Mast & Tyres (Inline Editable) ── -->
+                        <div class="row g-3" id="card-specs">
+                            <!-- ── Edit Specs toolbar (shared by both cards) ── -->
+                            <?php if($can_edit): ?>
+                            <div class="col-12 d-flex justify-content-end gap-1 mb-n2">
+                                <button class="btn btn-sm btn-outline-primary" id="btnEditSpecs" onclick="toggleSpecEdit(true)">
+                                    <i class="fas fa-pencil-alt me-1"></i>Edit Specs
+                                </button>
+                                <button class="btn btn-sm btn-primary d-none" id="btnSaveSpecs" onclick="saveSpecsInline()">
+                                    <i class="fas fa-save me-1"></i>Save
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary d-none" id="btnCancelSpecs" onclick="toggleSpecEdit(false)">
+                                    Cancel
+                                </button>
+                            </div>
+                            <?php endif; ?>
+
+                            <!-- ── Card 1: Unit Information ── -->
                             <div class="col-12">
-                                <div class="card" id="card-specs">
-                                    <div class="card-header bg-light d-flex align-items-center justify-content-between py-2">
+                                <div class="card">
+                                    <div class="card-header bg-light py-2">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-id-card me-2 text-primary"></i>
+                                            <strong>Unit Information</strong>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="row g-0">
+                                            <!-- ── Left Column ── -->
+                                            <div class="col-md-6 border-end">
+                                                <div class="px-3 pt-3 pb-2">
+                                                    <p class="small fw-semibold text-muted border-bottom pb-1 mb-2">
+                                                        <i class="fas fa-hashtag me-1 text-primary"></i>Identity
+                                                    </p>
+                                                </div>
+                                                <ul class="list-group list-group-flush small">
+                                                    <!-- No Unit (locked) -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                                                        <span class="text-muted">No Unit</span>
+                                                        <span class="fw-bold font-monospace"><?= esc($unitNo) ?> <i class="fas fa-lock ms-1 small text-muted"></i></span>
+                                                    </li>
+                                                    <!-- Serial Number -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted">Serial Number</span>
+                                                        <span class="fw-bold font-monospace spec-view" id="view-serial-number"><?= esc($unit['serial_number'] ?: '-') ?></span>
+                                                        <div class="spec-edit d-none" style="min-width:160px;">
+                                                            <input type="text" name="serial_number" class="form-control form-control-sm" value="<?= esc($unit['serial_number'] ?? '') ?>" placeholder="Serial Number">
+                                                        </div>
+                                                    </li>
+                                                    <!-- Model Unit -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted">Model Unit</span>
+                                                        <span class="fw-bold spec-view" id="view-model-unit"><?= esc(trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? '')) ?: '-') ?></span>
+                                                        <div class="spec-edit d-none" style="min-width:180px;">
+                                                            <select name="model_unit_id" class="form-select form-select-sm">
+                                                                <option value="">-- Select Model --</option>
+                                                                <?php foreach (($model_unit_options ?? []) as $mu): ?>
+                                                                <option value="<?= (int)$mu['id_model_unit'] ?>" <?= ((int)($unit['model_unit_id'] ?? 0) === (int)$mu['id_model_unit']) ? 'selected' : '' ?>><?= esc($mu['merk_unit'] . ' ' . $mu['model_unit']) ?></option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <!-- ── Right Column ── -->
+                                            <div class="col-md-6">
+                                                <div class="px-3 pt-3 pb-2">
+                                                    <p class="small fw-semibold text-muted border-bottom pb-1 mb-2">
+                                                        <i class="fas fa-tag me-1 text-secondary"></i>Classification
+                                                    </p>
+                                                </div>
+                                                <ul class="list-group list-group-flush small">
+                                                    <!-- Tipe Unit -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted">Tipe Unit</span>
+                                                        <span class="fw-bold spec-view" id="view-tipe-unit"><?= esc($unit['nama_tipe_unit'] ?? '-') ?></span>
+                                                        <div class="spec-edit d-none" style="min-width:180px;">
+                                                            <select name="tipe_unit_id" class="form-select form-select-sm">
+                                                                <option value="">-- Select --</option>
+                                                                <?php foreach (($tipe_unit_options ?? []) as $tu): ?>
+                                                                <option value="<?= (int)$tu['id_tipe_unit'] ?>" <?= ((int)($unit['tipe_unit_id'] ?? 0) === (int)$tu['id_tipe_unit']) ? 'selected' : '' ?>><?= esc(trim($tu['tipe'] . ' ' . $tu['jenis'])) ?></option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                        </div>
+                                                    </li>
+                                                    <!-- Department -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted">Department</span>
+                                                        <span class="fw-bold spec-view" id="view-departemen"><?= esc($unit['unit_departemen'] ?? 'Unassigned') ?></span>
+                                                        <div class="spec-edit d-none" style="min-width:160px;">
+                                                            <select name="departemen_id" class="form-select form-select-sm">
+                                                                <option value="">-- Unassigned --</option>
+                                                                <?php foreach (($departemen_options ?? []) as $dep): ?>
+                                                                <option value="<?= (int)$dep['id_departemen'] ?>" <?= ((int)($unit['departemen_id'] ?? 0) === (int)$dep['id_departemen']) ? 'selected' : '' ?>><?= esc($dep['nama_departemen']) ?></option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                        </div>
+                                                    </li>
+                                                    <!-- Year of Make -->
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted">Year of Make</span>
+                                                        <span class="fw-bold spec-view" id="view-tahun"><?= esc($unit['tahun_unit'] ?: '-') ?></span>
+                                                        <div class="spec-edit d-none" style="min-width:100px;">
+                                                            <input type="number" name="tahun_unit" class="form-control form-control-sm text-end" min="1990" max="2050" value="<?= esc($unit['tahun_unit'] ?? '') ?>" placeholder="Year">
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── Card 2: Technical Specifications ── -->
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-light py-2">
                                         <h6 class="mb-0">
                                             <i class="fas fa-cogs me-2 text-secondary"></i>
-                                            <strong>Technical Specifications — Engine, Mast & Tyres</strong>
+                                            <strong>Technical Specifications &mdash; Engine, Mast &amp; Tyres</strong>
                                         </h6>
-                                        <?php if($can_edit): ?>
-                                        <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-outline-primary" id="btnEditSpecs" onclick="toggleSpecEdit(true)">
-                                                <i class="fas fa-pencil-alt me-1"></i>Edit Specs
-                                            </button>
-                                            <button class="btn btn-sm btn-primary d-none" id="btnSaveSpecs" onclick="saveSpecsInline()">
-                                                <i class="fas fa-save me-1"></i>Save
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary d-none" id="btnCancelSpecs" onclick="toggleSpecEdit(false)">
-                                                Cancel
-                                            </button>
-                                        </div>
-                                        <?php endif; ?>
                                     </div>
                                     <div class="card-body p-0">
                                         <div class="row g-0">
@@ -487,37 +602,6 @@ if ($aksesorisRaw) {
                                                                 <?php endforeach; ?>
                                                             </select>
                                                         </div>
-                                                    </li>
-                                                    <!-- Ownership Status -->
-                                                    <?php
-                                                    $ownRaw = $unit['ownership_status'] ?? '';
-                                                    $ownBadge = ['OWNED'=>'success','LEASED'=>'warning','CONSIGNMENT'=>'info'];
-                                                    $ownCls   = $ownBadge[$ownRaw] ?? 'secondary';
-                                                    ?>
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        <span class="text-muted">Ownership</span>
-                                                        <!-- VIEW -->
-                                                        <span class="spec-view" id="view-ownership">
-                                                            <?php if($ownRaw): ?>
-                                                            <span class="badge bg-<?= $ownCls ?>"><?= esc($ownRaw) ?></span>
-                                                            <?php else: ?>
-                                                            <span class="text-muted">-</span>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                        <!-- EDIT -->
-                                                        <div class="spec-edit d-none" style="min-width:150px;">
-                                                            <select name="ownership_status" class="form-select form-select-sm">
-                                                                <option value="">-- Select --</option>
-                                                                <?php foreach(['OWNED','LEASED','CONSIGNMENT'] as $os): ?>
-                                                                <option value="<?= $os ?>" <?= ($unit['ownership_status'] ?? '') === $os ? 'selected' : '' ?>><?= $os ?></option>
-                                                                <?php endforeach; ?>
-                                                            </select>
-                                                        </div>
-                                                    </li>
-                                                    <!-- Year of Make (read-only) -->
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
-                                                        <span class="text-muted">Year of Make</span>
-                                                        <span class="fw-bold"><?= esc($unit['tahun_unit'] ?: '-') ?></span>
                                                     </li>
                                                     <!-- Asset Tag (read-only) -->
                                                     <?php if(!empty($unit['asset_tag'])): ?>
@@ -881,35 +965,6 @@ if ($aksesorisRaw) {
     <!-- Sidebar (Right) -->
     <div class="col-lg-3">
 
-        <!-- Quick Info Card -->
-        <div class="card shadow-sm mb-3">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i><strong>Unit Info</strong></h6>
-            </div>
-            <div class="card-body p-3">
-                <dl class="row mb-0 small">
-                    <dt class="col-5 text-muted">ID Unit</dt>
-                    <dd class="col-7 fw-bold"><?= esc($unitNo) ?></dd>
-
-                    <dt class="col-5 text-muted">System ID</dt>
-                    <dd class="col-7 font-monospace">INT-<?= esc($unit['id_inventory_unit']) ?></dd>
-
-                    <dt class="col-5 text-muted">Status</dt>
-                    <dd class="col-7">
-                        <span class="badge bg-<?= $badgeClass ?>"><?= esc($unit['status_unit_name'] ?? 'Unknown') ?></span>
-                    </dd>
-
-                    <div class="col-12 my-2"><hr class="m-0 text-muted opacity-25"></div>
-
-                    <dt class="col-5 text-muted">Brand</dt>
-                    <dd class="col-7 fw-bold"><?= esc($brand ?: '—') ?></dd>
-
-                    <dt class="col-5 text-muted">Model</dt>
-                    <dd class="col-7 fw-bold"><?= esc($model ?: '—') ?></dd>
-                </dl>
-            </div>
-        </div>
-
         <?php if(!empty($public_view_url)): ?>
         <?php
         $barcodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . rawurlencode($public_view_url);
@@ -1010,6 +1065,43 @@ if ($aksesorisRaw) {
                     <i class="fas fa-download me-1"></i>Download SILO
                 </a>
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: GANTI NOMOR UNIT (Request to Purchasing)
+══════════════════════════════════════════════════════════ -->
+<?php if ($can_edit && $hasAssetNumber && empty($pending_no_change_request)): ?>
+<div class="modal fade" id="modal-change-no-unit" tabindex="-1" aria-labelledby="modalChangeNoUnitLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalChangeNoUnitLabel"><i class="fas fa-exchange-alt me-2"></i>Ganti Nomor Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small mb-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Permintaan ini akan dikirim ke <strong>Purchasing</strong> untuk disetujui.
+                    Nomor unit tidak akan berubah sampai disetujui.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nomor Unit Saat Ini</label>
+                    <input type="text" class="form-control" value="<?= esc($unit['no_unit']) ?>" disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nomor Unit Baru <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="requestedNoUnit" placeholder="Masukkan nomor unit baru">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-warning" onclick="submitNoUnitChange()">
+                    <i class="fas fa-paper-plane me-1"></i>Ajukan ke Purchasing
+                </button>
             </div>
         </div>
     </div>
@@ -1420,6 +1512,11 @@ if ($aksesorisRaw) {
 
         let data = {
             <?= json_encode(csrf_token()) ?>: $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content'),
+            serial_number    : $('input[name="serial_number"]').val(),
+            model_unit_id    : $('select[name="model_unit_id"]').val(),
+            tipe_unit_id     : $('select[name="tipe_unit_id"]').val(),
+            departemen_id    : $('select[name="departemen_id"]').val(),
+            tahun_unit       : $('input[name="tahun_unit"]').val(),
             model_mesin_id   : $('select[name="model_mesin_id"]').val(),
             sn_mesin         : $('input[name="sn_mesin"]').val(),
             kapasitas_unit_id: $('select[name="kapasitas_unit_id"]').val(),
@@ -1450,6 +1547,11 @@ if ($aksesorisRaw) {
                     OptimaNotify.success(res.message, 'Saved');
 
                     // Refresh view spans
+                    $('#view-serial-number').text($('input[name="serial_number"]').val() || '-');
+                    $('#view-model-unit').text($('select[name="model_unit_id"] option:selected').text().trim() || '-');
+                    $('#view-tipe-unit').text($('select[name="tipe_unit_id"] option:selected').text().trim() || '-');
+                    $('#view-departemen').text($('select[name="departemen_id"] option:selected').text().trim() || 'Unassigned');
+                    $('#view-tahun').text($('input[name="tahun_unit"]').val() || '-');
                     $('#view-mesin').text($('select[name="model_mesin_id"] option:selected').text().trim() || '-');
                     $('#view-sn-mesin').text($('input[name="sn_mesin"]').val() || '-');
                     $('#view-kapasitas').text($('select[name="kapasitas_unit_id"] option:selected').text().trim() || '-');
@@ -1463,10 +1565,6 @@ if ($aksesorisRaw) {
 
                     let ft = $('select[name="fuel_type"] option:selected').val();
                     $('#view-fuel').html(ft ? '<span class="badge bg-warning text-white">' + ft + '</span>' : '<span class="text-muted">-</span>');
-
-                    let os = $('select[name="ownership_status"] option:selected').val();
-                    let osCls = {OWNED:'success', LEASED:'warning', CONSIGNMENT:'info'}[os] || 'secondary';
-                    $('#view-ownership').html(os ? '<span class="badge bg-' + osCls + '">' + os + '</span>' : '<span class="text-muted">-</span>');
 
                     let rd = $('select[name="roda_id"] option:selected').text().trim();
                     $('#view-roda').text(rd || '-');
@@ -1975,5 +2073,69 @@ if ($aksesorisRaw) {
         });
     }
     window.requestAssetNumber = requestAssetNumber;
+
+    // ── GANTI NOMOR UNIT (Request to Purchasing) ─────────
+    function openChangeNoUnitModal() {
+        $('#requestedNoUnit').val('');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-change-no-unit')).show();
+    }
+    window.openChangeNoUnitModal = openChangeNoUnitModal;
+
+    function submitNoUnitChange() {
+        const requested = $('#requestedNoUnit').val().trim();
+        if (!requested) {
+            if (window.OptimaNotify) OptimaNotify.warning('Nomor unit baru tidak boleh kosong.');
+            return;
+        }
+
+        $.ajax({
+            url: <?= json_encode(base_url('warehouse/inventory/unit/' . ($unit['id_inventory_unit'] ?? 0) . '/request-no-change')) ?>,
+            type: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: { [window.csrfTokenName]: window.csrfTokenValue, requested_no_unit: requested },
+            dataType: 'json',
+            success: function(res) {
+                if (res.success) {
+                    if (res.csrf_hash) window.csrfTokenValue = res.csrf_hash;
+                    if (window.OptimaNotify) OptimaNotify.success(res.message || 'Permintaan berhasil diajukan.');
+                    bootstrap.Modal.getInstance(document.getElementById('modal-change-no-unit'))?.hide();
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal mengajukan permintaan.');
+                }
+            },
+            error: function() {
+                if (window.OptimaNotify) OptimaNotify.error('Terjadi kesalahan jaringan.');
+            }
+        });
+    }
+    window.submitNoUnitChange = submitNoUnitChange;
+
+    // ── DELETE UNIT (Hard Delete) ─────────────────────────
+    function deleteUnit() {
+        const unitLabel = <?= json_encode($unit['no_unit'] ?? $unit['no_unit_na'] ?? ('Unit #' . ($unit['id_inventory_unit'] ?? ''))) ?>;
+        if (!confirm('Hapus unit ' + unitLabel + ' secara permanen?\n\nTindakan ini tidak dapat dibatalkan!')) return;
+
+        $.ajax({
+            url: <?= json_encode(base_url('warehouse/inventory/unit/' . ($unit['id_inventory_unit'] ?? 0) . '/delete')) ?>,
+            type: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: { [window.csrfTokenName]: window.csrfTokenValue },
+            dataType: 'json',
+            success: function(res) {
+                if (res.success) {
+                    if (window.OptimaNotify) OptimaNotify.success(res.message || 'Unit berhasil dihapus.');
+                    setTimeout(function() { window.location.href = <?= json_encode(base_url('warehouse/inventory/unit')) ?>; }, 1500);
+                } else {
+                    if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal menghapus unit.');
+                }
+            },
+            error: function(xhr) {
+                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan jaringan.';
+                if (window.OptimaNotify) OptimaNotify.error(msg);
+            }
+        });
+    }
+    window.deleteUnit = deleteUnit;
 </script>
 <?= $this->endSection() ?>

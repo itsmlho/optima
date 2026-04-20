@@ -128,10 +128,10 @@
     font-weight: bold !important;
 }
 
-/* Fix modal z-index issues */
-.select2-container {
-    z-index: 9999 !important;
-}
+/* Note: .select2-dropdown already has z-index:10000 (above modal backdrop 1050).
+ * Do NOT set z-index on .select2-container — the static container should stay in
+ * normal stacking order so it does not float above Bootstrap modals.
+ * For Select2 fields inside a modal, pass dropdownParent to the modal element. */
 
 /* Placeholder styling */
 .select2-container--default .select2-selection--single .select2-selection__placeholder,

@@ -7,12 +7,27 @@ class MasterDataController extends BaseController
     protected $db;
     protected array $entityRegistry = [
         'departemen' => ['table' => 'departemen', 'pk' => 'id_departemen', 'title' => 'Departemen'],
-        'tipe_unit' => ['table' => 'tipe_unit', 'pk' => 'id_tipe_unit', 'title' => 'Tipe Unit'],
+        'tipe_unit' => [
+            'table' => 'tipe_unit', 'pk' => 'id_tipe_unit', 'title' => 'Tipe Unit',
+            'fk' => [
+                'id_departemen' => ['entity' => 'departemen', 'table' => 'departemen', 'pk' => 'id_departemen', 'label' => 'nama_departemen', 'display_label' => 'Departemen'],
+            ],
+        ],
         // NOTE: In this codebase, "Jenis Unit" is effectively represented by `tipe_unit.jenis`
         // (see Purchasing quick-add flow which uses tipeUnitModel).
         // The standalone `jenis_unit` table may be empty/unused, so we map to `tipe_unit` to avoid confusion.
-        'jenis_unit' => ['table' => 'tipe_unit', 'pk' => 'id_tipe_unit', 'title' => 'Jenis Unit (tipe_unit)'],
-        'model_unit' => ['table' => 'model_unit', 'pk' => 'id_model_unit', 'title' => 'Model Unit'],
+        'jenis_unit' => [
+            'table' => 'tipe_unit', 'pk' => 'id_tipe_unit', 'title' => 'Jenis Unit (tipe_unit)',
+            'fk' => [
+                'id_departemen' => ['entity' => 'departemen', 'table' => 'departemen', 'pk' => 'id_departemen', 'label' => 'nama_departemen', 'display_label' => 'Departemen'],
+            ],
+        ],
+        'model_unit' => [
+            'table' => 'model_unit', 'pk' => 'id_model_unit', 'title' => 'Model Unit',
+            'fk' => [
+                'departemen_id' => ['entity' => 'departemen', 'table' => 'departemen', 'pk' => 'id_departemen', 'label' => 'nama_departemen', 'display_label' => 'Departemen'],
+            ],
+        ],
         'kapasitas' => ['table' => 'kapasitas', 'pk' => 'id_kapasitas', 'title' => 'Kapasitas'],
         'tipe_mast' => ['table' => 'tipe_mast', 'pk' => 'id_mast', 'title' => 'Tipe Mast'],
         'tipe_ban' => ['table' => 'tipe_ban', 'pk' => 'id_ban', 'title' => 'Tipe Ban'],
@@ -22,7 +37,12 @@ class MasterDataController extends BaseController
         'attachment' => ['table' => 'attachment', 'pk' => 'id_attachment', 'title' => 'Attachment'],
         'baterai' => ['table' => 'baterai', 'pk' => 'id', 'title' => 'Baterai'],
         'charger' => ['table' => 'charger', 'pk' => 'id_charger', 'title' => 'Charger'],
-        'mesin' => ['table' => 'mesin', 'pk' => 'id', 'title' => 'Mesin'],
+        'mesin' => [
+            'table' => 'mesin', 'pk' => 'id', 'title' => 'Mesin',
+            'fk' => [
+                'departemen_id' => ['entity' => 'departemen', 'table' => 'departemen', 'pk' => 'id_departemen', 'label' => 'nama_departemen', 'display_label' => 'Departemen'],
+            ],
+        ],
         'status_attachment' => ['table' => 'status_attachment', 'pk' => 'id', 'title' => 'Status Attachment'],
         'inventory_status' => ['table' => 'inventory_status', 'pk' => 'id', 'title' => 'Inventory Status'],
         'work_order_category' => ['table' => 'work_order_categories', 'pk' => 'id', 'title' => 'Work Order Category'],
@@ -88,6 +108,7 @@ class MasterDataController extends BaseController
                 'pk' => $entity['pk'],
                 'title' => $entity['title'],
                 'fields' => $this->tableFields($entity['table']),
+                'fk' => $entity['fk'] ?? [],
             ],
         ]);
     }
@@ -108,8 +129,22 @@ class MasterDataController extends BaseController
         $fields = $this->tableFields($entity['table']);
         $effectivePk = $this->resolveEffectivePk($entity['pk'], $fields);
         $limit = max(1, min(500, (int) ($this->request->getGet('limit') ?? 200)));
-        $builder = $this->db->table($entity['table']);
-        $rows = $builder->orderBy($effectivePk, 'DESC')->limit($limit)->get()->getResultArray();
+
+        $fk = $entity['fk'] ?? [];
+        if (!empty($fk)) {
+            $tbl = $entity['table'];
+            $builder = $this->db->table("{$tbl} t");
+            $selectParts = ['t.*'];
+            foreach ($fk as $col => $fkDef) {
+                $joinAlias = 'fk_' . preg_replace('/[^a-z0-9]/i', '_', $col);
+                $selectParts[] = "`{$joinAlias}`.`{$fkDef['label']}` AS `{$col}__label`";
+                $builder->join("{$fkDef['table']} {$joinAlias}", "`{$joinAlias}`.`{$fkDef['pk']}` = t.`{$col}`", 'left');
+            }
+            $builder->select(implode(', ', $selectParts));
+            $rows = $builder->orderBy("t.{$effectivePk}", 'DESC')->limit($limit)->get()->getResultArray();
+        } else {
+            $rows = $this->db->table($entity['table'])->orderBy($effectivePk, 'DESC')->limit($limit)->get()->getResultArray();
+        }
 
         return $this->response->setJSON([
             'success' => true,
