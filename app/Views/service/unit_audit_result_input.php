@@ -166,10 +166,37 @@ $items = $audit['items'] ?? [];
                                     <option value="MISMATCH_SPARE" <?= ($item['result'] ?? '') == 'MISMATCH_SPARE' ? 'selected' : '' ?>>Status Spare Berbeda</option>
                                     <option value="ADD_UNIT" <?= ($item['result'] ?? '') == 'ADD_UNIT' ? 'selected' : '' ?>>Tambah Unit (Kurang)</option>
                                 </select>
-                                <input type="text" class="form-control form-control-sm mt-1"
-                                    name="items[<?= $item['id'] ?>][notes]"
-                                    value="<?= $item['notes'] ?? '' ?>"
+                                <?php
+                                // Parse existing notes to pre-fill reason + keterangan
+                                $rawNotes     = $item['notes'] ?? '';
+                                $existReason  = '';
+                                $existKet     = $rawNotes;
+                                if ($rawNotes && str_starts_with(trim($rawNotes), '{')) {
+                                    $dec = json_decode($rawNotes, true);
+                                    if ($dec) {
+                                        $existReason = $dec['reasons'][0] ?? '';
+                                        $existKet    = $dec['keterangan'] ?? '';
+                                    }
+                                }
+                                $isMismatch = ($item['result'] ?? '') === 'MISMATCH_NO_UNIT';
+                                ?>
+                                <!-- Reason selector — only visible when MISMATCH_NO_UNIT -->
+                                <div class="mismatch-reason-wrap mt-1" style="<?= $isMismatch ? '' : 'display:none' ?>">
+                                    <select class="form-select form-select-sm mismatch-reason-select border-warning"
+                                        <?= $isMismatch ? 'required' : '' ?>>
+                                        <option value="">-- Pilih Alasan --</option>
+                                        <option value="UNIT_SWAP"         <?= $existReason === 'UNIT_SWAP'         ? 'selected' : '' ?>>Unit fisik berbeda / diganti</option>
+                                        <option value="LOCATION_MISMATCH" <?= $existReason === 'LOCATION_MISMATCH' ? 'selected' : '' ?>>Unit berada di lokasi salah</option>
+                                    </select>
+                                </div>
+                                <!-- Notes input (keterangan) — hidden JSON stored separately -->
+                                <input type="text" class="form-control form-control-sm mt-1 notes-keterangan"
+                                    value="<?= esc($existKet) ?>"
                                     placeholder="Catatan">
+                                <!-- Hidden field carries final notes value (plain text or JSON) -->
+                                <input type="hidden" class="notes-json-field"
+                                    name="items[<?= $item['id'] ?>][notes]"
+                                    value="<?= esc($rawNotes) ?>">
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -375,6 +402,29 @@ function markInProgress() {
 }
 
 function saveResults() {
+    // Sync all hidden notes JSON fields before submitting
+    document.querySelectorAll('.result-select').forEach(select => {
+        syncNotesJson(select.closest('tr'));
+    });
+
+    // Validate: MISMATCH_NO_UNIT must have a reason selected
+    let missingReason = false;
+    document.querySelectorAll('.result-select').forEach(select => {
+        if (select.value === 'MISMATCH_NO_UNIT') {
+            const row = select.closest('tr');
+            const reasonSel = row.querySelector('.mismatch-reason-select');
+            if (reasonSel && !reasonSel.value) {
+                missingReason = true;
+                reasonSel.classList.add('is-invalid');
+            }
+        }
+    });
+    if (missingReason) {
+        if (window.OptimaNotify) OptimaNotify.error('Pilih alasan untuk setiap baris "No Unit Berbeda" sebelum menyimpan.');
+        else alert('Pilih alasan untuk setiap baris "No Unit Berbeda" sebelum menyimpan.');
+        return;
+    }
+
     const form = document.getElementById('auditResultForm');
     const formData = new FormData(form);
 
@@ -425,13 +475,28 @@ function submitToMarketing() {
 function checkResult(select) {
     const row = select.closest('tr');
     const result = select.value;
-    const unitCell = row.querySelector('.unit-select-cell');
+    const unitCell   = row.querySelector('.unit-select-cell');
+    const reasonWrap = row.querySelector('.mismatch-reason-wrap');
+    const reasonSel  = row.querySelector('.mismatch-reason-select');
 
     if (result !== 'MATCH') {
         row.classList.add('table-danger');
     } else {
         row.classList.remove('table-danger');
     }
+
+    // Show/require reason selector only for MISMATCH_NO_UNIT
+    if (reasonWrap) {
+        const show = result === 'MISMATCH_NO_UNIT';
+        reasonWrap.style.display = show ? '' : 'none';
+        if (reasonSel) {
+            reasonSel.required = show;
+            if (!show) reasonSel.value = ''; // clear when hidden
+        }
+        // Sync notes JSON when result changes
+        syncNotesJson(row);
+    }
+
     if (unitCell) {
         unitCell.style.visibility = (result === 'EXTRA_UNIT' || result === 'ADD_UNIT') ? 'visible' : 'hidden';
         const unitSelect = unitCell.querySelector('.unit-select-existing');
@@ -439,16 +504,42 @@ function checkResult(select) {
     }
 }
 
-// Initialize - mark non-matching rows and toggle unit select
+/**
+ * Sync the hidden notes JSON field from reason select + keterangan input.
+ * - MISMATCH_NO_UNIT: encode as JSON {"reasons":["REASON"],"keterangan":"...","extra":{}}
+ * - Other results: store keterangan as plain text
+ */
+function syncNotesJson(row) {
+    const resultSel  = row.querySelector('.result-select');
+    const reasonSel  = row.querySelector('.mismatch-reason-select');
+    const ketInput   = row.querySelector('.notes-keterangan');
+    const hiddenNote = row.querySelector('.notes-json-field');
+    if (!hiddenNote) return;
+
+    const result = resultSel ? resultSel.value : '';
+    const ket    = ketInput  ? ketInput.value.trim() : '';
+
+    if (result === 'MISMATCH_NO_UNIT' && reasonSel) {
+        const reason = reasonSel.value;
+        hiddenNote.value = JSON.stringify({
+            reasons:    reason ? [reason] : [],
+            keterangan: ket,
+            extra:      {}
+        });
+    } else {
+        hiddenNote.value = ket;
+    }
+}
+
+// Initialize - mark non-matching rows, toggle unit select, attach sync listeners
 document.querySelectorAll('.result-select').forEach(select => {
     checkResult(select);
-});
-document.querySelectorAll('.unit-select-cell').forEach(cell => {
-    const row = cell.closest('tr');
-    const resultSelect = row.querySelector('.result-select');
-    if (resultSelect && resultSelect.value !== 'EXTRA_UNIT' && resultSelect.value !== 'ADD_UNIT') {
-        cell.style.visibility = 'hidden';
-    }
+    const row = select.closest('tr');
+    // Attach sync on reason/keterangan change
+    const reasonSel = row.querySelector('.mismatch-reason-select');
+    const ketInput  = row.querySelector('.notes-keterangan');
+    if (reasonSel) reasonSel.addEventListener('change', () => syncNotesJson(row));
+    if (ketInput)  ketInput.addEventListener('input',   () => syncNotesJson(row));
 });
 
 // Auto-calculate summary on total units change

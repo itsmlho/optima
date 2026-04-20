@@ -1520,7 +1520,8 @@ function renderDetailModal(audit) {
                     badgeCls = 'badge-soft-blue';
                 } else {
                     kondisi = 'Perbedaan unit terdeteksi';
-                    tindakan = '<i class="fas fa-info-circle me-1"></i>Dicatat';
+                    tindakan = '<i class="fas fa-exclamation-triangle me-1"></i>Konfirmasi ke customer untuk perubahan unit ini';
+                    badgeCls = 'badge-soft-orange';
                 }
                 break;
             case 'MISMATCH_SPARE':
@@ -1558,6 +1559,7 @@ function renderDetailModal(audit) {
             case 'NO_UNIT_IN_KONTRAK':
                 rowClass = 'table-danger'; break;
             case 'MISMATCH_NO_UNIT':
+                // No reason = incomplete data from mechanic, highlight orange (warning, not error)
                 rowClass = (reason === 'LOCATION_MISMATCH') ? 'table-info' : 'table-warning';
                 // UNIT_SWAP: no price needed — uses existing harga_sewa from the old row
                 break;
