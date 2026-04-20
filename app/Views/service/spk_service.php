@@ -139,8 +139,7 @@ $can_export = true;
                             <th><?= lang('Common.type') ?></th>
                             <th>Source</th>
                             <th><?= lang('Service.company_name') ?></th>
-                            <th><?= lang('App.pic') ?></th>
-                            <th><?= lang('App.contact') ?></th>
+                            <th>Person In Charge (PIC)</th>
                             <th><?= lang('Common.status') ?></th>
                             <th><?= lang('Service.total_units') ?></th>
                             <th data-no-sort><?= lang('Common.action') ?></th>
@@ -591,8 +590,17 @@ document.addEventListener('DOMContentLoaded', () => {
 					}
 				},
 				{ data: 'pelanggan', defaultContent: '-' },
-				{ data: 'pic', defaultContent: '-' },
-				{ data: 'kontak', defaultContent: '-' },
+				{
+					data: 'pic',
+					defaultContent: '-',
+					render: function(data, type, row) {
+						const pic = data || '-';
+						const kontak = row.kontak || '';
+						return kontak
+							? `${pic}<br><small class="text-muted">${kontak}</small>`
+							: pic;
+					}
+				},
 				{ 
 					data: 'status',
 					render: function(data) {
