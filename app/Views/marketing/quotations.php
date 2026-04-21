@@ -810,74 +810,59 @@ window.addEventListener('DOMContentLoaded', function() {
                         <!-- Departemen -->
                         <div class="col-md-6">
                             <label class="form-label">Departemen</label>
-                            <select class="form-select" name="departemen_id" id="tplDepartemenId">
-                                <option value="">-- Pilih Departemen --</option>
-                            </select>
+                            <input type="text" class="form-control" name="departemen_text" id="tplDepartemenText" autocomplete="off" placeholder="Contoh: Electric, IC Diesel">
                         </div>
                         <!-- Tipe Unit -->
                         <div class="col-md-6">
                             <label class="form-label">Tipe Unit</label>
-                            <select class="form-select" name="tipe_unit_id" id="tplTipeUnitId">
-                                <option value="">-- Pilih Tipe Unit --</option>
-                            </select>
+                            <input type="text" class="form-control" name="tipe_unit_text" id="tplTipeUnitText" autocomplete="off" placeholder="Contoh: Counterbalance, Reach Truck">
                         </div>
                         <!-- Kapasitas -->
                         <div class="col-md-6">
                             <label class="form-label">Kapasitas</label>
-                            <select class="form-select" name="kapasitas_id" id="tplKapasitasId">
-                                <option value="">-- Pilih Kapasitas --</option>
-                            </select>
+                            <input type="text" class="form-control" name="kapasitas_text" id="tplKapasitasText" autocomplete="off" placeholder="Contoh: 1.5 Ton, 3 Ton">
                         </div>
                         <!-- Merk/Brand -->
                         <div class="col-md-6">
                             <label class="form-label">Merk / Brand</label>
-                            <select class="form-select" name="brand_id" id="tplBrandId">
-                                <option value="">-- Pilih Merk --</option>
-                            </select>
+                            <input type="text" class="form-control" name="merk_unit_text" id="tplMerkUnitText" autocomplete="off" placeholder="Contoh: Toyota, Komatsu">
                         </div>
-                        <!-- Fork / Attachment -->
-                        <div class="col-md-6">
-                            <label class="form-label">Fork / Attachment</label>
-                            <div class="btn-group w-100 mb-2" role="group" id="tplForkAttachToggle">
-                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptFork" value="fork" checked autocomplete="off">
+                        <!-- Spec Detail Text (stored in [OPTIMA_SPEC_TECH] block in notes) -->
+                        <div class="col-12 mt-2">
+                            <hr class="my-2">
+                            <h6 class="mb-0">Detail Teknis <span class="text-muted small fw-normal">(opsional)</span></h6>
+                            <p class="small text-muted mb-2">Teks deskriptif untuk fork, mast, ban, valve. Disimpan bersama catatan template dan akan disalin ke spesifikasi penawaran.</p>
+                        </div>
+                        <div class="col-12 mb-1">
+                            <label class="form-label d-block">Fork / Attachment</label>
+                            <div class="btn-group w-100 flex-wrap" role="group" id="tplForkAttachToggle">
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptNone" value="none" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="tplOptNone">Tidak Ada</label>
+                                <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptFork" value="fork" autocomplete="off">
                                 <label class="btn btn-outline-primary btn-sm" for="tplOptFork"><i class="fas fa-tools me-1"></i>Fork Standar</label>
                                 <input type="radio" class="btn-check" name="tpl_fork_attach_type" id="tplOptAttachment" value="attachment" autocomplete="off">
                                 <label class="btn btn-outline-success btn-sm" for="tplOptAttachment"><i class="fas fa-paperclip me-1"></i>Attachment</label>
                             </div>
-                            <div id="tplForkSection" style="display:none;">
-                                <select class="form-select" name="fork_id" id="tplForkId">
-                                    <option value="">-- Pilih Jenis Fork --</option>
-                                </select>
-                                <small class="text-muted">Ukuran fork standar</small>
-                            </div>
-                            <div id="tplAttachSection" style="display:none;">
-                                <select class="form-select" name="attachment_id" id="tplAttachmentId">
-                                    <option value="">-- Pilih Jenis Attachment --</option>
-                                </select>
-                                <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
-                            </div>
                         </div>
-                        <!-- Mast (2-level) -->
-                        <div class="col-md-3">
-                            <label class="form-label">Mast (Model)</label>
-                            <select class="form-select" id="tplMastModel">
-                                <option value="">Pilih Model Mast</option>
-                            </select>
+                        <div class="col-md-6" id="tplTextForkWrap" style="display:none;">
+                            <label class="form-label">Detail Fork</label>
+                            <input type="text" class="form-control" id="tplDetailFork" maxlength="500" autocomplete="off" placeholder="Contoh: Fork 1200mm, Kelas A">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Mast (Tinggi)</label>
-                            <select class="form-select" name="mast_id" id="tplMastHeight">
-                                <option value="">Pilih model terlebih dahulu</option>
-                            </select>
-                            <small class="text-muted">Untuk mast custom, tulis di Notes</small>
+                        <div class="col-md-6" id="tplTextAttachWrap" style="display:none;">
+                            <label class="form-label">Detail Attachment</label>
+                            <input type="text" class="form-control" id="tplDetailAttachment" maxlength="500" autocomplete="off" placeholder="Contoh: Side Shifter, Merk XYZ">
                         </div>
-                        <!-- Ban -->
-                        <div class="col-md-6">
-                            <label class="form-label">Tipe Ban</label>
-                            <select class="form-select" name="ban_id" id="tplBanId">
-                                <option value="">-- Pilih Ban --</option>
-                            </select>
-                            <small class="text-muted">Solid atau Pneumatic</small>
+                        <div class="col-md-4">
+                            <label class="form-label">Mast</label>
+                            <input type="text" class="form-control" id="tplDetailMast" maxlength="500" autocomplete="off" placeholder="Contoh: Triplex 6000mm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ban</label>
+                            <input type="text" class="form-control" id="tplDetailBan" maxlength="500" autocomplete="off" placeholder="Contoh: Solid, Pneumatic">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valve</label>
+                            <input type="text" class="form-control" id="tplDetailValve" maxlength="500" autocomplete="off" placeholder="Contoh: 1 Fungsi, 2 Fungsi">
                         </div>
                     </div>
 
@@ -3386,16 +3371,31 @@ function displayQuotationSpecifications(specifications) {
             details.push(`<div class="col-md-3"><small class="text-muted">Model</small><div>${spec.model_unit}</div></div>`);
         }
         
+        // Parse notes: extract [OPTIMA_SPEC_TECH] block for display
+        var specNoteParsed = extractOptimaSpecTechFromNotes(spec.notes || '');
+
         // Technical Specifications
         const techSpecs = [];
         if (spec.valve_name) {
             techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-cog me-1"></i>Valve: ${spec.valve_name}</span>`);
+        } else if (specNoteParsed.detail.valve) {
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-cog me-1"></i>Valve: ${specNoteParsed.detail.valve}</span>`);
         }
         if (spec.mast_name) {
             techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-arrows-alt-v me-1"></i>Mast: ${spec.mast_name}</span>`);
+        } else if (specNoteParsed.detail.mast) {
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-arrows-alt-v me-1"></i>Mast: ${specNoteParsed.detail.mast}</span>`);
         }
         if (spec.tire_name) {
             techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-circle me-1"></i>Tire: ${spec.tire_name}</span>`);
+        } else if (specNoteParsed.detail.ban) {
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-circle me-1"></i>Tire: ${specNoteParsed.detail.ban}</span>`);
+        }
+        if (specNoteParsed.detail.fork && !spec.fork_id && !spec.attachment_id) {
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-grip-lines me-1"></i>Fork: ${specNoteParsed.detail.fork}</span>`);
+        }
+        if (specNoteParsed.detail.attachment && !spec.attachment_id) {
+            techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-tools me-1"></i>Attachment: ${specNoteParsed.detail.attachment}</span>`);
         }
         
         // Attachment Information
@@ -3458,11 +3458,11 @@ function displayQuotationSpecifications(specifications) {
                     </div>
                     ` : ''}
                     
-                    ${spec.notes && spec.notes.trim() !== '' ? `
+                    ${specNoteParsed.userNotes ? `
                     <div class="mt-3">
                         <div class="alert alert-info mb-0">
-                            <small class="text-muted d-block mb-1"><i class="fas fa-sticky-note me-2"></i><strong>Custom Requirements / Notes:</strong></small>
-                            <div style="white-space: pre-line;">${spec.notes}</div>
+                            <small class="text-muted d-block mb-1"><i class="fas fa-sticky-note me-2"></i><strong>Notes:</strong></small>
+                            <div style="white-space: pre-line;">${specNoteParsed.userNotes}</div>
                         </div>
                     </div>
                     ` : ''}
@@ -4296,11 +4296,6 @@ function editSpecification(specId) {
 
             var techParsed = extractOptimaSpecTechFromNotes(spec.notes || '');
             $('#specNotes').val(techParsed.userNotes);
-            $('#specDetailFork').val(techParsed.detail.fork || '');
-            $('#specDetailAttachment').val(techParsed.detail.attachment || '');
-            $('#specDetailMast').val(techParsed.detail.mast || '');
-            $('#specDetailBan').val(techParsed.detail.ban || '');
-            $('#specDetailValve').val(techParsed.detail.valve || '');
             var hasMasterFk = !!(spec.fork_id || spec.attachment_id || spec.mast_id || spec.ban_id || spec.valve_id);
             $('#specApplyMasterIds').prop('checked', hasMasterFk);
             var masterDetails = document.getElementById('specMasterDetailsEl');
@@ -4389,7 +4384,6 @@ function editSpecification(specId) {
                 loadMastModelsForSpecification(),
                 loadTiresForSpecification()
             ]).then(() => {
-                console.log('Master dropdowns loaded for edit');
                 
                 // Technical Spec text inputs - use saved text, fallback to joined names for old records
                 $('#specDepartemen').val(spec.departemen_text || spec.nama_departemen || spec.department_name || '');
@@ -4480,12 +4474,22 @@ function editSpecification(specId) {
                 }
                 $('input[name="fork_attach_type"][value="' + forkAttachMode + '"]').prop('checked', true);
                 applyForkAttachTypeToSpecFormUI(forkAttachMode);
-                if (forkAttachMode !== 'fork') {
+
+                // Set spec detail text fields based on determined mode (set here, after mode is known)
+                if (forkAttachMode === 'fork') {
+                    $('#specDetailFork').val(techParsed.detail.fork || '');
+                    $('#specDetailAttachment').val('');
+                } else if (forkAttachMode === 'attachment') {
                     $('#specDetailFork').val('');
-                }
-                if (forkAttachMode !== 'attachment') {
+                    $('#specDetailAttachment').val(techParsed.detail.attachment || '');
+                } else {
+                    $('#specDetailFork').val('');
                     $('#specDetailAttachment').val('');
                 }
+                $('#specDetailMast').val(techParsed.detail.mast || '');
+                $('#specDetailBan').val(techParsed.detail.ban || '');
+                $('#specDetailValve').val(techParsed.detail.valve || '');
+
                 if (spec.fork_id) {
                     $('#specForkId').val(spec.fork_id);
                 }
@@ -7768,33 +7772,30 @@ $('#createSPKForm').on('submit', function(e) {
             // --- Populate spec form fields --------------------------------
             const $form = $('#addSpecificationForm');
 
-            // Dept change triggers cascade (tipe unit, brands)
-            $form.find('[name="departemen_id"]').val(t.departemen_id || '').trigger('change');
-            // Wait for cascade to settle before setting dependent dropdowns
-            setTimeout(function () {
-                $form.find('[name="tipe_unit_id"]').val(t.tipe_unit_id || '');
-                $form.find('[name="brand_id"]').val(t.brand_id || '');
-            }, 450);
-            $form.find('[name="kapasitas_id"]').val(t.kapasitas_id || '');
-            $form.find('[name="ban_id"]').val(t.ban_id || '');
+            // Main spec free-text fields (prefer stored text, fall back to resolved master name)
+            $form.find('[name="departemen_text"]').val(t.departemen_text || t.nama_departemen || '');
+            $form.find('[name="tipe_unit_text"]').val(t.tipe_unit_text || t.jenis_tipe_unit || '');
+            $form.find('[name="kapasitas_text"]').val(t.kapasitas_text || t.nama_kapasitas || '');
+            $form.find('[name="merk_unit_text"]').val(t.merk_unit_text || t.merk_unit || '');
 
-            // Fork / Attachment toggle
-            $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
-            if (t.fork_id) {
+            // Parse template notes: populate customer-facing notes + spec detail text fields
+            var templateParsed = extractOptimaSpecTechFromNotes(t.notes || '');
+            $form.find('[name="notes"]').val(templateParsed.userNotes || '');
+            var td = templateParsed.detail || {};
+
+            // Fork / Attachment toggle + detail text
+            if (td.fork) {
                 $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
-                $form.find('[name="fork_id"]').val(t.fork_id);
-            } else if (t.attachment_id) {
+                $('#specDetailFork').val(td.fork);
+            } else if (td.attachment) {
                 $('input[name="fork_attach_type"][value="attachment"]').prop('checked', true).trigger('change');
-                $form.find('[name="attachment_id"]').val(t.attachment_id);
+                $('#specDetailAttachment').val(td.attachment);
+            } else {
+                $('input[name="fork_attach_type"][value="fork"]').prop('checked', true).trigger('change');
             }
-
-            // Mast (2-level: match model by name, then select height)
-            if (t.mast_id && t.mast_name) {
-                $('#specMastModel option').filter(function () {
-                    return $(this).text() === t.mast_name;
-                }).prop('selected', true);
-                loadMastHeightsForSpecification($('#specMastModel').val(), t.mast_id);
-            }
+            $('#specDetailMast').val(td.mast || '');
+            $('#specDetailBan').val(td.ban || '');
+            $('#specDetailValve').val(td.valve || '');
 
             // Prices
             if (t.default_monthly_price) {
@@ -7803,9 +7804,6 @@ $('#createSPKForm').on('submit', function(e) {
             if (t.default_daily_price) {
                 $form.find('[name="harga_per_unit_harian"]').val(parseFloat(t.default_daily_price).toLocaleString('id-ID')).trigger('input');
             }
-
-            // Notes
-            if (t.notes) { $form.find('[name="notes"]').val(t.notes); }
 
             // Accessories – spec form uses name="aksesoris[]"
             if (t.unit_accessories) {
@@ -7869,21 +7867,14 @@ $('#createSPKForm').on('submit', function(e) {
         const acc = [];
         $form.find('[name="aksesoris[]"]:checked').each(function () { acc.push($(this).val()); });
 
-        // Fork / Attachment from spec form toggle
-        const forkAttachType = $('input[name="fork_attach_type"]:checked').val() || 'none';
-
         const payload = {
             template_name:          name,
             specification_type:     formData.specification_type || 'UNIT',
-            departemen_id:          formData.departemen_id      || '',
-            tipe_unit_id:           formData.tipe_unit_id       || '',
-            kapasitas_id:           formData.kapasitas_id       || '',
-            brand_id:               formData.brand_id           || '',
-            mast_id:                formData.mast_id            || '',
-            fork_id:                forkAttachType === 'fork'       ? (formData.fork_id       || '') : '',
-            attachment_id:          forkAttachType === 'attachment' ? (formData.attachment_id || '') : '',
-            ban_id:                 formData.ban_id             || '',
-            notes:                  formData.notes              || '',
+            departemen_text:        formData.departemen_text     || '',
+            tipe_unit_text:         formData.tipe_unit_text      || '',
+            kapasitas_text:         formData.kapasitas_text      || '',
+            merk_unit_text:         formData.merk_unit_text      || '',
+            notes:                  mergeQuotationSpecNotesForSubmit(),
             default_monthly_price:  parsePrice(formData.unit_price)               || '',
             default_daily_price:    parsePrice(formData.harga_per_unit_harian)    || '',
             include_operator:       formData.include_operator   || 0,
@@ -8014,185 +8005,118 @@ $('#createSPKForm').on('submit', function(e) {
     // ─────────────────────────────────────────────────────────────────
     //  4. Create / Edit Template Modal
     // ─────────────────────────────────────────────────────────────────
-    let _tplDropdownsLoaded = false;
 
     function openCreateEditTemplateModal(id) {
         // Reset form
         $('#createEditTemplateForm')[0].reset();
         $('#tplId').val('');
         $('#tplOperatorSection').addClass('d-none');
-        // Reset cascaded dropdowns
-        $('#tplTipeUnitId').html('<option value="">-- Pilih Tipe Unit --</option>');
-        $('#tplBrandId').html('<option value="">-- Pilih Merk --</option>');
-        $('#tplMastHeight').html('<option value="">Pilih model terlebih dahulu</option>');
-        $('#tplForkSection, #tplAttachSection').hide();
+        $('input[name="tpl_fork_attach_type"][value="none"]').prop('checked', true);
+        $('#tplTextForkWrap, #tplTextAttachWrap').hide();
+        $('#tplDetailFork, #tplDetailAttachment, #tplDetailMast, #tplDetailBan, #tplDetailValve').val('');
         $('#createEditTemplateModalTitle').html('<i class="fas fa-layer-group me-2"></i>' + (id ? 'Edit Template' : 'Buat Template Baru'));
         $('#saveTemplateBtnText').text(id ? 'Simpan Perubahan' : 'Simpan Template');
 
-        // Load dropdown options (reuse existing quotation spec dropdowns data)
-        loadTplDropdowns(function () {
-            if (id) {
-                $.getJSON(TPL_API + '/' + id, function (res) {
-                    if (!res.success) { alert('Gagal memuat data template.'); return; }
-                    const t = res.data;
-                    $('#tplId').val(t.id);
-                    $('#tplName').val(t.template_name || '');
-                    $('#tplDescription').val(t.template_description || '');
-                    // Dept triggers cascade (tipe unit filtered, brands reloaded)
-                    $('#tplDepartemenId').val(t.departemen_id || '').trigger('change');
-                    // Set tipe unit + brand after cascade settles
-                    setTimeout(function () {
-                        $('#tplTipeUnitId').val(t.tipe_unit_id || '');
-                        $('#tplBrandId').val(t.brand_id || '');
-                    }, 450);
-                    $('#tplKapasitasId').val(t.kapasitas_id || '');
-                    $('#tplBanId').val(t.ban_id || '');
-                    // Fork / Attachment
-                    $('input[name="tpl_fork_attach_type"][value="none"]').prop('checked', true);
-                    $('#tplForkSection, #tplAttachSection').hide();
-                    $('#tplForkId, #tplAttachmentId').val('');
-                    if (t.fork_id) {
-                        $('input[name="tpl_fork_attach_type"][value="fork"]').prop('checked', true);
-                        $('#tplForkSection').show();
-                        $('#tplForkId').val(t.fork_id);
-                    } else if (t.attachment_id) {
-                        $('input[name="tpl_fork_attach_type"][value="attachment"]').prop('checked', true);
-                        $('#tplAttachSection').show();
-                        $('#tplAttachmentId').val(t.attachment_id);
-                    }
-                    // Mast (2-level restore using mast_name returned by API)
-                    if (t.mast_id && t.mast_name) {
-                        $('#tplMastModel option').filter(function () {
-                            return $(this).text() === t.mast_name;
-                        }).prop('selected', true);
-                        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=mast_height&mast_model=' + encodeURIComponent(t.mast_name), function (r2) {
-                            const $h = $('#tplMastHeight');
-                            $h.html('<option value="">-- Pilih Tinggi Mast --</option>');
-                            if (r2.success) {
-                                r2.data.forEach(function (m) { $h.append($('<option>', { value: m.id, text: m.name })); });
-                                $h.val(t.mast_id);
-                            }
-                        });
-                    }
-                    // Accessories
-                    if (t.unit_accessories) {
-                        const acc = t.unit_accessories.split(',').map(function (s) { return s.trim(); });
-                        $('#accGridTemplate').find('[name="unit_accessories[]"]').each(function () {
-                            $(this).prop('checked', acc.includes($(this).val()));
-                        });
-                    }
-                    $('#tplNotes').val(t.notes || '');
-                    if (t.default_monthly_price) { $('#tplMonthlyPrice').val(parseFloat(t.default_monthly_price).toLocaleString('id-ID')); }
-                    if (t.default_daily_price)   { $('#tplDailyPrice').val(parseFloat(t.default_daily_price).toLocaleString('id-ID')); }
-                    if (parseInt(t.include_operator)) {
-                        $('#tplIncludeOperator').prop('checked', true);
-                        $('#tplOperatorSection').removeClass('d-none');
-                        $('#tplOperatorQty').val(t.operator_quantity || 1);
-                        if (t.operator_monthly_rate) { $('#tplOperatorMonthly').val(parseFloat(t.operator_monthly_rate).toLocaleString('id-ID')); }
-                        if (t.operator_daily_rate)   { $('#tplOperatorDaily').val(parseFloat(t.operator_daily_rate).toLocaleString('id-ID')); }
-                    }
-                });
-            }
-            $('#createEditTemplateModal').modal('show');
-        });
-    }
+        if (id) {
+            $.getJSON(TPL_API + '/' + id, function (res) {
+                if (!res.success) { alert('Gagal memuat data template.'); return; }
+                var t = res.data;
+                $('#tplId').val(t.id);
+                $('#tplName').val(t.template_name || '');
+                $('#tplDescription').val(t.template_description || '');
 
-    function loadTplDropdowns(callback) {
-        if (_tplDropdownsLoaded) { callback(); return; }
-        const SPK_OPT      = '<?= base_url('marketing/spk/spec-options') ?>?type=';
-        const TIPE_UNIT_URL = '<?= base_url('marketing/customer-management/getTipeUnit') ?>';
-        const FORKS_URL    = '<?= base_url('marketing/forks') ?>';
-        const tasks = {
-            departments: $.getJSON(SPK_OPT + 'departemen'),
-            unitTypes:   $.getJSON(TIPE_UNIT_URL),
-            capacities:  $.getJSON(SPK_OPT + 'kapasitas'),
-            masts:       $.getJSON(SPK_OPT + 'mast_model'),
-            tires:       $.getJSON(SPK_OPT + 'ban'),
-            forks:       $.getJSON(FORKS_URL),
-            attachments: $.getJSON(SPK_OPT + 'attachment_tipe'),
-        };
+                // Populate free-text spec fields (prefer stored text, fall back to resolved master name)
+                $('#tplDepartemenText').val(t.departemen_text || t.nama_departemen || '');
+                $('#tplTipeUnitText').val(t.tipe_unit_text || t.jenis_tipe_unit || '');
+                $('#tplKapasitasText').val(t.kapasitas_text || t.nama_kapasitas || '');
+                $('#tplMerkUnitText').val(t.merk_unit_text || t.merk_unit || '');
 
-        $.when.apply($, Object.values(tasks)).done(function () {
-            const doneArgs = arguments;
-            const results = {};
-            Object.keys(tasks).forEach(function (k, i) { results[k] = doneArgs[i][0]; });
+                // Parse notes: split user-facing text from [OPTIMA_SPEC_TECH] block
+                var parsed = extractOptimaSpecTechFromNotes(t.notes || '');
+                $('#tplNotes').val(parsed.userNotes || '');
+                var td = parsed.detail || {};
 
-            function populate($sel, items, valKey, textKey) {
-                $sel.find('option:not(:first)').remove();
-                (items || []).forEach(function (it) {
-                    $sel.append($('<option>', { value: it[valKey], text: it[textKey] }));
-                });
-            }
+                // Populate spec detail text fields
+                if (td.fork) {
+                    $('input[name="tpl_fork_attach_type"][value="fork"]').prop('checked', true);
+                    $('#tplTextForkWrap').show();
+                    $('#tplDetailFork').val(td.fork);
+                } else if (td.attachment) {
+                    $('input[name="tpl_fork_attach_type"][value="attachment"]').prop('checked', true);
+                    $('#tplTextAttachWrap').show();
+                    $('#tplDetailAttachment').val(td.attachment);
+                }
+                $('#tplDetailMast').val(td.mast || '');
+                $('#tplDetailBan').val(td.ban || '');
+                $('#tplDetailValve').val(td.valve || '');
 
-            // spk/spec-options → {success, data:[{id, name}]}
-            // getTipeUnit → {success, data:[{id_tipe_unit, jenis, id_departemen}]}
-            populate($('#tplDepartemenId'), results.departments.data, 'id', 'name');
-            window.tplAllTipeUnitData = results.unitTypes.data || [];
-            $('#tplTipeUnitId').html('<option value="">-- Pilih Tipe Unit --</option>');
-            populate($('#tplKapasitasId'), results.capacities.data, 'id', 'name');
-            populate($('#tplMastModel'),   results.masts.data,      'id', 'name');
-            populate($('#tplBanId'),       results.tires.data,      'id', 'name');
-            if (results.forks && results.forks.success) {
-                populate($('#tplForkId'), results.forks.data, 'id', 'name');
-            }
-            if (results.attachments && results.attachments.success) {
-                populate($('#tplAttachmentId'), results.attachments.data, 'id', 'name');
-            }
+                // Accessories
+                if (t.unit_accessories) {
+                    var acc = t.unit_accessories.split(',').map(function (s) { return s.trim(); });
+                    $('#accGridTemplate').find('[name="unit_accessories[]"]').each(function () {
+                        $(this).prop('checked', acc.includes($(this).val()));
+                    });
+                }
 
-            _tplDropdownsLoaded = true;
-            callback();
-        });
-    }
+                // Prices
+                if (t.default_monthly_price) { $('#tplMonthlyPrice').val(parseFloat(t.default_monthly_price).toLocaleString('id-ID')); }
+                if (t.default_daily_price)   { $('#tplDailyPrice').val(parseFloat(t.default_daily_price).toLocaleString('id-ID')); }
 
-    // ── Dept change: filter tipe unit + reload brands ──────────────────────────
-    $(document).on('change', '#tplDepartemenId', function () {
-        const deptId = $(this).val();
-        const $tipe  = $('#tplTipeUnitId');
-        $tipe.html('<option value="">-- Pilih Tipe Unit --</option>');
-        if (deptId && window.tplAllTipeUnitData) {
-            const filtered    = window.tplAllTipeUnitData.filter(function (u) { return u.id_departemen == deptId; });
-            const uniqueJenis = [...new Set(filtered.map(function (u) { return u.jenis; }))].sort();
-            uniqueJenis.forEach(function (jenis) {
-                const unit = filtered.find(function (u) { return u.jenis === jenis; });
-                if (unit) { $tipe.append($('<option>', { value: unit.id_tipe_unit, text: jenis })); }
+                // Operator
+                if (parseInt(t.include_operator)) {
+                    $('#tplIncludeOperator').prop('checked', true);
+                    $('#tplOperatorSection').removeClass('d-none');
+                    $('#tplOperatorQty').val(t.operator_quantity || 1);
+                    if (t.operator_monthly_rate) { $('#tplOperatorMonthly').val(parseFloat(t.operator_monthly_rate).toLocaleString('id-ID')); }
+                    if (t.operator_daily_rate)   { $('#tplOperatorDaily').val(parseFloat(t.operator_daily_rate).toLocaleString('id-ID')); }
+                }
             });
         }
-        // Reload brands for selected dept
-        const $brand = $('#tplBrandId');
-        $brand.html('<option value="">-- Pilih Merk --</option>');
-        if (!deptId) return;
-        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit&departemen_id=' + deptId, function (res) {
-            if (res.success) {
-                res.data.forEach(function (b) { $brand.append($('<option>', { value: b.id, text: b.name })); });
-            }
-        });
-    });
 
-    // ── Mast model cascade ─────────────────────────────────────────────────────
-    $(document).on('change', '#tplMastModel', function () {
-        const modelName = $(this).find('option:selected').text();
-        const $height   = $('#tplMastHeight');
-        if (!$(this).val() || modelName.startsWith('Pilih')) {
-            $height.html('<option value="">Pilih model mast terlebih dahulu</option>');
-            return;
-        }
-        $height.html('<option value="">Memuat...</option>');
-        $.getJSON('<?= base_url('marketing/spk/spec-options') ?>?type=mast_height&mast_model=' + encodeURIComponent(modelName), function (res) {
-            $height.html('<option value="">-- Pilih Tinggi Mast --</option>');
-            if (res.success) {
-                res.data.forEach(function (m) { $height.append($('<option>', { value: m.id, text: m.name })); });
-            }
-        });
-    });
+        $('#createEditTemplateModal').modal('show');
+    }
 
-    // ── Fork / Attachment toggle ───────────────────────────────────────────────
+    // ── Template fork / attachment text toggle ─────────────────────────────────
     $(document).on('change', 'input[name="tpl_fork_attach_type"]', function () {
-        const val = $(this).val();
-        $('#tplForkSection').toggle(val === 'fork');
-        $('#tplAttachSection').toggle(val === 'attachment');
-        if (val !== 'fork')       { $('#tplForkId').val(''); }
-        if (val !== 'attachment') { $('#tplAttachmentId').val(''); }
+        var val = $(this).val();
+        $('#tplTextForkWrap').toggle(val === 'fork');
+        $('#tplTextAttachWrap').toggle(val === 'attachment');
+        if (val !== 'fork')       { $('#tplDetailFork').val(''); }
+        if (val !== 'attachment') { $('#tplDetailAttachment').val(''); }
     });
+
+    /** Build [OPTIMA_SPEC_TECH] block from template detail text inputs */
+    function buildTplTechBlockFromInputs() {
+        var fat = $('input[name="tpl_fork_attach_type"]:checked').val() || 'none';
+        var detail = {
+            fork:       '',
+            attachment: '',
+            mast:       ($('#tplDetailMast').val()  || '').toString(),
+            ban:        ($('#tplDetailBan').val()   || '').toString(),
+            valve:      ($('#tplDetailValve').val() || '').toString()
+        };
+        if (fat === 'fork')       { detail.fork       = ($('#tplDetailFork').val()       || '').toString(); }
+        if (fat === 'attachment') { detail.attachment = ($('#tplDetailAttachment').val() || '').toString(); }
+        var keys  = ['fork', 'attachment', 'mast', 'ban', 'valve'];
+        var lines = [];
+        keys.forEach(function (k) {
+            var v = (detail[k] || '').replace(/\r\n/g, '\n').split('\n').join(' ').trim();
+            if (v) { lines.push(k + ': ' + v); }
+        });
+        if (!lines.length) { return ''; }
+        return OPTIMA_SPEC_TECH_START + '\n' + lines.join('\n') + '\n' + OPTIMA_SPEC_TECH_END;
+    }
+
+    /** Merge template user notes with tech block before POST */
+    function mergeTplNotesForSubmit() {
+        var rawNotes = $('#tplNotes').val() || '';
+        var parsed   = extractOptimaSpecTechFromNotes(rawNotes);
+        var userPart = parsed.userNotes;
+        var block    = buildTplTechBlockFromInputs();
+        if (!block)            { return userPart.trim(); }
+        if (userPart.trim())   { return userPart.trim() + '\n\n' + block; }
+        return block;
+    }
 
     $('#tplIncludeOperator').on('change', function () {
         $('#tplOperatorSection').toggleClass('d-none', !this.checked);
@@ -8216,6 +8140,8 @@ $('#createSPKForm').on('submit', function(e) {
             const v = formData.get(k);
             if (v) formData.set(k, parsePrice(v));
         });
+        // Merge user notes + [OPTIMA_SPEC_TECH] block from detail text inputs
+        formData.set('notes', mergeTplNotesForSubmit());
         formData.set(window.csrfTokenName, window.csrfTokenValue);
 
         $('#saveTemplateFormBtn').prop('disabled', true);

@@ -2258,6 +2258,12 @@ class Marketing extends BaseDataTableController
                           qs.daily_price,
                           qs.daily_price as harga_per_unit_harian,
                           qs.total_price,
+                          qs.notes,
+                          qs.fork_id,
+                          qs.departemen_text,
+                          qs.tipe_unit_text,
+                          qs.kapasitas_text,
+                          qs.merk_unit_text,
                           COALESCE(qs.unit_accessories, "") as unit_accessories,
                           COALESCE(qs.unit_accessories, "") as aksesoris,
                           qs.brand_id,
@@ -2940,15 +2946,15 @@ class Marketing extends BaseDataTableController
 
             $builder = $this->db->table('quotation_specifications qs')
                 ->select('qs.*')
-                ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
-                ->select('k.kapasitas_unit as kontrak_kapasitas_name')
-                ->select('d.nama_departemen as kontrak_departemen_name')
+                ->select('COALESCE(qs.tipe_unit_text, tu.jenis) as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
+                ->select('COALESCE(qs.kapasitas_text, k.kapasitas_unit) as kontrak_kapasitas_name')
+                ->select('COALESCE(qs.departemen_text, d.nama_departemen) as kontrak_departemen_name')
                 ->select('tm.tipe_mast as kontrak_mast_name')
                 ->select('jr.tipe_roda as kontrak_roda_name')
                 ->select('tb.tipe_ban as kontrak_ban_name')
                 ->select('v.jumlah_valve as kontrak_valve_name')
                 ->select('chr.merk_charger as kontrak_merk_charger, chr.tipe_charger as kontrak_tipe_charger')
-                ->select('mu.merk_unit, mu.model_unit')
+                ->select('COALESCE(qs.merk_unit_text, mu.merk_unit) as merk_unit, mu.model_unit')
                 ->select('att.tipe as attachment_tipe, att.merk as attachment_merk, att.model as attachment_model')
                 ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
                 ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')

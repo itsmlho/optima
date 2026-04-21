@@ -187,13 +187,33 @@ function formatCurrency($amount, $currency = 'IDR') {
         .signature-section {
             display: flex;
             justify-content: space-between;
-            margin-top: 10px;
+            margin-top: 20px;
             margin-bottom: 5px;
             page-break-inside: avoid;
         }
 
-        .sig-box { width: 220px; text-align: center; }
-        .sig-line { border-bottom: 1px solid #000; margin-top: 35px; margin-bottom: 5px; }
+        .sig-box {
+            width: 35%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+        .sig-header {
+            min-height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding-bottom: 0;
+        }
+        .sig-area {
+            border-bottom: 1px solid #000;
+            height: 55px;
+            width: 220px;
+            margin: 0 auto;
+        }
+        .sig-name { margin-top: 5px; font-weight: bold; }
+        /* legacy - keep for compat */
+        .sig-line { border-bottom: 1px solid #000; margin-top: 50px; margin-bottom: 5px; }
 
         /* --- FOOTER --- */
         .footer {
@@ -687,6 +707,8 @@ function formatCurrency($amount, $currency = 'IDR') {
                                 $forkDisplayQ          = spk_print_pick_detail($forkFromMasterQ, $qTech['fork'] ?? '');
                                 $attachmentDisplayQ  = spk_print_pick_detail($attachmentFromMasterQ, $qTech['attachment'] ?? '');
                                 $faModeQ              = optima_print_fork_or_attachment_mode($spec, $qTech, $forkDisplayQ, $attachmentDisplayQ);
+                                $mastDisplayQ          = spk_print_pick_detail($spec['mast_name'] ?? '', $qTech['mast'] ?? '');
+                                $banDisplayQ           = spk_print_pick_detail($spec['tire_name'] ?? '', $qTech['ban'] ?? '');
                                 ?>
                                 <div class="unit-title">
                                     <?= !empty($spec['display_unit_type']) ? esc($spec['display_unit_type']) : esc($spec['unit_type'] ?? 'UNIT') ?> 
@@ -696,7 +718,7 @@ function formatCurrency($amount, $currency = 'IDR') {
                                     <?= !empty($spec['display_brand']) ? '&bull; Merk: ' . esc($spec['display_brand']) : '' ?>
                                     <?= !empty($spec['display_capacity']) ? ' | Cap. ' . esc($spec['display_capacity']) : '' ?>
                                     <br>
-                                    <?= !empty($spec['mast_name']) ? '&bull; Mast ' . esc($spec['mast_name']) : '' ?>
+                                    <?= $mastDisplayQ !== '' ? '&bull; Mast ' . esc($mastDisplayQ) : '' ?>
                                     <?= !empty($spec['wheel_name']) ? ' | ' . esc($spec['wheel_name']) : '' ?>
                                     <br>
                                     <?php if (!empty($spec['display_department']) && (stripos($spec['display_department'], 'electric') !== false || stripos($spec['display_department'], 'battery') !== false)): ?>
@@ -713,6 +735,11 @@ function formatCurrency($amount, $currency = 'IDR') {
                                     <br>
                                     <?= (!empty($spec['unit_accessories']) && $spec['unit_accessories'] !== 'null') ? '&bull; Acc: ' . esc(format_accessory_csv($spec['unit_accessories'])) : '' ?>
                                 </div>
+                                <?php if (!empty($parsedQNotes['user_notes'])): ?>
+                                <div class="unit-specs" style="border-left: 2px solid #aaa; color: #555; margin-top: 3px; padding-top: 2px; font-style: italic;">
+                                    <?= nl2br(esc($parsedQNotes['user_notes'])) ?>
+                                </div>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <div class="unit-title">
                                     <?= esc($spec['attachment_type'] ?? 'ATTACHMENT') ?>
@@ -844,17 +871,20 @@ function formatCurrency($amount, $currency = 'IDR') {
         <br>
 
         <div class="signature-section">
-            <div class="sig-box" style="width: 60%; text-align: center;">
-                <div style="margin-bottom: 5px; font-weight: bold;">TTD Persetujuan Customer</div>
-                <div class="sig-line"></div>
-                <!-- Nama customer sengaja dikosongkan agar tidak tampil -->
-                <div class="sig-name" style="font-weight: bold; margin-top: 5px;"></div>
+            <div class="sig-box">
+                <div class="sig-header">
+                    <div style="font-weight: bold;">TTD Persetujuan Customer</div>
+                </div>
+                <div class="sig-area"></div>
+                <div class="sig-name">&nbsp;</div>
             </div>
-            <div class="sig-box" style="width: 35%; text-align: center;">
-                <div style="margin-bottom: 5px; font-weight: bold;">Hormat Kami,</div>
-                <div style="margin-bottom: 8px; font-weight: bold;">Marketing Department</div>
-                <div class="sig-line"></div>
-                <div class="sig-name" style="font-weight: bold; margin-top: 5px;">
+            <div class="sig-box">
+                <div class="sig-header">
+                    <div style="font-weight: bold;">Hormat Kami,</div>
+                    <div style="font-weight: bold;">Marketing Department</div>
+                </div>
+                <div class="sig-area"></div>
+                <div class="sig-name">
                     <?php
                     $marketingSigner = resolvePrintPersonName(
                         $quotation,
