@@ -328,7 +328,7 @@
             const schemaResp = await fetchJson(`${BASE_URL}master-data/schema/${entity}`);
             schema = schemaResp.data;
 
-            const listResp = await fetchJson(`${BASE_URL}master-data/list/${entity}`);
+            const listResp = await fetchJson(`${BASE_URL}master-data/list/${entity}?limit=5000`);
             rows = listResp.data || [];
             if (listResp.meta?.effective_pk) schema.pk = listResp.meta.effective_pk;
 

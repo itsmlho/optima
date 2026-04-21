@@ -128,7 +128,7 @@ class MasterDataController extends BaseController
 
         $fields = $this->tableFields($entity['table']);
         $effectivePk = $this->resolveEffectivePk($entity['pk'], $fields);
-        $limit = max(1, min(500, (int) ($this->request->getGet('limit') ?? 200)));
+        $limit = max(1, min(5000, (int) ($this->request->getGet('limit') ?? 5000)));
 
         $fk = $entity['fk'] ?? [];
         if (!empty($fk)) {
