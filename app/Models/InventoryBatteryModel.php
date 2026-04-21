@@ -46,6 +46,7 @@ class InventoryBatteryModel extends Model
 
     // Validation
     protected $validationRules = [
+        'id'                => 'permit_empty|integer',
         'item_number'       => 'permit_empty|max_length[50]|is_unique[inventory_batteries.item_number,id,{id}]',
         'battery_type_id'   => 'permit_empty|integer',
         'serial_number'     => 'permit_empty|max_length[100]',
@@ -252,9 +253,9 @@ class InventoryBatteryModel extends Model
      * Get all batteries (AVAILABLE, SPARE, and USED) for SPK selection
      * USED batteries can be detached from workshop units and re-assigned
      */
-    public function getAvailableBatteries(): array
+    public function getAvailableBatteries(string $q = ''): array
     {
-        return $this->select('inventory_batteries.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai, 
+        $builder = $this->select('inventory_batteries.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai, 
                              iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
                              mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model,
                              iu.status_unit_id as installed_unit_status_id')
@@ -265,13 +266,24 @@ class InventoryBatteryModel extends Model
                 ->where('inventory_batteries.status', 'AVAILABLE')
                 ->orGroupStart()
                     ->where('inventory_batteries.status', 'IN_USE')
-                    ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // Unit must be AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
+                    ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
                 ->groupEnd()
             ->groupEnd()
             ->where('inventory_batteries.battery_type_id IS NOT NULL')
             ->orderBy('inventory_batteries.status', 'ASC') // AVAILABLE first, then IN_USE
-            ->orderBy('inventory_batteries.received_at','ASC')
-            ->findAll(100);
+            ->orderBy('inventory_batteries.item_number', 'ASC');
+
+        if ($q !== '') {
+            $builder->groupStart()
+                ->like('inventory_batteries.item_number', $q)
+                ->orLike('inventory_batteries.serial_number', $q)
+                ->orLike('b.merk_baterai', $q)
+                ->orLike('b.tipe_baterai', $q)
+                ->orLike('b.jenis_baterai', $q)
+            ->groupEnd();
+        }
+
+        return $builder->findAll(150);
     }
 
     /**

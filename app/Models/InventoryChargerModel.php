@@ -48,6 +48,7 @@ class InventoryChargerModel extends Model
 
     // Validation
     protected $validationRules = [
+        'id'                => 'permit_empty|integer',
         'item_number'       => 'permit_empty|max_length[50]|is_unique[inventory_chargers.item_number,id,{id}]',
         'charger_type_id'   => 'permit_empty|integer',
         'serial_number'     => 'permit_empty|max_length[100]',
@@ -238,9 +239,9 @@ class InventoryChargerModel extends Model
      * Get all chargers (AVAILABLE, SPARE, and USED) for SPK selection
      * USED chargers can be detached from workshop units and re-assigned
      */
-    public function getAvailableChargers(): array
+    public function getAvailableChargers(string $q = ''): array
     {
-        return $this->select('inventory_chargers.*, c.merk_charger, c.tipe_charger, 
+        $builder = $this->select('inventory_chargers.*, c.merk_charger, c.tipe_charger, 
                              iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
                              mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model,
                              iu.status_unit_id as installed_unit_status_id')
@@ -251,13 +252,23 @@ class InventoryChargerModel extends Model
                 ->where('inventory_chargers.status', 'AVAILABLE')
                 ->orGroupStart()
                     ->where('inventory_chargers.status', 'IN_USE')
-                    ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // Unit must be AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
+                    ->whereIn('iu.status_unit_id', [1, 2, 3, 12]) // AVAILABLE_STOCK, NON_ASSET_STOCK, BOOKED, RETURNED
                 ->groupEnd()
             ->groupEnd()
             ->where('inventory_chargers.charger_type_id IS NOT NULL')
             ->orderBy('inventory_chargers.status', 'ASC') // AVAILABLE first, then IN_USE
-            ->orderBy('inventory_chargers.received_at','ASC')
-            ->findAll(100);
+            ->orderBy('inventory_chargers.item_number', 'ASC');
+
+        if ($q !== '') {
+            $builder->groupStart()
+                ->like('inventory_chargers.item_number', $q)
+                ->orLike('inventory_chargers.serial_number', $q)
+                ->orLike('c.merk_charger', $q)
+                ->orLike('c.tipe_charger', $q)
+            ->groupEnd();
+        }
+
+        return $builder->findAll(150);
     }
 
     /**

@@ -2,8 +2,12 @@
 
 <?php
 /**
- * Attachment, Battery & Charger Inventory - Warehouse
+ * Attachment & Fork Inventory - Warehouse
  * BADGE/CARD: Optima badge-soft-* (tabs, status, condition); card-header bg-light; table mb-0.
+ *
+ * NOTE: Battery/Charger have been moved to dedicated pages:
+ *   /warehouse/inventory/batteries  - Battery Inventory
+ *   /warehouse/inventory/chargers   - Charger Inventory
  */
 ?>
 <?= $this->section('content') ?>
@@ -16,9 +20,9 @@
             <div>
                 <h4 class="fw-bold mb-1">
                     <i class="bi bi-puzzle me-2 text-primary"></i>
-                    Attachment, Battery & Charger Inventory
+                    Attachment & Fork Inventory
                 </h4>
-                <p class="text-muted mb-0">Manage forklift attachments, batteries, and chargers with status tracking and maintenance records</p>
+                <p class="text-muted mb-0">Manage forklift attachments and forks with status tracking and maintenance records</p>
             </div>
             <div class="d-flex gap-2">
                 <!-- Export Dropdown -->
@@ -28,8 +32,6 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/attachment') ?>"><i class="fas fa-puzzle-piece me-2"></i>Attachment</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/battery') ?>"><i class="fas fa-battery-half me-2"></i>Battery</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/charger') ?>"><i class="fas fa-plug me-2"></i>Charger</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/attachments/export/fork') ?>"><i class="fas fa-grip-lines-vertical me-2"></i>Fork</a></li>
                     </ul>
                 </div>
@@ -46,20 +48,6 @@
                     <i class="fas fa-puzzle-piece me-1"></i>
                     Attachment
                     <span class="badge badge-soft-blue ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="battery-tab" type="button" onclick="applyTypeFilter('battery')">
-                    <i class="fas fa-battery-half me-1"></i>
-                    Battery
-                    <span class="badge badge-soft-green ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="charger-tab" type="button" onclick="applyTypeFilter('charger')">
-                    <i class="fas fa-plug me-1"></i>
-                    Charger
-                    <span class="badge badge-soft-yellow ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -116,26 +104,6 @@
                 </button>
             </li>
         </ul>
-        
-        <!-- Chemistry Filter (only for Battery) -->
-        <div class="mb-3" id="additionalFilters" style="display: none;">
-            <div class="d-flex align-items-center gap-2">
-                <span class="text-muted small fw-medium">
-                    <i class="fas fa-flask me-1"></i>Battery Type:
-                </span>
-                <div class="btn-group btn-group-sm" role="group" id="chemistryFilterGroup">
-                    <button type="button" class="btn btn-outline-secondary active" data-chemistry="" onclick="applyChemistryFilter('')">
-                        All
-                    </button>
-                    <button type="button" class="btn btn-outline-warning" data-chemistry="lead_acid" onclick="applyChemistryFilter('lead_acid')">
-                        <i class="fas fa-car-battery me-1"></i>Lead Acid
-                    </button>
-                    <button type="button" class="btn btn-outline-success" data-chemistry="lithium" onclick="applyChemistryFilter('lithium')">
-                        <i class="fas fa-bolt me-1"></i>Lithium-ion
-                    </button>
-                </div>
-            </div>
-        </div>
         
         <!-- Table -->
         <table id="inventory-attachment-table" class="table table-striped table-hover mb-0" style="width:100%">
@@ -281,6 +249,18 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Item Number / Serial Number</label>
                         <input type="text" class="form-control bg-light" id="edit_item_label" readonly>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Serial Number (SN)</label>
+                            <input type="text" class="form-control" id="edit_serial_number" name="serial_number" placeholder="SN dari label fisik item">
+                            <div class="small text-muted mt-1">Edit SN jika ada koreksi / perubahan</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">No Item</label>
+                            <input type="text" class="form-control text-uppercase" id="edit_item_number" name="item_number" placeholder="Cth: B02178">
+                            <div class="small text-muted mt-1">Harus unik di seluruh sistem</div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="edit_status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
@@ -542,45 +522,7 @@
                         </div>
                     </div>
                     
-                    <!-- Battery Fields -->
-                    <div id="battery-fields" style="display: none;">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Battery Type <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="new-baterai-id" name="baterai_id">
-                                        <option value="">Select Battery Type</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Serial Number <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="new-sn-baterai" name="sn_baterai" placeholder="Enter battery SN">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Charger Fields -->
-                    <div id="charger-fields" style="display: none;">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Charger Type <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="new-charger-id" name="charger_id">
-                                        <option value="">Select Charger Type</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Serial Number <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="new-sn-charger" name="sn_charger" placeholder="Enter charger SN">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Battery and Charger fields removed — use dedicated pages -->
 
                     <!-- Fork Fields -->
                     <div id="fork-fields" style="display: none;">
@@ -606,10 +548,11 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Unit</label>
+                                <label class="form-label">Unit <span class="text-muted small fw-normal">(opsional)</span></label>
                                 <select class="form-select" id="new-unit-id" name="unit_id">
-                                    <option value="">Select Unit (Optional)</option>
+                                    <option value="">Pilih unit jika sudah terpasang...</option>
                                 </select>
+                                <div class="small text-muted mt-1">Jika belum terpasang pada unit, kosongkan</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -763,13 +706,6 @@
             headerHtml += '<th>Brand</th>';
             headerHtml += '<th>Type</th>';
             headerHtml += '<th>Models</th>';
-        } else if (type === 'battery') {
-            headerHtml += '<th>Brand</th>';
-            headerHtml += '<th>Type</th>';
-            headerHtml += '<th>Models</th>';
-        } else if (type === 'charger') {
-            headerHtml += '<th>Brand</th>';
-            headerHtml += '<th>Type</th>';
         } else if (type === 'fork') {
             headerHtml += '<th>Fork Spec</th>';
             headerHtml += '<th>Class</th>';
@@ -845,42 +781,6 @@
                     data: null,
                     render: function(data, type, row) {
                         return row.attachment_model || '-';
-                    }
-                }
-            );
-        } else if (type === 'battery') {
-            columns.push(
-                { 
-                    data: null,
-                    render: function(data, type, row) {
-                        return row.jenis_baterai || '-';
-                    }
-                },
-                { 
-                    data: null,
-                    render: function(data, type, row) {
-                        return row.merk_baterai || '-';
-                    }
-                },
-                { 
-                    data: null,
-                    render: function(data, type, row) {
-                        return row.tipe_baterai || '-';
-                    }
-                }
-            );
-        } else if (type === 'charger') {
-            columns.push(
-                { 
-                    data: null,
-                    render: function(data, type, row) {
-                        return row.merk_charger || '-';
-                    }
-                },
-                { 
-                    data: null,
-                    render: function(data, type, row) {
-                        return row.tipe_charger || '-';
                     }
                 }
             );
@@ -1047,10 +947,6 @@
         // Add active class to clicked tab
         if (type === 'attachment') {
             $('#attachment-tab').addClass('active');
-        } else if (type === 'battery') {
-            $('#battery-tab').addClass('active');
-        } else if (type === 'charger') {
-            $('#charger-tab').addClass('active');
         } else if (type === 'fork') {
             $('#fork-tab').addClass('active');
         }
@@ -1073,13 +969,6 @@
         
         // Update status counts for the selected type
         updateStatusCounts(type);
-        
-        // Show/hide chemistry filter (only for battery)
-        if (type === 'battery') {
-            $('#additionalFilters').show();
-        } else {
-            $('#additionalFilters').hide();
-        }
         
         // Destroy existing table
         if (attachmentTable) {
@@ -1556,6 +1445,8 @@
                     $('#edit_id').val(data.id);
                     $('#edit_tipe_item').val(data.tipe_item);
                     $('#edit_item_label').val(label);
+                    $('#edit_serial_number').val(data.serial_number || '');
+                    $('#edit_item_number').val(data.item_number || '');
                     $('#edit_status').val(data.status);
                     $('#edit_storage_location').val(data.storage_location);
                     $('#edit_physical_condition').val(data.physical_condition);
@@ -2014,32 +1905,12 @@
         // Show/hide appropriate fields based on type
         if (type === 'attachment') {
             $('#attachment-fields').show();
-            $('#battery-fields').hide();
-            $('#charger-fields').hide();
             $('#fork-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Attachment');
             // Load attachment master data
             loadMasterData('attachment', '#new-attachment-id');
-        } else if (type === 'battery') {
-            $('#attachment-fields').hide();
-            $('#battery-fields').show();
-            $('#charger-fields').hide();
-            $('#fork-fields').hide();
-            $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Battery');
-            // Load baterai master data
-            loadMasterData('baterai', '#new-baterai-id');
-        } else if (type === 'charger') {
-            $('#attachment-fields').hide();
-            $('#battery-fields').hide();
-            $('#charger-fields').show();
-            $('#fork-fields').hide();
-            $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Charger');
-            // Load charger master data
-            loadMasterData('charger', '#new-charger-id');
         } else if (type === 'fork') {
             $('#attachment-fields').hide();
-            $('#battery-fields').hide();
-            $('#charger-fields').hide();
             $('#fork-fields').show();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Fork Stock');
             loadMasterData('fork', '#new-fork-id');
@@ -2049,8 +1920,8 @@
         $('#addItemForm')[0].reset();
         $('#new-tipe-item').val(type);
         
-        // Load units data
-        loadUnitsData();
+        // Load available units (lazy load)
+        loadAvailableUnitsForAdd();
         
         // Show modal
         $('#addItemModal').modal('show');
@@ -2168,6 +2039,75 @@
         });
     }
 
+    // Lazy load units specifically for Add Item modal
+    function loadAvailableUnitsForAdd() {
+        const $select = $('#new-unit-id');
+        if ($select.hasClass('select2-hidden-accessible')) {
+            try { $select.select2('destroy'); } catch(e) {}
+        }
+        $select.empty().append('<option value="">Pilih unit jika sudah terpasang...</option>');
+
+        $.ajax({
+            url: '<?= base_url('warehouse/inventory/attachments/available-units') ?>',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    const unitList = response.units || [];
+                    const Ou = window.OptimaUnitSelect2;
+                    const useOu = typeof Ou !== 'undefined' && typeof Ou.optionDataAttributes === 'function';
+
+                    unitList.forEach(function(unit) {
+                        const row = {
+                            id: unit.id_inventory_unit,
+                            id_inventory_unit: unit.id_inventory_unit,
+                            no_unit: unit.no_unit,
+                            serial_number: unit.serial_number || '',
+                            merk: '',
+                            model_unit: unit.model_unit || '',
+                            status: unit.status_unit_name || '',
+                            lokasi: ''
+                        };
+                        var $opt;
+                        if (useOu) {
+                            const attrs = Ou.optionDataAttributes(row);
+                            const label = Ou.line1FromRow(Ou.normalizeRow(row));
+                            $opt = $('<option></option>').val(unit.id_inventory_unit).text(label);
+                            Object.keys(attrs).forEach(function(k) {
+                                const v = attrs[k];
+                                if (v !== '' && v != null && v !== false) $opt.attr(k, v);
+                            });
+                        } else {
+                            $opt = $('<option></option>').val(unit.id_inventory_unit)
+                                .text((unit.no_unit || '') + ' - ' + (unit.model_unit || '') + ' (' + (unit.status_unit_name || '') + ')');
+                        }
+                        $opt.attr('data-has-battery', (unit.has_battery || 0) ? '1' : '0')
+                            .attr('data-has-charger', (unit.has_charger || 0) ? '1' : '0');
+                        $select.append($opt);
+                    });
+
+                    const s2cfg = {
+                        theme: 'bootstrap-5',
+                        placeholder: 'Pilih unit jika sudah terpasang...',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#addItemModal')
+                    };
+                    if (useOu) {
+                        s2cfg.templateResult    = function(i) { return Ou.templateResult(i, {}); };
+                        s2cfg.templateSelection = function(i) { return Ou.templateSelection(i, {}); };
+                        s2cfg.escapeMarkup      = function(m) { return m; };
+                    }
+                    try { $select.select2(s2cfg); } catch(e) { console.error('Select2 unit (add):', e); }
+                }
+            }
+        });
+    }
+
+    // Battery/Charger cascade functions moved to:
+    //   /warehouse/inventory/batteries  - Battery Inventory
+    //   /warehouse/inventory/chargers   - Charger Inventory
+
     // Save new item
     $('#btn-save-item').on('click', function() {
         const formData = new FormData($('#addItemForm')[0]);
@@ -2189,22 +2129,6 @@
                 isValid = false;
                 errorMessage = 'Attachment Type is required';
             } else if (!$('#new-sn-attachment').val()) {
-                isValid = false;
-                errorMessage = 'Serial Number is required';
-            }
-        } else if (type === 'battery') {
-            if (!$('#new-baterai-id').val()) {
-                isValid = false;
-                errorMessage = 'Battery Type is required';
-            } else if (!$('#new-sn-baterai').val()) {
-                isValid = false;
-                errorMessage = 'Serial Number is required';
-            }
-        } else if (type === 'charger') {
-            if (!$('#new-charger-id').val()) {
-                isValid = false;
-                errorMessage = 'Charger Type is required';
-            } else if (!$('#new-sn-charger').val()) {
                 isValid = false;
                 errorMessage = 'Serial Number is required';
             }

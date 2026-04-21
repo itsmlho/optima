@@ -284,6 +284,91 @@ class AttachmentInventoryController extends BaseController
         return view('warehouse/inventory/attachments/index', $data);
     }
 
+    public function inventBatteryCharger()
+    {
+        if ($this->request->isAJAX()) {
+            $dataType = $this->request->getPost('data_type') ?: 'battery';
+            try {
+                if ($dataType === 'charger') {
+                    $model = new InventoryChargerModel();
+                    $request = [
+                        'start'         => $this->request->getPost('start'),
+                        'length'        => $this->request->getPost('length'),
+                        'search'        => $this->request->getPost('search'),
+                        'order'         => $this->request->getPost('order'),
+                        'tipe_item'     => 'charger',
+                        'status_filter' => $this->request->getPost('status_filter'),
+                    ];
+                    $result = $model->getDataTable($request);
+                    return $this->response->setJSON([
+                        'draw'            => $this->request->getPost('draw'),
+                        'recordsTotal'    => $model->countAll(),
+                        'recordsFiltered' => $result['recordsFiltered'],
+                        'data'            => $result['data'],
+                        'csrf_hash'       => csrf_hash(),
+                    ]);
+                } else {
+                    $model = new InventoryBatteryModel();
+                    $request = [
+                        'start'            => $this->request->getPost('start'),
+                        'length'           => $this->request->getPost('length'),
+                        'search'           => $this->request->getPost('search'),
+                        'order'            => $this->request->getPost('order'),
+                        'tipe_item'        => 'battery',
+                        'status_filter'    => $this->request->getPost('status_filter'),
+                        'chemistry_filter' => $this->request->getPost('chemistry_filter'),
+                    ];
+                    $result = $model->getDataTable($request);
+                    return $this->response->setJSON([
+                        'draw'            => $this->request->getPost('draw'),
+                        'recordsTotal'    => $model->countAll(),
+                        'recordsFiltered' => $result['recordsFiltered'],
+                        'data'            => $result['data'],
+                        'csrf_hash'       => csrf_hash(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                log_message('error', '[inventBatteryCharger] ' . $e->getMessage());
+                return $this->response->setJSON([
+                    'draw' => $this->request->getPost('draw'),
+                    'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [],
+                    'error' => $e->getMessage(), 'csrf_hash' => csrf_hash(),
+                ])->setStatusCode(500);
+            }
+        }
+
+        $allStats = InventoryAttachmentModel::getAllTypesStats();
+        $batStats = $allStats['battery'];
+        $chgStats = $allStats['charger'];
+
+        // Chemistry breakdown for battery (LEAD ACID / LITHIUM)
+        $db = \Config\Database::connect();
+        $chemRows = $db->table('inventory_batteries ib')
+            ->select('b.jenis_baterai, COUNT(*) as cnt')
+            ->join('baterai b', 'b.id = ib.battery_type_id', 'left')
+            ->groupBy('b.jenis_baterai')
+            ->get()->getResultArray();
+        $leadAcidCount = 0;
+        $lithiumCount  = 0;
+        foreach ($chemRows as $row) {
+            $tipe = strtoupper((string)($row['jenis_baterai'] ?? ''));
+            if (str_contains($tipe, 'LEAD') || str_contains($tipe, 'ACID')) $leadAcidCount += (int)$row['cnt'];
+            elseif (str_contains($tipe, 'LITHI') || str_contains($tipe, 'LI-')) $lithiumCount += (int)$row['cnt'];
+        }
+
+        $data = [
+            'title'           => 'Battery & Charger Inventory',
+            'page_title'      => 'Battery & Charger Inventory',
+            'breadcrumbs'     => ['/' => 'Dashboard', '/warehouse/inventory/battery-charger' => 'Battery & Charger'],
+            'bat_stats'       => $batStats,
+            'chg_stats'       => $chgStats,
+            'lead_acid_count' => $leadAcidCount,
+            'lithium_count'   => $lithiumCount,
+        ];
+
+        return view('warehouse/inventory/battery-charger/index', $data);
+    }
+
     public function getAttachmentDetail($id)
     {
         if (!$this->request->isAJAX()) {
@@ -835,15 +920,22 @@ class AttachmentInventoryController extends BaseController
                 ])->setStatusCode(404);
             }
 
+            $rawSerialNumber = trim((string)($this->request->getPost('serial_number') ?? ''));
+            $rawItemNumber   = strtoupper(trim((string)($this->request->getPost('item_number') ?? '')));
+
             $updateData = array_filter([
                 'status'            => $this->request->getPost('status'),
                 'storage_location'  => $this->request->getPost('storage_location'),
                 'physical_condition'=> $this->request->getPost('physical_condition'),
                 'completeness'      => $this->request->getPost('completeness'),
                 'notes'             => $this->request->getPost('notes'),
+                'serial_number'     => $rawSerialNumber !== '' ? $rawSerialNumber : null,
+                'item_number'       => $rawItemNumber   !== '' ? $rawItemNumber   : null,
             ], fn($v) => $v !== null && $v !== '');
 
-            if ($model->update($id, $updateData)) {
+            // Pass id into updateData so {id} placeholder in is_unique validation resolves correctly
+            $updateDataWithId = array_merge($updateData, ['id' => (int)$id]);
+            if ($model->update($id, $updateDataWithId)) {
                 $this->logUpdate('inventory_attachment', (int)$id,
                     array_intersect_key($existing, $updateData),
                     $updateData,
@@ -991,9 +1083,44 @@ class AttachmentInventoryController extends BaseController
                     return $this->response->setJSON(['success' => false, 'message' => 'Battery Type is required']);
                 }
                 $model = new InventoryBatteryModel();
-                $count = $model->countAll() + 1;
+                $db2 = \Config\Database::connect();
+                // Determine B vs BL prefix — check BOTH tipe_baterai AND jenis_baterai
+                // because some brands store chemistry in tipe_baterai (e.g. BSLBAT→LITHIUM)
+                // and others store it in jenis_baterai (e.g. GS YUASA→Lead Acid)
+                $batRow = $db2->table('baterai')->select('jenis_baterai, tipe_baterai')->where('id', $typeId)->get()->getRowArray();
+                $jenisBaterai = strtoupper((string)($batRow['jenis_baterai'] ?? ''));
+                $tipeBaterai  = strtoupper((string)($batRow['tipe_baterai']  ?? ''));
+                $isLithium = str_contains($tipeBaterai, 'LITHIUM') || str_contains($jenisBaterai, 'LITHIUM') ||
+                    str_contains($jenisBaterai, 'LI-ION') || str_contains($jenisBaterai, 'LI ION') ||
+                    str_contains($jenisBaterai, 'LIFEPO') || str_contains($jenisBaterai, 'LFP') ||
+                    str_contains($jenisBaterai, 'NMC') || str_contains($jenisBaterai, 'NCA');
+                $batPrefix = $isLithium ? 'BL' : 'B';
+                // Accept manual item_number or auto-generate
+                $manualBatItemNum = strtoupper(trim((string)($this->request->getPost('item_number_battery') ?? '')));
+                if ($manualBatItemNum !== '') {
+                    $batItemNumber = $manualBatItemNum;
+                } else {
+                    // Use last item number per prefix — NOT MAX(id)+1
+                    $regexpPat = '^' . $batPrefix . '[0-9]';
+                    $lastBat   = $db2->table('inventory_batteries')
+                        ->select('item_number')
+                        ->where("item_number REGEXP '{$regexpPat}'")
+                        ->orderBy('LENGTH(item_number)', 'DESC')
+                        ->orderBy('item_number', 'DESC')
+                        ->limit(1)->get()->getRowArray();
+                    $lastBatNum = $lastBat['item_number'] ?? null;
+                    if ($lastBatNum !== null) {
+                        $numPart = ltrim(substr($lastBatNum, strlen($batPrefix)), '0') ?: '0';
+                        $nextNum = (int)$numPart + 1;
+                        $padLen  = max(4, strlen($lastBatNum) - strlen($batPrefix));
+                    } else {
+                        $nextNum = 1;
+                        $padLen  = 4;
+                    }
+                    $batItemNumber = $batPrefix . str_pad((string)$nextNum, $padLen, '0', STR_PAD_LEFT);
+                }
                 $inventoryData = array_merge($commonData, [
-                    'item_number'    => 'B' . str_pad($count, 4, '0', STR_PAD_LEFT),
+                    'item_number'    => $batItemNumber,
                     'battery_type_id'=> $typeId,
                     'serial_number'  => $this->request->getPost('sn_baterai') ?: null,
                 ]);
@@ -1004,9 +1131,32 @@ class AttachmentInventoryController extends BaseController
                     return $this->response->setJSON(['success' => false, 'message' => 'Charger Type is required']);
                 }
                 $model = new InventoryChargerModel();
-                $count = $model->countAll() + 1;
+                $db2 = \Config\Database::connect();
+                // Accept manual item_number or auto-generate
+                $manualChgItemNum = strtoupper(trim((string)($this->request->getPost('item_number_charger') ?? '')));
+                if ($manualChgItemNum !== '') {
+                    $chgItemNumber = $manualChgItemNum;
+                } else {
+                    // Use last item number per prefix — NOT MAX(id)+1
+                    $lastChg = $db2->table('inventory_chargers')
+                        ->select('item_number')
+                        ->where("item_number REGEXP '^C[0-9]'")
+                        ->orderBy('LENGTH(item_number)', 'DESC')
+                        ->orderBy('item_number', 'DESC')
+                        ->limit(1)->get()->getRowArray();
+                    $lastChgNum = $lastChg['item_number'] ?? null;
+                    if ($lastChgNum !== null) {
+                        $numPart = ltrim(substr($lastChgNum, 1), '0') ?: '0';
+                        $nextNum = (int)$numPart + 1;
+                        $padLen  = max(4, strlen($lastChgNum) - 1);
+                    } else {
+                        $nextNum = 1;
+                        $padLen  = 4;
+                    }
+                    $chgItemNumber = 'C' . str_pad((string)$nextNum, $padLen, '0', STR_PAD_LEFT);
+                }
                 $inventoryData = array_merge($commonData, [
-                    'item_number'     => 'C' . str_pad($count, 4, '0', STR_PAD_LEFT),
+                    'item_number'     => $chgItemNumber,
                     'charger_type_id' => $typeId,
                     'serial_number'   => $this->request->getPost('sn_charger') ?: null,
                 ]);
@@ -1112,8 +1262,16 @@ class AttachmentInventoryController extends BaseController
                     $data = $query->getResultArray();
                     break;
                 case 'battery':
-                    $query = $db->query('SELECT DISTINCT merk_baterai as value, merk_baterai as text FROM baterai ORDER BY merk_baterai');
-                    $data = $query->getResultArray();
+                    // Filter HANYA data bersih: tipe_baterai IN ('LEAD ACID','LITHIUM')
+                    // dengan exact match ke ?tipe= param
+                    $filterTipe = strtoupper(trim((string)($this->request->getGet('tipe') ?? '')));
+                    $b = $db->table('baterai')
+                        ->select('merk_baterai as value, merk_baterai as text')
+                        ->distinct()
+                        ->whereIn('tipe_baterai', ['LEAD ACID', 'LITHIUM'])
+                        ->orderBy('merk_baterai');
+                    if ($filterTipe !== '') $b->where('tipe_baterai', $filterTipe);
+                    $data = $b->get()->getResultArray();
                     break;
                 case 'charger':
                     $query = $db->query('SELECT DISTINCT merk_charger as value, merk_charger as text FROM charger ORDER BY merk_charger');
@@ -1136,33 +1294,39 @@ class AttachmentInventoryController extends BaseController
     public function masterTipe($type)
     {
         try {
-            $db = \Config\Database::connect();
+            $db   = \Config\Database::connect();
+            $merk = trim((string)($this->request->getGet('merk') ?? ''));
             $data = [];
 
-            switch($type) {
+            switch ($type) {
                 case 'attachment':
-                    $query = $db->query('SELECT DISTINCT tipe as value, tipe as text FROM attachment ORDER BY tipe');
-                    $data = $query->getResultArray();
+                    $b = $db->table('attachment')->select('DISTINCT tipe as value, tipe as text')->orderBy('tipe');
+                    if ($merk !== '') $b->where('merk', $merk);
+                    $data = $b->get()->getResultArray();
                     break;
                 case 'battery':
-                    $query = $db->query('SELECT DISTINCT tipe_baterai as value, tipe_baterai as text FROM baterai ORDER BY tipe_baterai');
-                    $data = $query->getResultArray();
+                    // Return distinct tipe_baterai filtered by merk; exclude empty/dash values
+                    $b = $db->table('baterai')
+                        ->select('DISTINCT tipe_baterai as value, tipe_baterai as text')
+                        ->where('tipe_baterai !=', '')
+                        ->where('tipe_baterai !=', '-')
+                        ->orderBy('tipe_baterai');
+                    if ($merk !== '') $b->where('merk_baterai', $merk);
+                    $data = $b->get()->getResultArray();
                     break;
                 case 'charger':
-                    $query = $db->query('SELECT DISTINCT tipe_charger as value, tipe_charger as text FROM charger ORDER BY tipe_charger');
-                    $data = $query->getResultArray();
+                    // For charger: tipe gives the id_charger directly
+                    $b = $db->table('charger')
+                        ->select('id_charger as id, tipe_charger as value, tipe_charger as text')
+                        ->orderBy('tipe_charger');
+                    if ($merk !== '') $b->where('merk_charger', $merk);
+                    $data = $b->get()->getResultArray();
                     break;
             }
 
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
-            ]);
+            return $this->response->setJSON(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data tipe. Silakan coba lagi.'
-            ]);
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memuat data tipe. Silakan coba lagi.']);
         }
     }
 
@@ -1173,8 +1337,17 @@ class AttachmentInventoryController extends BaseController
             $data = [];
 
             if ($type === 'battery') {
-                $query = $db->query('SELECT DISTINCT jenis_baterai as value, jenis_baterai as text FROM baterai ORDER BY jenis_baterai');
-                $data = $query->getResultArray();
+                $merk      = trim((string)($this->request->getGet('merk') ?? ''));
+                $tipeParam = strtoupper(trim((string)($this->request->getGet('tipe') ?? '')));
+                // Hanya data bersih: exact match tipe + merk
+                $b = $db->table('baterai')
+                    ->select('id, jenis_baterai as value, jenis_baterai as text')
+                    ->whereIn('tipe_baterai', ['LEAD ACID', 'LITHIUM'])
+                    ->where('jenis_baterai !=', '')
+                    ->orderBy('jenis_baterai');
+                if ($tipeParam !== '') $b->where('tipe_baterai', $tipeParam);
+                if ($merk !== '')      $b->where('merk_baterai', $merk);
+                $data = $b->get()->getResultArray();
             }
 
             return $this->response->setJSON([
@@ -1594,9 +1767,15 @@ class AttachmentInventoryController extends BaseController
     {
         try {
             $db = \Config\Database::connect();
+            $q  = trim((string) $this->request->getGet('q'));
 
-            // Get all units with existing attachment info
-            $units = $db->table('inventory_unit iu')
+            // Require at least 1 character to avoid loading all units at once
+            if ($q === '') {
+                return $this->response->setJSON(['success' => true, 'units' => []]);
+            }
+
+            // Get units filtered by search term
+            $builder = $db->table('inventory_unit iu')
                 ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.status_unit_id, su.status_unit as status_unit_name, CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit')
                 ->select('(SELECT COUNT(*) FROM inventory_attachments WHERE inventory_unit_id = iu.id_inventory_unit) as has_attachment')
                 ->select('(SELECT COUNT(*) FROM inventory_batteries WHERE inventory_unit_id = iu.id_inventory_unit) as has_battery')
@@ -1604,9 +1783,15 @@ class AttachmentInventoryController extends BaseController
                 ->select('(SELECT COUNT(*) FROM inventory_forks WHERE inventory_unit_id = iu.id_inventory_unit AND detached_at IS NULL) as has_fork')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+                ->groupStart()
+                    ->like('iu.no_unit', $q)
+                    ->orLike('iu.serial_number', $q)
+                    ->orLike('mu.model_unit', $q)
+                ->groupEnd()
                 ->orderBy('iu.no_unit', 'ASC')
-                ->get()
-                ->getResultArray();
+                ->limit(50);
+
+            $units = $builder->get()->getResultArray();
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2171,13 +2356,14 @@ class AttachmentInventoryController extends BaseController
     }
 
     /**
-     * Get master baterai data for dropdown
+     * Get master baterai data for dropdown (supports ?q= search for Select2 AJAX)
      */
     public function masterBaterai()
     {
         try {
+            $q = trim((string)($this->request->getGet('q') ?? ''));
             $lookup = new \App\Services\MasterDataLookupService();
-            $batteries = $lookup->batteryOptions();
+            $batteries = $lookup->batteryOptions($q, 30);
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2193,13 +2379,14 @@ class AttachmentInventoryController extends BaseController
     }
 
     /**
-     * Get master charger data for dropdown
+     * Get master charger data for dropdown (supports ?q= search for Select2 AJAX)
      */
     public function masterCharger()
     {
         try {
+            $q = trim((string)($this->request->getGet('q') ?? ''));
             $lookup = new \App\Services\MasterDataLookupService();
-            $chargers = $lookup->chargerOptions();
+            $chargers = $lookup->chargerOptions($q, 30);
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2211,6 +2398,68 @@ class AttachmentInventoryController extends BaseController
                 'success' => false,
                 'message' => 'Gagal memuat data charger. Silakan coba lagi.'
             ]);
+        }
+    }
+
+    /**
+     * Return last item_number and suggested next number for a given table + prefix.
+     * GET ?type=battery|charger|attachment&prefix=B|BL|C
+     */
+    public function lastItemNumber()
+    {
+        try {
+            $type   = strtolower((string)($this->request->getGet('type') ?? 'battery'));
+            $prefix = strtoupper(preg_replace('/[^A-Za-z]/', '', (string)($this->request->getGet('prefix') ?? '')));
+
+            $tableMap = [
+                'battery'    => 'inventory_batteries',
+                'charger'    => 'inventory_chargers',
+                'attachment' => 'inventory_attachments',
+            ];
+            $table = $tableMap[$type] ?? null;
+
+            if ($table === null || $prefix === '') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Invalid params'])->setStatusCode(400);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Use REGEXP '^PREFIX[0-9]' so prefix 'B' does NOT match 'BL...' items
+            $regexpPattern = '^' . $prefix . '[0-9]';
+            $lastRow = $db->table($table)
+                ->select('item_number')
+                ->where("item_number REGEXP '{$regexpPattern}'")
+                ->orderBy('LENGTH(item_number)', 'DESC')
+                ->orderBy('item_number', 'DESC')
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+
+            $lastItemNumber = $lastRow['item_number'] ?? null;
+
+            // Suggested next = extract numeric part from last item_number + 1
+            // This ensures continuity with existing numbering (e.g. B2177 → B2178, BL0775 → BL0776)
+            if ($lastItemNumber !== null) {
+                $numericPart = ltrim(substr($lastItemNumber, strlen($prefix)), '0') ?: '0';
+                $nextNum = (int)$numericPart + 1;
+            } else {
+                $nextNum = 1;
+            }
+            // Determine pad length: match existing length pattern from last item (min 4 digits)
+            $padLen = $lastItemNumber !== null
+                ? max(4, strlen($lastItemNumber) - strlen($prefix))
+                : 5;
+            $suggested = $prefix . str_pad((string)$nextNum, $padLen, '0', STR_PAD_LEFT);
+
+            return $this->response->setJSON([
+                'success'   => true,
+                'last'      => $lastItemNumber,
+                'suggested' => $suggested,
+                'prefix'    => $prefix,
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[AttachmentInventoryController::lastItemNumber] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Server error'])->setStatusCode(500);
         }
     }
 

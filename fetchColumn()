@@ -1,0 +1,1 @@
+'Last C item_number: ' . (\$db- ?: 'none') . PHP_EOL;

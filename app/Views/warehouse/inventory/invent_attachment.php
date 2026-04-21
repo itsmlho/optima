@@ -208,6 +208,18 @@
                         <label class="form-label fw-semibold">Item Number / Serial Number</label>
                         <input type="text" class="form-control bg-light" id="edit_item_label" readonly>
                     </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Serial Number (SN)</label>
+                            <input type="text" class="form-control" id="edit_serial_number" name="serial_number" placeholder="SN dari label fisik item">
+                            <div class="small text-muted mt-1">Edit SN jika ada koreksi / perubahan</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">No Item</label>
+                            <input type="text" class="form-control text-uppercase" id="edit_item_number" name="item_number" placeholder="Cth: B02178">
+                            <div class="small text-muted mt-1">Harus unik di seluruh sistem</div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label for="edit_status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit_status" name="status" required>
@@ -470,40 +482,76 @@
                     
                     <!-- Battery Fields -->
                     <div id="battery-fields" style="display: none;">
-                        <div class="row">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Tipe Baterai <span class="text-danger">*</span></label>
+                                <select class="form-select" id="new-baterai-id" name="baterai_id">
+                                    <option value="">Cari tipe baterai...</option>
+                                </select>
+                                <div class="small text-muted mt-1">Ketik merk atau spesifikasi (cth: REMICO 48V, TAB 560AH, LITHIUM)</div>
+                            </div>
+                        </div>
+                        <div id="battery-type-info" class="row g-2 mt-2 mb-1" style="display:none;">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Battery Type <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="new-baterai-id" name="baterai_id">
-                                        <option value="">Select Battery Type</option>
-                                    </select>
-                                </div>
+                                <div class="small text-muted mb-1">Jenis / Kimia Baterai</div>
+                                <div class="bg-light border rounded px-3 py-2 small fw-semibold" id="bat-jenis-display">-</div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Serial Number <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="new-sn-baterai" name="sn_baterai" placeholder="Enter battery SN">
+                                <div class="small text-muted mb-1">Tipe / Model</div>
+                                <div class="bg-light border rounded px-3 py-2 small fw-semibold" id="bat-tipe-display">-</div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Serial Number (SN) <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="new-sn-baterai" name="sn_baterai" placeholder="Cth: BA24001">
+                                <div class="small text-muted mt-1">SN dari label fisik baterai</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">No Item <span class="text-muted small fw-normal">(opsional)</span></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control text-uppercase" id="new-item-number-battery" name="item_number_battery" placeholder="Cth: B02178">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="generateBatteryItemNumber()" title="Generate otomatis"><i class="fas fa-magic"></i></button>
                                 </div>
+                                <div class="small text-muted mt-1" id="battery-last-hint">Kosongkan untuk otomatis saat simpan</div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Charger Fields -->
                     <div id="charger-fields" style="display: none;">
-                        <div class="row">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Tipe Charger <span class="text-danger">*</span></label>
+                                <select class="form-select" id="new-charger-id" name="charger_id">
+                                    <option value="">Cari tipe charger...</option>
+                                </select>
+                                <div class="small text-muted mt-1">Ketik merk atau tipe (cth: ENERPULSE, BAS 48V)</div>
+                            </div>
+                        </div>
+                        <div id="charger-type-info" class="row g-2 mt-2 mb-1" style="display:none;">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Charger Type <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="new-charger-id" name="charger_id">
-                                        <option value="">Select Charger Type</option>
-                                    </select>
-                                </div>
+                                <div class="small text-muted mb-1">Merk Charger</div>
+                                <div class="bg-light border rounded px-3 py-2 small fw-semibold" id="chg-merk-display">-</div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Serial Number <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="new-sn-charger" name="sn_charger" placeholder="Enter charger SN">
+                                <div class="small text-muted mb-1">Tipe / Model</div>
+                                <div class="bg-light border rounded px-3 py-2 small fw-semibold" id="chg-tipe-display">-</div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Serial Number (SN) <span class="text-muted small fw-normal">(opsional)</span></label>
+                                <input type="text" class="form-control" id="new-sn-charger" name="sn_charger" placeholder="Cth: CHR-2024-001">
+                                <div class="small text-muted mt-1">Isi jika ada SN fisik pada charger</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">No Item <span class="text-muted small fw-normal">(opsional)</span></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control text-uppercase" id="new-item-number-charger" name="item_number_charger" placeholder="Cth: C01545">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="generateChargerItemNumber()" title="Generate otomatis"><i class="fas fa-magic"></i></button>
                                 </div>
+                                <div class="small text-muted mt-1" id="charger-last-hint">Kosongkan untuk otomatis saat simpan</div>
                             </div>
                         </div>
                     </div>
@@ -512,10 +560,11 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Unit</label>
+                                <label class="form-label">Unit <span class="text-muted small fw-normal">(opsional)</span></label>
                                 <select class="form-select" id="new-unit-id" name="unit_id">
-                                    <option value="">Select Unit (Optional)</option>
+                                    <option value="">Pilih unit jika sudah terpasang...</option>
                                 </select>
+                                <div class="small text-muted mt-1">Jika belum terpasang pada unit, kosongkan</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -1247,6 +1296,8 @@
                     $('#edit_id').val(data.id);
                     $('#edit_tipe_item').val(data.tipe_item);
                     $('#edit_item_label').val(label);
+                    $('#edit_serial_number').val(data.serial_number || '');
+                    $('#edit_item_number').val(data.item_number || '');
                     $('#edit_status').val(data.status);
                     $('#edit_storage_location').val(data.storage_location);
                     $('#edit_physical_condition').val(data.physical_condition);
@@ -1695,30 +1746,33 @@
             $('#battery-fields').hide();
             $('#charger-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Attachment');
-            // Load attachment master data
             loadMasterData('attachment', '#new-attachment-id');
         } else if (type === 'battery') {
             $('#attachment-fields').hide();
             $('#battery-fields').show();
             $('#charger-fields').hide();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Battery');
-            // Load baterai master data
-            loadMasterData('baterai', '#new-baterai-id');
+            initBatterySelect2();
+            fetchBatteryLastHint();
         } else if (type === 'charger') {
             $('#attachment-fields').hide();
             $('#battery-fields').hide();
             $('#charger-fields').show();
             $('#addItemModal .modal-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Charger');
-            // Load charger master data
-            loadMasterData('charger', '#new-charger-id');
+            initChargerSelect2();
+            fetchChargerLastHint('C');
         }
         
         // Reset form
         $('#addItemForm')[0].reset();
         $('#new-tipe-item').val(type);
+        $('#new-item-number-battery, #new-item-number-charger').val('');
+        $('#battery-type-info, #charger-type-info').hide();
+        $('#battery-last-hint').text('Kosongkan untuk otomatis saat simpan');
+        $('#charger-last-hint').text('Kosongkan untuk otomatis saat simpan');
         
-        // Load units data
-        loadUnitsData();
+        // Load available units via AJAX (lazy, no upfront full load)
+        loadAvailableUnits('#new-unit-id', type);
         
         // Show modal
         $('#addItemModal').modal('show');
@@ -1833,6 +1887,138 @@
         });
     }
 
+    // ===== Battery Select2 AJAX helpers =====
+    function initBatterySelect2() {
+        const $sel = $('#new-baterai-id');
+        if ($sel.hasClass('select2-hidden-accessible')) { try { $sel.select2('destroy'); } catch(e) {} }
+        $sel.val(null).empty().append('<option value="">Cari tipe baterai...</option>');
+        $sel.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Cari tipe baterai...',
+            allowClear: true,
+            width: '100%',
+            minimumInputLength: 0,
+            dropdownParent: $('#addItemModal'),
+            ajax: {
+                url: '<?= base_url('warehouse/master-baterai') ?>',
+                dataType: 'json',
+                delay: 300,
+                cache: true,
+                data: function(p) { return { q: p.term || '' }; },
+                processResults: function(r) {
+                    if (!r.success) return { results: [] };
+                    return { results: (r.data || []).map(function(i) {
+                        return { id: i.id, text: i.text, merk_baterai: i.merk_baterai, tipe_baterai: i.tipe_baterai, jenis_baterai: i.jenis_baterai };
+                    }) };
+                }
+            }
+        });
+        $sel.on('select2:select', function(e) {
+            const d = e.params.data;
+            $('#bat-jenis-display').text(d.jenis_baterai || '-');
+            $('#bat-tipe-display').text(d.tipe_baterai || '-');
+            $('#battery-type-info').show();
+            const j = (d.jenis_baterai || '').toUpperCase();
+            const isLi = j.includes('LITHIUM') || j.includes('LI-ION') || j.includes('LI ION') ||
+                         j.includes('LIFEPO') || j.includes('LFP') || j.includes('NMC') || j.includes('NCA');
+            fetchBatteryLastHint(isLi ? 'BL' : 'B');
+        });
+        $sel.on('select2:unselect select2:clear', function() {
+            $('#battery-type-info').hide();
+            fetchBatteryLastHint();
+        });
+    }
+
+    function fetchBatteryLastHint(prefix) {
+        if (!prefix) {
+            $('#battery-last-hint').html('Nomor terakhir — <span id="hint-b">...</span> | <span id="hint-bl">...</span>');
+            $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'battery', prefix: 'B' }, function(r) {
+                if (r.success) $('#hint-b').text('B: ' + (r.last || 'belum ada'));
+            });
+            $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'battery', prefix: 'BL' }, function(r) {
+                if (r.success) $('#hint-bl').text('BL: ' + (r.last || 'belum ada'));
+            });
+            return;
+        }
+        $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'battery', prefix: prefix }, function(r) {
+            if (r.success) {
+                $('#battery-last-hint').html('Nomor terakhir <strong>' + prefix + '</strong>: <strong>' + (r.last || 'belum ada') + '</strong>');
+            }
+        });
+    }
+
+    function generateBatteryItemNumber() {
+        const d = ($('#new-baterai-id').select2('data') || [])[0];
+        if (!d || !d.id) { OptimaNotify.warning('Pilih tipe baterai terlebih dahulu', 'Info'); return; }
+        const j = (d.jenis_baterai || '').toUpperCase();
+        const isLi = j.includes('LITHIUM') || j.includes('LI-ION') || j.includes('LI ION') ||
+                     j.includes('LIFEPO') || j.includes('LFP') || j.includes('NMC') || j.includes('NCA');
+        const prefix = isLi ? 'BL' : 'B';
+        $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'battery', prefix: prefix }, function(r) {
+            if (r.success) {
+                $('#new-item-number-battery').val(r.suggested);
+                $('#battery-last-hint').html('Generated: <strong>' + r.suggested + '</strong> | Terakhir: ' + (r.last || 'belum ada'));
+            }
+        });
+    }
+
+    // ===== Charger Select2 AJAX helpers =====
+    function initChargerSelect2() {
+        const $sel = $('#new-charger-id');
+        if ($sel.hasClass('select2-hidden-accessible')) { try { $sel.select2('destroy'); } catch(e) {} }
+        $sel.val(null).empty().append('<option value="">Cari tipe charger...</option>');
+        $sel.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Cari tipe charger...',
+            allowClear: true,
+            width: '100%',
+            minimumInputLength: 0,
+            dropdownParent: $('#addItemModal'),
+            ajax: {
+                url: '<?= base_url('warehouse/master-charger') ?>',
+                dataType: 'json',
+                delay: 300,
+                cache: true,
+                data: function(p) { return { q: p.term || '' }; },
+                processResults: function(r) {
+                    if (!r.success) return { results: [] };
+                    return { results: (r.data || []).map(function(i) {
+                        return { id: i.id, text: i.text, merk_charger: i.merk_charger, tipe_charger: i.tipe_charger };
+                    }) };
+                }
+            }
+        });
+        $sel.on('select2:select', function(e) {
+            const d = e.params.data;
+            $('#chg-merk-display').text(d.merk_charger || '-');
+            $('#chg-tipe-display').text(d.tipe_charger || '-');
+            $('#charger-type-info').show();
+            fetchChargerLastHint('C');
+        });
+        $sel.on('select2:unselect select2:clear', function() {
+            $('#charger-type-info').hide();
+            $('#charger-last-hint').text('Kosongkan untuk otomatis saat simpan');
+        });
+    }
+
+    function fetchChargerLastHint(prefix) {
+        prefix = prefix || 'C';
+        $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'charger', prefix: prefix }, function(r) {
+            if (r.success) {
+                $('#charger-last-hint').html('Nomor terakhir <strong>' + prefix + '</strong>: <strong>' + (r.last || 'belum ada') + '</strong>');
+            }
+        });
+    }
+
+    function generateChargerItemNumber() {
+        $.get('<?= base_url('warehouse/inventory/last-item-number') ?>', { type: 'charger', prefix: 'C' }, function(r) {
+            if (r.success) {
+                $('#new-item-number-charger').val(r.suggested);
+                $('#charger-last-hint').html('Generated: <strong>' + r.suggested + '</strong> | Terakhir: ' + (r.last || 'belum ada'));
+            }
+        });
+    }
+
     // Save new item
     $('#btn-save-item').on('click', function() {
         const formData = new FormData($('#addItemForm')[0]);
@@ -1869,9 +2055,6 @@
             if (!$('#new-charger-id').val()) {
                 isValid = false;
                 errorMessage = 'Charger Type is required';
-            } else if (!$('#new-sn-charger').val()) {
-                isValid = false;
-                errorMessage = 'Serial Number is required';
             }
         }
         

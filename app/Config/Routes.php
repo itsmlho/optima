@@ -915,6 +915,12 @@ $routes->group('warehouse', static function ($routes) {
 
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders
     $routes->group('inventory', static function ($routes) {
+        // BATTERY + CHARGER - Combined page
+        $routes->group('battery-charger', static function ($routes) {
+            $routes->get('/',  'Warehouse\AttachmentInventoryController::inventBatteryCharger');
+            $routes->post('/', 'Warehouse\AttachmentInventoryController::inventBatteryCharger');
+        });
+
         // ATTACHMENT - Clean subgroup (new controller)
         $routes->group('attachments', static function ($routes) {
             $routes->get('/',                           'Warehouse\AttachmentInventoryController::inventAttachment');
@@ -938,6 +944,7 @@ $routes->group('warehouse', static function ($routes) {
             $routes->get('master/baterai',              'Warehouse\AttachmentInventoryController::masterBaterai');
             $routes->get('master/charger',              'Warehouse\AttachmentInventoryController::masterCharger');
             $routes->get('master/fork',                 'Warehouse\AttachmentInventoryController::masterForks');
+            $routes->get('last-item-number',            'Warehouse\AttachmentInventoryController::lastItemNumber');
             $routes->get('fork-stocks',                'Warehouse\AttachmentInventoryController::forkStocks');
             $routes->post('fork-stocks',               'Warehouse\AttachmentInventoryController::forkStocks');
             $routes->get('master-merk/(:segment)',      'Warehouse\AttachmentInventoryController::masterMerk/$1');
@@ -1577,12 +1584,21 @@ $routes->group('warehouse/inventory', static function($r){
     $r->get('available-batteries', 'Warehouse\InventoryApi::availableBatteries');
     $r->get('unit-components', 'Warehouse\InventoryApi::getUnitComponents');
     $r->post('replace-component', 'Warehouse\InventoryApi::replaceComponent');
-    
+
     // Manual attach/detach/swap backward-compat → new controller (main routes now under attachments/)
     $r->get('get-available-units', 'Warehouse\AttachmentInventoryController::getAvailableUnits');
     $r->post('attach-to-unit', 'Warehouse\AttachmentInventoryController::attachToUnit');
     $r->post('swap-unit', 'Warehouse\AttachmentInventoryController::swapUnit');
     $r->post('detach-from-unit', 'Warehouse\AttachmentInventoryController::detachFromUnit');
+
+    // Backward-compat URLs used by invent_attachment.php view
+    $r->get('get-attachment-detail/(:num)',  'Warehouse\AttachmentInventoryController::getAttachmentDetail/$1');
+    $r->get('get-attachment-history/(:num)', 'Warehouse\AttachmentInventoryController::getAttachmentHistory/$1');
+    $r->post('update-attachment/(:num)',     'Warehouse\AttachmentInventoryController::updateAttachment/$1');
+    $r->match(['post','delete'], 'delete-attachment/(:num)', 'Warehouse\AttachmentInventoryController::deleteAttachment/$1');
+
+    // Last item-number helper (used by Add Item modal)
+    $r->get('last-item-number', 'Warehouse\AttachmentInventoryController::lastItemNumber');
 });
 
 // Test Route for Activity Log

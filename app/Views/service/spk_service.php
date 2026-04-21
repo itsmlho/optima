@@ -2353,75 +2353,87 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	function loadBatteryOptionsIndividual(suffix = '') {
 		const batteryPickId = suffix ? `batteryPick${suffix}` : 'batteryPick';
-		fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
-			.then(r => r.json())
-			.then(data => {
-				const batterySelect = document.getElementById(batteryPickId);
-				if (batterySelect && Array.isArray(data)) {
-					batterySelect.innerHTML = '<option value="">- Select Battery -</option>' + 
-						data.map(item => {
-							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
+		const $batterySelect = $('#' + batteryPickId);
+		if (!$batterySelect.length) return;
+
+		if ($batterySelect.hasClass('select2-hidden-accessible')) {
+			$batterySelect.select2('destroy');
+		}
+		$batterySelect.empty().append('<option value=""></option>');
+
+		const batteryApiUrl = '<?= base_url('warehouse/inventory/available-batteries') ?>';
+
+		$batterySelect.select2({
+			placeholder: '🔍 Cari baterai (nomor item / SN / merek / tipe)...',
+			allowClear: true,
+			dropdownParent: $('#approvalStageModal .modal-content'),
+			width: '100%',
+			minimumInputLength: 0,
+			ajax: {
+				url: batteryApiUrl,
+				type: 'GET',
+				dataType: 'json',
+				delay: 300,
+				data: function(params) { return { q: params.term || '' }; },
+				processResults: function(data) {
+					if (!Array.isArray(data)) return { results: [] };
+					return {
+						results: data.map(function(item) {
+							const name = [item.merk_baterai, item.tipe_baterai, item.jenis_baterai].filter(Boolean).join(' ').trim() || '-';
 							const itemNumber = item.item_number || '-';
 							const serialNumber = item.serial_number || '-';
-						const isUsed = item.status === 'IN_USE';
-						const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-					
-						return `<option value="${item.id}" 
-								data-status="${item.status}" 
-									data-name="${name}"
-								data-item-number="${itemNumber}"
-								data-serial="${serialNumber}"
-								data-installed-unit="${item.installed_unit_no||''}"
-								data-installed-sn="${item.installed_unit_sn||''}"
-									data-installed-merk="${item.installed_unit_merk||''}"
-									data-installed-model="${item.installed_unit_model||''}"
-									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${itemNumber}
-							</option>`;
-						}).join('');
-					
-					// Initialize Select2 with custom templates
-					const $batterySelect = $('#' + batteryPickId);
-					if ($batterySelect.hasClass('select2-hidden-accessible')) {
-						$batterySelect.select2('destroy');
-					}
-					
-					$batterySelect.select2({
-						placeholder: '🔍 Search battery by SN / Brand / Type...',
-						allowClear: true,
-						dropdownParent: $('#approvalStageModal .modal-content'),
-						width: '100%',
-						minimumInputLength: 0,
-						language: {
-							noResults: function() { return 'No battery found'; },
-							searching: function() { return 'Searching...'; }
-						},
-						templateResult: formatComponentOption,
-						templateSelection: formatComponentSelection,
-						escapeMarkup: function(markup) { return markup; }
-					});
-					
-					// Update availability indicators after loading options
-					setTimeout(() => {
-						updateDropdownAvailability(batterySelect, 'battery');
-					}, 100);
-					
-					// Add event listener for IN_USE battery detection
-					$batterySelect.on('select2:select', function(e) {
-						const selectedOption = e.params.data.element;
-						const status = selectedOption.getAttribute('data-status');
-						const installedUnit = selectedOption.getAttribute('data-installed-unit');
-						
-						console.log(`🔋 Battery selected - Status: ${status}, Installed Unit: ${installedUnit}`);
-						
-						if (status === 'IN_USE' && installedUnit) {
-							// Show confirmation modal for IN_USE battery
-							showUsedComponentAlert(selectedOption, 'battery', suffix);
-						}
-					});
-				}
-			})
-			.catch(err => console.log('Error loading batteries:', err));
+							const isUsed = item.status === 'IN_USE';
+							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
+							const statusLabel = isUsed ? ` [IN USE${installedUnit ? ' @ ' + installedUnit : ''}]` : '';
+							return {
+								id: String(item.id),
+								text: `${name} • ${itemNumber}${statusLabel}`,
+								item_number: itemNumber,
+								serial_number: serialNumber,
+								status: item.status,
+								name: name,
+								installed_unit_no: item.installed_unit_no || '',
+								installed_unit_sn: item.installed_unit_sn || '',
+								installed_unit_merk: item.installed_unit_merk || '',
+								installed_unit_model: item.installed_unit_model || '',
+								raw: item
+							};
+						})
+					};
+				},
+				cache: true
+			},
+			language: {
+				noResults: function() { return 'Baterai tidak ditemukan'; },
+				searching: function() { return 'Mencari...'; },
+				inputTooShort: function() { return 'Ketik untuk mencari baterai...'; }
+			},
+			escapeMarkup: function(markup) { return markup; }
+		});
+
+		// Add event listener for IN_USE battery detection
+		$batterySelect.off('select2:select.batteryPick').on('select2:select.batteryPick', function(e) {
+			const d = e.params.data || {};
+			const status = d.status || '';
+			const installedUnit = d.installed_unit_no || '';
+
+			console.log(`🔋 Battery selected - Status: ${status}, Installed Unit: ${installedUnit}`);
+
+			if (status === 'IN_USE' && installedUnit) {
+				// Show confirmation modal for IN_USE battery
+				// Reconstruct a fake element for showUsedComponentAlert compatibility
+				const fakeEl = document.createElement('option');
+				fakeEl.setAttribute('data-status', status);
+				fakeEl.setAttribute('data-name', d.name || '');
+				fakeEl.setAttribute('data-item-number', d.item_number || '');
+				fakeEl.setAttribute('data-serial', d.serial_number || '');
+				fakeEl.setAttribute('data-installed-unit', installedUnit);
+				fakeEl.setAttribute('data-installed-sn', d.installed_unit_sn || '');
+				fakeEl.setAttribute('data-installed-merk', d.installed_unit_merk || '');
+				fakeEl.setAttribute('data-installed-model', d.installed_unit_model || '');
+				showUsedComponentAlert(fakeEl, 'battery', suffix);
+			}
+		});
 	}
 	
 	// Make sure functions are accessible globally
@@ -2429,82 +2441,85 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	function loadChargerOptionsIndividual(suffix = '') {
 		const chargerPickId = suffix ? `chargerPick${suffix}` : 'chargerPick';
-		console.log(`🔌 Loading charger options for ID: ${chargerPickId}`);
-		
-		fetch('<?= base_url('warehouse/inventory/available-chargers') ?>')
-			.then(r => r.json())
-			.then(data => {
-				console.log(`🔌 Charger API response:`, data);
-				const chargerSelect = document.getElementById(chargerPickId);
-				console.log(`🔌 Charger select element:`, chargerSelect);
-				
-				if (chargerSelect && Array.isArray(data)) {
-					chargerSelect.innerHTML = '<option value="">- Select Charger -</option>' + 
-						data.map(item => {
-							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
+		const $chargerSelect = $('#' + chargerPickId);
+		if (!$chargerSelect.length) return;
+
+		if ($chargerSelect.hasClass('select2-hidden-accessible')) {
+			$chargerSelect.select2('destroy');
+		}
+		$chargerSelect.empty().append('<option value=""></option>');
+
+		const chargerApiUrl = '<?= base_url('warehouse/inventory/available-chargers') ?>';
+
+		$chargerSelect.select2({
+			placeholder: '🔍 Cari charger (nomor item / SN / merek / tipe)...',
+			allowClear: true,
+			dropdownParent: $('#approvalStageModal .modal-content'),
+			width: '100%',
+			minimumInputLength: 0,
+			ajax: {
+				url: chargerApiUrl,
+				type: 'GET',
+				dataType: 'json',
+				delay: 300,
+				data: function(params) { return { q: params.term || '' }; },
+				processResults: function(data) {
+					if (!Array.isArray(data)) return { results: [] };
+					return {
+						results: data.map(function(item) {
+							const name = [item.merk_charger, item.tipe_charger].filter(Boolean).join(' ').trim() || '-';
 							const itemNumber = item.item_number || '-';
 							const serialNumber = item.serial_number || '-';
-						const isUsed = item.status === 'IN_USE';
-						const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-						
-						return `<option value="${item.id}" 
-								data-status="${item.status}" 
-									data-name="${name}"
-								data-item-number="${itemNumber}"
-								data-serial="${serialNumber}"
-								data-installed-unit="${item.installed_unit_no||''}"
-								data-installed-sn="${item.installed_unit_sn||''}"
-									data-installed-merk="${item.installed_unit_merk||''}"
-									data-installed-model="${item.installed_unit_model||''}"
-									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${itemNumber}
-							</option>`;
-						}).join('');
-					
-					// Initialize or reinitialize Select2 with search
-					const $chargerSelect = $(chargerSelect);
-					if ($chargerSelect.hasClass('select2-hidden-accessible')) {
-						$chargerSelect.select2('destroy');
-					}
-					
-					$chargerSelect.select2({
-						placeholder: '🔍 Search charger by SN / Brand / Type...',
-						allowClear: true,
-						dropdownParent: $('#approvalStageModal .modal-content'),
-						width: '100%',
-						minimumInputLength: 0,
-						language: {
-							noResults: function() { return 'No charger found'; },
-							searching: function() { return 'Searching...'; }
-						},
-						templateResult: formatComponentOption,
-						templateSelection: formatComponentSelection,
-						escapeMarkup: function(markup) { return markup; }
-					});
-					
-					// Update availability indicators after loading options
-					setTimeout(() => {
-						updateDropdownAvailability(chargerSelect, 'charger');
-					}, 100);
-					
-					// Add event listener for IN_USE charger detection
-					$chargerSelect.on('select2:select', function(e) {
-						const selectedOption = e.params.data.element;
-						const status = selectedOption.getAttribute('data-status');
-						const installedUnit = selectedOption.getAttribute('data-installed-unit');
-						
-						console.log(`🔌 Charger selected - Status: ${status}, Installed Unit: ${installedUnit}`);
-						
-						if (status === 'IN_USE' && installedUnit) {
-							// Show confirmation modal for IN_USE charger
-							showUsedComponentAlert(selectedOption, 'charger', suffix);
-						}
-					});
-				} else {
-					console.log(`🔌 Charger select not found or invalid data:`, {chargerSelect, data});
-				}
-			})
-			.catch(err => console.log('🔌 Error loading chargers:', err));
+							const isUsed = item.status === 'IN_USE';
+							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
+							const statusLabel = isUsed ? ` [IN USE${installedUnit ? ' @ ' + installedUnit : ''}]` : '';
+							return {
+								id: String(item.id),
+								text: `${name} • ${itemNumber}${statusLabel}`,
+								item_number: itemNumber,
+								serial_number: serialNumber,
+								status: item.status,
+								name: name,
+								installed_unit_no: item.installed_unit_no || '',
+								installed_unit_sn: item.installed_unit_sn || '',
+								installed_unit_merk: item.installed_unit_merk || '',
+								installed_unit_model: item.installed_unit_model || '',
+								raw: item
+							};
+						})
+					};
+				},
+				cache: true
+			},
+			language: {
+				noResults: function() { return 'Charger tidak ditemukan'; },
+				searching: function() { return 'Mencari...'; },
+				inputTooShort: function() { return 'Ketik untuk mencari charger...'; }
+			},
+			escapeMarkup: function(markup) { return markup; }
+		});
+
+		// Add event listener for IN_USE charger detection
+		$chargerSelect.off('select2:select.chargerPick').on('select2:select.chargerPick', function(e) {
+			const d = e.params.data || {};
+			const status = d.status || '';
+			const installedUnit = d.installed_unit_no || '';
+
+			console.log(`🔌 Charger selected - Status: ${status}, Installed Unit: ${installedUnit}`);
+
+			if (status === 'IN_USE' && installedUnit) {
+				const fakeEl = document.createElement('option');
+				fakeEl.setAttribute('data-status', status);
+				fakeEl.setAttribute('data-name', d.name || '');
+				fakeEl.setAttribute('data-item-number', d.item_number || '');
+				fakeEl.setAttribute('data-serial', d.serial_number || '');
+				fakeEl.setAttribute('data-installed-unit', installedUnit);
+				fakeEl.setAttribute('data-installed-sn', d.installed_unit_sn || '');
+				fakeEl.setAttribute('data-installed-merk', d.installed_unit_merk || '');
+				fakeEl.setAttribute('data-installed-model', d.installed_unit_model || '');
+				showUsedComponentAlert(fakeEl, 'charger', suffix);
+			}
+		});
 	}
 	
 	// Make sure functions are accessible globally

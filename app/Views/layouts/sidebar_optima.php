@@ -193,6 +193,9 @@ helper('permission_helper');
                     <?php if (canNavigateTo('warehouse', 'attachment_inventory')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/inventory/attachments') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">attach_file</span><span class="drop-label">Attachment Inventory</span></a></li>
                     <?php endif; ?>
+                    <?php if (canNavigateTo('warehouse', 'attachment_inventory')): ?>
+                    <li class="nav-item"><a href="<?= base_url('/warehouse/inventory/battery-charger') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">battery_charging_full</span><span class="drop-label">Battery &amp; Charger Inventory</span></a></li>
+                    <?php endif; ?>
                     <?php if (canNavigateTo('warehouse', 'sparepart_inventory')): ?>
                     <li class="nav-item"><a href="<?= base_url('/warehouse/inventory/invent_sparepart') ?>" class="nav-link dropdown-link"><span class="material-symbols-rounded drop-icon">category</span><span class="drop-label">Sparepart Inventory</span></a></li>
                     <?php endif; ?>

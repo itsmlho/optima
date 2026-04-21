@@ -47,15 +47,17 @@ class InventoryApi extends BaseController
 
     public function availableChargers()
     {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
         $m = new InventoryChargerModel();
-        $rows = $m->getAvailableChargers();
+        $rows = $m->getAvailableChargers($q);
         return $this->response->setJSON($rows);
     }
 
     public function availableBatteries()
     {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
         $m = new InventoryBatteryModel();
-        $rows = $m->getAvailableBatteries();
+        $rows = $m->getAvailableBatteries($q);
         return $this->response->setJSON($rows);
     }
 

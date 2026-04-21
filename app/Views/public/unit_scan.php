@@ -3,129 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= esc($title ?? 'Unit View') ?></title>
+    <title>Unit Detail — Public View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { background: #f4f6fa; font-size: .875rem; }
+        .page-header {
+            background: linear-gradient(135deg, #1a56db 0%, #0e3fad 100%);
+            color: #fff; padding: 1.25rem 1.5rem;
+            border-radius: .5rem; margin-bottom: 1.25rem;
+        }
+        .page-header .unit-no  { font-size: 1.35rem; font-weight: 700; letter-spacing: .03em; }
+        .page-header .unit-sub { font-size: .85rem; opacity: .85; }
+        .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-radius: .5rem; }
+        .card-header { background: #f8f9fb; border-bottom: 1px solid #e9ecef; border-radius: .5rem .5rem 0 0 !important; padding: .6rem 1rem; }
+        .card-header h6 { margin: 0; font-size: .8rem; font-weight: 600; color: #495057; }
+        .section-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #868e96; border-bottom: 1px solid #e9ecef; padding-bottom: .35rem; margin-bottom: .5rem; }
+        .spec-list { list-style: none; padding: 0; margin: 0; }
+        .spec-list li { display: flex; justify-content: space-between; align-items: center; padding: .3rem .9rem; border-bottom: 1px solid #f0f0f0; }
+        .spec-list li:last-child { border-bottom: none; }
+        .spec-list .lbl { color: #6c757d; }
+        .spec-list .val { font-weight: 600; text-align: right; max-width: 60%; }
+        /* Password overlay — frosted white */
+        #pw-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        #pw-box { background: #fff; border-radius: .75rem; padding: 2rem 2.25rem; width: 340px; max-width: 94vw; box-shadow: 0 8px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08); }
+        #pw-box .logo { font-size: 1.8rem; margin-bottom: .5rem; }
+        #pw-box h5 { font-weight: 700; margin-bottom: .25rem; }
+        #pw-box p  { color: #6c757d; font-size: .85rem; margin-bottom: 1.25rem; }
+        #pw-error  { display: none; color: #dc3545; font-size: .82rem; margin-top: .4rem; }
+        /* WO filter bar */
+        .filter-bar { background: #f8f9fb; border-bottom: 1px solid #e9ecef; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+        .wo-row { padding: .65rem 1rem; border-bottom: 1px solid #f0f0f0; }
+        .wo-row:last-child { border-bottom: none; }
+        .wo-row .wo-num  { font-family: monospace; font-size: .8rem; color: #6c757d; }
+        .wo-row .wo-type { font-weight: 600; font-size: .85rem; }
+        #wo-empty-msg { display: none; padding: .75rem 1rem; color: #6c757d; font-style: italic; font-size: .85rem; }
+    </style>
 </head>
-<body class="bg-light">
+<body>
+
+<!-- ── Password Overlay ──────────────────────────────────── -->
+<div id="pw-overlay">
+    <div id="pw-box">
+        <div class="logo text-center">🔐</div>
+        <h5 class="text-center">Protected View</h5>
+        <p class="text-center">Masukkan password untuk melihat detail unit ini.</p>
+        <div class="mb-3">
+            <input type="password" id="pw-input" class="form-control" placeholder="Password" autocomplete="off">
+            <div id="pw-error">Password salah. Coba lagi.</div>
+        </div>
+        <button class="btn btn-primary w-100" onclick="checkPassword()">
+            <i class="fas fa-unlock me-1"></i>Buka
+        </button>
+    </div>
+</div>
+
 <?php
-$unitNo = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: ('TEMP-' . ($unit['id_inventory_unit'] ?? '-')));
-$unitName = trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? ''));
-$serialNo = $unit['serial_number'] ?? ($unit['serial_no'] ?? null);
-$fuelRaw = $unit['fuel_type'] ?? ($unit['fuel_type_dept'] ?? ($unit['unit_departemen'] ?? ''));
-$fuelLabel = $fuelRaw ? strtoupper((string)$fuelRaw) : '-';
+$unitNo    = $unit['no_unit'] ?: ($unit['no_unit_na'] ?: ('TEMP-' . ($unit['id_inventory_unit'] ?? '-')));
+$unitName  = trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? ''));
+$tipeName  = trim(($unit['tipe'] ?? '') . ' ' . ($unit['jenis'] ?? ''));
+$fuelRaw   = strtoupper(trim((string)($unit['fuel_type'] ?? '')));
+$statusName = $unit['status_unit'] ?? ($unit['status_unit_name'] ?? 'UNKNOWN');
+$statusColors = ['AVAILABLE'=>'success','RENTED'=>'primary','MAINTENANCE'=>'warning','PREPARATION'=>'info','SCRAPPED'=>'secondary'];
+$statusBadge  = $statusColors[$statusName] ?? 'secondary';
+
 $siloStatus = strtoupper((string)($silo['status'] ?? 'BELUM_ADA'));
-$siloBadge = 'secondary';
-if ($siloStatus === 'SILO_TERBIT') $siloBadge = 'success';
-elseif ($siloStatus === 'SILO_EXPIRED') $siloBadge = 'danger';
-elseif ($siloStatus !== 'BELUM_ADA') $siloBadge = 'warning';
+$siloBadge  = ['SILO_TERBIT'=>'success','SILO_EXPIRED'=>'danger'][$siloStatus] ?? ($siloStatus === 'BELUM_ADA' ? 'secondary' : 'warning');
+
+$comp = $current_components ?? ['battery' => null, 'charger' => null, 'attachment' => null];
+$hasAnyComp = !empty($comp['battery']) || !empty($comp['charger']) || !empty($comp['attachment']);
+
+function pubFmtDate(?string $d): string {
+    if (!$d) return '-';
+    $ts = strtotime($d);
+    return $ts ? date('d M Y', $ts) : '-';
+}
+function pubFmtHm($val): string {
+    if ($val === null || $val === '') return '-';
+    return number_format((float)$val, 0, '.', ',') . ' HM';
+}
 ?>
+
+<!-- ── Page Content ──────────────────────────────────────── -->
+<div id="page-content" style="display:none;">
 <div class="container py-4" style="max-width: 960px;">
-    <div class="card shadow-sm mb-3">
-        <div class="card-header bg-primary text-white">
-            <strong>Unit Detail (Public View)</strong>
+
+    <!-- ── Header ── -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <div class="unit-no"><i class="fas fa-forklift me-2 opacity-75"></i><?= esc($unitNo) ?></div>
+                <div class="unit-sub"><?= esc($unitName ?: '-') ?><?= $tipeName ? ' &bull; ' . esc($tipeName) : '' ?></div>
+            </div>
+            <span class="badge bg-<?= $statusBadge ?> fs-6 align-self-start"><?= esc($statusName) ?></span>
         </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <div><small class="text-muted">No Unit</small></div>
-                    <div class="fw-bold"><?= esc($unitNo) ?></div>
+    </div>
+
+    <!-- ── Card 1: Unit Information ── -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6><i class="fas fa-id-card me-2 text-primary"></i>Unit Information</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="row g-0">
+                <div class="col-md-6 border-end">
+                    <div class="px-3 pt-3 pb-2">
+                        <p class="section-label"><i class="fas fa-hashtag me-1"></i>Identity</p>
+                    </div>
+                    <ul class="spec-list small">
+                        <li class="bg-light">
+                            <span class="lbl">No Unit</span>
+                            <span class="val font-monospace"><?= esc($unitNo) ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Serial Number</span>
+                            <span class="val font-monospace"><?= esc($unit['serial_number'] ?: '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Model Unit</span>
+                            <span class="val"><?= esc($unitName ?: '-') ?></span>
+                        </li>
+                    </ul>
                 </div>
                 <div class="col-md-6">
-                    <div><small class="text-muted">Serial Number</small></div>
-                    <div class="fw-bold"><?= esc($unit['serial_number'] ?? '-') ?></div>
-                </div>
-                <div class="col-md-6">
-                    <div><small class="text-muted">Model</small></div>
-                    <div><?= esc($unitName !== '' ? $unitName : '-') ?></div>
-                </div>
-                <div class="col-md-6">
-                    <div><small class="text-muted">Tipe/Jenis</small></div>
-                    <div><?= esc(trim(($unit['tipe'] ?? '') . ' ' . ($unit['jenis'] ?? '')) ?: '-') ?></div>
-                </div>
-                <div class="col-md-6">
-                    <div><small class="text-muted">Lokasi</small></div>
-                    <div><?= esc($unit['lokasi_unit'] ?? '-') ?></div>
-                </div>
-                <div class="col-md-6">
-                    <div><small class="text-muted">Fuel Type</small></div>
-                    <div><?= esc($fuelLabel) ?></div>
+                    <div class="px-3 pt-3 pb-2">
+                        <p class="section-label"><i class="fas fa-tag me-1"></i>Classification</p>
+                    </div>
+                    <ul class="spec-list small">
+                        <li>
+                            <span class="lbl">Tipe Unit</span>
+                            <span class="val"><?= esc($tipeName ?: '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Department</span>
+                            <span class="val"><?= esc($unit['unit_departemen'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Year of Make</span>
+                            <span class="val"><?= esc($unit['tahun_unit'] ?: '-') ?></span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light"><strong>Spesifikasi Unit (Engine, Mast & Tyres)</strong></div>
-                <div class="card-body">
-                    <dl class="row mb-0 small">
-                        <dt class="col-5 text-muted">Engine Model</dt>
-                        <dd class="col-7"><?= esc(trim(($unit['merk_mesin'] ?? '') . ' ' . ($unit['model_mesin'] ?? '')) ?: '-') ?></dd>
-                        <dt class="col-5 text-muted">Engine S/N</dt>
-                        <dd class="col-7 font-monospace"><?= esc($unit['sn_mesin'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Capacity</dt>
-                        <dd class="col-7"><?= esc($unit['kapasitas_display'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Hour Meter</dt>
-                        <dd class="col-7"><?= ($unit['hour_meter'] !== null && $unit['hour_meter'] !== '') ? esc(number_format((float)$unit['hour_meter'], 0, '.', ',') . ' HM') : '-' ?></dd>
-                        <dt class="col-5 text-muted">Mast Type</dt>
-                        <dd class="col-7"><?= esc($unit['tipe_mast'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Mast Height</dt>
-                        <dd class="col-7"><?= !empty($unit['tinggi_mast']) ? esc($unit['tinggi_mast'] . ' mm') : '-' ?></dd>
-                        <dt class="col-5 text-muted">Mast S/N</dt>
-                        <dd class="col-7 font-monospace"><?= esc($unit['sn_mast'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Tipe Ban</dt>
-                        <dd class="col-7"><?= esc($unit['tipe_ban'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Ban Depan</dt>
-                        <dd class="col-7"><?= esc($unit['ban_depan'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Ban Belakang</dt>
-                        <dd class="col-7"><?= esc($unit['ban_belakang'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Jenis Roda</dt>
-                        <dd class="col-7"><?= esc($unit['jenis_roda'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Valve</dt>
-                        <dd class="col-7"><?= esc($unit['jumlah_valve'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Tahun Unit</dt>
-                        <dd class="col-7"><?= esc($unit['tahun_unit'] ?? '-') ?></dd>
+    <!-- ── Card 2: Technical Specifications ── -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6><i class="fas fa-cogs me-2 text-secondary"></i>Technical Specifications — Engine, Mast &amp; Tyres</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="row g-0">
+                <div class="col-md-6 border-end">
+                    <div class="px-3 pt-3 pb-2">
+                        <p class="section-label"><i class="fas fa-fire me-1 text-warning"></i>Engine &amp; Power</p>
+                    </div>
+                    <ul class="spec-list small">
+                        <li>
+                            <span class="lbl">Engine Model</span>
+                            <span class="val"><?= esc(trim(($unit['merk_mesin'] ?? '') . ' ' . ($unit['model_mesin'] ?? '')) ?: '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Engine S/N</span>
+                            <span class="val font-monospace"><?= esc($unit['sn_mesin'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Capacity</span>
+                            <span class="val"><?= esc($unit['kapasitas_display'] ?? ($unit['kapasitas_unit'] ?? '-')) ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Fuel Type</span>
+                            <span class="val">
+                                <?php if ($fuelRaw): ?><span class="badge bg-warning text-dark"><?= esc($fuelRaw) ?></span><?php else: ?>-<?php endif; ?>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="lbl">Hour Meter</span>
+                            <span class="val"><?= pubFmtHm($unit['hour_meter'] ?? null) ?></span>
+                        </li>
                         <?php if (!empty($unit['asset_tag'])): ?>
-                        <dt class="col-5 text-muted">Asset Tag</dt>
-                        <dd class="col-7 font-monospace"><?= esc($unit['asset_tag']) ?></dd>
+                        <li class="bg-light">
+                            <span class="lbl">Asset Tag</span>
+                            <span class="val font-monospace"><?= esc($unit['asset_tag']) ?></span>
+                        </li>
                         <?php endif; ?>
-                    </dl>
+                    </ul>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light"><strong>Customer & Location</strong></div>
-                <div class="card-body">
-                    <dl class="row mb-0 small">
-                        <dt class="col-5 text-muted">Customer</dt>
-                        <dd class="col-7"><?= esc($unit['customer_name'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Area</dt>
-                        <dd class="col-7"><?= esc($unit['area_name'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Lokasi Customer</dt>
-                        <dd class="col-7"><?= esc($unit['customer_location_name'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Kota</dt>
-                        <dd class="col-7"><?= esc($unit['customer_city'] ?? '-') ?></dd>
-                        <dt class="col-5 text-muted">Alamat</dt>
-                        <dd class="col-7"><?= esc($unit['customer_address'] ?? '-') ?></dd>
-                    </dl>
+                <div class="col-md-6">
+                    <div class="px-3 pt-3 pb-2">
+                        <p class="section-label"><i class="fas fa-arrows-alt-v me-1 text-info"></i>Mast &amp; Tyres</p>
+                    </div>
+                    <ul class="spec-list small">
+                        <li>
+                            <span class="lbl">Mast Type</span>
+                            <span class="val"><?= esc($unit['tipe_mast'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Mast Height</span>
+                            <span class="val"><?= !empty($unit['tinggi_mast']) ? esc($unit['tinggi_mast'] . ' mm') : '-' ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Mast S/N</span>
+                            <span class="val font-monospace"><?= esc($unit['sn_mast'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Tyre Type</span>
+                            <span class="val"><?= esc($unit['tipe_ban'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Front Tyre</span>
+                            <span class="val"><?= esc($unit['ban_depan'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Rear Tyre</span>
+                            <span class="val"><?= esc($unit['ban_belakang'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Wheel Type</span>
+                            <span class="val"><?= esc($unit['jenis_roda'] ?? '-') ?></span>
+                        </li>
+                        <li>
+                            <span class="lbl">Valve</span>
+                            <span class="val"><?= esc($unit['jumlah_valve'] ?? '-') ?></span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- ── Accessories + Components ── -->
     <div class="row g-3 mb-3">
         <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light"><strong>Accessories</strong></div>
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6><i class="fas fa-tools me-2 text-secondary"></i>Accessories</h6>
+                </div>
                 <div class="card-body">
                     <?php if (empty($aksesorisItems)): ?>
                         <span class="text-muted small">Standard / No accessories</span>
                     <?php else: ?>
                         <div class="d-flex flex-wrap gap-2">
                             <?php foreach ($aksesorisItems as $item): ?>
-                                <span class="badge text-bg-secondary rounded-pill"><?= esc($item) ?></span>
+                                <span class="badge bg-secondary rounded-pill"><?= esc($item) ?></span>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
@@ -133,33 +254,31 @@ elseif ($siloStatus !== 'BELUM_ADA') $siloBadge = 'warning';
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light"><strong>Komponen Terpasang Saat Ini</strong></div>
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6><i class="fas fa-puzzle-piece me-2 text-secondary"></i>Komponen Terpasang</h6>
+                </div>
                 <div class="card-body small">
-                    <?php
-                    $comp = $current_components ?? ['battery' => null, 'charger' => null, 'attachment' => null];
-                    $hasAnyComp = !empty($comp['battery']) || !empty($comp['charger']) || !empty($comp['attachment']);
-                    ?>
                     <?php if (!$hasAnyComp): ?>
-                        <div class="text-muted">Tidak ada attachment, charger, atau baterai terpasang.</div>
+                        <span class="text-muted">Tidak ada komponen terpasang.</span>
                     <?php else: ?>
                         <?php if (!empty($comp['attachment']) && is_array($comp['attachment'])): $a = $comp['attachment']; ?>
                             <div class="mb-2">
-                                <span class="badge text-bg-secondary me-1">Attachment</span>
+                                <span class="badge bg-secondary me-1">Attachment</span>
                                 <strong><?= esc(trim(($a['merk'] ?? '') . ' ' . ($a['model'] ?? '') . ' ' . ($a['tipe'] ?? '')) ?: 'N/A') ?></strong>
                                 <?php if (!empty($a['sn_attachment'])): ?><div class="text-muted font-monospace">S/N: <?= esc($a['sn_attachment']) ?></div><?php endif; ?>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($comp['charger']) && is_array($comp['charger'])): $c = $comp['charger']; ?>
                             <div class="mb-2">
-                                <span class="badge text-bg-primary me-1">Charger</span>
+                                <span class="badge bg-primary me-1">Charger</span>
                                 <strong><?= esc(trim(($c['merk_charger'] ?? '') . ' ' . ($c['tipe_charger'] ?? '')) ?: 'N/A') ?></strong>
                                 <?php if (!empty($c['sn_charger'])): ?><div class="text-muted font-monospace">S/N: <?= esc($c['sn_charger']) ?></div><?php endif; ?>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($comp['battery']) && is_array($comp['battery'])): $b = $comp['battery']; ?>
                             <div>
-                                <span class="badge text-bg-warning me-1">Baterai</span>
+                                <span class="badge bg-warning text-dark me-1">Baterai</span>
                                 <strong><?= esc(trim(($b['merk_baterai'] ?? '') . ' ' . ($b['tipe_baterai'] ?? '') . ' ' . ($b['jenis_baterai'] ?? '')) ?: 'N/A') ?></strong>
                                 <?php if (!empty($b['sn_baterai'])): ?><div class="text-muted font-monospace">S/N: <?= esc($b['sn_baterai']) ?></div><?php endif; ?>
                             </div>
@@ -170,149 +289,211 @@ elseif ($siloStatus !== 'BELUM_ADA') $siloBadge = 'warning';
         </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
-        <div class="card-header bg-light d-flex align-items-center justify-content-between">
-            <strong>Status SILO</strong>
-            <span class="badge text-bg-<?= esc($siloBadge) ?>"><?= esc($siloStatus) ?></span>
+    <!-- ── SILO ── -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Status SILO</h6>
+            <span class="badge bg-<?= esc($siloBadge) ?>"><?= esc($siloStatus) ?></span>
         </div>
-        <div class="card-body small">
-            <div class="row g-2">
-                <div class="col-md-4"><span class="text-muted">Nomor SILO:</span> <span class="fw-semibold"><?= esc($silo['nomor_silo'] ?? '-') ?></span></div>
-                <div class="col-md-4"><span class="text-muted">Terbit:</span> <?= !empty($silo['tanggal_terbit_silo']) ? date('d M Y', strtotime($silo['tanggal_terbit_silo'])) : '-' ?></div>
-                <div class="col-md-4"><span class="text-muted">Expired:</span> <?= !empty($silo['tanggal_expired_silo']) ? date('d M Y', strtotime($silo['tanggal_expired_silo'])) : '-' ?></div>
-            </div>
+        <div class="card-body p-0">
+            <ul class="spec-list small">
+                <li>
+                    <span class="lbl">Nomor SILO</span>
+                    <span class="val font-monospace"><?= esc($silo['nomor_silo'] ?? '-') ?></span>
+                </li>
+                <li>
+                    <span class="lbl">Tanggal Terbit</span>
+                    <span class="val"><?= pubFmtDate($silo['tanggal_terbit_silo'] ?? null) ?></span>
+                </li>
+                <li>
+                    <span class="lbl">Tanggal Expired</span>
+                    <span class="val"><?= pubFmtDate($silo['tanggal_expired_silo'] ?? null) ?></span>
+                </li>
+            </ul>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <strong>History Log Unit</strong>
-            <select id="history-group-mode" class="form-select form-select-sm" style="width:auto;">
-                <option value="document">Group: Dokumen</option>
-                <option value="date">Group: Tanggal</option>
-            </select>
+    <!-- ── Work Order History ── -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6><i class="fas fa-wrench me-2 text-primary"></i>Work Order History
+                <span class="badge bg-secondary ms-1" id="wo-count-badge"><?= count($work_orders) ?></span>
+            </h6>
         </div>
-        <div class="card-body">
-            <?php if (empty($events)): ?>
-                <div class="text-muted">Belum ada activity log.</div>
+
+        <?php if (!empty($work_orders)): ?>
+        <div class="filter-bar">
+            <input type="text" id="wo-search" class="form-control form-control-sm"
+                   placeholder="Cari nomor / tipe / catatan..." style="max-width:220px;">
+            <select id="wo-filter-status" class="form-select form-select-sm" style="width:auto;">
+                <option value="">Semua Status</option>
+                <?php
+                $woStatuses = array_unique(array_filter(array_column($work_orders, 'status')));
+                sort($woStatuses);
+                foreach ($woStatuses as $s): ?>
+                    <option value="<?= esc(strtolower($s)) ?>"><?= esc($s) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select id="wo-filter-type" class="form-select form-select-sm" style="width:auto;">
+                <option value="">Semua Tipe</option>
+                <?php
+                $woTypes = array_unique(array_filter(array_column($work_orders, 'type')));
+                sort($woTypes);
+                foreach ($woTypes as $t): ?>
+                    <option value="<?= esc(strtolower($t)) ?>"><?= esc($t) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" onclick="resetWoFilters()">
+                <i class="fas fa-times me-1"></i>Reset
+            </button>
+        </div>
+        <?php endif; ?>
+
+        <div id="wo-list">
+            <?php if (empty($work_orders)): ?>
+                <div class="p-3 text-muted small">Belum ada work order.</div>
             <?php else: ?>
-                <div id="history-grouped-container"></div>
+                <?php foreach ($work_orders as $wo):
+                    $woBadge = $wo['status_color'] ?? 'secondary';
+                    $allowedBadge = ['primary','success','danger','warning','info','secondary','dark'];
+                    if (!in_array($woBadge, $allowedBadge)) $woBadge = 'secondary';
+                ?>
+                <div class="wo-row"
+                     data-status="<?= esc(strtolower($wo['status'] ?? '')) ?>"
+                     data-type="<?= esc(strtolower($wo['type'] ?? '')) ?>"
+                     data-search="<?= esc(strtolower(($wo['wo_number'] ?? '') . ' ' . ($wo['type'] ?? '') . ' ' . ($wo['notes'] ?? '') . ' ' . ($wo['technician'] ?? ''))) ?>">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div>
+                            <div class="wo-type"><?= esc($wo['type'] ?? 'Work Order') ?></div>
+                            <div class="wo-num"><?= esc($wo['wo_number'] ?? '-') ?></div>
+                            <?php if (!empty($wo['notes'])): ?>
+                                <div class="text-muted small mt-1"><?= esc($wo['notes']) ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($wo['technician'])): ?>
+                                <div class="small text-muted mt-1"><i class="fas fa-user me-1"></i><?= esc(trim($wo['technician'])) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-<?= esc($woBadge) ?>"><?= esc($wo['status'] ?? '-') ?></span>
+                            <div class="small text-muted mt-1"><?= pubFmtDate($wo['date'] ?? null) ?></div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <div id="wo-empty-msg">Tidak ada work order yang sesuai filter.</div>
             <?php endif; ?>
         </div>
     </div>
-</div>
-<?php if (!empty($events)): ?>
+
+    <!-- ── Sparepart Usage ── -->
+    <?php if (!empty($sparepart_usages)): ?>
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6><i class="fas fa-box-open me-2 text-warning"></i>Pemakaian Sparepart
+                <span class="badge bg-secondary ms-1"><?= count($sparepart_usages) ?></span>
+            </h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nama Part</th>
+                        <th class="text-center">Qty</th>
+                        <th>WO Ref</th>
+                        <th>Tanggal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($sparepart_usages as $sp): ?>
+                    <tr>
+                        <td><?= esc($sp['part_name'] ?? '-') ?></td>
+                        <td class="text-center"><?= esc($sp['qty'] ?? '-') ?><?= !empty($sp['uom']) ? ' ' . esc($sp['uom']) : '' ?></td>
+                        <td class="font-monospace text-muted"><?= esc($sp['wo_ref'] ?? '-') ?></td>
+                        <td><?= pubFmtDate($sp['date'] ?? null) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="text-center text-muted small mt-4 pb-3">
+        <i class="fas fa-shield-alt me-1"></i>PT Sarana Mitra Luas &mdash; Your Rental Solution
+    </div>
+
+</div><!-- /container -->
+</div><!-- /page-content -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-(function() {
-    const events = <?= json_encode($events, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || [];
-    const modeSelect = document.getElementById('history-group-mode');
-    const container = document.getElementById('history-grouped-container');
-    if (!modeSelect || !container) return;
+(function () {
+    /* ── Password ── */
+    var PASSWORD = 'yourrentalsolution';
+    var SK = 'pub_unit_auth';
 
-    function escHtml(v) {
-        if (v === null || v === undefined) return '';
-        return String(v)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+    function unlock() {
+        document.getElementById('pw-overlay').style.display = 'none';
+        document.getElementById('page-content').style.display = 'block';
     }
 
-    function formatDate(v, withTime) {
-        if (!v) return '-';
-        const d = new Date(v);
-        if (Number.isNaN(d.getTime())) return '-';
-        const opt = withTime
-            ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
-            : { day: '2-digit', month: 'short', year: 'numeric' };
-        return d.toLocaleDateString('id-ID', opt);
-    }
+    if (sessionStorage.getItem(SK) === '1') { unlock(); }
 
-    function docGroupKey(ev) {
-        const t = String(ev.reference_type || ev.category || 'MISC').toUpperCase();
-        const n = String(ev.reference_number || ev.description || 'NO-REF');
-        const sensitive = t === 'CONTRACT' || t === 'PO' || t === 'PURCHASE_ORDER' || t === 'PURCHASE';
-        return sensitive ? t : (t + '|' + n);
-    }
-
-    function docGroupTitle(ev) {
-        const t = String(ev.reference_type || ev.category || 'DOKUMEN').toUpperCase();
-        const n = String(ev.reference_number || ev.description || '-');
-        const sensitive = t === 'CONTRACT' || t === 'PO' || t === 'PURCHASE_ORDER' || t === 'PURCHASE';
-        return sensitive ? t : (t + ' - ' + n);
-    }
-
-    function dateGroupKey(ev) {
-        return formatDate(ev.date, false);
-    }
-
-    function render() {
-        const mode = modeSelect.value || 'document';
-        const grouped = {};
-        const keys = [];
-
-        events.forEach(function(ev) {
-            const key = mode === 'date' ? dateGroupKey(ev) : docGroupKey(ev);
-            if (!grouped[key]) {
-                grouped[key] = [];
-                keys.push(key);
-            }
-            grouped[key].push(ev);
-        });
-
-        let html = '';
-        function sanitizeSensitiveText(text, hideRef) {
-            if (!text) return '';
-            let out = String(text);
-            if (hideRef) {
-                // Hide contract/PO style numbers in public view, e.g. WF-100179491, PO-2026/01/001
-                out = out.replace(/\b(?:WF|PO|KONTRAK|CONTRACT)[-\/: ]?[A-Z0-9][A-Z0-9\-\/]*\b/gi, '').trim();
-                out = out.replace(/\s{2,}/g, ' ');
-            }
-            return out;
+    window.checkPassword = function () {
+        var val = document.getElementById('pw-input').value;
+        var err = document.getElementById('pw-error');
+        if (val === PASSWORD) {
+            sessionStorage.setItem(SK, '1');
+            err.style.display = 'none';
+            unlock();
+        } else {
+            err.style.display = 'block';
+            document.getElementById('pw-input').select();
         }
-        keys.forEach(function(key) {
-            const items = grouped[key];
-            const title = mode === 'date' ? key : docGroupTitle(items[0]);
-            html += '<div class="border rounded mb-3 overflow-hidden">';
-            html += '<div class="bg-light px-3 py-2 d-flex justify-content-between align-items-center">';
-            html += '<strong class="small">' + escHtml(title) + '</strong>';
-            html += '<span class="badge text-bg-secondary">' + items.length + ' item</span>';
-            html += '</div>';
-            html += '<div class="list-group list-group-flush">';
+    };
 
-            items.forEach(function(ev) {
-                const refType = String(ev.reference_type || ev.category || '').toUpperCase();
-                const hideRef = refType === 'CONTRACT' || refType === 'PO' || refType === 'PURCHASE_ORDER' || refType === 'PURCHASE';
-                const safeTitle = sanitizeSensitiveText(ev.title || 'Event', hideRef) || (ev.category ? (String(ev.category) + ' Event') : 'Event');
-                const safeDesc = sanitizeSensitiveText(ev.description || '', hideRef);
-                const safeDetail = sanitizeSensitiveText(ev.detail || '', hideRef);
-                html += '<div class="list-group-item">';
-                html += '<div class="d-flex justify-content-between align-items-start gap-2">';
-                html += '<div>';
-                html += '<div class="fw-semibold">' + escHtml(safeTitle) + '</div>';
-                if (safeDesc) html += '<div class="small text-muted">' + escHtml(safeDesc) + '</div>';
-                if (safeDetail) html += '<div class="small text-muted">' + escHtml(safeDetail) + '</div>';
-                if (!hideRef && ev.reference_number) html += '<div class="small">Ref: <span class="font-monospace">' + escHtml(ev.reference_number) + '</span></div>';
-                html += '</div>';
-                html += '<div class="text-end">';
-                html += '<span class="badge text-bg-secondary">' + escHtml(ev.category || '-') + '</span>';
-                html += '<div class="small text-muted mt-1">' + escHtml(formatDate(ev.date, true)) + '</div>';
-                html += '</div></div></div>';
-            });
+    document.getElementById('pw-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') window.checkPassword();
+    });
 
-            html += '</div></div>';
+    /* ── WO Filter ── */
+    var searchInput  = document.getElementById('wo-search');
+    var statusSelect = document.getElementById('wo-filter-status');
+    var typeSelect   = document.getElementById('wo-filter-type');
+    var emptyMsg     = document.getElementById('wo-empty-msg');
+    var badge        = document.getElementById('wo-count-badge');
+
+    function applyWoFilter() {
+        var search = searchInput  ? searchInput.value.toLowerCase().trim() : '';
+        var status = statusSelect ? statusSelect.value.toLowerCase()       : '';
+        var type   = typeSelect   ? typeSelect.value.toLowerCase()         : '';
+        var rows   = document.querySelectorAll('#wo-list .wo-row');
+        var visible = 0;
+
+        rows.forEach(function (row) {
+            var show = true;
+            if (search && (row.dataset.search || '').indexOf(search) === -1) show = false;
+            if (status && (row.dataset.status || '') !== status) show = false;
+            if (type   && (row.dataset.type   || '') !== type)   show = false;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
 
-        container.innerHTML = html;
+        if (badge)    badge.textContent = visible;
+        if (emptyMsg) emptyMsg.style.display = (visible === 0 && rows.length > 0) ? 'block' : 'none';
     }
 
-    modeSelect.addEventListener('change', render);
-    render();
+    if (searchInput)  searchInput.addEventListener('input',  applyWoFilter);
+    if (statusSelect) statusSelect.addEventListener('change', applyWoFilter);
+    if (typeSelect)   typeSelect.addEventListener('change',   applyWoFilter);
+
+    window.resetWoFilters = function () {
+        if (searchInput)  searchInput.value  = '';
+        if (statusSelect) statusSelect.value = '';
+        if (typeSelect)   typeSelect.value   = '';
+        applyWoFilter();
+    };
 })();
 </script>
-<?php endif; ?>
 </body>
 </html>
-

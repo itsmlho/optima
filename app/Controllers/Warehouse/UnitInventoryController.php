@@ -538,13 +538,60 @@ class UnitInventoryController extends BaseController
             log_message('warning', 'UnitInventoryController::publicView aksesoris: ' . $e->getMessage());
         }
 
+        // ── Work Orders ──────────────────────────────────────
+        $work_orders = [];
+        try {
+            if ($db->tableExists('work_orders')) {
+                $work_orders = $db->table('work_orders wo')
+                    ->select('wo.work_order_number AS wo_number,
+                              wo.report_date       AS date,
+                              wo.description       AS notes,
+                              woc.category_name    AS type,
+                              wos.status_name      AS status,
+                              wos.status_color     AS status_color,
+                              CONCAT(IFNULL(u.first_name,""), " ", IFNULL(u.last_name,"")) AS technician')
+                    ->join('work_order_categories woc', 'woc.id = wo.category_id', 'left')
+                    ->join('work_order_statuses   wos', 'wos.id = wo.status_id',   'left')
+                    ->join('users u',                   'u.id   = wo.mechanic_id', 'left')
+                    ->where('wo.unit_id', (int)$unit['id_inventory_unit'])
+                    ->where('wo.deleted_at IS NULL')
+                    ->orderBy('wo.report_date', 'DESC')
+                    ->limit(50)
+                    ->get()->getResultArray();
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView work_orders: ' . $e->getMessage());
+        }
+
+        // ── Sparepart Usages ─────────────────────────────────
+        $sparepart_usages = [];
+        try {
+            if ($db->tableExists('work_order_spareparts')) {
+                $sparepart_usages = $db->table('work_order_spareparts wsp')
+                    ->select('wsp.sparepart_name  AS part_name,
+                              wsp.quantity_used   AS qty,
+                              wsp.satuan          AS uom,
+                              wo.work_order_number AS wo_ref,
+                              wo.report_date       AS date')
+                    ->join('work_orders wo', 'wo.id = wsp.work_order_id', 'left')
+                    ->where('wo.unit_id', (int)$unit['id_inventory_unit'])
+                    ->where('wo.deleted_at IS NULL')
+                    ->orderBy('wo.report_date', 'DESC')
+                    ->limit(100)
+                    ->get()->getResultArray();
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::publicView spareparts: ' . $e->getMessage());
+        }
+
         return view('public/unit_scan', [
-            'title' => 'Unit View',
-            'unit' => $unit,
-            'events' => $events,
-            'silo' => $silo,
+            'title'              => 'Unit View',
+            'unit'               => $unit,
+            'silo'               => $silo,
             'current_components' => $currentComponents,
-            'aksesorisItems' => $aksesorisItems,
+            'aksesorisItems'     => $aksesorisItems,
+            'work_orders'        => $work_orders,
+            'sparepart_usages'   => $sparepart_usages,
         ]);
     }
 
