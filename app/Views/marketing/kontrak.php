@@ -107,8 +107,8 @@ $can_export = (
 
 <!-- Status Filter Tabs -->
 <div class="card mb-3">
-    <div class="card-body p-0">
-        <ul class="nav nav-tabs" id="contractStatusTabs" role="tablist">
+    <div class="card-body p-0" style="overflow-x: auto;">
+        <ul class="nav nav-tabs flex-nowrap" id="contractStatusTabs" role="tablist" style="min-width: max-content;">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="tab-all" data-tab="all" type="button" role="tab">
                     <i class="fas fa-list me-2"></i><?= lang('Marketing.tab_all_rental') ?>
@@ -278,8 +278,8 @@ $can_export = (
             <form id="addContractForm">
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.rental_number_label') ?> *</label>
+                        <div class="col-md-6 mb-3" id="contractNumberSection">
+                            <label class="form-label" id="contractNumberLabel"><?= lang('Marketing.rental_number_label') ?> *</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" name="contract_number" id="modalContractNumber" required>
                                 <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="<?= lang('Marketing.generate_rental_number') ?>">
@@ -289,9 +289,9 @@ $can_export = (
                             <small class="text-muted" id="contractNumberHint"><?= lang('Marketing.select_customer_first') ?></small>
                         </div>
                         
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.client_po_number') ?></label>
-                            <input type="text" class="form-control" name="po_number" placeholder="<?= lang('Marketing.client_po_number') ?>">
+                        <div class="col-md-6 mb-3" id="poNumberSection">
+                            <label class="form-label" id="poNumberLabel"><?= lang('Marketing.client_po_number') ?></label>
+                            <input type="text" class="form-control" name="po_number" id="modalPoNumber" placeholder="<?= lang('Marketing.client_po_number') ?>">
                         </div>
                         
                         <div class="col-md-6 mb-3">
@@ -492,6 +492,9 @@ $(document).ready(function() {
         if ($('#contractLocationSelect').data('select2')) {
             $('#contractLocationSelect').select2('destroy');
         }
+        // Reset rental-type-dependent field states
+        $('#modalRentalType').val('CONTRACT');
+        onRentalTypeChange('CONTRACT');
     });
 });
 
@@ -1775,6 +1778,23 @@ function onRentalTypeChange(type) {
         $('#billingPeriodSection').show();
     }
 
+    // PO_ONLY: contract_number is auto-generated (readonly), po_number becomes required
+    if (isPO) {
+        $('#modalContractNumber').attr('readonly', true).addClass('bg-light text-muted');
+        $('#generateContractNumber').hide();
+        $('#contractNumberLabel').html('Nomor Internal <span class="badge badge-soft-gray ms-1" style="font-size:0.7em;">Auto</span>');
+        $('#contractNumberHint').text('Dibuat otomatis oleh sistem');
+        $('#poNumberLabel').html('<?= esc(lang('Marketing.client_po_number'), 'js') ?> *');
+        $('#modalPoNumber').attr('required', true).attr('placeholder', 'Masukkan nomor PO dari customer');
+    } else {
+        $('#modalContractNumber').removeAttr('readonly').removeClass('bg-light text-muted');
+        $('#generateContractNumber').show();
+        $('#contractNumberLabel').html('<?= esc(lang('Marketing.rental_number_label'), 'js') ?> *');
+        $('#contractNumberHint').text('<?= esc(lang('Marketing.select_customer_first'), 'js') ?>');
+        $('#poNumberLabel').text('<?= esc(lang('Marketing.client_po_number'), 'js') ?>');
+        $('#modalPoNumber').removeAttr('required').attr('placeholder', '<?= esc(lang('Marketing.client_po_number'), 'js') ?>');
+    }
+
     // Description text
     $('#rentalTypeDesc').text(RENTAL_TYPE_DESC[type] || '');
 
@@ -1894,8 +1914,12 @@ $(document).on('submit', '#addContractForm', function(e) {
 }
 .gv-customer-header.collapsed .gv-caret { transform: rotate(-90deg); }
 .gv-caret { transition: transform 0.2s ease; display: inline-block; }
-.gv-child-table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
-.gv-child-table td { vertical-align: middle; font-size: 0.875rem; }
+.gv-child-table { min-width: 900px; }
+.gv-child-table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+.gv-child-table td { vertical-align: middle; font-size: 0.875rem; white-space: nowrap; }
+.gv-td-contract { max-width: 220px; }
+.gv-badge-truncate { max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.gv-td-period { white-space: normal; min-width: 160px; }
 .gv-customer-block { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
 .gv-child-wrap { transition: none; }
 #groupedViewBody .dropdown-menu { z-index: 9050; }
@@ -2038,12 +2062,12 @@ function renderGroupedView(customers) {
                     <table class="table table-sm table-hover mb-0 gv-child-table">
                         <thead class="bg-light">
                             <tr>
-                                <th style="width:30%">${LANG_RENTAL.th_contract_po}</th>
+                                <th>${LANG_RENTAL.th_contract_po}</th>
                                 <th>${LANG_RENTAL.th_type}</th>
                                 <th>${LANG_RENTAL.th_billing}</th>
-                                <th>${LANG_RENTAL.th_period}</th>
+                                <th style="min-width:160px">${LANG_RENTAL.th_period}</th>
                                 <th class="text-center">${LANG_RENTAL.th_units}</th>
-                                <th class="text-end">${LANG_RENTAL.th_value}</th>
+                                <th class="text-end" style="min-width:120px">${LANG_RENTAL.th_value}</th>
                                 <th>Status</th>
                                 <th class="text-center">${LANG_RENTAL.th_actions}</th>
                             </tr>
@@ -2097,24 +2121,27 @@ function buildContractRow(k) {
     const statusColor = { ACTIVE:'badge-soft-green', PENDING:'badge-soft-yellow', EXPIRED:'badge-soft-red', CANCELLED:'badge-soft-gray' }[k.status] || 'badge-soft-gray';
     const statusBadge = `<span class="badge ${statusColor}">${escHtml(k.status||'—')}</span>`;
 
-    // Contract / PO display with visual enhancement
-    const kontrakNo = escHtml(k.no_kontrak || '—');
-    const contractDisplay = `<div class="d-flex align-items-center gap-2">
-        <span class="badge badge-soft-blue font-monospace text-xxs">${kontrakNo}</span>
-    </div>`;
-    const poLine = k.po_number ? `<small class="text-muted d-block mt-1"><i class="fas fa-file-invoice me-1 text-info"></i>PO: <span class="font-monospace">${escHtml(k.po_number)}</span></small>` : '';
+    // Contract / PO display — truncate long numbers, show full in tooltip
+    const kontrakNo     = k.no_kontrak || '—';
+    const kontrakNoEsc  = escHtml(kontrakNo);
+    const kontrakShort  = kontrakNo.length > 28 ? escHtml(kontrakNo.slice(0, 28)) + '…' : kontrakNoEsc;
+    const contractDisplay = `<span class="badge badge-soft-blue font-monospace gv-badge-truncate" title="${kontrakNoEsc}">${kontrakShort}</span>`;
 
-    const nilai = k.nilai_total > 0 ? '<span class="text-success fw-semibold">Rp ' + Number(k.nilai_total).toLocaleString('id-ID') + '</span>' : '—';
+    const poFull  = k.po_number || '';
+    const poShort = poFull.length > 28 ? escHtml(poFull.slice(0, 28)) + '…' : escHtml(poFull);
+    const poLine  = poFull ? `<small class="text-muted d-block mt-1" title="${escHtml(poFull)}"><i class="fas fa-file-invoice me-1 text-info"></i><span class="font-monospace">${poShort}</span></small>` : '';
+
+    const nilai = k.nilai_total > 0 ? '<span class="text-success fw-semibold">Rp ' + Number(k.nilai_total).toLocaleString('id-ID') + '</span>' : '—';
 
     return `<tr>
-        <td>${contractDisplay}${poLine}</td>
-        <td>${typeBadge}</td>
-        <td><small class="text-muted">${escHtml(billing)}</small></td>
-        <td><small class="text-muted">${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
-        <td class="text-center"><span class="badge badge-soft-blue">${k.total_units}</span></td>
-        <td class="text-end">${nilai}</td>
-        <td>${statusBadge}</td>
-        <td class="text-center">${buildActionButtons(k.id, k.status, k.days_remaining)}</td>
+        <td class="gv-td-contract">${contractDisplay}${poLine}</td>
+        <td class="text-nowrap">${typeBadge}</td>
+        <td class="text-nowrap"><small class="text-muted">${escHtml(billing)}</small></td>
+        <td class="gv-td-period"><small class="text-muted text-nowrap">${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
+        <td class="text-center text-nowrap"><span class="badge badge-soft-blue">${k.total_units}</span></td>
+        <td class="text-end text-nowrap">${nilai}</td>
+        <td class="text-nowrap">${statusBadge}</td>
+        <td class="text-center td-actions">${buildActionButtons(k.id, k.status, k.days_remaining)}</td>
     </tr>`;
 }
 
