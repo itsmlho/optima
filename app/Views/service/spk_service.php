@@ -2251,8 +2251,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					batterySelect.innerHTML = '<option value="">- Select Battery -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
-							const serialInfo = item.sn_baterai || 'SN: -';
-							return `<option value="${item.id_inventory_attachment}" style="white-space: normal; line-height: 1.4; padding: 8px;">
+							const serialInfo = item.serial_number || 'SN: -';
+							return `<option value="${item.id}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 								${name}
 								${serialInfo}
 							</option>`;
@@ -2270,7 +2270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					chargerSelect.innerHTML = '<option value="">- Select Charger -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
-							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
+							return `<option value="${item.id}">${name} • SN: ${item.serial_number||'-'}</option>`;
 						}).join('');
 				}
 			})
@@ -2565,8 +2565,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (attachmentSelect && Array.isArray(data)) {
 					attachmentSelect.innerHTML = '<option value="">- Select Attachment -</option>' + 
 						data.map(item => {
-							const serialInfo = item.sn_attachment || 'SN: -';
-							return `<option value="${item.id_inventory_attachment}" style="white-space: normal; line-height: 1.4; padding: 8px;">
+const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
+						return `<option value="${item.id_inventory_attachment || item.id}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 								${item.nama_barang}
 								${serialInfo}
 							</option>`;
@@ -2600,8 +2600,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (attachmentSelect && Array.isArray(data)) {
 					attachmentSelect.innerHTML = '<option value="">- Select Attachment -</option>' + 
 						data.map(item => {
-							const serialInfo = item.sn_attachment || 'SN: -';
-							return `<option value="${item.id_inventory_attachment}" style="white-space: normal; line-height: 1.4; padding: 8px;">
+							const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
+							return `<option value="${item.id_inventory_attachment || item.id}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 								${item.nama_barang}
 								${serialInfo}
 							</option>`;
@@ -5015,11 +5015,11 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 			// Unit already has battery - provide options
 			const battery = apiData.battery;
 			const batteryName = `${battery.merk_baterai || '-'} ${battery.tipe_baterai || ''} ${battery.jenis_baterai || ''}`.trim();
-			const batterySn = battery.sn_baterai || '-';
+			const batterySn = battery.serial_number || '-';
 			
 			html += `
 				<!-- Hidden fields untuk data existing battery -->
-				<input type="hidden" id="existingBatteryModelId${suffix}" value="${battery.id_inventory_attachment || ''}">
+				<input type="hidden" id="existingBatteryModelId${suffix}" value="${battery.id || ''}">
 				<input type="hidden" id="existingBatterySn${suffix}" value="${batterySn}">
 				<input type="hidden" id="batteryAction${suffix}" value="use_existing">
 				
@@ -5048,7 +5048,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				</div>
 				<div id="replaceBatteryOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Select Replacement Battery <span class="text-danger">*</span></label>
-					<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" data-old-battery-id="${battery.id_inventory_attachment}" style="width:100%">
+					<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" data-old-battery-id="${battery.id}" style="width:100%">
 						<option value="">- Select New Battery -</option>
 					</select>
 				</div>`;
@@ -5081,11 +5081,11 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 			// Unit already has charger - provide options
 			const charger = apiData.charger;
 			const chargerName = `${charger.merk_charger || '-'} ${charger.tipe_charger || ''}`.trim();
-			const chargerSn = charger.sn_charger || '-';
+			const chargerSn = charger.serial_number || '-';
 			
 			html += `
 				<!-- Hidden fields untuk data existing charger -->
-				<input type="hidden" id="existingChargerModelId${suffix}" value="${charger.id_inventory_attachment || ''}">
+				<input type="hidden" id="existingChargerModelId${suffix}" value="${charger.id || ''}">
 				<input type="hidden" id="existingChargerSn${suffix}" value="${chargerSn}">
 				<input type="hidden" id="chargerAction${suffix}" value="use_existing">
 				
@@ -5114,7 +5114,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				</div>
 				<div id="replaceChargerOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Select Replacement Charger <span class="text-danger">*</span></label>
-					<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" data-old-charger-id="${charger.id_inventory_attachment}" style="width:100%">
+					<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" data-old-charger-id="${charger.id}" style="width:100%">
 						<option value="">- Select New Charger -</option>
 					</select>
 				</div>`;
@@ -5245,7 +5245,7 @@ function toggleChargerOptions(type, isChecked, suffix = '') {
 						chargerPick.innerHTML = '<option value="">- Select New Charger -</option>' + 
 							data.map(item => {
 								const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
-								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
+								return `<option value="${item.id}">${name} • SN: ${item.serial_number||'-'}</option>`;
 							}).join('');
 						
 						// Make the select required since we're replacing
@@ -5321,8 +5321,7 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 						attachmentPick.innerHTML = '<option value="">- Select New Attachment -</option>' + 
 							data.map(item => {
 								const name = `${item.tipe||'-'} ${item.merk||'-'} ${item.model||''}`.trim();
-								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
-							}).join('');
+						return `<option value="${item.id}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
 						
 						// Make the select required since we're replacing
 						attachmentPick.setAttribute('required', 'required');
@@ -5632,11 +5631,11 @@ async function openFabrikasiModal(detail) {
 
   const attOptions = att.map(r=>{
     const name = `${r.tipe||'-'} ${r.merk||''} ${r.model||''}`.trim();
-    return `<option value="${r.id_inventory_attachment}">${name} • SN: ${r.sn_attachment||'-'}</option>`;
+    return `<option value="${r.id}">${name} • SN: ${r.sn_attachment||'-'}</option>`;
   }).join('');
   const chgOptions = chg.map(r=>{
     const name = `${r.merk_charger||'-'} ${r.tipe_charger||''}`.trim();
-    return `<option value="${r.id_inventory_attachment}">${name} • SN: ${r.sn_charger||'-'}</option>`;
+    return `<option value="${r.id}">${name} • SN: ${r.serial_number||'-'}</option>`;
   }).join('');
 
   const html = `
