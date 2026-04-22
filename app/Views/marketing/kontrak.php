@@ -135,51 +135,46 @@ $can_export = (
             </li>
         </ul>
         
-        <!-- Secondary Filters (Sub-tabs) -->
-        <div class="border-top px-3 py-2 bg-light">
-            <div class="row align-items-center">
-                <!-- Rental Type Sub-tabs (always visible) -->
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center gap-2">
-                        <small class="text-muted fw-semibold me-2">
-                            <i class="fas fa-file-contract me-1"></i><?= lang('Marketing.rental_type') ?>:
-                        </small>
-                        <div class="btn-group btn-group-sm" role="group" id="rentalTypeFilter">
-                            <button type="button" class="btn btn-outline-secondary active" data-type="">
-                                <?= lang('Marketing.select_all') ?>
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" data-type="CONTRACT">
-                                <?= lang('Marketing.rental_type_contract') ?>
-                            </button>
-                            <button type="button" class="btn btn-outline-info" data-type="PO_ONLY">
-                                <?= lang('Marketing.rental_type_po') ?>
-                            </button>
-                            <button type="button" class="btn btn-outline-warning" data-type="DAILY_SPOT">
-                                <?= lang('Marketing.rental_type_harian') ?>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Expiring Sub-tabs (only show when Expiring tab active) -->
-                <div class="col-md-6" id="expiringSubTabs" style="display:none;">
-                    <div class="d-flex align-items-center gap-2 justify-content-end">
-                        <small class="text-muted fw-semibold me-2">
-                            <i class="fas fa-clock me-1"></i><?= lang('Marketing.period_filter') ?>
-                        </small>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-danger active" data-days="30">
-                                <?= lang('Marketing.one_month') ?> <span class="badge badge-soft-red ms-1" id="count-expiring-30">0</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-warning" data-days="90">
-                                <?= lang('Marketing.three_months') ?> <span class="badge badge-soft-yellow ms-1" id="count-expiring-90">0</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-info" data-days="180">
-                                <?= lang('Marketing.six_months') ?> <span class="badge badge-soft-cyan ms-1" id="count-expiring-180">0</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row align-items-end g-2">
+            <div class="col-md-4">
+                <label class="form-label mb-1 small fw-semibold text-muted">
+                    <i class="fas fa-building me-1"></i><?= lang('Marketing.customer') ?>
+                </label>
+                <select id="filterCustomer" class="form-select form-select-sm" style="width:100%;">
+                    <option value="">-- Semua Customer --</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1 small fw-semibold text-muted">
+                    <i class="fas fa-file-contract me-1"></i><?= lang('Marketing.rental_type') ?>
+                </label>
+                <select class="form-select form-select-sm" id="filterRentalType">
+                    <option value=""><?= lang('Marketing.select_all') ?></option>
+                    <option value="CONTRACT"><?= lang('Marketing.rental_type_contract') ?></option>
+                    <option value="PO_ONLY"><?= lang('Marketing.rental_type_po') ?></option>
+                    <option value="DAILY_SPOT"><?= lang('Marketing.rental_type_harian') ?></option>
+                </select>
+            </div>
+            <div class="col-md-3" id="filterExpiringPeriodWrap" style="display:none;">
+                <label class="form-label mb-1 small fw-semibold text-muted">
+                    <i class="fas fa-clock me-1"></i><?= lang('Marketing.period_filter') ?>
+                </label>
+                <select class="form-select form-select-sm" id="filterExpiringPeriod">
+                    <option value="30"><?= lang('Marketing.one_month') ?></option>
+                    <option value="90" selected><?= lang('Marketing.three_months') ?></option>
+                    <option value="180"><?= lang('Marketing.six_months') ?></option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetFilters()">
+                    <i class="fas fa-undo me-1"></i>Reset
+                </button>
             </div>
         </div>
     </div>
@@ -197,32 +192,21 @@ $can_export = (
                 <?= lang('Marketing.rental_list') ?>
             </p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <!-- View Mode Toggle -->
-            <div class="btn-group btn-group-sm" role="group" id="viewModeToggle">
-                <button type="button" class="btn btn-secondary active" id="btnFlatView" onclick="switchViewMode('flat')">
-                    <i class="fas fa-list me-1"></i><?= lang('Marketing.flat_view') ?>
-                </button>
-                <button type="button" class="btn btn-outline-secondary" id="btnGroupedView" onclick="switchViewMode('grouped')">
-                    <i class="fas fa-layer-group me-1"></i><?= lang('Marketing.by_customer_view') ?>
-                </button>
-            </div>
         <div class="d-flex gap-2">
             <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary btn-sm" onclick="openAddContractModal()">
-                        <i class="fas fa-plus me-1"></i><?= lang('Marketing.add_rental') ?>
-                    </button>
+                    <i class="fas fa-plus me-1"></i><?= lang('Marketing.add_rental') ?>
+                </button>
             <?php endif; ?>
             <?php if ($can_export): ?>
                 <button type="button" class="btn btn-success btn-sm" onclick="exportContracts()">
                     <i class="fas fa-file-excel me-1"></i>Export
                 </button>
             <?php endif; ?>
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshView()">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshTable()">
                 <i class="fas fa-sync me-1"></i>Refresh
             </button>
         </div>
-    </div>
     <!-- FLAT VIEW body -->
     <div id="flatViewBody" class="card-body p-0">
         <div class="table-responsive">
@@ -231,7 +215,6 @@ $can_export = (
                     <tr>
                         <th><?= lang('Marketing.th_contract_po') ?></th>
                         <th><?= lang('Marketing.th_type') ?></th>
-                        <th><?= lang('Marketing.th_billing') ?></th>
                         <th><?= lang('Marketing.th_period_days') ?></th>
                         <th><?= lang('Marketing.total_units') ?></th>
                         <th><?= lang('Marketing.th_value') ?></th>
@@ -243,13 +226,6 @@ $can_export = (
                     <!-- DataTables will populate -->
                 </tbody>
             </table>
-        </div>
-    </div>
-    <!-- GROUPED VIEW body (inside same card, hidden by default) -->
-    <div id="groupedViewBody" class="card-body" style="display:none">
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <p class="text-muted"><?= lang('Marketing.loading_data') ?></p>
         </div>
     </div>
 </div>
@@ -432,36 +408,12 @@ let currentTab = (function() {
     } catch (e) {}
     return 'all';
 })();
-let currentRentalType = (function() {
-    try {
-        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
-        if (s) { const o = JSON.parse(s); if (o.rentalType !== undefined) return o.rentalType || ''; }
-    } catch (e) {}
-    return '';
-})();
-let currentExpiringDays = (function() {
-    try {
-        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
-        if (s) { const o = JSON.parse(s); if (o.expiringDays) return parseInt(o.expiringDays, 10) || 30; }
-    } catch (e) {}
-    return 30;
-})();
-let currentViewMode = (function() {
-    try {
-        const s = sessionStorage.getItem(KONTRAK_STATE_KEY);
-        if (s) { const o = JSON.parse(s); if (o.viewMode) return o.viewMode; }
-    } catch (e) {}
-    return 'flat';
-})();
-let groupedData = null;
+
 
 function saveKontrakState() {
     try {
         sessionStorage.setItem(KONTRAK_STATE_KEY, JSON.stringify({
-            tab: currentTab,
-            rentalType: currentRentalType,
-            expiringDays: currentExpiringDays,
-            viewMode: currentViewMode
+            tab: currentTab
         }));
     } catch (e) {}
 }
@@ -476,13 +428,11 @@ $(document).ready(function() {
     // Initialize DataTable
     initializeContractsTable();
     
-    // Apply saved view mode (flat/grouped) - must run after table init
-    if (currentViewMode === 'grouped') {
-        switchViewMode('grouped');
-    }
-    
     // Setup tab event handlers
     setupTabHandlers();
+    
+    // Initialize customer filter Select2
+    initCustomerFilter();
     
     // Cleanup Select2 when modal is closed
     $('#addContractModal').on('hidden.bs.modal', function() {
@@ -503,22 +453,10 @@ function applySavedFilterUI() {
     $('#contractStatusTabs button').removeClass('active');
     $('#tab-' + currentTab).addClass('active');
     if (currentTab === 'expiring') {
-        $('#expiringSubTabs').show();
-        $('#expiringSubTabs button').removeClass('active');
-        $('#expiringSubTabs button[data-days="' + currentExpiringDays + '"]').addClass('active');
+        $('#filterExpiringPeriodWrap').show();
     } else {
-        $('#expiringSubTabs').hide();
+        $('#filterExpiringPeriodWrap').hide();
     }
-    $('#rentalTypeFilter button').removeClass('active');
-    const $rt = currentRentalType
-        ? $('#rentalTypeFilter button[data-type="' + currentRentalType + '"]')
-        : $('#rentalTypeFilter button[data-type=""]');
-    if ($rt.length) $rt.addClass('active');
-    else $('#rentalTypeFilter button[data-type=""]').addClass('active');
-    // View mode (button state only; switchViewMode applies body visibility after table init)
-    $('#viewModeToggle button').removeClass('active btn-secondary').addClass('btn-outline-secondary');
-    if (currentViewMode === 'grouped') $('#btnGroupedView').addClass('active btn-secondary').removeClass('btn-outline-secondary');
-    else $('#btnFlatView').addClass('active btn-secondary').removeClass('btn-outline-secondary');
 }
 
 // Setup tab click handlers
@@ -529,21 +467,57 @@ function setupTabHandlers() {
         saveKontrakState();
     });
     
-    $('#rentalTypeFilter button').on('click', function() {
-        $('#rentalTypeFilter button').removeClass('active');
-        $(this).addClass('active');
-        currentRentalType = $(this).data('type') || '';
-        saveKontrakState();
+    $('#filterRentalType, #filterExpiringPeriod').on('change', function() {
         applyFilters();
+    });
+}
+
+// Initialize customer filter Select2 with AJAX
+function initCustomerFilter() {
+    $('#filterCustomer').select2({
+        placeholder: '-- Semua Customer --',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        ajax: {
+            url: '<?= base_url('marketing/rental/customers-dropdown') ?>',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return { q: params.term || '' };
+            },
+            processResults: function(response) {
+                if (!response.success) return { results: [] };
+                return {
+                    results: response.data.map(function(c) {
+                        return { id: c.id, text: c.customer_name, code: c.customer_code };
+                    })
+                };
+            },
+            cache: true
+        },
+        templateResult: function(item) {
+            if (!item.id) return item.text;
+            return $('<span><span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7em;">' + (item.code || '') + '</span>' + item.text + '</span>');
+        },
+        templateSelection: function(item) {
+            return item.text;
+        }
     });
     
-    $('#expiringSubTabs button').on('click', function() {
-        $('#expiringSubTabs button').removeClass('active');
-        $(this).addClass('active');
-        currentExpiringDays = $(this).data('days');
-        saveKontrakState();
+    $('#filterCustomer').on('change', function() {
         applyFilters();
     });
+}
+
+// Reset all filters
+function resetFilters() {
+    if ($('#filterCustomer').data('select2')) {
+        $('#filterCustomer').val(null).trigger('change.select2');
+    }
+    $('#filterRentalType').val('');
+    $('#filterExpiringPeriod').val('90');
+    applyFilters();
 }
 
 // Tab switching function
@@ -554,11 +528,11 @@ function switchTab(tab) {
     $('#contractStatusTabs button').removeClass('active');
     $('#tab-' + tab).addClass('active');
     
-    // Show/hide expiring sub-tabs
+    // Show/hide expiring period filter
     if (tab === 'expiring') {
-        $('#expiringSubTabs').show();
+        $('#filterExpiringPeriodWrap').show();
     } else {
-        $('#expiringSubTabs').hide();
+        $('#filterExpiringPeriodWrap').hide();
     }
     
     // Reload table with new filter
@@ -568,13 +542,7 @@ function switchTab(tab) {
 // Apply filters and reload DataTable
 function applyFilters() {
     if (contractsTable) {
-        if (currentViewMode === 'flat') {
-            contractsTable.ajax.reload();
-        } else {
-            // Reload grouped view with current filters
-            groupedData = null;
-            loadGroupedView(true);
-        }
+        contractsTable.ajax.reload();
     }
 }
 
@@ -597,11 +565,6 @@ function loadStatistics() {
                 $('#count-active').text(stats.total_active || 0);
                 $('#count-expiring').text(stats.total_expiring_90 || 0);
                 $('#count-expired').text(stats.total_expired || 0);
-                
-                // Update expiring period sub-tab badges
-                $('#count-expiring-30').text(stats.total_expiring_30 || 0);
-                $('#count-expiring-90').text(stats.total_expiring_90 || 0);
-                $('#count-expiring-180').text(stats.total_expiring_180 || 0);
             }
         },
         error: function() {
@@ -633,9 +596,10 @@ function initializeContractsTable() {
                 
                 // Add tab-based filtering
                 d.tab = currentTab;
-                d.rental_type = currentRentalType;
+                d.customer_id = $('#filterCustomer').val() || '';
+                d.rental_type = $('#filterRentalType').val() || '';
                 if (currentTab === 'expiring') {
-                    d.expiring_days = currentExpiringDays;
+                    d.expiring_days = $('#filterExpiringPeriod').val() || 90;
                 }
             }
         },
@@ -665,23 +629,17 @@ function initializeContractsTable() {
             },
             { 
                 data: 'rental_type',
-                render: function(data, type, row, meta) {
-                    let label = data || '—';
-                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-                        label = OptimaSearch.highlightForMeta(meta, label);
-                    }
-                    return label;
-                }
-            },
-            { 
-                data: 'jenis_sewa',
-                render: function(data, type, row, meta) {
-                    const map = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
-                    let label = map[data] || data || '—';
-                    if (window.OptimaSearch && typeof OptimaSearch.highlightForMeta === 'function') {
-                        label = OptimaSearch.highlightForMeta(meta, label);
-                    }
-                    return label;
+                render: function(data, type, row) {
+                    const typeMap = {
+                        'CONTRACT':   `<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>${LANG_RENTAL.type_contract}</span>`,
+                        'PO_ONLY':    `<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>${LANG_RENTAL.type_po}</span>`,
+                        'DAILY_SPOT': `<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>${LANG_RENTAL.type_harian}</span>`
+                    };
+                    const billingMap = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
+                    const typeBadge = typeMap[data] || `<span class="badge badge-soft-gray">${data || '—'}</span>`;
+                    const billing = billingMap[row.jenis_sewa] || row.jenis_sewa || '';
+                    const billingHtml = billing ? `<br><small class="text-muted">${billing}</small>` : '';
+                    return typeBadge + billingHtml;
                 }
             },
             { 
@@ -754,8 +712,7 @@ function initializeContractsTable() {
         order: [[0, 'desc']],
         pageLength: 15,
         lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
-        stateSave: true,
-        stateDuration: 60 * 60,
+        searchDelay: 700,
         language: {
             processing: '<i class="fas fa-spinner fa-spin fa-2x"></i><br><?= lang('Marketing.loading_data') ?>',
             emptyTable: '<?= lang('Marketing.no_contract_data') ?>',
@@ -793,16 +750,19 @@ function exportContracts() {
         else if (currentTab === 'expired') url += 'status=EXPIRED&';
         else if (currentTab === 'expiring') {
             url += 'status=ACTIVE&';
-            if (currentExpiringDays == -1) {
-                url += 'expired_past=1&';
-            } else {
-                url += 'expiring_days=' + currentExpiringDays + '&';
-            }
+            const expiringDays = parseInt($('#filterExpiringPeriod').val()) || 90;
+            url += 'expiring_days=' + expiringDays + '&';
         }
     }
     
-    if (currentRentalType) {
-        url += 'rental_type=' + currentRentalType + '&';
+    const rentalType = $('#filterRentalType').val();
+    if (rentalType) {
+        url += 'rental_type=' + rentalType + '&';
+    }
+    
+    const customerId = $('#filterCustomer').val();
+    if (customerId) {
+        url += 'customer_id=' + customerId + '&';
     }
     
     window.location.href = url;
@@ -1899,292 +1859,5 @@ $(document).on('submit', '#addContractForm', function(e) {
     });
 });
 
-</script>
-
-<style>
-/* ──── Grouped View Styles ──── */
-.gv-customer-header {
-    cursor: pointer;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    transition: background 0.2s;
-    user-select: none;
-}
-.gv-customer-header:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-}
-.gv-customer-header.collapsed .gv-caret { transform: rotate(-90deg); }
-.gv-caret { transition: transform 0.2s ease; display: inline-block; }
-.gv-child-table { min-width: 900px; }
-.gv-child-table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
-.gv-child-table td { vertical-align: middle; font-size: 0.875rem; white-space: nowrap; }
-.gv-td-contract { max-width: 220px; }
-.gv-badge-truncate { max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
-.gv-td-period { white-space: normal; min-width: 160px; }
-.gv-customer-block { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
-.gv-child-wrap { transition: none; }
-#groupedViewBody .dropdown-menu { z-index: 9050; }
-.gv-summary-badges .badge { font-size: 0.72rem; }
-.gv-search-wrap { padding: 12px 16px; background: #f1f3f5; border-bottom: 1px solid #dee2e6; }
-
-/* ──── Action Button Styling ──── */
-.btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.875rem;
-}
-
-/* Modal footer button group */
-#contractActionButtons .btn {
-    min-width: 95px;
-}
-</style>
-
-<script>
-// ──── View Mode State ────────────────────────────────────────────────
-// currentViewMode and groupedData already declared at top of script section
-
-function switchViewMode(mode) {
-    currentViewMode = mode;
-    saveKontrakState();
-    const flatBtn     = document.getElementById('btnFlatView');
-    const groupedBtn  = document.getElementById('btnGroupedView');
-    const flatBody    = document.getElementById('flatViewBody');
-    const groupedBody = document.getElementById('groupedViewBody');
-
-    if (mode === 'flat') {
-        flatBtn.classList.add('active', 'btn-secondary');
-        flatBtn.classList.remove('btn-outline-secondary');
-        groupedBtn.classList.remove('active', 'btn-secondary');
-        groupedBtn.classList.add('btn-outline-secondary');
-        flatBody.style.display    = '';
-        groupedBody.style.display = 'none';
-    } else {
-        groupedBtn.classList.add('active', 'btn-secondary');
-        groupedBtn.classList.remove('btn-outline-secondary');
-        flatBtn.classList.remove('active', 'btn-secondary');
-        flatBtn.classList.add('btn-outline-secondary');
-        flatBody.style.display    = 'none';
-        groupedBody.style.display = '';
-        loadGroupedView(false);
-    }
-}
-
-function refreshView() {
-    if (currentViewMode === 'flat') {
-        if (contractsTable) contractsTable.ajax.reload(null, false);
-    } else {
-        groupedData = null;
-        loadGroupedView(true);
-    }
-}
-
-function loadGroupedView(forceReload) {
-    if (groupedData && !forceReload) {
-        renderGroupedView(groupedData);
-        return;
-    }
-
-    const body = document.getElementById('groupedViewBody');
-    body.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <p class="text-muted">${LANG_RENTAL.loading}...</p>
-        </div>`;
-
-    // Use current tab-based filters
-    const params = new URLSearchParams();
-    
-    // Map tab to status
-    if (currentTab === 'active') {
-        params.append('status', 'ACTIVE');
-    } else if (currentTab === 'expired') {
-        params.append('status', 'EXPIRED');
-    } else if (currentTab === 'expiring') {
-        params.append('status', 'ACTIVE');
-        params.append('expiring_days', currentExpiringDays);
-    }
-    
-    if (currentRentalType) params.append('rental_type', currentRentalType);
-
-    fetch(`<?= base_url('marketing/rental/getGrouped') ?>?${params.toString()}`)
-        .then(r => r.json())
-        .then(resp => {
-            if (!resp.success) throw new Error(resp.message || 'Gagal memuat data');
-            groupedData = resp.data;
-            renderGroupedView(groupedData);
-        })
-        .catch(err => {
-            body.innerHTML = `<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle me-2"></i>${err.message}</div>`;
-        });
-}
-
-function renderGroupedView(customers) {
-    const body = document.getElementById('groupedViewBody');
-    if (!customers || customers.length === 0) {
-        body.innerHTML = `<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>${LANG_RENTAL.no_data}</p></div>`;
-        return;
-    }
-
-    // Search input bar
-    let html = `
-        <div class="gv-search-wrap d-flex align-items-center gap-2">
-            <i class="fas fa-search text-muted"></i>
-            <input type="text" id="gvSearch" class="form-control form-control-sm" placeholder="${LANG_RENTAL.search_ph}" oninput="filterGroupedView(this.value)">
-            <span class="text-muted text-nowrap small" id="gvCount">${customers.length} ${LANG_RENTAL.customers_count}</span>
-        </div>
-        <div class="p-3" id="gvAccordion">`;
-
-    customers.forEach((cust, ci) => {
-        const expanded = ci < 3; // auto-open first 3
-        const monthlyFmt = cust.monthly_value > 0
-            ? 'Rp ' + Number(cust.monthly_value).toLocaleString('id-ID')
-            : '—';
-
-        html += `
-        <div class="gv-customer-block" data-customer="${escHtml(cust.customer_name)}" id="gvBlock${ci}">
-            <!-- Customer Header Row -->
-            <div class="gv-customer-header p-3 d-flex align-items-center gap-3 ${expanded ? '' : 'collapsed'}"
-                 onclick="toggleCustomerBlock(${ci})">
-                <span class="gv-caret text-muted" style="${expanded ? '' : 'transform:rotate(-90deg)'}">
-                    <i class="fas fa-chevron-down"></i>
-                </span>
-                <div class="flex-grow-1">
-                    <strong class="text-dark">${escHtml(cust.customer_name)}</strong>
-                </div>
-                <div class="gv-summary-badges d-flex gap-2 flex-wrap">
-                    <span class="badge badge-soft-blue">${cust.total_contracts} ${LANG_RENTAL.th_contract_po.split('/')[0].trim()}</span>
-                    <span class="badge badge-soft-cyan">${cust.total_units} ${LANG_RENTAL.th_units}</span>
-                    ${cust.monthly_value > 0 ? `<span class="badge badge-soft-green">${monthlyFmt}/mo</span>` : ''}
-                </div>
-            </div>
-            <!-- Contract Sub-table -->
-            <div class="gv-child-wrap" id="gvChild${ci}" style="${expanded ? '' : 'display:none'}">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0 gv-child-table">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>${LANG_RENTAL.th_contract_po}</th>
-                                <th>${LANG_RENTAL.th_type}</th>
-                                <th>${LANG_RENTAL.th_billing}</th>
-                                <th style="min-width:160px">${LANG_RENTAL.th_period}</th>
-                                <th class="text-center">${LANG_RENTAL.th_units}</th>
-                                <th class="text-end" style="min-width:120px">${LANG_RENTAL.th_value}</th>
-                                <th>Status</th>
-                                <th class="text-center">${LANG_RENTAL.th_actions}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${cust.contracts.map(k => buildContractRow(k)).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`;
-    });
-
-    html += `</div>`; // #gvAccordion
-    body.innerHTML = html;
-    
-    // Initialize tooltips for action buttons in grouped view
-    setTimeout(() => {
-        $('#groupedViewBody [title]').tooltip({
-            container: 'body',
-            trigger: 'hover'
-        });
-    }, 100);
-}
-
-function buildContractRow(k) {
-    // Type badge — use LANG_RENTAL for multi-language labels
-    const typeBadge = {
-        'CONTRACT':   `<span class="badge badge-soft-blue"><i class="fas fa-file-contract me-1"></i>${LANG_RENTAL.type_contract}</span>`,
-        'PO_ONLY':    `<span class="badge badge-soft-cyan"><i class="fas fa-file-invoice me-1"></i>${LANG_RENTAL.type_po}</span>`,
-        'DAILY_SPOT': `<span class="badge badge-soft-yellow"><i class="fas fa-calendar-day me-1"></i>${LANG_RENTAL.type_harian}</span>`,
-    }[k.rental_type] || `<span class="badge badge-soft-gray">${escHtml(k.rental_type||'—')}</span>`;
-
-    // Billing
-    const billingMap = { 'BULANAN': LANG_RENTAL.th_billing + ' – Monthly', 'HARIAN': LANG_RENTAL.type_harian };
-    const billing = k.jenis_sewa?.toUpperCase() === 'BULANAN' ? 'Monthly' : (k.jenis_sewa?.toUpperCase() === 'HARIAN' ? LANG_RENTAL.type_harian : k.jenis_sewa || '—');
-
-    // Period
-    const locale = document.documentElement.lang === 'id' ? 'id-ID' : 'en-GB';
-    const startLbl = k.start_date ? new Date(k.start_date).toLocaleDateString(locale, {day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const endLbl   = k.end_date   ? new Date(k.end_date).toLocaleDateString(locale,   {day:'2-digit',month:'short',year:'numeric'}) : LANG_RENTAL.open_ended || 'Open-ended';
-
-    let daysBadge = '';
-    if (k.days_remaining !== null && k.status === 'ACTIVE') {
-        if (k.days_remaining < 0)        daysBadge = `<br><span class="badge badge-soft-red">Expired ${Math.abs(k.days_remaining)}d ${LANG_RENTAL.days_ago}</span>`;
-        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge badge-soft-orange">${k.days_remaining}d ${LANG_RENTAL.days_left}</span>`;
-        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge badge-soft-cyan">${k.days_remaining}d ${LANG_RENTAL.days_left}</span>`;
-    }
-
-    // Status badge
-    const statusColor = { ACTIVE:'badge-soft-green', PENDING:'badge-soft-yellow', EXPIRED:'badge-soft-red', CANCELLED:'badge-soft-gray' }[k.status] || 'badge-soft-gray';
-    const statusBadge = `<span class="badge ${statusColor}">${escHtml(k.status||'—')}</span>`;
-
-    // Contract / PO display — truncate long numbers, show full in tooltip
-    const kontrakNo     = k.no_kontrak || '—';
-    const kontrakNoEsc  = escHtml(kontrakNo);
-    const kontrakShort  = kontrakNo.length > 28 ? escHtml(kontrakNo.slice(0, 28)) + '…' : kontrakNoEsc;
-    const contractDisplay = `<span class="badge badge-soft-blue font-monospace gv-badge-truncate" title="${kontrakNoEsc}">${kontrakShort}</span>`;
-
-    const poFull  = k.po_number || '';
-    const poShort = poFull.length > 28 ? escHtml(poFull.slice(0, 28)) + '…' : escHtml(poFull);
-    const poLine  = poFull ? `<small class="text-muted d-block mt-1" title="${escHtml(poFull)}"><i class="fas fa-file-invoice me-1 text-info"></i><span class="font-monospace">${poShort}</span></small>` : '';
-
-    const nilai = k.nilai_total > 0 ? '<span class="text-success fw-semibold">Rp ' + Number(k.nilai_total).toLocaleString('id-ID') + '</span>' : '—';
-
-    return `<tr>
-        <td class="gv-td-contract">${contractDisplay}${poLine}</td>
-        <td class="text-nowrap">${typeBadge}</td>
-        <td class="text-nowrap"><small class="text-muted">${escHtml(billing)}</small></td>
-        <td class="gv-td-period"><small class="text-muted text-nowrap">${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
-        <td class="text-center text-nowrap"><span class="badge badge-soft-blue">${k.total_units}</span></td>
-        <td class="text-end text-nowrap">${nilai}</td>
-        <td class="text-nowrap">${statusBadge}</td>
-        <td class="text-center td-actions">${buildActionButtons(k.id, k.status, k.days_remaining)}</td>
-    </tr>`;
-}
-
-function toggleCustomerBlock(ci) {
-    const childWrap = document.getElementById(`gvChild${ci}`);
-    const header    = childWrap.previousElementSibling;
-    const caret     = header.querySelector('.gv-caret');
-    const isHidden  = childWrap.style.display === 'none';
-    childWrap.style.display = isHidden ? '' : 'none';
-    if (isHidden) {
-        header.classList.remove('collapsed');
-        caret.style.transform = '';
-    } else {
-        header.classList.add('collapsed');
-        caret.style.transform = 'rotate(-90deg)';
-    }
-}
-
-function filterGroupedView(query) {
-    if (!groupedData) return;
-    query = query.toLowerCase().trim();
-    const blocks = document.querySelectorAll('.gv-customer-block');
-    let visible = 0;
-    blocks.forEach(block => {
-        const customerName = block.getAttribute('data-customer').toLowerCase();
-        const text = block.innerText.toLowerCase();
-        const match = !query || customerName.includes(query) || text.includes(query);
-        block.style.display = match ? '' : 'none';
-        if (match) visible++;
-    });
-    const countEl = document.getElementById('gvCount');
-    if (countEl) countEl.textContent = `${visible} customer`;
-}
-
-function viewContractBrief(id) {
-    // Delegate to existing viewContractDetail if it exists, or openContractDetail
-    if (typeof viewContractDetail === 'function') viewContractDetail(id);
-    else if (typeof openContractModal === 'function') openContractModal(id);
-}
-
-function escHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 </script>
 <?= $this->endSection() ?>

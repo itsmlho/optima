@@ -2120,23 +2120,32 @@ class Kontrak extends BaseController
     public function getCustomersDropdown()
     {
         try {
-            $customers = $this->db->table('customers')
+            $q = $this->request->getGet('q');
+
+            $builder = $this->db->table('customers')
                 ->select('id, customer_name, customer_code')
                 ->where('is_active', 1)
-                ->orderBy('customer_name', 'ASC')
-                ->get()
-                ->getResultArray();
+                ->orderBy('customer_name', 'ASC');
+
+            if (!empty($q)) {
+                $builder->groupStart()
+                    ->like('customer_name', $q)
+                    ->orLike('customer_code', $q)
+                    ->groupEnd();
+            }
+
+            $customers = $builder->limit(50)->get()->getResultArray();
 
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $customers
+                'data'    => $customers,
             ]);
 
         } catch (\Exception $e) {
             log_message('error', 'Kontrak::getCustomersDropdown - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
