@@ -5015,8 +5015,9 @@ class Marketing extends BaseDataTableController
     {
         $q = trim($this->request->getGet('q') ?? '');
         $b = $this->spkModel
-            ->select('spk.id, spk.nomor_spk, spk.po_kontrak_nomor, spk.pelanggan, spk.lokasi, k.customer_id')
+            ->select('spk.id, spk.nomor_spk, spk.po_kontrak_nomor, spk.pelanggan, spk.lokasi, COALESCE(spk.customer_id, k.customer_id, c.id) as customer_id')
             ->join('kontrak k', 'k.id = spk.kontrak_id', 'left')
+            ->join('customers c', 'c.customer_name = spk.pelanggan', 'left')
             ->where('spk.status', 'READY');
         if ($q !== '') {
             $b->groupStart()

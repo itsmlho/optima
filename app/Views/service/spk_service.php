@@ -504,6 +504,40 @@ $can_export = true;
 let spkTable; // DataTable instance
 let currentFilter = 'all';
 
+/**
+ * Fetch unit component data dari inventory_attachment untuk check existing components
+ * Defined here (before DOMContentLoaded) so it's available when Select2 auto-triggers change during setup.
+ */
+async function fetchUnitComponentData(unitId) {
+	try {
+		const apiUrl = '<?= base_url('warehouse/inventory/unit-components') ?>?unit_id=' + unitId;
+		const response = await fetch(apiUrl, {
+			method: 'GET',
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest',
+				'Content-Type': 'application/json'
+			}
+		});
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+		const data = await response.json();
+		if (data.error) {
+			throw new Error(data.error);
+		}
+		return {
+			success: true,
+			unit_id: data.unit_id,
+			battery: data.battery,
+			charger: data.charger,
+			attachment: data.attachment
+		};
+	} catch (error) {
+		console.error('Error fetching unit component data:', error);
+		return { success: false, error: error.message };
+	}
+}
+
 // Unified notifier (fallbacks)
 function notify(msg, type = 'success') {
 	if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
@@ -2387,7 +2421,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							const statusLabel = isUsed ? ` [IN USE${installedUnit ? ' @ ' + installedUnit : ''}]` : '';
 							return {
 								id: String(item.id),
-								text: `${name} • ${itemNumber}${statusLabel}`,
+								text: `${itemNumber} ${name} SN:${serialNumber}${statusLabel}`,
 								item_number: itemNumber,
 								serial_number: serialNumber,
 								status: item.status,
@@ -2402,6 +2436,20 @@ document.addEventListener('DOMContentLoaded', () => {
 					};
 				},
 				cache: true
+			},
+			templateResult: function(item) {
+				if (item.loading || !item.item_number) return item.text;
+				const isUsed = item.status === 'IN_USE';
+				const badgeColor = isUsed ? '#dc3545' : '#0d6efd';
+				const statusBadge = isUsed ? `<span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;margin-left:4px">IN USE</span>` : '';
+				return $(`<div style="padding:2px 0;line-height:1.4">
+					<div><span style="background:${badgeColor};color:#fff;font-size:10px;padding:1px 7px;border-radius:4px;font-weight:600;letter-spacing:.3px">${item.item_number}</span> <strong style="font-size:13px">${item.name}</strong>${statusBadge}</div>
+					<div style="font-size:11px;color:#6c757d;margin-top:2px"><i class="fas fa-barcode" style="font-size:10px;margin-right:3px"></i>SN: ${item.serial_number || '-'}</div>
+				</div>`);
+			},
+			templateSelection: function(item) {
+				if (!item.item_number) return item.text;
+				return $(`<span><span style="background:#0d6efd;color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;margin-right:4px">${item.item_number}</span>${item.name} &bull; SN: ${item.serial_number || '-'}</span>`);
 			},
 			language: {
 				noResults: function() { return 'Baterai tidak ditemukan'; },
@@ -2475,7 +2523,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							const statusLabel = isUsed ? ` [IN USE${installedUnit ? ' @ ' + installedUnit : ''}]` : '';
 							return {
 								id: String(item.id),
-								text: `${name} • ${itemNumber}${statusLabel}`,
+								text: `${itemNumber} ${name} SN:${serialNumber}${statusLabel}`,
 								item_number: itemNumber,
 								serial_number: serialNumber,
 								status: item.status,
@@ -2490,6 +2538,20 @@ document.addEventListener('DOMContentLoaded', () => {
 					};
 				},
 				cache: true
+			},
+			templateResult: function(item) {
+				if (item.loading || !item.item_number) return item.text;
+				const isUsed = item.status === 'IN_USE';
+				const badgeColor = isUsed ? '#dc3545' : '#198754';
+				const statusBadge = isUsed ? `<span style="background:#dc3545;color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;margin-left:4px">IN USE</span>` : '';
+				return $(`<div style="padding:2px 0;line-height:1.4">
+					<div><span style="background:${badgeColor};color:#fff;font-size:10px;padding:1px 7px;border-radius:4px;font-weight:600;letter-spacing:.3px">${item.item_number}</span> <strong style="font-size:13px">${item.name}</strong>${statusBadge}</div>
+					<div style="font-size:11px;color:#6c757d;margin-top:2px"><i class="fas fa-barcode" style="font-size:10px;margin-right:3px"></i>SN: ${item.serial_number || '-'}</div>
+				</div>`);
+			},
+			templateSelection: function(item) {
+				if (!item.item_number) return item.text;
+				return $(`<span><span style="background:#198754;color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;margin-right:4px">${item.item_number}</span>${item.name} &bull; SN: ${item.serial_number || '-'}</span>`);
 			},
 			language: {
 				noResults: function() { return 'Charger tidak ditemukan'; },
@@ -4937,53 +4999,8 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 			});
 	}
 });
-</script>
 
-<script>
 // ===== ENHANCEMENT: Smart Unit Component Management =====
-
-/**
- * Fetch unit component data dari inventory_attachment untuk check existing components
- */
-async function fetchUnitComponentData(unitId) {
-	try {
-		console.log('Fetching unit component data for unit:', unitId);
-		const apiUrl = '<?= base_url('warehouse/inventory/unit-components') ?>?unit_id=' + unitId;
-		console.log('API URL:', apiUrl);
-		
-		const response = await fetch(apiUrl, {
-			method: 'GET',
-			headers: {
-				'X-Requested-With': 'XMLHttpRequest',
-				'Content-Type': 'application/json'
-			}
-		});
-		
-		console.log('API Response status:', response.status);
-		
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-		}
-		
-		const data = await response.json();
-		console.log('API Response data:', data);
-		
-		if (data.error) {
-			throw new Error(data.error);
-		}
-		
-		return { 
-			success: true, 
-			unit_id: data.unit_id,
-			battery: data.battery,
-			charger: data.charger,
-			attachment: data.attachment
-		};
-	} catch (error) {
-		console.error('Error fetching unit component data:', error);
-		return { success: false, error: error.message };
-	}
-}
 
 /**
  * Generate smart component selection UI based on existing components
@@ -5321,7 +5338,8 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 						attachmentPick.innerHTML = '<option value="">- Select New Attachment -</option>' + 
 							data.map(item => {
 								const name = `${item.tipe||'-'} ${item.merk||'-'} ${item.model||''}`.trim();
-						return `<option value="${item.id}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
+								return `<option value="${item.id}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
+							}).join('');
 						
 						// Make the select required since we're replacing
 						attachmentPick.setAttribute('required', 'required');

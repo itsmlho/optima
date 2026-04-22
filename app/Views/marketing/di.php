@@ -32,6 +32,77 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+<?= $this->section('css') ?>
+<style>
+.unit-list {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 6px;
+    background: #f8f9fa;
+}
+.unit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px 10px 16px;
+    border-radius: 6px;
+    margin-bottom: 3px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    transition: background 0.15s, border-color 0.15s;
+    cursor: pointer;
+}
+.unit-item:hover {
+    background: #eef3ff;
+    border-color: #b8cef9;
+}
+.unit-item input[type="checkbox"] {
+    margin-top: 4px;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #0d6efd;
+}
+.unit-item label {
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+.unit-item-title { font-size: 0.9rem; }
+.unit-item input[type="checkbox"]:checked + label .unit-item-title {
+    font-weight: 600;
+    color: #0d47a1;
+}
+.unit-item:has(input:checked) {
+    background: #e8f0fe;
+    border-color: #90b4f7;
+}
+.unit-note {
+    font-size: 0.775rem;
+    color: #6c757d;
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+.unit-detail-pill {
+    display: inline-block;
+    background: #e9ecef;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 0.72rem;
+    color: #495057;
+    white-space: nowrap;
+}
+</style>
+<?= $this->endSection() ?>
+
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
       <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
@@ -1668,11 +1739,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const checked = isInActiveDI ? '' : 'checked';
           const warningBadge = isInActiveDI && activeDI ? ` ${uiBadge('warning', `Already in ${activeDI.nomor_di}`)}` : '';
           
+          // Build type label: "Forklift Counter Balance"
+          const jenisLabel = [it.jenis_unit, it.tipe_jenis].filter(Boolean).join(' ');
+          // Only show attachment if non-empty and not just a dash
+          const hasAttachment = it.attachment_label && it.attachment_label.trim() !== '' && it.attachment_label.trim() !== '-';
+
           wrap.innerHTML = `
             <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" ${checked} ${disabled}>
             <label for="${idSafe}" class="form-check-label">
-              <div><strong>${it.unit_label || ('Unit #' + (idx+1))}</strong>${warningBadge}</div>
-              <div class="unit-note">SN: ${it.serial_number || '-'}${attachmentText}</div>
+              <div class="unit-item-title"><strong>${it.unit_label ? it.unit_label.split(' @ ')[0] : ('Unit #' + (idx+1))}</strong>${warningBadge}</div>
+              <div class="unit-note">
+                <span title="Serial Number"><i class="fas fa-barcode me-1"></i>SN: ${it.serial_number || '-'}</span>
+                ${jenisLabel   ? `<span class="unit-detail-pill">${jenisLabel}</span>` : ''}
+                ${it.kapasitas_name ? `<span class="unit-detail-pill">${it.kapasitas_name}</span>` : ''}
+                ${it.model_unit  ? `<span class="unit-detail-pill">${[it.merk_unit, it.model_unit].filter(Boolean).join(' ')}</span>` : ''}
+                ${hasAttachment ? `<span class="d-block mt-1 text-muted"><i class="fas fa-link me-1"></i>${it.attachment_label}</span>` : ''}
+              </div>
             </label>`;
           list.appendChild(wrap);
         });
