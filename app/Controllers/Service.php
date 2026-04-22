@@ -2260,8 +2260,14 @@ class Service extends BaseController
         
         // Update unit status to READY_TO_DELIVER
         // Check permission: Service perlu manage inventory (cross-division)
-        // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
-        if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
+        // Allowed: warehouse.manage, warehouse.inventory.manage, service.spk_service.edit,
+        //          service.work_order.complete, service.work_order.edit
+        $canUpdateInventory = $this->canManage('warehouse')
+            || $this->canManageResource('warehouse', 'inventory')
+            || $this->hasPermission('service.spk_service.edit')
+            || $this->hasPermission('service.work_order.complete')
+            || $this->hasPermission('service.work_order.edit');
+        if (!$canUpdateInventory) {
             throw new \Exception('Akses ditolak: Anda tidak memiliki izin');
         }
         
@@ -2280,8 +2286,14 @@ class Service extends BaseController
     private function updateInventoryUnit($unit_id, $area_id, $no_unit_action, $update_no_unit)
     {
         // Check permission: Service perlu manage inventory (cross-division)
-        // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
-        if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
+        // Allowed: warehouse.manage, warehouse.inventory.manage, service.spk_service.edit,
+        //          service.work_order.complete, service.work_order.edit
+        $canUpdateInventory = $this->canManage('warehouse')
+            || $this->canManageResource('warehouse', 'inventory')
+            || $this->hasPermission('service.spk_service.edit')
+            || $this->hasPermission('service.work_order.complete')
+            || $this->hasPermission('service.work_order.edit');
+        if (!$canUpdateInventory) {
             log_message('error', 'Service::updateInventoryUnit - Access denied for user: ' . session()->get('user_id'));
             throw new \Exception('Akses ditolak: Anda tidak memiliki izin');
         }

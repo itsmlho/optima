@@ -116,31 +116,40 @@ class Kontrak extends BaseController
 
             $sql = "
                 SELECT
-                    COALESCE(c.id, 0) AS customer_id,
+                    COALESCE(c.id, 0)                    AS customer_id,
                     COALESCE(c.customer_name, 'Unknown Customer') AS customer_name,
-                    k.id            AS kontrak_id,
+                    k.id                                 AS kontrak_id,
                     k.no_kontrak,
                     k.customer_po_number,
                     k.rental_type,
                     k.status,
                     k.tanggal_mulai,
                     k.tanggal_berakhir,
-                    (SELECT COUNT(*) FROM kontrak_unit ku
-                     WHERE ku.kontrak_id = k.id
-                     AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
-                     AND COALESCE(ku.is_temporary, 0) = 0) AS total_units,
-                    (SELECT COALESCE(SUM(iu.harga_sewa_bulanan), 0) FROM kontrak_unit ku
-                     JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
-                     WHERE ku.kontrak_id = k.id
-                     AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
-                     AND COALESCE(ku.is_temporary, 0) = 0) AS nilai_total,
+                    COALESCE(us.total_units, 0)          AS total_units,
+                    COALESCE(us.nilai_total, 0)          AS nilai_total,
                     k.jenis_sewa,
-                    (SELECT GROUP_CONCAT(DISTINCT cl.location_name SEPARATOR ', ') 
-                     FROM kontrak_unit ku 
-                     JOIN customer_locations cl ON cl.id = ku.customer_location_id 
-                     WHERE ku.kontrak_id = k.id) AS location_name
+                    locs.location_name
                 FROM kontrak k
                 LEFT JOIN customers c ON c.id = k.customer_id
+                LEFT JOIN (
+                    SELECT
+                        ku.kontrak_id,
+                        COUNT(*)                                                          AS total_units,
+                        COALESCE(SUM(COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan)), 0) AS nilai_total
+                    FROM kontrak_unit ku
+                    JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                    WHERE ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                      AND COALESCE(ku.is_temporary, 0) = 0
+                    GROUP BY ku.kontrak_id
+                ) us ON us.kontrak_id = k.id
+                LEFT JOIN (
+                    SELECT
+                        ku.kontrak_id,
+                        GROUP_CONCAT(DISTINCT cl.location_name SEPARATOR ', ') AS location_name
+                    FROM kontrak_unit ku
+                    JOIN customer_locations cl ON cl.id = ku.customer_location_id
+                    GROUP BY ku.kontrak_id
+                ) locs ON locs.kontrak_id = k.id
                 $where
                 ORDER BY c.customer_name ASC, k.tanggal_mulai DESC
                 LIMIT 3000

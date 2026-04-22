@@ -68,14 +68,9 @@ class CustomerManagementController extends BaseController
                 '/' => 'Dashboard',
                 '/marketing/customer_management' => 'Customer Management'
             ],
-            // customers: REMOVED findAll() - DataTable loads via AJAX (getCustomers endpoint)
-            'areas' => $this->areaModel->findAll(),
-            'totalCustomers' => $this->customerModel->countAllResults(),
-            'totalLocations' => $this->locationModel->countAllResults(),
-            'customersByArea' => $this->getCustomersByAreaStats(),
-            'loadDataTables' => true, // Enable DataTables loading
+            'loadDataTables' => true,
         ];
-        
+
         return view('marketing/customer_management', $data);
     }
 
@@ -188,16 +183,29 @@ class CustomerManagementController extends BaseController
             } elseif ($statusFilter === 'inactive') {
                 $builder->where('customers.is_active', 0);
             }
-            // Note: 'no_contract' filter will be applied after data enrichment
-            
+            // no_contract: add SQL subquery to avoid loading all customers into PHP
+            if ($statusFilter === 'no_contract') {
+                $builder->where('customers.id NOT IN (SELECT DISTINCT customer_id FROM kontrak WHERE status = \'ACTIVE\' AND customer_id IS NOT NULL)', null, false);
+                // Re-count filtered records using the same constraint
+                $ncBuilder = $this->db->table('customers');
+                $this->applyDateFilter($ncBuilder, 'customers.created_at');
+                if (!empty($searchValue)) {
+                    $ncBuilder->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
+                              ->groupStart()
+                              ->like('customers.customer_code', $searchValue)
+                              ->orLike('customers.customer_name', $searchValue)
+                              ->orLike('cl_primary.contact_person', $searchValue)
+                              ->orLike('cl_primary.phone', $searchValue)
+                              ->orLike('cl_primary.email', $searchValue)
+                              ->groupEnd();
+                }
+                $ncBuilder->where('customers.id NOT IN (SELECT DISTINCT customer_id FROM kontrak WHERE status = \'ACTIVE\' AND customer_id IS NOT NULL)', null, false);
+                $filteredRecords = $ncBuilder->countAllResults();
+            }
+
             // Apply ordering
             $builder->orderBy($orderColumn, $orderDir);
-            
-            // For no_contract filter, we need ALL customers first, then filter by active_contracts_count
-            // So pagination will be applied AFTER filtering
-            if ($statusFilter !== 'no_contract') {
-                $builder->limit($length, $start);
-            }
+            $builder->limit($length, $start);
 
             // Get customers in a single query
             $customers = $builder->get()->getResultArray();
@@ -256,20 +264,6 @@ class CustomerManagementController extends BaseController
                         $customer['locations_summary'] = 'No locations';
                     }
                 }
-            }
-            
-            // Apply no_contract filter after data enrichment
-            if ($statusFilter === 'no_contract') {
-                $customers = array_filter($customers, function($customer) {
-                    return $customer['active_contracts_count'] == 0;
-                });
-                $customers = array_values($customers); // Re-index array
-                
-                // Update filtered count to total matching customers
-                $filteredRecords = count($customers);
-                
-                // Apply pagination manually in PHP (since we skipped SQL LIMIT)
-                $customers = array_slice($customers, $start, $length);
             }
             
             $response = [
@@ -1654,87 +1648,85 @@ class CustomerManagementController extends BaseController
     public function getCustomerStats()
     {
         try {
-            // Log date filter params for debugging
-            $params = $this->getDateFilterParams();
-            log_message('info', 'CustomerStats - Date filter params: ' . json_encode($params));
-            
-            // Get total customers with date filter
-            $customerBuilder = $this->customerModel->builder();
-            $this->applyDateFilter($customerBuilder, 'created_at');
-            $totalCustomers = $customerBuilder->countAllResults();
-            
-            // Get active customers with date filter
-            $activeBuilder = $this->customerModel->builder();
-            $this->applyDateFilter($activeBuilder, 'created_at');
-            $activeCustomers = $activeBuilder->where('is_active', 1)->countAllResults();
-            
-            // Get total contracts for filtered customers via customer_contracts
-            // customer_contracts table doesn't exist; count directly from kontrak
-            $contractBuilder = $this->db->table('kontrak k');
-            $contractBuilder->select('COUNT(DISTINCT k.id) as total')
-                ->join('customers c', 'c.id = k.customer_id', 'left')
-                ->where('k.status !=', 'CANCELLED');
-            $this->applyDateFilter($contractBuilder, 'c.created_at');
-            $contractResultSet = $contractBuilder->get();
-            $contractResult    = $contractResultSet ? $contractResultSet->getRow() : null;
-            $totalContracts = $contractResult->total ?? 0;
-            
-            // Get total units for filtered customers via kontrak_unit junction table
-            $unitBuilder = $this->db->table('kontrak_unit ku');
-            $unitBuilder->select('COUNT(DISTINCT ku.unit_id) as total')
-                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customers c', 'c.id = k.customer_id', 'left')
-                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
-                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)');
-            $this->applyDateFilter($unitBuilder, 'c.created_at');
-            $unitResultSet = $unitBuilder->get();
-            $unitResult    = $unitResultSet ? $unitResultSet->getRow() : null;
-            $totalUnits = $unitResult->total ?? 0;
-            
-            // Get tab counts (for status filter tabs)
-            $allCount = $this->customerModel->countAllResults();
-            $activeCount = $this->customerModel->where('is_active', 1)->countAllResults();
-            $inactiveCount = $this->customerModel->where('is_active', 0)->countAllResults();
-            
-            // Get customers with no active contracts
-            $allCustomers = $this->customerModel->findAll();
-            $noContractCount = 0;
-            foreach ($allCustomers as $customer) {
-                $activeContractsCount = $this->db->table('kontrak')
-                    ->where('customer_id', $customer['id'])
-                    ->where('status', 'ACTIVE')
-                    ->countAllResults();
-                if ($activeContractsCount == 0) {
-                    $noContractCount++;
-                }
+            $startDate = $this->request->getPost('start_date') ?: $this->request->getGet('start_date');
+            $endDate   = $this->request->getPost('end_date')   ?: $this->request->getGet('end_date');
+
+            // ── Query 1: all customer counts in a single pass ─────────────────────
+            $dateWhere  = '';
+            $dateParams = [];
+            if ($startDate && $endDate) {
+                $dateWhere  = 'WHERE created_at >= ? AND created_at <= ?';
+                $dateParams = [$startDate, $endDate];
             }
-            
+
+            $customerRow = $this->db->query("
+                SELECT
+                    COUNT(*)                                              AS total,
+                    SUM(is_active = 1)                                    AS active,
+                    SUM(is_active = 0)                                    AS inactive,
+                    SUM(id NOT IN (
+                        SELECT DISTINCT customer_id FROM kontrak
+                        WHERE status = 'ACTIVE' AND customer_id IS NOT NULL
+                    ))                                                    AS no_contract
+                FROM customers
+                {$dateWhere}
+            ", $dateParams)->getRowArray();
+
+            // ── Query 2: total non-cancelled contracts ────────────────────────────
+            if ($startDate && $endDate) {
+                $contractRow = $this->db->query("
+                    SELECT COUNT(DISTINCT k.id) AS total
+                    FROM kontrak k
+                    JOIN customers c ON c.id = k.customer_id
+                    WHERE k.status != 'CANCELLED'
+                      AND c.created_at >= ? AND c.created_at <= ?
+                ", [$startDate, $endDate])->getRowArray();
+            } else {
+                $contractRow = $this->db->query(
+                    "SELECT COUNT(*) AS total FROM kontrak WHERE status != 'CANCELLED'"
+                )->getRowArray();
+            }
+
+            // ── Query 3: total unique active units ────────────────────────────────
+            if ($startDate && $endDate) {
+                $unitRow = $this->db->query("
+                    SELECT COUNT(DISTINCT ku.unit_id) AS total
+                    FROM kontrak_unit ku
+                    JOIN kontrak k   ON k.id = ku.kontrak_id
+                    JOIN customers c ON c.id = k.customer_id
+                    WHERE ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                      AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
+                      AND c.created_at >= ? AND c.created_at <= ?
+                ", [$startDate, $endDate])->getRowArray();
+            } else {
+                $unitRow = $this->db->query("
+                    SELECT COUNT(DISTINCT ku.unit_id) AS total
+                    FROM kontrak_unit ku
+                    WHERE ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                      AND (ku.is_temporary IS NULL OR ku.is_temporary = 0)
+                ")->getRowArray();
+            }
+
             $stats = [
-                'total_customers' => $totalCustomers,
-                'active_customers' => $activeCustomers,
-                'total_contracts' => $totalContracts,
-                'total_units' => $totalUnits,
+                'total_customers'  => (int)($customerRow['total']      ?? 0),
+                'active_customers' => (int)($customerRow['active']     ?? 0),
+                'total_contracts'  => (int)($contractRow['total']      ?? 0),
+                'total_units'      => (int)($unitRow['total']          ?? 0),
                 'tab_counts' => [
-                    'all' => $allCount,
-                    'active' => $activeCount,
-                    'inactive' => $inactiveCount,
-                    'no_contract' => $noContractCount
-                ]
+                    'all'         => (int)($customerRow['total']       ?? 0),
+                    'active'      => (int)($customerRow['active']      ?? 0),
+                    'inactive'    => (int)($customerRow['inactive']    ?? 0),
+                    'no_contract' => (int)($customerRow['no_contract'] ?? 0),
+                ],
             ];
-            
-            log_message('info', 'CustomerStats - Results: ' . json_encode($stats));
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $stats
-            ]);
-            
+
+            return $this->response->setJSON(['success' => true, 'data' => $stats]);
+
         } catch (\Exception $e) {
             log_message('error', 'CustomerManagementController::getCustomerStats - Error: ' . $e->getMessage());
-            log_message('error', 'CustomerManagementController::getCustomerStats - Trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
             ]);
         }
     }
