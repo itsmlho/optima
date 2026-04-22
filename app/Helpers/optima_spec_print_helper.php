@@ -15,14 +15,15 @@ if (! function_exists('parse_optima_spec_tech_notes')) {
         $end   = '[/OPTIMA_SPEC_TECH]';
         $raw   = $notes === null ? '' : (string) $notes;
         $tech  = [
-            'fork'        => '',
-            'attachment'  => '',
-            'mast'        => '',
-            'ban'         => '',
-            'battery'     => '',
-            'charger'     => '',
-            'valve'       => '',
-            'roda'        => '',
+            'fork'           => '',
+            'attachment'     => '',
+            'mast'           => '',
+            'ban'            => '',
+            'battery'        => '',
+            'charger'        => '',
+            'valve'          => '',
+            'roda'           => '',
+            'unit_condition' => '',
         ];
         $p0 = strpos($raw, $start);
         $p1 = strpos($raw, $end);

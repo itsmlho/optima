@@ -591,12 +591,21 @@ window.addEventListener('DOMContentLoaded', function() {
                         </div>
                         
                         <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.capacity') ?></label>
-                            <input type="text" class="form-control" name="kapasitas_text" id="specKapasitas" autocomplete="off" placeholder="Contoh: 1.5 Ton, 3 Ton">
+                            <label class="form-label"><?= lang('Marketing.capacity') ?> <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="kapasitas_text" id="specKapasitas" required autocomplete="off" placeholder="Contoh: 1.5 Ton, 3 Ton">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= lang('Marketing.unit_brand') ?></label>
-                            <input type="text" class="form-control" name="merk_unit_text" id="specMerkUnit" autocomplete="off" placeholder="Contoh: Toyota, Komatsu">
+                        <div class="col-md-4">
+                            <label class="form-label"><?= lang('Marketing.unit_brand') ?> <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="merk_unit_text" id="specMerkUnit" required autocomplete="off" placeholder="Contoh: Toyota, Komatsu">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="specUnitCondition"><?= lang('Marketing.spec_unit_condition') ?> <span class="text-danger">*</span></label>
+                            <select class="form-select" id="specUnitCondition" required>
+                                <option value=""><?= lang('Marketing.spec_unit_condition_placeholder') ?></option>
+                                <option value="NEW"><?= lang('Marketing.spec_unit_condition_new') ?></option>
+                                <option value="USED"><?= lang('Marketing.spec_unit_condition_used') ?></option>
+                            </select>
+                            <small class="text-muted"><?= lang('Marketing.spec_unit_condition_help') ?></small>
                         </div>
                         <div class="col-12 mt-2">
                             <hr class="my-2">
@@ -1877,7 +1886,9 @@ $(document).ready(function() {
                 customer_location_id: locationId,
                 start_date: startDate,
                 end_date: endDate,
+                rental_type: $('#contract_rental_type').val(),
                 jenis_sewa: $('#contract_jenis_sewa').val(),
+                billing_notes: $('#contract_billing_notes').val(),
                 catatan: $('#contract_catatan').val(),
                 quotation_id: quotationId,
                 workflow_completed: true
@@ -3397,6 +3408,11 @@ function displayQuotationSpecifications(specifications) {
         if (specNoteParsed.detail.attachment && !spec.attachment_id) {
             techSpecs.push(`<span class="chip chip-gray me-1"><i class="fas fa-tools me-1"></i>Attachment: ${specNoteParsed.detail.attachment}</span>`);
         }
+        if (specNoteParsed.detail.unit_condition) {
+            const condLabel = specNoteParsed.detail.unit_condition === 'NEW' ? 'New' : 'Used';
+            const condColor = specNoteParsed.detail.unit_condition === 'NEW' ? 'chip-green' : 'chip-orange';
+            techSpecs.push(`<span class="chip ${condColor} me-1"><i class="fas fa-tag me-1"></i>Kondisi: ${condLabel}</span>`);
+        }
         
         // Attachment Information
         if (spec.attachment_tipe) {
@@ -3560,6 +3576,7 @@ function proceedWithSpecificationModal() {
     applyForkAttachTypeToSpecFormUI('fork');
 
     $('#specDetailFork,#specDetailAttachment,#specDetailMast,#specDetailBan,#specDetailValve').val('');
+    $('#specUnitCondition').val('');
     $('#specApplyMasterIds').prop('checked', false);
     var specMasterEl = document.getElementById('specMasterDetailsEl');
     if (specMasterEl) {
@@ -3878,7 +3895,8 @@ function buildOptimaSpecTechBlockFromInputs() {
     } else if (fat === 'attachment') {
         detail.attachment = ($('#specDetailAttachment').val() || '').toString();
     }
-    var keys = ['fork', 'attachment', 'mast', 'ban', 'valve'];
+    detail.unit_condition = ($('#specUnitCondition').val() || '').toString();
+    var keys = ['fork', 'attachment', 'mast', 'ban', 'valve', 'unit_condition'];
     var lines = [];
     keys.forEach(function(k) {
         var v = (detail[k] || '').replace(/\r\n/g, '\n').split('\n').join(' ').trim();
@@ -3969,7 +3987,40 @@ $('#addSpecificationForm').on('submit', function(e) {
         $('#specTipeUnit').focus();
         return;
     }
-    
+
+    const kapasitas = $('#specKapasitas').val();
+    if (!kapasitas) {
+        OptimaUI.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan isi kapasitas unit', 'Please fill in the unit capacity'),
+            'warning'
+        );
+        $('#specKapasitas').focus();
+        return;
+    }
+
+    const merkUnit = $('#specMerkUnit').val();
+    if (!merkUnit) {
+        OptimaUI.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan isi merk / brand unit', 'Please fill in the unit brand'),
+            'warning'
+        );
+        $('#specMerkUnit').focus();
+        return;
+    }
+
+    const unitCondition = $('#specUnitCondition').val();
+    if (!unitCondition) {
+        OptimaUI.fire(
+            tr('Validasi Gagal', 'Validation Error'),
+            tr('Silakan pilih kondisi unit (New / Used)', 'Please select the unit condition (New / Used)'),
+            'warning'
+        );
+        $('#specUnitCondition').focus();
+        return;
+    }
+
     const formData = new FormData(this);
 
     const mergedNotes = mergeQuotationSpecNotesForSubmit();
@@ -4489,6 +4540,7 @@ function editSpecification(specId) {
                 $('#specDetailMast').val(techParsed.detail.mast || '');
                 $('#specDetailBan').val(techParsed.detail.ban || '');
                 $('#specDetailValve').val(techParsed.detail.valve || '');
+                $('#specUnitCondition').val(techParsed.detail.unit_condition || '');
 
                 if (spec.fork_id) {
                     $('#specForkId').val(spec.fork_id);
@@ -6440,7 +6492,7 @@ function saveNewContract(formData) {
         method: 'POST',
         data: {
             ...formData,
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            [window.csrfTokenName]: window.csrfTokenValue
         },
         success: function(response) {
             console.log('Contract save response:', response);

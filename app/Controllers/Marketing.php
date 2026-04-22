@@ -4329,6 +4329,18 @@ class Marketing extends BaseDataTableController
             $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan');
             
             $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
+
+            // If spk_id is provided, filter contracts to the SPK's customer
+            $spkId = (int) $this->request->getGet('spk_id');
+            if ($spkId > 0) {
+                $spkRow = $this->db->table('spk')
+                    ->select('pelanggan_id')
+                    ->where('id', $spkId)
+                    ->get()->getRowArray();
+                if ($spkRow && !empty($spkRow['pelanggan_id'])) {
+                    $builder->where('k.customer_id', (int) $spkRow['pelanggan_id']);
+                }
+            }
             $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name');
             $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->get()->getResultArray();
             

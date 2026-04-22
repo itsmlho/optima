@@ -582,11 +582,13 @@ if (!function_exists('maskSensitivePrint')) {
                         $mastDisplay = spk_print_pick_detail($mastFromMaster, $techDetail['mast']);
                         $banDisplay = spk_print_pick_detail($banFromMaster, $techDetail['ban']);
                         $valveDisplay = spk_print_pick_detail($valveFromMaster, $techDetail['valve']);
+                        $unitCondition = trim((string) ($techDetail['unit_condition'] ?? ''));
 
                         $forkAttachPrintMode = optima_print_fork_or_attachment_mode($k, $techDetail, $forkDisplay, $attachmentDisplay);
                         $showForkRow = ($forkAttachPrintMode === 'fork');
                         $showAttachmentRow = ($forkAttachPrintMode === 'attachment');
                         $showValveRow = $valveDisplay !== '';
+                        $showConditionRow = $unitCondition !== '';
                     ?>
                     <div class="mt-2">
                         <div>- Total Unit</div>
@@ -598,6 +600,7 @@ if (!function_exists('maskSensitivePrint')) {
                         <div>- Mast (Tinggi Angkat)</div>
                         <?php if ($showValveRow): ?><div>- Valve</div><?php endif; ?>
                         <?php if ($showForkRow): ?><div>- Fork / Garpu</div><?php endif; ?>
+                        <?php if ($showConditionRow): ?><div>- Kondisi Unit</div><?php endif; ?>
                     </div>
                 </td>
                 <td class="align-top">
@@ -643,6 +646,9 @@ if (!function_exists('maskSensitivePrint')) {
                         <?php endif; ?>
                         <?php if ($showForkRow): ?>
                         <div class="val"><?= esc($forkDisplay !== '' ? $forkDisplay : '..............................') ?></div>
+                        <?php endif; ?>
+                        <?php if ($showConditionRow): ?>
+                        <div class="val"><strong><?= esc($unitCondition === 'NEW' ? 'New (Unit Baru)' : 'Used (Unit Bekas)') ?></strong></div>
                         <?php endif; ?>
                     </div>
                 </td>

@@ -246,16 +246,67 @@ $can_export = (
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title"><?= lang('Marketing.add_rental') ?></h5>
-                    <small class="text-muted"><?= lang('Marketing.additional_notes_optional') ?></small>
+                    <h5 class="modal-title"><i class="fas fa-file-contract me-2 text-primary"></i><?= lang('Marketing.add_rental') ?></h5>
+                    <small class="text-muted">Field bertanda <span class="text-danger">*</span> wajib diisi.</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addContractForm">
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3" id="contractNumberSection">
-                            <label class="form-label" id="contractNumberLabel"><?= lang('Marketing.rental_number_label') ?> *</label>
+
+                    <!-- Section 1: Customer & Lokasi -->
+                    <p class="small fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.05em;">
+                        <i class="fas fa-building me-1"></i> Informasi Customer
+                    </p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.customer') ?> <span class="text-danger">*</span></label>
+                            <select class="form-select" name="customer_id" id="contractCustomerSelect" required>
+                                <option value="">-- <?= lang('Marketing.customer') ?> --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.location') ?> <span class="text-danger">*</span></label>
+                            <select class="form-select" name="customer_location_id" id="contractLocationSelect" required disabled>
+                                <option value=""><?= lang('Marketing.select_customer_first') ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Section 2: Tipe & Penagihan -->
+                    <p class="small fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.05em;">
+                        <i class="fas fa-tag me-1"></i> Tipe & Penagihan
+                    </p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.rental_type') ?> <span class="text-danger">*</span></label>
+                            <select class="form-select" name="rental_type" id="modalRentalType" required>
+                                <option value="CONTRACT" selected><?= lang('Marketing.rental_type_contract') ?></option>
+                                <option value="PO_ONLY"><?= lang('Marketing.rental_type_po') ?></option>
+                                <option value="DAILY_SPOT"><?= lang('Marketing.rental_type_harian') ?></option>
+                            </select>
+                            <small class="text-muted" id="rentalTypeDesc"></small>
+                        </div>
+                        <div class="col-md-6" id="billingPeriodSection">
+                            <label class="form-label"><?= lang('Marketing.monthly') ?> / <?= lang('Marketing.daily') ?> <span class="text-danger">*</span></label>
+                            <select class="form-select" name="jenis_sewa" id="modalJenisSewa" required>
+                                <option value="BULANAN" selected><?= lang('Marketing.monthly') ?></option>
+                                <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Section 3: Nomor Referensi -->
+                    <p class="small fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.05em;">
+                        <i class="fas fa-hashtag me-1"></i> Nomor Referensi
+                    </p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6" id="contractNumberSection">
+                            <label class="form-label" id="contractNumberLabel"><?= lang('Marketing.rental_number_label') ?> <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="text" class="form-control" name="contract_number" id="modalContractNumber" required>
                                 <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="<?= lang('Marketing.generate_rental_number') ?>">
@@ -264,58 +315,33 @@ $can_export = (
                             </div>
                             <small class="text-muted" id="contractNumberHint"><?= lang('Marketing.select_customer_first') ?></small>
                         </div>
-                        
-                        <div class="col-md-6 mb-3" id="poNumberSection">
+                        <div class="col-md-6" id="poNumberSection">
                             <label class="form-label" id="poNumberLabel"><?= lang('Marketing.client_po_number') ?></label>
                             <input type="text" class="form-control" name="po_number" id="modalPoNumber" placeholder="<?= lang('Marketing.client_po_number') ?>">
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.customer') ?> *</label>
-                            <select class="form-select" name="customer_id" id="contractCustomerSelect" required>
-                                <option value="">-- <?= lang('Marketing.customer') ?> --</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.location') ?> *</label>
-                            <select class="form-select" name="customer_location_id" id="contractLocationSelect" required disabled>
-                                <option value=""><?= lang('Marketing.select_customer_first') ?></option>
-                            </select>
-                        </div>
+                    </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.rental_type') ?> *</label>
-                            <select class="form-select" name="rental_type" id="modalRentalType" required>
-                                <option value="CONTRACT" selected><?= lang('Marketing.rental_type_contract') ?></option>
-                                <option value="PO_ONLY"><?= lang('Marketing.rental_type_po') ?></option>
-                                <option value="DAILY_SPOT"><?= lang('Marketing.rental_type_harian') ?></option>
-                            </select>
-                            <small class="text-muted" id="rentalTypeDesc"></small>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3" id="billingPeriodSection">
-                            <label class="form-label"><?= lang('Marketing.monthly') ?> / <?= lang('Marketing.daily') ?> *</label>
-                            <select class="form-select" name="jenis_sewa" id="modalJenisSewa" required>
-                                <option value="BULANAN" selected><?= lang('Marketing.monthly') ?></option>
-                                <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label"><?= lang('Marketing.start_date') ?> *</label>
+                    <hr class="my-3">
+
+                    <!-- Section 4: Periode Kontrak -->
+                    <p class="small fw-semibold text-uppercase text-muted mb-2" style="letter-spacing:.05em;">
+                        <i class="fas fa-calendar-alt me-1"></i> Periode Kontrak
+                    </p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.start_date') ?> <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="start_date" id="modalStartDate" required>
                         </div>
 
                         <!-- End date: hidden for PO_ONLY -->
-                        <div class="col-md-6 mb-3" id="endDateSection">
-                            <label class="form-label" id="endDateLabel"><?= lang('Marketing.end_date') ?> *</label>
+                        <div class="col-md-6" id="endDateSection">
+                            <label class="form-label" id="endDateLabel"><?= lang('Marketing.end_date') ?> <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="end_date" id="modalEndDate">
                             <small class="text-muted" id="endDateHint"><?= lang('Marketing.contract_end_date_required') ?></small>
                         </div>
 
-                        <!-- PO_ONLY: open-ended notice -->
-                        <div class="col-md-6 mb-3" id="openEndedSection" style="display:none;">
+                        <!-- PO_ONLY: open-ended notice (replaces end date) -->
+                        <div class="col-md-6" id="openEndedSection" style="display:none;">
                             <label class="form-label"><?= lang('Marketing.end_date_optional') ?></label>
                             <div class="form-control bg-light text-muted" style="cursor:default;">
                                 <i class="fas fa-infinity me-1"></i><?= lang('Marketing.open_ended') ?>
@@ -323,20 +349,36 @@ $can_export = (
                             <small class="text-muted"><?= lang('Marketing.open_ended_notice') ?></small>
                         </div>
 
-                        <!-- payment_due_day: for PO_ONLY only -->
-                        <div class="col-md-6 mb-3" id="paymentDueSection" style="display:none;">
+                        <!-- PO_ONLY: payment due day -->
+                        <div class="col-md-6" id="paymentDueSection" style="display:none;">
                             <label class="form-label"><?= lang('Marketing.payment_due_day') ?></label>
                             <input type="number" class="form-control" name="payment_due_day" min="1" max="31" placeholder="15">
                             <small class="text-muted"><?= lang('Marketing.payment_due_day_help') ?></small>
                         </div>
-                        
-                        <div class="col-12 mb-3">
+
+                        <!-- DAILY_SPOT: estimasi durasi -->
+                        <div class="col-md-6" id="estimatedDurationSection" style="display:none;">
+                            <label class="form-label"><?= lang('Marketing.estimated_duration_days') ?> <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="estimated_duration_days" id="modalEstimatedDays" min="1" max="30" placeholder="1–30">
+                                <span class="input-group-text">hari</span>
+                            </div>
+                            <small class="text-muted"><?= lang('Marketing.max_duration_notice') ? str_replace('{days}', '30', lang('Marketing.max_duration_notice')) : 'Maksimal 30 hari.' ?></small>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Section 5: Catatan -->
+                    <div class="row g-3">
+                        <div class="col-12">
                             <label class="form-label"><?= lang('Marketing.notes') ?></label>
                             <textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_optional') ?>"></textarea>
                         </div>
                     </div>
+
                 </div>
-                
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i><?= lang('App.cancel') ?? 'Batal' ?>
@@ -1574,65 +1616,51 @@ function openAddContractModal() {
 }
 
 /**
- * Load customers for contract creation dropdown
+ * Load customers for contract creation dropdown (AJAX-based Select2)
  */
 function loadCustomersForContract() {
-    $.ajax({
-        url: '<?= base_url('marketing/rental/customers-dropdown') ?>',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const customerSelect = $('#contractCustomerSelect');
-                customerSelect.empty().append('<option value="">-- Select Customer --</option>');
-                response.data.forEach(customer => {
-                    const code = customer.customer_code || '';
-                    // Only store customer name in option text, templates will add badge
-                    customerSelect.append(`<option value="${customer.id}" data-code="${code}">${customer.customer_name}</option>`);
-                });
-                
-                // Initialize Select2 with custom template
-                customerSelect.select2({
-                    placeholder: '-- Select Customer --',
-                    allowClear: true,
-                    dropdownParent: $('#addContractModal'),
-                    width: '100%',
-                    templateResult: formatCustomerOption,
-                    templateSelection: formatCustomerSelection,
-                    escapeMarkup: function(markup) { return markup; } // Allow HTML in templates
-                });
-            }
+    const customerSelect = $('#contractCustomerSelect');
+
+    // Destroy previous instance if exists
+    if (customerSelect.data('select2')) {
+        customerSelect.select2('destroy');
+    }
+
+    customerSelect.select2({
+        placeholder: '-- Select Customer --',
+        allowClear: true,
+        dropdownParent: $('#addContractModal'),
+        width: '100%',
+        minimumInputLength: 0,
+        ajax: {
+            url: '<?= base_url('marketing/rental/customers-dropdown') ?>',
+            dataType: 'json',
+            delay: 300,
+            data: function(params) {
+                return { q: params.term || '' };
+            },
+            processResults: function(response) {
+                if (!response.success) return { results: [] };
+                return {
+                    results: response.data.map(function(c) {
+                        return { id: c.id, text: c.customer_name, code: c.customer_code };
+                    })
+                };
+            },
+            cache: true
         },
-        error: function() {
-            showNotification('Error loading customers', 'error');
-        }
+        templateResult: function(item) {
+            if (!item.id) return item.text;
+            return $('<div class="d-flex align-items-center"><span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7em;">' + (item.code || '') + '</span><span>' + item.text + '</span></div>');
+        },
+        templateSelection: function(item) {
+            if (!item.id) return item.text;
+            const code = item.code || '';
+            if (!code) return item.text;
+            return $('<span><span class="badge badge-soft-blue me-2 font-monospace" style="font-size:0.7em;">' + code + '</span> ' + item.text + '</span>');
+        },
+        escapeMarkup: function(markup) { return markup; }
     });
-}
-
-/**
- * Format customer option in Select2 dropdown
- */
-function formatCustomerOption(customer) {
-    if (!customer.id) return customer.text;
-    const code = $(customer.element).data('code');
-    if (!code) return customer.text;
-    
-    // Return HTML with badge
-    return `<div class="d-flex align-items-center">
-        <span class="badge badge-soft-blue me-2 font-monospace text-xxs">${code}</span>
-        <span>${customer.text}</span>
-    </div>`;
-}
-
-/**
- * Format selected customer in Select2
- */
-function formatCustomerSelection(customer) {
-    if (!customer.id) return customer.text;
-    const code = $(customer.element).data('code');
-    if (!code) return customer.text;
-    
-    // Return HTML with badge (escapeMarkup allows this)
-    return `<span class="badge badge-soft-blue me-2 font-monospace text-xxs">${code}</span>${customer.text}`;
 }
 
 /**
@@ -1713,19 +1741,24 @@ const RENTAL_TYPE_DESC = {
 function onRentalTypeChange(type) {
     const isPO    = type === 'PO_ONLY';
     const isSpot  = type === 'DAILY_SPOT';
+    const reqSpan = ' <span class="text-danger">*</span>';
 
     // End-date section: hidden for PO_ONLY
     $('#endDateSection').toggle(!isPO);
-    $('#endDateLabel').text(
-        isSpot ? '<?= esc(lang('Marketing.end_date'), 'js') ?> *'
-               : '<?= esc(lang('Marketing.end_date'), 'js') ?> *'
-    );
 
     // Open-ended notice: only PO_ONLY
     $('#openEndedSection').toggle(isPO);
 
     // Payment due day: only PO_ONLY
     $('#paymentDueSection').toggle(isPO);
+
+    // Estimated duration: only DAILY_SPOT
+    $('#estimatedDurationSection').toggle(isSpot);
+    if (isSpot) {
+        $('#modalEstimatedDays').attr('required', true);
+    } else {
+        $('#modalEstimatedDays').removeAttr('required').val('');
+    }
 
     // Billing period (jenis_sewa): auto-set & hide for PO/Harian
     if (isPO) {
@@ -1744,12 +1777,12 @@ function onRentalTypeChange(type) {
         $('#generateContractNumber').hide();
         $('#contractNumberLabel').html('Nomor Internal <span class="badge badge-soft-gray ms-1" style="font-size:0.7em;">Auto</span>');
         $('#contractNumberHint').text('Dibuat otomatis oleh sistem');
-        $('#poNumberLabel').html('<?= esc(lang('Marketing.client_po_number'), 'js') ?> *');
+        $('#poNumberLabel').html('<?= esc(lang('Marketing.client_po_number'), 'js') ?>' + reqSpan);
         $('#modalPoNumber').attr('required', true).attr('placeholder', 'Masukkan nomor PO dari customer');
     } else {
         $('#modalContractNumber').removeAttr('readonly').removeClass('bg-light text-muted');
         $('#generateContractNumber').show();
-        $('#contractNumberLabel').html('<?= esc(lang('Marketing.rental_number_label'), 'js') ?> *');
+        $('#contractNumberLabel').html('<?= esc(lang('Marketing.rental_number_label'), 'js') ?>' + reqSpan);
         $('#contractNumberHint').text('<?= esc(lang('Marketing.select_customer_first'), 'js') ?>');
         $('#poNumberLabel').text('<?= esc(lang('Marketing.client_po_number'), 'js') ?>');
         $('#modalPoNumber').removeAttr('required').attr('placeholder', '<?= esc(lang('Marketing.client_po_number'), 'js') ?>');

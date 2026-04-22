@@ -381,7 +381,7 @@ $can_export = $permissions['export'];
 
 <!-- Edit Customer Modal -->
 <div class="modal fade" id="editCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -393,29 +393,111 @@ $can_export = $permissions['export'];
                 <?= csrf_field() ?>
                 <input type="hidden" id="edit_customer_id" name="customer_id">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="edit_customer_code">Customer Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="edit_customer_code" name="customer_code" required maxlength="20" readonly>
-                        <small class="form-text text-muted">Customer code cannot be changed</small>
+
+                    <!-- Section 1: Customer Identity -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-building me-2 text-primary"></i>Customer Identity
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="edit_customer_code">Customer Code</label>
+                                    <input type="text" class="form-control bg-light" id="edit_customer_code" name="customer_code" maxlength="20" readonly>
+                                    <small class="form-text text-muted">Customer code cannot be changed</small>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label for="edit_customer_name">Company Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="edit_customer_name" name="customer_name" required maxlength="255">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="edit_is_active">Status <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="edit_is_active" name="is_active" required>
+                                        <option value="1">ACTIVE</option>
+                                        <option value="0">INACTIVE</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit_customer_name">Company Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="edit_customer_name" name="customer_name" required maxlength="255">
+
+                    <!-- Section 2: Business Details -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-briefcase me-2 text-warning"></i>Business Details
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit_npwp">NPWP</label>
+                                    <input type="text" class="form-control" id="edit_npwp" name="npwp" maxlength="30" placeholder="e.g., 01.234.567.8-901.000">
+                                    <small class="form-text text-muted">Nomor Pokok Wajib Pajak perusahaan</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit_payment_terms">Payment Terms</label>
+                                    <select class="form-control" id="edit_payment_terms" name="payment_terms">
+                                        <option value="">- Select -</option>
+                                        <option value="NET_30">NET 30</option>
+                                        <option value="NET_45">NET 45</option>
+                                        <option value="NET_60">NET 60</option>
+                                        <option value="COD">Cash On Delivery (COD)</option>
+                                        <option value="PREPAID">Prepaid</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit_industry_type">Industry Type</label>
+                                    <select class="form-control" id="edit_industry_type" name="industry_type">
+                                        <option value="">- Select -</option>
+                                        <option value="Manufaktur">Manufaktur</option>
+                                        <option value="Logistik">Logistik & Distribusi</option>
+                                        <option value="Pergudangan">Pergudangan</option>
+                                        <option value="Perkebunan">Perkebunan & Agribisnis</option>
+                                        <option value="Pertambangan">Pertambangan</option>
+                                        <option value="Konstruksi">Konstruksi</option>
+                                        <option value="FMCG">FMCG / Retail</option>
+                                        <option value="Farmasi">Farmasi & Kesehatan</option>
+                                        <option value="Otomotif">Otomotif</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit_marketing_name">Marketing PIC</label>
+                                    <select class="form-control" id="edit_marketing_name" name="marketing_name">
+                                        <option value="">- Select PIC -</option>
+                                    </select>
+                                    <small class="form-text text-muted">Staff marketing yang menangani customer ini</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit_default_billing_method">Default Billing Method</label>
+                                    <select class="form-control" id="edit_default_billing_method" name="default_billing_method">
+                                        <option value="CYCLE">30-Day Rolling Cycle</option>
+                                        <option value="PRORATE">Prorate to Month-End</option>
+                                        <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit_is_active">Status <span class="text-danger">*</span></label>
-                        <select class="form-control" id="edit_is_active" name="is_active" required>
-                            <option value="1">ACTIVE</option>
-                            <option value="0">INACTIVE</option>
-                        </select>
-                        <small class="form-text text-muted">Set to INACTIVE if no longer doing business with this customer</small>
-                    </div>
-                    
+
                     <div class="alert alert-info alert-sm">
                         <i class="bi bi-info-circle me-2"></i>
-                        <strong>Note:</strong> Changing status to INACTIVE will not affect existing contracts or units. It only marks this customer as no longer active in the system.
+                        <strong>Note:</strong> Setting status to INACTIVE will not affect existing contracts or units.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -505,7 +587,7 @@ $can_export = $permissions['export'];
 
 <!-- Add Customer Modal -->
 <div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
@@ -514,13 +596,14 @@ $can_export = $permissions['export'];
             <form id="addCustomerForm">
                 <?= csrf_field() ?>
                 <div class="modal-body">
-                    <!-- Customer Basic Information -->
+
+                    <!-- Section 1: Customer Identity -->
                     <div class="mb-4">
                         <h6 class="border-bottom pb-2 mb-3">
-                            <i class="bi bi-building me-2 text-primary"></i>Customer Information
+                            <i class="bi bi-building me-2 text-primary"></i>Customer Identity
                         </h6>
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="customer_code">Customer Code <span class="text-danger">*</span></label>
                                     <div class="input-group">
@@ -532,33 +615,94 @@ $can_export = $permissions['export'];
                                     <small class="form-text text-muted">Unique identifier for this customer</small>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-8">
                                 <div class="mb-3">
                                     <label for="customer_name">Company Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="customer_name" name="customer_name" required maxlength="255" placeholder="e.g., PT Maju Jaya">
+                                    <input type="text" class="form-control" id="customer_name" name="customer_name" required maxlength="255" placeholder="e.g., PT Maju Jaya Tbk.">
                                     <small class="form-text text-muted">Legal company name</small>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="default_billing_method">Default Billing Method</label>
-                            <select class="form-control" id="default_billing_method" name="default_billing_method">
-                                <option value="CYCLE" selected>30-Day Rolling Cycle</option>
-                                <option value="PRORATE">Prorate to Month-End</option>
-                                <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
-                            </select>
-                            <small class="form-text text-muted">Default billing calculation for contracts with this customer</small>
+                    </div>
+
+                    <!-- Section 2: Business Details -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-briefcase me-2 text-warning"></i>Business Details
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="add_npwp">NPWP</label>
+                                    <input type="text" class="form-control" id="add_npwp" name="npwp" maxlength="30" placeholder="e.g., 01.234.567.8-901.000">
+                                    <small class="form-text text-muted">Nomor Pokok Wajib Pajak perusahaan</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="add_payment_terms">Payment Terms</label>
+                                    <select class="form-control" id="add_payment_terms" name="payment_terms">
+                                        <option value="">- Select -</option>
+                                        <option value="NET_30">NET 30</option>
+                                        <option value="NET_45">NET 45</option>
+                                        <option value="NET_60">NET 60</option>
+                                        <option value="COD">Cash On Delivery (COD)</option>
+                                        <option value="PREPAID">Prepaid</option>
+                                    </select>
+                                    <small class="form-text text-muted">Syarat pembayaran untuk customer ini</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="add_industry_type">Industry Type</label>
+                                    <select class="form-control" id="add_industry_type" name="industry_type">
+                                        <option value="">- Select -</option>
+                                        <option value="Manufaktur">Manufaktur</option>
+                                        <option value="Logistik">Logistik & Distribusi</option>
+                                        <option value="Pergudangan">Pergudangan</option>
+                                        <option value="Perkebunan">Perkebunan & Agribisnis</option>
+                                        <option value="Pertambangan">Pertambangan</option>
+                                        <option value="Konstruksi">Konstruksi</option>
+                                        <option value="FMCG">FMCG / Retail</option>
+                                        <option value="Farmasi">Farmasi & Kesehatan</option>
+                                        <option value="Otomotif">Otomotif</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="add_marketing_name">Marketing PIC</label>
+                                    <select class="form-control" id="add_marketing_name" name="marketing_name">
+                                        <option value="">- Select PIC -</option>
+                                    </select>
+                                    <small class="form-text text-muted">Staff marketing yang menangani customer ini</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="default_billing_method">Default Billing Method</label>
+                                    <select class="form-control" id="default_billing_method" name="default_billing_method">
+                                        <option value="CYCLE" selected>30-Day Rolling Cycle</option>
+                                        <option value="PRORATE">Prorate to Month-End</option>
+                                        <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
+                                    </select>
+                                    <small class="form-text text-muted">Default billing calculation for contracts with this customer</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Primary Location Information -->
+                    <!-- Section 3: Primary Location Details -->
                     <div class="mb-4">
                         <h6 class="border-bottom pb-2 mb-3">
                             <i class="bi bi-geo-alt me-2 text-success"></i>Primary Location Details
                             <small class="text-muted ms-2">(Head Office)</small>
                         </h6>
-                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -580,12 +724,10 @@ $can_export = $permissions['export'];
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="mb-3">
                             <label for="address">Address <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="address" name="address" rows="2" maxlength="500" required placeholder="Complete address including street name, building number, etc."></textarea>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
@@ -606,16 +748,13 @@ $can_export = $permissions['export'];
                                 </div>
                             </div>
                         </div>
-                        
-
                     </div>
 
-                    <!-- Contact Person Information -->
-                    <div class="mb-3">
+                    <!-- Section 4: Contact Person -->
+                    <div class="mb-4">
                         <h6 class="border-bottom pb-2 mb-3">
                             <i class="bi bi-person me-2 text-info"></i>Contact Person
                         </h6>
-                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -625,13 +764,18 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label for="pic_position_visible">Position / Title</label>
+                                    <input type="text" class="form-control" id="pic_position_visible" name="pic_position" maxlength="64" placeholder="e.g., Procurement Manager">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
                                     <label for="phone">Phone <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="phone" name="phone" maxlength="20" required placeholder="e.g., 021-1234567 or 08123456789">
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="email">Email</label>
@@ -639,12 +783,13 @@ $can_export = $permissions['export'];
                                 </div>
                             </div>
                         </div>
-                    
-                    <!-- Additional Notes -->
+                    </div>
+
+                    <!-- Section 5: Additional Notes -->
                     <div class="mb-3">
-                        <label for="notes">
-                            <i class="bi bi-journal-text me-1"></i>Additional Notes
-                        </label>
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-journal-text me-2 text-secondary"></i>Additional Notes
+                        </h6>
                         <textarea class="form-control" id="notes" name="notes" rows="2" maxlength="255" placeholder="Optional notes or special instructions about this customer"></textarea>
                         <small class="form-text text-muted">Any special instructions or remarks</small>
                     </div>
@@ -652,7 +797,6 @@ $can_export = $permissions['export'];
                     <!-- Defaults required by backend validation -->
                     <input type="hidden" name="is_active" value="1">
                     <input type="hidden" name="location_type" value="HEAD_OFFICE">
-                    <input type="hidden" name="pic_position" value="">
                 </div>
                 <div class="modal-footer">
                     <?= ui_button('cancel', '', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
@@ -736,6 +880,27 @@ $can_export = $permissions['export'];
                                 <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
                             </select>
                             <small class="text-muted">Billing period</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Billing Method</label>
+                            <select class="form-select" id="addContractBillingMethod" name="billing_method">
+                                <option value="CYCLE">CYCLE — 30-day rolling</option>
+                                <option value="PRORATE">PRORATE — Prorated to month-end</option>
+                                <option value="MONTHLY_FIXED">MONTHLY_FIXED — Fixed date</option>
+                            </select>
+                            <small class="text-muted" id="addContractBillingMethodHint">Default customer setting</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Terms</label>
+                            <select class="form-select" id="addContractPaymentTerms" name="payment_terms">
+                                <option value="">— Inherited from customer —</option>
+                                <option value="NET_30">NET 30</option>
+                                <option value="NET_45">NET 45</option>
+                                <option value="NET_60">NET 60</option>
+                                <option value="COD">COD</option>
+                                <option value="PREPAID">PREPAID</option>
+                            </select>
+                            <small class="text-muted" id="addContractPaymentTermsHint">Leave blank to use customer default</small>
                         </div>
                         <div class="col-12 mb-3"><label class="form-label"><?= lang('Marketing.notes') ?></label><textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_optional') ?>"></textarea></div>
                     </div>
@@ -872,8 +1037,9 @@ $can_export = $permissions['export'];
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Rental Type <span class="text-danger">*</span></label>
                             <select class="form-select" id="editRentalType" name="rental_type" required>
-                                <option value="FORMAL_CONTRACT">Formal Contract</option>
+                                <option value="CONTRACT">Formal Contract</option>
                                 <option value="PO_ONLY">PO Only</option>
+                                <option value="DAILY_SPOT">Daily/Spot</option>
                             </select>
                         </div>
                     </div>
@@ -904,7 +1070,29 @@ $can_export = $permissions['export'];
                             </select>
                         </div>
                     </div>
-                    
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Billing Method</label>
+                            <select class="form-select" id="editContractBillingMethod" name="billing_method">
+                                <option value="CYCLE">CYCLE — 30-day rolling</option>
+                                <option value="PRORATE">PRORATE — Prorated to month-end</option>
+                                <option value="MONTHLY_FIXED">MONTHLY_FIXED — Fixed date</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Terms</label>
+                            <select class="form-select" id="editContractPaymentTerms" name="payment_terms">
+                                <option value="">— Inherited from customer —</option>
+                                <option value="NET_30">NET 30</option>
+                                <option value="NET_45">NET 45</option>
+                                <option value="NET_60">NET 60</option>
+                                <option value="COD">COD</option>
+                                <option value="PREPAID">PREPAID</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <input type="hidden" id="editCustomerId" name="customer_id">
                     <input type="hidden" id="editLocationId" name="location_id">
                 </div>
@@ -1444,19 +1632,19 @@ function calculateStatsFromTable() {
         for (let i = 0; i < allData.length; i++) {
             const row = allData[i];
             
-            // Count active customers (status column may vary - check for 'Aktif', 'Active', or status=1)
-            if (row.status === 'Aktif' || row.status === 'Active' || row.status === 1 || row.status === '1') {
+            // Count active customers
+            if (row.is_active == 1) {
                 stats.active_customers++;
             }
             
-            // Sum contracts (if contract_count column exists)
-            if (row.contract_count) {
-                stats.total_contracts += parseInt(row.contract_count) || 0;
+            // Sum contracts
+            if (row.contracts_count) {
+                stats.total_contracts += parseInt(row.contracts_count) || 0;
             }
             
-            // Sum units (if unit_count column exists)
-            if (row.unit_count) {
-                stats.total_units += parseInt(row.unit_count) || 0;
+            // Sum units
+            if (row.total_units) {
+                stats.total_units += parseInt(row.total_units) || 0;
             }
         }
         
@@ -2083,6 +2271,39 @@ function getStatusColor(status, statusId) {
 }
 
 // Modal functions for customer, contract, and spesifikasi
+/**
+ * Load marketing users into a select element, then optionally pre-select a value.
+ * Uses Marketing::getActiveUsers endpoint (returns id, firstname, lastname).
+ */
+function loadMarketingUsersIntoSelect(selector, preSelectValue) {
+    const $select = $(selector);
+    // If already loaded (more than 1 option), just set value
+    if ($select.find('option').length > 1) {
+        $select.val(preSelectValue || '');
+        return;
+    }
+    $.ajax({
+        url: '<?= base_url('marketing/get-active-users') ?>',
+        type: 'GET',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        success: function(response) {
+            if (response.success && Array.isArray(response.data)) {
+                $select.find('option:not(:first)').remove();
+                response.data.forEach(function(user) {
+                    const fullName = (user.firstname + ' ' + (user.lastname || '')).trim();
+                    $select.append($('<option>', {value: fullName, text: fullName}));
+                });
+                if (preSelectValue) {
+                    $select.val(preSelectValue);
+                }
+            }
+        },
+        error: function() {
+            console.warn('Could not load marketing users list');
+        }
+    });
+}
+
 function openAddCustomerModal() {
     // Reset form to clear all fields
     $('#addCustomerForm')[0].reset();
@@ -2096,6 +2317,9 @@ function openAddCustomerModal() {
     // Reset default values
     $('#location_name').val('Head Office');
     $('#default_billing_method').val('CYCLE');
+
+    // Load marketing PIC options
+    loadMarketingUsersIntoSelect('#add_marketing_name', '');
 
     // Show modal
     $('#addCustomerModal').modal('show');
@@ -2136,6 +2360,13 @@ function openEditCustomerModal(customerId) {
                 $('#edit_customer_code').val(customer.customer_code);
                 $('#edit_customer_name').val(customer.customer_name);
                 $('#edit_is_active').val(customer.is_active || 1);
+                $('#edit_npwp').val(customer.npwp || '');
+                $('#edit_payment_terms').val(customer.payment_terms || '');
+                $('#edit_industry_type').val(customer.industry_type || '');
+                $('#edit_default_billing_method').val(customer.default_billing_method || 'CYCLE');
+                
+                // Marketing PIC: load options then set value
+                loadMarketingUsersIntoSelect('#edit_marketing_name', customer.marketing_name || '');
                 
                 // Clear previous errors
                 clearFormErrors('#editCustomerForm');
@@ -2378,6 +2609,9 @@ function generateLocationCodeModal() {
 function openAddContractModal() {
     // Reset form
     $('#addContractForm')[0].reset();
+    // Reset billing hints
+    $('#addContractBillingMethodHint').text('Default customer setting');
+    $('#addContractPaymentTermsHint').text('Leave blank to use customer default');
     
     // If opened from customer detail modal, show readonly customer name
     if (currentCustomerId && currentCustomerName) {
@@ -2405,6 +2639,25 @@ function openAddContractModal() {
             },
             error: function() {
                 console.error('Error loading customer locations');
+            }
+        });
+
+        // Auto-fill billing_method and payment_terms from customer defaults
+        $.ajax({
+            url: `<?= base_url('marketing/customer-management/getCustomerDetail/') ?>${currentCustomerId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.data) {
+                    const customer = response.data;
+                    const billingMethod = customer.default_billing_method || 'CYCLE';
+                    $('#addContractBillingMethod').val(billingMethod);
+                    $('#addContractBillingMethodHint').text(`Auto-filled: ${billingMethod}`);
+                    const paymentTerms = customer.payment_terms || '';
+                    $('#addContractPaymentTerms').val(paymentTerms);
+                    if (paymentTerms) {
+                        $('#addContractPaymentTermsHint').text(`Auto-filled: ${paymentTerms}`);
+                    }
+                }
             }
         });
     } else {
@@ -2855,6 +3108,8 @@ function editContract(contractId) {
                 $('#editEndDate').val(contract.tanggal_selesai);
                 $('#editRentalRate').val(contract.harga_sewa);
                 $('#editStatus').val(contract.status);
+                $('#editContractBillingMethod').val(contract.billing_method || 'CYCLE');
+                $('#editContractPaymentTerms').val(contract.payment_terms || '');
                 
                 // Show edit modal
                 $('#editContractModal').modal('show');
@@ -3387,8 +3642,38 @@ $(document).on('change', '#customerSelect', function() {
                 console.error('Error loading locations');
             }
         });
+
+        // Auto-fill billing_method and payment_terms from customer defaults
+        $.ajax({
+            url: `<?= base_url('marketing/customer-management/getCustomerDetail/') ?>${customerId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.data) {
+                    const customer = response.data;
+
+                    const billingMethod = customer.default_billing_method || 'CYCLE';
+                    $('#addContractBillingMethod').val(billingMethod);
+                    $('#addContractBillingMethodHint').text(`Auto-filled from customer default: ${billingMethod}`);
+
+                    const paymentTerms = customer.payment_terms || '';
+                    $('#addContractPaymentTerms').val(paymentTerms);
+                    if (paymentTerms) {
+                        $('#addContractPaymentTermsHint').text(`Auto-filled from customer default: ${paymentTerms}`);
+                    } else {
+                        $('#addContractPaymentTermsHint').text('Customer has no default — will be inherited as null');
+                    }
+                }
+            },
+            error: function() {
+                console.warn('Could not load customer defaults for billing fields');
+            }
+        });
     } else {
         locationSelect.empty().append('<option value="">-- Pilih Customer Dulu --</option>').prop('disabled', true);
+        $('#addContractBillingMethod').val('CYCLE');
+        $('#addContractBillingMethodHint').text('Default customer setting');
+        $('#addContractPaymentTerms').val('');
+        $('#addContractPaymentTermsHint').text('Leave blank to use customer default');
     }
 });
 
@@ -3429,7 +3714,11 @@ $(document).on('submit', '#editCustomerForm', function(e) {
     clearFormErrors('#editCustomerForm');
     
     const customerId = $('#edit_customer_id').val();
-    const formData = $(this).serialize();
+    let formData = $(this).serializeArray();
+    
+    // Inject fresh CSRF token
+    formData = formData.filter(item => item.name !== window.csrfTokenName);
+    formData.push({name: window.csrfTokenName, value: window.csrfTokenValue});
     
     // Debug logging for form submission
     console.log('📤 Submitting customer update for ID:', customerId);
@@ -3447,7 +3736,7 @@ $(document).on('submit', '#editCustomerForm', function(e) {
     $.ajax({
         url: `<?= base_url('marketing/customer-management/updateCustomer') ?>/${customerId}`,
         method: 'POST',
-        data: formData,
+        data: $.param(formData),
         success: function(response) {
             if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
                 OptimaPro.hideLoading();
@@ -3566,6 +3855,10 @@ $(document).on('submit', '#addContractForm', function(e) {
     if (currentCustomerId && !formData.find(item => item.name === 'customer_id')) {
         formData.push({name: 'customer_id', value: currentCustomerId});
     }
+
+    // Inject fresh CSRF token (replace any stale static token from page render)
+    formData = formData.filter(item => item.name !== window.csrfTokenName);
+    formData.push({name: window.csrfTokenName, value: window.csrfTokenValue});
 
     $.ajax({
         url: '<?= base_url('marketing/kontrak/store') ?>',

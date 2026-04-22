@@ -595,9 +595,14 @@ class CustomerManagementController extends BaseController
         try {
             // Create customer
             $customerData = [
-            'customer_code' => $this->request->getPost('customer_code'),
-            'customer_name' => $this->request->getPost('customer_name'),
-                'is_active' => $this->request->getPost('is_active') ?: 1
+                'customer_code'          => $this->request->getPost('customer_code'),
+                'customer_name'          => $this->request->getPost('customer_name'),
+                'is_active'              => $this->request->getPost('is_active') ?: 1,
+                'default_billing_method' => $this->request->getPost('default_billing_method') ?: 'CYCLE',
+                'marketing_name'         => $this->request->getPost('marketing_name') ?: null,
+                'npwp'                   => $this->request->getPost('npwp') ?: null,
+                'payment_terms'          => $this->request->getPost('payment_terms') ?: null,
+                'industry_type'          => $this->request->getPost('industry_type') ?: null,
             ];
             
             $customerId = $this->customerModel->insert($customerData);
@@ -746,8 +751,13 @@ class CustomerManagementController extends BaseController
         // Validate input
         // Note: customer_code is readonly and cannot be changed, so we don't validate or update it
         $rules = [
-            'customer_name' => 'required|max_length[255]',
-            'is_active' => 'permit_empty|in_list[0,1]'
+            'customer_name'          => 'required|max_length[255]',
+            'is_active'              => 'permit_empty|in_list[0,1]',
+            'default_billing_method' => 'permit_empty|in_list[CYCLE,PRORATE,MONTHLY_FIXED]',
+            'npwp'                   => 'permit_empty|max_length[30]',
+            'payment_terms'          => 'permit_empty|in_list[NET_30,NET_45,NET_60,COD,PREPAID]',
+            'industry_type'          => 'permit_empty|max_length[100]',
+            'marketing_name'         => 'permit_empty|max_length[50]',
         ];
         
         $messages = [
@@ -770,8 +780,13 @@ class CustomerManagementController extends BaseController
         // Prepare data for update
         // Note: customer_code is intentionally excluded as it's readonly and should never change
         $data = [
-            'customer_name' => $this->request->getPost('customer_name'),
-            'is_active' => $this->request->getPost('is_active') !== null ? (int)$this->request->getPost('is_active') : 1
+            'customer_name'          => $this->request->getPost('customer_name'),
+            'is_active'              => $this->request->getPost('is_active') !== null ? (int)$this->request->getPost('is_active') : 1,
+            'default_billing_method' => $this->request->getPost('default_billing_method') ?: 'CYCLE',
+            'marketing_name'         => $this->request->getPost('marketing_name') ?: null,
+            'npwp'                   => $this->request->getPost('npwp') ?: null,
+            'payment_terms'          => $this->request->getPost('payment_terms') ?: null,
+            'industry_type'          => $this->request->getPost('industry_type') ?: null,
         ];
         
         log_message('info', '[CustomerManagement] Updating customer ID: ' . $id);
@@ -1198,14 +1213,17 @@ class CustomerManagementController extends BaseController
         }
         
         $data = [
-            'location_name' => $this->request->getPost('location_name'),
-            'address' => $this->request->getPost('address'),
+            'location_name'  => $this->request->getPost('location_name'),
+            'address'        => $this->request->getPost('address'),
+            'city'           => $this->request->getPost('city'),
+            'province'       => $this->request->getPost('province'),
+            'postal_code'    => $this->request->getPost('postal_code'),
             'contact_person' => $this->request->getPost('contact_person'),
-            'phone' => $this->request->getPost('phone'),
-            'email' => $this->request->getPost('email'),
-            'pic_position' => $this->request->getPost('pic_position'),
-            'notes' => $this->request->getPost('notes'),
-            'is_primary' => $this->request->getPost('is_primary') ? 1 : 0
+            'phone'          => $this->request->getPost('phone'),
+            'email'          => $this->request->getPost('email'),
+            'pic_position'   => $this->request->getPost('pic_position'),
+            'notes'          => $this->request->getPost('notes'),
+            'is_primary'     => $this->request->getPost('is_primary') ? 1 : 0
         ];
         
         try {

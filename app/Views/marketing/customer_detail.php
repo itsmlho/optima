@@ -18,7 +18,7 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item"><a href="<?= base_url('marketing/kontrak') ?>"><i class="fas fa-users me-1"></i>Customers</a></li>
+                <li class="breadcrumb-item"><a href="<?= base_url('marketing/customer-management') ?>"><i class="fas fa-users me-1"></i>Customers</a></li>
                 <li class="breadcrumb-item active"><?= esc($customerName) ?></li>
             </ol>
         </nav>
@@ -28,7 +28,7 @@ $customerName = $customer['customer_name'] ?? 'Customer #' . $id;
         <p class="text-muted small mb-0"><?= esc($customer['customer_code'] ?? '') ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-secondary btn-sm">
+        <a href="<?= base_url('marketing/customer-management') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left me-1"></i>Kembali
         </a>
         <button class="btn btn-primary btn-sm" onclick="editCustomer()">

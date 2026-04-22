@@ -3397,8 +3397,8 @@ $can_export = $permissions['export'];
         
         console.log('🔍 Loading active contracts...');
         
-        // Load active contracts
-        fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>')
+        // Load active contracts filtered by this SPK's customer
+        fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>?spk_id=' + spkId)
             .then(response => {
                 console.log('📥 Response status:', response.status);
                 if (!response.ok) {

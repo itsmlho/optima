@@ -23,6 +23,7 @@ class KontrakModel extends Model
         'total_units',
         'jenis_sewa',
         'billing_method',       // CYCLE, PRORATE, MONTHLY_FIXED
+        'payment_terms',        // NET_30, NET_45, NET_60, COD, PREPAID (inherited from customer, overridable)
         'billing_notes',        // Catatan billing khusus
         'billing_start_date',   // Override tanggal mulai billing
         'tanggal_mulai',
@@ -58,7 +59,9 @@ class KontrakModel extends Model
         'tanggal_mulai'        => 'permit_empty|valid_date',
         'tanggal_berakhir'     => 'permit_empty|valid_date',
         'status'               => 'permit_empty|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]',
-        'rental_type'          => 'permit_empty|in_list[CONTRACT,PO_ONLY,DAILY_SPOT]'
+        'rental_type'          => 'permit_empty|in_list[CONTRACT,PO_ONLY,DAILY_SPOT]',
+        'billing_method'       => 'permit_empty|in_list[CYCLE,PRORATE,MONTHLY_FIXED]',
+        'payment_terms'        => 'permit_empty|in_list[NET_30,NET_45,NET_60,COD,PREPAID]'
     ];
 
     protected $validationMessages = [

@@ -18,7 +18,10 @@ class CustomerModel extends Model
         'customer_name',
         'marketing_name',
         'is_active',
-        'default_billing_method'
+        'default_billing_method',
+        'npwp',
+        'payment_terms',
+        'industry_type',
     ];
     
     protected $useTimestamps = true;
@@ -31,7 +34,11 @@ class CustomerModel extends Model
         'customer_code' => 'required|max_length[20]|is_unique[customers.customer_code,id,{id}]',
         'customer_name' => 'required|max_length[255]',
         'is_active' => 'permit_empty|in_list[0,1]',
-        'default_billing_method' => 'permit_empty|in_list[CYCLE,PRORATE,MONTHLY_FIXED]'
+        'default_billing_method' => 'permit_empty|in_list[CYCLE,PRORATE,MONTHLY_FIXED]',
+        'npwp' => 'permit_empty|max_length[30]',
+        'payment_terms' => 'permit_empty|in_list[NET_30,NET_45,NET_60,COD,PREPAID]',
+        'industry_type' => 'permit_empty|max_length[100]',
+        'marketing_name' => 'permit_empty|max_length[50]',
     ];
     
     protected $validationMessages = [

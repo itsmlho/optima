@@ -568,7 +568,28 @@ class Kontrak extends BaseController
             'tanggal_berakhir'     => $endDate,
             'status'               => 'PENDING', // Set otomatis ke PENDING untuk kontrak baru
             'dibuat_oleh'          => session()->get('user_id') ?? 1, // Default user ID jika session kosong
+            'billing_notes'        => $this->request->getPost('catatan') ?: null,
         ];
+
+        // billing_method: use POST value if provided, else inherit from customer default
+        $billingMethod = $this->request->getPost('billing_method') ?: null;
+        if (empty($billingMethod) && !empty($customerId)) {
+            $customerRow = $this->db->table('customers')->select('default_billing_method')->where('id', $customerId)->get()->getRowArray();
+            $billingMethod = $customerRow['default_billing_method'] ?? null;
+        }
+        if (!empty($billingMethod)) {
+            $data['billing_method'] = $billingMethod;
+        }
+
+        // payment_terms: use POST value if provided, else inherit from customer
+        $paymentTerms = $this->request->getPost('payment_terms') ?: null;
+        if (empty($paymentTerms) && !empty($customerId)) {
+            $customerRow = $customerRow ?? $this->db->table('customers')->select('payment_terms')->where('id', $customerId)->get()->getRowArray();
+            $paymentTerms = $customerRow['payment_terms'] ?? null;
+        }
+        if (!empty($paymentTerms)) {
+            $data['payment_terms'] = $paymentTerms;
+        }
 
         // Add rental-type-specific fields
         if ($rentalType === 'PO_ONLY') {
@@ -889,8 +910,15 @@ class Kontrak extends BaseController
             'tanggal_berakhir'     => $endDateUpd,
             'status'               => $this->request->getPost('status'),
             'jenis_sewa'           => $jenisSewa,
-            'catatan'              => $this->request->getPost('catatan'),
+            'billing_notes'        => $this->request->getPost('catatan') ?: null,
+            'billing_method'       => $this->request->getPost('billing_method') ?: 'CYCLE',
         ];
+
+        // payment_terms: accept override from form if provided
+        $paymentTermsUpd = $this->request->getPost('payment_terms') ?: null;
+        if (!empty($paymentTermsUpd)) {
+            $data['payment_terms'] = $paymentTermsUpd;
+        }
 
         // Type-specific extra fields
         if ($rentalTypeUpd === 'PO_ONLY') {
