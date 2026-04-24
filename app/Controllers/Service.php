@@ -550,47 +550,41 @@ class Service extends BaseController
     public function workOrders()
     {
         // Load models
-        $statusModel = new \App\Models\WorkOrderStatusModel();
+        $statusModel   = new \App\Models\WorkOrderStatusModel();
         $priorityModel = new \App\Models\WorkOrderPriorityModel();
         $categoryModel = new \App\Models\WorkOrderCategoryModel();
-        $staffModel = new \App\Models\EmployeeModel();
-        $inventoryModel = new \App\Models\InventoryUnitModel();
-        $areaModel = new \App\Models\AreaModel();
-        $sparepartModel = new \App\Models\SparepartModel();
+        $staffModel    = new \App\Models\EmployeeModel();
+        $areaModel     = new \App\Models\AreaModel();
 
-        // Wrap each model call individually to prevent one failing query from crashing the whole page
+        // Units & spareparts are loaded via AJAX (Select2) — do NOT preload here
         $statuses   = [];
         $priorities = [];
         $categories = [];
         $staff      = [];
-        $units      = [];
         $areas      = [];
-        $spareparts = [];
 
-        try { $statuses   = $statusModel->getActiveStatuses(); }   catch (\Throwable $e) { log_message('error', 'workOrders: getActiveStatuses failed - ' . $e->getMessage()); }
+        try { $statuses   = $statusModel->getActiveStatuses(); }    catch (\Throwable $e) { log_message('error', 'workOrders: getActiveStatuses failed - '  . $e->getMessage()); }
         try { $priorities = $priorityModel->getActivePriorities(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActivePriorities failed - ' . $e->getMessage()); }
         try { $categories = $categoryModel->getActiveCategories(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActiveCategories failed - ' . $e->getMessage()); }
-        try { $staff      = $staffModel->getStaffByRole(); }         catch (\Throwable $e) { log_message('error', 'workOrders: getStaffByRole failed - ' . $e->getMessage()); }
-        try { $units      = $inventoryModel->getUnitsForDropdown(); } catch (\Throwable $e) { log_message('error', 'workOrders: getUnitsForDropdown failed - ' . $e->getMessage()); }
-        try { $areas      = $areaModel->getActiveAreas(); }           catch (\Throwable $e) { log_message('error', 'workOrders: getActiveAreas failed - ' . $e->getMessage()); }
-        try { $spareparts = $sparepartModel->getActiveSpareparts(); } catch (\Throwable $e) { log_message('error', 'workOrders: getActiveSpareparts failed - ' . $e->getMessage()); }
+        try { $staff      = $staffModel->getStaffByRole(); }          catch (\Throwable $e) { log_message('error', 'workOrders: getStaffByRole failed - '      . $e->getMessage()); }
+        try { $areas      = $areaModel->getActiveAreas(); }            catch (\Throwable $e) { log_message('error', 'workOrders: getActiveAreas failed - '      . $e->getMessage()); }
 
         $data = [
-            'title' => 'Work Orders | OPTIMA',
-            'page_title' => 'Work Orders',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
+            'title'          => 'Work Orders | OPTIMA',
+            'page_title'     => 'Work Orders',
+            'breadcrumbs'    => [
+                '/'                   => 'Dashboard',
                 '/service/work-orders' => 'Work Orders'
             ],
-            'mode' => 'active',
+            'mode'           => 'active',
             'active_statuses' => ['OPEN', 'KENDALA', 'PENDING'],
-            'statuses'   => $statuses,
-            'priorities' => $priorities,
-            'categories' => $categories,
-            'staff'      => $staff,
-            'units'      => $units,
-            'areas'      => $areas,
-            'spareparts' => $spareparts,
+            'statuses'       => $statuses,
+            'priorities'     => $priorities,
+            'categories'     => $categories,
+            'staff'          => $staff,
+            'units'          => [], // AJAX Select2 — not preloaded
+            'areas'          => $areas,
+            'spareparts'     => [], // AJAX Select2 — not preloaded (14k+ items)
         ];
 
         return view('service/work_orders', $data);

@@ -47,7 +47,7 @@ class WorkOrderModel extends Model
     // Validation rules
     protected $validationRules = [
         'unit_id' => 'required|integer',
-        'order_type' => 'required|in_list[COMPLAINT,PMPS]',
+        'order_type' => 'required|in_list[COMPLAINT,PMPS,FABRIKASI]',
         'priority_id' => 'required|integer',
         'category_id' => 'required|integer',
         'complaint_description' => 'required|min_length[5]',

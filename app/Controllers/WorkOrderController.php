@@ -1306,6 +1306,8 @@ class WorkOrderController extends Controller
             
             if (empty($input['order_type'])) {
                 $errors['order_type'] = 'Tipe order harus dipilih';
+            } elseif (!in_array($input['order_type'], ['COMPLAINT', 'PMPS', 'FABRIKASI'])) {
+                $errors['order_type'] = 'Tipe order tidak valid';
             }
             
             if (empty($input['category_id']) || !is_numeric($input['category_id'])) {

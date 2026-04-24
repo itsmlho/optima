@@ -338,6 +338,7 @@ $can_export = $permissions['export'];
                                         <option value="" selected disabled>-- <?= lang('Service.select_order_type') ?> --</option>
                                         <option value="COMPLAINT"><?= lang('Service.complaint') ?></option>
                                         <option value="PMPS"><?= lang('Service.pmps') ?></option>
+                                        <option value="FABRIKASI">Fabrikasi</option>
                                     </select>
                                 </div>
                                 <div class="col-md-12 mb-3">

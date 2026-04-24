@@ -506,6 +506,9 @@ class ServiceAreaManagementController extends BaseController
             ]);
         }
 
+        // Normalize area_type — NULL (legacy rows) → default 'MILL'
+        $area['area_type'] = $area['area_type'] ?? 'MILL';
+
         return $this->response->setJSON([
             'success' => true,
             'data' => ['area' => $area]
