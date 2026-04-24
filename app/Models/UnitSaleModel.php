@@ -23,6 +23,8 @@ class UnitSaleModel extends Model
         'harga_jual',
         'metode_pembayaran',
         'no_kwitansi',
+        'no_bast',
+        'no_invoice',
         'status',
         'previous_status_unit_id',
         'keterangan',

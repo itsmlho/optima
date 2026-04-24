@@ -242,12 +242,23 @@ $can_export = $permissions['export'];
                                 <div class="mb-3">
                                     <label class="form-label"><i class="fas fa-tag me-1"></i><?= lang('Marketing.type') ?> <span class="text-danger">*</span></label>
                                     <select class="form-select" name="jenis_spk" id="jenisSpkSelect" required>
-                                        <option value="UNIT" selected><?= lang('Marketing.spk_unit') ?> (New Unit Fabrication)</option>
-                                        <option value="ATTACHMENT"><?= lang('Marketing.spk_attachment') ?> (Attachment Replacement Only)</option>
+                                        <option value="UNIT" selected><?= lang('Marketing.spk_unit') ?> (New Unit)</option>
+                                        <option value="ATTACHMENT"><?= lang('Marketing.spk_attachment') ?> (Attachment/Fork Replacement)</option>
                                     </select>
                                     <div class="form-text" id="spkTypeHelp">
-                                        <strong>UNIT:</strong> Full unit fabrication process (Unit Prep → Fabrication → Painting → PDI)<br>
-                                        <strong>ATTACHMENT:</strong> Replace attachment on existing unit (Fabrication → Painting → PDI)
+                                        <strong>UNIT:</strong> Proses lengkap unit baru (Persiapan → Install → Painting → PDI)<br>
+                                        <strong>ATTACHMENT:</strong> Penggantian attachment/fork pada unit existing (Install → Painting → PDI)
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label"><i class="fas fa-tools me-1"></i>Jenis Proses Install</label>
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="hasFabrikasiToggle" name="has_fabrikasi" value="1">
+                                        <label class="form-check-label fw-semibold" for="hasFabrikasiToggle">Ada fabrikasi custom (non-standard)?</label>
+                                    </div>
+                                    <div class="form-text">
+                                        <strong>OFF</strong> — Pasang attach/fork standar off-the-shelf (alur: Install → Painting → PDI)<br>
+                                        <strong>ON</strong> — Attach/fork perlu dibuat/dimodifikasi custom, mis. welding, ukuran khusus (alur: Fabrikasi → Painting → PDI)
                                     </div>
                                 </div>
                                 
@@ -3320,6 +3331,7 @@ $can_export = $permissions['export'];
         document.getElementById('editSpkId').value = data.id || '';
         document.getElementById('editNomorSpk').value = data.nomor_spk || '';
         document.getElementById('editJenisSpk').value = data.jenis_spk || 'UNIT';
+        document.getElementById('editHasFabrikasi').checked = (data.has_fabrikasi == 1);
         document.getElementById('editPoKontrak').value = data.po_kontrak_nomor || '';
         document.getElementById('editPelanggan').value = data.pelanggan || '';
         document.getElementById('editPic').value = data.pic || '';
@@ -3509,6 +3521,13 @@ $can_export = $permissions['export'];
                                     <option value="ATTACHMENT">ATTACHMENT</option>
                                     <option value="TUKAR">EXCHANGE</option>
                                 </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Jenis Proses Install</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="editHasFabrikasi" name="has_fabrikasi" value="1">
+                                    <label class="form-check-label" for="editHasFabrikasi">Ada fabrikasi custom?</label>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">PO Contract</label>

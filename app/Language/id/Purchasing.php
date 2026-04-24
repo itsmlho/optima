@@ -22,6 +22,8 @@ return [
     'sale_price'                 => 'Harga Jual (Rp)',
     'payment_method'             => 'Metode Pembayaran',
     'receipt_no'                 => 'No. Kwitansi',
+    'bast_no'                    => 'No. BAST',
+    'invoice_no'                 => 'No. Invoice',
     'total_sold'                 => 'Total Terjual',
     'this_year'                  => 'Tahun Ini (%s)',
     'this_month'                 => 'Bulan Ini',

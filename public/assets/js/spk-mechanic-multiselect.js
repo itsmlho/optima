@@ -37,6 +37,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     getDefaultRoles(stage) {
         if (stage === 'pdi') return ['FOREMAN', 'SUPERVISOR'];
         if (stage === 'persiapan_unit') return ['MECHANIC', 'MECHANIC_UNIT_PREP', 'HELPER'];
+        if (stage === 'install') return ['MECHANIC', 'HELPER'];
         if (stage === 'fabrikasi') return ['MECHANIC', 'MECHANIC_FABRICATION', 'HELPER'];
         return ['MECHANIC', 'HELPER'];
     }
@@ -188,6 +189,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     getStageLabel() {
         const labels = {
             'persiapan_unit': 'Unit Preparation Team',
+            'install': 'Installation Team',
             'fabrikasi': 'Fabrication Team',
             'painting': 'Painting Team', 
             'pdi': 'PDI Foreman Team'
@@ -578,6 +580,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     getCrossDeptRoles() {
         if (this.options.stage === 'persiapan_unit') return ['MECHANIC_UNIT_PREP'];
         if (this.options.stage === 'fabrikasi')      return ['MECHANIC_FABRICATION'];
+        if (this.options.stage === 'install')        return [];
         return [];
     }
 }

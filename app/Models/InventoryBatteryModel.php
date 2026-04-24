@@ -49,7 +49,7 @@ class InventoryBatteryModel extends Model
         'id'                => 'permit_empty|integer',
         'item_number'       => 'permit_empty|max_length[50]|is_unique[inventory_batteries.item_number,id,{id}]',
         'battery_type_id'   => 'permit_empty|integer',
-        'serial_number'     => 'permit_empty|max_length[100]',
+        'serial_number'     => 'permit_empty|max_length[100]|is_unique[inventory_batteries.serial_number,id,{id}]',
         'voltage'           => 'permit_empty|decimal',
         'ampere_hour'       => 'permit_empty|integer',
         'purchase_order_id' => 'permit_empty|integer',
@@ -70,7 +70,8 @@ class InventoryBatteryModel extends Model
             'integer' => 'Battery Type ID harus berupa angka'
         ],
         'serial_number' => [
-            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter'
+            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter',
+            'is_unique'  => 'Serial number sudah digunakan oleh baterai lain. SN harus unik.'
         ],
         'status' => [
             'in_list' => 'Status must be: AVAILABLE, IN_USE, SPARE, MAINTENANCE, BROKEN, RESERVED, or SOLD'

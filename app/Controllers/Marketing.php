@@ -3561,9 +3561,10 @@ class Marketing extends BaseDataTableController
                         }
                     }
                     
-                    // Get attachment from fabrikasi stage
-                    if (isset($unitStages['fabrikasi'])) {
-                        $fabrikasiData = $unitStages['fabrikasi'];
+// Get attachment from install/fabrikasi stage
+						$installKey = isset($unitStages['fabrikasi']) ? 'fabrikasi' : 'install';
+						if (isset($unitStages[$installKey])) {
+							$fabrikasiData = $unitStages[$installKey];
                         $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
                         
                         if ($attachmentId) {
@@ -3575,8 +3576,7 @@ class Marketing extends BaseDataTableController
                     $combinedNotes = [];
                     $stageNames = [
                         'persiapan_unit' => 'Persiapan Unit',
-                        'fabrikasi' => 'Fabrikasi', 
-                        'painting' => 'Painting',
+							'install' => 'Install Attach',
                         'pdi' => 'PDI'
                     ];
                     
@@ -5226,6 +5226,7 @@ class Marketing extends BaseDataTableController
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
+                    'has_fabrikasi' => (int)($this->request->getPost('has_fabrikasi') ?: 0),
                     'kontrak_id' => $linkedKontrakId,
                     'quotation_specification_id' => $kontrakSpesifikasiId,
                     'jumlah_unit' => $jumlahUnit,
@@ -5300,6 +5301,7 @@ class Marketing extends BaseDataTableController
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
+                    'has_fabrikasi' => (int)($this->request->getPost('has_fabrikasi') ?: 0),
                     'kontrak_id' => $kontrak['id'],
                     'quotation_specification_id' => $firstSpecId, // Use the first spec ID if available
                     'jumlah_unit' => $jumlahUnit,
@@ -5333,6 +5335,7 @@ class Marketing extends BaseDataTableController
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
+                    'has_fabrikasi' => (int)($this->request->getPost('has_fabrikasi') ?: 0),
                     'po_kontrak_nomor' => $this->request->getPost('po_kontrak_nomor') ?: null,
                     'pelanggan' => $this->request->getPost('pelanggan') ?: '',
                     'pic' => $this->request->getPost('pic') ?: null,
@@ -7205,12 +7208,12 @@ class Marketing extends BaseDataTableController
                         
                         $unitIndex = $persiapanStage['unit_index'];
                         
-                        // Get attachment from fabrikasi stage using unit_index (because unit_id might be NULL)
-                        $fabrikasiStage = $this->db->table('spk_unit_stages')
-                            ->select('attachment_inventory_attachment_id')
-                            ->where('spk_id', $spkId)
-                            ->where('unit_index', $unitIndex)
-                            ->where('stage_name', 'fabrikasi')
+// Get attachment from install/fabrikasi stage using unit_index (because unit_id might be NULL)
+						$fabrikasiStage = $this->db->table('spk_unit_stages')
+							->select('attachment_inventory_attachment_id')
+							->where('spk_id', $spkId)
+							->where('unit_index', $unitIndex)
+							->whereIn('stage_name', ['install', 'fabrikasi'])
                             ->where('tanggal_approve IS NOT NULL')
                             ->get()->getRowArray();
                         
@@ -7269,7 +7272,7 @@ class Marketing extends BaseDataTableController
                                     'item_type' => 'ATTACHMENT',
                                     'attachment_id' => $invAttachment['attachment_id'],
                                     'parent_unit_id' => $unitId,
-                                    'keterangan' => 'Attachment (Approved in SPK Fabrikasi)'
+                                    'keterangan' => 'Attachment (Approved in SPK Install/Fabrikasi)'
                                 ] + $operatorSnapshotFields);
                                 error_log("DI Create - Added approved attachment (ID: {$invAttachment['attachment_id']}) for unit $unitId");
                             }

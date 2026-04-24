@@ -31,6 +31,8 @@ class ComponentSaleModel extends Model
         'harga_jual',
         'metode_pembayaran',
         'no_kwitansi',
+        'no_bast',
+        'no_invoice',
         'status',
         'previous_status',
         'previous_unit_id',

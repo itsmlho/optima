@@ -925,6 +925,7 @@ if (!function_exists('maskSensitivePrint')) {
                 <div>(..........................)</div>
             <?php endif; ?>
         </div>
+        <?php if ($spk['has_fabrikasi'] ?? 0): ?>
         <div class="col sig">
             <div class="muted">Bag.Fabrikasi</div>
             <?php 
@@ -958,6 +959,7 @@ if (!function_exists('maskSensitivePrint')) {
                 <div>(..........................)</div>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
         <div class="col sig">
             <div class="muted">Bag.Painting</div>
             <?php 

@@ -27,6 +27,19 @@ class InventoryForkModel extends Model
         'notes',
     ];
 
+    protected $validationRules = [
+        'item_number' => 'permit_empty|max_length[50]|is_unique[inventory_forks.item_number,id,{id}]',
+    ];
+
+    protected $validationMessages = [
+        'item_number' => [
+            'is_unique' => 'Item number fork sudah digunakan. Nomor item harus unik.'
+        ],
+    ];
+
+    protected $skipValidation       = false;
+    protected $cleanValidationRules = true;
+
     public function getDataTable($request): array
     {
         $builder = $this->db->table($this->table . ' f')

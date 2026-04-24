@@ -226,6 +226,16 @@ $typeBadgeMap = [
                     <dd class="col-sm-7 font-monospace"><?= esc($sale['no_kwitansi']) ?></dd>
                     <?php endif; ?>
 
+                    <?php if (!empty($sale['no_bast'])): ?>
+                    <dt class="col-sm-5 text-muted"><?= lang('Purchasing.bast_no') ?></dt>
+                    <dd class="col-sm-7 font-monospace"><?= esc($sale['no_bast']) ?></dd>
+                    <?php endif; ?>
+
+                    <?php if (!empty($sale['no_invoice'])): ?>
+                    <dt class="col-sm-5 text-muted"><?= lang('Purchasing.invoice_no') ?></dt>
+                    <dd class="col-sm-7 font-monospace"><?= esc($sale['no_invoice']) ?></dd>
+                    <?php endif; ?>
+
                     <?php if ($sale['keterangan']): ?>
                     <dt class="col-sm-5 text-muted"><?= lang('Common.notes') ?></dt>
                     <dd class="col-sm-7"><?= esc($sale['keterangan']) ?></dd>

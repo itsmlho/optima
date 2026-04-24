@@ -91,10 +91,13 @@ class InventoryUnitModel extends Model
     protected $deletedField  = '';
 
     protected $validationRules = [
-        'serial_number'  => 'permit_empty|max_length[255]',
+        'serial_number'  => 'permit_empty|max_length[255]|is_unique[inventory_unit.serial_number,id_inventory_unit,{id_inventory_unit}]',
         'status_unit_id' => 'required|integer',
     ];
     protected $validationMessages = [
+        'serial_number' => [
+            'is_unique' => 'Serial Number sudah digunakan oleh unit lain. SN harus unik.'
+        ],
         'status_unit_id' => [
             'required' => 'Status unit harus diisi',
             'integer'  => 'Status unit harus berupa angka'

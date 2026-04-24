@@ -23,7 +23,8 @@ class SpkModel extends Model
         'fabrikasi_attachment_id',
         'painting_mekanik','painting_estimasi_mulai','painting_estimasi_selesai','painting_tanggal_approve',
         'pdi_mekanik','pdi_estimasi_mulai','pdi_estimasi_selesai','pdi_tanggal_approve','pdi_catatan',
-        'jenis_perintah_kerja_id','tujuan_perintah_kerja_id','status_eksekusi_workflow_id'
+        'jenis_perintah_kerja_id','tujuan_perintah_kerja_id','status_eksekusi_workflow_id',
+        'has_fabrikasi'
     ];
 
     protected $useTimestamps = false;

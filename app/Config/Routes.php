@@ -727,12 +727,14 @@ $routes->group('service', static function ($routes) {
     $routes->get('data-unit/simple', 'Service::dataUnitSimple');
     // Attachment simple search
     $routes->get('data-attachment/simple', 'Service::dataAttachmentSimple');
-    // Add new inventory attachment
-    $routes->post('add-inventory-attachment', 'Service::addInventoryAttachment');
     // Master data endpoints for modal dropdowns
     $routes->get('master-attachment', 'Service::getMasterAttachment');
     $routes->get('master-baterai', 'Service::getMasterBaterai');
     $routes->get('master-charger', 'Service::getMasterCharger');
+    $routes->get('master-fork', 'Service::getMasterFork');
+    // Add new inventory items
+    $routes->post('add-inventory-attachment', 'Service::addInventoryAttachment');
+    $routes->post('add-inventory-fork', 'Service::addInventoryFork');
     // Check if no_unit already exists
     $routes->post('check-no-unit-exists', 'Service::checkNoUnitExists');
     // Smart Component Management - Unit component data endpoint

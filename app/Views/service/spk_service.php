@@ -666,6 +666,9 @@ document.addEventListener('DOMContentLoaded', () => {
 							const unitStages = stageStatus.unit_stages || {};
 							const totalUnits = parseInt(row.jumlah_unit) || 1;
 							const isAttachmentSpk = (row.jenis_spk || '').toUpperCase() === 'ATTACHMENT';
+							const hasFabrikasi = (row.has_fabrikasi == 1);
+							const installStageName = hasFabrikasi ? 'fabrikasi' : 'install';
+							const installLabel = hasFabrikasi ? 'Fabrikasi' : 'Install Attach';
 							
 							// Check completion status
 							let persiapanDone = false;
@@ -674,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							let pdiDone = false;
 							
 							if (Object.keys(unitStages).length > 0) {
-								const stageOrder = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi'];
+								const stageOrder = ['persiapan_unit', installStageName, 'painting', 'pdi'];
 								stageOrder.forEach(stage => {
 									const completedUnits = Object.keys(unitStages).filter(unitIndex => 
 										unitStages[unitIndex][stage] && unitStages[unitIndex][stage].completed
@@ -682,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
 									
 									if (completedUnits === totalUnits) {
 										if (stage === 'persiapan_unit') persiapanDone = true;
-										else if (stage === 'fabrikasi') fabrikasiDone = true;
+										else if (stage === installStageName) fabrikasiDone = true;
 										else if (stage === 'painting') paintingDone = true;
 										else if (stage === 'pdi') pdiDone = true;
 									}
@@ -713,10 +716,10 @@ document.addEventListener('DOMContentLoaded', () => {
 								const unitIndex = nextUnit || 1;
 								actions += `<button class="btn btn-sm btn-warning" onclick="openApprovalModal('persiapan_unit', 'Unit Preparation Dept.', ${row.id}, ${unitIndex})">Unit Preparation${unitText}</button>`;
 							} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
-								const nextUnit = getNextUnitNumber('fabrikasi');
+								const nextUnit = getNextUnitNumber(installStageName);
 								const unitText = nextUnit ? ` #${nextUnit}` : '';
 								const unitIndex = nextUnit || 1;
-								actions += `<button class="btn btn-sm btn-warning" onclick="openApprovalModal('fabrikasi', 'Fabrication Dept.', ${row.id}, ${unitIndex})">Fabrication${unitText}</button>`;
+								actions += `<button class="btn btn-sm btn-warning" onclick="openApprovalModal('${installStageName}', 'Install Dept.', ${row.id}, ${unitIndex})">${installLabel}${unitText}</button>`;
 							} else if (!paintingDone) {
 								const nextUnit = getNextUnitNumber('painting');
 								const unitText = nextUnit ? ` #${nextUnit}` : '';
@@ -887,7 +890,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (d.stage_status && d.stage_status.unit_stages) {
 					// Use new structure from spk_unit_stages table
 					const unitStages = d.stage_status.unit_stages;
-					const stageOrder = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi'];
+					const hasFabrikasi2 = (d.has_fabrikasi == 1);
+					const installStageName2 = hasFabrikasi2 ? 'fabrikasi' : 'install';
+					const stageOrder = ['persiapan_unit', installStageName2, 'painting', 'pdi'];
 					
 					// Check if any unit has completed each stage
 					Object.keys(unitStages).forEach(unitIndex => {
@@ -895,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						stageOrder.forEach(stage => {
 							if (unitStage[stage] && unitStage[stage].completed) {
 								if (stage === 'persiapan_unit') persiapanDone = true;
-								else if (stage === 'fabrikasi') fabrikasiDone = true;
+								else if (stage === installStageName2) fabrikasiDone = true;
 								else if (stage === 'painting') paintingDone = true;
 								else if (stage === 'pdi') pdiDone = true;
 							}
@@ -911,14 +916,17 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Determine if this is an ATTACHMENT SPK (skip Persiapan Unit)
 				const isAttachmentSpk = (d.jenis_spk && d.jenis_spk.toUpperCase() === 'ATTACHMENT');
+				const hasFabrikasi3 = (d.has_fabrikasi == 1);
+				const installStageName3 = hasFabrikasi3 ? 'fabrikasi' : 'install';
+				const installLabel3 = hasFabrikasi3 ? 'Fabrikasi' : 'Install Attach';
 				
 				// Add buttons for incomplete stages
 				if (!persiapanDone && !isAttachmentSpk) {
 					// Normal workflow: Start with Unit Preparation (UNIT SPK only)
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'persiapan_unit\', \'Unit Preparation Dept.\')">Unit Preparation</button>');
 				} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
-					// Next stage: Fabrication (after Unit Preparation for UNIT SPK, or directly for ATTACHMENT SPK)
-					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'fabrikasi\', \'Fabrication Dept.\')">Fabrication</button>');
+					// Next stage: Install or Fabrikasi
+					approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('${installStageName3}', 'Install Dept.')">${installLabel3}</button>`);
 				} else if (!paintingDone) {
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'painting\', \'Painting Dept.\')">Painting</button>');
 				} else if (!pdiDone) {
@@ -928,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				// Show completed stages with checkmarks (skip Unit Preparation for ATTACHMENT SPK)
 				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge badge-soft-green me-1">Unit Preparation</span>');
 				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge badge-soft-cyan me-1">Skip Unit Preparation</span>');
-				if (fabrikasiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">Fabrication</span>');
+				if (fabrikasiDone) approvalButtons.push(`<span class="badge badge-soft-green me-1">${installLabel3}</span>`);
 				if (paintingDone) approvalButtons.push('<span class="badge badge-soft-green me-1">Painting</span>');
 				if (pdiDone) approvalButtons.push('<span class="badge badge-soft-green me-1">PDI</span>');
 				
@@ -1157,10 +1165,12 @@ document.addEventListener('DOMContentLoaded', () => {
 							</div>`;
 						}
 						
-						// Fabrication
-						const fabrikasi = getStageInfo('fabrikasi');
+						// Fabrication / Install
+						const installStageKey = (d.has_fabrikasi == 1) ? 'fabrikasi' : 'install';
+						const installStageTitle = (d.has_fabrikasi == 1) ? 'Fabrikasi' : 'Install Attach';
+						const fabrikasi = getStageInfo(installStageKey);
 						workflowHtml += `<div class="col-6">
-							<strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. Fabrication:</strong><br>
+							<strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. ${installStageTitle}:</strong><br>
 							<span class="badge ${fabrikasi.badge}">${fabrikasi.icon}</span>
 							${fabrikasi.isCompleted ? `<br><small class="text-muted">
 								Mechanic: ${fabrikasi.mechanic}<br>
@@ -1278,9 +1288,10 @@ document.addEventListener('DOMContentLoaded', () => {
 				</div>`;
 
 				// Group by stage_name
-				const stageOrder = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi', null];
+				const stageOrder = ['persiapan_unit', 'install', 'fabrikasi', 'painting', 'pdi', null];
 				const stageLabels = {
 					persiapan_unit: '<i class="fas fa-wrench me-1"></i>Persiapan Unit',
+					install:        '<i class="fas fa-puzzle-piece me-1"></i>Install Attach',
 					fabrikasi:      '<i class="fas fa-industry me-1"></i>Fabrikasi',
 					painting:       '<i class="fas fa-paint-roller me-1"></i>Painting',
 					pdi:            '<i class="fas fa-clipboard-check me-1"></i>PDI',
@@ -1288,6 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				};
 				const stageBadgeClass = {
 					persiapan_unit: 'badge-soft-blue',
+					install:        'badge-soft-cyan',
 					fabrikasi:      'badge-soft-purple',
 					painting:       'badge-soft-orange',
 					pdi:            'badge-soft-green',
@@ -1461,22 +1473,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log('Setting currentEditingUnitIndex to:', unitIndex);
 		}
 		
-		// Initialize multi-mechanic selection based on stage
-		setTimeout(() => {
-			initializeMechanicSelection(stage);
-		}, 100);  // Small delay to ensure modal is fully rendered
-		
-		// Set default dates
-		const today = new Date().toISOString().split('T')[0];
-		document.getElementById('approvalEstimasiMulai').value = today;
-		document.getElementById('approvalEstimasiSelesai').value = today;
-		
-		// Load stage-specific content
-		loadStageSpecificContent(stage, currentApprovalSpkId);
-		
-		new bootstrap.Modal(document.getElementById('approvalStageModal')).show();
-	}
-	
+		const mechanicContainer = document.getElementById('mechanicSelectionContainer');
+
+		if (stage === 'install') {
+			// Install: inherit mechanic from Unit Preparation, no selector needed
+			if (mechanicContainer) {
+				mechanicContainer.innerHTML = '<div class="alert alert-info mb-2 py-2"><i class="fas fa-users me-2"></i><strong>Tim:</strong> Diambil otomatis dari tahap Unit Preparation.</div>';
+			}
+			currentMechanicSelector = null;
+		} else {
+			// Initialize multi-mechanic selection based on stage
+			setTimeout(() => {
+				initializeMechanicSelection(stage);
+			}, 100);  // Small delay to ensure modal is fully rendered
+		}
 	// Global variable to store the current mechanic selector instance
 	let currentMechanicSelector = null;
 	let currentUnitDepartmentId = null; // Track selected unit's department
@@ -1511,6 +1521,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				maxMechanics: 2,
 				maxHelpers: 2,
 				placeholder: 'Select unit preparation team...'
+			},
+			'install': {
+				stage: 'install',
+				maxMechanics: 2,
+				maxHelpers: 2,
+				placeholder: 'Select installation team...'
 			},
 			'fabrikasi': {
 				stage: 'fabrikasi',
@@ -1744,34 +1760,67 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 			});
 			
-		} else if (stage === 'fabrikasi') {
+		} else if (stage === 'fabrikasi' || stage === 'install') {
 			container.innerHTML = `
 				<hr>
-				<div class="mb-3" id="fabrikasiAttachmentSection">
-					<label class="form-label">Attachment Management</label>
-					<div id="fabrikasiAttachmentContent">
+				<div class="mb-3">
+					<label class="form-label fw-semibold">Jenis Instalasi <span class="text-danger">*</span></label>
+					<div class="d-flex gap-3 mt-1">
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="install_type" id="installTypeFork" value="fork">
+							<label class="form-check-label" for="installTypeFork">
+								<i class="fas fa-grip-lines me-1 text-warning"></i>Pasang Fork
+							</label>
+						</div>
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="install_type" id="installTypeAttachment" value="attachment">
+							<label class="form-check-label" for="installTypeAttachment">
+								<i class="fas fa-puzzle-piece me-1 text-primary"></i>Pasang Attachment
+							</label>
+						</div>
+					</div>
+					<div class="form-text">Pilih jenis instalasi yang akan dilakukan pada tahap ini.</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Keterangan <span class="text-muted fw-normal">(jika custom)</span></label>
+					<textarea class="form-control form-control-sm" id="fabrikasiKeterangan" name="keterangan_instalasi" rows="2" placeholder="Contoh: Ukuran 1200mm, bahan khusus, modifikasi tambahan..."></textarea>
+					<div class="form-text">Isi jika ada ukuran, jenis, atau modifikasi khusus. Data ini akan dicatat di keterangan attachment/fork.</div>
+				</div>
+				<div id="fabrikasiForkSection" class="d-none">
+					<div class="mb-3" id="fabrikasiForkContent">
+						<div class="text-muted">Loading fork options...</div>
+					</div>
+				</div>
+				<div id="fabrikasiAttachmentSection" class="d-none">
+					<div class="mb-3" id="fabrikasiAttachmentContent">
 						<div class="text-muted">Loading attachment options...</div>
 					</div>
-					<div class="form-text">Specifically for fabrication attachments. Data from inventory_attachment.</div>
-				</div>
-				<div class="mb-3" id="fabrikasiForkSection">
-					<label class="form-label">Fork Management</label>
-					<div id="fabrikasiForkContent">
-						<div class="text-muted">Loading fork requirements...</div>
-					</div>
-					<div class="form-text">Fork depends on quotation specification accessories.</div>
+					<div class="form-text">Data dari inventory_attachment.</div>
 				</div>
 			`;
-			
-			// Setup enhanced attachment management
-			setupFabrikasiAttachmentManagement();
-			setupFabrikasiForkManagement();
-			
-			// If editing, load existing fabrikasi data
+
+			// Listen to radio change to show the relevant section
+			document.querySelectorAll('input[name="install_type"]').forEach(function(radio) {
+				radio.addEventListener('change', function() {
+					const forkSection = document.getElementById('fabrikasiForkSection');
+					const attSection  = document.getElementById('fabrikasiAttachmentSection');
+					if (this.value === 'fork') {
+						forkSection.classList.remove('d-none');
+						attSection.classList.add('d-none');
+						setupFabrikasiForkManagement();
+					} else {
+						attSection.classList.remove('d-none');
+						forkSection.classList.add('d-none');
+						setupFabrikasiAttachmentManagement();
+					}
+				});
+			});
+
+			// If editing, load existing fabrikasi data and pre-select install_type
 			if (currentEditingUnitIndex !== null) {
 				setTimeout(() => {
 					loadExistingUnitData(spkId, currentEditingUnitIndex, stage);
-				}, 500); // Give time for setupFabrikasiAttachmentManagement to complete
+				}, 500);
 			}
 			
 		} else if (stage === 'pdi') {
@@ -2070,7 +2119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								electricFields.classList.add('d-none');
 							}
 							
-							if (currentApprovalStage === 'fabrication' || currentApprovalStage === 'fabrikasi') {
+							if (currentApprovalStage === 'fabrication' || currentApprovalStage === 'fabrikasi' || currentApprovalStage === 'install') {
 								if (fabrikasiFields) {
 									if (hasAttachment) {
 										const existingComponentUI = electricFields?.querySelector('[data-render-key*="component-ui"]');
@@ -2119,7 +2168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								electricFields.classList.add('d-none');
 							}
 							
-							if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
+							if ((currentApprovalStage === 'fabrikasi' || currentApprovalStage === 'install') && fabrikasiFields) {
 								fabrikasiFields.innerHTML = `
 									<div class="alert alert-info">
 										<i class="fas fa-tools me-2"></i>Select the attachment to be installed on this unit.
@@ -2150,7 +2199,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							electricFields.classList.add('d-none');
 						}
 						
-						if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
+						if ((currentApprovalStage === 'fabrikasi' || currentApprovalStage === 'install') && fabrikasiFields) {
 							fabrikasiFields.innerHTML = `
 								<div class="alert alert-info">
 									<i class="fas fa-tools me-2"></i>Select the attachment to be installed on this unit.
@@ -2921,140 +2970,181 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 	function setupFabrikasiForkManagement() {
 		const contentDiv = document.getElementById('fabrikasiForkContent');
 		if (!contentDiv) return;
-		
+
 		// Default: ok
 		window.spkForkStockCheck = { ok: true, reason: '' };
-		
-		contentDiv.innerHTML = '<div class="text-muted">Loading fork requirements...</div>';
-		
-		fetch(`<?= base_url('service/spk/detail') ?>/${currentApprovalSpkId}`)
-			.then(response => {
-				if (response.status === 401) {
-					notify('Session expired. Please login again.', 'error');
-					window.location.href = '<?= base_url('auth/login') ?>';
-					return Promise.reject('Unauthorized');
-				}
-				return response.json();
-			})
-			.then(data => {
-				const ks = data?.kontrak_spec || {};
-				const aks = Array.isArray(ks.aksesoris) ? ks.aksesoris : [];
-				
-				// Normalize accessories for case-insensitive comparison
-				const aksLower = aks.map(v => String(v).trim().toLowerCase()).filter(Boolean);
-				
-				// Marketing uses: "forks", "laser_fork", "fork_extension"
-				const forkRequired = aksLower.includes('forks') || aksLower.includes('laser_fork') || aksLower.includes('fork_extension');
-				
-				if (!forkRequired) {
-					contentDiv.innerHTML = `
-						<div class="alert alert-info mb-0">
-							<i class="fas fa-info-circle me-2"></i>
-							Fork tidak diminta oleh spesifikasi (kontrak_spec).
-						</div>
-					`;
-					return;
-				}
-				
-				// Best-effort narrowing: try parse mm from attachment spec text
-				const attachmentSpec = String(ks.attachment_id_name || ks.attachment_tipe || '');
-				const mmMatch = attachmentSpec.match(/(\d{3,4})\s*mm/i);
-				const autoForkQuery = mmMatch ? mmMatch[1] : '';
-				const wantsLaser = aksLower.includes('laser_fork');
-				const ajaxDefaultQuery = wantsLaser ? (autoForkQuery ? autoForkQuery + ' laser' : 'laser') : autoForkQuery;
-				
-				contentDiv.innerHTML = `
+
+		contentDiv.innerHTML = `
+			<div class="mb-2">
+				<label class="form-label">Pilih Fork dari Inventori <span class="text-danger">*</span></label>
+				<select class="form-select" id="fabrikasiForkPick" name="fork_id" style="width:100%"></select>
+				<div class="form-text">Cari berdasarkan item number, SN, atau tipe fork.</div>
+			</div>
+			<div class="small text-muted mt-2" id="fabrikasiForkQtyHint">Qty pair: -</div>
+			<div class="small mt-1 d-none" id="fabrikasiForkStockWarning"></div>
+			<hr class="my-3">
+			<div>
+				<button type="button" class="btn btn-sm btn-outline-secondary" id="btnShowAddForkForm" onclick="toggleAddForkForm()">
+					<i class="fas fa-plus me-1"></i>Tambah Fork
+				</button>
+				<div id="addForkForm" class="d-none mt-3 p-3 border rounded bg-light">
+					<p class="small fw-semibold mb-2">Daftarkan fork baru ke inventori</p>
 					<div class="mb-2">
-						<label class="form-label">Select Fork <span class="text-danger">*</span></label>
-						<select class="form-select" id="fabrikasiForkPick" name="fork_id" style="width:100%"></select>
-						<div class="form-text">Search by item number/spec fork, fork class, or SN.</div>
+						<label class="form-label small">Tipe Fork (Master) <span class="text-danger">*</span></label>
+						<select class="form-select form-select-sm" id="newForkMasterId" style="width:100%"></select>
 					</div>
-					<div class="small text-muted mt-2" id="fabrikasiForkQtyHint">Qty pair: -</div>
-					<div class="small mt-1 d-none" id="fabrikasiForkStockWarning"></div>
-				`;
-				
-				const $forkSelect = $('#fabrikasiForkPick');
-				
-				if ($forkSelect.hasClass('select2-hidden-accessible')) {
-					$forkSelect.select2('destroy');
-				}
-				
-				$forkSelect.select2({
-					placeholder: 'Cari berdasarkan item number/spec fork...',
-					allowClear: true,
-					dropdownParent: $('#approvalStageModal .modal-content'),
-					width: '100%',
-					minimumInputLength: 0,
-					ajax: {
-						url: '<?= base_url('service/data-attachment/simple') ?>',
-						dataType: 'json',
-						delay: 250,
-						data: function (params) {
-							return {
-								q: params.term ? params.term : (ajaxDefaultQuery || ''),
-								type: 'fork'
-							};
-						},
-						processResults: function (data) {
-							if (data.success && data.data) {
-								return {
-									results: data.data.map(function(item) {
-										const idText = item.sn_fork ? item.sn_fork : '(No Item)';
-										const displayText = `${idText} - ${item.label}`;
-										
-										return {
-											id: item.id,
-											text: displayText,
-											data: item
-										};
-									})
-								};
-							}
-							return { results: [] };
-						},
-						cache: false
-					}
-				});
-				
-				$forkSelect.on('select2:select', function(e) {
-					const selectedData = e.params.data;
-					if (!selectedData || !selectedData.data) return;
-					
-					const fork = selectedData.data;
-					const qtyPairs = fork?.qty_pairs ?? null;
-					const qtyAvail = fork?.qty_available_pairs ?? null;
-					const isUsed = fork?.is_used === true;
-					
-					$('#fabrikasiForkQtyHint').text('Qty pair: ' + (qtyPairs !== null && qtyPairs !== undefined ? qtyPairs : '-'));
-					
-					// Fail fast only for AVAILABLE forks with insufficient stock.
-					if (!isUsed && qtyPairs !== null && qtyAvail !== null && parseInt(qtyPairs, 10) > parseInt(qtyAvail, 10)) {
-						window.spkForkStockCheck = {
-							ok: false,
-							reason: `Stok fork tidak cukup (butuh ${qtyPairs} pair, tersedia ${qtyAvail} pair).`
+					<div class="row g-2 mb-2">
+						<div class="col-6">
+							<label class="form-label small">Item Number / SN <span class="text-danger">*</span></label>
+							<input type="text" class="form-control form-control-sm" id="newForkItemNumber" placeholder="Contoh: FK-001">
+						</div>
+						<div class="col-6">
+							<label class="form-label small">Qty Pairs</label>
+							<input type="number" class="form-control form-control-sm" id="newForkQtyPairs" value="1" min="1">
+						</div>
+					</div>
+					<div class="d-flex gap-2">
+						<button type="button" class="btn btn-sm btn-primary" onclick="submitAddFork()">
+							<i class="fas fa-save me-1"></i>Simpan & Pilih
+						</button>
+						<button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAddForkForm()">Batal</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		const $forkSelect = $('#fabrikasiForkPick');
+
+		if ($forkSelect.hasClass('select2-hidden-accessible')) {
+			$forkSelect.select2('destroy');
+		}
+
+		$forkSelect.select2({
+			placeholder: 'Cari berdasarkan item number / spec fork...',
+			allowClear: true,
+			dropdownParent: $('#approvalStageModal .modal-content'),
+			width: '100%',
+			minimumInputLength: 0,
+			ajax: {
+				url: '<?= base_url('service/data-attachment/simple') ?>',
+				dataType: 'json',
+				delay: 250,
+				data: function (params) {
+					return { q: params.term || '', type: 'fork' };
+				},
+				processResults: function (data) {
+					if (data.success && data.data) {
+						return {
+							results: data.data.map(function(item) {
+								const idText = item.sn_fork ? item.sn_fork : '(No Item)';
+								return { id: item.id, text: `${idText} - ${item.label}`, data: item };
+							})
 						};
-						$('#fabrikasiForkStockWarning').removeClass('d-none').text(window.spkForkStockCheck.reason);
-					} else {
-						window.spkForkStockCheck = { ok: true, reason: '' };
-						$('#fabrikasiForkStockWarning').addClass('d-none').text('');
 					}
-				});
-				
-				$forkSelect.on('select2:clear', function() {
-					window.spkForkStockCheck = { ok: true, reason: '' };
-					$('#fabrikasiForkQtyHint').text('Qty pair: -');
-					$('#fabrikasiForkStockWarning').addClass('d-none').text('');
-				});
-			})
-			.catch(err => {
-				console.log('Error loading fork requirements:', err);
-				contentDiv.innerHTML = `
-					<div class="alert alert-warning mb-0">
-						Gagal memuat fork requirements.
-					</div>
-				`;
+					return { results: [] };
+				},
+				cache: false
+			}
+		});
+
+		$forkSelect.on('select2:select', function(e) {
+			const fork = e.params.data?.data;
+			if (!fork) return;
+			const qtyPairs = fork?.qty_pairs ?? null;
+			const qtyAvail = fork?.qty_available_pairs ?? null;
+			const isUsed   = fork?.is_used === true;
+			$('#fabrikasiForkQtyHint').text('Qty pair: ' + (qtyPairs !== null ? qtyPairs : '-'));
+			if (!isUsed && qtyPairs !== null && qtyAvail !== null && parseInt(qtyPairs) > parseInt(qtyAvail)) {
+				window.spkForkStockCheck = { ok: false, reason: `Stok fork tidak cukup (butuh ${qtyPairs} pair, tersedia ${qtyAvail} pair).` };
+				$('#fabrikasiForkStockWarning').removeClass('d-none').text(window.spkForkStockCheck.reason);
+			} else {
+				window.spkForkStockCheck = { ok: true, reason: '' };
+				$('#fabrikasiForkStockWarning').addClass('d-none').text('');
+			}
+		});
+
+		$forkSelect.on('select2:clear', function() {
+			window.spkForkStockCheck = { ok: true, reason: '' };
+			$('#fabrikasiForkQtyHint').text('Qty pair: -');
+			$('#fabrikasiForkStockWarning').addClass('d-none').text('');
+		});
+
+		// Init master fork Select2 for "Tambah Fork Baru" form
+		setTimeout(() => {
+			const $masterFork = $('#newForkMasterId');
+			if (!$masterFork.length) return;
+			if ($masterFork.hasClass('select2-hidden-accessible')) $masterFork.select2('destroy');
+			$masterFork.select2({
+				placeholder: 'Pilih tipe fork...',
+				allowClear: true,
+				dropdownParent: $('#approvalStageModal .modal-content'),
+				width: '100%',
+				minimumInputLength: 0,
+				ajax: {
+					url: '<?= base_url('service/master-fork') ?>',
+					dataType: 'json',
+					delay: 250,
+					data: function(params) { return { q: params.term || '' }; },
+					processResults: function(data) {
+						if (data.success && data.data) {
+							return {
+								results: data.data.map(function(f) {
+									const size = f.length_mm ? ` ${f.length_mm}mm` : '';
+									const cls  = f.fork_class ? ` (${f.fork_class})` : '';
+									return { id: f.id, text: f.name + size + cls };
+								})
+							};
+						}
+						return { results: [] };
+					},
+					cache: false
+				}
 			});
+		}, 200);
 	}
+
+	window.toggleAddForkForm = function() {
+		const form = document.getElementById('addForkForm');
+		if (form) form.classList.toggle('d-none');
+	};
+
+	window.submitAddFork = function() {
+		const masterId  = document.getElementById('newForkMasterId')?.value;
+		const itemNumber = document.getElementById('newForkItemNumber')?.value?.trim();
+		const qtyPairs  = parseInt(document.getElementById('newForkQtyPairs')?.value || '1', 10);
+
+		if (!masterId) { notify('Pilih tipe fork terlebih dahulu.', 'warning'); return; }
+		if (!itemNumber) { notify('Item number / SN wajib diisi.', 'warning'); return; }
+		if (isNaN(qtyPairs) || qtyPairs < 1) { notify('Qty pairs minimal 1.', 'warning'); return; }
+
+		const fd = new FormData();
+		fd.append(window.csrfTokenName, window.csrfTokenValue);
+		fd.append('fork_id', masterId);
+		fd.append('item_number', itemNumber);
+		fd.append('qty_pairs', qtyPairs);
+
+		fetch('<?= base_url('service/add-inventory-fork') ?>', {
+			method: 'POST',
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+			body: fd
+		}).then(r => r.json()).then(res => {
+			if (res.success && res.data) {
+				notify('Fork berhasil didaftarkan ke inventori.', 'success');
+				// Auto-select the new fork in the picker
+				const newFork = res.data;
+				const idText  = newFork.item_number || '(New)';
+				const option  = new Option(`${idText} - ${newFork.fork_name || ''}`, newFork.id, true, true);
+				const $pick   = $('#fabrikasiForkPick');
+				$pick.append(option).trigger('change');
+				window.spkForkStockCheck = { ok: true, reason: '' };
+				$('#fabrikasiForkQtyHint').text(`Qty pair: ${newFork.qty_pairs || 1}`);
+				// Collapse add form
+				document.getElementById('addForkForm')?.classList.add('d-none');
+			} else {
+				notify(res.message || 'Gagal mendaftarkan fork.', 'error');
+			}
+		}).catch(() => notify('Terjadi kesalahan sistem.', 'error'));
+	};
 	
 	// Generate attachment UI similar to battery/charger management
 	function generateFabrikasiAttachmentUI(existingAttachment, unitId) {
@@ -3792,21 +3882,23 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 		const fd = new FormData(this);
 		fd.append('stage', currentApprovalStage);
 		
-		// Validate and add multi-mechanic data
-		if (!currentMechanicSelector || !currentMechanicSelector.isValid()) {
-			notify('Please select at least one mechanic for this stage', 'error');
-			return;
-		}
-		
-		// Get selected mechanics data
-		const selectedMechanics = currentMechanicSelector.getSelectedEmployees();
-		fd.append('mechanics_data', JSON.stringify(selectedMechanics));
-		
-		// Set primary mechanic for backwards compatibility
-		const primaryMechanic = selectedMechanics.find(m => m.isPrimary);
-		if (primaryMechanic) {
-			fd.append('mekanik', primaryMechanic.name);
-			fd.append('primary_mechanic_id', primaryMechanic.id);
+		// Validate and add multi-mechanic data (skipped for fabrikasi — inherited from persiapan)
+		if (currentApprovalStage !== 'install') {
+			if (!currentMechanicSelector || !currentMechanicSelector.isValid()) {
+				notify('Please select at least one mechanic for this stage', 'error');
+				return;
+			}
+			
+			// Get selected mechanics data
+			const selectedMechanics = currentMechanicSelector.getSelectedEmployees();
+			fd.append('mechanics_data', JSON.stringify(selectedMechanics));
+			
+			// Set primary mechanic for backwards compatibility
+			const primaryMechanic = selectedMechanics.find(m => m.isPrimary);
+			if (primaryMechanic) {
+				fd.append('mekanik', primaryMechanic.name);
+				fd.append('primary_mechanic_id', primaryMechanic.id);
+			}
 		}
 		
 		// Handle aksesoris checkbox for persiapan_unit
@@ -3976,54 +4068,51 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 			}
 		}
 		
-		// Handle fabrikasi stage attachment management
-		if (currentApprovalStage === 'fabrikasi') {
-			const attachmentAction = document.getElementById('fabrikasi_attachment_action')?.value || 'none';
-			const existingAttachmentId = document.getElementById('fabrikasi_attachment_existing_id')?.value;
-			const newAttachmentId = document.getElementById('fabrikasiAttPick')?.value;
-			const transferAttachment = document.getElementById('fabrikasiAttPick')?.dataset.transferAttachment === 'true';
-			
-			// Also check hidden input for transfer_attachment
-			const transferInput = document.getElementById('transfer_attachment_input');
-			const transferFromInput = transferInput?.value === 'true';
-			
-		console.log('Fabrikasi Attachment:', {
-			attachmentId: newAttachmentId,
-			transferMode: transferAttachment || transferFromInput ? 'KANIBAL' : 'NORMAL'
-		});
-			
-			// Add attachment data to form
-			if (attachmentAction === 'keep_existing' && existingAttachmentId) {
-				fd.append('attachment_inventory_attachment_id', existingAttachmentId);
-			} else if (attachmentAction === 'replace' && newAttachmentId) {
-				fd.append('attachment_inventory_attachment_id', newAttachmentId);
-				if (transferAttachment || transferFromInput) {
-					fd.append('transfer_attachment', 'true');
-				}
-			} else if (attachmentAction === 'none' && newAttachmentId) {
-				fd.append('attachment_inventory_attachment_id', newAttachmentId);
-				if (transferAttachment || transferFromInput) {
-					fd.append('transfer_attachment', 'true');
-				}
-			} else if (newAttachmentId) {
-				// Fallback: if newAttachmentId exists, use it regardless of action
-				fd.append('attachment_inventory_attachment_id', newAttachmentId);
-				if (transferAttachment || transferFromInput) {
-					fd.append('transfer_attachment', 'true');
-				}
+		// Handle fabrikasi stage — read install_type from radio
+		if (currentApprovalStage === 'fabrikasi' || currentApprovalStage === 'install') {
+			const installTypeRadio = document.querySelector('input[name="install_type"]:checked');
+			const installType = installTypeRadio ? installTypeRadio.value : null;
+
+			if (!installType) {
+				notify('Pilih jenis instalasi terlebih dahulu (Pasang Fork atau Pasang Attachment).', 'warning');
+				return;
 			}
-		}
-		
-		// Handle fabrikasi stage fork selection
-		if (currentApprovalStage === 'fabrikasi') {
-			const forkPick = document.getElementById('fabrikasiForkPick');
-			if (forkPick) {
-				// Frontend guard: fail fast only if pre-check says stock insufficient.
+			fd.append('install_type', installType);
+
+			// Append keterangan instalasi (applies to both fork & attachment)
+			const keteranganInstalasi = document.getElementById('fabrikasiKeterangan')?.value?.trim() || '';
+			if (keteranganInstalasi) fd.append('keterangan_instalasi', keteranganInstalasi);
+
+			if (installType === 'attachment') {
+				// --- Attachment mode ---
+				const attachmentAction = document.getElementById('fabrikasi_attachment_action')?.value || 'none';
+				const existingAttachmentId = document.getElementById('fabrikasi_attachment_existing_id')?.value;
+				const newAttachmentId = document.getElementById('fabrikasiAttPick')?.value;
+				const transferAttachment = document.getElementById('fabrikasiAttPick')?.dataset.transferAttachment === 'true';
+				const transferInput = document.getElementById('transfer_attachment_input');
+				const transferFromInput = transferInput?.value === 'true';
+
+				console.log('Fabrikasi Attachment:', {
+					attachmentId: newAttachmentId,
+					transferMode: transferAttachment || transferFromInput ? 'KANIBAL' : 'NORMAL'
+				});
+
+				if (attachmentAction === 'keep_existing' && existingAttachmentId) {
+					fd.append('attachment_inventory_attachment_id', existingAttachmentId);
+				} else if (attachmentAction === 'replace' && newAttachmentId) {
+					fd.append('attachment_inventory_attachment_id', newAttachmentId);
+					if (transferAttachment || transferFromInput) fd.append('transfer_attachment', 'true');
+				} else if (newAttachmentId) {
+					fd.append('attachment_inventory_attachment_id', newAttachmentId);
+					if (transferAttachment || transferFromInput) fd.append('transfer_attachment', 'true');
+				}
+			} else {
+				// --- Fork mode ---
 				if (window.spkForkStockCheck && window.spkForkStockCheck.ok === false) {
 					notify('Stok fork tidak mencukupi: ' + (window.spkForkStockCheck.reason || ''), 'error');
 					return;
 				}
-				// NOTE: fork_id already included in FormData because the select has name="fork_id".
+				// fork_id included automatically via select name="fork_id"
 			}
 		}
 		
@@ -4057,7 +4146,7 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 				// Get stage-specific message
 				const stageMessages = {
 					'persiapan_unit': 'Unit Preparation Successfully Completed',
-					'fabrikasi': 'Fabrication Process Successfully Completed',
+					'fabrikasi': 'Install Attachment Process Successfully Completed',
 					'painting': 'Painting Process Successfully Completed',
 					'pdi': 'PDI Inspection Successfully Completed'
 				};
@@ -4228,10 +4317,12 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 				// Get unit data from unitsData
 				const unitData = unitsData.success && unitsData.data.units ? unitsData.data.units.find(u => u.unit_index === i) : null;
 				const unitStages = unitData && unitData.stages ? unitData.stages : {};
+				const editInstallKey = (spk.has_fabrikasi == 1) ? 'fabrikasi' : 'install';
+				const editInstallName = (spk.has_fabrikasi == 1) ? 'Fabrikasi' : 'Install Attach';
 				
 				const allStages = [
 					{ key: 'persiapan_unit', name: 'Persiapan Unit', condition: unitStages.persiapan_unit && unitStages.persiapan_unit.completed },
-					{ key: 'fabrikasi', name: 'Fabrikasi', condition: unitStages.fabrikasi && unitStages.fabrikasi.completed },
+					{ key: editInstallKey, name: editInstallName, condition: unitStages[editInstallKey] && unitStages[editInstallKey].completed },
 					{ key: 'painting', name: 'Painting', condition: unitStages.painting && unitStages.painting.completed },
 					{ key: 'pdi', name: 'PDI', condition: unitStages.pdi && unitStages.pdi.completed }
 				];
@@ -4271,10 +4362,12 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 			// Get unit data from unitsData for unit 1
 			const unitData = unitsData.success && unitsData.data.units ? unitsData.data.units.find(u => u.unit_index === 1) : null;
 			const unitStages = unitData && unitData.stages ? unitData.stages : {};
+			const editInstallKey1 = (spk.has_fabrikasi == 1) ? 'fabrikasi' : 'install';
+			const editInstallName1 = (spk.has_fabrikasi == 1) ? 'Fabrikasi' : 'Install Attach';
 			
 			const stages = [
 				{ key: 'persiapan_unit', name: 'Persiapan Unit', condition: unitStages.persiapan_unit && unitStages.persiapan_unit.completed },
-				{ key: 'fabrikasi', name: 'Fabrikasi', condition: unitStages.fabrikasi && unitStages.fabrikasi.completed },
+				{ key: editInstallKey1, name: editInstallName1, condition: unitStages[editInstallKey1] && unitStages[editInstallKey1].completed },
 				{ key: 'painting', name: 'Painting', condition: unitStages.painting && unitStages.painting.completed },
 				{ key: 'pdi', name: 'PDI', condition: unitStages.pdi && unitStages.pdi.completed }
 			];
@@ -4360,9 +4453,9 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 		if (stage === 'persiapan_unit') {
 			// Buka modal persiapan unit
 			openPersiapanUnitModal(spkId);
-		} else if (stage === 'fabrikasi') {
-			// Buka modal fabrikasi
-			openFabrikasiModal(spkId);
+		} else if (stage === 'fabrikasi' || stage === 'install') {
+			// Buka modal fabrikasi/install
+			openFabrikasiModal(spkId, stage);
 		} else if (stage === 'painting') {
 			// Buka modal painting
 			openPaintingModal(spkId);
@@ -4389,9 +4482,9 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 		if (stage === 'persiapan_unit') {
 			// Buka modal persiapan unit dengan info unit
 			openPersiapanUnitModalWithUnit(spkId, unitNumber);
-		} else if (stage === 'fabrikasi') {
-			// Buka modal fabrikasi dengan info unit
-			openFabrikasiModalWithUnit(spkId, unitNumber);
+		} else if (stage === 'fabrikasi' || stage === 'install') {
+			// Buka modal fabrikasi/install dengan info unit
+			openFabrikasiModalWithUnit(spkId, unitNumber, stage);
 		} else if (stage === 'painting') {
 			// Buka modal painting dengan info unit
 			openPaintingModalWithUnit(spkId, unitNumber);
@@ -4422,6 +4515,7 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 	function getStageDisplayName(stage) {
 		const stageNames = {
 			'persiapan_unit': 'Unit Preparation Dept.',
+			'install': 'Install Dept.',
 			'fabrikasi': 'Fabrication Dept.',
 			'painting': 'Painting Dept.',
 			'pdi': 'PDI Inspection Dept.'
@@ -4494,23 +4588,24 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 	}
 	
 	// Function to open fabrication modal - SIMPLE SOLUTION
-	function openFabrikasiModal(spkId) {
-		console.log('Opening Fabrication Modal for SPK ID:', spkId);
+	function openFabrikasiModal(spkId, stage) {
+		const stageKey = stage || 'install';
+		console.log('Opening Fabrication/Install Modal for SPK ID:', spkId, 'Stage:', stageKey);
 		
 		// Set unitIndex to 1 for editing (single unit SPK)
 		currentEditingUnitIndex = 1;
 		
-		// SIMPLE SOLUTION: Open existing approval modal
-		// Same as initial modal when filling fabrication
-		openApprovalModal('fabrikasi', 'Fabrication Dept.', spkId, 1);
+		// Open existing approval modal with correct stage
+		openApprovalModal(stageKey, 'Install Dept.', spkId, 1);
 	}
 	
 	// Function to open fabrication modal with specific unit info
-	function openFabrikasiModalWithUnit(spkId, unitNumber) {
-		console.log('Opening Fabrication Modal for SPK ID:', spkId, 'Unit:', unitNumber);
+	function openFabrikasiModalWithUnit(spkId, unitNumber, stage) {
+		const stageKey = stage || 'install';
+		console.log('Opening Fabrication/Install Modal for SPK ID:', spkId, 'Unit:', unitNumber, 'Stage:', stageKey);
 		
-		// SIMPLE SOLUTION: Open existing approval modal with unit info
-		openApprovalModal('fabrikasi', `Fabrication Dept. (Unit ${unitNumber})`, spkId);
+		// Open existing approval modal with correct stage
+		openApprovalModal(stageKey, `Install Dept. (Unit ${unitNumber})`, spkId);
 	}
 	
 	// Function to open painting modal - SIMPLE SOLUTION
@@ -4660,6 +4755,7 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 	window.getStageDisplayName = function(stage) {
 		const stageNames = {
 			'persiapan_unit': 'Persiapan Unit',
+			'install': 'Install Attach',
 			'fabrikasi': 'Fabrikasi',
 			'painting': 'Painting',
 			'pdi': 'PDI'
@@ -5640,7 +5736,8 @@ function collectEnhancedComponentData() {
 </script>
 
 <script>
-async function openFabrikasiModal(detail) {
+// Renamed to avoid conflict with openFabrikasiModal(spkId) defined above (line ~4591)
+async function openFabrikasiModalLegacy(detail) {
   const depId = Number((detail.spec?.departemen_id)||0);
   const attId = Number((detail.spec?.attachment_model_id)||0) || Number((detail.spec?.attachment_id)||0);
   // fetch attachments available

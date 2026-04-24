@@ -22,6 +22,8 @@ return [
     'sale_price'                 => 'Sale Price (Rp)',
     'payment_method'             => 'Payment Method',
     'receipt_no'                 => 'Receipt No.',
+    'bast_no'                    => 'BAST No.',
+    'invoice_no'                 => 'Invoice No.',
     'total_sold'                 => 'Total Sold',
     'this_year'                  => 'This Year (%s)',
     'this_month'                 => 'This Month',

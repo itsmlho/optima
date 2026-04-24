@@ -1828,7 +1828,7 @@ class Service extends BaseController
             
             // Send cross-division notifications for stage completion
             helper('notification');
-            if (in_array($approvalData['stage'], ['persiapan_unit', 'fabrikasi', 'pdi'])) {
+        if (in_array($approvalData['stage'], ['persiapan_unit', 'install', 'fabrikasi', 'pdi'])) {
                 $spk = $this->spkModel->find($id);
                 if ($spk) {
                     $notifData = [
@@ -1849,8 +1849,8 @@ class Service extends BaseController
                         if (function_exists('notify_spk_unit_prep_completed')) {
                             notify_spk_unit_prep_completed($notifData);
                         }
-                    } elseif ($approvalData['stage'] === 'fabrikasi') {
-                        $notifData['attachment_info'] = isset($approvalData['attachment_inventory_attachment_id']) ? 'Attachment configured' : '';
+                    } elseif (in_array($approvalData['stage'], ['install', 'fabrikasi'])) {
+                        $notifData['attachment_info'] = isset($approvalData['attachment_inventory_attachment_id']) ? 'Attachment/fork configured' : '';
                         $notifData['fabrication_notes'] = $approvalData['catatan_fabrikasi'] ?? '';
                         if (function_exists('notify_spk_fabrication_completed')) {
                             notify_spk_fabrication_completed($notifData);
@@ -1899,6 +1899,9 @@ class Service extends BaseController
             $attachment_id = $this->request->getPost('attachment_inventory_attachment_id');
             $transfer_attachment = $this->request->getPost('transfer_attachment') === 'true';
             $unitIndex = (int) $this->request->getPost('unit_index') ?: 1;
+            $installType = trim((string)($this->request->getPost('install_type') ?? 'attachment')) ?: 'attachment';
+            $forkId = (int)($this->request->getPost('fork_id') ?? 0);
+            $keteranganInstalasi = trim((string)($this->request->getPost('keterangan_instalasi') ?? ''));
 
             if (!$spkId || !$mekanik) {
                 throw new \Exception('SPK ID dan Mekanik harus diisi');
@@ -1912,7 +1915,10 @@ class Service extends BaseController
                 'estimasi_mulai' => $estimasi_mulai,
                 'estimasi_selesai' => $estimasi_selesai,
                 'attachment_id' => $attachment_id,
-                'transfer_attachment' => $transfer_attachment
+                'transfer_attachment' => $transfer_attachment,
+                'install_type' => $installType,
+                'fork_id' => $forkId,
+                'keterangan_instalasi' => $keteranganInstalasi,
             ];
 
             // Prepare base stage data
@@ -2067,6 +2073,26 @@ class Service extends BaseController
         $primaryMechanicId = $this->request->getPost('primary_mechanic_id');
 
         // Basic validation - check if we have mechanics data
+        // For 'install' stage: inherit mechanics from persiapan_unit automatically (no selector shown)
+        if ($stage === 'install' && empty($mechanicsData) && !$mekanik) {
+            $spkIdForInherit = $this->request->getPost('spk_id');
+            $persiapanRow = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $spkIdForInherit)
+                ->where('unit_index', $unitIndex)
+                ->where('stage_name', 'persiapan_unit')
+                ->orderBy('id', 'DESC')
+                ->get()->getRowArray();
+            if ($persiapanRow) {
+                $mekanik = $persiapanRow['mekanik'] ?? '';
+                $primaryMechanicId = $persiapanRow['primary_mechanic_id'] ?? null;
+                $inherited = $persiapanRow['mechanics_json'] ?? null;
+                if ($inherited) {
+                    $decoded = json_decode($inherited, true);
+                    if (is_array($decoded)) $mechanicsData = $decoded;
+                }
+            }
+        }
+
         if (empty($mechanicsData) && !$mekanik) {
             throw new \Exception('At least one mechanic must be selected');
         }
@@ -2081,12 +2107,12 @@ class Service extends BaseController
         }
 
         // Stage-specific validation
-        if (in_array($stage, ['fabrikasi', 'painting']) && (!$estimasi_mulai || !$estimasi_selesai)) {
+        if (in_array($stage, ['install', 'fabrikasi', 'painting']) && (!$estimasi_mulai || !$estimasi_selesai)) {
             throw new \Exception('Estimasi mulai dan estimasi selesai harus diisi untuk stage ' . $stage);
         }
 
         // Validate allowed stages
-        $allowedStages = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi'];
+        $allowedStages = ['persiapan_unit', 'install', 'fabrikasi', 'painting', 'pdi'];
         if (!in_array($stage, $allowedStages)) {
             throw new \Exception('Stage tidak valid');
         }
@@ -2101,7 +2127,9 @@ class Service extends BaseController
             'estimasi_selesai' => $estimasi_selesai,
             'attachment_id' => $attachment_id,
             'fork_id' => $fork_id,
-            'transfer_attachment' => $transfer_attachment
+            'transfer_attachment' => $transfer_attachment,
+            'install_type' => trim((string)($this->request->getPost('install_type') ?? 'attachment')) ?: 'attachment',
+            'keterangan_instalasi' => trim((string)($this->request->getPost('keterangan_instalasi') ?? '')),
         ];
     }
 
@@ -2596,8 +2624,8 @@ class Service extends BaseController
         $this->db->transStart();
         
         try {
-            // Handle stage-specific logic for fabrikasi, painting stages
-            if (in_array($approvalData['stage'], ['fabrikasi', 'painting'])) {
+            // Handle stage-specific logic for install, fabrikasi, painting stages
+            if (in_array($approvalData['stage'], ['install', 'fabrikasi', 'painting'])) {
                 $this->handleProductionStage($stageData, $approvalData);
             }
             
@@ -2633,18 +2661,18 @@ class Service extends BaseController
                 throw new \Exception('Transaction failed: ' . ($this->db->error()['message'] ?? 'unknown DB error'));
             }
             
-            // Handle attachment updates for fabrikasi stage
-            if ($approvalData['stage'] === 'fabrikasi' && $approvalData['attachment_id']) {
+            // Handle attachment updates for install/fabrikasi stage
+            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && $approvalData['attachment_id']) {
                 $this->handleFabrikasiAttachment($stageData, $approvalData);
             }
 
-            // Handle fork updates for fabrikasi stage
-            if ($approvalData['stage'] === 'fabrikasi' && !empty($approvalData['fork_id'])) {
+            // Handle fork updates for install/fabrikasi stage
+            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && !empty($approvalData['fork_id'])) {
                 $this->handleFabrikasiFork($stageData, $approvalData);
             }
             
             // Send notification: Attachment Uploaded on Stage
-            if (!empty($approvalData['attachment_id']) && in_array($approvalData['stage'], ['fabrikasi', 'painting', 'persiapan_unit', 'pdi'])) {
+            if (!empty($approvalData['attachment_id']) && in_array($approvalData['stage'], ['install', 'fabrikasi', 'painting', 'persiapan_unit', 'pdi'])) {
                 helper('notification');
                 
                 // Get SPK data
@@ -2768,8 +2796,8 @@ class Service extends BaseController
             $stageData['unit_id'] = $persiapanStage['unit_id'];
         }
         
-        // Handle fabrikasi specific logic
-        if ($approvalData['stage'] === 'fabrikasi') {
+        // Handle fabrikasi/install specific logic
+        if (in_array($approvalData['stage'], ['install', 'fabrikasi'])) {
             $this->validateFabrikasiAttachment($stageData, $approvalData);
             $this->validateFabrikasiFork($stageData, $approvalData);
         }
@@ -2780,6 +2808,11 @@ class Service extends BaseController
      */
     private function validateFabrikasiAttachment($stageData, $approvalData)
     {
+        // Skip attachment validation when user chose to install fork instead
+        if (($approvalData['install_type'] ?? 'attachment') === 'fork') {
+            return;
+        }
+
         log_message('info', 'Fabrikasi stage data: attachment_id=' . $approvalData['attachment_id'] . ', transfer_attachment=' . ($approvalData['transfer_attachment'] ? 'true' : 'false'));
         
         // Debug: Check if attachment exists and is valid
@@ -2866,6 +2899,11 @@ class Service extends BaseController
      */
     private function validateFabrikasiFork($stageData, $approvalData)
     {
+        // Skip fork validation when user chose to install attachment instead
+        if (($approvalData['install_type'] ?? 'attachment') === 'attachment') {
+            return;
+        }
+
         $forkId = (int)($approvalData['fork_id'] ?? 0);
         $spkId = (int)($stageData['spk_id'] ?? 0);
 
@@ -2961,7 +2999,8 @@ class Service extends BaseController
                     $persiapanStage['unit_id'], 
                     $approvalData['transfer_attachment'],
                     $stageData['spk_id'],
-                    $approvalData['stage']
+                    $approvalData['stage'],
+                    $approvalData['keterangan_instalasi'] ?? ''
                 );
                 
             } catch (\Throwable $e) {
@@ -3108,16 +3147,20 @@ class Service extends BaseController
             );
 
             // Attach fork to target unit
+            $forkUpdateData = [
+                'inventory_unit_id' => $unitId,
+                'status' => 'IN_USE',
+                'assigned_at' => $now,
+                'detached_at' => null,
+                'storage_location' => 'Terpasang di Unit',
+                'updated_at' => $now
+            ];
+            if (!empty($approvalData['keterangan_instalasi'])) {
+                $forkUpdateData['notes'] = $approvalData['keterangan_instalasi'];
+            }
             $this->db->table('inventory_forks')
                 ->where('id', $forkId)
-                ->update([
-                    'inventory_unit_id' => $unitId,
-                    'status' => 'IN_USE',
-                    'assigned_at' => $now,
-                    'detached_at' => null,
-                    'storage_location' => 'Terpasang di Unit',
-                    'updated_at' => $now
-                ]);
+                ->update($forkUpdateData);
 
             $auditService->logAssignment('FORK', $forkId, $unitId, [
                 'spk_id' => $stageData['spk_id'],
@@ -3138,7 +3181,7 @@ class Service extends BaseController
     /**
      * Execute background attachment update
      */
-    private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment, $spk_id = null, $stage_name = 'fabrikasi')
+    private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment, $spk_id = null, $stage_name = 'fabrikasi', string $keterangan = '')
     {
         // Inline (synchronous) attachment update — replaces the old exec() background-script approach
         // which fails on shared hosting (Hostinger) where exec/popen are disabled.
@@ -3184,10 +3227,9 @@ class Service extends BaseController
             ]);
 
             // Step 2: attach to new unit
-            $this->db->table($tableName)->where('id', $attachment_id)->update([
-                'inventory_unit_id' => $unit_id,
-                'updated_at'        => $now,
-            ]);
+            $updateAttach = ['inventory_unit_id' => $unit_id, 'updated_at' => $now];
+            if ($keterangan !== '') $updateAttach['notes'] = $keterangan;
+            $this->db->table($tableName)->where('id', $attachment_id)->update($updateAttach);
 
             // Audit log
             $this->db->table('component_audit_log')->insert([
@@ -3208,10 +3250,9 @@ class Service extends BaseController
             log_message('info', "✅ KANIBAL transfer: {$componentType} #{$attachment_id} from unit " . ($old_unit_id ?? 'NULL') . " to unit {$unit_id}");
         } else {
             // NORMAL MODE: direct assignment
-            $this->db->table($tableName)->where('id', $attachment_id)->update([
-                'inventory_unit_id' => $unit_id,
-                'updated_at'        => $now,
-            ]);
+            $updateAttach = ['inventory_unit_id' => $unit_id, 'updated_at' => $now];
+            if ($keterangan !== '') $updateAttach['notes'] = $keterangan;
+            $this->db->table($tableName)->where('id', $attachment_id)->update($updateAttach);
 
             // Audit log
             $this->db->table('component_audit_log')->insert([
@@ -4221,6 +4262,111 @@ EOF;
         $data = $lookup->attachmentOptions($q, 50);
 
         return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+    }
+
+    /** Get master data for fork type dropdown (table: fork) */
+    public function getMasterFork()
+    {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
+        $lookup = new \App\Services\MasterDataLookupService($this->db);
+        $data = $lookup->forkOptions($q, 100);
+
+        return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+    }
+
+    /**
+     * Register a new fork into inventory_forks + inventory_fork_stocks.
+     * POST service/add-inventory-fork
+     */
+    public function addInventoryFork()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Request tidak valid.']);
+        }
+
+        $forkId      = (int)($this->request->getPost('fork_id') ?? 0);
+        $itemNumber  = trim((string)($this->request->getPost('item_number') ?? ''));
+        $qtyPairs    = max(1, (int)($this->request->getPost('qty_pairs') ?? 1));
+        $location    = trim((string)($this->request->getPost('storage_location') ?? 'Workshop')) ?: 'Workshop';
+
+        if ($forkId <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tipe fork wajib dipilih.']);
+        }
+        if ($itemNumber === '') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Item number / SN wajib diisi.']);
+        }
+
+        $db = \Config\Database::connect();
+
+        // Validate fork master exists
+        $forkRow = $db->table('fork')->where('id', $forkId)->get()->getRowArray();
+        if (!$forkRow) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tipe fork tidak ditemukan.']);
+        }
+
+        // Check item_number uniqueness across inventory_forks
+        $exists = $db->table('inventory_forks')->where('item_number', $itemNumber)->countAllResults();
+        if ($exists > 0) {
+            return $this->response->setJSON(['success' => false, 'message' => "Item number '{$itemNumber}' sudah terdaftar di inventori."]);
+        }
+
+        $db->transStart();
+        try {
+            // Upsert inventory_fork_stocks: one stock row per fork_id
+            $stockRow = $db->table('inventory_fork_stocks')->where('fork_id', $forkId)->get()->getRowArray();
+            if ($stockRow) {
+                $db->table('inventory_fork_stocks')
+                    ->where('id', $stockRow['id'])
+                    ->update(['qty_available_pairs' => (int)$stockRow['qty_available_pairs'] + $qtyPairs]);
+                $stockId = (int)$stockRow['id'];
+            } else {
+                $db->table('inventory_fork_stocks')->insert([
+                    'fork_id'            => $forkId,
+                    'item_number'        => $itemNumber,
+                    'qty_available_pairs' => $qtyPairs,
+                    'status'             => 'AVAILABLE',
+                    'storage_location'   => $location,
+                ]);
+                $stockId = (int)$db->insertID();
+            }
+
+            // Insert inventory_forks row
+            $db->table('inventory_forks')->insert([
+                'fork_id'          => $forkId,
+                'fork_stock_id'    => $stockId,
+                'item_number'      => $itemNumber,
+                'qty_pairs'        => $qtyPairs,
+                'status'           => 'AVAILABLE',
+                'storage_location' => $location,
+            ]);
+            $newId = (int)$db->insertID();
+
+            $db->transComplete();
+
+            if (!$db->transStatus()) {
+                throw new \RuntimeException('Transaksi gagal');
+            }
+
+            $newRow = $db->table('inventory_forks')->where('id', $newId)->get()->getRowArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Fork berhasil didaftarkan ke inventori.',
+                'data'    => [
+                    'id'           => $newId,
+                    'fork_id'      => $forkId,
+                    'fork_name'    => $forkRow['name'],
+                    'item_number'  => $itemNumber,
+                    'qty_pairs'    => $qtyPairs,
+                    'storage_location' => $location,
+                ],
+                'csrf_hash' => csrf_hash(),
+            ]);
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', '[addInventoryFork] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal mendaftarkan fork: ' . $e->getMessage()]);
+        }
     }
 
     /** Get master data for baterai dropdown in modal */

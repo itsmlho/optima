@@ -51,7 +51,7 @@ class InventoryChargerModel extends Model
         'id'                => 'permit_empty|integer',
         'item_number'       => 'permit_empty|max_length[50]|is_unique[inventory_chargers.item_number,id,{id}]',
         'charger_type_id'   => 'permit_empty|integer',
-        'serial_number'     => 'permit_empty|max_length[100]',
+        'serial_number'     => 'permit_empty|max_length[100]|is_unique[inventory_chargers.serial_number,id,{id}]',
         'input_voltage'     => 'permit_empty|max_length[20]',
         'output_voltage'    => 'permit_empty|max_length[20]',
         'output_ampere'     => 'permit_empty|max_length[20]',
@@ -73,7 +73,8 @@ class InventoryChargerModel extends Model
             'integer' => 'Charger Type ID harus berupa angka'
         ],
         'serial_number' => [
-            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter'
+            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter',
+            'is_unique'  => 'Serial number sudah digunakan oleh charger lain. SN harus unik.'
         ],
         'status' => [
             'in_list' => 'Status must be: AVAILABLE, IN_USE, SPARE, MAINTENANCE, BROKEN, RESERVED, or SOLD'

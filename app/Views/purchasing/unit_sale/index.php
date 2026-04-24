@@ -234,6 +234,16 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                             <input type="date" class="form-control" id="tanggal_jual" name="tanggal_jual" required>
                         </div>
                     </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= lang('Purchasing.bast_no') ?></label>
+                            <input type="text" class="form-control" id="no_bast" name="no_bast" maxlength="100" placeholder="<?= lang('Purchasing.bast_no') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold"><?= lang('Purchasing.invoice_no') ?></label>
+                            <input type="text" class="form-control" id="no_invoice" name="no_invoice" maxlength="100" placeholder="<?= lang('Purchasing.invoice_no') ?>">
+                        </div>
+                    </div>
 
                     <!-- SECTION: Unit selection (shown when asset_type=UNIT) -->
                     <div id="sectionUnit">
@@ -311,7 +321,6 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                             <input type="text" class="form-control" id="keterangan" name="keterangan" maxlength="1000">
                         </div>
                     </div>
-
                     <!-- Alert area -->
                     <div id="createAlert" class="d-none"></div>
                 </div>
@@ -449,6 +458,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
     // Select2 — Unit
     // ═══════════════════════════════════════════════════════
     function initUnitSelect2() {
+        destroySelect2('#unit_id');
         $('#unit_id').select2({
             dropdownParent : $('#createModal'),
             placeholder    : '<?= lang('Purchasing.search_unit_placeholder') ?>',
@@ -460,10 +470,13 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                 delay    : 250,
                 data     : function (params) { return { q: params.term || '' }; },
                 processResults: function (res) {
-                    if (!res.success) return { results: [] };
+                    if (!res || !res.success) return { results: [] };
                     return { results: res.results };
                 },
-                cache: true,
+                error: function () {
+                    notify('Gagal memuat data unit.', 'error');
+                },
+                cache: false,
             },
         });
 
@@ -607,6 +620,8 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
             harga_jual        : hargaRaw,
             metode_pembayaran : $('#metode_pembayaran').val(),
             no_kwitansi       : $('#no_kwitansi').val(),
+            no_bast           : $('#no_bast').val(),
+            no_invoice        : $('#no_invoice').val(),
             keterangan        : $('#keterangan').val(),
         };
 
@@ -675,11 +690,11 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
         toggleAssetSections();
     });
 
-    $('#createModal').on('show.bs.modal', function () {
+    $('#createModal').on('shown.bs.modal', function () {
         if (!$('#tanggal_jual').val()) {
             $('#tanggal_jual').val(new Date().toISOString().slice(0, 10));
         }
-        // Re-init unit Select2
+        // Re-init unit Select2 after modal is fully visible
         initUnitSelect2();
     });
 

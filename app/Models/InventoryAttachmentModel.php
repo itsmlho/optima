@@ -48,7 +48,7 @@ class InventoryAttachmentModel extends Model
     protected $validationRules = [
         'item_number'       => 'permit_empty|max_length[50]|is_unique[inventory_attachments.item_number,id,{id}]',
         'attachment_type_id'=> 'permit_empty|integer',
-        'serial_number'     => 'permit_empty|max_length[100]',
+        'serial_number'     => 'permit_empty|max_length[100]|is_unique[inventory_attachments.serial_number,id,{id}]',
         'max_capacity'      => 'permit_empty|max_length[50]',
         'purchase_order_id' => 'permit_empty|integer',
         'inventory_unit_id' => 'permit_empty|integer',
@@ -68,7 +68,8 @@ class InventoryAttachmentModel extends Model
             'integer' => 'Attachment Type ID harus berupa angka'
         ],
         'serial_number' => [
-            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter'
+            'max_length' => 'Serial number tidak boleh lebih dari 100 karakter',
+            'is_unique'  => 'Serial number sudah digunakan oleh attachment lain. SN harus unik.'
         ],
         'status' => [
             'in_list' => 'Status must be: AVAILABLE, IN_USE, SPARE, MAINTENANCE, BROKEN, RESERVED, or SOLD'
