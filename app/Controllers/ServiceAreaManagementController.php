@@ -237,11 +237,24 @@ class ServiceAreaManagementController extends BaseController
                 $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%"]);
             }
 
-            // Department filter (manual filter from UI dropdown)
-            $departemenId = $request['departemen_id'] ?? null;
-            if ($departemenId) {
-                $whereClause .= " AND areas.departemen_id = ?";
-                $params[] = (int) $departemenId;
+            // Manual UI filters: Area Type + Department
+            // Default is CENTRAL (sent from JS on page load)
+            $filterAreaType = $request['filter_area_type'] ?? 'CENTRAL';
+            $departemenId   = $request['departemen_id'] ?? null;
+
+            if ($filterAreaType === 'MILL') {
+                // MILL only — show ONLY mill areas, dept filter ignored for both listing & counts
+                $whereClause .= " AND areas.area_type = 'MILL'";
+                $effectiveDeptIds = null;
+            } else {
+                // CENTRAL (default) — show ALL areas (Central + Mill)
+                // Dept filter does NOT limit the area listing — it only filters unit/customer counts
+                $effectiveDeptIds = null;
+                if ($departemenId) {
+                    $effectiveDeptIds = [(int) $departemenId];
+                } elseif ($scope !== null && !empty($scope['departments'])) {
+                    $effectiveDeptIds = $scope['departments'];
+                }
             }
 
             // Count total records (scope only, no search)
@@ -266,16 +279,16 @@ class ServiceAreaManagementController extends BaseController
             // ── Batch queries (4 queries total, not 4 per row) ──────────────────
             $areaIds = array_column($areas, 'id');
 
-            // 1. Customer counts per area (batch) — filtered by department scope if applicable
+            // 1. Customer counts per area (batch) — filtered by effective department scope if applicable
             $batchCustomerCounts = [];
             if (!empty($areaIds)) {
                 $ph = implode(',', array_fill(0, count($areaIds), '?'));
                 $custCountParams = $areaIds;
                 $custDeptClause = '';
-                if ($scope !== null && !empty($scope['departments'])) {
-                    $dph = implode(',', array_fill(0, count($scope['departments']), '?'));
+                if (!empty($effectiveDeptIds)) {
+                    $dph = implode(',', array_fill(0, count($effectiveDeptIds), '?'));
                     $custDeptClause = " AND iu.departemen_id IN ($dph)";
-                    $custCountParams = array_merge($areaIds, $scope['departments']);
+                    $custCountParams = array_merge($areaIds, $effectiveDeptIds);
                 }
                 $rows = $this->db->query(
                     "SELECT iu.area_id, COUNT(DISTINCT k.customer_id) as cnt
@@ -290,16 +303,16 @@ class ServiceAreaManagementController extends BaseController
                 }
             }
 
-            // 2. Unit counts per area (batch) — filtered by department scope if applicable
+            // 2. Unit counts per area (batch) — filtered by effective department scope if applicable
             $batchUnitCounts = [];
             if (!empty($areaIds)) {
                 $ph = implode(',', array_fill(0, count($areaIds), '?'));
                 $unitCountParams = $areaIds;
                 $unitDeptClause = '';
-                if ($scope !== null && !empty($scope['departments'])) {
-                    $dph = implode(',', array_fill(0, count($scope['departments']), '?'));
+                if (!empty($effectiveDeptIds)) {
+                    $dph = implode(',', array_fill(0, count($effectiveDeptIds), '?'));
                     $unitDeptClause = " AND departemen_id IN ($dph)";
-                    $unitCountParams = array_merge($areaIds, $scope['departments']);
+                    $unitCountParams = array_merge($areaIds, $effectiveDeptIds);
                 }
                 $rows = $this->db->query(
                     "SELECT area_id, COUNT(*) as cnt FROM inventory_unit WHERE area_id IN ($ph){$unitDeptClause} GROUP BY area_id",

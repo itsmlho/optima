@@ -100,10 +100,14 @@
 
   </div>
 
-  <!-- Global Department Filter -->
-  <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
-      <label class="form-label mb-0 fw-semibold small text-muted"><i class="fas fa-filter me-1"></i>Filter Departemen:</label>
-      <select class="form-select form-select-sm" id="globalDeptFilter" style="width:200px;" onchange="onGlobalDeptFilterChange()">
+  <!-- Global Filters: Area Type + Department -->
+  <div class="d-flex align-items-center justify-content-end gap-2 mb-3 flex-wrap">
+      <label class="form-label mb-0 fw-semibold small text-muted"><i class="fas fa-filter me-1"></i>Filter:</label>
+      <select class="form-select form-select-sm" id="globalAreaTypeFilter" style="width:150px;" onchange="onGlobalFilterChange()">
+          <option value="CENTRAL" selected>CENTRAL</option>
+          <option value="MILL">MILL</option>
+      </select>
+      <select class="form-select form-select-sm" id="globalDeptFilter" style="width:200px;" onchange="onGlobalFilterChange()">
           <option value="">Semua Departemen</option>
           <?php foreach ($departemen as $d): ?>
           <option value="<?= $d['id_departemen'] ?>"><?= esc($d['nama_departemen']) ?></option>
@@ -1478,7 +1482,8 @@ function initializeAreaTable() {
         timeout: 30000, // 30 second timeout
         data: function(d) {
           d[window.csrfTokenName] = window.getCsrfToken();
-          d.departemen_id = $('#globalDeptFilter').val();
+          d.departemen_id    = $('#globalDeptFilter').val();
+          d.filter_area_type = $('#globalAreaTypeFilter').val();
           return d;
         },
         dataSrc: function(json) {
@@ -2990,6 +2995,18 @@ function refreshAssignments() {
 }
 
 function onGlobalDeptFilterChange() {
+  if (areasTable) areasTable.ajax.reload();
+}
+
+function onGlobalFilterChange() {
+  const areaType = $('#globalAreaTypeFilter').val();
+  // MILL = all depts, disable dept filter
+  if (areaType === 'MILL') {
+    $('#globalDeptFilter').val('').prop('disabled', true);
+  } else {
+    // CENTRAL: show all areas (Central + Mill), dept filter affects unit counts only
+    $('#globalDeptFilter').prop('disabled', false);
+  }
   if (areasTable) areasTable.ajax.reload();
 }
 
