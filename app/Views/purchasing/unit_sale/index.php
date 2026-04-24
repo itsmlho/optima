@@ -543,7 +543,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                 var badge = badgeMap[c.type] || 'badge-soft-gray';
                 html += '<div class="d-flex align-items-center justify-content-between py-1 border-bottom">';
                 html += '  <div class="form-check">';
-                html += '    <input class="form-check-input bundled-check" type="checkbox" value="' + c.id + '" data-type="' + c.type + '" id="bcomp_' + c.type + '_' + c.id + '" checked>';
+                html += '    <input class="form-check-input bundled-check" type="checkbox" value="' + c.id + '" data-type="' + c.type + '" id="bcomp_' + c.type + '_' + c.id + '">';
                 html += '    <label class="form-check-label" for="bcomp_' + c.type + '_' + c.id + '">';
                 html += '      <span class="badge ' + badge + ' me-1">' + c.type + '</span>' + escHtml(c.label);
                 html += (c.serial ? ' <small class="text-muted font-monospace">SN: ' + escHtml(c.serial) + '</small>' : '');
