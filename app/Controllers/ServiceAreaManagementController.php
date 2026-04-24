@@ -79,10 +79,8 @@ class ServiceAreaManagementController extends BaseController
                 $areaBuilder->whereIn('areas.id', $scope['areas']);
             }
 
-            // Apply department scope to areas (e.g. admin service electric only sees electric areas)
-            if ($scope !== null && !empty($scope['departments'])) {
-                $areaBuilder->whereIn('areas.departemen_id', $scope['departments']);
-            }
+            // NOTE: Department scope NOT applied to area listing — all areas visible,
+            // department filter only applies to unit counts (in DataTable AJAX).
 
             $areaBuilder->orderBy('areas.area_type', 'ASC');
             $areaBuilder->orderBy('areas.area_name', 'ASC');
@@ -226,12 +224,8 @@ class ServiceAreaManagementController extends BaseController
                 log_message('debug', 'Applied area filtering: ' . implode(',', $scope['areas']));
             }
 
-            // Apply department scope to areas (e.g. admin service electric only sees electric areas)
-            if ($scope !== null && !empty($scope['departments'])) {
-                $scopeClause .= " AND areas.departemen_id IN (" . implode(',', array_fill(0, count($scope['departments']), '?')) . ")";
-                $scopeParams = array_merge($scopeParams, $scope['departments']);
-                log_message('debug', 'Applied department filtering: ' . implode(',', $scope['departments']));
-            }
+            // NOTE: Department scope is intentionally NOT applied to the area list.
+            // Areas are shown based on area-scope only; department filter applies only to unit count.
 
             // Start where clause from scope
             $whereClause = $scopeClause;
@@ -272,30 +266,44 @@ class ServiceAreaManagementController extends BaseController
             // ── Batch queries (4 queries total, not 4 per row) ──────────────────
             $areaIds = array_column($areas, 'id');
 
-            // 1. Customer counts per area (batch)
+            // 1. Customer counts per area (batch) — filtered by department scope if applicable
             $batchCustomerCounts = [];
             if (!empty($areaIds)) {
                 $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                $custCountParams = $areaIds;
+                $custDeptClause = '';
+                if ($scope !== null && !empty($scope['departments'])) {
+                    $dph = implode(',', array_fill(0, count($scope['departments']), '?'));
+                    $custDeptClause = " AND iu.departemen_id IN ($dph)";
+                    $custCountParams = array_merge($areaIds, $scope['departments']);
+                }
                 $rows = $this->db->query(
                     "SELECT iu.area_id, COUNT(DISTINCT k.customer_id) as cnt
                      FROM inventory_unit iu
                      JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status = 'ACTIVE'
                      JOIN kontrak k ON k.id = ku.kontrak_id AND k.status = 'ACTIVE'
-                     WHERE iu.area_id IN ($ph) GROUP BY iu.area_id",
-                    $areaIds
+                     WHERE iu.area_id IN ($ph){$custDeptClause} GROUP BY iu.area_id",
+                    $custCountParams
                 )->getResultArray();
                 foreach ($rows as $r) {
                     $batchCustomerCounts[(int)$r['area_id']] = (int)$r['cnt'];
                 }
             }
 
-            // 2. Unit counts per area (batch)
+            // 2. Unit counts per area (batch) — filtered by department scope if applicable
             $batchUnitCounts = [];
             if (!empty($areaIds)) {
                 $ph = implode(',', array_fill(0, count($areaIds), '?'));
+                $unitCountParams = $areaIds;
+                $unitDeptClause = '';
+                if ($scope !== null && !empty($scope['departments'])) {
+                    $dph = implode(',', array_fill(0, count($scope['departments']), '?'));
+                    $unitDeptClause = " AND departemen_id IN ($dph)";
+                    $unitCountParams = array_merge($areaIds, $scope['departments']);
+                }
                 $rows = $this->db->query(
-                    "SELECT area_id, COUNT(*) as cnt FROM inventory_unit WHERE area_id IN ($ph) GROUP BY area_id",
-                    $areaIds
+                    "SELECT area_id, COUNT(*) as cnt FROM inventory_unit WHERE area_id IN ($ph){$unitDeptClause} GROUP BY area_id",
+                    $unitCountParams
                 )->getResultArray();
                 foreach ($rows as $r) {
                     $batchUnitCounts[(int)$r['area_id']] = (int)$r['cnt'];

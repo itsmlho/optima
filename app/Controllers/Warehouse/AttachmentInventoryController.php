@@ -982,6 +982,7 @@ class AttachmentInventoryController extends BaseController
         }
 
         try {
+            $db = \Config\Database::connect();
             // Find the item across all tables
             $attachmentModel = new InventoryAttachmentModel();
             $batteryModel    = new InventoryBatteryModel();
@@ -1020,7 +1021,17 @@ class AttachmentInventoryController extends BaseController
                 ])->setStatusCode(422);
             }
 
-            $model->delete($id);
+            $deleted = $model->delete($id);
+
+            if (!$deleted) {
+                $dbError = $db->error();
+                log_message('error', '[AttachmentInventoryController::deleteAttachment] delete() returned false. DB: ' . json_encode($dbError));
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Item tidak dapat dihapus karena masih memiliki data terkait di sistem.',
+                    'csrf_hash' => csrf_hash()
+                ])->setStatusCode(422);
+            }
 
             $this->logActivity(
                 'delete',

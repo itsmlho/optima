@@ -335,7 +335,7 @@ function renderPermissions(data) {
                                    onchange="updatePermissionCount(); this.closest('.permission-item').classList.toggle('is-granted', this.checked)">
                             <div>
                                 <span class="badge ${actionBadgeClass} permission-action-badge">${perm.action}</span>
-                                <div class="permission-desc" title="${perm.description}">${perm.description.substring(0, 45)}${perm.description.length > 45 ? '…' : ''}</div>
+                                <div class="permission-desc" title="${perm.description || ''}">${(perm.description || '').substring(0, 45)}${(perm.description || '').length > 45 ? '…' : ''}</div>
                             </div>
                         </label>
                     </div>

@@ -297,7 +297,13 @@ class Warehouse extends BaseController
             ]);
         }
 
-        $sparepartModel->delete($id);
+        if (!$sparepartModel->delete($id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menghapus sparepart. Coba lagi atau hubungi administrator.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
 
         return $this->response->setJSON([
             'success'   => true,

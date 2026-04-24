@@ -1867,16 +1867,26 @@ class UnitInventoryController extends BaseController
             ]);
         }
 
-        // Block if unit has open work order
+        // Block if unit has ANY work order (incl. completed — FK is NO ACTION)
         if ($db->tableExists('work_orders')) {
-            $openWO = $db->table('work_orders')
+            $anyWO = $db->table('work_orders')
                 ->where('unit_id', $id)
-                ->whereNotIn('status', ['COMPLETED', 'CANCELLED', 'CLOSED'])
                 ->countAllResults();
-            if ($openWO > 0) {
+            if ($anyWO > 0) {
                 return $this->response->setStatusCode(422)->setJSON([
                     'success' => false,
-                    'message' => 'Unit tidak dapat dihapus karena masih memiliki Work Order yang belum selesai.',
+                    'message' => 'Unit tidak dapat dihapus karena memiliki riwayat Work Order. Gunakan fitur Non-Aktifkan atau ubah status unit menjadi SCRAPPED.',
+                ]);
+            }
+        }
+
+        // Block if unit has silo records (FK is NO ACTION)
+        if ($db->tableExists('silo')) {
+            $siloCount = $db->table('silo')->where('unit_id', $id)->countAllResults();
+            if ($siloCount > 0) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak dapat dihapus karena memiliki data SILO/Perizinan terkait.',
                 ]);
             }
         }
@@ -1892,7 +1902,16 @@ class UnitInventoryController extends BaseController
                 'is_critical'     => true,
             ]);
 
-            $this->inventoryUnitModel->delete($id);
+            $deleted = $this->inventoryUnitModel->delete($id);
+
+            if (!$deleted) {
+                $dbError = $db->error();
+                log_message('error', '[UnitInventoryController::deleteUnit] delete() returned false. DB error: ' . json_encode($dbError));
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak dapat dihapus karena masih memiliki data terkait di sistem.',
+                ]);
+            }
 
             return $this->response->setJSON([
                 'success'   => true,

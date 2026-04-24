@@ -1487,6 +1487,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				initializeMechanicSelection(stage);
 			}, 100);  // Small delay to ensure modal is fully rendered
 		}
+	};
+
 	// Global variable to store the current mechanic selector instance
 	let currentMechanicSelector = null;
 	let currentUnitDepartmentId = null; // Track selected unit's department
