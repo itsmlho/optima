@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Services\GeminiService;
+use App\Services\GroqService;
 use CodeIgniter\Controller;
 
 /**
@@ -12,11 +12,11 @@ use CodeIgniter\Controller;
  */
 class ChatbotController extends Controller
 {
-    private GeminiService $gemini;
+    private GroqService $groq;
 
     public function __construct()
     {
-        $this->gemini = new GeminiService();
+        $this->groq = new GroqService();
         helper(['url', 'form']);
     }
 
@@ -64,10 +64,10 @@ class ChatbotController extends Controller
             }
         }
 
-        $result = $this->gemini->chat($message, $history);
+        $result = $this->groq->chat($message, $history);
 
         if (!$result['success']) {
-            log_message('warning', '[ChatbotController] Gemini failed: ' . $result['error']);
+            log_message('warning', '[ChatbotController] Groq failed: ' . $result['error']);
             return $this->response->setJSON([
                 'success' => false,
                 'message' => $result['error'] ?: 'Maaf, terjadi kesalahan saat menghubungi AI.',

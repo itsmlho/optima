@@ -49,8 +49,8 @@ if (ENVIRONMENT !== 'production') {
     $routes->get('language-debug/set-manual/(:segment)', 'LanguageDebug::setManual/$1');
 }
 
-// ===== CHATBOT AI SUPPORT ===== [DISABLED — belum di-release]
-// $routes->post('chatbot/ask', 'ChatbotController::ask', ['filter' => 'auth']);
+// ===== CHATBOT AI SUPPORT =====
+$routes->post('chatbot/ask', 'ChatbotController::ask', ['filter' => 'auth']);
 
 // Health Check & Monitoring Routes
 $routes->group('health', static function ($routes) {

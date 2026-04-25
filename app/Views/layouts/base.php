@@ -1423,10 +1423,8 @@ $currentLang = service('request')->getLocale();
                     return;
                 }
 
+                // Log to console only — per-module handlers are responsible for user-facing errors
                 console.error('Global error:', event.error);
-                if (typeof OptimaPro !== 'undefined') {
-                    OptimaPro.showNotification('Terjadi kesalahan pada sistem', 'danger');
-                }
             }
         });
         
@@ -2667,11 +2665,9 @@ $currentLang = service('request')->getLocale();
 
     <!-- ============================================================
          OPTIMA ASSISTANT — AI Chat Widget
-         Powered by Google Gemini
-         [DISABLED — belum di-release]
+         Powered by Groq AI
     ============================================================ -->
-    <?php /* CHATBOT DISABLED — uncomment when ready to release
-    if (session()->get('isLoggedIn')): */ if (false): ?>
+    <?php if (session()->get('isLoggedIn')): ?>
     <style>
     /* === OPTIMA Assistant Widget === */
     #optima-chat-fab {
@@ -2720,9 +2716,12 @@ $currentLang = service('request')->getLocale();
     }
     .optima-chat-header .chat-avatar {
         width: 36px; height: 36px; border-radius: 50%;
-        background: rgba(255,255,255,.2);
+        background: rgba(255,255,255,.95);
         display: flex; align-items: center; justify-content: center;
-        font-size: 1rem; flex-shrink: 0;
+        flex-shrink: 0; overflow: hidden; padding: 4px;
+    }
+    .optima-chat-header .chat-avatar img {
+        width: 100%; height: 100%; object-fit: contain;
     }
     .optima-chat-header .chat-title { font-weight: 700; font-size: .95rem; line-height: 1.2; }
     .optima-chat-header .chat-subtitle { font-size: .72rem; opacity: .8; }
@@ -2824,17 +2823,19 @@ $currentLang = service('request')->getLocale();
 
     <!-- FAB Button -->
     <button id="optima-chat-fab" title="OPTIMA Assistant" onclick="optimaChatToggle()">
-        <i class="fas fa-robot"></i>
+        <i class="fas fa-comment-dots"></i>
         <span class="chat-fab-badge" id="optima-chat-unread">0</span>
     </button>
 
     <!-- Chat Panel -->
     <div id="optima-chat-panel" role="dialog" aria-label="OPTIMA Assistant">
         <div class="optima-chat-header">
-            <div class="chat-avatar"><i class="fas fa-robot"></i></div>
+            <div class="chat-avatar">
+                <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA">
+            </div>
             <div>
                 <div class="chat-title">OPTIMA Assistant</div>
-                <div class="chat-subtitle">Powered by Gemini AI &bull; Siap membantu</div>
+                <div class="chat-subtitle">Powered Mas Adit &bull; Siap membantu</div>
             </div>
             <button class="chat-close" onclick="optimaChatToggle()" title="Tutup"><i class="fas fa-times"></i></button>
         </div>
@@ -2842,10 +2843,12 @@ $currentLang = service('request')->getLocale();
         <div class="optima-chat-body" id="optima-chat-messages"></div>
 
         <div class="optima-chat-suggestions" id="optima-chat-suggestions">
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat Work Order baru?')">Buat Work Order</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat kontrak sewa?')">Buat Kontrak</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara input unit baru di inventory?')">Input Unit</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa saja status unit yang tersedia?')">Status Unit</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat Work Order baru di modul Service?')">📋 Cara buat Work Order</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana alur membuat kontrak sewa unit hingga selesai?')">📄 Alur kontrak sewa</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara menambahkan unit baru ke inventory warehouse?')">🚜 Tambah unit ke inventory</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa saja status unit yang ada dan artinya masing-masing?')">🔖 Arti status unit</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat quotation dan mengirimnya ke customer?')">💼 Buat & kirim quotation</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa yang harus dilakukan jika ada keluhan dari customer tentang unit?')">🔧 Keluhan customer</button>
         </div>
 
         <div class="optima-chat-footer">
@@ -2883,7 +2886,7 @@ $currentLang = service('request')->getLocale();
                 // Show welcome message if first open
                 var msgs = getEl('optima-chat-messages');
                 if (msgs.children.length === 0) {
-                    appendBotMessage('Halo! Saya **OPTIMA Assistant** 👋\n\nSaya siap membantu pertanyaan Anda seputar penggunaan sistem OPTIMA. Silakan pilih topik di bawah atau ketik pertanyaan Anda.');
+                    appendBotMessage('Halo! Saya **OPTIMA Assistant** 👋\n\nSaya adalah asisten AI khusus sistem OPTIMA, dirancang untuk membantu Anda dengan:\n\n• **Panduan penggunaan** — cara kerja setiap modul (Warehouse, Marketing, Service, Finance, dll)\n• **Alur kerja** — langkah-langkah proses bisnis seperti kontrak, work order, quotation\n• **Troubleshooting** — membantu jika ada kendala saat menggunakan sistem\n• **Info status & data** — penjelasan status unit, kontrak, dan dokumen\n\nPilih topik di bawah atau ketik pertanyaan Anda sekarang 👇');
                 }
 
                 setTimeout(function() {
