@@ -1105,6 +1105,7 @@ $routes->group('purchasing', static function ($routes) {
     $routes->post('delete-supplier/(:num)', 'Purchasing::deleteSupplier/$1'); // Delete supplier
     $routes->get('export-suppliers', 'Purchasing::exportSuppliers');
     $routes->get('view-po/(:num)', 'Purchasing::viewPO/$1');
+    $routes->post('update-po-info/(:num)', 'Purchasing::updatePOInfo/$1');
     $routes->get('api/po-detail/(:num)', 'Purchasing::getPODetail/$1');
     $routes->post('reverify-po/(:num)', 'Purchasing::reverifyPO/$1');
     $routes->post('cancel-po/(:num)', 'Purchasing::cancelPO/$1');

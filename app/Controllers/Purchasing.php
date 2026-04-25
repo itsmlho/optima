@@ -2540,6 +2540,97 @@ class Purchasing extends BaseController
     }
 
     /**
+     * Update PO header information (no_po, tanggal_po, supplier_id, invoice_no, invoice_date, bl_date, keterangan_po)
+     * POST /purchasing/update-po-info/:id
+     */
+    public function updatePOInfo($poId)
+    {
+        if (!$this->hasPermission('purchasing.po.edit')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak.',
+            ])->setStatusCode(403);
+        }
+
+        $db = \Config\Database::connect();
+
+        $po = $db->table('purchase_orders')->where('id_po', $poId)->get()->getRowArray();
+        if (!$po) {
+            return $this->response->setJSON(['success' => false, 'message' => 'PO tidak ditemukan.'])->setStatusCode(404);
+        }
+
+        // Validation
+        $rules = [
+            'no_po'       => 'required|max_length[100]',
+            'tanggal_po'  => 'required|valid_date',
+            'supplier_id' => 'required|integer',
+        ];
+        if (!$this->validate($rules)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors'  => $this->validator->getErrors(),
+            ]);
+        }
+
+        // Check PO number uniqueness (exclude current)
+        $noPo = trim($this->request->getPost('no_po'));
+        $existing = $db->table('purchase_orders')
+            ->where('no_po', $noPo)
+            ->where('id_po !=', $poId)
+            ->get()->getRowArray();
+        if ($existing) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Nomor PO sudah digunakan oleh PO lain.']);
+        }
+
+        $formatDate = function ($raw) {
+            if (empty($raw)) return null;
+            $ts = strtotime($raw);
+            return $ts ? date('Y-m-d', $ts) : null;
+        };
+
+        $updateData = [
+            'no_po'          => $noPo,
+            'tanggal_po'     => $formatDate($this->request->getPost('tanggal_po')),
+            'supplier_id'    => (int) $this->request->getPost('supplier_id'),
+            'invoice_no'     => $this->request->getPost('invoice_no') ?: null,
+            'invoice_date'   => $formatDate($this->request->getPost('invoice_date')),
+            'bl_date'        => $formatDate($this->request->getPost('bl_date')),
+            'keterangan_po'  => $this->request->getPost('keterangan_po') ?: null,
+            'updated_at'     => date('Y-m-d H:i:s'),
+        ];
+
+        try {
+            $db->table('purchase_orders')->where('id_po', $poId)->update($updateData);
+
+            if (method_exists($this, 'logActivity')) {
+                $this->logActivity('UPDATE', 'purchase_orders', (int) $poId,
+                    'Update PO Information: ' . $noPo,
+                    ['module_name' => 'PURCHASING']
+                );
+            }
+
+            // Return updated supplier name for UI refresh
+            $supplier = $db->table('suppliers')->where('id_supplier', $updateData['supplier_id'])->get()->getRowArray();
+
+            return $this->response->setJSON([
+                'success'        => true,
+                'message'        => 'Purchase Order berhasil diperbarui.',
+                'no_po'          => $updateData['no_po'],
+                'tanggal_po'     => $updateData['tanggal_po'],
+                'invoice_no'     => $updateData['invoice_no'],
+                'invoice_date'   => $updateData['invoice_date'],
+                'bl_date'        => $updateData['bl_date'],
+                'keterangan_po'  => $updateData['keterangan_po'],
+                'nama_supplier'  => $supplier['nama_supplier'] ?? '-',
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[Purchasing::updatePOInfo] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Reverify PO - Reset "Tidak Sesuai" items back to "Belum Dicek"
      */
     public function reverifyPO($poId)

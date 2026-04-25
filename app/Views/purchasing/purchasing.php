@@ -558,10 +558,19 @@ $can_export = $permissions['export'];
                     
                     <!-- PO Information -->
                     <div class="p-4">
-                        <h6 class="fw-bold text-primary mb-3">
-                            <i class="fas fa-info-circle me-2"></i>Purchase Order Information
-                        </h6>
-                        <div class="row g-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-primary mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Purchase Order Information
+                            </h6>
+                            <?php if ($can_edit): ?>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnEditPoInfo" onclick="togglePoInfoEdit(true)">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- View Mode -->
+                        <div id="poInfoView" class="row g-3">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center">
                                     <span class="badge bg-light text-dark me-2" style="min-width: 100px;">PO Number:</span>
@@ -598,7 +607,79 @@ $can_export = $permissions['export'];
                                     <span id="poInvoice">-</span>
                                 </div>
                             </div>
+                            <div class="col-md-6" id="poViewInvoiceDateRow" style="display:none;">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Invoice Date:</span>
+                                    <span id="poInvoiceDate">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="poViewBlDateRow" style="display:none;">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">BL Date:</span>
+                                    <span id="poBlDate">-</span>
+                                </div>
+                            </div>
+                            <div class="col-12" id="poViewNotesRow" style="display:none;">
+                                <div class="d-flex align-items-start">
+                                    <span class="badge bg-light text-dark me-2 mt-1" style="min-width: 100px;">Notes:</span>
+                                    <span id="poNotes" class="text-muted small">-</span>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Edit Mode (hidden by default) -->
+                        <?php if ($can_edit): ?>
+                        <div id="poInfoEditForm" style="display:none;">
+                            <div id="poInfoAlert" class="alert d-none mb-3" role="alert"></div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">PO Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="edit_no_po" maxlength="100" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">PO Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control form-control-sm" id="edit_tanggal_po" required>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" id="edit_supplier_id" required>
+                                        <option value="">-- Pilih Supplier --</option>
+                                        <?php if (isset($suppliers) && is_array($suppliers)): ?>
+                                            <?php foreach ($suppliers as $s): ?>
+                                            <option value="<?= $s['id_supplier'] ?>">
+                                                [<?= esc($s['kode_supplier'] ?? '-') ?>] <?= esc($s['nama_supplier']) ?>
+                                            </option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Invoice No</label>
+                                    <input type="text" class="form-control form-control-sm" id="edit_invoice_no" maxlength="100">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Invoice Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="edit_invoice_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">BL Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="edit_bl_date">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Notes</label>
+                                    <textarea class="form-control form-control-sm" id="edit_keterangan_po" rows="2" placeholder="Catatan tambahan..."></textarea>
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="button" class="btn btn-primary btn-sm" id="btnSavePoInfo" onclick="savePoInfo()">
+                                        <i class="fas fa-save me-1"></i>Simpan
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="togglePoInfoEdit(false)">
+                                        <i class="fas fa-times me-1"></i>Batal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     
                     <!-- Tabs for Items and Deliveries -->
@@ -1865,6 +1946,108 @@ function getDeliveryStatusBadgeClass(status) {
 let currentPOId = null;
 let currentDeliveryId = null;
 
+// ── PO Information Edit ───────────────────────────────────────
+function togglePoInfoEdit(show) {
+    if (show) {
+        // Populate edit form from stored PO data
+        const po = $('#viewPOModal').data('po') || {};
+        $('#edit_no_po').val(po.no_po || '');
+        $('#edit_tanggal_po').val(po.tanggal_po || '');
+        $('#edit_supplier_id').val(po.supplier_id || '');
+        $('#edit_invoice_no').val(po.invoice_no || '');
+        $('#edit_invoice_date').val(po.invoice_date || '');
+        $('#edit_bl_date').val(po.bl_date || '');
+        $('#edit_keterangan_po').val(po.keterangan_po || '');
+        $('#poInfoAlert').addClass('d-none').html('');
+        $('#poInfoView').hide();
+        $('#poInfoEditForm').show();
+        $('#btnEditPoInfo').hide();
+    } else {
+        $('#poInfoEditForm').hide();
+        $('#poInfoView').show();
+        $('#btnEditPoInfo').show();
+    }
+}
+
+function savePoInfo() {
+    const poId = currentPOId;
+    if (!poId) return;
+
+    const no_po = $('#edit_no_po').val().trim();
+    const tanggal_po = $('#edit_tanggal_po').val();
+    const supplier_id = $('#edit_supplier_id').val();
+
+    if (!no_po || !tanggal_po || !supplier_id) {
+        $('#poInfoAlert').removeClass('d-none alert-success').addClass('alert alert-danger')
+            .html('<i class="fas fa-exclamation-triangle me-1"></i>PO Number, PO Date, dan Supplier wajib diisi.');
+        return;
+    }
+
+    const btn = $('#btnSavePoInfo').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
+
+    $.ajax({
+        url  : '<?= base_url('purchasing/update-po-info/') ?>' + poId,
+        type : 'POST',
+        data : {
+            [window.csrfTokenName] : window.csrfTokenValue,
+            no_po          : no_po,
+            tanggal_po     : tanggal_po,
+            supplier_id    : supplier_id,
+            invoice_no     : $('#edit_invoice_no').val(),
+            invoice_date   : $('#edit_invoice_date').val(),
+            bl_date        : $('#edit_bl_date').val(),
+            keterangan_po  : $('#edit_keterangan_po').val(),
+        },
+        dataType: 'json',
+        success: function(res) {
+            if (res.success) {
+                // Update view-mode display
+                $('#poNumber').text(res.no_po || '-');
+                $('#poDate').text(res.tanggal_po || '-');
+                $('#poSupplier').text(res.nama_supplier || '-');
+                $('#poInvoice').text(res.invoice_no || '-');
+                if (res.invoice_date) { $('#poInvoiceDate').text(res.invoice_date); $('#poViewInvoiceDateRow').show(); }
+                else { $('#poViewInvoiceDateRow').hide(); }
+                if (res.bl_date) { $('#poBlDate').text(res.bl_date); $('#poViewBlDateRow').show(); }
+                else { $('#poViewBlDateRow').hide(); }
+                if (res.keterangan_po) { $('#poNotes').text(res.keterangan_po); $('#poViewNotesRow').show(); }
+                else { $('#poViewNotesRow').hide(); }
+
+                // Update stored po data
+                const po = $('#viewPOModal').data('po') || {};
+                $.extend(po, {
+                    no_po: res.no_po, tanggal_po: res.tanggal_po, nama_supplier: res.nama_supplier,
+                    supplier_id: supplier_id, invoice_no: res.invoice_no, invoice_date: res.invoice_date,
+                    bl_date: res.bl_date, keterangan_po: res.keterangan_po,
+                });
+                $('#viewPOModal').data('po', po);
+
+                togglePoInfoEdit(false);
+
+                if (window.OptimaNotify) OptimaNotify.success(res.message || 'Purchase Order berhasil diperbarui.');
+
+                // Refresh DataTable if visible
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#poTable')) {
+                    try { $('#poTable').DataTable().ajax.reload(null, false); } catch(e) {}
+                }
+            } else {
+                const errHtml = res.errors
+                    ? '<ul class="mb-0 mt-1">' + Object.values(res.errors).map(e => '<li>' + e + '</li>').join('') + '</ul>'
+                    : '';
+                $('#poInfoAlert').removeClass('d-none alert-success').addClass('alert alert-danger')
+                    .html('<i class="fas fa-exclamation-triangle me-1"></i>' + (res.message || 'Gagal menyimpan.') + errHtml);
+            }
+        },
+        error: function() {
+            $('#poInfoAlert').removeClass('d-none alert-success').addClass('alert alert-danger')
+                .html('<i class="fas fa-exclamation-triangle me-1"></i>Terjadi kesalahan. Silakan coba lagi.');
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan');
+        },
+    });
+}
+
 function viewPODetail(poId, event) {
     if (event) event.preventDefault();
     if (typeof $ === 'undefined') return;
@@ -1897,6 +2080,8 @@ function viewPODetail(poId, event) {
 
                 $('#viewPOModal').off('hidden.bs.modal.printpo').on('hidden.bs.modal.printpo', function() {
                     $('#printPOBtn').hide();
+                    // Reset edit mode when modal closes
+                    togglePoInfoEdit(false);
                 });
             } else {
                 $('#poLoadingState').html(`
@@ -2215,6 +2400,23 @@ function renderPODetailNew(data) {
     $('#poContact').text(po.contact_person || po.pic_supplier || '-');
     $('#poStatus').html(getStatusBadge(po.status || 'pending'));
     $('#poInvoice').text(po.invoice_no || '-');
+
+    // Extra view-mode fields
+    if (po.invoice_date) {
+        $('#poInvoiceDate').text(po.invoice_date);
+        $('#poViewInvoiceDateRow').show();
+    } else { $('#poViewInvoiceDateRow').hide(); }
+    if (po.bl_date) {
+        $('#poBlDate').text(po.bl_date);
+        $('#poViewBlDateRow').show();
+    } else { $('#poViewBlDateRow').hide(); }
+    if (po.keterangan_po) {
+        $('#poNotes').text(po.keterangan_po);
+        $('#poViewNotesRow').show();
+    } else { $('#poViewNotesRow').hide(); }
+
+    // Store full PO data for edit form
+    $('#viewPOModal').data('po', po);
 
     $('#totalItemsOrdered').html(breakdownHtml || `<span class="text-muted">${totalItemsOrdered} items</span>`);
     $('#deliveryProgress').text(`${completedDeliveries}/${totalDeliveries}`);
