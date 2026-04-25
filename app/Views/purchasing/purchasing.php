@@ -382,6 +382,21 @@ $can_export = $permissions['export'];
                             <input type="text" class="form-control" name="packing_list_no" required placeholder="Enter packing list number from supplier">
                         </div>
                     </div>
+
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <label class="form-label">Invoice No</label>
+                            <input type="text" class="form-control" name="invoice_no" placeholder="No. Invoice dari supplier">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Invoice Date</label>
+                            <input type="date" class="form-control" name="invoice_date">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">BL Date</label>
+                            <input type="date" class="form-control" name="bl_date">
+                        </div>
+                    </div>
                     
                     <div class="row mb-3">
                         <div class="col-6">
@@ -601,24 +616,6 @@ $can_export = $permissions['export'];
                                     <span id="poStatus">-</span>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Invoice No:</span>
-                                    <span id="poInvoice">-</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6" id="poViewInvoiceDateRow" style="display:none;">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Invoice Date:</span>
-                                    <span id="poInvoiceDate">-</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6" id="poViewBlDateRow" style="display:none;">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">BL Date:</span>
-                                    <span id="poBlDate">-</span>
-                                </div>
-                            </div>
                             <div class="col-12" id="poViewNotesRow" style="display:none;">
                                 <div class="d-flex align-items-start">
                                     <span class="badge bg-light text-dark me-2 mt-1" style="min-width: 100px;">Notes:</span>
@@ -652,18 +649,6 @@ $can_export = $permissions['export'];
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">Invoice No</label>
-                                    <input type="text" class="form-control form-control-sm" id="edit_invoice_no" maxlength="100">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">Invoice Date</label>
-                                    <input type="date" class="form-control form-control-sm" id="edit_invoice_date">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">BL Date</label>
-                                    <input type="date" class="form-control form-control-sm" id="edit_bl_date">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-semibold">Notes</label>
@@ -780,18 +765,6 @@ $can_export = $permissions['export'];
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="invoice_no" class="form-label">Invoice Number</label>
-                                    <input type="text" class="form-control" name="invoice_no" id="invoice_no" placeholder="Optional">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="invoice_date" class="form-label">Invoice Date</label>
-                                    <input type="date" class="form-control" name="invoice_date" id="invoice_date">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="bl_date" class="form-label">BL Date</label>
-                                    <input type="date" class="form-control" name="bl_date" id="bl_date">
                                 </div>
                                 <div class="col-12">
                                     <label for="keterangan_po" class="form-label">Notes</label>
@@ -1954,9 +1927,6 @@ function togglePoInfoEdit(show) {
         $('#edit_no_po').val(po.no_po || '');
         $('#edit_tanggal_po').val(po.tanggal_po || '');
         $('#edit_supplier_id').val(po.supplier_id || '');
-        $('#edit_invoice_no').val(po.invoice_no || '');
-        $('#edit_invoice_date').val(po.invoice_date || '');
-        $('#edit_bl_date').val(po.bl_date || '');
         $('#edit_keterangan_po').val(po.keterangan_po || '');
         $('#poInfoAlert').addClass('d-none').html('');
         $('#poInfoView').hide();
@@ -1993,9 +1963,6 @@ function savePoInfo() {
             no_po          : no_po,
             tanggal_po     : tanggal_po,
             supplier_id    : supplier_id,
-            invoice_no     : $('#edit_invoice_no').val(),
-            invoice_date   : $('#edit_invoice_date').val(),
-            bl_date        : $('#edit_bl_date').val(),
             keterangan_po  : $('#edit_keterangan_po').val(),
         },
         dataType: 'json',
@@ -2005,11 +1972,6 @@ function savePoInfo() {
                 $('#poNumber').text(res.no_po || '-');
                 $('#poDate').text(res.tanggal_po || '-');
                 $('#poSupplier').text(res.nama_supplier || '-');
-                $('#poInvoice').text(res.invoice_no || '-');
-                if (res.invoice_date) { $('#poInvoiceDate').text(res.invoice_date); $('#poViewInvoiceDateRow').show(); }
-                else { $('#poViewInvoiceDateRow').hide(); }
-                if (res.bl_date) { $('#poBlDate').text(res.bl_date); $('#poViewBlDateRow').show(); }
-                else { $('#poViewBlDateRow').hide(); }
                 if (res.keterangan_po) { $('#poNotes').text(res.keterangan_po); $('#poViewNotesRow').show(); }
                 else { $('#poViewNotesRow').hide(); }
 
@@ -2017,8 +1979,7 @@ function savePoInfo() {
                 const po = $('#viewPOModal').data('po') || {};
                 $.extend(po, {
                     no_po: res.no_po, tanggal_po: res.tanggal_po, nama_supplier: res.nama_supplier,
-                    supplier_id: supplier_id, invoice_no: res.invoice_no, invoice_date: res.invoice_date,
-                    bl_date: res.bl_date, keterangan_po: res.keterangan_po,
+                    supplier_id: supplier_id, keterangan_po: res.keterangan_po,
                 });
                 $('#viewPOModal').data('po', po);
 
@@ -2399,17 +2360,8 @@ function renderPODetailNew(data) {
     $('#poSupplier').text(po.nama_supplier || '-');
     $('#poContact').text(po.contact_person || po.pic_supplier || '-');
     $('#poStatus').html(getStatusBadge(po.status || 'pending'));
-    $('#poInvoice').text(po.invoice_no || '-');
 
     // Extra view-mode fields
-    if (po.invoice_date) {
-        $('#poInvoiceDate').text(po.invoice_date);
-        $('#poViewInvoiceDateRow').show();
-    } else { $('#poViewInvoiceDateRow').hide(); }
-    if (po.bl_date) {
-        $('#poBlDate').text(po.bl_date);
-        $('#poViewBlDateRow').show();
-    } else { $('#poViewBlDateRow').hide(); }
     if (po.keterangan_po) {
         $('#poNotes').text(po.keterangan_po);
         $('#poViewNotesRow').show();
@@ -2612,6 +2564,14 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                         ` : ''}
                         
                         ${delivery.notes ? `<p class="mb-2"><strong>Notes:</strong> ${delivery.notes}</p>` : ''}
+
+                        ${(delivery.invoice_no || delivery.invoice_date || delivery.bl_date) ? `
+                            <div class="row mb-2 small">
+                                ${delivery.invoice_no ? `<div class="col-auto"><strong>Invoice No:</strong> ${delivery.invoice_no}</div>` : ''}
+                                ${delivery.invoice_date ? `<div class="col-auto"><strong>Invoice Date:</strong> ${delivery.invoice_date}</div>` : ''}
+                                ${delivery.bl_date ? `<div class="col-auto"><strong>BL Date:</strong> ${delivery.bl_date}</div>` : ''}
+                            </div>
+                        ` : ''}
                         
                         ${itemsInDelivery.length > 0 ? `
                             <h6 class="mb-2">Items in Delivery:</h6>
@@ -4787,6 +4747,9 @@ function initializeChargerDropdowns() {
                 po_id: currentPOId,
                 delivery_date: $('input[name="delivery_date"]').val(),
                 packing_list_no: $('input[name="packing_list_no"]').val(),
+                invoice_no: $('input[name="invoice_no"]', '#createDeliveryModal').val(),
+                invoice_date: $('input[name="invoice_date"]', '#createDeliveryModal').val(),
+                bl_date: $('input[name="bl_date"]', '#createDeliveryModal').val(),
                 driver_name: $('input[name="driver_name"]').val(),
                 driver_phone: $('input[name="driver_phone"]').val(),
                 vehicle_info: $('input[name="vehicle_info"]').val(),

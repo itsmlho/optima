@@ -1233,29 +1233,18 @@ class Purchasing extends BaseController
             
             // Format dates properly
             $tanggalPo = $this->request->getPost('tanggal_po');
-            $invoiceDate = $this->request->getPost('invoice_date');
-            $blDate = $this->request->getPost('bl_date');
-            
+
             // Convert date format if needed
             if (!empty($tanggalPo)) {
                 $tanggalPo = date('Y-m-d', strtotime($tanggalPo));
             }
-            if (!empty($invoiceDate)) {
-                $invoiceDate = date('Y-m-d', strtotime($invoiceDate));
-            }
-            if (!empty($blDate)) {
-                $blDate = date('Y-m-d', strtotime($blDate));
-            }
-            
+
             $poData = [
                 'no_po' => $this->request->getPost('no_po'),
                 'tanggal_po' => $tanggalPo,
                 'supplier_id' => $this->request->getPost('id_supplier'),
                 'tipe_po' => $tipePo, // Auto-detected based on items
                 'status' => 'pending', // Fixed: lowercase as required by validation
-                'invoice_no' => $this->request->getPost('invoice_no') ?: null,
-                'invoice_date' => $invoiceDate ?: null,
-                'bl_date' => $blDate ?: null,
                 'keterangan_po' => $this->request->getPost('keterangan_po') ?: null
             ];
             
@@ -2593,9 +2582,6 @@ class Purchasing extends BaseController
             'no_po'          => $noPo,
             'tanggal_po'     => $formatDate($this->request->getPost('tanggal_po')),
             'supplier_id'    => (int) $this->request->getPost('supplier_id'),
-            'invoice_no'     => $this->request->getPost('invoice_no') ?: null,
-            'invoice_date'   => $formatDate($this->request->getPost('invoice_date')),
-            'bl_date'        => $formatDate($this->request->getPost('bl_date')),
             'keterangan_po'  => $this->request->getPost('keterangan_po') ?: null,
             'updated_at'     => date('Y-m-d H:i:s'),
         ];
@@ -2618,9 +2604,6 @@ class Purchasing extends BaseController
                 'message'        => 'Purchase Order berhasil diperbarui.',
                 'no_po'          => $updateData['no_po'],
                 'tanggal_po'     => $updateData['tanggal_po'],
-                'invoice_no'     => $updateData['invoice_no'],
-                'invoice_date'   => $updateData['invoice_date'],
-                'bl_date'        => $updateData['bl_date'],
                 'keterangan_po'  => $updateData['keterangan_po'],
                 'nama_supplier'  => $supplier['nama_supplier'] ?? '-',
             ]);
@@ -4254,6 +4237,9 @@ class Purchasing extends BaseController
             $vehicleInfo = $this->request->getPost('vehicle_info');
             $vehiclePlate = $this->request->getPost('vehicle_plate');
             $notes = $this->request->getPost('notes');
+            $invoiceNo = $this->request->getPost('invoice_no') ?: null;
+            $invoiceDate = $this->request->getPost('invoice_date') ?: null;
+            $blDate = $this->request->getPost('bl_date') ?: null;
             $items = $this->request->getPost('items'); // Array of selected items for delivery
             
             // Validate required fields
@@ -4339,6 +4325,9 @@ class Purchasing extends BaseController
                 'vehicle_info' => $vehicleInfo,
                 'vehicle_plate' => $vehiclePlate,
                 'notes' => $notes,
+                'invoice_no' => $invoiceNo,
+                'invoice_date' => $invoiceDate,
+                'bl_date' => $blDate,
                 'serial_numbers' => json_encode($items),
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')

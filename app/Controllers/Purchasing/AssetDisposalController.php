@@ -1009,6 +1009,11 @@ class AssetDisposalController extends BaseController
             return;
         }
 
+        // Guard: skip if table hasn't been created in this environment
+        if (!$this->db->tableExists('attachment_transfer_log')) {
+            return;
+        }
+
         try {
             $this->db->table('attachment_transfer_log')->insert([
                 'attachment_id'  => $assetId,
