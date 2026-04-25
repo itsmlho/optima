@@ -2665,5 +2665,421 @@ $currentLang = service('request')->getLocale();
     });
     </script>
 
+    <!-- ============================================================
+         OPTIMA ASSISTANT — AI Chat Widget
+         Powered by Google Gemini
+         [DISABLED — belum di-release]
+    ============================================================ -->
+    <?php /* CHATBOT DISABLED — uncomment when ready to release
+    if (session()->get('isLoggedIn')): */ if (false): ?>
+    <style>
+    /* === OPTIMA Assistant Widget === */
+    #optima-chat-fab {
+        position: fixed; bottom: 28px; right: 28px; z-index: 9990;
+        width: 52px; height: 52px; border-radius: 50%;
+        background: linear-gradient(135deg, #0061f2, #6610f2);
+        border: none; box-shadow: 0 4px 20px rgba(0,97,242,.4);
+        color: #fff; font-size: 1.25rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform .2s, box-shadow .2s;
+    }
+    #optima-chat-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(0,97,242,.55); }
+    #optima-chat-fab .chat-fab-badge {
+        position: absolute; top: -3px; right: -3px;
+        background: #dc3545; color: #fff;
+        border-radius: 50%; width: 18px; height: 18px;
+        font-size: .65rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        display: none;
+    }
+
+    #optima-chat-panel {
+        position: fixed; bottom: 92px; right: 28px; z-index: 9989;
+        width: 370px; max-height: 560px;
+        background: #fff; border-radius: 16px;
+        box-shadow: 0 12px 48px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.07);
+        display: flex; flex-direction: column;
+        overflow: hidden;
+        transform: scale(.85) translateY(24px); opacity: 0; pointer-events: none;
+        transition: transform .22s cubic-bezier(.22,1,.36,1), opacity .18s ease;
+    }
+    #optima-chat-panel.open {
+        transform: scale(1) translateY(0); opacity: 1; pointer-events: all;
+    }
+    @media (max-width: 480px) {
+        #optima-chat-panel {
+            width: calc(100vw - 24px); right: 12px; bottom: 82px;
+        }
+        #optima-chat-fab { bottom: 18px; right: 18px; }
+    }
+
+    .optima-chat-header {
+        background: linear-gradient(135deg, #0061f2, #6610f2);
+        color: #fff; padding: 14px 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .optima-chat-header .chat-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(255,255,255,.2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+    .optima-chat-header .chat-title { font-weight: 700; font-size: .95rem; line-height: 1.2; }
+    .optima-chat-header .chat-subtitle { font-size: .72rem; opacity: .8; }
+    .optima-chat-header .chat-close {
+        margin-left: auto; background: none; border: none; color: #fff;
+        font-size: 1.1rem; cursor: pointer; opacity: .8; padding: 0 4px;
+        line-height: 1;
+    }
+    .optima-chat-header .chat-close:hover { opacity: 1; }
+
+    .optima-chat-body {
+        flex: 1; overflow-y: auto; padding: 14px 14px 8px;
+        display: flex; flex-direction: column; gap: 10px;
+        min-height: 200px; max-height: 380px;
+        background: #f8f9fc;
+    }
+    .optima-chat-body::-webkit-scrollbar { width: 4px; }
+    .optima-chat-body::-webkit-scrollbar-track { background: transparent; }
+    .optima-chat-body::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+
+    .chat-bubble {
+        max-width: 82%; padding: 9px 13px; border-radius: 14px;
+        font-size: .855rem; line-height: 1.5; word-break: break-word;
+        white-space: pre-wrap;
+    }
+    .chat-bubble.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #0061f2, #6610f2);
+        color: #fff; border-bottom-right-radius: 4px;
+    }
+    .chat-bubble.bot {
+        align-self: flex-start;
+        background: #fff; color: #212529;
+        border: 1px solid #e9ecef; border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .chat-bubble.bot.error { border-color: #f5c2c7; background: #fff5f5; color: #842029; }
+
+    .chat-typing {
+        align-self: flex-start;
+        background: #fff; border: 1px solid #e9ecef;
+        border-radius: 14px; border-bottom-left-radius: 4px;
+        padding: 10px 14px; display: flex; gap: 5px; align-items: center;
+    }
+    .chat-typing span {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #adb5bd; display: inline-block;
+        animation: chatDot 1.2s infinite ease-in-out;
+    }
+    .chat-typing span:nth-child(2) { animation-delay: .2s; }
+    .chat-typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes chatDot {
+        0%, 80%, 100% { transform: scale(.7); opacity: .5; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+
+    .optima-chat-suggestions {
+        padding: 0 14px 8px;
+        display: flex; flex-wrap: wrap; gap: 6px;
+        background: #f8f9fc;
+    }
+    .chat-suggestion-btn {
+        background: #fff; border: 1px solid #dee2e6;
+        border-radius: 20px; padding: 4px 11px;
+        font-size: .77rem; cursor: pointer; color: #495057;
+        transition: all .15s; white-space: nowrap;
+    }
+    .chat-suggestion-btn:hover { background: #0061f2; color: #fff; border-color: #0061f2; }
+
+    .optima-chat-footer {
+        padding: 10px 12px; border-top: 1px solid #e9ecef;
+        display: flex; gap: 8px; align-items: flex-end; background: #fff;
+    }
+    #optima-chat-input {
+        flex: 1; border: 1px solid #dee2e6; border-radius: 10px;
+        padding: 8px 12px; font-size: .855rem; resize: none;
+        outline: none; max-height: 100px; min-height: 38px;
+        line-height: 1.4; font-family: inherit;
+        transition: border-color .15s;
+    }
+    #optima-chat-input:focus { border-color: #0061f2; }
+    #optima-chat-send {
+        width: 36px; height: 36px; flex-shrink: 0;
+        background: linear-gradient(135deg, #0061f2, #6610f2);
+        border: none; border-radius: 50%; color: #fff;
+        cursor: pointer; font-size: .9rem; display: flex;
+        align-items: center; justify-content: center;
+        transition: opacity .15s, transform .15s;
+    }
+    #optima-chat-send:hover { opacity: .85; transform: scale(1.05); }
+    #optima-chat-send:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    .optima-chat-clear {
+        font-size: .7rem; color: #9ba1b0; text-align: center;
+        padding: 4px 0; cursor: pointer; background: none; border: none; width: 100%;
+    }
+    .optima-chat-clear:hover { color: #6c757d; }
+    </style>
+
+    <!-- FAB Button -->
+    <button id="optima-chat-fab" title="OPTIMA Assistant" onclick="optimaChatToggle()">
+        <i class="fas fa-robot"></i>
+        <span class="chat-fab-badge" id="optima-chat-unread">0</span>
+    </button>
+
+    <!-- Chat Panel -->
+    <div id="optima-chat-panel" role="dialog" aria-label="OPTIMA Assistant">
+        <div class="optima-chat-header">
+            <div class="chat-avatar"><i class="fas fa-robot"></i></div>
+            <div>
+                <div class="chat-title">OPTIMA Assistant</div>
+                <div class="chat-subtitle">Powered by Gemini AI &bull; Siap membantu</div>
+            </div>
+            <button class="chat-close" onclick="optimaChatToggle()" title="Tutup"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="optima-chat-body" id="optima-chat-messages"></div>
+
+        <div class="optima-chat-suggestions" id="optima-chat-suggestions">
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat Work Order baru?')">Buat Work Order</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat kontrak sewa?')">Buat Kontrak</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara input unit baru di inventory?')">Input Unit</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa saja status unit yang tersedia?')">Status Unit</button>
+        </div>
+
+        <div class="optima-chat-footer">
+            <textarea id="optima-chat-input" placeholder="Tanya sesuatu tentang OPTIMA..." rows="1"></textarea>
+            <button id="optima-chat-send" onclick="optimaChatSend()" title="Kirim"><i class="fas fa-paper-plane"></i></button>
+        </div>
+        <button class="optima-chat-clear" onclick="optimaChatClear()">Hapus percakapan</button>
+    </div>
+
+    <script>
+    // ─── OPTIMA Assistant Chat Widget ───────────────────────────────────────
+    (function() {
+        'use strict';
+
+        var isOpen    = false;
+        var isBusy    = false;
+        var history   = [];   // [{role:'user'|'model', text:'...'}]
+        var unread    = 0;
+
+        var CHAT_URL  = <?= json_encode(base_url('chatbot/ask')) ?>;
+
+        function getEl(id) { return document.getElementById(id); }
+
+        // ── Toggle open/close ────────────────────────────────────────────
+        function toggle() {
+            isOpen = !isOpen;
+            var panel = getEl('optima-chat-panel');
+            panel.classList.toggle('open', isOpen);
+
+            if (isOpen) {
+                // Reset unread badge
+                unread = 0;
+                updateBadge();
+
+                // Show welcome message if first open
+                var msgs = getEl('optima-chat-messages');
+                if (msgs.children.length === 0) {
+                    appendBotMessage('Halo! Saya **OPTIMA Assistant** 👋\n\nSaya siap membantu pertanyaan Anda seputar penggunaan sistem OPTIMA. Silakan pilih topik di bawah atau ketik pertanyaan Anda.');
+                }
+
+                setTimeout(function() {
+                    getEl('optima-chat-input').focus();
+                    scrollToBottom();
+                }, 120);
+
+                // Hide suggestion if there are messages already
+                updateSuggestions();
+            }
+        }
+
+        // ── Send message ─────────────────────────────────────────────────
+        function send(text) {
+            var input = getEl('optima-chat-input');
+            var msg   = (text !== undefined) ? text : input.value.trim();
+
+            if (!msg || isBusy) return;
+
+            // Hide suggestions after first message
+            getEl('optima-chat-suggestions').style.display = 'none';
+
+            // Show user bubble
+            appendUserMessage(msg);
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Add to history
+            history.push({ role: 'user', text: msg });
+
+            // Show typing indicator
+            var typingId = showTyping();
+            isBusy = true;
+            getEl('optima-chat-send').disabled = true;
+
+            // AJAX request
+            $.ajax({
+                url: CHAT_URL,
+                type: 'POST',
+                data: {
+                    [window.csrfTokenName]: window.csrfTokenValue,
+                    message: msg,
+                    history: JSON.stringify(history.slice(-10))
+                },
+                dataType: 'json',
+                success: function(res) {
+                    removeTyping(typingId);
+                    if (res.csrf_hash) window.csrfTokenValue = res.csrf_hash;
+
+                    if (res.success && res.reply) {
+                        appendBotMessage(res.reply);
+                        history.push({ role: 'model', text: res.reply });
+                    } else {
+                        appendBotError(res.message || 'Maaf, terjadi kesalahan. Silakan coba lagi.');
+                    }
+                },
+                error: function(xhr) {
+                    removeTyping(typingId);
+                    var errMsg = (xhr.status === 401)
+                        ? 'Sesi berakhir. Silakan login kembali.'
+                        : 'Gagal terhubung ke server.';
+                    appendBotError(errMsg);
+                },
+                complete: function() {
+                    isBusy = false;
+                    getEl('optima-chat-send').disabled = false;
+
+                    // Unread badge if panel closed
+                    if (!isOpen) {
+                        unread++;
+                        updateBadge();
+                    }
+                }
+            });
+        }
+
+        // ── DOM helpers ──────────────────────────────────────────────────
+        function appendUserMessage(text) {
+            var div = document.createElement('div');
+            div.className = 'chat-bubble user';
+            div.textContent = text;
+            getEl('optima-chat-messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function appendBotMessage(text) {
+            var div = document.createElement('div');
+            div.className = 'chat-bubble bot';
+            // Simple markdown: **bold**, *italic*, newline
+            div.innerHTML = markdownToHtml(text);
+            getEl('optima-chat-messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function appendBotError(text) {
+            var div = document.createElement('div');
+            div.className = 'chat-bubble bot error';
+            div.textContent = text;
+            getEl('optima-chat-messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function showTyping() {
+            var id = 'chat-typing-' + Date.now();
+            var div = document.createElement('div');
+            div.className = 'chat-typing';
+            div.id = id;
+            div.innerHTML = '<span></span><span></span><span></span>';
+            getEl('optima-chat-messages').appendChild(div);
+            scrollToBottom();
+            return id;
+        }
+
+        function removeTyping(id) {
+            var el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            var body = getEl('optima-chat-messages');
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function updateBadge() {
+            var badge = getEl('optima-chat-unread');
+            badge.style.display = unread > 0 ? 'flex' : 'none';
+            badge.textContent   = unread > 9 ? '9+' : unread;
+        }
+
+        function updateSuggestions() {
+            var msgs = getEl('optima-chat-messages');
+            // Hide suggestions if there are more than 1 message (welcome + user messages)
+            if (msgs.children.length > 1) {
+                getEl('optima-chat-suggestions').style.display = 'none';
+            }
+        }
+
+        // ── Clear conversation ───────────────────────────────────────────
+        function clear() {
+            history = [];
+            getEl('optima-chat-messages').innerHTML = '';
+            getEl('optima-chat-suggestions').style.display = 'flex';
+            appendBotMessage('Percakapan telah dihapus. Ada yang bisa saya bantu?');
+        }
+
+        // ── Minimal markdown renderer ────────────────────────────────────
+        function markdownToHtml(text) {
+            // Escape HTML first
+            var escaped = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            return escaped
+                // Bold **text**
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                // Italic *text*
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                // Inline code `code`
+                .replace(/`([^`]+)`/g, '<code style="background:#f1f3f5;padding:1px 5px;border-radius:4px;font-size:.85em">$1</code>')
+                // Bullet list lines starting with - or •
+                .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+                // Numbered list
+                .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+                // Wrap consecutive <li> in <ul>
+                .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin:.4em 0 .4em 1em;padding:0">$1</ul>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
+        }
+
+        // ── Auto-resize textarea ─────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            var input = getEl('optima-chat-input');
+            if (!input) return;
+
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
+
+            input.addEventListener('keydown', function(e) {
+                // Enter sends, Shift+Enter = newline
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                }
+            });
+        });
+
+        // ── Expose to window ─────────────────────────────────────────────
+        window.optimaChatToggle = toggle;
+        window.optimaChatSend   = send;
+        window.optimaChatClear  = clear;
+    })();
+    </script>
+    <?php endif; ?>
+
 </body>
 </html>

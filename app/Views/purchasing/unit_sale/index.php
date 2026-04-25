@@ -474,7 +474,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                     return { results: res.results };
                 },
                 error: function () {
-                    notify('Gagal memuat data unit.', 'error');
+                    if (window.OptimaNotify) OptimaNotify.error('Gagal memuat data unit.');
                 },
                 cache: false,
             },
