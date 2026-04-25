@@ -1855,44 +1855,56 @@ class UnitInventoryController extends BaseController
 
         $db = Database::connect();
 
-        // Block if unit has any active contract
-        $activeContract = $db->table('kontrak_unit')
+        // Block if unit has ANY contract (any status) — kontrak_unit FK = CASCADE,
+        // tapi history kontrak adalah data bisnis penting dan tidak boleh hilang diam-diam.
+        $contracts = $db->table('kontrak_unit')
+            ->select('status')
             ->where('unit_id', $id)
-            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
-            ->countAllResults();
-        if ($activeContract > 0) {
+            ->get()->getResultArray();
+
+        if (!empty($contracts)) {
+            $statusCounts = array_count_values(array_column($contracts, 'status'));
+            $statusParts  = [];
+            foreach ($statusCounts as $s => $c) {
+                $statusParts[] = "{$c} {$s}";
+            }
+            $total         = count($contracts);
+            $statusSummary = implode(', ', $statusParts);
             return $this->response->setStatusCode(422)->setJSON([
                 'success' => false,
-                'message' => 'Unit tidak dapat dihapus karena masih terikat kontrak aktif.',
+                'message' => "Unit ini masih terhubung dengan {$total} kontrak ({$statusSummary}). "
+                           . 'Harap lepaskan unit dari semua kontrak terlebih dahulu sebelum menghapus.',
             ]);
         }
 
-        // Block if unit has ANY work order (incl. completed — FK is NO ACTION)
-        if ($db->tableExists('work_orders')) {
-            $anyWO = $db->table('work_orders')
-                ->where('unit_id', $id)
-                ->countAllResults();
-            if ($anyWO > 0) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Unit tidak dapat dihapus karena memiliki riwayat Work Order. Gunakan fitur Non-Aktifkan atau ubah status unit menjadi SCRAPPED.',
-                ]);
-            }
-        }
+        // SILO check: FK = NO ACTION — tanyakan konfirmasi sebelum menghapus.
+        $siloCount         = ($db->tableExists('silo')) ? $db->table('silo')->where('unit_id', $id)->countAllResults() : 0;
+        $confirmDeleteSilo = (bool)($this->request->getPost('confirm_delete_silo'));
 
-        // Block if unit has silo records (FK is NO ACTION)
-        if ($db->tableExists('silo')) {
-            $siloCount = $db->table('silo')->where('unit_id', $id)->countAllResults();
-            if ($siloCount > 0) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Unit tidak dapat dihapus karena memiliki data SILO/Perizinan terkait.',
-                ]);
-            }
+        if ($siloCount > 0 && !$confirmDeleteSilo) {
+            return $this->response->setJSON([
+                'success'                 => false,
+                'needs_silo_confirmation' => true,
+                'silo_count'              => $siloCount,
+                'message'                 => "Unit ini memiliki {$siloCount} data SILO/Perizinan. "
+                                          . 'Data SILO akan ikut terhapus bersama unit. Apakah Anda yakin ingin melanjutkan?',
+                'csrf_hash'               => csrf_hash(),
+            ]);
         }
 
         try {
             $unitNumber = $unit['no_unit'] ?? $unit['no_unit_na'] ?? "ID #{$id}";
+
+            // NULL-kan unit_id di work_orders agar history WO tetap ada (FK = NO ACTION)
+            if ($db->tableExists('work_orders')) {
+                $db->table('work_orders')->where('unit_id', $id)->update(['unit_id' => null]);
+            }
+
+            // Hapus data SILO jika user telah mengkonfirmasi
+            if ($siloCount > 0 && $confirmDeleteSilo) {
+                $db->table('silo')->where('unit_id', $id)->delete();
+                log_message('info', "[UnitInventoryController::deleteUnit] {$siloCount} SILO record(s) dihapus untuk unit ID {$id} ({$unitNumber}).");
+            }
 
             // Log before delete (activity log)
             $this->logDelete('inventory_unit', $id, $unit, [

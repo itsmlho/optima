@@ -2112,20 +2112,34 @@ if ($aksesorisRaw) {
     window.submitNoUnitChange = submitNoUnitChange;
 
     // ── DELETE UNIT (Hard Delete) ─────────────────────────
-    function deleteUnit() {
+    function deleteUnit(confirmSilo) {
         const unitLabel = <?= json_encode($unit['no_unit'] ?? $unit['no_unit_na'] ?? ('Unit #' . ($unit['id_inventory_unit'] ?? ''))) ?>;
-        if (!confirm('Hapus unit ' + unitLabel + ' secara permanen?\n\nTindakan ini tidak dapat dibatalkan!')) return;
+
+        if (!confirmSilo) {
+            if (!confirm('Hapus unit ' + unitLabel + ' secara permanen?\n\nTindakan ini tidak dapat dibatalkan!')) return;
+        }
+
+        const postData = { [window.csrfTokenName]: window.csrfTokenValue };
+        if (confirmSilo) postData.confirm_delete_silo = 1;
 
         $.ajax({
             url: <?= json_encode(base_url('warehouse/inventory/unit/' . ($unit['id_inventory_unit'] ?? 0) . '/delete')) ?>,
             type: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            data: { [window.csrfTokenName]: window.csrfTokenValue },
+            data: postData,
             dataType: 'json',
             success: function(res) {
+                // Refresh CSRF token if returned
+                if (res.csrf_hash) window.csrfTokenValue = res.csrf_hash;
+
                 if (res.success) {
                     if (window.OptimaNotify) OptimaNotify.success(res.message || 'Unit berhasil dihapus.');
                     setTimeout(function() { window.location.href = <?= json_encode(base_url('warehouse/inventory/unit')) ?>; }, 1500);
+                } else if (res.needs_silo_confirmation) {
+                    // Konfirmasi khusus untuk penghapusan data SILO
+                    if (confirm('⚠️ PERINGATAN: ' + res.message + '\n\nKlik OK untuk melanjutkan penghapusan beserta data SILO, atau Cancel untuk membatalkan.')) {
+                        deleteUnit(true);
+                    }
                 } else {
                     if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal menghapus unit.');
                 }
