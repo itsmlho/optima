@@ -871,6 +871,10 @@ class AssetDisposalController extends BaseController
             'BATTERY'    => ['table' => 'inventory_batteries',   'pk' => 'id'],
         ];
 
+        // Abbreviation map for doc number suffix
+        $typeAbbr    = ['ATTACHMENT' => 'ATT', 'CHARGER' => 'CHR', 'BATTERY' => 'BAT'];
+        $typeCounters = [];
+
         foreach ($bundled as $comp) {
             $compType    = strtoupper($comp['type'] ?? '');
             $compId      = (int) ($comp['id'] ?? 0);
@@ -886,8 +890,12 @@ class AssetDisposalController extends BaseController
                 continue;
             }
 
-            // Generate doc number for each bundled component
-            $compDocNum = $this->saleModel->generateSaleNumber();
+            // Doc number: same prefix as parent + type suffix, e.g. SALE-2026-00003/ATT
+            // If multiple of same type: SALE-2026-00003/ATT-2, /ATT-3, etc.
+            $typeCounters[$compType] = ($typeCounters[$compType] ?? 0) + 1;
+            $abbr       = $typeAbbr[$compType] ?? 'COMP';
+            $counter    = $typeCounters[$compType];
+            $compDocNum = $parentData['no_dokumen'] . '/' . $abbr . ($counter > 1 ? '-' . $counter : '');
 
             $compInsertResult = $this->compModel->insert([
                 'no_dokumen'          => $compDocNum,
