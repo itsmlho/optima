@@ -501,6 +501,15 @@ class AssetDisposalController extends BaseController
 
             $saleId = $this->saleModel->insert($insertData, true);
 
+            if (!$saleId) {
+                $modelErrors = $this->saleModel->errors();
+                $errMsg = !empty($modelErrors)
+                    ? implode(', ', $modelErrors)
+                    : 'Gagal menyimpan record penjualan. Periksa data dan coba lagi.';
+                log_message('error', '[AssetDisposal::storeUnitSale] Model insert failed: ' . json_encode($modelErrors) . ' | Data: ' . json_encode($insertData));
+                throw new \RuntimeException($errMsg);
+            }
+
             // 2. Update unit status → SOLD
             $db->table('inventory_unit')
                 ->where('id_inventory_unit', $unitId)
@@ -621,6 +630,15 @@ class AssetDisposalController extends BaseController
             ];
 
             $compSaleId = $this->compModel->insert($insertData, true);
+
+            if (!$compSaleId) {
+                $modelErrors = $this->compModel->errors();
+                $errMsg = !empty($modelErrors)
+                    ? implode(', ', $modelErrors)
+                    : 'Gagal menyimpan record penjualan komponen. Periksa data dan coba lagi.';
+                log_message('error', '[AssetDisposal::storeComponentSale] Model insert failed: ' . json_encode($modelErrors) . ' | Data: ' . json_encode($insertData));
+                throw new \RuntimeException($errMsg);
+            }
 
             // Update inventory status → SOLD + detach from unit (skip for SPAREPART)
             if ($assetType !== 'SPAREPART') {
@@ -871,7 +889,7 @@ class AssetDisposalController extends BaseController
             // Generate doc number for each bundled component
             $compDocNum = $this->saleModel->generateSaleNumber();
 
-            $this->compModel->insert([
+            $compInsertResult = $this->compModel->insert([
                 'no_dokumen'          => $compDocNum,
                 'asset_type'          => $compType,
                 'asset_id'            => $compId,
@@ -889,6 +907,12 @@ class AssetDisposalController extends BaseController
                 'keterangan'          => 'Bundled with unit sale ' . $parentData['no_dokumen'],
                 'sold_by_user_id'     => (int) session('user_id'),
             ]);
+
+            if (!$compInsertResult) {
+                $compErrors = $this->compModel->errors();
+                log_message('error', '[AssetDisposal::handleBundledComponents] Component insert failed: ' . json_encode($compErrors) . ' | Type: ' . $compType . ', ID: ' . $compId);
+                throw new \RuntimeException('Gagal menyimpan komponen bundled (' . $compType . ' #' . $compId . '): ' . (implode(', ', $compErrors) ?: 'Unknown error'));
+            }
 
             // Update component inventory → SOLD + detach
             $this->db->table($t['table'])

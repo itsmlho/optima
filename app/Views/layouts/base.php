@@ -810,6 +810,20 @@ $currentLang = service('request')->getLocale();
             var toastType = type === 'error' ? 'error' : type;
             return createOptimaToast({type: toastType, title: type.toUpperCase(), message: msg});
         };
+
+        // Global notify() polyfill — beberapa view (delivery, dll) memanggil notify()
+        // tanpa mendefinisikannya. Fungsi ini mencegah ReferenceError.
+        if (typeof window.notify !== 'function') {
+            window.notify = function(msg, type) {
+                type = type || 'success';
+                if (window.OptimaNotify && typeof OptimaNotify[type] === 'function') {
+                    return OptimaNotify[type](msg);
+                }
+                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                    return OptimaPro.showNotification(msg, type);
+                }
+            };
+        }
         
         // Track page start time BEFORE load event
         window.pageStartTime = performance.now();

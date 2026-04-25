@@ -473,7 +473,9 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                     if (!res || !res.success) return { results: [] };
                     return { results: res.results };
                 },
-                error: function () {
+                error: function (jqXHR) {
+                    // Select2 aborts previous requests when user types quickly — ignore those
+                    if (jqXHR.statusText === 'abort') return;
                     if (window.OptimaNotify) OptimaNotify.error('Gagal memuat data unit.');
                 },
                 cache: false,
@@ -541,7 +543,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
             res.components.forEach(function (c) {
                 var badgeMap = { ATTACHMENT: 'badge-soft-purple', BATTERY: 'badge-soft-orange', CHARGER: 'badge-soft-cyan' };
                 var badge = badgeMap[c.type] || 'badge-soft-gray';
-                html += '<div class="d-flex align-items-center justify-content-between py-1 border-bottom">';
+                html += '<div class="d-flex align-items-center py-1 border-bottom">';
                 html += '  <div class="form-check">';
                 html += '    <input class="form-check-input bundled-check" type="checkbox" value="' + c.id + '" data-type="' + c.type + '" id="bcomp_' + c.type + '_' + c.id + '">';
                 html += '    <label class="form-check-label" for="bcomp_' + c.type + '_' + c.id + '">';
@@ -549,19 +551,9 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                 html += (c.serial ? ' <small class="text-muted font-monospace">SN: ' + escHtml(c.serial) + '</small>' : '');
                 html += '    </label>';
                 html += '  </div>';
-                html += '  <div style="width:140px">';
-                html += '    <input type="text" class="form-control form-control-sm bundled-price" data-compid="' + c.id + '" data-comptype="' + c.type + '" placeholder="Harga (Rp)" inputmode="numeric">';
-                html += '  </div>';
                 html += '</div>';
             });
             $('#bundledList').html(html);
-
-            // Format bundled price inputs
-            $(document).off('input', '.bundled-price').on('input', '.bundled-price', function () {
-                var raw = $(this).val().replace(/[^0-9]/g, '');
-                var int = parseInt(raw, 10);
-                $(this).val(isNaN(int) ? '' : int.toLocaleString('id-ID'));
-            });
         });
     }
 
@@ -628,15 +620,13 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
         if (_currentType === 'UNIT') {
             postData.unit_id = $('#unit_id').val();
 
-            // Collect bundled components
+            // Collect bundled components (price = 0, harga keseluruhan di field utama)
             var bundled = [];
             $('.bundled-check:checked').each(function () {
-                var priceInput = $('.bundled-price[data-compid="' + $(this).val() + '"][data-comptype="' + $(this).data('type') + '"]');
-                var priceVal = (priceInput.val() || '0').replace(/\./g, '').replace(/,/g, '.');
                 bundled.push({
                     type  : $(this).data('type'),
                     id    : parseInt($(this).val(), 10),
-                    price : parseFloat(priceVal) || 0,
+                    price : 0,
                 });
             });
             if (bundled.length) {
