@@ -43,8 +43,206 @@ class AssetDisposalController extends BaseController
         }
 
         return view('purchasing/unit_sale/index', [
-            'title' => lang('Purchasing.asset_disposal'),
-            'stats' => $this->saleModel->getUnifiedStats(),
+            'title'            => lang('Purchasing.asset_disposal'),
+            'stats'            => $this->saleModel->getUnifiedStats(),
+            'unrecorded_count' => $this->countUnrecordedSold(),
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Helper: count SOLD assets with no completed sale record
+    // ─────────────────────────────────────────────────────────
+    private function countUnrecordedSold(): int
+    {
+        $unitCount = (int) $this->db->table('inventory_unit iu')
+            ->where('iu.status_unit_id', 13)
+            ->where("NOT EXISTS (SELECT 1 FROM unit_sale_records usr WHERE usr.unit_id = iu.id_inventory_unit AND usr.status = 'COMPLETED')")
+            ->countAllResults();
+
+        $compCount = 0;
+        $compTables = [
+            'inventory_attachments ia' => ['alias' => 'ia', 'type' => 'ATTACHMENT'],
+            'inventory_chargers ic'    => ['alias' => 'ic', 'type' => 'CHARGER'],
+            'inventory_batteries ib'   => ['alias' => 'ib', 'type' => 'BATTERY'],
+        ];
+        foreach ($compTables as $table => $meta) {
+            $a = $meta['alias'];
+            $t = $meta['type'];
+            $compCount += (int) $this->db->table($table)
+                ->where("{$a}.status", 'SOLD')
+                ->where("NOT EXISTS (SELECT 1 FROM component_sale_records csr WHERE csr.asset_id = {$a}.id AND csr.asset_type = '{$t}' AND csr.status = 'COMPLETED')")
+                ->countAllResults();
+        }
+
+        return $unitCount + $compCount;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // DataTables AJAX — SOLD assets without sale records (server-side)
+    // ─────────────────────────────────────────────────────────
+    public function getUnrecordedSold()
+    {
+        if (!$this->hasPermission('purchasing.unit_sale.view')) {
+            return $this->response->setJSON(['error' => 'Unauthorized'])->setStatusCode(403);
+        }
+
+        $draw   = (int) $this->request->getGet('draw');
+        $search = trim((string) ($this->request->getGet('search')['value'] ?? ''));
+        $type   = trim((string) ($this->request->getGet('asset_type') ?? 'UNIT'));
+        $start  = max(0, (int) ($this->request->getGet('start') ?? 0));
+        $length = max(1, (int) ($this->request->getGet('length') ?? 25));
+
+        // Build UNION ALL sub-queries per requested asset type
+        $parts = [];
+
+        if ($type === '' || $type === 'UNIT') {
+            $parts[] = "SELECT 'UNIT' AS asset_type,
+                iu.id_inventory_unit AS asset_id,
+                COALESCE(iu.no_unit, iu.no_unit_na, CONCAT('UNIT-', iu.id_inventory_unit)) AS asset_no,
+                TRIM(CONCAT(COALESCE(mu.merk_unit,''), ' ', COALESCE(mu.model_unit,''))) AS asset_desc,
+                COALESCE(iu.serial_number,'') AS serial_number,
+                COALESCE(iu.tahun_unit,'') AS tahun_unit,
+                COALESCE(iu.lokasi_unit,'') AS lokasi_unit
+            FROM inventory_unit iu
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            WHERE iu.status_unit_id = 13
+              AND NOT EXISTS (
+                  SELECT 1 FROM unit_sale_records usr
+                  WHERE usr.unit_id = iu.id_inventory_unit AND usr.status = 'COMPLETED'
+              )";
+        }
+
+        if ($type === '' || $type === 'ATTACHMENT') {
+            $parts[] = "SELECT 'ATTACHMENT' AS asset_type,
+                ia.id AS asset_id,
+                COALESCE(ia.item_number,'') AS asset_no,
+                TRIM(CONCAT(COALESCE(at.merk,''), ' ', COALESCE(at.tipe,''), IF(at.model IS NOT NULL AND at.model <> '', CONCAT(' ', at.model), ''))) AS asset_desc,
+                COALESCE(ia.serial_number,'') AS serial_number,
+                '' AS tahun_unit,
+                '' AS lokasi_unit
+            FROM inventory_attachments ia
+            LEFT JOIN attachment at ON at.id_attachment = ia.attachment_type_id
+            WHERE ia.status = 'SOLD'
+              AND NOT EXISTS (
+                  SELECT 1 FROM component_sale_records csr
+                  WHERE csr.asset_id = ia.id AND csr.asset_type = 'ATTACHMENT' AND csr.status = 'COMPLETED'
+              )";
+        }
+
+        if ($type === '' || $type === 'CHARGER') {
+            $parts[] = "SELECT 'CHARGER' AS asset_type,
+                ic.id AS asset_id,
+                COALESCE(ic.item_number,'') AS asset_no,
+                TRIM(CONCAT(COALESCE(ct.merk_charger,''), ' ', COALESCE(ct.tipe_charger,''))) AS asset_desc,
+                COALESCE(ic.serial_number,'') AS serial_number,
+                '' AS tahun_unit,
+                '' AS lokasi_unit
+            FROM inventory_chargers ic
+            LEFT JOIN charger ct ON ct.id_charger = ic.charger_type_id
+            WHERE ic.status = 'SOLD'
+              AND NOT EXISTS (
+                  SELECT 1 FROM component_sale_records csr
+                  WHERE csr.asset_id = ic.id AND csr.asset_type = 'CHARGER' AND csr.status = 'COMPLETED'
+              )";
+        }
+
+        if ($type === '' || $type === 'BATTERY') {
+            $parts[] = "SELECT 'BATTERY' AS asset_type,
+                ib.id AS asset_id,
+                COALESCE(ib.item_number,'') AS asset_no,
+                TRIM(CONCAT(COALESCE(bt.merk_baterai,''), ' ', COALESCE(bt.tipe_baterai,''), IF(bt.jenis_baterai IS NOT NULL AND bt.jenis_baterai <> '', CONCAT(' / ', bt.jenis_baterai), ''))) AS asset_desc,
+                COALESCE(ib.serial_number,'') AS serial_number,
+                '' AS tahun_unit,
+                '' AS lokasi_unit
+            FROM inventory_batteries ib
+            LEFT JOIN baterai bt ON bt.id = ib.battery_type_id
+            WHERE ib.status = 'SOLD'
+              AND NOT EXISTS (
+                  SELECT 1 FROM component_sale_records csr
+                  WHERE csr.asset_id = ib.id AND csr.asset_type = 'BATTERY' AND csr.status = 'COMPLETED'
+              )";
+        }
+
+        if (empty($parts)) {
+            return $this->response->setJSON([
+                'draw'            => $draw,
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+            ]);
+        }
+
+        $unionSql = implode("\n            UNION ALL\n            ", $parts);
+
+        // Total records for this type filter (no search)
+        $total = (int) ($this->db->query(
+            "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS tbl"
+        )->getRow()->cnt ?? 0);
+
+        // Build optional search WHERE clause
+        $searchSql    = '';
+        $searchParams = [];
+        if ($search !== '') {
+            $like         = '%' . $search . '%';
+            $searchSql    = ' WHERE (asset_no LIKE ? OR serial_number LIKE ?)';
+            $searchParams = [$like, $like];
+        }
+
+        // Count filtered records
+        $filtered = (int) ($this->db->query(
+            "SELECT COUNT(*) AS cnt FROM ({$unionSql}) AS tbl{$searchSql}",
+            $searchParams
+        )->getRow()->cnt ?? 0);
+
+        // Fetch paginated page (LIMIT/OFFSET injected as safe integers)
+        $rows = $this->db->query(
+            "SELECT * FROM ({$unionSql}) AS tbl{$searchSql} ORDER BY asset_no ASC LIMIT {$length} OFFSET {$start}",
+            $searchParams
+        )->getResultArray();
+
+        $typeBadgeMap = [
+            'UNIT'       => 'badge-soft-blue',
+            'ATTACHMENT' => 'badge-soft-purple',
+            'CHARGER'    => 'badge-soft-cyan',
+            'BATTERY'    => 'badge-soft-orange',
+        ];
+
+        $detailUrlMap = [
+            'UNIT'       => base_url('warehouse/inventory/unit/'),
+            'ATTACHMENT' => base_url('warehouse/inventory/'),
+            'CHARGER'    => base_url('warehouse/inventory/'),
+            'BATTERY'    => base_url('warehouse/inventory/'),
+        ];
+
+        $data = array_map(function ($r) use ($typeBadgeMap, $detailUrlMap) {
+            $assetType  = $r['asset_type'];
+            $badgeClass = $typeBadgeMap[$assetType] ?? 'badge-soft-gray';
+            $assetNo    = esc($r['asset_no'] ?? '-');
+            $invUrl     = ($detailUrlMap[$assetType] ?? '#') . $r['asset_id'];
+
+            return [
+                'asset_type'    => '<span class="badge ' . $badgeClass . '">' . esc($assetType) . '</span>',
+                'asset_no'      => esc($r['asset_no'] ?? ''),
+                'asset_desc'    => esc(trim($r['asset_desc'] ?? '')),
+                'serial_number' => esc($r['serial_number'] ?? ''),
+                'tahun_unit'    => esc($r['tahun_unit'] ?? ''),
+                'lokasi_unit'   => esc($r['lokasi_unit'] ?? ''),
+                'actions'       => '<a href="' . $invUrl . '" class="btn btn-sm btn-outline-secondary me-1"'
+                                   . ' title="' . lang('App.view') . '" target="_blank">'
+                                   . '<i class="fas fa-external-link-alt"></i></a>'
+                                   . '<button class="btn btn-sm btn-warning btn-catat-retro"'
+                                   . ' data-asset-type="' . esc($assetType) . '"'
+                                   . ' data-asset-id="' . (int)$r['asset_id'] . '"'
+                                   . ' data-asset-no="' . $assetNo . '">'
+                                   . '<i class="fas fa-plus me-1"></i>' . lang('Purchasing.btn_record') . '</button>',
+            ];
+        }, $rows);
+
+        return $this->response->setJSON([
+            'draw'            => $draw,
+            'recordsTotal'    => $total,
+            'recordsFiltered' => $filtered,
+            'data'            => $data,
         ]);
     }
 
@@ -405,6 +603,115 @@ class AssetDisposalController extends BaseController
             'success'    => true,
             'no_dokumen' => $this->saleModel->generateSaleNumber(),
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // STORE RETROACTIVE — POST /purchasing/asset-disposal/storeRetroactive
+    // Records sale data retroactively for a unit/component that is
+    // already SOLD (status changed manually) but has no sale record yet.
+    // ─────────────────────────────────────────────────────────
+    public function storeRetroactive()
+    {
+        if (!$this->hasPermission('purchasing.unit_sale.create')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.'])->setStatusCode(403);
+        }
+
+        $assetType = $this->request->getPost('asset_type'); // UNIT | ATTACHMENT | CHARGER | BATTERY
+        $assetId   = (int) $this->request->getPost('asset_id');
+
+        if (!$assetId || !in_array($assetType, ['UNIT', 'ATTACHMENT', 'CHARGER', 'BATTERY', 'FORK'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Parameter tidak valid.']);
+        }
+
+        // Prevent duplicates
+        if ($assetType === 'UNIT') {
+            $exists = $this->saleModel->where('unit_id', $assetId)->where('status', 'COMPLETED')->countAllResults();
+        } else {
+            $exists = $this->compModel->where('asset_id', $assetId)->where('asset_type', $assetType)->where('status', 'COMPLETED')->countAllResults();
+        }
+        if ($exists > 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data penjualan sudah tersedia untuk aset ini.']);
+        }
+
+        // Parse + validate fields
+        $namaPembeli  = trim($this->request->getPost('nama_pembeli') ?? '');
+        $tanggalJual  = $this->request->getPost('tanggal_jual');
+        $hargaJual    = (float) str_replace(['.', ','], ['', '.'], $this->request->getPost('harga_jual') ?? '0');
+        $metode       = $this->request->getPost('metode_pembayaran') ?? 'TRANSFER';
+        $noKwitansi   = trim($this->request->getPost('no_kwitansi') ?? '');
+        $noBast       = trim($this->request->getPost('no_bast') ?? '');
+        $noInvoice    = trim($this->request->getPost('no_invoice') ?? '');
+        $keterangan   = trim($this->request->getPost('keterangan') ?? '');
+        $telepon      = trim($this->request->getPost('telepon_pembeli') ?? '');
+        $alamat       = trim($this->request->getPost('alamat_pembeli') ?? '');
+
+        if (!$namaPembeli || !$tanggalJual) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Nama pembeli dan tanggal jual wajib diisi.']);
+        }
+
+        $noDoc = $this->saleModel->generateSaleNumber();
+
+        try {
+            if ($assetType === 'UNIT') {
+                // Fetch unit to get previous_status_unit_id
+                $unit = $this->db->table('inventory_unit iu')
+                    ->select('iu.id_inventory_unit, iu.status_unit_id, su.id_status AS prev_status_id')
+                    ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+                    ->where('iu.id_inventory_unit', $assetId)
+                    ->get()->getRowArray();
+
+                $this->saleModel->insert([
+                    'no_dokumen'               => $noDoc,
+                    'unit_id'                  => $assetId,
+                    'tanggal_jual'             => $tanggalJual,
+                    'nama_pembeli'             => $namaPembeli,
+                    'alamat_pembeli'           => $alamat ?: null,
+                    'telepon_pembeli'          => $telepon ?: null,
+                    'harga_jual'               => $hargaJual,
+                    'metode_pembayaran'        => $metode,
+                    'no_kwitansi'              => $noKwitansi ?: null,
+                    'no_bast'                  => $noBast ?: null,
+                    'no_invoice'               => $noInvoice ?: null,
+                    'keterangan'               => $keterangan ?: 'Data dicatat retroaktif',
+                    'status'                   => 'COMPLETED',
+                    'previous_status_unit_id'  => $unit['status_unit_id'] ?? null,
+                    'sold_by_user_id'          => (int) session('user_id'),
+                ]);
+            } else {
+                $this->compModel->insert([
+                    'no_dokumen'          => $noDoc,
+                    'asset_type'          => $assetType,
+                    'asset_id'            => $assetId,
+                    'linked_unit_sale_id' => null,
+                    'tanggal_jual'        => $tanggalJual,
+                    'nama_pembeli'        => $namaPembeli,
+                    'alamat_pembeli'      => $alamat ?: null,
+                    'telepon_pembeli'     => $telepon ?: null,
+                    'harga_jual'          => $hargaJual,
+                    'metode_pembayaran'   => $metode,
+                    'no_kwitansi'         => $noKwitansi ?: null,
+                    'no_bast'             => $noBast ?: null,
+                    'no_invoice'          => $noInvoice ?: null,
+                    'keterangan'          => $keterangan ?: 'Data dicatat retroaktif',
+                    'status'              => 'COMPLETED',
+                    'previous_status'     => 'SOLD',
+                    'sold_by_user_id'     => (int) session('user_id'),
+                ]);
+            }
+
+            $this->logActivity('CREATE', 'unit_sale_records', $assetId,
+                sprintf('Pencatatan retroaktif penjualan %s #%d — Dok: %s | Pembeli: %s', $assetType, $assetId, $noDoc, $namaPembeli)
+            );
+
+            return $this->response->setJSON([
+                'success'    => true,
+                'message'    => 'Data penjualan berhasil dicatat.',
+                'no_dokumen' => $noDoc,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[AssetDisposal::storeRetroactive] ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan: ' . $e->getMessage()]);
+        }
     }
 
     // ─────────────────────────────────────────────────────────

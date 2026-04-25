@@ -2681,7 +2681,7 @@ $currentLang = service('request')->getLocale();
          OPTIMA ASSISTANT — AI Chat Widget
          Powered by Groq AI
     ============================================================ -->
-    <?php if (session()->get('isLoggedIn')): ?>
+    <?php if (false && session()->get('isLoggedIn')): // Temporary: disable chatbot UI during development ?>
     <style>
     /* === OPTIMA Assistant Widget === */
     #optima-chat-fab {
@@ -2780,13 +2780,16 @@ $currentLang = service('request')->getLocale();
         border-radius: 14px; border-bottom-left-radius: 4px;
         padding: 10px 14px; display: flex; gap: 5px; align-items: center;
     }
-    .chat-typing span {
+    .chat-typing-label {
+        font-size: .72rem; color: #6c757d; margin-right: 4px; white-space: nowrap;
+    }
+    .chat-typing span:not(.chat-typing-label) {
         width: 7px; height: 7px; border-radius: 50%;
         background: #adb5bd; display: inline-block;
         animation: chatDot 1.2s infinite ease-in-out;
     }
-    .chat-typing span:nth-child(2) { animation-delay: .2s; }
-    .chat-typing span:nth-child(3) { animation-delay: .4s; }
+    .chat-typing span:not(.chat-typing-label):nth-of-type(2) { animation-delay: .2s; }
+    .chat-typing span:not(.chat-typing-label):nth-of-type(3) { animation-delay: .4s; }
     @keyframes chatDot {
         0%, 80%, 100% { transform: scale(.7); opacity: .5; }
         40% { transform: scale(1); opacity: 1; }
@@ -2797,6 +2800,11 @@ $currentLang = service('request')->getLocale();
         display: flex; flex-wrap: wrap; gap: 6px;
         background: #f8f9fc;
     }
+    .chat-suggestion-group-label {
+        width: 100%; font-size: .68rem; font-weight: 600;
+        color: #8b93a7; text-transform: uppercase; letter-spacing: .05em;
+        padding-top: 8px; padding-bottom: 2px;
+    }
     .chat-suggestion-btn {
         background: #fff; border: 1px solid #dee2e6;
         border-radius: 20px; padding: 4px 11px;
@@ -2804,6 +2812,10 @@ $currentLang = service('request')->getLocale();
         transition: all .15s; white-space: nowrap;
     }
     .chat-suggestion-btn:hover { background: #0061f2; color: #fff; border-color: #0061f2; }
+    .chat-suggestion-btn.data-query {
+        background: #eef3ff; border-color: #c7d9ff; color: #2d5fd4;
+    }
+    .chat-suggestion-btn.data-query:hover { background: #0061f2; color: #fff; border-color: #0061f2; }
 
     .optima-chat-footer {
         padding: 10px 12px; border-top: 1px solid #e9ecef;
@@ -2857,12 +2869,16 @@ $currentLang = service('request')->getLocale();
         <div class="optima-chat-body" id="optima-chat-messages"></div>
 
         <div class="optima-chat-suggestions" id="optima-chat-suggestions">
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat Work Order baru di modul Service?')">📋 Cara buat Work Order</button>
+            <div class="chat-suggestion-group-label">📊 Cek Data Langsung</div>
+            <button class="chat-suggestion-btn data-query" onclick="optimaChatSend('Berapa jumlah unit berdasarkan status saat ini?')">📦 Status unit armada</button>
+            <button class="chat-suggestion-btn data-query" onclick="optimaChatSend('Kontrak mana saja yang akan berakhir dalam 30 hari ke depan?')">⏰ Kontrak akan berakhir</button>
+            <button class="chat-suggestion-btn data-query" onclick="optimaChatSend('Berapa work order yang masih belum selesai? Tampilkan detailnya.')">🔧 Work order open</button>
+            <button class="chat-suggestion-btn data-query" onclick="optimaChatSend('Berikan ringkasan kondisi OPTIMA hari ini: unit, kontrak, dan work order.')">📈 Ringkasan hari ini</button>
+            <div class="chat-suggestion-group-label">📖 Panduan Penggunaan</div>
             <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana alur membuat kontrak sewa unit hingga selesai?')">📄 Alur kontrak sewa</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara menambahkan unit baru ke inventory warehouse?')">🚜 Tambah unit ke inventory</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa saja status unit yang ada dan artinya masing-masing?')">🔖 Arti status unit</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat quotation dan mengirimnya ke customer?')">💼 Buat & kirim quotation</button>
-            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa yang harus dilakukan jika ada keluhan dari customer tentang unit?')">🔧 Keluhan customer</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat Work Order baru di modul Service?')">🛠️ Cara buat Work Order</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Bagaimana cara membuat quotation dan mengirimnya ke customer?')">💼 Buat quotation</button>
+            <button class="chat-suggestion-btn" onclick="optimaChatSend('Apa yang harus dilakukan jika ada keluhan dari customer tentang unit?')">📣 Keluhan customer</button>
         </div>
 
         <div class="optima-chat-footer">
@@ -2879,10 +2895,10 @@ $currentLang = service('request')->getLocale();
 
         var isOpen    = false;
         var isBusy    = false;
-        var history   = [];   // [{role:'user'|'model', text:'...'}]
         var unread    = 0;
 
         var CHAT_URL  = <?= json_encode(base_url('chatbot/ask')) ?>;
+        var CLEAR_URL = <?= json_encode(base_url('chatbot/clear')) ?>;
 
         function getEl(id) { return document.getElementById(id); }
 
@@ -2900,7 +2916,7 @@ $currentLang = service('request')->getLocale();
                 // Show welcome message if first open
                 var msgs = getEl('optima-chat-messages');
                 if (msgs.children.length === 0) {
-                    appendBotMessage('Halo! Saya **OPTIMA Assistant** 👋\n\nSaya adalah asisten AI khusus sistem OPTIMA, dirancang untuk membantu Anda dengan:\n\n• **Panduan penggunaan** — cara kerja setiap modul (Warehouse, Marketing, Service, Finance, dll)\n• **Alur kerja** — langkah-langkah proses bisnis seperti kontrak, work order, quotation\n• **Troubleshooting** — membantu jika ada kendala saat menggunakan sistem\n• **Info status & data** — penjelasan status unit, kontrak, dan dokumen\n\nPilih topik di bawah atau ketik pertanyaan Anda sekarang 👇');
+                    appendBotMessage('Halo! Saya **OPTIMA Assistant** 👋\n\nSaya adalah asisten AI cerdas yang terhubung langsung ke database OPTIMA. Saya bisa:\n\n• 📊 **Cek data real-time** — berapa unit tersedia, kontrak yang akan berakhir, work order open, stok sparepart\n• 🔍 **Cari data spesifik** — status unit tertentu, kontrak customer tertentu, detail WO\n• 📖 **Panduan penggunaan** — alur kerja kontrak, work order, quotation, invoicing\n• 🛠️ **Troubleshooting** — bantu atasi kendala di sistem\n\nCoba tanya: *"Berapa unit yang Ready sekarang?"* atau *"Cek kontrak yang mau berakhir"* 👇');
                 }
 
                 setTimeout(function() {
@@ -2928,22 +2944,20 @@ $currentLang = service('request')->getLocale();
             input.value = '';
             input.style.height = 'auto';
 
-            // Add to history
-            history.push({ role: 'user', text: msg });
-
-            // Show typing indicator
-            var typingId = showTyping();
+            // Show typing indicator — hint if it's a data query
+            var dataKeywords = /berapa|jumlah|total|cek|check|status|kontrak|unit|work order|wo |invoice|quotation|sparepart|stok|stock|ringkasan|rekap|karyawan|teknisi/i;
+            var typingLabel  = dataKeywords.test(msg) ? '📊 Mengambil data...' : null;
+            var typingId = showTyping(typingLabel);
             isBusy = true;
             getEl('optima-chat-send').disabled = true;
 
-            // AJAX request
+            // AJAX request — history disimpan server-side (session), tidak perlu kirim dari frontend
             $.ajax({
                 url: CHAT_URL,
                 type: 'POST',
                 data: {
                     [window.csrfTokenName]: window.csrfTokenValue,
-                    message: msg,
-                    history: JSON.stringify(history.slice(-10))
+                    message: msg
                 },
                 dataType: 'json',
                 success: function(res) {
@@ -2952,7 +2966,6 @@ $currentLang = service('request')->getLocale();
 
                     if (res.success && res.reply) {
                         appendBotMessage(res.reply);
-                        history.push({ role: 'model', text: res.reply });
                     } else {
                         appendBotError(res.message || 'Maaf, terjadi kesalahan. Silakan coba lagi.');
                     }
@@ -2961,7 +2974,9 @@ $currentLang = service('request')->getLocale();
                     removeTyping(typingId);
                     var errMsg = (xhr.status === 401)
                         ? 'Sesi berakhir. Silakan login kembali.'
-                        : 'Gagal terhubung ke server.';
+                        : (xhr.status === 429)
+                            ? (xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Terlalu banyak pesan. Tunggu sebentar.')
+                            : 'Gagal terhubung ke server.';
                     appendBotError(errMsg);
                 },
                 complete: function() {
@@ -3003,12 +3018,17 @@ $currentLang = service('request')->getLocale();
             scrollToBottom();
         }
 
-        function showTyping() {
+        function showTyping(label) {
             var id = 'chat-typing-' + Date.now();
             var div = document.createElement('div');
             div.className = 'chat-typing';
             div.id = id;
-            div.innerHTML = '<span></span><span></span><span></span>';
+            var dots = '<span></span><span></span><span></span>';
+            if (label) {
+                div.innerHTML = '<span class="chat-typing-label">' + label + '</span>' + dots;
+            } else {
+                div.innerHTML = dots;
+            }
             getEl('optima-chat-messages').appendChild(div);
             scrollToBottom();
             return id;
@@ -3040,9 +3060,21 @@ $currentLang = service('request')->getLocale();
 
         // ── Clear conversation ───────────────────────────────────────────
         function clear() {
-            history = [];
             getEl('optima-chat-messages').innerHTML = '';
             getEl('optima-chat-suggestions').style.display = 'flex';
+
+            // Hapus history di server (session)
+            $.ajax({
+                url: CLEAR_URL,
+                type: 'POST',
+                data: { [window.csrfTokenName]: window.csrfTokenValue },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.csrf_hash) window.csrfTokenValue = res.csrf_hash;
+                },
+                error: function() {}
+            });
+
             appendBotMessage('Percakapan telah dihapus. Ada yang bisa saya bantu?');
         }
 
@@ -3057,18 +3089,26 @@ $currentLang = service('request')->getLocale();
             return escaped
                 // Bold **text**
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                // Italic *text*
-                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                // Italic *text* (not inside **)
+                .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
                 // Inline code `code`
                 .replace(/`([^`]+)`/g, '<code style="background:#f1f3f5;padding:1px 5px;border-radius:4px;font-size:.85em">$1</code>')
+                // Numbered list (process before bullets)
+                .replace(/^(\d+\.\s+.+(?:\n(?!\d+\.|[-•]).*)*)/gm, function(match) {
+                    var items = match.split(/\n/).filter(function(l) { return l.trim(); });
+                    return '<ol style="margin:.4em 0 .4em 1.2em;padding:0">' +
+                        items.map(function(l) { return '<li>' + l.replace(/^\d+\.\s+/, '') + '</li>'; }).join('') +
+                    '</ol>';
+                })
                 // Bullet list lines starting with - or •
-                .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
-                // Numbered list
-                .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
-                // Wrap consecutive <li> in <ul>
-                .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin:.4em 0 .4em 1em;padding:0">$1</ul>')
-                // Line breaks
-                .replace(/\n/g, '<br>');
+                .replace(/^([-•]\s+.+(?:\n(?![-•\d]).+)*)/gm, function(match) {
+                    var items = match.split(/\n/).filter(function(l) { return l.trim(); });
+                    return '<ul style="margin:.4em 0 .4em 1em;padding:0">' +
+                        items.map(function(l) { return '<li>' + l.replace(/^[-•]\s+/, '') + '</li>'; }).join('') +
+                    '</ul>';
+                })
+                // Line breaks (skip after block elements)
+                .replace(/\n(?!<(?:ul|ol|li))/g, '<br>');
         }
 
         // ── Auto-resize textarea ─────────────────────────────────────────

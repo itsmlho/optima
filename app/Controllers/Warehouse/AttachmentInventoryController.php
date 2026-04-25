@@ -466,6 +466,39 @@ class AttachmentInventoryController extends BaseController
                 }
             }
 
+            // If item is SOLD, enrich with sale record from component_sale_records
+            $attachment['sale_record'] = null;
+            if (($attachment['status'] ?? '') === 'SOLD') {
+                try {
+                    $db = $db ?? \Config\Database::connect();
+                    if ($db->tableExists('component_sale_records')) {
+                        $typeMap = [
+                            'attachment' => 'ATTACHMENT',
+                            'battery'    => 'BATTERY',
+                            'charger'    => 'CHARGER',
+                            'fork'       => 'FORK',
+                        ];
+                        $assetType = $typeMap[$tipe] ?? strtoupper($tipe);
+                        $saleRow = $db->table('component_sale_records csr')
+                            ->select('csr.no_dokumen, csr.tanggal_jual, csr.nama_pembeli,
+                                      csr.alamat_pembeli, csr.telepon_pembeli, csr.harga_jual,
+                                      csr.metode_pembayaran, csr.no_bast, csr.status,
+                                      csr.linked_unit_sale_id,
+                                      CONCAT(IFNULL(u.first_name,""), " ", IFNULL(u.last_name,"")) AS sold_by_name')
+                            ->join('users u', 'u.id = csr.sold_by_user_id', 'left')
+                            ->where('csr.asset_id', (int)$id)
+                            ->where('csr.asset_type', $assetType)
+                            ->where('csr.status', 'COMPLETED')
+                            ->orderBy('csr.tanggal_jual', 'DESC')
+                            ->limit(1)
+                            ->get()->getRowArray();
+                        $attachment['sale_record'] = $saleRow ?: null;
+                    }
+                } catch (\Throwable $e2) {
+                    log_message('warning', 'getAttachmentDetail sale_record: ' . $e2->getMessage());
+                }
+            }
+
             return $this->response->setJSON([
                 'success' => true,
                 'data' => $attachment

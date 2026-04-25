@@ -50,7 +50,8 @@ if (ENVIRONMENT !== 'production') {
 }
 
 // ===== CHATBOT AI SUPPORT =====
-$routes->post('chatbot/ask', 'ChatbotController::ask', ['filter' => 'auth']);
+$routes->post('chatbot/ask',   'ChatbotController::ask',   ['filter' => 'auth']);
+$routes->post('chatbot/clear', 'ChatbotController::clear', ['filter' => 'auth']);
 
 // Health Check & Monitoring Routes
 $routes->group('health', static function ($routes) {
@@ -1183,11 +1184,13 @@ $routes->group('purchasing', static function ($routes) {
     $routes->group('asset-disposal', static function ($routes) {
         $routes->get('/',                          'Purchasing\AssetDisposalController::index');
         $routes->get('getSalesData',               'Purchasing\AssetDisposalController::getSalesData');
+        $routes->get('getUnrecordedSold',          'Purchasing\AssetDisposalController::getUnrecordedSold');
         $routes->get('getEligibleUnits',           'Purchasing\AssetDisposalController::getEligibleUnits');
         $routes->get('getEligibleComponents',      'Purchasing\AssetDisposalController::getEligibleComponents');
         $routes->get('getUnitComponents/(:num)',   'Purchasing\AssetDisposalController::getUnitComponents/$1');
         $routes->get('generateNumber',             'Purchasing\AssetDisposalController::generateNumber');
         $routes->post('store',                     'Purchasing\AssetDisposalController::store');
+        $routes->post('storeRetroactive',          'Purchasing\AssetDisposalController::storeRetroactive');
         $routes->get('detail/(:segment)/(:num)',   'Purchasing\AssetDisposalController::detail/$1/$2');
         $routes->post('cancel/(:segment)/(:num)',  'Purchasing\AssetDisposalController::cancel/$1/$2');
     });

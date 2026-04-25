@@ -113,61 +113,201 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card-body pb-0">
-        <div class="row g-2 mb-3">
-            <div class="col-md-3">
-                <input type="text" id="filterSearch" class="form-control form-control-sm" placeholder="<?= lang('Purchasing.search_sale_placeholder') ?>">
-            </div>
-            <div class="col-md-2">
-                <select id="filterAssetType" class="form-select form-select-sm">
-                    <option value=""><?= lang('Purchasing.all_types') ?></option>
-                    <option value="UNIT">Unit</option>
-                    <option value="ATTACHMENT"><?= lang('Purchasing.attachment') ?></option>
-                    <option value="CHARGER"><?= lang('Purchasing.charger') ?></option>
-                    <option value="BATTERY"><?= lang('Purchasing.battery') ?></option>
-                    <option value="SPAREPART"><?= lang('Purchasing.sparepart') ?></option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select id="filterStatus" class="form-select form-select-sm">
-                    <option value=""><?= lang('Purchasing.all_status') ?></option>
-                    <option value="COMPLETED"><?= lang('Common.completed') ?></option>
-                    <option value="CANCELLED"><?= lang('Common.cancelled') ?></option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="date" id="filterDateFrom" class="form-control form-control-sm">
-            </div>
-            <div class="col-md-2">
-                <input type="date" id="filterDateTo" class="form-control form-control-sm">
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-sm btn-outline-secondary w-100" onclick="applyFilters()">
-                    <i class="fas fa-filter"></i>
+    <!-- Tab Navigation -->
+    <div class="card-header border-top-0 py-0 bg-transparent">
+        <ul class="nav nav-tabs card-header-tabs" id="disposalTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-sales-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-sales" type="button" role="tab">
+                    <i class="bi bi-receipt me-1"></i><?= lang('Purchasing.tab_sale_history') ?>
                 </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-unrecorded-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-unrecorded" type="button" role="tab">
+                    <i class="fas fa-exclamation-triangle me-1"></i><?= lang('Purchasing.tab_unrecorded') ?>
+                    <?php if (($unrecorded_count ?? 0) > 0): ?>
+                    <span class="badge badge-soft-orange ms-1"><?= (int)$unrecorded_count ?></span>
+                    <?php endif; ?>
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content">
+        <!-- ── Tab 1: Riwayat Penjualan ───────────────────── -->
+        <div class="tab-pane fade show active" id="tab-sales" role="tabpanel">
+            <!-- Filters -->
+            <div class="card-body pb-0">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <input type="text" id="filterSearch" class="form-control form-control-sm" placeholder="<?= lang('Purchasing.search_sale_placeholder') ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filterAssetType" class="form-select form-select-sm">
+                            <option value=""><?= lang('Purchasing.all_types') ?></option>
+                            <option value="UNIT">Unit</option>
+                            <option value="ATTACHMENT"><?= lang('Purchasing.attachment') ?></option>
+                            <option value="CHARGER"><?= lang('Purchasing.charger') ?></option>
+                            <option value="BATTERY"><?= lang('Purchasing.battery') ?></option>
+                            <option value="SPAREPART"><?= lang('Purchasing.sparepart') ?></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filterStatus" class="form-select form-select-sm">
+                            <option value=""><?= lang('Purchasing.all_status') ?></option>
+                            <option value="COMPLETED"><?= lang('Common.completed') ?></option>
+                            <option value="CANCELLED"><?= lang('Common.cancelled') ?></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" id="filterDateFrom" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" id="filterDateTo" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="applyFilters()">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body pt-0">
+                <div class="table-responsive">
+                    <table id="disposalTable" class="table table-striped table-hover w-100">
+                        <thead class="table-light">
+                            <tr>
+                                <th><?= lang('Purchasing.sale_document_no') ?></th>
+                                <th><?= lang('Purchasing.asset_type') ?></th>
+                                <th><?= lang('Purchasing.asset_info') ?></th>
+                                <th><?= lang('Purchasing.sale_date') ?></th>
+                                <th><?= lang('Purchasing.buyer_name') ?></th>
+                                <th><?= lang('Purchasing.sale_price') ?></th>
+                                <th><?= lang('Purchasing.payment_method') ?></th>
+                                <th><?= lang('Common.status') ?></th>
+                                <th class="text-center"><?= lang('Common.actions') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tab 2: Belum Terdata ───────────────────────── -->
+        <div class="tab-pane fade" id="tab-unrecorded" role="tabpanel">
+            <div class="card-body pb-0">
+                <div class="alert alert-warning small d-flex gap-2 align-items-center py-2 mb-3">
+                    <i class="fas fa-exclamation-triangle flex-shrink-0"></i>
+                    <span><?= lang('Purchasing.unrecorded_alert') ?></span>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <input type="text" id="searchUnrecorded" class="form-control form-control-sm"
+                               placeholder="<?= lang('Purchasing.search_unrecorded_ph') ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filterUnrecordedType" class="form-select form-select-sm" onchange="refreshUnrecordedTable()">
+                            <option value=""><?= lang('Purchasing.all_types') ?></option>
+                            <option value="UNIT" selected>Unit</option>
+                            <option value="ATTACHMENT"><?= lang('Purchasing.attachment') ?></option>
+                            <option value="CHARGER"><?= lang('Purchasing.charger') ?></option>
+                            <option value="BATTERY"><?= lang('Purchasing.battery') ?></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div class="table-responsive">
+                    <table id="unrecordedTable" class="table table-hover w-100">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:120px"><?= lang('Purchasing.asset_type') ?></th>
+                                <th><?= lang('Purchasing.asset_info') ?></th>
+                                <th class="text-center" style="width:160px"><?= lang('Common.actions') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="card-body pt-0">
-        <div class="table-responsive">
-            <table id="disposalTable" class="table table-striped table-hover w-100">
-                <thead class="table-light">
-                    <tr>
-                        <th><?= lang('Purchasing.sale_document_no') ?></th>
-                        <th><?= lang('Purchasing.asset_type') ?></th>
-                        <th><?= lang('Purchasing.asset_info') ?></th>
-                        <th><?= lang('Purchasing.sale_date') ?></th>
-                        <th><?= lang('Purchasing.buyer_name') ?></th>
-                        <th><?= lang('Purchasing.sale_price') ?></th>
-                        <th><?= lang('Purchasing.payment_method') ?></th>
-                        <th><?= lang('Common.status') ?></th>
-                        <th class="text-center"><?= lang('Common.actions') ?></th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+<!-- Retroactive Sale Modal (Asset Disposal page) -->
+<div class="modal fade" id="modal-disposal-retro-sale" tabindex="-1" aria-labelledby="modalDisposalRetroLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="modalDisposalRetroLabel">
+                    <i class="fas fa-handshake me-2"></i><?= lang('Purchasing.retro_modal_title') ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small d-flex gap-2 align-items-start py-2 mb-3">
+                    <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+                    <div><?= lang('Purchasing.retro_fill_desc') ?> <strong id="retro-asset-label">-</strong>. <?= lang('Purchasing.retro_doc_auto') ?></div>
+                </div>
+                <input type="hidden" id="retro-asset-type">
+                <input type="hidden" id="retro-asset-id">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.buyer_name') ?> <span class="text-danger">*</span></label>
+                        <input type="text" id="retro-nama-pembeli" class="form-control form-control-sm" placeholder="<?= lang('Purchasing.buyer_name_placeholder') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.sale_date') ?> <span class="text-danger">*</span></label>
+                        <input type="date" id="retro-tanggal-jual" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.buyer_phone') ?></label>
+                        <input type="text" id="retro-telepon" class="form-control form-control-sm" placeholder="<?= lang('Common.optional') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.sale_price') ?></label>
+                        <input type="number" id="retro-harga" class="form-control form-control-sm" placeholder="0" min="0" step="1000">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.buyer_address') ?></label>
+                        <input type="text" id="retro-alamat" class="form-control form-control-sm" placeholder="<?= lang('Common.optional') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.payment_method') ?></label>
+                        <select id="retro-metode" class="form-select form-select-sm">
+                            <option value="CASH">CASH</option>
+                            <option value="TRANSFER" selected>TRANSFER</option>
+                            <option value="CEK">CEK</option>
+                            <option value="KREDIT">KREDIT</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.receipt_no') ?></label>
+                        <input type="text" id="retro-no-kwitansi" class="form-control form-control-sm" placeholder="<?= lang('Common.optional') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.bast_no') ?></label>
+                        <input type="text" id="retro-no-bast" class="form-control form-control-sm" placeholder="<?= lang('Common.optional') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><?= lang('Purchasing.invoice_no') ?></label>
+                        <input type="text" id="retro-no-invoice" class="form-control form-control-sm" placeholder="<?= lang('Common.optional') ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold"><?= lang('Common.notes') ?></label>
+                        <textarea id="retro-keterangan" class="form-control form-control-sm" rows="2" placeholder="<?= lang('Purchasing.notes_placeholder') ?>"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
+                <button type="button" class="btn btn-warning btn-sm" id="btn-submit-disposal-retro">
+                    <i class="fas fa-save me-1"></i><?= lang('Purchasing.save_sale_data') ?>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -696,10 +836,170 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
     }
 
     // ═══════════════════════════════════════════════════════
+    // Unrecorded SOLD Table
+    // ═══════════════════════════════════════════════════════
+    var _unrecordedTable = null;
+    var _unrecordedSearchTimer = null;
+    var _retroRequiredMsg  = '<?= lang('Purchasing.retro_required_fields') ?>';
+    var _retroSavingLabel  = '<i class="fas fa-spinner fa-spin me-1"></i><?= lang('Purchasing.retro_saving') ?>';
+    var _retroSaveLabel    = '<i class="fas fa-save me-1"></i><?= lang('Purchasing.save_sale_data') ?>';
+    var _retroSuccessMsg   = '<?= lang('Purchasing.retro_success') ?>';
+
+    function initUnrecordedTable() {
+        if (_unrecordedTable) return;
+        _unrecordedTable = $('#unrecordedTable').DataTable({
+            processing : true,
+            serverSide : true,
+            ajax: {
+                url  : _baseUrl + 'purchasing/asset-disposal/getUnrecordedSold',
+                type : 'GET',
+                data : function (d) {
+                    d.asset_type = $('#filterUnrecordedType').val();
+                },
+                error: function () {
+                    if (window.OptimaNotify) OptimaNotify.error('<?= lang('App.error_occurred') ?>');
+                },
+            },
+            columns: [
+                { data: 'asset_type',    orderable: false, className: 'align-middle', width: '120px' },
+                {
+                    data     : 'asset_no',
+                    orderable: false,
+                    className: 'align-middle',
+                    render   : function (data, type, row, meta) {
+                        if (type !== 'display') return data;
+                        var hl = window.OptimaSearch ? OptimaSearch.highlightForMeta : function(m, t) { return t; };
+                        var noHtml   = hl(meta, escHtml(row.asset_no || '-'));
+                        var descHtml = row.asset_desc
+                            ? '<div class="text-muted small mb-1">' + escHtml(row.asset_desc) + '</div>' : '';
+                        var snHtml   = row.serial_number
+                            ? '<div class="text-muted small font-monospace mb-1"><i class="fas fa-barcode me-1"></i>'
+                              + hl(meta, escHtml(row.serial_number)) + '</div>' : '';
+                        var pillsHtml = '';
+                        if (row.tahun_unit)  pillsHtml += '<span class="badge badge-soft-gray me-1"><i class="fas fa-calendar-alt me-1"></i>' + escHtml(row.tahun_unit) + '</span>';
+                        if (row.lokasi_unit) pillsHtml += '<span class="badge badge-soft-cyan me-1"><i class="fas fa-map-marker-alt me-1"></i>' + escHtml(row.lokasi_unit) + '</span>';
+                        return '<div class="fw-semibold mb-1">' + noHtml + '</div>'
+                             + descHtml + snHtml
+                             + (pillsHtml ? '<div class="mt-1">' + pillsHtml + '</div>' : '');
+                    },
+                },
+                { data: 'actions', orderable: false, className: 'align-middle text-center', width: '160px' },
+            ],
+            pageLength : 25,
+            language   : { url: _baseUrl + 'assets/vendor/datatables/indonesian.json' },
+            drawCallback: function () {
+                $('#unrecordedTable').off('click', '.btn-catat-retro').on('click', '.btn-catat-retro', function () {
+                    openDisposalRetroModal(
+                        $(this).data('asset-type'),
+                        $(this).data('asset-id'),
+                        $(this).data('asset-no')
+                    );
+                });
+            },
+        });
+
+        // Debounced search input — sends request to server
+        $('#searchUnrecorded').on('keyup', function () {
+            clearTimeout(_unrecordedSearchTimer);
+            var val = $(this).val();
+            _unrecordedSearchTimer = setTimeout(function () {
+                _unrecordedTable.search(val).draw();
+            }, 400);
+        });
+    }
+
+    window.refreshUnrecordedTable = function () {
+        if (_unrecordedTable) {
+            _unrecordedTable.ajax.reload();
+        }
+    };
+
+    // Init unrecorded table when tab is shown
+    document.getElementById('tab-unrecorded-btn').addEventListener('shown.bs.tab', function () {
+        initUnrecordedTable();
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // Retroactive Sale Modal (disposal page)
+    // ═══════════════════════════════════════════════════════
+    function openDisposalRetroModal(assetType, assetId, assetNo) {
+        $('#retro-asset-type').val(assetType);
+        $('#retro-asset-id').val(assetId);
+        $('#retro-asset-label').text(assetNo || (assetType + ' #' + assetId));
+        // Reset fields
+        $('#retro-nama-pembeli, #retro-telepon, #retro-alamat, #retro-no-kwitansi, #retro-no-bast, #retro-no-invoice, #retro-keterangan').val('');
+        $('#retro-harga').val('');
+        $('#retro-tanggal-jual').val(new Date().toISOString().slice(0, 10));
+        $('#retro-metode').val('TRANSFER');
+        new bootstrap.Modal(document.getElementById('modal-disposal-retro-sale')).show();
+    }
+
+    $('#btn-submit-disposal-retro').on('click', function () {
+        var namaPembeli = $('#retro-nama-pembeli').val().trim();
+        var tanggalJual = $('#retro-tanggal-jual').val();
+        if (!namaPembeli || !tanggalJual) {
+            if (window.OptimaNotify) OptimaNotify.error(_retroRequiredMsg);
+            return;
+        }
+
+        var btn = $(this).prop('disabled', true).html(_retroSavingLabel);
+
+        $.ajax({
+            url: _baseUrl + 'purchasing/asset-disposal/storeRetroactive',
+            type: 'POST',
+            data: {
+                [window.csrfTokenName]: window.csrfTokenValue,
+                asset_type:          $('#retro-asset-type').val(),
+                asset_id:            $('#retro-asset-id').val(),
+                nama_pembeli:        namaPembeli,
+                tanggal_jual:        tanggalJual,
+                telepon_pembeli:     $('#retro-telepon').val().trim(),
+                alamat_pembeli:      $('#retro-alamat').val().trim(),
+                harga_jual:          $('#retro-harga').val(),
+                metode_pembayaran:   $('#retro-metode').val(),
+                no_kwitansi:         $('#retro-no-kwitansi').val().trim(),
+                no_bast:             $('#retro-no-bast').val().trim(),
+                no_invoice:          $('#retro-no-invoice').val().trim(),
+                keterangan:          $('#retro-keterangan').val().trim(),
+            },
+            dataType: 'json',
+            success: function (res) {
+                btn.prop('disabled', false).html(_retroSaveLabel);
+                if (res.success) {
+                    if (window.OptimaNotify) OptimaNotify.success(_retroSuccessMsg + ' ' + res.no_dokumen);
+                    bootstrap.Modal.getInstance(document.getElementById('modal-disposal-retro-sale'))?.hide();
+                    // Reload both tables + update badge count
+                    if (_unrecordedTable) _unrecordedTable.ajax.reload();
+                    window.refreshTable();
+                    // Update badge: decrement or remove
+                    var $badge = $('#tab-unrecorded-btn .badge');
+                    if ($badge.length) {
+                        var count = parseInt($badge.text(), 10) - 1;
+                        if (count <= 0) $badge.remove();
+                        else $badge.text(count);
+                    }
+                } else {
+                    if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal menyimpan.');
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false).html(_retroSaveLabel);
+                var msg = xhr.responseJSON?.message || '<?= lang('App.error_occurred') ?>';
+                if (window.OptimaNotify) OptimaNotify.error(msg);
+            },
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════
     // Init
     // ═══════════════════════════════════════════════════════
     $(function () {
         initTable();
+        // Explicitly activate the first tab so Bootstrap hides the second pane
+        var salesTabEl = document.getElementById('tab-sales-btn');
+        if (salesTabEl && window.bootstrap) {
+            bootstrap.Tab.getOrCreateInstance(salesTabEl).show();
+        }
     });
 
 }());

@@ -84,4 +84,20 @@ return [
     'sale_success'               => 'Sale recorded successfully.',
     'cancel_success'             => 'Sale cancelled successfully.',
     'sparepart_note'             => 'Sparepart sale is recorded for documentation only — stock is not affected.',
+
+    // Unrecorded (Belum Terdata) tab
+    'tab_sale_history'           => 'Sale History',
+    'tab_unrecorded'             => 'Unrecorded',
+    'unrecorded_alert'           => 'The following assets have <strong>SOLD</strong> status but no sale record. Click <strong>Record</strong> to complete the data.',
+    'retro_modal_title'          => 'Record Sale Data',
+    'retro_fill_desc'            => 'Filling in sale data for:',
+    'retro_doc_auto'             => 'Document number will be auto-generated.',
+    'search_unrecorded_ph'       => 'Search unit no., serial number...',
+    'btn_record'                 => 'Record',
+    'save_sale_data'             => 'Save Sale Data',
+    'retro_required_fields'      => 'Buyer name and sale date are required.',
+    'retro_saving'               => 'Saving...',
+    'retro_success'              => 'Sale recorded successfully. Doc No:',
+    'buyer_name_placeholder'     => 'Company / individual name',
+    'notes_placeholder'          => 'Additional notes...',
 ];

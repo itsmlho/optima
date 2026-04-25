@@ -363,6 +363,27 @@ class UnitInventoryController extends BaseController
             log_message('warning', 'UnitInventoryController::show active_booking: ' . $e->getMessage());
         }
 
+        // ── Asset Disposal / Sale Record ─────────────────────────────
+        $sale_record = null;
+        try {
+            if ($db->tableExists('unit_sale_records')) {
+                $sale_record = $db->table('unit_sale_records usr')
+                    ->select('usr.id, usr.no_dokumen, usr.tanggal_jual, usr.nama_pembeli,
+                              usr.alamat_pembeli, usr.telepon_pembeli, usr.harga_jual,
+                              usr.metode_pembayaran, usr.no_kwitansi, usr.no_bast,
+                              usr.no_invoice, usr.keterangan AS sale_keterangan, usr.status,
+                              CONCAT(IFNULL(u.first_name,""), " ", IFNULL(u.last_name,"")) AS sold_by_name')
+                    ->join('users u', 'u.id = usr.sold_by_user_id', 'left')
+                    ->where('usr.unit_id', (int)$id)
+                    ->where('usr.status', 'COMPLETED')
+                    ->orderBy('usr.tanggal_jual', 'DESC')
+                    ->limit(1)
+                    ->get()->getRowArray() ?: null;
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UnitInventoryController::show sale_record: ' . $e->getMessage());
+        }
+
         // Lookup data for inline edit
         $lookup = $this->getLookupData();
         $silo = null;
@@ -381,6 +402,7 @@ class UnitInventoryController extends BaseController
             'rental_history'       => $rental_history,
             'spk_history'          => $spk_history,
             'current_components'   => $current_components,
+            'sale_record'          => $sale_record,
             // For inline edit
             'tipe_mast'            => $lookup['tipe_mast']      ?? [],
             'mesin'                => $lookup['mesin']           ?? [],

@@ -37,6 +37,7 @@ class UnitActivityService
         $events = array_merge($events, $this->getSparepartUsageEvents($unitId));
         $events = array_merge($events, $this->getSpkSparepartEvents($unitId));
         $events = array_merge($events, $this->getStatusEvents($unitId));
+        $events = array_merge($events, $this->getSaleEvents($unitId));
 
         // Filter by category if specified
         if ($category && $category !== 'all') {
@@ -955,5 +956,55 @@ class UnitActivityService
         }
 
         return $stats;
+    }
+
+    /**
+     * Get asset disposal / sale events for this unit
+     */
+    protected function getSaleEvents(int $unitId): array
+    {
+        $events = [];
+
+        try {
+            if (!$this->db->tableExists('unit_sale_records')) {
+                return [];
+            }
+
+            $rows = $this->db->table('unit_sale_records usr')
+                ->select('usr.id, usr.no_dokumen, usr.tanggal_jual, usr.nama_pembeli,
+                          usr.harga_jual, usr.metode_pembayaran, usr.status,
+                          CONCAT(IFNULL(u.first_name,""), " ", IFNULL(u.last_name,"")) AS sold_by')
+                ->join('users u', 'u.id = usr.sold_by_user_id', 'left')
+                ->where('usr.unit_id', $unitId)
+                ->orderBy('usr.tanggal_jual', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($rows as $row) {
+                $statusLabel = $row['status'] === 'CANCELLED' ? 'Dibatalkan' : 'Selesai';
+                $color       = $row['status'] === 'CANCELLED' ? 'secondary' : 'danger';
+                $harga       = 'Rp ' . number_format((float)($row['harga_jual'] ?? 0), 0, ',', '.');
+                $detail      = 'Kepada: ' . $row['nama_pembeli'] . ' · ' . $harga
+                             . (!empty(trim($row['sold_by'])) ? ' · oleh ' . trim($row['sold_by']) : '');
+
+                $events[] = [
+                    'date'             => $row['tanggal_jual'],
+                    'category'         => 'SALE',
+                    'title'            => 'Asset Disposal — ' . $statusLabel,
+                    'reference_type'   => 'sale',
+                    'reference_number' => $row['no_dokumen'],
+                    'description'      => 'Unit dijual (' . $row['metode_pembayaran'] . ')',
+                    'detail'           => $detail,
+                    'icon'             => 'handshake',
+                    'color'            => $color,
+                    'meta'             => [
+                        'url' => base_url('purchasing/asset-disposal/detail/unit/' . $row['id']),
+                    ],
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UnitActivityService] getSaleEvents: ' . $e->getMessage());
+        }
+
+        return $events;
     }
 }

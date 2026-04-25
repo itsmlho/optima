@@ -103,6 +103,12 @@ class ComponentSaleModel extends Model
             ->join('users usr', 'usr.id = csr.sold_by_user_id', 'left')
             ->join('users cu',  'cu.id = csr.cancelled_by_user_id', 'left');
 
+        // Exclude bundled components (linked to a unit sale) by default
+        // Pass 'include_bundled' => true to override (e.g. unit detail view)
+        if (empty($filters['include_bundled'])) {
+            $builder->where('csr.linked_unit_sale_id IS NULL', null, false);
+        }
+
         // Filters
         if (!empty($filters['status'])) {
             $builder->where('csr.status', $filters['status']);

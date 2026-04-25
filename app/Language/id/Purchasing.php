@@ -84,4 +84,20 @@ return [
     'sale_success'               => 'Penjualan berhasil dicatat.',
     'cancel_success'             => 'Penjualan berhasil dibatalkan.',
     'sparepart_note'             => 'Penjualan sparepart hanya dicatat untuk dokumentasi — stok tidak terpengaruh.',
+
+    // Unrecorded (Belum Terdata) tab
+    'tab_sale_history'           => 'Riwayat Penjualan',
+    'tab_unrecorded'             => 'Belum Terdata',
+    'unrecorded_alert'           => 'Aset berikut berstatus <strong>SOLD</strong> tetapi belum memiliki catatan penjualan. Klik <strong>Catat</strong> untuk melengkapi datanya.',
+    'retro_modal_title'          => 'Catat Data Penjualan',
+    'retro_fill_desc'            => 'Mengisi data penjualan untuk:',
+    'retro_doc_auto'             => 'Nomor dokumen akan digenerate otomatis.',
+    'search_unrecorded_ph'       => 'Cari no. unit, serial number...',
+    'btn_record'                 => 'Catat',
+    'save_sale_data'             => 'Simpan Data Penjualan',
+    'retro_required_fields'      => 'Nama pembeli dan tanggal jual wajib diisi.',
+    'retro_saving'               => 'Menyimpan...',
+    'retro_success'              => 'Data berhasil dicatat. No. Dok:',
+    'buyer_name_placeholder'     => 'Nama perusahaan / perorangan',
+    'notes_placeholder'          => 'Catatan tambahan...',
 ];

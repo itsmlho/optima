@@ -213,7 +213,7 @@ class UnitSaleModel extends Model
         FROM (
             SELECT tanggal_jual, harga_jual FROM unit_sale_records      WHERE status = 'COMPLETED'
             UNION ALL
-            SELECT tanggal_jual, harga_jual FROM component_sale_records WHERE status = 'COMPLETED'
+            SELECT tanggal_jual, harga_jual FROM component_sale_records WHERE status = 'COMPLETED' AND linked_unit_sale_id IS NULL
         ) AS combined";
 
         $row = $this->db->query($sql, [$year, $month])->getRowArray();

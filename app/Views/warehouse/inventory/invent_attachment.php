@@ -631,6 +631,85 @@
     </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: CATAT DATA PENJUALAN RETROAKTIF (COMPONENT)
+══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modal-comp-retroactive-sale" tabindex="-1" aria-labelledby="modalCompRetroSaleLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="modalCompRetroSaleLabel">
+                    <i class="fas fa-handshake me-2"></i>Catat Data Penjualan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small d-flex gap-2 align-items-start py-2 mb-3">
+                    <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+                    <div>Isi data penjualan untuk item yang sudah berstatus SOLD. Nomor dokumen akan digenerate otomatis.</div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Nama Pembeli <span class="text-danger">*</span></label>
+                        <input type="text" id="comp-retro-nama-pembeli" class="form-control form-control-sm"
+                               placeholder="Nama perusahaan / perorangan">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Tanggal Jual <span class="text-danger">*</span></label>
+                        <input type="date" id="comp-retro-tanggal-jual" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Telepon Pembeli</label>
+                        <input type="text" id="comp-retro-telepon" class="form-control form-control-sm" placeholder="Opsional">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Harga Jual (Rp)</label>
+                        <input type="number" id="comp-retro-harga" class="form-control form-control-sm"
+                               placeholder="0" min="0" step="1000">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Alamat Pembeli</label>
+                        <input type="text" id="comp-retro-alamat" class="form-control form-control-sm" placeholder="Opsional">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Metode Pembayaran</label>
+                        <select id="comp-retro-metode" class="form-select form-select-sm">
+                            <option value="TRANSFER">Transfer</option>
+                            <option value="TUNAI">Tunai</option>
+                            <option value="CHEQUE">Cheque</option>
+                            <option value="CREDIT">Credit</option>
+                            <option value="LAINNYA">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">No. Kwitansi</label>
+                        <input type="text" id="comp-retro-no-kwitansi" class="form-control form-control-sm" placeholder="Opsional">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">No. BAST</label>
+                        <input type="text" id="comp-retro-no-bast" class="form-control form-control-sm" placeholder="Opsional">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">No. Invoice</label>
+                        <input type="text" id="comp-retro-no-invoice" class="form-control form-control-sm" placeholder="Opsional">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Keterangan</label>
+                        <textarea id="comp-retro-keterangan" class="form-control form-control-sm" rows="2"
+                                  placeholder="Catatan tambahan..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-warning btn-sm" id="btn-submit-comp-retro-sale">
+                    <i class="fas fa-save me-1"></i>Simpan Data Penjualan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
@@ -1120,14 +1199,15 @@
                     
                     // Show/hide action buttons based on attachment status
                     $('#btnAttachToUnit, #btnSwapUnit, #btnDetachFromUnit').hide();
-                    
-                    if (data.id_inventory_unit === null || data.id_inventory_unit === '' || data.id_inventory_unit === 0) {
-                        // Item tidak terpasang → Show "Pasang ke Unit"
-                        $('#btnAttachToUnit').show();
-                    } else {
-                        // Item terpasang → Show "Pindah Unit" & "Lepas dari Unit"
-                        $('#btnSwapUnit').show();
-                        $('#btnDetachFromUnit').show();
+
+                    const isSold = (data.attachment_status || data.status || '').toUpperCase() === 'SOLD';
+                    if (!isSold) {
+                        if (data.id_inventory_unit === null || data.id_inventory_unit === '' || data.id_inventory_unit === 0) {
+                            $('#btnAttachToUnit').show();
+                        } else {
+                            $('#btnSwapUnit').show();
+                            $('#btnDetachFromUnit').show();
+                        }
                     }
                 } else {
                     const errorHtml = `
@@ -1176,11 +1256,64 @@
             }
             return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         };
+
+        const isSold = (data.attachment_status || data.status || '').toUpperCase() === 'SOLD';
+
+        // Build sold banner HTML if applicable
+        let soldBannerHtml = '';
+        if (isSold) {
+            const sr = data.sale_record || null;
+            if (sr && sr.nama_pembeli) {
+                const buyerName  = h(sr.nama_pembeli || '-');
+                const saleDate   = sr.tanggal_jual ? new Date(sr.tanggal_jual).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '-';
+                const salePrice  = sr.harga_jual ? 'Rp ' + Number(sr.harga_jual).toLocaleString('id-ID') : '-';
+                const noDoc      = h(sr.no_dokumen || '');
+                const soldBy     = h((sr.sold_by_name || '').trim());
+
+                soldBannerHtml = `
+                <div class="card border-danger border-opacity-50 mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:rgba(220,53,69,.08)">
+                        <h6 class="mb-0 text-danger fw-bold"><i class="fas fa-handshake me-2"></i>Item Ini Telah Dijual</h6>
+                        <span class="badge badge-soft-red">SOLD</span>
+                    </div>
+                    <div class="card-body py-2 small">
+                        <dl class="row mb-0">
+                            <dt class="col-5 text-muted">Dijual kepada</dt>
+                            <dd class="col-7 fw-bold">${buyerName}</dd>
+                            <dt class="col-5 text-muted">Tanggal Jual</dt>
+                            <dd class="col-7">${saleDate}</dd>
+                            <dt class="col-5 text-muted">Harga Jual</dt>
+                            <dd class="col-7 fw-bold">${salePrice}</dd>
+                            ${noDoc ? `<dt class="col-5 text-muted">No. Dokumen</dt><dd class="col-7 font-monospace">${noDoc}</dd>` : ''}
+                            ${soldBy ? `<dt class="col-5 text-muted">Dijual oleh</dt><dd class="col-7 text-muted">${soldBy}</dd>` : ''}
+                        </dl>
+                    </div>
+                </div>`;
+            } else {
+                // SOLD but no sale record — show warning with retro button
+                const assetType = (data.tipe_item || data.asset_type || '').toUpperCase();
+                const assetId   = data.id || data.attachment_id || 0;
+                soldBannerHtml = `
+                <div class="card border-warning border-opacity-50 mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:rgba(255,193,7,.08)">
+                        <h6 class="mb-0 text-warning fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Data Penjualan Belum Tercatat</h6>
+                        <span class="badge badge-soft-yellow">SOLD — Tanpa Data</span>
+                    </div>
+                    <div class="card-body py-2 small">
+                        <p class="text-muted mb-2">Item ini berstatus <strong>SOLD</strong> tetapi belum ada catatan penjualan di sistem.</p>
+                        <button type="button" class="btn btn-warning btn-sm"
+                            onclick="openRetroSaleModal('${h(assetType)}', ${assetId})">
+                            <i class="fas fa-plus-circle me-1"></i>Catat Data Penjualan
+                        </button>
+                    </div>
+                </div>`;
+            }
+        }
         
         console.log('Creating detail HTML for data:', data);
         
         return `
-
+    ${soldBannerHtml}
     <!-- ===== TAB NAVIGATION ===== -->
     <ul class="nav nav-tabs mb-3" id="attachmentDetailTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -2211,5 +2344,74 @@
         html += `</div></div>`;
         return html;
     }
+
+    // ── RETROACTIVE SALE (component) ────────────────────────
+    let _retroAssetType = '';
+    let _retroAssetId   = 0;
+
+    function openRetroSaleModal(assetType, assetId) {
+        _retroAssetType = assetType;
+        _retroAssetId   = assetId;
+        // Reset form
+        $('#comp-retro-nama-pembeli, #comp-retro-telepon, #comp-retro-alamat, #comp-retro-no-kwitansi, #comp-retro-no-bast, #comp-retro-no-invoice, #comp-retro-keterangan').val('');
+        $('#comp-retro-harga').val('');
+        $('#comp-retro-tanggal-jual').val(new Date().toISOString().slice(0,10));
+        $('#comp-retro-metode').val('TRANSFER');
+        const modal = new bootstrap.Modal(document.getElementById('modal-comp-retroactive-sale'));
+        modal.show();
+    }
+    window.openRetroSaleModal = openRetroSaleModal;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('btn-submit-comp-retro-sale')?.addEventListener('click', function() {
+            const namaPembeli = $('#comp-retro-nama-pembeli').val().trim();
+            const tanggalJual = $('#comp-retro-tanggal-jual').val();
+            if (!namaPembeli || !tanggalJual) {
+                if (window.OptimaNotify) OptimaNotify.error('Nama pembeli dan tanggal jual wajib diisi.');
+                return;
+            }
+
+            const btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
+
+            $.ajax({
+                url: baseUrl + 'purchasing/asset-disposal/storeRetroactive',
+                type: 'POST',
+                data: {
+                    [window.csrfTokenName]: window.csrfTokenValue,
+                    asset_type:          _retroAssetType,
+                    asset_id:            _retroAssetId,
+                    nama_pembeli:        namaPembeli,
+                    tanggal_jual:        tanggalJual,
+                    telepon_pembeli:     $('#comp-retro-telepon').val().trim(),
+                    alamat_pembeli:      $('#comp-retro-alamat').val().trim(),
+                    harga_jual:          $('#comp-retro-harga').val(),
+                    metode_pembayaran:   $('#comp-retro-metode').val(),
+                    no_kwitansi:         $('#comp-retro-no-kwitansi').val().trim(),
+                    no_bast:             $('#comp-retro-no-bast').val().trim(),
+                    no_invoice:          $('#comp-retro-no-invoice').val().trim(),
+                    keterangan:          $('#comp-retro-keterangan').val().trim(),
+                },
+                dataType: 'json',
+                success: function(res) {
+                    btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan Data Penjualan');
+                    if (res.success) {
+                        if (window.OptimaNotify) OptimaNotify.success('Data penjualan berhasil dicatat. No. Dok: ' + res.no_dokumen);
+                        bootstrap.Modal.getInstance(document.getElementById('modal-comp-retroactive-sale'))?.hide();
+                        // Refresh the parent modal if open
+                        if (currentHistoryAttachmentId) {
+                            setTimeout(function(){ openAttachmentDetail(currentHistoryAttachmentId); }, 800);
+                        }
+                    } else {
+                        if (window.OptimaNotify) OptimaNotify.error(res.message || 'Gagal menyimpan.');
+                    }
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan Data Penjualan');
+                    const msg = xhr.responseJSON?.message || 'Terjadi kesalahan jaringan.';
+                    if (window.OptimaNotify) OptimaNotify.error(msg);
+                }
+            });
+        });
+    });
 </script>
 <?= $this->endSection() ?>
