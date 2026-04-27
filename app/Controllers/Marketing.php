@@ -4381,6 +4381,8 @@ class Marketing extends BaseDataTableController
     public function getContractsForTarik()
     {
         try {
+            $customerId = (int)($this->request->getGet('customer_id') ?? 0);
+
             $builder = $this->db->table('kontrak k');
             $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE","TEMPORARILY_REPLACED") AND ku.is_temporary = 0', 'inner');
@@ -4392,6 +4394,9 @@ class Marketing extends BaseDataTableController
                 (SELECT cl.location_name FROM kontrak_unit ku2 JOIN customer_locations cl ON cl.id = ku2.customer_location_id WHERE ku2.kontrak_id = k.id LIMIT 1) as lokasi
             ');
             $builder->whereIn('k.status', ['ACTIVE', 'EXPIRED']);
+            if ($customerId > 0) {
+                $builder->where('k.customer_id', $customerId);
+            }
             $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, k.status, k.tanggal_berakhir, c.customer_name');
             $builder->orderBy('k.tanggal_berakhir', 'ASC');
             $rows = $builder->get()->getResultArray();

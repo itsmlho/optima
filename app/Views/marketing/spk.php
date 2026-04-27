@@ -424,6 +424,7 @@ $can_export = $permissions['export'];
                 <form id="diForm">
                     <div class="modal-body">
                         <input type="hidden" name="spk_id" id="diSpkId">
+                        <input type="hidden" name="tarik_contract_id" id="spkTarikContractId">
                         <div class="mb-2"><label class="form-label">SPK No.</label><input class="form-control" id="diNoSpk" readonly></div>
                         <div class="mb-2"><label class="form-label">Contract/PO</label><input class="form-control" id="diPoNo" readonly></div>
                         <div class="mb-2"><label class="form-label">Customer</label><input class="form-control" id="diPelanggan" readonly></div>
@@ -448,17 +449,26 @@ $can_export = $permissions['export'];
                             <div class="form-text">Reason/context for this SPK</div>
                         </div>
                         
-                        <!-- EXCHANGE Workflow Section: PULL units from SPK contract -->
+                        <!-- EXCHANGE Workflow Section: PULL units from contract -->
                         <div id="spkTukarWorkflow" class="d-none mb-3">
                             <div class="alert alert-info">
                                 <i class="fas fa-exchange-alt"></i> 
-                                <strong>EXCHANGE Workflow:</strong> Select units from contract to be pulled for replacement
+                                <strong>EXCHANGE Workflow:</strong> Pilih kontrak &amp; unit yang akan ditarik
+                            </div>
+                            
+                            <!-- Pilih kontrak unit lama -->
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold">Kontrak Unit Lama <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="spkTarikKontrak">
+                                    <option value="">-- Memuat kontrak... --</option>
+                                </select>
+                                <small class="text-muted">Default: kontrak SPK ini. Pilih lain jika unit lama dari kontrak berbeda.</small>
                             </div>
                             
                             <!-- Unit PULL Section for EXCHANGE -->
                             <div class="card border-warning">
                                 <div class="card-header bg-warning text-dark">
-                                    <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Units to PULL (from this SPK contract)</h6>
+                                    <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Unit yang Akan Ditarik</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -2617,12 +2627,12 @@ $can_export = $permissions['export'];
                 tukarWorkflow.style.display = 'block';
                 
                 // Keep standard item selection visible for TUKAR (items KIRIM from SPK)
-                // standardItems visibility will be handled by existing SPK selection logic
                 if (itemSummary) {
-                    itemSummary.innerHTML = '<div class="text-info"><i class="fas fa-exchange-alt"></i> <strong>Mode TUKAR:</strong> Unit KIRIM (dari Service) + Unit TARIK (dari kontrak SPK ini)</div>';
+                    itemSummary.innerHTML = '<div class="text-info"><i class="fas fa-exchange-alt"></i> <strong>Mode TUKAR:</strong> Unit KIRIM (dari SPK ini) + Unit TARIK (dari kontrak yang dipilih)</div>';
                 }
                 
-                // Load unit TARIK dari kontrak SPK langsung (tidak perlu pilih kontrak lagi)
+                // Setup kontrak change handler dulu, lalu load kontrak + units
+                setupSpkKontrakChangeHandler();
                 loadSpkTarikUnitsFromSpkKontrak();
             } else {
                 // Hide TUKAR workflow components
@@ -2638,67 +2648,81 @@ $can_export = $permissions['export'];
             }
         }
         
-        // Load unit TARIK dari kontrak yang terhubung dengan SPK untuk TUKAR workflow
+        // Load unit TARIK dari kontrak — load kontrak customer dulu, pre-select kontrak SPK
         function loadSpkTarikUnitsFromSpkKontrak() {
-            // Ambil data SPK yang sedang dipilih
             const spkId = document.getElementById('diSpkId').value;
             if (!spkId) {
                 console.error('SPK ID not found for TUKAR workflow');
                 return;
             }
-            
-            // Gunakan data SPK yang sudah ada untuk mendapatkan kontrak
-            const poNo = document.getElementById('diPoNo').value;
-            const pelanggan = document.getElementById('diPelanggan').value;
-            
-            // Fetch SPK detail untuk mendapatkan kontrak_id
+
+            const kontrakSelect = document.getElementById('spkTarikKontrak');
+            const unitList = document.getElementById('spkTarikUnitList');
+            if (!kontrakSelect || !unitList) return;
+
+            kontrakSelect.innerHTML = '<option value="">-- Memuat kontrak... --</option>';
+            unitList.innerHTML = '<div class="text-muted small">Memuat kontrak...</div>';
+
+            // Fetch SPK detail untuk dapatkan kontrak_id dan customer_id
             fetch(`<?= base_url('marketing/spk/detail/') ?>${spkId}`)
                 .then(r => r.json())
                 .then(j => {
-                    if (j && j.success && j.data && j.data.kontrak_id) {
-                        // Load units dari kontrak
-                        loadSpkTarikUnits(j.data.kontrak_id);
-                    } else {
-                        console.error('SPK tidak memiliki kontrak yang terhubung. Response:', j);
-                        document.getElementById('spkTarikUnitList').innerHTML = 
-                            '<div class="text-danger small">SPK ini tidak terhubung dengan kontrak.</div>';
+                    if (!j || !j.success) {
+                        unitList.innerHTML = '<div class="text-danger small">Gagal memuat data SPK.</div>';
+                        return;
                     }
+                    const spkKontrakId = j.data?.kontrak_id || '';
+                    const customerId   = j.data?.customer_id || j.customer_id || '';
+
+                    // Load kontrak customer (filtered)
+                    const tarikUrl = '<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>' +
+                        (customerId ? '?customer_id=' + encodeURIComponent(customerId) : '');
+
+                    fetch(tarikUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.success && res.data) {
+                                kontrakSelect.innerHTML = res.data.map(k =>
+                                    `<option value="${k.id}">${k.label} (${k.unit_count} unit)</option>`
+                                ).join('');
+                                // Pre-select kontrak SPK
+                                if (spkKontrakId) {
+                                    kontrakSelect.value = String(spkKontrakId);
+                                    document.getElementById('spkTarikContractId').value = String(spkKontrakId);
+                                } else if (res.data.length > 0) {
+                                    kontrakSelect.value = String(res.data[0].id);
+                                    document.getElementById('spkTarikContractId').value = String(res.data[0].id);
+                                }
+                                // Load units dari kontrak yang terpilih
+                                if (kontrakSelect.value) loadSpkTarikUnits(kontrakSelect.value);
+                            } else {
+                                kontrakSelect.innerHTML = '<option value="">Tidak ada kontrak aktif</option>';
+                                unitList.innerHTML = '<div class="text-muted small">Tidak ada kontrak untuk customer ini.</div>';
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching contracts for tarik:', err);
+                            unitList.innerHTML = '<div class="text-danger small">Error memuat kontrak.</div>';
+                        });
                 })
                 .catch(error => {
                     console.error('Error fetching SPK detail:', error);
-                    document.getElementById('spkTarikUnitList').innerHTML = 
-                        '<div class="text-danger small">Error loading SPK data.</div>';
+                    unitList.innerHTML = '<div class="text-danger small">Error loading SPK data.</div>';
                 });
         }
         
         // Setup kontrak selection change handler for SPK TUKAR workflow
         function setupSpkKontrakChangeHandler() {
-            const kontrakSelect = document.getElementById('spkKontrakSelect');
-            
+            const kontrakSelect = document.getElementById('spkTarikKontrak');
             if (!kontrakSelect) return;
             
             kontrakSelect.addEventListener('change', function() {
-                if (this.value) {
-                    // Get selected option text which contains "no_kontrak - pelanggan"
-                    const selectedOption = this.selectedOptions[0];
-                    const optionText = selectedOption.textContent;
-                    
-                    // Parse no_kontrak and pelanggan from option text
-                    const parts = optionText.split(' - ');
-                    const noKontrak = parts[0] || '';
-                    const pelanggan = parts[1] || '';
-                    
-                    // Auto-populate hidden fields for backend validation
-                    document.getElementById('spkPoKontrakNomor').value = noKontrak;
-                    document.getElementById('spkPelangganKontrak').value = pelanggan;
-                    
-                    // Load TARIK units for TUKAR workflow
-                    loadSpkTarikUnits(this.value);
+                const contractId = this.value;
+                document.getElementById('spkTarikContractId').value = contractId || '';
+                if (contractId) {
+                    loadSpkTarikUnits(contractId);
                 } else {
-                    // Reset hidden fields and list
-                    document.getElementById('spkPoKontrakNomor').value = '';
-                    document.getElementById('spkPelangganKontrak').value = '';
-                    document.getElementById('spkTarikUnitList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
+                    document.getElementById('spkTarikUnitList').innerHTML = '<div class="text-muted small">Pilih kontrak untuk memuat unit...</div>';
                     document.getElementById('spkTarikCount').textContent = '0';
                 }
             });
