@@ -547,7 +547,7 @@ class Operational extends BaseController
         log_message('info', "=== diUpdateStatus called for DI {$id} ===");
         
         // Check permission for updating DI status
-        if (!$this->hasPermission('operational.delivery_instructions.edit')) {
+        if (!$this->hasPermission('operational.delivery.dispatch')) {
             log_message('warning', "Permission denied for user attempting to update DI {$id}");
             return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak: Anda tidak memiliki izin'])->setStatusCode(403);
         }
