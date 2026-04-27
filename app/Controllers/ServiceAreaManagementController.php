@@ -389,7 +389,7 @@ class ServiceAreaManagementController extends BaseController
                     'id' => $area['id'],
                     'area_code' => $area['area_code'],
                     'area_name' => $area['area_name'],
-                    'area_type' => $area['area_type'] ?? 'MILL',
+                    'area_type' => ($area['area_type'] ?: 'MILL'),
                     'departemen_id' => $area['departemen_id'] ?? null,
                     'departemen_name' => $area['departemen_name'] ?? null,
                     'description' => $area['area_description'] ?? '',
@@ -506,8 +506,8 @@ class ServiceAreaManagementController extends BaseController
             ]);
         }
 
-        // Normalize area_type — NULL (legacy rows) → default 'MILL'
-        $area['area_type'] = $area['area_type'] ?? 'MILL';
+        // Normalize area_type — NULL/empty string (legacy rows) → default 'MILL'
+        $area['area_type'] = ($area['area_type'] ?: 'MILL');
 
         return $this->response->setJSON([
             'success' => true,
