@@ -1474,6 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 		
 		const mechanicContainer = document.getElementById('mechanicSelectionContainer');
+		const approvalModalEl = document.getElementById('approvalStageModal');
 
 		if (stage === 'install') {
 			// Install: inherit mechanic from Unit Preparation, no selector needed
@@ -1492,7 +1493,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		// Show the approval modal
-		const approvalModalEl = document.getElementById('approvalStageModal');
 		let approvalModal = bootstrap.Modal.getInstance(approvalModalEl);
 		if (!approvalModal) {
 			approvalModal = new bootstrap.Modal(approvalModalEl);
