@@ -1809,7 +1809,7 @@ class Service extends BaseController
     {
         try {
             // Extract and validate request data
-            $approvalData = $this->validateAndExtractApprovalData();
+            $approvalData = $this->validateAndExtractApprovalData($id);
             
             // Prepare base stage data
             $stageData = $this->prepareBaseStageData($id, $approvalData);
@@ -2042,7 +2042,7 @@ class Service extends BaseController
     /**
      * Validate and extract approval request data
      */
-    private function validateAndExtractApprovalData()
+    private function validateAndExtractApprovalData(int $spkId = 0)
     {
         $stage = $this->request->getPost('stage');
         $unitIndex = (int) $this->request->getPost('unit_index') ?: 1;
@@ -2069,7 +2069,8 @@ class Service extends BaseController
         // Basic validation - check if we have mechanics data
         // For 'install' stage: inherit mechanics from persiapan_unit automatically (no selector shown)
         if ($stage === 'install' && empty($mechanicsData) && !$mekanik) {
-            $spkIdForInherit = $this->request->getPost('spk_id');
+            // Use URL route $spkId — POST 'spk_id' was always empty because ID comes from the URL
+            $spkIdForInherit = $spkId ?: (int) $this->request->getPost('spk_id');
             $persiapanRow = $this->db->table('spk_unit_stages')
                 ->where('spk_id', $spkIdForInherit)
                 ->where('unit_index', $unitIndex)
