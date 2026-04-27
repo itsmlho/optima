@@ -269,7 +269,10 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold"><?= lang('Purchasing.sale_price') ?></label>
-                        <input type="number" id="retro-harga" class="form-control form-control-sm" placeholder="0" min="0" step="1000">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text" id="retro-harga" class="form-control form-control-sm" placeholder="0" inputmode="numeric">
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-semibold"><?= lang('Purchasing.buyer_address') ?></label>
@@ -438,7 +441,10 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold"><?= lang('Purchasing.sale_price') ?> <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="harga_jual" name="harga_jual" placeholder="0" required inputmode="numeric">
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" class="form-control" id="harga_jual" name="harga_jual" placeholder="0" required inputmode="numeric">
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold"><?= lang('Purchasing.payment_method') ?> <span class="text-danger">*</span></label>
@@ -708,13 +714,15 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
     });
 
     // ═══════════════════════════════════════════════════════
-    // Harga Jual Formatting
+    // Harga Jual Formatting (create modal + retro modal)
     // ═══════════════════════════════════════════════════════
-    $('#harga_jual').on('input', function () {
-        var raw = $(this).val().replace(/[^0-9]/g, '');
+    function formatCurrencyInput(el) {
+        var raw = $(el).val().replace(/[^0-9]/g, '');
         var int = parseInt(raw, 10);
-        $(this).val(isNaN(int) ? '' : int.toLocaleString('id-ID'));
-    });
+        $(el).val(isNaN(int) ? '' : int.toLocaleString('id-ID'));
+    }
+    $('#harga_jual').on('input', function () { formatCurrencyInput(this); });
+    $('#retro-harga').on('input', function () { formatCurrencyInput(this); });
 
     // ═══════════════════════════════════════════════════════
     // Form Submit
@@ -955,7 +963,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                 tanggal_jual:        tanggalJual,
                 telepon_pembeli:     $('#retro-telepon').val().trim(),
                 alamat_pembeli:      $('#retro-alamat').val().trim(),
-                harga_jual:          $('#retro-harga').val(),
+                harga_jual:          $('#retro-harga').val().replace(/\./g, '').replace(/,/g, '.') || '0',
                 metode_pembayaran:   $('#retro-metode').val(),
                 no_kwitansi:         $('#retro-no-kwitansi').val().trim(),
                 no_bast:             $('#retro-no-bast').val().trim(),
