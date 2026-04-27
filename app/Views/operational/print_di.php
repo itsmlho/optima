@@ -609,7 +609,7 @@ if (empty($unit_items)) {
         <div class="approval-section">
             <div class="section-title">PERSETUJUAN & TANDA TANGAN</div>
             
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px;">
                 <div style="text-align: center;">
                     <div style="font-weight: bold; margin-bottom: 5px;">MARKETING</div>
                     <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pembuat DI</div>
@@ -630,61 +630,14 @@ if (empty($unit_items)) {
                         <div style="font-size: 9px; color: #666;">(...........................)</div>
                     <?php endif; ?>
                     <div style="font-size: 9px; color: #666; margin-top: 5px;">
-                        <?php 
-                            // Try multiple sources for marketing approval date
-                            $marketingDate = '';
-                            if (!empty($di['created_at'])) {
-                                $marketingDate = $di['created_at'];
-                            } elseif (!empty($spk['created_at'])) {
-                                $marketingDate = $spk['created_at'];
-                            } elseif (!empty($spk['dibuat_pada'])) {
-                                $marketingDate = $spk['dibuat_pada'];
-                            }
-                            
-                            if (!empty($marketingDate)): 
-                        ?>
-                            Tanggal: <?= date('d/m/Y', strtotime($marketingDate)) ?>
+                        <?php if (!empty($di['dibuat_pada'])): ?>
+                            Tanggal: <?= date('d/m/Y', strtotime($di['dibuat_pada'])) ?>
+                        <?php elseif (!empty($di['created_at'])): ?>
+                            Tanggal: <?= date('d/m/Y', strtotime($di['created_at'])) ?>
                         <?php else: ?>
                             Tanggal: __________
                         <?php endif; ?>
                     </div>
-                </div>
-
-                <div style="text-align: center;">
-                    <div style="font-weight: bold; margin-bottom: 5px;">BAG. PDI</div>
-                    <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pengecekan Unit</div>
-                    <?php 
-                    // Check for pdi stage approval from spk_unit_stages (copied from print_spk.php)
-                    $pdiApproved = false;
-                    $pdiMekanik = '';
-                    if (isset($spk['stage_status']['unit_stages'])) {
-                        foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
-                            if (isset($unitStages['pdi']) && $unitStages['pdi']['completed']) {
-                                $pdiApproved = true;
-                                $pdiMekanik = $unitStages['pdi']['mekanik'] ?? '';
-                                break;
-                            }
-                        }
-                    }
-                    ?>
-                    <?php if ($pdiApproved): ?>
-                        <div style="color: #059669; border: 2px solid #059669; padding: 3px 8px; font-size: 10px; font-weight: bold; display: inline-block; transform: rotate(-15deg); margin: 10px 0;">APPROVED</div>
-                        <br/>
-                        <div style="font-size: 10px; margin-top: 5px;">(<?= esc($pdiMekanik ?: '') ?>)</div>
-                        <?php if (isset($spk['stage_status']['unit_stages'])): ?>
-                            <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
-                                <?php if (isset($unitStages['pdi']) && $unitStages['pdi']['completed'] && $unitStages['pdi']['tanggal_approve']): ?>
-                                    <div style="font-size: 9px; color: #666; margin-top: 5px;">Tanggal: <?= date('d/m/Y', strtotime($unitStages['pdi']['tanggal_approve'])) ?></div>
-                                    <?php break; ?>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <br/><br/>
-                        <div style="border-bottom: 1px solid #000; margin: 10px 20px 5px 20px;"></div>
-                        <div style="font-size: 9px; color: #666;">(...........................)</div>
-                        <div style="font-size: 9px; color: #666; margin-top: 5px;">Tanggal: __________</div>
-                    <?php endif; ?>
                 </div>
 
                 <div style="text-align: center;">

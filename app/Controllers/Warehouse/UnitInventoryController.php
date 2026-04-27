@@ -1939,11 +1939,20 @@ class UnitInventoryController extends BaseController
             $deleted = $this->inventoryUnitModel->delete($id);
 
             if (!$deleted) {
-                $dbError = $db->error();
+                $dbError  = $db->error();
+                $dbErrMsg = $dbError['message'] ?? '';
                 log_message('error', '[UnitInventoryController::deleteUnit] delete() returned false. DB error: ' . json_encode($dbError));
+
+                // Detect specific FK table from MySQL error message
+                $blockTable = '';
+                if (preg_match('/REFERENCES `([^`]+)`/i', $dbErrMsg, $m) || preg_match('/from table `([^`]+)`/i', $dbErrMsg, $m)) {
+                    $blockTable = " (tabel: {$m[1]})";
+                }
+
                 return $this->response->setStatusCode(422)->setJSON([
                     'success' => false,
-                    'message' => 'Unit tidak dapat dihapus karena masih memiliki data terkait di sistem.',
+                    'message' => 'Unit tidak dapat dihapus karena masih memiliki data terkait di sistem.' . $blockTable,
+                    'debug'   => ENVIRONMENT !== 'production' ? $dbErrMsg : null,
                 ]);
             }
 
@@ -1954,7 +1963,17 @@ class UnitInventoryController extends BaseController
             ]);
         } catch (\Throwable $e) {
             log_message('error', '[UnitInventoryController::deleteUnit] ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
+            // Extract FK table name from MySQL error if available
+            $msg = 'Terjadi kesalahan sistem.';
+            if (preg_match('/from table `([^`]+)`/i', $e->getMessage(), $m) ||
+                preg_match('/REFERENCES `([^`]+)`/i', $e->getMessage(), $m)) {
+                $msg = "Unit tidak dapat dihapus: data terkait ditemukan di tabel '{$m[1]}'.";
+            }
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => $msg,
+                'debug'   => ENVIRONMENT !== 'production' ? $e->getMessage() : null,
+            ]);
         }
     }
 

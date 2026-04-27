@@ -10670,7 +10670,8 @@ class Marketing extends BaseDataTableController
             // Only allow safe fields to be updated
             $allowed = ['catatan', 'status', 'status_di', 'tanggal_kirim', 'lokasi', 'pelanggan',
                         'nama_supir', 'no_hp_supir', 'no_sim_supir', 'kendaraan', 'no_polisi_kendaraan',
-                        'estimasi_sampai', 'diperbarui_pada'];
+                        'estimasi_sampai', 'diperbarui_pada',
+                        'jenis_perintah_kerja_id', 'tujuan_perintah_kerja_id'];
             $updateData = array_intersect_key($data, array_flip($allowed));
             $updateData['diperbarui_pada'] = date('Y-m-d H:i:s');
 

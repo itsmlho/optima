@@ -1927,8 +1927,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
           
           // Populate form edit
           document.getElementById('editDiId').value = diId;
-          document.getElementById('editJenisPerintah').value = data.jenis_perintah || '';
-          document.getElementById('editTujuanPerintah').value = data.tujuan_perintah || '';
+          
+          // Set jenis_perintah_kerja_id
+          const jenisId = data.jenis_perintah_kerja_id || '';
+          document.getElementById('editJenisPerintah').value = jenisId;
+          
+          // Load tujuan options then set value
+          const tujuanId = data.tujuan_perintah_kerja_id || '';
+          const tujuanSelect = document.getElementById('editTujuanPerintah');
+          if (jenisId) {
+            loadTujuanPerintahOptions(jenisId, 'editTujuanPerintah').then(() => {
+              tujuanSelect.value = tujuanId;
+              tujuanSelect.disabled = false;
+            }).catch(() => { tujuanSelect.value = tujuanId; });
+          } else {
+            tujuanSelect.value = tujuanId;
+          }
+          
           document.getElementById('editTanggalKirim').value = data.tanggal_kirim || '';
           document.getElementById('editCatatan').value = data.catatan || '';
           
@@ -2261,14 +2276,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div class="row g-2 mb-3">
             <div class="col-md-6">
               <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
-              <select class="form-select" id="editJenisPerintah" name="jenis_perintah" required>
+              <select class="form-select" id="editJenisPerintah" name="jenis_perintah_kerja_id" required>
                 <option value="">- <?= lang('Marketing.select_command') ?> -</option>
                 <!-- Options will be loaded from API -->
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
-              <select class="form-select" id="editTujuanPerintah" name="tujuan_perintah" required disabled>
+              <select class="form-select" id="editTujuanPerintah" name="tujuan_perintah_kerja_id" required disabled>
                 <option value="">- <?= lang('Marketing.select_command_first') ?> -</option>
                 <!-- Options will be loaded from API based on jenis -->
               </select>
@@ -2280,7 +2295,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             <label class="form-label"><?= lang('Marketing.execution_status') ?></label>
             <div class="card bg-light">
               <div class="card-body py-2">
-                ${uiBadge('primary', 'READY', {id: 'editStatusEksekusiDisplay'})}
+                <span id="editStatusEksekusiDisplay" class="badge badge-soft-blue">READY</span>
                 <small class="text-muted ms-2"><?= lang('Marketing.status_managed_by_system') ?></small>
               </div>
             </div>
