@@ -17,7 +17,7 @@ class DeliveryInstructionModel extends Model
         'sampai_tanggal_approve','catatan_sampai',
         'invoice_generated','invoice_generated_at',
         // Contract linking fields
-        'contract_id','pelanggan_id','customer_location_id','bast_date','billing_start_date',
+        'contract_id','tarik_contract_id','pelanggan_id','customer_location_id','bast_date','billing_start_date',
         'contract_linked_at','contract_linked_by',
     ];
     

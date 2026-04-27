@@ -385,6 +385,8 @@ $can_export = $permissions['export'];
             <input type="hidden" name="po_kontrak_nomor" id="po_kontrak_nomor">
             <input type="hidden" name="pelanggan" id="pelanggan">
             <input type="hidden" name="pelanggan_id" id="pelanggan_id">
+            <!-- TUKAR workflow: contract of old unit being pulled -->
+            <input type="hidden" name="tarik_contract_id" id="createTarikContractId">
 
             <div class="row g-2 mb-2">
               <div class="col-12">
@@ -458,6 +460,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   // Load workflow options from database
   let jenisPerintahOptions = [];
+  let currentEditDiData = {}; // stores DI data for use in change handlers
+  let currentEditKirimItems = []; // stores kirim_items from diDetail API
+  let currentEditTarikItems = []; // stores tarik_items from diDetail API
   let workflowMapping = {};
   
   // Load jenis perintah from API
@@ -838,6 +843,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         console.log(`Kontrak selected: ${noKontrak} - ${pelanggan}`);
         
+        // Store tarik_contract_id for backend
+        document.getElementById('createTarikContractId').value = this.value;
+
         // Load TARIK units (current units in kontrak) for TUKAR workflow
         loadTukarUnits(this.value);
       } else {
@@ -985,14 +993,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
     
     editJenisSelect.addEventListener('change', function() {
       const jenisValue = this.value;
+      const jenisText = this.selectedOptions[0]?.textContent || '';
       
       // Reset tujuan dropdown
       editTujuanSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
       editTujuanSelect.disabled = true;
       
       if (jenisValue) {
-        // Load tujuan options from API
         loadTujuanPerintahOptions(jenisValue, 'editTujuanPerintah');
+      }
+
+      // Show/hide TUKAR section
+      const jenisOpt = jenisPerintahOptions.find(o => String(o.id) === String(jenisValue));
+      const isTukar = jenisOpt ? jenisOpt.kode === 'TUKAR' : jenisText.toUpperCase().includes('TUKAR');
+      const tukarSection = document.getElementById('editTukarSection');
+      if (tukarSection) tukarSection.style.display = isTukar ? 'block' : 'none';
+      // Populate TUKAR section content when user switches to TUKAR
+      if (isTukar) {
+        populateEditTukarSection(currentEditDiData, currentEditKirimItems, currentEditTarikItems);
       }
     });
   }
@@ -1917,13 +1935,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   });
   
-  // PERBAIKAN: Tambah function untuk edit dan delete DI
   window.editDI = function(diId) {
+    currentEditDiData = {}; // reset
+    currentEditKirimItems = [];
+    currentEditTarikItems = [];
     // Load data DI yang akan diedit
     fetch(`<?= base_url('marketing/di/detail/') ?>${diId}`)
       .then(r => r.json()).then(j => {
         if (j && j.success) {
           const data = j.data || {};
+          currentEditDiData = data; // store for change handler
+          currentEditKirimItems = j.kirim_items || [];
+          currentEditTarikItems = j.tarik_items || [];
+          console.log('[TUKAR] editDI loaded: kirimItems=', currentEditKirimItems.length, 'tarikItems=', currentEditTarikItems.length);
           
           // Populate form edit
           document.getElementById('editDiId').value = diId;
@@ -1959,6 +1983,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const mapped = statusMap[statusEksekusi] || { text: statusEksekusi, cls: 'badge-soft-gray' };
           statusDisplay.className = `badge ${mapped.cls}`;
           statusDisplay.textContent = mapped.text;
+
+          // TUKAR section: detect via jenisPerintahOptions array (more reliable than text parsing)
+          const tukarSection = document.getElementById('editTukarSection');
+          const checkTukarAndPopulate = () => {
+            const jenisOpt = jenisPerintahOptions.find(o => String(o.id) === String(jenisId));
+            const isTukar = jenisOpt && jenisOpt.kode && jenisOpt.kode.toUpperCase() === 'TUKAR';
+            console.log('[TUKAR] checkTukarAndPopulate: jenisId=', jenisId, 'kode=', jenisOpt?.kode, 'isTukar=', isTukar);
+            if (tukarSection) tukarSection.style.display = isTukar ? 'block' : 'none';
+            if (isTukar) populateEditTukarSection(data, currentEditKirimItems, currentEditTarikItems);
+          };
+          // If jenisPerintahOptions already loaded, run immediately; else wait
+          if (jenisPerintahOptions.length > 0) {
+            checkTukarAndPopulate();
+          } else {
+            setTimeout(checkTukarAndPopulate, 500);
+          }
           
           // Show modal
           new bootstrap.Modal(document.getElementById('diEditModal')).show();
@@ -1970,6 +2010,102 @@ document.addEventListener('DOMContentLoaded', ()=>{
         OptimaNotify.error('Error loading DI data: ' + error.message);
       });
   };
+
+  // Populate TUKAR section in edit modal
+  function populateEditTukarSection(data, kirimItems, tarikItems) {
+    console.log('[TUKAR] populateEditTukarSection called. kirimItems:', kirimItems.length, 'tarikItems:', tarikItems.length, 'contract_id:', data.contract_id);
+
+    // Show KIRIM units (read-only)
+    const kirimList = document.getElementById('editKirimItemsList');
+    if (kirimList) {
+      if (kirimItems.length) {
+        kirimList.innerHTML = kirimItems.map(it =>
+          `<div class="d-flex align-items-center gap-2 py-1">
+            <span class="badge badge-soft-green">KIRIM</span>
+            <span>${esc(it.label) || esc(it.no_unit) || 'Unit #' + it.unit_id}</span>
+           </div>`
+        ).join('');
+      } else {
+        kirimList.innerHTML = '<span class="text-muted">Tidak ada unit kirim tercatat (DI baru atau belum ada item)</span>';
+      }
+    } else {
+      console.warn('[TUKAR] editKirimItemsList element not found');
+    }
+
+    // Load all active contracts for tarik_contract dropdown
+    const editTarikKontrak = document.getElementById('editTarikKontrak');
+    if (editTarikKontrak) {
+      fetch('<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(r => r.json()).then(res => {
+        if (res.success && res.data) {
+          editTarikKontrak.innerHTML = '<option value="">-- Sama dengan kontrak DI ini --</option>' +
+            res.data.map(k => `<option value="${k.id}">${k.label || k.no_kontrak + ' - ' + k.pelanggan}</option>`).join('');
+          // Set saved tarik_contract_id
+          const tarikContractId = data.tarik_contract_id ? String(data.tarik_contract_id) : '';
+          if (tarikContractId) editTarikKontrak.value = tarikContractId;
+
+          // Load units: pakai tarik_contract_id jika ada, fallback ke contract_id DI ini
+          const contractToLoad = tarikContractId || (data.contract_id ? String(data.contract_id) : '');
+          console.log('[TUKAR] contractToLoad=', contractToLoad);
+          if (contractToLoad) {
+            loadEditTarikUnits(contractToLoad, tarikItems);
+          } else {
+            const unitList = document.getElementById('editTarikUnitList');
+            if (unitList) unitList.innerHTML = '<span class="text-warning small"><i class="fas fa-exclamation-triangle me-1"></i>DI belum di-link ke kontrak. Link terlebih dahulu lalu edit kembali.</span>';
+          }
+        } else {
+          console.error('[TUKAR] get-contracts-for-tarik failed:', res);
+        }
+      }).catch(err => {
+        console.error('[TUKAR] Error fetching contracts for tarik:', err);
+      });
+
+      // When user changes tarik_contract, reload unit list
+      editTarikKontrak.onchange = function() {
+        const contractId = this.value || (data.contract_id ? String(data.contract_id) : '');
+        if (contractId) loadEditTarikUnits(contractId, []);
+        else {
+          const unitList = document.getElementById('editTarikUnitList');
+          if (unitList) unitList.innerHTML = '<span class="text-muted small">Pilih kontrak untuk memuat unit...</span>';
+        }
+      };
+    }
+  }
+
+  // Helper: escape HTML for safe rendering
+  function esc(str) { return str ? String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+
+  // Load + render TARIK unit checkboxes in edit modal
+  function loadEditTarikUnits(contractId, preSelected) {
+    const listEl = document.getElementById('editTarikUnitList');
+    if (!listEl) return;
+    listEl.innerHTML = '<span class="text-muted small">Memuat unit...</span>';
+
+    const selectedIds = preSelected.map(it => parseInt(it.unit_id));
+    fetch(`<?= base_url('marketing/kontrak/units/') ?>${contractId}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => r.json()).then(res => {
+      if (res.success && res.data.length) {
+        listEl.innerHTML = res.data.map(unit => {
+          const uid = unit.unit_id || unit.id;
+          const checked = selectedIds.includes(parseInt(uid)) ? 'checked' : '';
+          return `<div class="unit-item py-1">
+            <input class="form-check-input me-2" type="checkbox" id="editTarik_${uid}"
+              name="tarik_unit_ids[]" value="${uid}" ${checked}>
+            <label for="editTarik_${uid}" class="form-check-label">
+              <strong>${unit.no_unit || 'Unit #' + uid}</strong> — ${unit.merk || ''} ${unit.model || ''}
+              <div class="unit-note text-muted small">${unit.kapasitas || ''} | ${unit.status || ''}</div>
+            </label>
+          </div>`;
+        }).join('');
+      } else {
+        listEl.innerHTML = '<span class="text-muted small">Tidak ada unit dalam kontrak ini</span>';
+      }
+    }).catch(() => {
+      listEl.innerHTML = '<span class="text-danger small">Gagal memuat unit</span>';
+    });
+  }
   
   window.deleteDI = function(diId) {
     OptimaConfirm.danger({
@@ -2309,6 +2445,39 @@ document.addEventListener('DOMContentLoaded', ()=>{
             <div class="col-6">
               <label class="form-label"><?= lang('Marketing.notes') ?></label>
               <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="<?= lang('App.optional') ?>">
+            </div>
+          </div>
+
+          <!-- TUKAR Section: shown only when jenis = TUKAR -->
+          <div id="editTukarSection" style="display:none;" class="mt-3">
+            <hr>
+            <h6 class="fw-semibold mb-2"><i class="fas fa-exchange-alt me-1"></i> Workflow TUKAR</h6>
+
+            <!-- Unit baru (KIRIM) — read only info -->
+            <div class="mb-3">
+              <label class="form-label text-success fw-semibold"><i class="fas fa-arrow-right me-1"></i> Unit Baru (Dikirim dari SPK)</label>
+              <div id="editKirimItemsList" class="border rounded p-2 bg-light small text-muted">
+                <span class="text-muted">Loading...</span>
+              </div>
+            </div>
+
+            <!-- Kontrak unit lama -->
+            <div class="mb-2">
+              <label class="form-label fw-semibold"><i class="fas fa-file-contract me-1"></i> Kontrak Unit Lama (yang ditarik)</label>
+              <select class="form-select form-select-sm" id="editTarikKontrak" name="tarik_contract_id">
+                <option value="">-- Sama dengan kontrak DI ini --</option>
+                <!-- loaded via JS -->
+              </select>
+              <small class="text-muted">Default: kontrak yang sama. Pilih kontrak lain jika unit lama berasal dari kontrak berbeda (harga berbeda).</small>
+            </div>
+
+            <!-- Unit lama (TARIK) -->
+            <div>
+              <label class="form-label text-warning fw-semibold"><i class="fas fa-arrow-left me-1"></i> Unit Lama (Ditarik)</label>
+              <div id="editTarikUnitList" class="unit-list border rounded p-2" style="max-height:200px;overflow-y:auto;">
+                <span class="text-muted small">Pilih kontrak untuk memuat unit...</span>
+              </div>
+              <small class="text-muted">Pilih unit lama yang akan ditarik kembali.</small>
             </div>
           </div>
         </div>

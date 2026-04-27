@@ -4832,11 +4832,28 @@ class Marketing extends BaseDataTableController
             }
         }
         unset($it);
+
+        // Separate KIRIM (new units sent) vs TARIK (old units pulled) for TUKAR workflow
+        $kirimItems = array_values(array_filter($items, fn($i) => ($i['item_role'] ?? 'KIRIM') === 'KIRIM'));
+        $tarikItems  = array_values(array_filter($items, fn($i) => ($i['item_role'] ?? 'KIRIM') === 'TARIK'));
+
+        // Resolve tarik_contract info if different from main contract
+        $tarikContractInfo = null;
+        if (!empty($di['tarik_contract_id']) && (int)$di['tarik_contract_id'] !== (int)($di['contract_id'] ?? 0)) {
+            $tarikContractInfo = $this->db->table('kontrak')
+                ->select('id, no_kontrak, customer_id')
+                ->where('id', (int)$di['tarik_contract_id'])
+                ->get()->getRowArray();
+        }
+
         return $this->response->setJSON([
             'success'=>true,
             'data'=>$di,
             'spk'=>$spk,
             'items'=>$items,
+            'kirim_items'=>$kirimItems,
+            'tarik_items'=>$tarikItems,
+            'tarik_contract'=>$tarikContractInfo,
             'csrf_hash'=>csrf_hash()
         ]);
     }
@@ -6849,16 +6866,22 @@ class Marketing extends BaseDataTableController
     if (!is_array($unitIds)) { $unitIds = []; }
     $unitIds = array_values(array_unique(array_filter(array_map('intval', $unitIds))));
 
-    // Fallback: TARIK workflow uses tarik_units[] instead of unit_ids[]
+    // Fallback: TARIK workflow uses tarik_units[] or tarik_unit_ids[] instead of unit_ids[]
     if (empty($unitIds)) {
-        $tarikUnits = $this->request->getPost('tarik_units');
+        $tarikUnits = $this->request->getPost('tarik_unit_ids') ?: $this->request->getPost('tarik_units');
         if (is_string($tarikUnits)) { $tarikUnits = [$tarikUnits]; }
         if (is_array($tarikUnits)) {
             $unitIds = array_values(array_unique(array_filter(array_map('intval', $tarikUnits))));
         }
     }
 
-    error_log('DI Create Parsed Inputs: spk_id=' . $spkId . ', po=' . $poNo . ', tanggal_kirim=' . ($tanggalKirim ?: '-') . ', unit_ids=' . json_encode($unitIds));
+    // TUKAR workflow: old units to pull (separate from new units to send)
+    $tarikUnitIds = $this->request->getPost('tarik_unit_ids');
+    if (is_string($tarikUnitIds)) { $tarikUnitIds = [$tarikUnitIds]; }
+    if (!is_array($tarikUnitIds)) { $tarikUnitIds = []; }
+    $tarikUnitIds = array_values(array_unique(array_filter(array_map('intval', $tarikUnitIds))));
+
+    error_log('DI Create Parsed Inputs: spk_id=' . $spkId . ', po=' . $poNo . ', tanggal_kirim=' . ($tanggalKirim ?: '-') . ', unit_ids=' . json_encode($unitIds) . ', tarik_unit_ids=' . json_encode($tarikUnitIds));
 
     $selected = ['unit_id'=>null,'inventory_attachment_id'=>null];
         if ($spkId > 0) {
@@ -6992,6 +7015,9 @@ class Marketing extends BaseDataTableController
             error_log('DI Create - Determined initial status: ' . $initialStatus);
         }
 
+        // TUKAR workflow: contract of old unit being pulled
+        $tarikContractId = (int)($this->request->getPost('tarik_contract_id') ?? 0) ?: null;
+
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
             'spk_id' => $spkId ?: null,
@@ -7007,6 +7033,7 @@ class Marketing extends BaseDataTableController
             'status_eksekusi_workflow_id' => 1, // Default status eksekusi (PENDING atau sesuai workflow)
             'dibuat_oleh' => session('user_id') ?: 1,
             'dibuat_pada' => date('Y-m-d H:i:s'),
+            'tarik_contract_id' => $tarikContractId,
         ];
         
         // Only add optional fields if they have values
@@ -7140,6 +7167,7 @@ class Marketing extends BaseDataTableController
                     $unitPayload = [
                         'di_id' => $diId,
                         'item_type' => 'UNIT',
+                        'item_role' => 'KIRIM',
                         'unit_id' => (int)$uid,
                     ];
                     $unitPayload = array_merge($unitPayload, $operatorSnapshotFields);
@@ -7329,6 +7357,40 @@ class Marketing extends BaseDataTableController
                             }
                         }
                     }
+                }
+            }
+
+            // TUKAR workflow: insert TARIK items (old units being pulled)
+            if (!empty($tarikUnitIds)) {
+                // Resolve the contract of the pulled units
+                $tarikContractIdResolved = $tarikContractId;
+                if (!$tarikContractIdResolved) {
+                    // Default: same contract as the DI
+                    $tarikContractIdResolved = !empty($payload['contract_id']) ? (int)$payload['contract_id'] : null;
+                }
+                foreach ($tarikUnitIds as $tarikUid) {
+                    $unitExists = $this->db->table('inventory_unit')
+                        ->where('id_inventory_unit', (int)$tarikUid)
+                        ->countAllResults();
+                    if (!$unitExists) {
+                        throw new \Exception("Unit tarik dengan ID {$tarikUid} tidak ditemukan di inventory");
+                    }
+                    $tarikPayload = [
+                        'di_id'       => $diId,
+                        'item_type'   => 'UNIT',
+                        'item_role'   => 'TARIK',
+                        'unit_id'     => (int)$tarikUid,
+                        'keterangan'  => $tarikContractIdResolved
+                            ? 'Unit tarik dari kontrak #' . $tarikContractIdResolved
+                            : 'Unit tarik (kontrak sama)',
+                    ];
+                    $tarikPayload = array_merge($tarikPayload, $operatorSnapshotFields);
+                    $tarikResult = $this->db->table('delivery_items')->insert($tarikPayload);
+                    if (!$tarikResult) {
+                        $dbError = $this->db->error();
+                        throw new \Exception('Gagal menyimpan unit tarik: ' . ($dbError['message'] ?? 'Unknown error'));
+                    }
+                    error_log("DI Create - Added TARIK unit ID: {$tarikUid}");
                 }
             }
         } catch (\Exception $e) {
@@ -10671,17 +10733,59 @@ class Marketing extends BaseDataTableController
             $allowed = ['catatan', 'status', 'status_di', 'tanggal_kirim', 'lokasi', 'pelanggan',
                         'nama_supir', 'no_hp_supir', 'no_sim_supir', 'kendaraan', 'no_polisi_kendaraan',
                         'estimasi_sampai', 'diperbarui_pada',
-                        'jenis_perintah_kerja_id', 'tujuan_perintah_kerja_id'];
+                        'jenis_perintah_kerja_id', 'tujuan_perintah_kerja_id', 'tarik_contract_id'];
             $updateData = array_intersect_key($data, array_flip($allowed));
+            // Normalize tarik_contract_id: empty string → null
+            if (isset($updateData['tarik_contract_id'])) {
+                $updateData['tarik_contract_id'] = $updateData['tarik_contract_id'] !== '' ? (int)$updateData['tarik_contract_id'] : null;
+            }
             $updateData['diperbarui_pada'] = date('Y-m-d H:i:s');
 
+            $this->db->transBegin();
             $this->diModel->update((int) $id, $updateData);
+
+            // TUKAR workflow: update TARIK items if provided
+            $tarikUnitIds = $this->request->getPost('tarik_unit_ids');
+            if ($tarikUnitIds !== null) {
+                if (is_string($tarikUnitIds)) { $tarikUnitIds = [$tarikUnitIds]; }
+                if (!is_array($tarikUnitIds)) { $tarikUnitIds = []; }
+                $tarikUnitIds = array_values(array_unique(array_filter(array_map('intval', $tarikUnitIds))));
+
+                // Delete existing TARIK items for this DI
+                $this->db->table('delivery_items')
+                    ->where('di_id', (int)$id)
+                    ->where('item_role', 'TARIK')
+                    ->delete();
+
+                // Re-insert updated TARIK items
+                $tarikContractId = isset($updateData['tarik_contract_id']) ? $updateData['tarik_contract_id'] : ($di['tarik_contract_id'] ?? null);
+                foreach ($tarikUnitIds as $tarikUid) {
+                    $this->db->table('delivery_items')->insert([
+                        'di_id'       => (int)$id,
+                        'item_type'   => 'UNIT',
+                        'item_role'   => 'TARIK',
+                        'unit_id'     => (int)$tarikUid,
+                        'operator_required' => 0,
+                        'operator_quantity' => 0,
+                        'keterangan'  => $tarikContractId
+                            ? 'Unit tarik dari kontrak #' . $tarikContractId
+                            : 'Unit tarik (kontrak sama)',
+                    ]);
+                }
+            }
+
+            if ($this->db->transStatus() === false) {
+                $this->db->transRollback();
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan perubahan DI']);
+            }
+            $this->db->transCommit();
 
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'DI berhasil diperbarui',
             ]);
         } catch (\Exception $e) {
+            $this->db->transRollback();
             log_message('error', 'Marketing::diUpdate - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,

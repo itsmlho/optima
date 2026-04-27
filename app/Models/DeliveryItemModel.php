@@ -16,6 +16,7 @@ class DeliveryItemModel extends Model
         // DI workflow fields
         'di_id',
         'item_type',
+        'item_role',
         'unit_id',
         'attachment_id',
         'parent_unit_id',
