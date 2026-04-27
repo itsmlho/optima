@@ -504,13 +504,19 @@ if (empty($unit_items)) {
                     $preparedList = $spk['prepared_units_detail'];
                 }
                 
-                // Use first prepared unit data (same as SPK)
-                $rowPrepared = !empty($preparedList) ? $preparedList[0] : $current_unit;
-                
-                // Debug: Check if we have prepared units data
-                if (empty($preparedList)) {
-                    // Fallback: try to get data from current_unit with proper field mapping
-                    $rowPrepared = $current_unit;
+                // Match prepared unit to the current delivery item by unit_id
+                $rowPrepared = null;
+                if (!empty($preparedList) && !empty($unit_item['unit_id'])) {
+                    foreach ($preparedList as $pu) {
+                        if ((int)($pu['unit_id'] ?? 0) === (int)$unit_item['unit_id']) {
+                            $rowPrepared = $pu;
+                            break;
+                        }
+                    }
+                }
+                // Fallback: use current_unit index (1-based → 0-based)
+                if (!$rowPrepared) {
+                    $rowPrepared = $preparedList[$current_unit - 1] ?? ($preparedList[0] ?? $current_unit);
                 }
                 
                 // Build left/right summaries exactly like SPK
@@ -554,12 +560,19 @@ if (empty($unit_items)) {
                             <?php
                                 // Prefer per-row accessories if provided; fallback to global SPK/spec (same as SPK)
                                 $aksText = '';
-                                if (!empty($rowPrepared['aksesoris'])) {
-                                    if (is_array($rowPrepared['aksesoris'])) {
-                                        $aksText = implode(', ', $rowPrepared['aksesoris']);
+                                $aksRaw = $rowPrepared['aksesoris'] ?? '';
+                                if (!empty($aksRaw)) {
+                                    if (is_array($aksRaw)) {
+                                        $aksList = $aksRaw;
                                     } else {
-                                        $aksText = (string) $rowPrepared['aksesoris'];
+                                        $decoded = json_decode((string)$aksRaw, true);
+                                        $aksList = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : array_filter(array_map('trim', explode(',', (string)$aksRaw)));
                                     }
+                                    // Convert snake_case keys to readable label
+                                    $aksLabels = array_map(function($k) {
+                                        return strtoupper(str_replace(['_', '-'], ' ', $k));
+                                    }, $aksList);
+                                    $aksText = implode(', ', $aksLabels);
                                 } elseif (!empty($s['aksesoris'])) {
                                     if (is_array($s['aksesoris'])) {
                                         $aksText = implode(', ', $s['aksesoris']);

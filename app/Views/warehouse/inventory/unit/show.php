@@ -1409,8 +1409,11 @@ if ($aksesorisRaw) {
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Harga Jual (Rp)</label>
-                        <input type="number" id="retro-harga" class="form-control form-control-sm"
-                               placeholder="0" min="0" step="1000">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text" id="retro-harga" class="form-control form-control-sm"
+                                   placeholder="0" inputmode="numeric">
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-semibold">Alamat Pembeli</label>
@@ -2343,7 +2346,7 @@ if ($aksesorisRaw) {
                 tanggal_jual:        tanggalJual,
                 telepon_pembeli:     $('#retro-telepon').val().trim(),
                 alamat_pembeli:      $('#retro-alamat').val().trim(),
-                harga_jual:          $('#retro-harga').val(),
+                harga_jual:          $('#retro-harga').val().replace(/\./g, '').replace(/,/g, '.') || '0',
                 metode_pembayaran:   $('#retro-metode').val(),
                 no_kwitansi:         $('#retro-no-kwitansi').val().trim(),
                 no_bast:             $('#retro-no-bast').val().trim(),
@@ -2369,5 +2372,12 @@ if ($aksesorisRaw) {
         });
     }
     window.submitRetroactiveSale = submitRetroactiveSale;
+
+    // Currency formatting for retro-harga
+    $('#retro-harga').on('input', function () {
+        var raw = $(this).val().replace(/[^0-9]/g, '');
+        var int = parseInt(raw, 10);
+        $(this).val(isNaN(int) ? '' : int.toLocaleString('id-ID'));
+    });
 </script>
 <?= $this->endSection() ?>

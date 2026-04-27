@@ -2560,6 +2560,7 @@ class Operational extends BaseController
                     
                     // Build prepared unit data with formatted values (same as SPK)
                     $preparedUnit = [
+                        'unit_id' => $unitId,
                         'no_unit' => $noUnitFormatted,
                         'jenis_unit' => $jenisUnitFormatted,
                         'departemen_name' => $unitDetails['departemen_name'] ?? 'ELECTRIC',
@@ -2571,7 +2572,7 @@ class Operational extends BaseController
                         'charger_sn' => $chargerFormatted,
                         'baterai_sn' => $bateraiFormatted,
                         'attachment_sn' => $attachmentFormatted,
-                        'aksesoris' => $persiapanData['aksesoris_tersedia'] ?? 'LAMPU UTAMA, ROTARY LAMP, SENSOR PARKING, HORN SPEAKER, APAR 1 KG, BEACON',
+                        'aksesoris' => $persiapanData['aksesoris_tersedia'] ?? '',
                         'combined_notes' => implode(' | ', $combinedNotes)
                     ];
                     
