@@ -1487,6 +1487,17 @@ document.addEventListener('DOMContentLoaded', () => {
 				initializeMechanicSelection(stage);
 			}, 100);  // Small delay to ensure modal is fully rendered
 		}
+
+		// Show the approval modal
+		const approvalModalEl = document.getElementById('approvalStageModal');
+		let approvalModal = bootstrap.Modal.getInstance(approvalModalEl);
+		if (!approvalModal) {
+			approvalModal = new bootstrap.Modal(approvalModalEl);
+		}
+		approvalModal.show();
+
+		// Load stage-specific content (unit picker, attachment fields, etc.)
+		loadStageSpecificContent(stage, currentApprovalSpkId);
 	};
 
 	// Global variable to store the current mechanic selector instance
