@@ -1482,10 +1482,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			currentMechanicSelector = null;
 		} else {
-			// Initialize multi-mechanic selection based on stage
-			setTimeout(() => {
+			// Initialize multi-mechanic selection AFTER modal is fully visible (shown.bs.modal)
+			// Using event listener instead of fixed timeout to avoid race with Bootstrap's 300ms animation
+			const _onShownMechanic = function() {
+				approvalModalEl.removeEventListener('shown.bs.modal', _onShownMechanic);
 				initializeMechanicSelection(stage);
-			}, 100);  // Small delay to ensure modal is fully rendered
+			};
+			approvalModalEl.addEventListener('shown.bs.modal', _onShownMechanic);
 		}
 
 		// Show the approval modal
@@ -1494,6 +1497,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (!approvalModal) {
 			approvalModal = new bootstrap.Modal(approvalModalEl);
 		}
+
+		// Clear stale content from previous open before showing
+		const stageContent = document.getElementById('stageSpecificContent');
+		if (stageContent) stageContent.innerHTML = '';
+
 		approvalModal.show();
 
 		// Load stage-specific content (unit picker, attachment fields, etc.)
