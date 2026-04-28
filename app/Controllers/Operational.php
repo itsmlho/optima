@@ -404,15 +404,24 @@ class Operational extends BaseController
                 ->findAll();
             
             $unitCount = 0;
+            $kirimCount = 0;
+            $tarikCount = 0;
             $attachmentCount = 0;
             foreach ($itemDetails as $item) {
                 if ($item['item_type'] === 'UNIT') {
                     $unitCount++;
+                    if (($item['item_role'] ?? 'KIRIM') === 'TARIK') {
+                        $tarikCount++;
+                    } else {
+                        $kirimCount++;
+                    }
                 } elseif ($item['item_type'] === 'ATTACHMENT') {
                     $attachmentCount++;
                 }
             }
             $row['total_units'] = $unitCount;
+            $row['kirim_count'] = $kirimCount;
+            $row['tarik_count'] = $tarikCount;
             $row['total_attachments'] = $attachmentCount;
             // Trip count for multi-truck UI
             $row['trip_count'] = $this->db->table('delivery_trips')
@@ -1797,6 +1806,13 @@ class Operational extends BaseController
             }
         }
 
+        // Get trips for this DI
+        $trips = $this->db->table('delivery_trips')
+            ->where('di_id', (int)$di['id'])
+            ->whereNotIn('status', ['DIBATALKAN'])
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+
         // Generate view with data
         $data = [
             'di' => $di,
@@ -1805,7 +1821,8 @@ class Operational extends BaseController
             'items' => [],
             'unit_item' => $item && $item['item_type'] === 'UNIT' ? $item : null,
             'current_unit' => $currentUnit,
-            'total_units' => $totalUnits
+            'total_units' => $totalUnits,
+            'trips' => $trips,
         ];
 
         // Return HTML string instead of view response for multi-print
@@ -3060,14 +3077,13 @@ class Operational extends BaseController
             return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
         }
 
-        // All KIRIM unit items for this DI
+        // All KIRIM & TARIK unit items for this DI (trip handles both deliver + pickup)
         $allItems = $this->db->table('delivery_items di')
-            ->select('di.id, di.unit_id, di.trip_id, iu.no_unit, mu.merk_unit, mu.model_unit')
+            ->select('di.id, di.unit_id, di.trip_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where('di.di_id', (int)$diId)
             ->where('di.item_type', 'UNIT')
-            ->where('di.item_role', 'KIRIM')
             ->get()->getResultArray();
 
         $unassigned = array_values(array_filter($allItems, fn($i) => empty($i['trip_id'])));
@@ -3080,7 +3096,7 @@ class Operational extends BaseController
 
         foreach ($trips as &$trip) {
             $trip['items'] = $this->db->table('delivery_items di')
-                ->select('di.id, di.unit_id, iu.no_unit, mu.merk_unit, mu.model_unit')
+                ->select('di.id, di.unit_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit')
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->where('di.trip_id', (int)$trip['id'])

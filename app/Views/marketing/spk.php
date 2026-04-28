@@ -2626,7 +2626,8 @@ $can_export = $permissions['export'];
             
             if (isTukarWorkflow) {
                 // Show TUKAR / ANTAR+TARIK workflow components
-                tukarWorkflow.style.display = 'block';
+                tukarWorkflow.classList.remove('d-none');
+                tukarWorkflow.style.display = '';
                 
                 // Keep standard item selection visible for TUKAR (items KIRIM from SPK)
                 const modeLabel = isAntarTarikSpk ? 'Mode ANTAR+TARIK' : 'Mode TUKAR';
@@ -2639,7 +2640,8 @@ $can_export = $permissions['export'];
                 loadSpkTarikUnitsFromSpkKontrak();
             } else {
                 // Hide TUKAR workflow components
-                tukarWorkflow.style.display = 'none';
+                tukarWorkflow.classList.add('d-none');
+                tukarWorkflow.style.display = '';
                 
                 // Reset TUKAR form fields
                 resetSpkTukarWorkflowFields();

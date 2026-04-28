@@ -470,12 +470,12 @@ $can_export = $permissions['export'];
                             <!-- Helper - Pilihan 1-2 orang -->
                             <div class="row">
                                 <div class="col-md-12 mb-3">
-                                    <label class="form-label">Helper <span class="text-danger">*</span> <small class="text-muted">(Min 1, Max 2)</small></label>
+                                    <label class="form-label">Helper <small class="text-muted">(Optional, Max 2)</small></label>
                                     <div id="helper-container">
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="helper_1" name="helper_id[]">
-                                                    <option value="" selected disabled>-- <?= lang('App.helper') ?> 1 --</option>
+                                                    <option value="" selected>-- <?= lang('App.helper') ?> 1 (<?= lang('Common.optional') ?>) --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
@@ -3990,13 +3990,8 @@ $(document).ready(function() {
             $('#mechanic_1, #mechanic_2').removeClass('is-invalid');
         }
         
-        // Check if at least one helper is selected
-        if (!helper1 && !helper2) {
-            $('#helper_1').addClass('is-invalid');
-            $('#helper_2').addClass('is-invalid');
-                } else {
-            $('#helper_1, #helper_2').removeClass('is-invalid');
-        }
+        // Helper is optional - always clear any invalid state
+        $('#helper_1, #helper_2').removeClass('is-invalid');
     }
 
     // Add event listeners for staff validation

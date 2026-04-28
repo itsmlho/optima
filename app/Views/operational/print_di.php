@@ -5,6 +5,7 @@ $s = $spesifikasi ?? [];
 $items = $items ?? [];
 $unit_items = $unit_items ?? []; // Array of units for multiple DI pages
 $k = $k ?? []; // Kontrak spesifikasi data - added to prevent undefined variable errors
+$trips = $trips ?? []; // Delivery trips
 $status = strtoupper((string)($di['status'] ?? ''));
 $placeholder = ($status === 'SUBMITTED' || $status === 'DIAJUKAN');
 
@@ -455,6 +456,36 @@ if (empty($unit_items)) {
         <!-- Transportation Information -->
         <div class="info-section">
             <div class="section-title">INFORMASI TRANSPORTASI</div>
+            <?php
+            $haTrips = !empty($trips) && count($trips) > 0;
+            if ($haTrips): ?>
+                <table style="width:100%; border-collapse:collapse; font-size:9pt; margin-top:4px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">Trip</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">Tipe Kendaraan</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">Kendaraan</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">No. Polisi</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">Supir</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">No. HP</th>
+                            <th style="border:1px solid #ccc; padding:4px 6px; text-align:left;">Tgl Kirim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($trips as $trip): ?>
+                        <tr>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['nomor_trip'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['tipe_kendaraan'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['kendaraan'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['no_polisi'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['nama_supir'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= esc($trip['no_hp_supir'] ?? '-') ?></td>
+                            <td style="border:1px solid #ccc; padding:4px 6px;"><?= $trip['tanggal_kirim'] ? date('d/m/Y', strtotime($trip['tanggal_kirim'])) : '-' ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
             <div class="info-grid">
                 <div>
                     <div class="info-item">
@@ -485,6 +516,7 @@ if (empty($unit_items)) {
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <!-- Unit Details -->

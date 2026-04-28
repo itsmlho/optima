@@ -157,7 +157,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
       return '<span class="text-muted">No attachments</span>';
     } else {
+      const kirimCount = row.kirim_count || 0;
+      const tarikCount = row.tarik_count || 0;
       if (totalUnits > 0) {
+        if (tarikCount > 0 && kirimCount > 0) {
+          return `<span class="badge badge-soft-cyan">${kirimCount} kirim</span> <span class="badge badge-soft-orange">${tarikCount} tarik</span>`;
+        }
         const text = totalUnits === 1 ? 'unit' : 'units';
         return `<span class="badge badge-soft-cyan">${totalUnits} ${text}</span>`;
       } else if (totalAttachments > 0) {
@@ -210,8 +215,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (tripCount > 0) {
         buttons.push(`<button class="btn btn-sm btn-info" onclick="openTripModal(${row.id})"><i class="fas fa-route"></i> Trips (${tripCount})</button>`);
       } else {
-        if (!perencanaanDone) {
-          buttons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})">Plan</button>`);
+        // No trips yet — show Plan (optional) + Add Trip button
+        if (!berangkatDone && !sampaiDone) {
+          // Plan button (optional — for recording dates)
+          buttons.push(`<button class="btn btn-sm btn-outline-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})" title="Isi rencana tanggal kirim">Plan</button>`);
+          // Add Trip button — always available at SIAP_KIRIM
+          buttons.push(`<button class="btn btn-sm btn-primary" onclick="openTripModal(${row.id})" title="Buat Trip Pengiriman"><i class="fas fa-plus me-1"></i>Trip</button>`);
         } else if (!berangkatDone) {
           buttons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${row.id})">Depart</button>`);
         } else if (!sampaiDone) {
@@ -220,18 +229,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
           buttons.push('<span class="text-success small">Completed</span>');
         }
       }
-
-      // "Add Trip" shortcut always visible when SIAP_KIRIM and no trips yet
-      if (tripCount === 0 && perencanaanDone) {
-        buttons.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openTripModal(${row.id})" title="Buat Trip Pengiriman"><i class="fas fa-plus"></i></button>`);
-      }
       
       const badges = [];
-      if (perencanaanDone) badges.push('<span class="badge badge-soft-green">✓</span>');
-      if (berangkatDone) badges.push('<span class="badge badge-soft-green">✓</span>');
-      if (sampaiDone) badges.push('<span class="badge badge-soft-green">✓</span>');
+      if (perencanaanDone) badges.push('<span class="badge badge-soft-green" title="Plan done">P✓</span>');
+      if (berangkatDone) badges.push('<span class="badge badge-soft-green" title="Departed">B✓</span>');
+      if (sampaiDone) badges.push('<span class="badge badge-soft-green" title="Arrived">S✓</span>');
       
-      let html = `<div class="stage-buttons">${buttons.join(' ')}</div>`;
+      let html = `<div class="stage-buttons d-flex flex-wrap gap-1">${buttons.join('')}</div>`;
       if (badges.length > 0) {
         html += `<div class="stage-badges mt-1">${badges.join('')}</div>`;
       }
@@ -514,40 +518,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 <textarea class="form-control-plaintext readonly-textarea resize-none" readonly rows="3">${di.lokasi || '-'}</textarea>
               </div>
               <div class="col-12"><hr></div>
-              <div class="col-12"><h6 class="text-primary">Operational Delivery Data</h6></div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Shipping Date <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" name="tanggal_kirim" required>
+              <div class="col-12">
+                <h6 class="text-primary">Rencana Pengiriman</h6>
+                <p class="text-muted small mb-2"><i class="fas fa-info-circle me-1"></i>Detail supir & kendaraan diisi saat membuat Trip pengiriman.</p>
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">Estimated Arrival <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" name="estimasi_sampai" required>
+                <label class="form-label">Tanggal Kirim (Rencana)</label>
+                <input type="date" class="form-control" name="tanggal_kirim">
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">Driver Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="nama_supir" required placeholder="Full name of the driver">
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Driver Phone Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="no_hp_supir" required placeholder="08xxxxxxxxxx">
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Driver License Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="no_sim_supir" required placeholder="Driver's license number">
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label">Vehicle <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="kendaraan" required placeholder="Type/brand of vehicle">
-              </div>
-              <div class="col-12 mb-3">
-                <label class="form-label">Vehicle License Plate Number <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="no_polisi_kendaraan" required placeholder="Vehicle license plate number">
+                <label class="form-label">Estimasi Tiba</label>
+                <input type="date" class="form-control" name="estimasi_sampai">
               </div>
               <div class="col-12">
-                <label class="form-label">Notes</label>
+                <label class="form-label">Catatan</label>
                 <textarea class="form-control" name="catatan_perencanaan" rows="3" 
-                          placeholder="Enter notes for delivery planning (optional)..."></textarea>
-                <div class="form-text">These notes will assist the operational team in the next steps.</div>
+                          placeholder="Catatan rencana pengiriman (opsional)..."></textarea>
+                <div class="form-text">Catatan ini akan membantu tim operasional di langkah berikutnya.</div>
               </div>
             </div>
           `;
@@ -1189,7 +1176,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } else {
       trips.forEach(t => {
         const st = TRIP_STATUS_MAP[t.status] || { text: t.status, cls: 'badge-soft-gray' };
-        const unitRows = (t.items || []).map(u => `<li class="list-group-item py-1 px-2 small">${u.no_unit || '-'} — ${u.merk_unit || ''} ${u.model_unit || ''}</li>`).join('');
+        const unitRows = (t.items || []).map(u => {
+          const roleLabel = u.item_role === 'TARIK' ? ' <span class="badge badge-soft-orange small">Diambil</span>' : '';
+          return `<li class="list-group-item py-1 px-2 small">${u.no_unit || '-'} — ${u.merk_unit || ''} ${u.model_unit || ''}${roleLabel}</li>`;
+        }).join('');
         const berangkatBtn = t.status === 'PERSIAPAN'        ? `<button class="btn btn-xs btn-primary ms-1"   onclick="tripAction(${t.id},'berangkat')"><i class="fas fa-truck"></i> Berangkat</button>` : '';
         const sampaiBtn    = t.status === 'DALAM_PERJALANAN' ? `<button class="btn btn-xs btn-success ms-1"  onclick="tripAction(${t.id},'sampai')"><i class="fas fa-map-marker-alt"></i> Sampai</button>` : '';
         const hapusBtn     = t.status === 'PERSIAPAN'        ? `<button class="btn btn-xs btn-outline-danger ms-1" onclick="tripDelete(${t.id})"><i class="fas fa-trash"></i></button>` : '';
@@ -1214,11 +1204,29 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // ---- New trip form ----
     const unassignedChecks = unassigned.length === 0
       ? '<p class="text-success small mb-0"><i class="fas fa-check-circle"></i> Semua unit sudah diassign ke trip.</p>'
-      : unassigned.map(u => `
-          <div class="form-check">
-            <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}">
-            <label class="form-check-label small" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''}</label>
-          </div>`).join('');
+      : (() => {
+          const kirimUnits = unassigned.filter(u => u.item_role !== 'TARIK');
+          const tarikUnits = unassigned.filter(u => u.item_role === 'TARIK');
+          let html = '';
+          // KIRIM units — checkboxes
+          if (kirimUnits.length > 0) {
+            html += kirimUnits.map(u => `
+              <div class="form-check">
+                <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}">
+                <label class="form-check-label small" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''} <span class="badge badge-soft-blue small">Dikirim</span></label>
+              </div>`).join('');
+          }
+          // TARIK units — auto-included, shown as info
+          if (tarikUnits.length > 0) {
+            html += '<div class="mt-2 mb-1"><small class="text-muted">Unit diambil (otomatis ikut trip):</small></div>';
+            html += tarikUnits.map(u => `
+              <div class="d-flex align-items-center gap-2 ps-1 mb-1">
+                <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}" checked style="pointer-events:none; opacity:0.6;">
+                <label class="form-check-label small text-muted" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''} <span class="badge badge-soft-orange small">Diambil</span></label>
+              </div>`).join('');
+          }
+          return html;
+        })()
 
     document.getElementById('tripModalBody').innerHTML = `
       <h6 class="text-primary mb-2"><i class="fas fa-list-ul me-1"></i>Trip yang Sudah Dibuat</h6>
