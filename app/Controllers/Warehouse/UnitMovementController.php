@@ -286,7 +286,7 @@ class UnitMovementController extends BaseController
      */
     public function cancelMovement($id)
     {
-        if (!$this->checkAccess('delete')) {
+        if (!$this->checkAccess('edit')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 

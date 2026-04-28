@@ -1307,8 +1307,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     fetch(`<?= base_url('operational/delivery/') ?>${_tripDiId}/trips`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
       .then(r => r.json())
       .then(j => {
-        if (j.success) { notify(j.message, 'success'); loadTrips(_tripDiId); if (diTable) diTable.ajax.reload(null, false); }
-        else notify(j.message || 'Gagal membuat trip', 'error');
+        if (j.success) {
+          notify(j.message, 'success');
+          loadTrips(_tripDiId);
+          if (diTable) diTable.ajax.reload(null, false);
+          // Scroll modal body back to top so user sees the new trip
+          const mb = document.getElementById('tripModalBody');
+          if (mb) mb.scrollTop = 0;
+        } else notify(j.message || 'Gagal membuat trip', 'error');
       });
   };
 
