@@ -37,9 +37,11 @@ class OptimizedWorkOrderModel extends Model
             'wo.created_at',
             'wo.updated_at',
             'iu.no_unit',
+            'iu.departemen_id',
             'mu.merk_unit',
             'mu.model_unit', 
             'COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan',
+            'd.nama_departemen as departemen_name',
             'woc.category_name as category',
             'wop.priority_name as priority',
             'wop.priority_color',
@@ -51,6 +53,7 @@ class OptimizedWorkOrderModel extends Model
         // Optimized joins with proper indexes
         $builder->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
+        $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
         $builder->join('customers c', 'c.id = k.customer_id', 'left');
@@ -100,11 +103,20 @@ class OptimizedWorkOrderModel extends Model
         if (!empty($filters['department_ids'])) {
             $builder->whereIn('iu.departemen_id', $filters['department_ids']);
         }
+        // Manual departemen filter from UI
+        if (!empty($filters['filter_departemen_id'])) {
+            $builder->where('iu.departemen_id', (int)$filters['filter_departemen_id']);
+        }
         
         // Area filter for MILL users (filter by admin/foreman assignment)
         if (!empty($filters['area_ids'])) {
             $areaIdsStr = implode(',', array_map('intval', $filters['area_ids']));
             $builder->where("(wo.admin_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1) OR wo.foreman_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id IN ($areaIdsStr) AND is_active=1))", null, false);
+        }
+        // Manual area/branch filter from UI
+        if (!empty($filters['filter_area_id'])) {
+            $areaId = (int)$filters['filter_area_id'];
+            $builder->where("(wo.admin_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id = $areaId AND is_active=1) OR wo.foreman_id IN (SELECT employee_id FROM area_employee_assignments WHERE area_id = $areaId AND is_active=1) OR iu.area_id = $areaId)", null, false);
         }
         
         // Order by latest first for better performance

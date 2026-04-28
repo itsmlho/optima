@@ -155,42 +155,57 @@ $can_export = $permissions['export'];
             <!-- Progress Tab -->
             <div class="tab-pane fade show active" id="progress-pane" role="tabpanel" aria-labelledby="progress-tab">
                 <!-- Filter Controls for Progress -->
-                <div class="row mb-4">
+                <div class="row mb-3 g-2">
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-status-progress" class="fw-semibold"><i class="fas fa-filter text-primary me-1"></i><?= lang('Common.status') ?></label>
-                            <select id="filter-status-progress" class="form-select form-select-sm">
-                                <option value=""><?= lang('App.all_status') ?></option>
-                                <?php foreach ($statuses as $status): ?>
-                                    <?php if (strtolower($status['status_name']) !== 'closed'): ?>
-                                    <option value="<?= $status['status_name'] ?>"><?= $status['status_name'] ?></option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <label for="filter-status-progress" class="form-label fw-semibold mb-1"><i class="fas fa-filter text-primary me-1"></i><?= lang('Common.status') ?></label>
+                        <select id="filter-status-progress" class="form-select form-select-sm">
+                            <option value=""><?= lang('App.all_status') ?></option>
+                            <?php foreach ($statuses as $status): ?>
+                                <?php if (strtolower($status['status_name']) !== 'closed'): ?>
+                                <option value="<?= $status['status_name'] ?>"><?= $status['status_name'] ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-priority-progress" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
-                            <select id="filter-priority-progress" class="form-select form-select-sm">
-                                <option value=""><?= lang('App.all_priority') ?></option>
-                                <?php foreach ($priorities as $priority): ?>
-                                <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <label for="filter-priority-progress" class="form-label fw-semibold mb-1"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
+                        <select id="filter-priority-progress" class="form-select form-select-sm">
+                            <option value=""><?= lang('App.all_priority') ?></option>
+                            <?php foreach ($priorities as $priority): ?>
+                            <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-start-date-progress">Start Date</label>
-                            <input type="date" id="filter-start-date-progress" class="form-control form-control-sm">
-                        </div>
+                        <label for="filter-departemen-progress" class="form-label fw-semibold mb-1"><i class="fas fa-layer-group text-primary me-1"></i>Departemen</label>
+                        <select id="filter-departemen-progress" class="form-select form-select-sm">
+                            <option value="">Semua Departemen</option>
+                            <?php foreach ($departemens as $dept): ?>
+                            <option value="<?= $dept['id_departemen'] ?>"><?= esc($dept['nama_departemen']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-end-date-progress">End Date</label>
-                            <input type="date" id="filter-end-date-progress" class="form-control form-control-sm">
-                        </div>
+                        <label for="filter-branch-progress" class="form-label fw-semibold mb-1"><i class="fas fa-map-marker-alt text-primary me-1"></i>Branch</label>
+                        <select id="filter-branch-progress" class="form-select form-select-sm">
+                            <option value="">Semua Branch</option>
+                            <?php foreach ($areas as $area): ?>
+                            <option value="<?= $area['id'] ?>"><?= esc($area['area_code'] . ' - ' . $area['area_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-start-date-progress" class="form-label fw-semibold mb-1">Dari Tanggal</label>
+                        <input type="date" id="filter-start-date-progress" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-end-date-progress" class="form-label fw-semibold mb-1">Sampai Tanggal</label>
+                        <input type="date" id="filter-end-date-progress" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" id="reset-filter-progress" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="fas fa-times me-1"></i>Reset Filter
+                        </button>
                     </div>
                 </div>
                 
@@ -203,7 +218,7 @@ $can_export = $permissions['export'];
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="progressWorkOrdersTable" class="table table-striped table-hover mb-0 nowrap <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="progressWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
                                 <th><?= lang('Service.work_order') ?></th>
@@ -226,49 +241,64 @@ $can_export = $permissions['export'];
             <!-- Closed Tab -->
             <div class="tab-pane fade" id="closed-pane" role="tabpanel" aria-labelledby="closed-tab">
                 <!-- Filter Controls for Closed -->
-                <div class="row mb-4">
+                <div class="row mb-3 g-2">
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-priority-closed" class="fw-semibold"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
-                            <select id="filter-priority-closed" class="form-select form-select-sm">
-                                <option value=""><?= lang('App.all_priority') ?></option>
-                                <?php foreach ($priorities as $priority): ?>
-                                <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <label for="filter-priority-closed" class="form-label fw-semibold mb-1"><i class="fas fa-flag text-primary me-1"></i><?= lang('App.priority') ?></label>
+                        <select id="filter-priority-closed" class="form-select form-select-sm">
+                            <option value=""><?= lang('App.all_priority') ?></option>
+                            <?php foreach ($priorities as $priority): ?>
+                            <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-start-date-closed">Start Date</label>
-                            <input type="date" id="filter-start-date-closed" class="form-control form-control-sm">
-                        </div>
+                        <label for="filter-departemen-closed" class="form-label fw-semibold mb-1"><i class="fas fa-layer-group text-primary me-1"></i>Departemen</label>
+                        <select id="filter-departemen-closed" class="form-select form-select-sm">
+                            <option value="">Semua Departemen</option>
+                            <?php foreach ($departemens as $dept): ?>
+                            <option value="<?= $dept['id_departemen'] ?>"><?= esc($dept['nama_departemen']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-end-date-closed">End Date</label>
-                            <input type="date" id="filter-end-date-closed" class="form-control form-control-sm">
-                        </div>
+                        <label for="filter-branch-closed" class="form-label fw-semibold mb-1"><i class="fas fa-map-marker-alt text-primary me-1"></i>Branch</label>
+                        <select id="filter-branch-closed" class="form-select form-select-sm">
+                            <option value="">Semua Branch</option>
+                            <?php foreach ($areas as $area): ?>
+                            <option value="<?= $area['id'] ?>"><?= esc($area['area_code'] . ' - ' . $area['area_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="mb-3">
-                            <label for="filter-month-closed">Filter Month</label>
-                            <select id="filter-month-closed" class="form-select form-select-sm">
-                                <option value="">All Months</option>
-                                <option value="01">January</option>
-                                <option value="02">February</option>
-                                <option value="03">March</option>
-                                <option value="04">April</option>
-                                <option value="05">May</option>
-                                <option value="06">June</option>
-                                <option value="07">July</option>
-                                <option value="08">August</option>
-                                <option value="09">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                            </select>
-                        </div>
+                        <label for="filter-month-closed" class="form-label fw-semibold mb-1">Bulan</label>
+                        <select id="filter-month-closed" class="form-select form-select-sm">
+                            <option value="">Semua Bulan</option>
+                            <option value="01">Januari</option>
+                            <option value="02">Februari</option>
+                            <option value="03">Maret</option>
+                            <option value="04">April</option>
+                            <option value="05">Mei</option>
+                            <option value="06">Juni</option>
+                            <option value="07">Juli</option>
+                            <option value="08">Agustus</option>
+                            <option value="09">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-start-date-closed" class="form-label fw-semibold mb-1">Dari Tanggal</label>
+                        <input type="date" id="filter-start-date-closed" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filter-end-date-closed" class="form-label fw-semibold mb-1">Sampai Tanggal</label>
+                        <input type="date" id="filter-end-date-closed" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" id="reset-filter-closed" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="fas fa-times me-1"></i>Reset Filter
+                        </button>
                     </div>
                 </div>
                 
@@ -281,7 +311,7 @@ $can_export = $permissions['export'];
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
-                    <table id="closedWorkOrdersTable" class="table table-striped table-hover mb-0 nowrap <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <table id="closedWorkOrdersTable" class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead class="table-light">
                             <tr>
                                 <th><?= lang('Service.work_order') ?></th>
@@ -338,7 +368,7 @@ $can_export = $permissions['export'];
                                         <option value="" selected disabled>-- <?= lang('Service.select_order_type') ?> --</option>
                                         <option value="COMPLAINT"><?= lang('Service.complaint') ?></option>
                                         <option value="PMPS"><?= lang('Service.pmps') ?></option>
-                                        <option value="FABRIKASI">Fabrikasi</option>
+                                        <option value="REKONDISI">Rekondisi</option>
                                     </select>
                                 </div>
                                 <div class="col-md-12 mb-3">
@@ -870,7 +900,6 @@ $(document).ready(function() {
     progressTable = $('#progressWorkOrdersTable').DataTable({
         processing: true,
         serverSide: true,
-        scrollX: true,
         ajax: {
             url: '<?= base_url('service/work-orders/data') ?>',
             type: 'POST',
@@ -881,6 +910,8 @@ $(document).ready(function() {
                 d.priority = $('#filter-priority-progress').val();
                 d.start_date = $('#filter-start-date-progress').val();
                 d.end_date = $('#filter-end-date-progress').val();
+                d.departemen_id = $('#filter-departemen-progress').val();
+                d.area_id = $('#filter-branch-progress').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
                     d[window.csrfTokenName] = window.getCsrfToken();
@@ -940,7 +971,6 @@ $(document).ready(function() {
     closedTable = $('#closedWorkOrdersTable').DataTable({
         processing: true,
         serverSide: true,
-        scrollX: true,
         ajax: {
             url: '<?= base_url('service/work-orders/data') ?>',
             type: 'POST',
@@ -951,6 +981,8 @@ $(document).ready(function() {
                 d.month = $('#filter-month-closed').val();
                 d.start_date = $('#filter-start-date-closed').val();
                 d.end_date = $('#filter-end-date-closed').val();
+                d.departemen_id = $('#filter-departemen-closed').val();
+                d.area_id = $('#filter-branch-closed').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
                     d[window.csrfTokenName] = window.getCsrfToken();
@@ -1081,18 +1113,28 @@ $(document).ready(function() {
     });
 
     // Filter handlers for Progress tab
-    $('#filter-status-progress, #filter-priority-progress').on('change', function() {
+    $('#filter-status-progress, #filter-priority-progress, #filter-departemen-progress, #filter-branch-progress').on('change', function() {
         reloadProgressTable();
     });
     $('#filter-start-date-progress, #filter-end-date-progress').on('change', function() {
         reloadProgressTable();
     });
+    $('#reset-filter-progress').on('click', function() {
+        $('#filter-status-progress, #filter-priority-progress, #filter-departemen-progress, #filter-branch-progress').val('');
+        $('#filter-start-date-progress, #filter-end-date-progress').val('');
+        reloadProgressTable();
+    });
 
     // Filter handlers for Closed tab
-    $('#filter-priority-closed, #filter-month-closed').on('change', function() {
+    $('#filter-priority-closed, #filter-month-closed, #filter-departemen-closed, #filter-branch-closed').on('change', function() {
         reloadClosedTable();
     });
     $('#filter-start-date-closed, #filter-end-date-closed').on('change', function() {
+        reloadClosedTable();
+    });
+    $('#reset-filter-closed').on('click', function() {
+        $('#filter-priority-closed, #filter-month-closed, #filter-departemen-closed, #filter-branch-closed').val('');
+        $('#filter-start-date-closed, #filter-end-date-closed').val('');
         reloadClosedTable();
     });
 
@@ -2099,7 +2141,8 @@ $(document).ready(function() {
         // Work Order Information
         $('#viewWoNumber').text(data.work_order_number || '-');
         $('#viewWoReportDate').text(data.report_date || '-');
-        $('#viewWoType').text(data.order_type || '-');
+        const orderTypeLabels = { COMPLAINT: 'Complaint', PMPS: 'PM/PS', REKONDISI: 'Rekondisi', PERSIAPAN: 'Persiapan', FABRIKASI: 'Rekondisi' };
+        $('#viewWoType').text(orderTypeLabels[data.order_type] || data.order_type || '-');
         
         // Fix Priority Badge - Optima badge-soft-* system
         let priorityBadge = data.priority_badge || '<span class="badge badge-soft-gray">-</span>';

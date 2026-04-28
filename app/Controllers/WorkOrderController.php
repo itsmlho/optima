@@ -67,10 +67,11 @@ class WorkOrderController extends Controller
             $scopeType = $scope['scope_type'] ?? null;
         }
         
+        $db = \Config\Database::connect();
+
         // Get department names for display
         $userDepartemenName = null;
         if (!empty($userDepartemenIds)) {
-            $db = \Config\Database::connect();
             $depts = $db->table('departemen')
                 ->select('nama_departemen')
                 ->whereIn('id_departemen', $userDepartemenIds)
@@ -79,6 +80,11 @@ class WorkOrderController extends Controller
             $userDepartemenName = implode(', ', array_column($depts, 'nama_departemen'));
         }
         
+        $departemens = $db->table('departemen')
+            ->select('id_departemen, nama_departemen')
+            ->orderBy('id_departemen', 'ASC')
+            ->get()->getResultArray();
+
         $data = [
             'title' => 'Work Orders Management',
             // workOrders: REMOVED - DataTable loads via AJAX (server-side), no need to pre-load all rows
@@ -87,6 +93,7 @@ class WorkOrderController extends Controller
             'categories' => $this->workOrderModel->getCategories(),
             'units' => [], // REMOVED: Pre-loading all units - KANIBAL dropdown now uses AJAX search
             'areas' => $this->areaModel->getActiveAreas(),
+            'departemens' => $departemens,
             'spareparts' => [], // REMOVED: Pre-loading 14k+ items - now using AJAX search
             'staff' => [
                 'ADMIN' => $this->workOrderModel->getStaff('ADMIN'),
@@ -671,7 +678,9 @@ class WorkOrderController extends Controller
                 'end_date' => $endDate,
                 'month' => $month,
                 'department_ids' => $allowedDepartments,
-                'area_ids' => $allowedAreas
+                'area_ids' => $allowedAreas,
+                'filter_departemen_id' => $request->getPost('departemen_id') ?? $request->getGet('departemen_id'),
+                'filter_area_id' => $request->getPost('area_id') ?? $request->getGet('area_id'),
             ];
 
             // Get data from optimized model - FIXED: Use correct method name
@@ -821,8 +830,14 @@ class WorkOrderController extends Controller
         $statusBadge = '<span class="badge bg-'.$wo['status_color'].'">'.$wo['status'].'</span>';
         $priorityBadge = '<span class="badge bg-'.$wo['priority_color'].'">'.$wo['priority'].'</span>';
         
-        // Format unit info
-        $unitInfo = $wo['no_unit'] . ' - ' . $wo['pelanggan'] . ' (' . $wo['merk_unit'] . ' ' . $wo['model_unit'] . ')';
+        // Format unit info with compact department badge
+        $deptBadge = '';
+        if (!empty($wo['departemen_name'])) {
+            $deptColors = ['DIESEL' => 'warning', 'ELECTRIC' => 'primary', 'GASOLINE' => 'success'];
+            $deptColor = $deptColors[$wo['departemen_name']] ?? 'secondary';
+            $deptBadge = ' <span class="badge badge-soft-' . ($wo['departemen_name'] === 'DIESEL' ? 'yellow' : ($wo['departemen_name'] === 'ELECTRIC' ? 'blue' : 'green')) . '" style="font-size:0.7em;">' . esc($wo['departemen_name']) . '</span>';
+        }
+        $unitInfo = esc($wo['no_unit']) . $deptBadge . '<br><small class="text-muted">' . esc($wo['pelanggan']) . '</small><br><small class="text-muted">' . esc($wo['merk_unit'] . ' ' . $wo['model_unit']) . '</small>';
         
         $row = [];
         $row[] = $no;
@@ -1306,7 +1321,7 @@ class WorkOrderController extends Controller
             
             if (empty($input['order_type'])) {
                 $errors['order_type'] = 'Tipe order harus dipilih';
-            } elseif (!in_array($input['order_type'], ['COMPLAINT', 'PMPS', 'FABRIKASI'])) {
+            } elseif (!in_array($input['order_type'], ['COMPLAINT', 'PMPS', 'REKONDISI'])) {
                 $errors['order_type'] = 'Tipe order tidak valid';
             }
             
