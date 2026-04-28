@@ -4885,8 +4885,8 @@ class Marketing extends BaseDataTableController
 
         // Check if DI is withdrawal type (TARIK or TUKAR) - use kode instead of nama
         $jenisKode = strtoupper($di['jenis_perintah_kode'] ?? '');
-        if (!in_array($jenisKode, ['TARIK', 'TUKAR'])) {
-            return $this->response->setStatusCode(400)->setBody('Surat penarikan hanya untuk jenis TARIK atau TUKAR');
+        if (!in_array($jenisKode, ['TARIK', 'TUKAR', 'ANTAR_TARIK'])) {
+            return $this->response->setStatusCode(400)->setBody('Surat penarikan hanya untuk jenis TARIK, TUKAR, atau ANTAR+TARIK');
         }
 
         // Get SPK data

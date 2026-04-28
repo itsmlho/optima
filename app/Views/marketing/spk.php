@@ -934,7 +934,7 @@ $can_export = $permissions['export'];
         if(q) url.searchParams.set('q', q);
         const jenisSpkElement = document.querySelector('select[name="jenis_spk"]');
         const jenis = jenisSpkElement ? jenisSpkElement.value : 'UNIT';
-        const kontrakStatus = (jenis === 'TUKAR') ? 'ACTIVE' : 'PENDING';
+        const kontrakStatus = (jenis === 'TUKAR' || jenis === 'ANTAR_TARIK') ? 'ACTIVE' : 'PENDING';
         url.searchParams.set('status', kontrakStatus);
         fetch(url).then(r=>r.json()).then(j=>{
             const dl = document.getElementById('kontrakOptions');
@@ -1307,7 +1307,7 @@ $can_export = $permissions['export'];
             if (v) url.searchParams.set('q', v);
             const spkJenisSelect = document.querySelector('select[name="jenis_spk"]');
             const jenis = spkJenisSelect ? spkJenisSelect.value : 'UNIT';
-            url.searchParams.set('status', (jenis === 'TUKAR') ? 'ACTIVE' : 'PENDING');
+            url.searchParams.set('status', (jenis === 'TUKAR' || jenis === 'ANTAR_TARIK') ? 'ACTIVE' : 'PENDING');
             fetch(url).then(r=>r.json()).then(j=>{
                 const rows = j.data||[];
                 // Try exact match by customer_po_number or no_kontrak
@@ -2595,11 +2595,13 @@ $can_export = $permissions['export'];
                 tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
                 tujuanSelect.disabled = true;
                 
-                // Check if this is TUKAR workflow
-                const isTukarWorkflow = jenisText.toUpperCase().includes('TUKAR');
+                // Check if this is TUKAR or ANTAR+TARIK workflow
+                const _spkJenisKode = jenisText.split(' - ')[0]?.trim().toUpperCase() || '';
+                const isTukarWorkflow = _spkJenisKode === 'TUKAR' || _spkJenisKode === 'ANTAR_TARIK';
+                const isAntarTarikSpk = _spkJenisKode === 'ANTAR_TARIK';
                 
                 // Show/hide TUKAR workflow section
-                handleSpkTukarWorkflowVisibility(isTukarWorkflow);
+                handleSpkTukarWorkflowVisibility(isTukarWorkflow, isAntarTarikSpk);
                 
                 if (jenisId) {
                     // Load tujuan options from API
@@ -2611,8 +2613,8 @@ $can_export = $permissions['export'];
             });
         }
         
-        // Handle TUKAR workflow visibility and setup
-        function handleSpkTukarWorkflowVisibility(isTukarWorkflow) {
+        // Handle TUKAR / ANTAR+TARIK workflow visibility and setup
+        function handleSpkTukarWorkflowVisibility(isTukarWorkflow, isAntarTarikSpk = false) {
             const tukarWorkflow = document.getElementById('spkTukarWorkflow');
             const standardItems = document.getElementById('diUnitsPick'); // Standard item selection
             const itemSummary = document.getElementById('diSelectedSummary');
@@ -2623,12 +2625,13 @@ $can_export = $permissions['export'];
             }
             
             if (isTukarWorkflow) {
-                // Show TUKAR workflow components
+                // Show TUKAR / ANTAR+TARIK workflow components
                 tukarWorkflow.style.display = 'block';
                 
                 // Keep standard item selection visible for TUKAR (items KIRIM from SPK)
+                const modeLabel = isAntarTarikSpk ? 'Mode ANTAR+TARIK' : 'Mode TUKAR';
                 if (itemSummary) {
-                    itemSummary.innerHTML = '<div class="text-info"><i class="fas fa-exchange-alt"></i> <strong>Mode TUKAR:</strong> Unit KIRIM (dari SPK ini) + Unit TARIK (dari kontrak yang dipilih)</div>';
+                    itemSummary.innerHTML = `<div class="text-info"><i class="fas fa-exchange-alt"></i> <strong>${modeLabel}:</strong> Unit KIRIM (dari SPK ini) + Unit TARIK (dari kontrak yang dipilih)</div>`;
                 }
                 
                 // Setup kontrak change handler dulu, lalu load kontrak + units

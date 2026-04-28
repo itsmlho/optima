@@ -343,11 +343,11 @@ $can_export = $permissions['export'];
               <div class="form-text">Selected units will be removed from the contract (FK relationship removed)</div>
             </div>
 
-            <!-- Step 3: TUKAR Unit Selection (Complex TARIK from kontrak + KIRIM from SPK) -->
+            <!-- Step 3: TUKAR / ANTAR+TARIK Unit Selection (Complex TARIK from kontrak + KIRIM from SPK) -->
             <div id="diTukarWorkflow" style="display:none;" class="mb-4">
-              <div class="alert alert-info mb-2">
+              <div class="alert alert-info mb-2" id="diTukarWorkflowAlert">
                 <i class="fas fa-exchange-alt"></i> 
-                <strong>Mode TUKAR:</strong> Pilih unit <strong>KIRIM</strong> dari SPK di atas, dan pilih unit <strong>TARIK</strong> dari kontrak di bawah. Jumlah tidak harus sama.
+                <strong id="diTukarWorkflowMode">Mode TUKAR:</strong> Pilih unit <strong>KIRIM</strong> dari SPK di atas, dan pilih unit <strong>TARIK</strong> dari kontrak di bawah. Jumlah tidak harus sama.
               </div>
               
               <!-- Unit PULL Section for EXCHANGE -->
@@ -607,16 +607,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  // Enhanced workflow change handler with TARIK and TUKAR support
+  // Helper: get kode of selected jenis perintah
+  function getSelectedJenisKode() {
+    const jenisSelect = document.getElementById('jenisPerintahSelect');
+    const selectedId = parseInt(jenisSelect.value);
+    const opt = jenisPerintahOptions.find(o => parseInt(o.id) === selectedId);
+    return opt ? opt.kode.toUpperCase() : '';
+  }
+
+  // Enhanced workflow change handler with TARIK, TUKAR, and ANTAR+TARIK support
   function handleWorkflowJenisChange() {
     const jenisSelect = document.getElementById('jenisPerintahSelect');
     const jenisText = jenisSelect.selectedOptions[0]?.textContent || '';
+    const jenisKode = getSelectedJenisKode();
     
-    // Use text-based detection for workflow types
-    const isTukarWorkflow = jenisText.toUpperCase().includes('TUKAR');
-    const isTarikWorkflow = jenisText.toUpperCase().includes('TARIK') && !isTukarWorkflow;
+    // Use kode-based detection (more reliable than text)
+    const isAntarTarikWorkflow = jenisKode === 'ANTAR_TARIK';
+    const isTukarWorkflow = jenisKode === 'TUKAR';
+    const isTukarLikeWorkflow = isTukarWorkflow || isAntarTarikWorkflow; // both use same 2-panel UI
+    const isTarikWorkflow = jenisKode === 'TARIK';
     
-    console.log('Workflow changed:', { jenisText, isTukarWorkflow, isTarikWorkflow });
+    console.log('Workflow changed:', { jenisText, jenisKode, isTukarLikeWorkflow, isTarikWorkflow });
     
     // Get all relevant sections
     const spkSection = document.getElementById('spkSelectionSection');
@@ -626,6 +637,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const standardUnits = document.getElementById('diUnitsSection');
     const spkPick = document.getElementById('spkPick');
     
+    // Update alert text based on mode
+    const modeLabel = document.getElementById('diTukarWorkflowMode');
+    if (modeLabel) {
+      modeLabel.textContent = isAntarTarikWorkflow ? 'Mode ANTAR+TARIK:' : 'Mode TUKAR:';
+    }
+
     if (isTarikWorkflow) {
       // TARIK workflow: No SPK needed, only kontrak and units
       spkSection.style.display = 'none';
@@ -640,8 +657,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Load kontrak options for TARIK
       loadKontrakOptionsForTarik();
       
-    } else if (isTukarWorkflow) {
-      // TUKAR workflow: SPK → Jenis/Tujuan → Kontrak → Unit TARIK
+    } else if (isTukarLikeWorkflow) {
+      // TUKAR / ANTAR+TARIK workflow: SPK → Kontrak → Unit TARIK + Unit KIRIM
       spkSection.style.display = 'block';
       spkPick.setAttribute('required', 'required');
       
@@ -955,7 +972,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     };
   }
 
-  // Enhanced form validation with correct TUKAR support
+  // Enhanced form validation with correct TUKAR/ANTAR+TARIK support
   function validateWorkflowForm() {
     const jenisSelect = document.getElementById('jenisPerintahSelect');
     const tujuanSelect = document.getElementById('tujuanPerintahSelect');
@@ -963,15 +980,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
     
     if (!jenisSelect || !tujuanSelect || !submitBtn) return;
     
-    const jenisText = jenisSelect.selectedOptions[0]?.textContent || '';
-    const isTukarWorkflow = jenisText.toUpperCase().includes('TUKAR');
+    const jenisKode = getSelectedJenisKode();
+    const isTukarLikeWorkflow = jenisKode === 'TUKAR' || jenisKode === 'ANTAR_TARIK';
     
     const jenisValid = jenisSelect.value !== '';
     const tujuanValid = tujuanSelect.value !== '';
     let additionalValid = true;
     
-    // Additional validation for TUKAR workflow
-    if (isTukarWorkflow && jenisValid && tujuanValid) {
+    // Additional validation for TUKAR / ANTAR+TARIK workflow
+    if (isTukarLikeWorkflow && jenisValid && tujuanValid) {
       const kontrakSelect = document.getElementById('kontrakSelect');
       const tarikCount = parseInt(document.getElementById('tarikCount')?.textContent || '0');
       
@@ -1094,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         setTimeout(async () => {
           const jenisSelect = document.getElementById('jenisPerintahSelect');
           if (jenisSelect) {
-            const tarikOption = Array.from(jenisSelect.options).find(o => o.textContent.toUpperCase().includes('TARIK') && !o.textContent.toUpperCase().includes('TUKAR'));
+            const tarikOption = Array.from(jenisSelect.options).find(o => o.textContent.toUpperCase().includes('TARIK') && !o.textContent.toUpperCase().includes('TUKAR') && !o.textContent.toUpperCase().includes('ANTAR'));
             if (tarikOption) {
               jenisSelect.value = tarikOption.value;
               jenisSelect.dispatchEvent(new Event('change'));
@@ -1354,11 +1371,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Failed to load details</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
       
-      // Store jenis_perintah and show SPPU button for TARIK/TUKAR
+      // Store jenis_perintah and show SPPU button for TARIK/TUKAR/ANTAR+TARIK
       currentDiJenis = (d.jenis_perintah || '').toUpperCase();
-      if (currentDiJenis === 'TARIK' || currentDiJenis === 'TUKAR') {
+      if (currentDiJenis === 'TARIK' || currentDiJenis === 'TUKAR' || currentDiJenis === 'ANTAR+TARIK' || currentDiJenis === 'ANTAR_TARIK') {
         btnSppu.style.display = 'inline-block';
-      } 
+      }
       
       // Parse spesifikasi JSON if exists
       let spesifikasi = {};
@@ -1653,9 +1670,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.getElementById('pelanggan').value = selectedSpk.pelanggan || '';
       pelangganIdInput.value = selectedSpk.customer_id || '';
       loadCustomerLocationsByCustomer(selectedSpk.customer_id || '');
-      // If current workflow is TUKAR, reload contracts filtered by this customer
-      const _jenisText = (document.getElementById('jenisPerintahSelect').selectedOptions[0]?.textContent || '').toUpperCase();
-      if (_jenisText.includes('TUKAR')) {
+      // If current workflow is TUKAR or ANTAR+TARIK, reload contracts filtered by this customer
+      const _jenisKode = getSelectedJenisKode();
+      if (_jenisKode === 'TUKAR' || _jenisKode === 'ANTAR_TARIK') {
         loadKontrakOptionsForTukar();
         // Update label to clarify this is KIRIM section
         const lbl = document.getElementById('itemSelectionLabel');
@@ -1846,10 +1863,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     
     // Check workflow type
-    const jenisSelect = document.getElementById('jenisPerintahSelect');
-    const jenisText = jenisSelect.selectedOptions[0]?.textContent || '';
-    const isTukarWorkflow = jenisText.toUpperCase().includes('TUKAR');
-    const isTarikWorkflow = jenisText.toUpperCase().includes('TARIK') && !isTukarWorkflow;
+    const _submitJenisKode = getSelectedJenisKode();
+    const isTukarWorkflow = _submitJenisKode === 'TUKAR';
+    const isAntarTarikWorkflow = _submitJenisKode === 'ANTAR_TARIK';
+    const isTukarLikeWorkflow = isTukarWorkflow || isAntarTarikWorkflow;
+    const isTarikWorkflow = _submitJenisKode === 'TARIK';
     
     // Enhanced validation for different workflows
     if (isTarikWorkflow) {
@@ -1866,8 +1884,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       console.log('TARIK Workflow - Tarik:', tarikUnits.length, 'units');
       
-    } else if (isTukarWorkflow) {
-      // TUKAR workflow: SPK (KIRIM) + kontrak + TARIK units
+    } else if (isTukarLikeWorkflow) {
+      // TUKAR / ANTAR+TARIK workflow: SPK (KIRIM) + kontrak + TARIK units
       // KIRIM bisa 0 unit (boleh kosong), TARIK wajib minimal 1
       const tarikUnits = Array.from(document.querySelectorAll('.unit-check-tarik:checked'));
       
@@ -1878,18 +1896,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       const spkId = document.getElementById('spkPick').value;
       if (!spkId) {
-        OptimaNotify.warning('Pilih SPK untuk workflow TUKAR.');
+        OptimaNotify.warning('Pilih SPK untuk workflow ' + (isAntarTarikWorkflow ? 'ANTAR+TARIK' : 'TUKAR') + '.');
         return;
       }
       
       const kontrakId = document.getElementById('kontrakSelect').value;
       if (!kontrakId) {
-        OptimaNotify.warning('Pilih kontrak untuk workflow TUKAR.');
+        OptimaNotify.warning('Pilih kontrak unit lama untuk workflow ' + (isAntarTarikWorkflow ? 'ANTAR+TARIK' : 'TUKAR') + '.');
         return;
       }
       
       const kirimUnits = Array.from(document.querySelectorAll('#diUnitList .unit-check:checked'));
-      console.log('TUKAR Workflow - KIRIM:', kirimUnits.length, 'unit, TARIK:', tarikUnits.length, 'unit dari kontrak', kontrakId);
+      console.log((isAntarTarikWorkflow ? 'ANTAR+TARIK' : 'TUKAR') + ' Workflow - KIRIM:', kirimUnits.length, 'unit, TARIK:', tarikUnits.length, 'unit dari kontrak', kontrakId);
       
     } else {
       // Standard workflow validation

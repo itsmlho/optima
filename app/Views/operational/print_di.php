@@ -506,17 +506,17 @@ if (empty($unit_items)) {
                 
                 // Match prepared unit to the current delivery item by unit_id
                 $rowPrepared = null;
-                if (!empty($preparedList) && !empty($unit_item['unit_id'])) {
+                if (!empty($preparedList) && !empty($current_unit['unit_id'])) {
                     foreach ($preparedList as $pu) {
-                        if ((int)($pu['unit_id'] ?? 0) === (int)$unit_item['unit_id']) {
+                        if ((int)($pu['unit_id'] ?? 0) === (int)$current_unit['unit_id']) {
                             $rowPrepared = $pu;
                             break;
                         }
                     }
                 }
-                // Fallback: use current_unit index (1-based → 0-based)
+                // Fallback: use loop index (0-based) to match prepared unit position
                 if (!$rowPrepared) {
-                    $rowPrepared = $preparedList[$current_unit - 1] ?? ($preparedList[0] ?? $current_unit);
+                    $rowPrepared = $preparedList[$unit_index] ?? ($preparedList[0] ?? null);
                 }
                 
                 // Build left/right summaries exactly like SPK
