@@ -569,6 +569,12 @@ class Service extends BaseController
         try { $staff      = $staffModel->getStaffByRole(); }          catch (\Throwable $e) { log_message('error', 'workOrders: getStaffByRole failed - '      . $e->getMessage()); }
         try { $areas      = $areaModel->getActiveAreas(); }            catch (\Throwable $e) { log_message('error', 'workOrders: getActiveAreas failed - '      . $e->getMessage()); }
 
+        $departemens = [];
+        try {
+            $db = \Config\Database::connect();
+            $departemens = $db->table('departemen')->select('id_departemen, nama_departemen')->orderBy('id_departemen', 'ASC')->get()->getResultArray();
+        } catch (\Throwable $e) { log_message('error', 'workOrders: getDepatemens failed - ' . $e->getMessage()); }
+
         $data = [
             'title'          => 'Work Orders | OPTIMA',
             'page_title'     => 'Work Orders',
@@ -584,6 +590,7 @@ class Service extends BaseController
             'staff'          => $staff,
             'units'          => [], // AJAX Select2 — not preloaded
             'areas'          => $areas,
+            'departemens'    => $departemens,
             'spareparts'     => [], // AJAX Select2 — not preloaded (14k+ items)
         ];
 
