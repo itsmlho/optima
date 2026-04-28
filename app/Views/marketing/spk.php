@@ -3617,7 +3617,7 @@ $can_export = $permissions['export'];
      DIRECT SPK MODAL
      ============================================================ -->
 <div class="modal fade" id="directSpkModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h6 class="modal-title"><i class="fas fa-bolt me-2 text-success"></i>Buat SPK Langsung</h6>
@@ -3627,13 +3627,13 @@ $can_export = $permissions['export'];
                 <div class="modal-body">
                     <div class="alert alert-info py-2 mb-3">
                         <i class="fas fa-info-circle me-2"></i>
-                        Buat SPK tanpa melalui alur Quotation. Spesifikasi unit diisi langsung pada form ini.
+                        Buat SPK tanpa melalui alur Quotation. Spesifikasi unit diisi secara manual pada form ini.
                     </div>
 
                     <!-- ── STEP 1: Customer & Pengiriman ─────────────────────────── -->
                     <div class="card border-primary mb-3">
                         <div class="card-header bg-primary text-white py-2">
-                            <h6 class="mb-0"><i class="fas fa-building me-2"></i>Step 1: Customer &amp; Pengiriman</h6>
+                            <h6 class="mb-0"><i class="fas fa-building me-2"></i>Step 1: Customer &amp; Info SPK</h6>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
@@ -3659,22 +3659,39 @@ $can_export = $permissions['export'];
                                     <label class="form-label">Tanggal Delivery <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" name="delivery_date" id="dspkDeliveryDate" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nama Spesifikasi <small class="text-muted">(opsional)</small></label>
+                                    <input type="text" class="form-control" name="specification_name" id="dspkSpecName" maxlength="200"
+                                        placeholder="e.g. Reach Truck 2T Electric — Gudang B">
+                                    <small class="text-muted">Label singkat untuk membedakan spesifikasi ini.</small>
+                                </div>
+                                <div class="col-md-3">
                                     <label class="form-label">Jenis SPK</label>
                                     <select class="form-select" name="jenis_spk" id="dspkJenis">
                                         <option value="UNIT" selected>UNIT</option>
                                         <option value="ATTACHMENT">ATTACHMENT</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label">Jumlah Unit <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control" name="jumlah_unit" id="dspkJumlahUnit" min="1" value="1" required>
+                                </div>
+                                <!-- has_fabrikasi -->
+                                <div class="col-12">
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="dspkHasFabrikasi" name="has_fabrikasi" value="1">
+                                        <label class="form-check-label fw-semibold" for="dspkHasFabrikasi">Ada fabrikasi custom (non-standard)?</label>
+                                    </div>
+                                    <div class="form-text">
+                                        <strong>OFF</strong> — Pasang attach/fork standar (alur: Install → Painting → PDI)&nbsp;&nbsp;
+                                        <strong>ON</strong> — Perlu dibuat/dimodifikasi custom, mis. welding, ukuran khusus (alur: Fabrikasi → Painting → PDI)
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── STEP 2: Spesifikasi Unit ────────────────────────────────── -->
+                    <!-- ── STEP 2: Spesifikasi Unit (free text, sama dgn quotation) ── -->
                     <div class="card border-success mb-3">
                         <div class="card-header bg-success text-white py-2">
                             <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Step 2: Spesifikasi Unit</h6>
@@ -3697,44 +3714,136 @@ $can_export = $permissions['export'];
                                 </div>
                             </div>
 
+                            <div class="alert alert-light border mb-3 py-2">
+                                <i class="fas fa-info-circle me-1 text-primary"></i>
+                                Isi field utama yang diminta customer. Untuk baterai, charger, roda, atau detail lain &mdash; tuliskan di <strong>Catatan</strong> di bawah.
+                            </div>
+
                             <div class="row g-3">
-                                <!-- Departemen -->
+                                <!-- Free text specs (sama persis dgn quotation) -->
                                 <div class="col-md-4">
                                     <label class="form-label">Departemen <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="departemen_id" id="dspkDepartemen" required>
-                                        <option value="">-- Pilih Departemen --</option>
-                                    </select>
+                                    <input type="text" class="form-control" name="departemen_text" id="dspkDepartemenText" required autocomplete="off"
+                                        placeholder="e.g. Electric, IC Diesel">
                                 </div>
-                                <!-- Tipe Unit -->
                                 <div class="col-md-4">
                                     <label class="form-label">Tipe Unit <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="tipe_unit_id" id="dspkTipeUnit" required>
-                                        <option value="">-- Pilih Departemen dulu --</option>
-                                    </select>
+                                    <input type="text" class="form-control" name="tipe_unit_text" id="dspkTipeUnitText" required autocomplete="off"
+                                        placeholder="e.g. Counterbalance, Reach Truck">
                                 </div>
-                                <!-- Kapasitas -->
                                 <div class="col-md-4">
-                                    <label class="form-label">Kapasitas</label>
-                                    <select class="form-select" name="kapasitas_id" id="dspkKapasitas">
-                                        <option value="">-- Pilih Kapasitas --</option>
+                                    <label class="form-label">Kapasitas <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="kapasitas_text" id="dspkKapasitasText" required autocomplete="off"
+                                        placeholder="e.g. 1.5 Ton, 3 Ton">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Merk Unit <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="merk_unit_text" id="dspkMerkUnitText" required autocomplete="off"
+                                        placeholder="e.g. Toyota, Komatsu, Nichiyu">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Kondisi Unit <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="unit_condition" id="dspkUnitCondition" required>
+                                        <option value="">-- Pilih Kondisi --</option>
+                                        <option value="NEW">Baru (New)</option>
+                                        <option value="USED">Bekas (Used)</option>
                                     </select>
                                 </div>
-                                <!-- Merk / Brand -->
+
+                                <!-- ── Harga ─────────────────────────────────────────── -->
+                                <div class="col-12 mt-1"><hr class="my-1"><h6 class="mb-0 text-primary"><i class="fas fa-tag me-1"></i>Harga</h6></div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Merk / Brand</label>
-                                    <select class="form-select" name="brand_id" id="dspkBrand" disabled>
-                                        <option value="">-- Pilih Departemen dulu --</option>
-                                    </select>
+                                    <label class="form-label">Harga Sewa Bulanan <small class="text-muted">(opsional)</small></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rp</span>
+                                        <input type="text" class="form-control" name="monthly_price" id="dspkMonthlyPrice" inputmode="numeric" autocomplete="off"
+                                            placeholder="0">
+                                    </div>
+                                    <small class="text-muted">Per unit per bulan</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Harga Sewa Harian <small class="text-muted">(opsional)</small></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rp</span>
+                                        <input type="text" class="form-control" name="daily_price" id="dspkDailyPrice" inputmode="numeric" autocomplete="off"
+                                            placeholder="0">
+                                    </div>
+                                    <small class="text-muted">Per unit per hari</small>
                                 </div>
 
-                                <!-- ── Detail Teks (sama persis dgn Quotation) ───────── -->
-                                <div class="col-12 mt-2">
-                                    <hr class="my-2">
-                                    <h6 class="mb-0">Detail Spesifikasi</h6>
-                                    <p class="small text-muted mb-2">Isi field utama yang diminta customer. Detail baterai, charger, roda &mdash; tuliskan di kolom <strong>Catatan</strong> di bawah.</p>
+                                <!-- ── Spare Units ─────────────────────────────────── -->
+                                <div class="col-12 mt-1"><hr class="my-1"></div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="dspkIncludeSpare" value="1">
+                                        <label class="form-check-label fw-bold text-warning" for="dspkIncludeSpare">
+                                            <i class="fas fa-box-open me-1"></i>Sertakan Unit Cadangan (Spare)
+                                        </label>
+                                        <small class="text-muted d-block ms-4">Tambahkan unit backup untuk kontinuitas operasional (tidak ditagih, untuk jaga-jaga downtime)</small>
+                                    </div>
+                                </div>
+                                <div class="col-12" id="dspkSpareContainer" style="display:none;">
+                                    <div class="alert alert-warning border-warning bg-light py-2">
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-3">
+                                                <label class="form-label mb-0 fw-bold"><i class="fas fa-box me-1"></i>Jumlah Spare</label>
+                                                <input type="number" class="form-control" name="spare_quantity" id="dspkSpareQty" min="0" value="0">
+                                                <small class="text-muted">Unit cadangan</small>
+                                            </div>
+                                            <div class="col-md-9">
+                                                <div class="d-flex align-items-center gap-3 flex-wrap">
+                                                    <div>
+                                                        <strong>Unit Ditagih:</strong>
+                                                        <span id="dspkBillableDisplay" class="badge badge-soft-green ms-1">0</span>
+                                                    </div>
+                                                    <div>
+                                                        <strong>Unit Spare:</strong>
+                                                        <span id="dspkSpareDisplay" class="badge badge-soft-yellow ms-1">0</span>
+                                                    </div>
+                                                    <div>
+                                                        <strong>Total Dikirim:</strong>
+                                                        <span id="dspkTotalDisplay" class="badge badge-soft-blue ms-1">0</span>
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted d-block mt-1"><i class="fas fa-info-circle me-1"></i>Perhitungan tagihan: Unit Ditagih × Harga Bulanan</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <!-- Fork / Attachment radio (2 pilihan, tanpa "Tidak Ada") -->
+                                <!-- ── Include Operator ───────────────────────────── -->
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="include_operator" id="dspkIncludeOperator" value="1">
+                                        <label class="form-check-label fw-bold text-info" for="dspkIncludeOperator">
+                                            <i class="fas fa-user-tie me-1"></i>Termasuk Operator
+                                        </label>
+                                        <small class="text-muted d-block ms-4">Kontrak termasuk penyediaan operator untuk unit ini</small>
+                                    </div>
+                                </div>
+                                <div class="col-12" id="dspkOperatorContainer" style="display:none;">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Jumlah Operator <span class="text-danger">*</span></label>
+                                            <input type="number" class="form-control" name="operator_quantity" id="dspkOperatorQty" min="1" value="1">
+                                            <small class="text-muted">Per unit berapa operator</small>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label">Sumber Tarif Operator</label>
+                                            <div class="form-control bg-light">Otomatis dari Customer Location saat pembuatan DI</div>
+                                            <small class="text-muted">Harga operator tidak diisi di SPK.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ── Detail Spesifikasi Teknis ───────────────────── -->
+                                <div class="col-12 mt-1">
+                                    <hr class="my-1">
+                                    <h6 class="mb-0 text-primary"><i class="fas fa-tools me-1"></i>Detail Teknis</h6>
+                                    <p class="small text-muted mb-2">Spesifikasi teknis unit yang akan dikirimkan.</p>
+                                </div>
+
+                                <!-- Fork / Attachment radio -->
                                 <div class="col-12">
                                     <label class="form-label">Fork / Attachment</label>
                                     <div class="btn-group w-100 flex-wrap" role="group">
@@ -3746,35 +3855,26 @@ $can_export = $permissions['export'];
                                     <small class="text-muted d-block mt-1">Pilih jenis Fork atau Attachment yang digunakan pada unit ini.</small>
                                 </div>
 
-                                <!-- Fork text detail (visible when fork selected) -->
-                                <div class="col-md-6" id="dspkTextForkWrap">
+                                <div class="col-md-6" id="dspkTextForkWrap" style="display:none;">
                                     <label for="dspkDetailFork" class="form-label">Detail Fork</label>
                                     <input type="text" class="form-control" id="dspkDetailFork" maxlength="500" autocomplete="off"
                                         placeholder="e.g. Standard Fork 1150mm, Class IIA">
                                 </div>
-
-                                <!-- Attachment text detail (visible when attachment selected) -->
                                 <div class="col-md-6" id="dspkTextAttachWrap" style="display:none;">
                                     <label for="dspkDetailAttachment" class="form-label">Detail Attachment</label>
                                     <input type="text" class="form-control" id="dspkDetailAttachment" maxlength="500" autocomplete="off"
                                         placeholder="e.g. Rotator side-shift, kapasitas 2T">
                                 </div>
-
-                                <!-- Mast text (always visible) -->
                                 <div class="col-md-6">
                                     <label for="dspkDetailMast" class="form-label">Mast (Tinggi Angkat)</label>
                                     <input type="text" class="form-control" id="dspkDetailMast" maxlength="500" autocomplete="off"
                                         placeholder="e.g. Triplex FFL 5000mm">
                                 </div>
-
-                                <!-- Ban text (always visible) -->
                                 <div class="col-md-6">
                                     <label for="dspkDetailBan" class="form-label">Ban (Tire)</label>
                                     <input type="text" class="form-control" id="dspkDetailBan" maxlength="500" autocomplete="off"
                                         placeholder="e.g. Solid, 200/50-10">
                                 </div>
-
-                                <!-- Valve text (always visible) -->
                                 <div class="col-md-6">
                                     <label for="dspkDetailValve" class="form-label">Valve</label>
                                     <input type="text" class="form-control" id="dspkDetailValve" maxlength="500" autocomplete="off"
@@ -3784,48 +3884,66 @@ $can_export = $permissions['export'];
                                 <!-- ── Master IDs (opsional, collapsible) ────────────── -->
                                 <div class="col-12">
                                     <details class="border rounded p-3 mt-1 bg-light" id="dspkMasterDetails">
-                                        <summary class="fw-semibold">Identitas Master (Opsional)</summary>
+                                        <summary class="fw-semibold text-muted small">Hubungkan ke Master Data (Opsional)</summary>
                                         <p class="small text-muted mt-2 mb-2">Pilih master ID jika ingin menghubungkan ke data master forklift. Tidak wajib — cukup isi teks di atas.</p>
                                         <div class="row g-3">
-                                            <!-- Fork master (follows toggle) -->
+                                            <div class="col-md-6">
+                                                <label class="form-label small">Departemen Master</label>
+                                                <select class="form-select form-select-sm" name="departemen_id" id="dspkDepartemen">
+                                                    <option value="">-- Pilih Departemen --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small">Tipe Unit Master</label>
+                                                <select class="form-select form-select-sm" name="tipe_unit_id" id="dspkTipeUnit">
+                                                    <option value="">-- Pilih Departemen dulu --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Kapasitas Master</label>
+                                                <select class="form-select form-select-sm" name="kapasitas_id" id="dspkKapasitas">
+                                                    <option value="">-- Pilih Kapasitas --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Merk Master</label>
+                                                <select class="form-select form-select-sm" name="brand_id" id="dspkBrand" disabled>
+                                                    <option value="">-- Pilih Departemen dulu --</option>
+                                                </select>
+                                            </div>
                                             <div class="col-12" id="dspkForkMasterWrap">
-                                                <label class="form-label">Fork Master</label>
-                                                <select class="form-select" name="fork_id" id="dspkForkId">
+                                                <label class="form-label small">Fork Master</label>
+                                                <select class="form-select form-select-sm" name="fork_id" id="dspkForkId">
                                                     <option value="">-- Pilih Jenis Fork --</option>
                                                 </select>
                                             </div>
-                                            <!-- Attachment master (follows toggle) -->
                                             <div class="col-12" id="dspkAttachMasterWrap" style="display:none;">
-                                                <label class="form-label">Attachment Master</label>
-                                                <select class="form-select" name="attachment_id" id="dspkAttachmentId">
+                                                <label class="form-label small">Attachment Master</label>
+                                                <select class="form-select form-select-sm" name="attachment_id" id="dspkAttachmentId">
                                                     <option value="">-- Pilih Jenis Attachment --</option>
                                                 </select>
                                             </div>
-                                            <!-- Mast 2-level -->
                                             <div class="col-md-4">
-                                                <label class="form-label">Mast Model</label>
-                                                <select class="form-select" id="dspkMastModel">
+                                                <label class="form-label small">Mast Model</label>
+                                                <select class="form-select form-select-sm" id="dspkMastModel">
                                                     <option value="">-- Pilih Model --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Mast Tinggi</label>
-                                                <select class="form-select" name="mast_id" id="dspkMastHeight">
+                                                <label class="form-label small">Mast Tinggi</label>
+                                                <select class="form-select form-select-sm" name="mast_id" id="dspkMastHeight">
                                                     <option value="">-- Pilih model dulu --</option>
                                                 </select>
-                                                <small class="text-muted">Pilih setelah memilih model</small>
                                             </div>
-                                            <!-- Ban master -->
                                             <div class="col-md-4">
-                                                <label class="form-label">Ban Master</label>
-                                                <select class="form-select" name="ban_id" id="dspkBan">
+                                                <label class="form-label small">Ban Master</label>
+                                                <select class="form-select form-select-sm" name="ban_id" id="dspkBan">
                                                     <option value="">-- Pilih Ban --</option>
                                                 </select>
                                             </div>
-                                            <!-- Valve master -->
                                             <div class="col-md-4">
-                                                <label class="form-label">Valve Master</label>
-                                                <select class="form-select" name="valve_id" id="dspkValve">
+                                                <label class="form-label small">Valve Master</label>
+                                                <select class="form-select form-select-sm" name="valve_id" id="dspkValve">
                                                     <option value="">-- Pilih Valve --</option>
                                                 </select>
                                             </div>
@@ -3836,11 +3954,11 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
 
-                    <!-- Notes (user-facing, same as quotation specNotes) -->
+                    <!-- Notes -->
                     <div class="mb-3">
                         <label class="form-label">Catatan / Custom Requirements</label>
                         <textarea class="form-control" id="dspkNotes" rows="3"
-                            placeholder="Ringkasan untuk customer; tambahkan baterai, charger, roda, atau detail lain di sini sebagai teks."></textarea>
+                            placeholder="Tambahkan baterai, charger, roda, atau catatan lain di sini sebagai teks bebas."></textarea>
                         <small class="text-muted"><i class="fas fa-lightbulb text-warning me-1"></i>Detail baterai, charger, roda, atau catatan lain sebaiknya dituliskan di sini.</small>
                     </div>
                 </div>
@@ -3858,7 +3976,7 @@ $can_export = $permissions['export'];
 <script>
 /* ================================================================
    DIRECT SPK MODAL — JavaScript
-   Same pattern as quotation spec form (OPTIMA_SPEC_TECH notes block)
+   Aligned with quotation spec form fields + spare / operator sections
    ================================================================ */
 (function () {
     'use strict';
@@ -3876,9 +3994,10 @@ $can_export = $permissions['export'];
     const TECH_END   = '[/OPTIMA_SPEC_TECH]';
 
     let dspkReady   = false;
+    let dspkReady   = false;
     let allTipeUnit = [];
 
-    // ── OPTIMA_SPEC_TECH helpers (mirrors quotations.php) ─────────
+    // ── OPTIMA_SPEC_TECH helpers ───────────────────────────────────
     function extractDspkSpecTech(notesRaw) {
         const raw = notesRaw || '';
         const s = raw.indexOf(TECH_START);
@@ -3897,7 +4016,7 @@ $can_export = $permissions['export'];
     }
 
     function buildDspkSpecTechBlock() {
-        const fat = (document.querySelector('input[name="fork_attach_type"]:checked') || {}).value || 'fork';
+        const fat = (document.querySelector('#directSpkModal input[name="fork_attach_type"]:checked') || {}).value || 'fork';
         const lines = [];
         const push = function (key, val) { if (val && val.trim()) { lines.push(key + ': ' + val.trim().replace(/\n/g, ' ')); } };
         push(fat === 'fork' ? 'fork' : 'attachment',
@@ -3938,7 +4057,7 @@ $can_export = $permissions['export'];
         return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(function (r) { return r.json(); });
     }
 
-    // ── load static dropdowns once ────────────────────────────────
+    // ── load static dropdowns once (master data for optional section) ──
     function loadAllStaticDropdowns() {
         apiGet(SPEC + '?type=departemen').then(function (j) { fillSelect('dspkDepartemen', j.data, '-- Pilih Departemen --'); });
         apiGet(SPEC + '?type=kapasitas').then(function (j) {
@@ -4064,6 +4183,16 @@ $can_export = $permissions['export'];
         if (!isAttach) { document.getElementById('dspkAttachmentId').value = ''; document.getElementById('dspkDetailAttachment').value = ''; }
     }
 
+    // ── Spare units display update ────────────────────────────────
+    function updateSpareDisplay() {
+        const qty    = parseInt(document.getElementById('dspkJumlahUnit').value) || 1;
+        const spare  = parseInt(document.getElementById('dspkSpareQty').value)   || 0;
+        const total  = qty + spare;
+        document.getElementById('dspkBillableDisplay').textContent = qty;
+        document.getElementById('dspkSpareDisplay').textContent    = spare;
+        document.getElementById('dspkTotalDisplay').textContent    = total;
+    }
+
     // ── apply template ────────────────────────────────────────────
     function applyDspkTemplate(id) {
         if (!id) { return; }
@@ -4080,23 +4209,19 @@ $can_export = $permissions['export'];
             }
             const t = res.data;
 
-            // 1. Departemen → cascade
+            // 1. Master ID dropdowns (open details if needed)
             const deptSel = document.getElementById('dspkDepartemen');
             deptSel.value = t.departemen_id || '';
             deptSel.dispatchEvent(new Event('change'));
-
-            // 2. Dependent dropdowns after cascade settles
             setTimeout(function () {
                 document.getElementById('dspkTipeUnit').value = t.tipe_unit_id || '';
                 document.getElementById('dspkBrand').value    = t.brand_id     || '';
             }, 450);
-
-            // 3. Kapasitas
             document.getElementById('dspkKapasitas').value = t.kapasitas_id || '';
 
-            // 4. Fork / Attachment toggle
+            // 2. Fork / Attachment toggle
             const fat = t.fork_id ? 'fork' : (t.attachment_id ? 'attachment' : 'fork');
-            const radio = document.querySelector('input[name="fork_attach_type"][value="' + fat + '"]');
+            const radio = document.querySelector('#directSpkModal input[name="fork_attach_type"][value="' + fat + '"]');
             if (radio) { radio.checked = true; }
             applyForkAttachUI(fat);
             setTimeout(function () {
@@ -4104,26 +4229,27 @@ $can_export = $permissions['export'];
                 if (t.attachment_id) { document.getElementById('dspkAttachmentId').value = t.attachment_id; }
             }, 200);
 
-            // 5. Mast 2-level (match model by name, then load heights)
+            // 3. Mast 2-level
             if (t.mast_id) {
                 const mastModelSel = document.getElementById('dspkMastModel');
-                // Try matching by text (mast_name from template) or by value
                 let matched = false;
                 if (t.mast_name) {
                     Array.from(mastModelSel.options).forEach(function (o) {
                         if (o.text === t.mast_name) { mastModelSel.value = o.value; matched = true; }
                     });
                 }
-                if (matched || mastModelSel.value) {
-                    loadMastHeights(mastModelSel.value, t.mast_id);
-                }
+                if (matched || mastModelSel.value) { loadMastHeights(mastModelSel.value, t.mast_id); }
             }
-
-            // 6. Ban master
             document.getElementById('dspkBan').value   = t.ban_id   || '';
             document.getElementById('dspkValve').value = t.valve_id || '';
 
-            // 7. Parse OPTIMA_SPEC_TECH from template notes → fill text inputs
+            // 4. Free text fields from template name hints
+            if (t.nama_departemen) { document.getElementById('dspkDepartemenText').value = t.nama_departemen; }
+            if (t.nama_tipe_unit)  { document.getElementById('dspkTipeUnitText').value   = t.nama_tipe_unit + (t.jenis_tipe_unit ? ' ' + t.jenis_tipe_unit : ''); }
+            if (t.kapasitas)       { document.getElementById('dspkKapasitasText').value  = t.kapasitas; }
+            if (t.nama_merk_unit || t.merk_unit) { document.getElementById('dspkMerkUnitText').value = t.nama_merk_unit || t.merk_unit || ''; }
+
+            // 5. Parse OPTIMA_SPEC_TECH from template notes
             if (t.notes) {
                 const parsed = extractDspkSpecTech(t.notes);
                 document.getElementById('dspkNotes').value = parsed.userNotes || '';
@@ -4134,7 +4260,7 @@ $can_export = $permissions['export'];
                 if (fat === 'attachment') { document.getElementById('dspkDetailAttachment').value = parsed.detail.attachment || ''; }
             } else {
                 ['dspkNotes','dspkDetailFork','dspkDetailAttachment','dspkDetailMast','dspkDetailBan','dspkDetailValve']
-                    .forEach(function (id) { document.getElementById(id).value = ''; });
+                    .forEach(function (elId) { document.getElementById(elId).value = ''; });
             }
 
             btn.disabled = false;
@@ -4147,6 +4273,15 @@ $can_export = $permissions['export'];
         });
     }
 
+    // ── number format helpers ──────────────────────────────────────
+    function parseCurrencyInput(val) {
+        return parseInt((val || '0').replace(/\D/g, ''), 10) || 0;
+    }
+    function formatCurrencyInput(el) {
+        const raw = el.value.replace(/\D/g, '');
+        el.value = raw ? parseInt(raw, 10).toLocaleString('id-ID') : '';
+    }
+
     // ── bind events ────────────────────────────────────────────────
     function bindEvents() {
         // Customer → locations + contracts
@@ -4154,8 +4289,8 @@ $can_export = $permissions['export'];
             const cid = this.value;
             if (cid) { loadLocations(cid); loadContracts(cid); }
             else {
-                ['dspkLocationId', 'dspkContractId'].forEach(function (id) {
-                    const s = document.getElementById(id);
+                ['dspkLocationId', 'dspkContractId'].forEach(function (elId) {
+                    const s = document.getElementById(elId);
                     s.innerHTML = '<option value="">-- Pilih Customer dulu --</option>';
                     s.disabled = true;
                 });
@@ -4165,7 +4300,7 @@ $can_export = $permissions['export'];
             $('#dspkCustomerId').on('select2:select select2:unselect', function () { this.dispatchEvent(new Event('change')); });
         }
 
-        // Departemen → tipe unit + brand
+        // Departemen master → tipe unit + brand (optional section)
         document.getElementById('dspkDepartemen').addEventListener('change', function () {
             updateTipeUnit(this.value);
             loadBrands(this.value);
@@ -4177,7 +4312,7 @@ $can_export = $permissions['export'];
         });
 
         // Fork/Attachment toggle
-        document.querySelectorAll('input[name="fork_attach_type"]').forEach(function (radio) {
+        document.querySelectorAll('#directSpkModal input[name="fork_attach_type"]').forEach(function (radio) {
             radio.addEventListener('change', function () { applyForkAttachUI(this.value); });
         });
 
@@ -4187,6 +4322,30 @@ $can_export = $permissions['export'];
         });
         document.getElementById('dspkApplyTemplateBtn').addEventListener('click', function () {
             applyDspkTemplate(document.getElementById('dspkTemplateSelect').value);
+        });
+
+        // Spare units toggle
+        document.getElementById('dspkIncludeSpare').addEventListener('change', function () {
+            document.getElementById('dspkSpareContainer').style.display = this.checked ? '' : 'none';
+            if (!this.checked) { document.getElementById('dspkSpareQty').value = '0'; }
+            updateSpareDisplay();
+        });
+        document.getElementById('dspkSpareQty').addEventListener('input', updateSpareDisplay);
+        document.getElementById('dspkJumlahUnit').addEventListener('input', updateSpareDisplay);
+
+        // Include operator toggle
+        document.getElementById('dspkIncludeOperator').addEventListener('change', function () {
+            document.getElementById('dspkOperatorContainer').style.display = this.checked ? '' : 'none';
+            if (!this.checked) { document.getElementById('dspkOperatorQty').value = '1'; }
+        });
+
+        // Currency formatting
+        ['dspkMonthlyPrice','dspkDailyPrice'].forEach(function (elId) {
+            const el = document.getElementById(elId);
+            if (el) {
+                el.addEventListener('input', function () { formatCurrencyInput(this); });
+                el.addEventListener('focus', function () { this.select(); });
+            }
         });
 
         // Submit
@@ -4207,8 +4366,20 @@ $can_export = $permissions['export'];
         const payload = {};
         fd.forEach(function (v, k) { payload[k] = v; });
 
-        // Build merged notes (userNotes + [OPTIMA_SPEC_TECH] block) — same as quotation
+        // Build merged notes (userNotes + [OPTIMA_SPEC_TECH] block)
         payload.notes = mergeDspkNotes();
+
+        // Numeric prices (strip thousand separators)
+        payload.monthly_price = parseCurrencyInput(payload.monthly_price || '0');
+        payload.daily_price   = parseCurrencyInput(payload.daily_price   || '0');
+
+        // Spare units
+        payload.is_spare_unit   = document.getElementById('dspkIncludeSpare').checked ? 1 : 0;
+        payload.spare_quantity  = parseInt(document.getElementById('dspkSpareQty').value) || 0;
+
+        // Operator
+        payload.include_operator  = document.getElementById('dspkIncludeOperator').checked ? 1 : 0;
+        payload.operator_quantity = parseInt(document.getElementById('dspkOperatorQty').value) || 0;
 
         // CSRF
         payload[window.csrfTokenName] = window.csrfToken || window.csrfTokenValue || '';
@@ -4226,18 +4397,7 @@ $can_export = $permissions['export'];
             if (json.success) {
                 window.optimaAssistNotify(json.message || 'SPK berhasil dibuat.', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('directSpkModal'))?.hide();
-                form.reset();
-                ['dspkDetailFork','dspkDetailAttachment','dspkDetailMast','dspkDetailBan','dspkDetailValve','dspkNotes']
-                    .forEach(function (id) { document.getElementById(id).value = ''; });
-                ['dspkLocationId','dspkContractId'].forEach(function (id) {
-                    const s = document.getElementById(id);
-                    s.disabled = true;
-                    s.innerHTML = '<option value="">-- Pilih Customer dulu --</option>';
-                });
-                document.getElementById('dspkBrand').disabled = true;
-                // re-apply default fork mode
-                const forkRadio = document.getElementById('dspkOptFork');
-                if (forkRadio) { forkRadio.checked = true; applyForkAttachUI('fork'); }
+                resetDirectSpkForm(form);
                 if (typeof refreshSPKTable === 'function') { refreshSPKTable(); }
             } else {
                 window.optimaAssistNotify(json.message || 'Gagal membuat SPK', 'error');
@@ -4251,6 +4411,24 @@ $can_export = $permissions['export'];
         });
     }
 
+    function resetDirectSpkForm(form) {
+        form.reset();
+        ['dspkDetailFork','dspkDetailAttachment','dspkDetailMast','dspkDetailBan','dspkDetailValve','dspkNotes',
+         'dspkDepartemenText','dspkTipeUnitText','dspkKapasitasText','dspkMerkUnitText']
+            .forEach(function (elId) { const el = document.getElementById(elId); if (el) el.value = ''; });
+        ['dspkLocationId','dspkContractId'].forEach(function (elId) {
+            const s = document.getElementById(elId);
+            s.disabled = true;
+            s.innerHTML = '<option value="">-- Pilih Customer dulu --</option>';
+        });
+        document.getElementById('dspkBrand').disabled = true;
+        document.getElementById('dspkSpareContainer').style.display    = 'none';
+        document.getElementById('dspkOperatorContainer').style.display = 'none';
+        const forkRadio = document.getElementById('dspkOptFork');
+        if (forkRadio) { forkRadio.checked = true; applyForkAttachUI('fork'); }
+        updateSpareDisplay();
+    }
+
     // ── init on first modal open ──────────────────────────────────
     document.getElementById('directSpkModal').addEventListener('show.bs.modal', function () {
         if (dspkReady) { return; }
@@ -4258,8 +4436,9 @@ $can_export = $permissions['export'];
         loadAllStaticDropdowns();
         loadCustomers();
         bindEvents();
-        // Default state: fork selected
+        // Default state: fork selected, spare hidden
         applyForkAttachUI('fork');
+        updateSpareDisplay();
     });
 
 })();

@@ -5966,11 +5966,30 @@ class Marketing extends BaseDataTableController
             $deliveryDate       = $data['delivery_date'] ?? null;
             $jumlahUnit         = max(1, (int)($data['jumlah_unit'] ?? 1));
             $jenisSpk           = in_array($data['jenis_spk'] ?? '', ['UNIT','ATTACHMENT']) ? $data['jenis_spk'] : 'UNIT';
+            $hasFabrikasi       = (int)($data['has_fabrikasi'] ?? 0);
+            $specName           = trim($data['specification_name'] ?? '');
             $catatan            = $data['catatan'] ?? '';
             $notes              = $data['notes'] ?? ''; // merged userNotes + [OPTIMA_SPEC_TECH] block from JS
 
-            // ── Resolve quotation-style brand_id → merk_unit / model_unit ──────
-            $merkUnit  = $data['merk_unit']  ?? null;
+            // ── Free text spec fields (matching quotation form) ─────────────
+            $departemenText = trim($data['departemen_text'] ?? '');
+            $tipeUnitText   = trim($data['tipe_unit_text']  ?? '');
+            $kapasitasText  = trim($data['kapasitas_text']  ?? '');
+            $merkUnitText   = trim($data['merk_unit_text']  ?? '');
+            $unitCondition  = in_array($data['unit_condition'] ?? '', ['NEW','USED']) ? $data['unit_condition'] : null;
+
+            // ── Pricing ──────────────────────────────────────────────────────
+            $monthlyPrice = (float)($data['monthly_price'] ?? 0);
+            $dailyPrice   = (float)($data['daily_price']   ?? 0);
+
+            // ── Spare & operator ─────────────────────────────────────────────
+            $isSpareUnit       = (int)($data['is_spare_unit']       ?? 0);
+            $spareQuantity     = max(0, (int)($data['spare_quantity']    ?? 0));
+            $includeOperator   = (int)($data['include_operator']    ?? 0);
+            $operatorQuantity  = max(0, (int)($data['operator_quantity'] ?? 0));
+
+            // ── Resolve brand_id → merk_unit / model_unit (master, optional) ──
+            $merkUnit  = $merkUnitText ?: ($data['merk_unit'] ?? null);
             $modelUnit = $data['model_unit'] ?? null;
             if (!empty($data['brand_id'])) {
                 $brandRow = $this->db->table('model_unit')
@@ -6004,23 +6023,38 @@ class Marketing extends BaseDataTableController
 
             // ── Spec fields ──────────────────────────────────────────────────
             $spesifikasiData = [
-                'departemen_id'  => $data['departemen_id']  ?? null,
-                'tipe_unit_id'   => $data['tipe_unit_id']   ?? null,
-                'tipe_jenis'     => $data['tipe_jenis']     ?? null,
-                'merk_unit'      => $merkUnit,
-                'model_unit'     => $modelUnit,
-                'kapasitas_id'   => $data['kapasitas_id']   ?? null,
-                'attachment_tipe'=> $attachmentTipe,
-                'attachment_merk'=> $attachmentMerk,
-                'jenis_baterai'  => $data['jenis_baterai']  ?? null,
-                'charger_id'     => $data['charger_id']     ?? null,
-                'mast_id'        => $data['mast_id']        ?? null,
-                'ban_id'         => $data['ban_id']         ?? null,
-                'roda_id'        => $data['roda_id']        ?? null,
-                'valve_id'       => $data['valve_id']       ?? null,
-                'fork_id'        => $forkId,
-                'notes'          => $notes,
-                'aksesoris'      => [],
+                // Free text (primary, from form)
+                'departemen_text'  => $departemenText,
+                'tipe_unit_text'   => $tipeUnitText,
+                'kapasitas_text'   => $kapasitasText,
+                'merk_unit_text'   => $merkUnitText,
+                'unit_condition'   => $unitCondition,
+                // Master IDs (optional, from details section)
+                'departemen_id'    => $data['departemen_id']  ?? null,
+                'tipe_unit_id'     => $data['tipe_unit_id']   ?? null,
+                'tipe_jenis'       => $data['tipe_jenis']     ?? null,
+                'merk_unit'        => $merkUnit,
+                'model_unit'       => $modelUnit,
+                'kapasitas_id'     => $data['kapasitas_id']   ?? null,
+                'attachment_tipe'  => $attachmentTipe,
+                'attachment_merk'  => $attachmentMerk,
+                'jenis_baterai'    => $data['jenis_baterai']  ?? null,
+                'charger_id'       => $data['charger_id']     ?? null,
+                'mast_id'          => $data['mast_id']        ?? null,
+                'ban_id'           => $data['ban_id']         ?? null,
+                'roda_id'          => $data['roda_id']        ?? null,
+                'valve_id'         => $data['valve_id']       ?? null,
+                'fork_id'          => $forkId,
+                // Spare & operator
+                'is_spare_unit'    => $isSpareUnit,
+                'spare_quantity'   => $spareQuantity,
+                'include_operator' => $includeOperator,
+                'operator_quantity'=> $operatorQuantity,
+                // Pricing
+                'monthly_price'    => $monthlyPrice,
+                'daily_price'      => $dailyPrice,
+                'notes'            => $notes,
+                'aksesoris'        => [],
             ];
 
             // Validate
@@ -6030,11 +6064,17 @@ class Marketing extends BaseDataTableController
             if (!$deliveryDate) {
                 throw new \Exception('Delivery date wajib diisi');
             }
-            if (!$spesifikasiData['departemen_id']) {
-                throw new \Exception('Departemen wajib dipilih');
+            if (!$departemenText) {
+                throw new \Exception('Departemen wajib diisi');
             }
-            if (!$spesifikasiData['tipe_unit_id']) {
-                throw new \Exception('Tipe unit wajib dipilih');
+            if (!$tipeUnitText) {
+                throw new \Exception('Tipe unit wajib diisi');
+            }
+            if (!$kapasitasText) {
+                throw new \Exception('Kapasitas wajib diisi');
+            }
+            if (!$merkUnitText) {
+                throw new \Exception('Merk unit wajib diisi');
             }
 
             // Resolve customer info
@@ -6079,6 +6119,7 @@ class Marketing extends BaseDataTableController
             $spkPayload = [
                 'nomor_spk'                  => $nomorSPK,
                 'jenis_spk'                  => $jenisSpk,
+                'has_fabrikasi'              => $hasFabrikasi,
                 'kontrak_id'                 => $contractRow ? $contractId : null,
                 'quotation_specification_id' => null,
                 'source_type'                => 'DIRECT',
@@ -6091,7 +6132,7 @@ class Marketing extends BaseDataTableController
                 'lokasi'                     => $lokasi,
                 'delivery_plan'              => $deliveryDate,
                 'spesifikasi'                => json_encode($spesifikasiData),
-                'catatan'                    => $catatan ?: 'Dibuat langsung (Direct SPK)',
+                'catatan'                    => $catatan ?: ($specName ?: 'Dibuat langsung (Direct SPK)'),
                 'status'                     => 'SUBMITTED',
                 'dibuat_oleh'                => session('user_id') ?? 1,
                 'dibuat_pada'                => date('Y-m-d H:i:s'),
