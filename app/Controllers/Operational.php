@@ -414,6 +414,11 @@ class Operational extends BaseController
             }
             $row['total_units'] = $unitCount;
             $row['total_attachments'] = $attachmentCount;
+            // Trip count for multi-truck UI
+            $row['trip_count'] = $this->db->table('delivery_trips')
+                ->where('di_id', $row['id'])
+                ->whereNotIn('status', ['DIBATALKAN'])
+                ->countAllResults();
         }
         
         return $this->response->setJSON([
@@ -3035,5 +3040,279 @@ class Operational extends BaseController
 
         return view('operational/temporary_units_report', $data);
     }
+
+    // =========================================================
+    // DELIVERY TRIPS — multi-truck per DI
+    // =========================================================
+
+    /**
+     * GET trips for a DI + unassigned KIRIM units.
+     * Endpoint: GET operational/delivery/{di_id}/trips
+     */
+    public function getDeliveryTrips($diId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $di = $this->diModel->find((int)$diId);
+        if (!$di) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
+        }
+
+        // All KIRIM unit items for this DI
+        $allItems = $this->db->table('delivery_items di')
+            ->select('di.id, di.unit_id, di.trip_id, iu.no_unit, mu.merk_unit, mu.model_unit')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->where('di.di_id', (int)$diId)
+            ->where('di.item_type', 'UNIT')
+            ->where('di.item_role', 'KIRIM')
+            ->get()->getResultArray();
+
+        $unassigned = array_values(array_filter($allItems, fn($i) => empty($i['trip_id'])));
+
+        // Trips with their assigned items
+        $trips = $this->db->table('delivery_trips')
+            ->where('di_id', (int)$diId)
+            ->orderBy('id', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($trips as &$trip) {
+            $trip['items'] = $this->db->table('delivery_items di')
+                ->select('di.id, di.unit_id, iu.no_unit, mu.merk_unit, mu.model_unit')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->where('di.trip_id', (int)$trip['id'])
+                ->get()->getResultArray();
+        }
+        unset($trip);
+
+        return $this->response->setJSON([
+            'success'    => true,
+            'di'         => ['id' => $di['id'], 'nomor_di' => $di['nomor_di'], 'pelanggan' => $di['pelanggan']],
+            'trips'      => $trips,
+            'unassigned' => $unassigned,
+        ]);
+    }
+
+    /**
+     * POST create a new trip and assign units.
+     * Endpoint: POST operational/delivery/{di_id}/trips
+     */
+    public function createDeliveryTrip($diId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $di = $this->diModel->find((int)$diId);
+        if (!$di) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
+        }
+
+        // Validate
+        $namaSupir = trim($this->request->getPost('nama_supir') ?? '');
+        $kendaraan = trim($this->request->getPost('kendaraan') ?? '');
+        $noPolisi  = trim($this->request->getPost('no_polisi') ?? '');
+        if (!$namaSupir || !$kendaraan || !$noPolisi) {
+            return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Nama supir, kendaraan, dan no polisi wajib diisi']);
+        }
+
+        $unitItemIds = $this->request->getPost('unit_item_ids') ?? [];
+        if (is_string($unitItemIds)) $unitItemIds = [$unitItemIds];
+        $unitItemIds = array_values(array_unique(array_filter(array_map('intval', $unitItemIds))));
+        if (empty($unitItemIds)) {
+            return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Pilih minimal 1 unit untuk trip ini']);
+        }
+
+        // Generate trip number
+        $tripCount = $this->db->table('delivery_trips')->where('di_id', (int)$diId)->countAllResults();
+        $nomorTrip = $di['nomor_di'] . '-T' . str_pad($tripCount + 1, 2, '0', STR_PAD_LEFT);
+
+        $this->db->transStart();
+
+        $tripId = null;
+        $tripPayload = [
+            'di_id'          => (int)$diId,
+            'nomor_trip'     => $nomorTrip,
+            'tipe_kendaraan' => $this->request->getPost('tipe_kendaraan') ?: 'DUTRO',
+            'kendaraan'      => $kendaraan,
+            'no_polisi'      => $noPolisi,
+            'nama_supir'     => $namaSupir,
+            'no_hp_supir'    => trim($this->request->getPost('no_hp_supir') ?? ''),
+            'no_sim_supir'   => trim($this->request->getPost('no_sim_supir') ?? ''),
+            'tanggal_kirim'  => $this->request->getPost('tanggal_kirim') ?: null,
+            'estimasi_sampai'=> $this->request->getPost('estimasi_sampai') ?: null,
+            'catatan'        => trim($this->request->getPost('catatan') ?? ''),
+            'dibuat_oleh'    => session()->get('user_id') ?? null,
+        ];
+
+        $this->db->table('delivery_trips')->insert($tripPayload);
+        $tripId = $this->db->insertID();
+
+        // Assign unit items to this trip (verify they belong to this DI and are KIRIM)
+        foreach ($unitItemIds as $itemId) {
+            $this->db->table('delivery_items')
+                ->where('id', $itemId)
+                ->where('di_id', (int)$diId)
+                ->where('item_role', 'KIRIM')
+                ->where('item_type', 'UNIT')
+                ->update(['trip_id' => $tripId]);
+        }
+
+        $this->db->transComplete();
+
+        if (!$this->db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['success' => false, 'message' => 'Gagal membuat trip']);
+        }
+
+        return $this->response->setJSON([
+            'success'    => true,
+            'message'    => "Trip {$nomorTrip} berhasil dibuat",
+            'trip_id'    => $tripId,
+            'nomor_trip' => $nomorTrip,
+        ]);
+    }
+
+    /**
+     * POST update trip status (berangkat / sampai / batal).
+     * Endpoint: POST operational/delivery/trips/{trip_id}/status
+     */
+    public function updateTripStatus($tripId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $trip = $this->db->table('delivery_trips')->where('id', (int)$tripId)->get()->getRowArray();
+        if (!$trip) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Trip tidak ditemukan']);
+        }
+
+        $action  = $this->request->getPost('action');
+        $catatan = trim($this->request->getPost('catatan') ?? '');
+        $now     = date('Y-m-d H:i:s');
+
+        if ($action === 'berangkat') {
+            $this->db->table('delivery_trips')->where('id', (int)$tripId)->update([
+                'status'           => 'DALAM_PERJALANAN',
+                'berangkat_at'     => $now,
+                'catatan_berangkat'=> $catatan,
+            ]);
+            // If DI is still SIAP_KIRIM, move it to DALAM_PERJALANAN
+            $di = $this->diModel->find((int)$trip['di_id']);
+            if ($di && in_array($di['status_di'] ?? '', ['SIAP_KIRIM', 'DISETUJUI', 'PERSIAPAN_UNIT'])) {
+                $this->diModel->update((int)$trip['di_id'], [
+                    'status_di'               => 'DALAM_PERJALANAN',
+                    'berangkat_tanggal_approve'=> date('Y-m-d'),
+                ]);
+            }
+            return $this->response->setJSON(['success' => true, 'message' => 'Trip berangkat']);
+
+        } elseif ($action === 'sampai') {
+            $this->db->table('delivery_trips')->where('id', (int)$tripId)->update([
+                'status'         => 'SAMPAI_LOKASI',
+                'sampai_at'      => $now,
+                'catatan_sampai' => $catatan,
+            ]);
+
+            // Check if ALL trips for this DI have reached SAMPAI_LOKASI or SELESAI
+            $pendingTrips = $this->db->table('delivery_trips')
+                ->where('di_id', (int)$trip['di_id'])
+                ->whereNotIn('status', ['SAMPAI_LOKASI', 'SELESAI', 'DIBATALKAN'])
+                ->where('id !=', (int)$tripId)
+                ->countAllResults();
+
+            if ($pendingTrips === 0) {
+                // All trips arrived — update DI to SAMPAI_LOKASI and update unit locations
+                $di = $this->diModel->find((int)$trip['di_id']);
+                if (!$di) {
+                    return $this->response->setJSON(['success' => true, 'message' => 'Trip sampai (DI tidak ditemukan)']);
+                }
+
+                $this->diModel->update((int)$trip['di_id'], [
+                    'status_di'              => 'SAMPAI_LOKASI',
+                    'sampai_tanggal_approve' => date('Y-m-d'),
+                ]);
+
+                // Update all KIRIM units in this DI to RENTAL_ACTIVE at customer location
+                $customerLocation = $di['lokasi'] ?? 'Customer Location';
+                if (!empty($di['spk_id'])) {
+                    $locRow = $this->db->query("
+                        SELECT cl.location_name, cl.address, cl.city
+                        FROM spk s
+                        LEFT JOIN quotation_specifications qs ON qs.id_specification = s.quotation_specification_id
+                        LEFT JOIN quotations q ON q.id_quotation = qs.id_quotation
+                        LEFT JOIN customer_locations cl ON cl.customer_id = q.created_customer_id AND cl.is_primary = 1 AND cl.is_active = 1
+                        WHERE s.id = ? LIMIT 1
+                    ", [$di['spk_id']])->getRowArray();
+                    if ($locRow && !empty($locRow['location_name'])) {
+                        $customerLocation = $locRow['location_name'];
+                        if (!empty($locRow['address'])) $customerLocation .= ' - ' . $locRow['address'];
+                        if (!empty($locRow['city']))    $customerLocation .= ', ' . $locRow['city'];
+                    }
+                }
+
+                $units = $this->db->table('delivery_items')
+                    ->where('di_id', (int)$trip['di_id'])
+                    ->where('item_type', 'UNIT')
+                    ->where('item_role', 'KIRIM')
+                    ->where('unit_id IS NOT NULL')
+                    ->get()->getResultArray();
+
+                foreach ($units as $u) {
+                    $this->db->table('inventory_unit')
+                        ->where('id_inventory_unit', $u['unit_id'])
+                        ->update(['status_unit_id' => 7, 'lokasi_unit' => $customerLocation]);
+                }
+
+                return $this->response->setJSON([
+                    'success'   => true,
+                    'message'   => 'Semua trip sudah sampai — DI ditandai SAMPAI_LOKASI',
+                    'di_sampai' => true,
+                ]);
+            }
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Trip sampai']);
+
+        } elseif ($action === 'batal') {
+            if ($trip['status'] !== 'PERSIAPAN') {
+                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Hanya trip berstatus PERSIAPAN yang dapat dibatalkan']);
+            }
+            $this->db->table('delivery_trips')->where('id', (int)$tripId)->update(['status' => 'DIBATALKAN']);
+            // Unassign items
+            $this->db->table('delivery_items')->where('trip_id', (int)$tripId)->update(['trip_id' => null]);
+            return $this->response->setJSON(['success' => true, 'message' => 'Trip dibatalkan']);
+        }
+
+        return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Action tidak valid (berangkat|sampai|batal)']);
+    }
+
+    /**
+     * POST delete a trip (only PERSIAPAN status).
+     * Endpoint: POST operational/delivery/trips/{trip_id}/delete
+     */
+    public function deleteDeliveryTrip($tripId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $trip = $this->db->table('delivery_trips')->where('id', (int)$tripId)->get()->getRowArray();
+        if (!$trip) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Trip tidak ditemukan']);
+        }
+        if ($trip['status'] !== 'PERSIAPAN') {
+            return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Hanya trip berstatus PERSIAPAN yang dapat dihapus']);
+        }
+
+        // Unassign items, then delete
+        $this->db->table('delivery_items')->where('trip_id', (int)$tripId)->update(['trip_id' => null]);
+        $this->db->table('delivery_trips')->where('id', (int)$tripId)->delete();
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Trip dihapus']);
+    }
 }
+
 

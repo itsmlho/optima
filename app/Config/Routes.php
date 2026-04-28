@@ -819,6 +819,11 @@ $routes->group('operational', static function ($routes) {
     $routes->get('delivery/print-multi/(:num)', 'Operational::diPrintMulti/$1');
     $routes->post('delivery/update-status/(:num)', 'Operational::diUpdateStatus/$1');
     $routes->post('delivery/approve-stage/(:num)', 'Operational::diApproveStage/$1');
+    // Delivery Trips (multi-truck per DI)
+    $routes->get('delivery/(:num)/trips', 'Operational::getDeliveryTrips/$1');
+    $routes->post('delivery/(:num)/trips', 'Operational::createDeliveryTrip/$1');
+    $routes->post('delivery/trips/(:num)/status', 'Operational::updateTripStatus/$1');
+    $routes->post('delivery/trips/(:num)/delete', 'Operational::deleteDeliveryTrip/$1');
     $routes->get('tracking', 'Operational::tracking');
     $routes->post('tracking-search', 'Operational::trackingSearch');
     $routes->post('audit-trail', 'Operational::auditTrail');

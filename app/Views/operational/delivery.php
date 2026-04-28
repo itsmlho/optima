@@ -202,16 +202,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const perencanaanDone = row.perencanaan_tanggal_approve ? true : false;
       const berangkatDone = row.berangkat_tanggal_approve ? true : false;
       const sampaiDone = row.sampai_tanggal_approve ? true : false;
+      const tripCount = row.trip_count || 0;
       
       let buttons = [];
-      if (!perencanaanDone) {
-        buttons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})">Plan</button>`);
-      } else if (!berangkatDone) {
-        buttons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${row.id})">Depart</button>`);
-      } else if (!sampaiDone) {
-        buttons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${row.id})">Arrive</button>`);
+
+      // If trips exist, show the Trip Management button (replaces Depart/Arrive)
+      if (tripCount > 0) {
+        buttons.push(`<button class="btn btn-sm btn-info" onclick="openTripModal(${row.id})"><i class="fas fa-route"></i> Trips (${tripCount})</button>`);
       } else {
-        buttons.push('<span class="text-success small">Completed</span>');
+        if (!perencanaanDone) {
+          buttons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})">Plan</button>`);
+        } else if (!berangkatDone) {
+          buttons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${row.id})">Depart</button>`);
+        } else if (!sampaiDone) {
+          buttons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${row.id})">Arrive</button>`);
+        } else {
+          buttons.push('<span class="text-success small">Completed</span>');
+        }
+      }
+
+      // "Add Trip" shortcut always visible when SIAP_KIRIM and no trips yet
+      if (tripCount === 0 && perencanaanDone) {
+        buttons.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openTripModal(${row.id})" title="Buat Trip Pengiriman"><i class="fas fa-plus"></i></button>`);
       }
       
       const badges = [];
@@ -1134,6 +1146,205 @@ document.addEventListener('DOMContentLoaded', ()=>{
     fetch('<?= base_url('operational/delivery/update-status/') ?>'+id, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
       .then(r=>r.json()).then(()=>{ if (diTable) diTable.ajax.reload(); });
   }
+
+  // ============================================================
+  // TRIP MANAGEMENT
+  // ============================================================
+  let _tripDiId = null;
+  const _tripModal = () => new bootstrap.Modal(document.getElementById('tripManagementModal'));
+
+  const TRIP_STATUS_MAP = {
+    PERSIAPAN:       { text: 'Persiapan',       cls: 'badge-soft-yellow' },
+    DALAM_PERJALANAN:{ text: 'Dalam Perjalanan', cls: 'badge-soft-blue'   },
+    SAMPAI_LOKASI:   { text: 'Sampai Lokasi',   cls: 'badge-soft-green'  },
+    SELESAI:         { text: 'Selesai',          cls: 'badge-soft-green'  },
+    DIBATALKAN:      { text: 'Dibatalkan',       cls: 'badge-soft-red'    },
+  };
+
+  window.openTripModal = function(diId) {
+    _tripDiId = diId;
+    document.getElementById('tripModalBody').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    _tripModal().show();
+    loadTrips(diId);
+  };
+
+  function loadTrips(diId) {
+    fetch(`<?= base_url('operational/delivery/') ?>${diId}/trips`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(j => {
+        if (!j.success) { document.getElementById('tripModalBody').innerHTML = `<div class="alert alert-danger">${j.message}</div>`; return; }
+        document.getElementById('tripModalDiNumber').textContent = j.di.nomor_di + ' — ' + j.di.pelanggan;
+        renderTripModal(j);
+      })
+      .catch(() => { document.getElementById('tripModalBody').innerHTML = '<div class="alert alert-danger">Gagal memuat data trip.</div>'; });
+  }
+
+  function renderTripModal(data) {
+    const { trips, unassigned } = data;
+
+    // ---- Existing trips ----
+    let tripsHtml = '';
+    if (trips.length === 0) {
+      tripsHtml = '<div class="text-muted small mb-3"><i class="fas fa-info-circle"></i> Belum ada trip. Buat trip pertama di bawah.</div>';
+    } else {
+      trips.forEach(t => {
+        const st = TRIP_STATUS_MAP[t.status] || { text: t.status, cls: 'badge-soft-gray' };
+        const unitRows = (t.items || []).map(u => `<li class="list-group-item py-1 px-2 small">${u.no_unit || '-'} — ${u.merk_unit || ''} ${u.model_unit || ''}</li>`).join('');
+        const berangkatBtn = t.status === 'PERSIAPAN'        ? `<button class="btn btn-xs btn-primary ms-1"   onclick="tripAction(${t.id},'berangkat')"><i class="fas fa-truck"></i> Berangkat</button>` : '';
+        const sampaiBtn    = t.status === 'DALAM_PERJALANAN' ? `<button class="btn btn-xs btn-success ms-1"  onclick="tripAction(${t.id},'sampai')"><i class="fas fa-map-marker-alt"></i> Sampai</button>` : '';
+        const hapusBtn     = t.status === 'PERSIAPAN'        ? `<button class="btn btn-xs btn-outline-danger ms-1" onclick="tripDelete(${t.id})"><i class="fas fa-trash"></i></button>` : '';
+        tripsHtml += `
+          <div class="card mb-2 border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                <div>
+                  <strong>${t.nomor_trip}</strong>
+                  <span class="badge ${st.cls} ms-1">${st.text}</span>
+                  <span class="badge badge-soft-cyan ms-1">${t.tipe_kendaraan}</span>
+                </div>
+                <div class="text-muted small">${t.no_polisi || ''} &bull; ${t.nama_supir || ''}</div>
+                <div>${berangkatBtn}${sampaiBtn}${hapusBtn}</div>
+              </div>
+              ${unitRows ? `<ul class="list-group list-group-flush mt-1">${unitRows}</ul>` : '<p class="text-muted small mb-0 mt-1">Tidak ada unit.</p>'}
+            </div>
+          </div>`;
+      });
+    }
+
+    // ---- New trip form ----
+    const unassignedChecks = unassigned.length === 0
+      ? '<p class="text-success small mb-0"><i class="fas fa-check-circle"></i> Semua unit sudah diassign ke trip.</p>'
+      : unassigned.map(u => `
+          <div class="form-check">
+            <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}">
+            <label class="form-check-label small" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''}</label>
+          </div>`).join('');
+
+    document.getElementById('tripModalBody').innerHTML = `
+      <h6 class="text-primary mb-2"><i class="fas fa-list-ul me-1"></i>Trip yang Sudah Dibuat</h6>
+      ${tripsHtml}
+      <hr>
+      <h6 class="text-primary mb-2"><i class="fas fa-plus-circle me-1"></i>Buat Trip Baru</h6>
+      ${unassigned.length === 0 ? '<div class="alert alert-success py-2 small">Semua unit sudah di-assign ke trip.</div>' : `
+      <div class="row g-2" id="newTripForm">
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1">Tipe Kendaraan <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="nt_tipe">
+            <option value="DUTRO">Dutro (1 unit)</option>
+            <option value="TRONTON">Tronton (4–6 unit)</option>
+            <option value="ENGKEL">Engkel</option>
+            <option value="PICKUP">Pickup</option>
+            <option value="OTHER">Lainnya</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1">No Polisi <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="nt_polisi" placeholder="B 1234 ABC">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1">Nama Supir <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="nt_supir" placeholder="Nama lengkap">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1">No HP Supir</label>
+          <input type="text" class="form-control form-control-sm" id="nt_hp" placeholder="08xx">
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Kendaraan <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="nt_kendaraan" placeholder="Misal: Hino Dutro 110 LD">
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Tanggal Kirim</label>
+          <input type="date" class="form-control form-control-sm" id="nt_tgl">
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Estimasi Sampai</label>
+          <input type="date" class="form-control form-control-sm" id="nt_eta">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Unit untuk Trip Ini <span class="text-danger">*</span></label>
+          <div class="border rounded p-2">${unassignedChecks}</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Catatan</label>
+          <textarea class="form-control form-control-sm" id="nt_catatan" rows="2"></textarea>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary btn-sm" onclick="submitNewTrip()"><i class="fas fa-save me-1"></i>Buat Trip</button>
+        </div>
+      </div>`}
+    `;
+  }
+
+  window.submitNewTrip = function() {
+    const unitIds = [...document.querySelectorAll('.trip-unit-cb:checked')].map(el => el.value);
+    if (unitIds.length === 0) { notify('Pilih minimal 1 unit', 'error'); return; }
+    const supir    = document.getElementById('nt_supir')?.value.trim();
+    const kendaraan= document.getElementById('nt_kendaraan')?.value.trim();
+    const polisi   = document.getElementById('nt_polisi')?.value.trim();
+    if (!supir || !kendaraan || !polisi) { notify('Nama supir, kendaraan, dan no polisi wajib diisi', 'error'); return; }
+
+    const fd = new FormData();
+    fd.append(window.csrfTokenName, window.csrfTokenValue);
+    fd.append('tipe_kendaraan', document.getElementById('nt_tipe').value);
+    fd.append('nama_supir', supir);
+    fd.append('no_hp_supir', document.getElementById('nt_hp')?.value || '');
+    fd.append('kendaraan', kendaraan);
+    fd.append('no_polisi', polisi);
+    fd.append('tanggal_kirim', document.getElementById('nt_tgl')?.value || '');
+    fd.append('estimasi_sampai', document.getElementById('nt_eta')?.value || '');
+    fd.append('catatan', document.getElementById('nt_catatan')?.value || '');
+    unitIds.forEach(id => fd.append('unit_item_ids[]', id));
+
+    fetch(`<?= base_url('operational/delivery/') ?>${_tripDiId}/trips`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) { notify(j.message, 'success'); loadTrips(_tripDiId); if (diTable) diTable.ajax.reload(null, false); }
+        else notify(j.message || 'Gagal membuat trip', 'error');
+      });
+  };
+
+  window.tripAction = function(tripId, action) {
+    const label = action === 'berangkat' ? 'Berangkatkan trip ini?' : 'Konfirmasi semua unit sudah sampai?';
+    OptimaConfirm.generic({
+      title: action === 'berangkat' ? 'Berangkat' : 'Sampai Lokasi',
+      text: label,
+      icon: 'question',
+      confirmText: 'Ya',
+      cancelText: 'Batal',
+      onConfirm: () => {
+        const fd = new FormData();
+        fd.append(window.csrfTokenName, window.csrfTokenValue);
+        fd.append('action', action);
+        fetch(`<?= base_url('operational/delivery/trips/') ?>${tripId}/status`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+          .then(r => r.json())
+          .then(j => {
+            if (j.success) { notify(j.message, 'success'); loadTrips(_tripDiId); if (diTable) diTable.ajax.reload(null, false); }
+            else notify(j.message || 'Gagal', 'error');
+          });
+      }
+    });
+  };
+
+  window.tripDelete = function(tripId) {
+    OptimaConfirm.generic({
+      title: 'Hapus Trip?',
+      text: 'Unit akan dikembalikan ke daftar unassigned.',
+      icon: 'warning',
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      onConfirm: () => {
+        const fd = new FormData();
+        fd.append(window.csrfTokenName, window.csrfTokenValue);
+        fetch(`<?= base_url('operational/delivery/trips/') ?>${tripId}/delete`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+          .then(r => r.json())
+          .then(j => {
+            if (j.success) { notify(j.message, 'success'); loadTrips(_tripDiId); if (diTable) diTable.ajax.reload(null, false); }
+            else notify(j.message || 'Gagal', 'error');
+          });
+      }
+    });
+  };
 </script>
 <!-- Approval Stage Modal -->
 <div class="modal fade" id="approvalStageModal" tabindex="-1">
@@ -1181,6 +1392,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
     </div>
   </div>
 </div>
+
+<!-- Trip Management Modal -->
+<div class="modal fade" id="tripManagementModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fas fa-route me-2"></i>Atur Trip Pengiriman — <span id="tripModalDiNumber"></span></h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="tripModalBody">
+        <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <?= $this->endSection() ?>
 
 
