@@ -29,6 +29,7 @@ $routes->post('surat-jalan/submit-checkpoint', 'Warehouse\UnitMovementPublicCont
 
 // Masukan & Keluh Kesah ke perusahaan (publik, tanpa login)
 $routes->get('masukan-keluhan', 'MasukanKeluhanPublicController::index');
+$routes->get('masukan-keluhan/print', 'MasukanKeluhanPublicController::printPage');
 $routes->post('masukan-keluhan/kirim', 'MasukanKeluhanPublicController::kirim');
 
 // HR — daftar masukan / keluh kesah (login + permission)

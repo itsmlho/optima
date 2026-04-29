@@ -24,6 +24,24 @@ class MasukanKeluhanPublicController extends BaseController
     }
 
     /**
+     * Halaman print QR/Barcode untuk ditempel (akses publik).
+     */
+    public function printPage()
+    {
+        $formUrl = base_url('masukan-keluhan');
+        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' . rawurlencode($formUrl);
+
+        return view('public/masukan_keluhan_print', [
+            'title'      => 'Print QR Masukan & Keluh Kesah',
+            'companyName' => 'PT Sarana Mitra Luas Tbk',
+            'formUrl'     => $formUrl,
+            'qrUrl'       => $qrUrl,
+            'smlLogoUrl'  => base_url('assets/images/company-logo.svg'),
+            'optimaLogoUrl' => base_url('assets/images/logo-optima.png'),
+        ]);
+    }
+
+    /**
      * Simpan masukan anonim (opsional: kontak untuk tindak lanjut).
      */
     public function kirim()

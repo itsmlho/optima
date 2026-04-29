@@ -76,6 +76,9 @@
             <a href="<?= esc(base_url('masukan-keluhan')) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-box-arrow-up-right me-1"></i><?= esc(lang('Hr.feedback_open_public')) ?>
             </a>
+            <a href="<?= esc(base_url('masukan-keluhan/print')) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+                <i class="bi bi-printer me-1"></i>Print Poster
+            </a>
             <button type="button" class="btn btn-outline-primary btn-sm" id="btnRefreshCompanyFeedback" title="<?= esc(lang('Hr.feedback_refresh')) ?>">
                 <i class="fas fa-sync-alt me-1"></i><?= esc(lang('Hr.feedback_refresh')) ?>
             </button>
