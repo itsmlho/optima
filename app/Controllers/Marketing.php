@@ -4621,7 +4621,30 @@ class Marketing extends BaseDataTableController
             tpk.nama as tujuan_perintah,
             tpk.kode as tujuan_perintah_kode,
             k.no_kontrak as linked_contract_number,
-            k.customer_id as spk_customer_id
+            k.customer_id as spk_customer_id,
+            (SELECT COUNT(DISTINCT di_u.unit_id)
+                FROM delivery_items di_u
+                WHERE di_u.di_id = delivery_instructions.id
+                  AND di_u.item_type = "UNIT"
+                  AND di_u.unit_id IS NOT NULL
+            ) as di_total_unit_count,
+            (SELECT COUNT(DISTINCT ku_u.unit_id)
+                FROM kontrak_unit ku_u
+                JOIN delivery_items di_u
+                  ON di_u.unit_id = ku_u.unit_id
+                 AND di_u.di_id = delivery_instructions.id
+                 AND di_u.item_type = "UNIT"
+                WHERE ku_u.kontrak_id = delivery_instructions.contract_id
+                  AND ku_u.status IN ("ACTIVE","TEMP_ACTIVE")
+                  AND (ku_u.is_temporary = 0 OR ku_u.is_temporary IS NULL)
+                  AND di_u.unit_id IS NOT NULL
+            ) as di_linked_unit_count,
+            (SELECT COUNT(*)
+                FROM kontrak_unit ku
+                WHERE ku.kontrak_id = delivery_instructions.contract_id
+                  AND ku.status IN ("ACTIVE","TEMP_ACTIVE")
+                  AND (ku.is_temporary = 0 OR ku.is_temporary IS NULL)
+            ) as contract_units_count
         ')
         ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
         ->join('kontrak k', 'k.id = delivery_instructions.contract_id', 'left')
@@ -9912,6 +9935,44 @@ class Marketing extends BaseDataTableController
             $result = $spkModel->linkToContract($spkId, $contractId, $userId);
 
             if ($result['success']) {
+                // Auto-sync DI units into kontrak_unit (so contract Units Location is populated)
+                $syncTotalSynced = 0;
+                $syncTotalAdded = 0;
+                $syncTotalUpdated = 0;
+                $syncShouldActivate = false;
+
+                $db = \Config\Database::connect();
+                $diIds = $db->table('delivery_instructions')
+                    ->select('id')
+                    ->where('spk_id', (int)$spkId)
+                    ->where('contract_id', (int)$contractId)
+                    ->get()
+                    ->getResultArray();
+
+                if (!empty($diIds)) {
+                    foreach ($diIds as $diRow) {
+                        $diIdResolved = (int)($diRow['id'] ?? 0);
+                        if ($diIdResolved <= 0) continue;
+
+                        $syncResult = $this->syncDIUnitsToContract($diIdResolved, (int)$contractId, (int)$userId);
+
+                        $syncTotalSynced += (int)($syncResult['synced'] ?? 0);
+                        $syncTotalAdded += (int)($syncResult['added'] ?? 0);
+                        $syncTotalUpdated += (int)($syncResult['updated'] ?? 0);
+
+                        if (!empty($syncResult['activated'])) {
+                            $syncShouldActivate = true;
+                        }
+                    }
+                }
+
+                if ($syncShouldActivate) {
+                    $this->kontrakModel->update((int)$contractId, [
+                        'status' => 'ACTIVE',
+                        'diperbarui_pada' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+
                 // If BAST date provided, update related DIs
                 if (!empty($bastDate)) {
                     $diModel = new \App\Models\DeliveryInstructionModel();
@@ -9968,7 +10029,10 @@ class Marketing extends BaseDataTableController
                     'success' => true,
                     'message' => $message,
                     'di_count' => $result['di_count'],
-                    'late_invoices_generated' => $lateInvoicesGenerated
+                    'late_invoices_generated' => $lateInvoicesGenerated,
+                    'units_synced' => $syncTotalSynced,
+                    'units_added' => $syncTotalAdded,
+                    'units_updated' => $syncTotalUpdated,
                 ]);
             }
 
@@ -10090,6 +10154,8 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
+            $syncOk = ((int)($syncResult['synced'] ?? 0)) > 0;
+
             // Send notification to Finance team
             $this->sendDILinkingSuccessNotification($diId, $contractId);
 
@@ -10098,12 +10164,15 @@ class Marketing extends BaseDataTableController
                 'message' => ($diAlreadyLinkedSameContract
                     ? "DI {$di['nomor_di']} already linked. "
                     : "DI {$di['nomor_di']} linked to contract {$contract['no_kontrak']} successfully. ")
-                    . 'Units synced to contract successfully. Ready for invoice generation.',
+                    . ($syncOk
+                        ? 'Units synced to contract successfully. Ready for invoice generation.'
+                        : 'Linked, but units were not synced automatically. If units/location still empty, click Re-sync. Ready for invoice generation.'),
                 'di_number' => $di['nomor_di'],
                 'contract_number' => $contract['no_kontrak'],
                 'units_added' => (int)($syncResult['added'] ?? 0),
                 'units_updated' => (int)($syncResult['updated'] ?? 0),
                 'units_total_synced' => (int)($syncResult['synced'] ?? 0),
+                'sync_ok' => $syncOk,
             ]);
 
         } catch (\Exception $e) {

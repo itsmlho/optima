@@ -1320,13 +1320,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 <i class="fas fa-link"></i> Link
               </button>`;
             } else if (hasContract) {
+              const diTotal = parseInt(row.di_total_unit_count || 0, 10);
+              const diLinked = parseInt(row.di_linked_unit_count || 0, 10);
+              const showSync = diTotal > 0 && diLinked < diTotal;
+
               return uiBadge('linked', 'Linked', {icon: 'fas fa-check'}) + `
-                <button class="btn btn-sm btn-outline-primary sync-di-contract ms-2"
-                  data-di-id="${row.id}"
-                  data-contract-id="${row.contract_id}"
-                  title="Sync units to contract">
-                  <i class="fas fa-sync"></i>
-                </button>`;
+                ${showSync ? `
+                  <button class="btn btn-sm btn-outline-warning sync-di-contract ms-2"
+                    data-di-id="${row.id}"
+                    data-contract-id="${row.contract_id}"
+                    title="Re-sync units to contract (if Units Location is empty)">
+                    <i class="fas fa-sync me-1"></i>Re-sync
+                  </button>
+                ` : ''}`;
             }
             return '-';
           }
