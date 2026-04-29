@@ -45,7 +45,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
             <div class="d-flex align-items-center">
                 <div class="me-3"><i class="bi bi-truck stat-icon text-primary"></i></div>
                 <div>
-                    <div class="stat-value"><?= number_format($stats['total']) ?></div>
+                    <div class="stat-value"><?= number_format(($stats ?? [])['total'] ?? 0) ?></div>
                     <div class="text-muted"><?= lang('Purchasing.total_sold') ?></div>
                 </div>
             </div>
@@ -56,7 +56,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
             <div class="d-flex align-items-center">
                 <div class="me-3"><i class="bi bi-calendar-year stat-icon text-info"></i></div>
                 <div>
-                    <div class="stat-value"><?= number_format($stats['this_year']) ?></div>
+                    <div class="stat-value"><?= number_format(($stats ?? [])['this_year'] ?? 0) ?></div>
                     <div class="text-muted"><?= sprintf(lang('Purchasing.this_year'), date('Y')) ?></div>
                 </div>
             </div>
@@ -67,7 +67,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
             <div class="d-flex align-items-center">
                 <div class="me-3"><i class="bi bi-calendar-month stat-icon text-warning"></i></div>
                 <div>
-                    <div class="stat-value"><?= number_format($stats['this_month']) ?></div>
+                    <div class="stat-value"><?= number_format(($stats ?? [])['this_month'] ?? 0) ?></div>
                     <div class="text-muted"><?= lang('Purchasing.this_month') ?></div>
                 </div>
             </div>
@@ -127,7 +127,7 @@ $can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
                         data-bs-target="#tab-unrecorded" type="button" role="tab">
                     <i class="fas fa-exclamation-triangle me-1"></i><?= lang('Purchasing.tab_unrecorded') ?>
                     <?php if (($unrecorded_count ?? 0) > 0): ?>
-                    <span class="badge badge-soft-orange ms-1"><?= (int)$unrecorded_count ?></span>
+                    <span class="badge badge-soft-orange ms-1"><?= (int)($unrecorded_count ?? 0) ?></span>
                     <?php endif; ?>
                 </button>
             </li>

@@ -606,12 +606,12 @@ if (!function_exists('maskSensitivePrint')) {
                 <td class="align-top">
                     <?php
                         $jumlahUnit = $spk['jumlah_unit'] ?? '';
-                        $merkUnit = $k['merk_unit'] ?? '';
+                        $merkUnit = $k['merk_unit'] ?? $k['merk_unit_text'] ?? '';
                         $modelUnit = $k['model_unit'] ?? '';
                         $jenisUnit = $k['kontrak_jenis_unit'] ?? $k['jenis_unit'] ?? '';
-                        $tipeUnit = $k['kontrak_tipe_unit'] ?? $k['tipe_jenis'] ?? '';
-                        $kapasitasName = $k['kontrak_kapasitas_name'] ?? $k['kapasitas_name'] ?? '';
-                        $departemenName = $k['kontrak_departemen_name'] ?? $k['departemen_name'] ?? '';
+                        $tipeUnit = $k['kontrak_tipe_unit'] ?? $k['tipe_jenis'] ?? $k['tipe_unit_text'] ?? '';
+                        $kapasitasName = $k['kontrak_kapasitas_name'] ?? $k['kapasitas_name'] ?? $k['kapasitas_text'] ?? '';
+                        $departemenName = $k['kontrak_departemen_name'] ?? $k['departemen_name'] ?? $k['departemen_text'] ?? '';
                     ?>
                     <div class="mt-2">
                         <br />

@@ -7,6 +7,15 @@ $permissions = get_global_permission('warehouse');
 $can_edit   = $permissions['edit'];
 $can_delete = $permissions['delete'];
 
+// IDE false-positive suppression: variables injected by controller
+$unit           = $unit           ?? [];
+$rental_history = $rental_history ?? [];
+$mesin          = $mesin          ?? [];
+$kapasitas      = $kapasitas      ?? [];
+$tipe_mast      = $tipe_mast      ?? [];
+$jenis_roda     = $jenis_roda     ?? [];
+$valve          = $valve          ?? [];
+
 // Setup status badges
 // status_unit_id canonical mapping:
 // 1=AVAILABLE_STOCK, 2=NON_ASSET_STOCK, 3=BOOKED, 4=PREPARATION, 5=READY_TO_DELIVER,

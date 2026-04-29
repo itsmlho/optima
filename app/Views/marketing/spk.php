@@ -3954,6 +3954,17 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
 
+                    <!-- Accessories -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0"><i class="fas fa-list-check me-1 text-primary"></i>Aksesoris Unit</label>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="dspkBtnAksStandar">
+                                <i class="fas fa-check-double me-1"></i>Set Aksesori Standar
+                            </button>
+                        </div>
+                        <div id="dspkAccGrid"></div>
+                    </div>
+
                     <!-- Notes -->
                     <div class="mb-3">
                         <label class="form-label">Catatan / Custom Requirements</label>
@@ -3993,7 +4004,6 @@ $can_export = $permissions['export'];
     const TECH_START = '[OPTIMA_SPEC_TECH]';
     const TECH_END   = '[/OPTIMA_SPEC_TECH]';
 
-    let dspkReady   = false;
     let dspkReady   = false;
     let allTipeUnit = [];
 
@@ -4381,6 +4391,14 @@ $can_export = $permissions['export'];
         payload.include_operator  = document.getElementById('dspkIncludeOperator').checked ? 1 : 0;
         payload.operator_quantity = parseInt(document.getElementById('dspkOperatorQty').value) || 0;
 
+        // Accessories checkboxes (not captured by FormData since name has [])
+        const aksesoris = [];
+        document.querySelectorAll('#dspkAccGrid input[name="dspk_aksesoris[]"]:checked').forEach(function (cb) {
+            aksesoris.push(cb.value);
+        });
+        payload.aksesoris = aksesoris;
+        delete payload['dspk_aksesoris[]']; // remove FormData artifact if any
+
         // CSRF
         payload[window.csrfTokenName] = window.csrfToken || window.csrfTokenValue || '';
 
@@ -4427,6 +4445,8 @@ $can_export = $permissions['export'];
         const forkRadio = document.getElementById('dspkOptFork');
         if (forkRadio) { forkRadio.checked = true; applyForkAttachUI('fork'); }
         updateSpareDisplay();
+        // Clear accessories
+        document.querySelectorAll('#dspkAccGrid input[name="dspk_aksesoris[]"]').forEach(function (cb) { cb.checked = false; });
     }
 
     // ── init on first modal open ──────────────────────────────────
@@ -4439,6 +4459,22 @@ $can_export = $permissions['export'];
         // Default state: fork selected, spare hidden
         applyForkAttachUI('fork');
         updateSpareDisplay();
+        // Accessories grid — uses global OptimaAccessory if available
+        if (window.OptimaAccessory) {
+            OptimaAccessory.renderGroupSections('#dspkAccGrid',
+                ['quotationStandard', 'quotationExtra'], {
+                name: 'dspk_aksesoris[]',
+                idPrefix: 'dspk_acc_',
+                columnsClass: 'col-md-4 col-sm-6',
+                style: 'inline'
+            });
+            document.getElementById('dspkBtnAksStandar').addEventListener('click', function () {
+                OptimaAccessory.getGroupItemCodes('quotationStandard').forEach(function (code) {
+                    const cb = document.querySelector('#dspkAccGrid input[name="dspk_aksesoris[]"][value="' + code + '"]');
+                    if (cb) cb.checked = true;
+                });
+            });
+        }
     });
 
 })();

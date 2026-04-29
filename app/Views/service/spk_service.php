@@ -15,6 +15,7 @@ $can_create = true;
 $can_edit = true;
 $can_delete = true;
 $can_export = true;
+$departemen_list = $departemen_list ?? [];
 ?>
 
 <?= $this->section('content') ?>

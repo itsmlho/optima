@@ -34,8 +34,9 @@ class UnitSaleController extends BaseController
         }
 
         $data = [
-            'title'  => 'Penjualan Unit',
-            'stats'  => $this->saleModel->getStats(),
+            'title'            => 'Penjualan Unit',
+            'stats'            => $this->saleModel->getStats(),
+            'unrecorded_count' => 0,
         ];
 
         return view('purchasing/unit_sale/index', $data);

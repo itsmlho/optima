@@ -8,7 +8,9 @@ class MakeWorkOrdersUnitIdNullable extends Migration
 {
     public function up(): void
     {
-        if (! $this->db->tableExists('work_orders')) {
+        /** @var \CodeIgniter\Database\MySQLi\Connection $db */
+        $db = $this->db;
+        if (! $db->tableExists('work_orders')) {
             return;
         }
 
@@ -38,7 +40,9 @@ class MakeWorkOrdersUnitIdNullable extends Migration
 
     public function down(): void
     {
-        if (! $this->db->tableExists('work_orders')) {
+        /** @var \CodeIgniter\Database\MySQLi\Connection $db */
+        $db = $this->db;
+        if (! $db->tableExists('work_orders')) {
             return;
         }
 
@@ -49,7 +53,7 @@ class MakeWorkOrdersUnitIdNullable extends Migration
         }
 
         // Restore NOT NULL (set any NULLs to 0 first to avoid constraint error)
-        $this->db->query('UPDATE work_orders SET unit_id = 0 WHERE unit_id IS NULL');
+        $db->query('UPDATE work_orders SET unit_id = 0 WHERE unit_id IS NULL');
 
         $this->forge->modifyColumn('work_orders', [
             'unit_id' => [

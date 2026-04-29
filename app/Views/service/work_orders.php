@@ -30,6 +30,11 @@ $can_edit = $permissions['edit'];
 $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 
+$statuses    = $statuses    ?? [];
+$priorities  = $priorities  ?? [];
+$departemens = $departemens ?? [];
+$areas       = $areas       ?? [];
+$categories  = $categories  ?? [];
 ?>
 
 <?= $this->section('content') ?>

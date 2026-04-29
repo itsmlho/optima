@@ -3046,12 +3046,12 @@ class Marketing extends BaseDataTableController
         // ── Direct SPK: build synthetic kontrak_spec so print_spk.php Equipment section renders correctly ──
         if (!$kontrak_spec && ($row['source_type'] ?? '') === 'DIRECT') {
             $kontrak_spec = [
-                'merk_unit'               => $enriched['merk_unit']              ?? '',
+                'merk_unit'               => $enriched['merk_unit']              ?? $spec['merk_unit_text']   ?? '',
                 'model_unit'              => $enriched['model_unit']             ?? '',
                 'kontrak_jenis_unit'      => '',
-                'kontrak_tipe_unit'       => '',
-                'kontrak_kapasitas_name'  => $enriched['kapasitas_id_name']      ?? '',
-                'kontrak_departemen_name' => $enriched['departemen_id_name']     ?? '',
+                'kontrak_tipe_unit'       => $spec['tipe_unit_text']             ?? '',
+                'kontrak_kapasitas_name'  => $enriched['kapasitas_id_name']      ?? $spec['kapasitas_text']   ?? '',
+                'kontrak_departemen_name' => $enriched['departemen_id_name']     ?? $spec['departemen_text']  ?? '',
                 'kontrak_mast_name'       => $enriched['mast_id_name']           ?? '',
                 'kontrak_ban_name'        => $enriched['ban_id_name']            ?? '',
                 'kontrak_valve_name'      => $enriched['valve_id_name']          ?? '',
@@ -6054,7 +6054,7 @@ class Marketing extends BaseDataTableController
                 'monthly_price'    => $monthlyPrice,
                 'daily_price'      => $dailyPrice,
                 'notes'            => $notes,
-                'aksesoris'        => [],
+                'aksesoris'        => (is_array($data['aksesoris'] ?? null)) ? array_values(array_filter($data['aksesoris'])) : [],
             ];
 
             // Validate
@@ -6929,6 +6929,7 @@ class Marketing extends BaseDataTableController
 
     error_log('DI Create Parsed Inputs: spk_id=' . $spkId . ', po=' . $poNo . ', tanggal_kirim=' . ($tanggalKirim ?: '-') . ', unit_ids=' . json_encode($unitIds) . ', tarik_unit_ids=' . json_encode($tarikUnitIds));
 
+    $isAttachmentSpk = false;
     $selected = ['unit_id'=>null,'inventory_attachment_id'=>null];
         if ($spkId > 0) {
             // Ensure SPK is READY (Service has assigned items)

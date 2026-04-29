@@ -3310,6 +3310,7 @@ class WorkOrderController extends Controller
         $unitIdPost  = (int) ($this->request->getPost('unit_id') ?? 0);
         $isAuditContext = $auditId > 0;
         $auditHeader    = null;
+        $workOrder      = null;
 
         if ($isAuditContext) {
             if ($unitIdPost <= 0) {
