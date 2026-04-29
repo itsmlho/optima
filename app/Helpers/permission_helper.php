@@ -52,7 +52,12 @@ if (!function_exists('hasPermission')) {
             ],
             'marketing.customer.update' => [
                 'marketing.customer.edit'
-            ]
+            ],
+            // HR — Masukan & Keluh Kesah: izin menu (navigation) dianggap terpenuhi jika punya view (data).
+            // Route tetap memakai filter hr.feedback.view agar pemilik hanya-navigation tidak akses API.
+            'hr.feedback.navigation' => [
+                'hr.feedback.view',
+            ],
         ];
 
         $keys = [$permissionKey];

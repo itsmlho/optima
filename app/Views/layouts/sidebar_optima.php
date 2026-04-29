@@ -259,7 +259,7 @@ helper('permission_helper');
             </li>
 
             <!-- ── Masukan & Keluh Kesah (HR) — di atas Administration ── -->
-            <?php if (hasPermission('hr.feedback.view')): ?>
+            <?php if (hasPermission('hr.feedback.navigation')): ?>
             <li class="nav-item">
                 <a href="<?= base_url('/hr/masukan-keluhan') ?>" class="nav-link">
                     <span class="material-symbols-rounded">campaign</span>

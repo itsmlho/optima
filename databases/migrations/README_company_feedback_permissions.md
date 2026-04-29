@@ -9,6 +9,8 @@ Setelah menjalankan migrasi [`2026_04_29_company_feedback.sql`](2026_04_29_compa
 
 Untuk HRD melihat data di **Administration → Role Permissions** (atau layar permission yang dipakai organisasi), berikan kedua permission di atas pada role HRD.
 
+**Setelah migrasi tabel:** jalankan juga [`2026_04_30_hr_feedback_role_permissions.sql`](2026_04_30_hr_feedback_role_permissions.sql) agar role yang namanya mengandung HRD / Human Resource otomatis mendapat `hr.feedback.navigation` dan `hr.feedback.view`. Jika nama role Anda tidak cocok dengan pola di file itu, tetap bisa assign manual lewat UI atau duplikat SQL dengan `WHERE r.name = 'Nama Role Anda'`.
+
 ### Menggunakan UI aplikasi
 
 1. Login sebagai admin / pengguna yang boleh mengelola role.
