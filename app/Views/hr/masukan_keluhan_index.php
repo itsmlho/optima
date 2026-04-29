@@ -1,47 +1,114 @@
 <?= $this->extend('layouts/base') ?>
 
+<?= $this->section('title') ?><?= esc(lang('Hr.feedback_page_title')) ?><?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
-<div class="container-fluid py-4">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <div>
-            <h4 class="mb-0">Masukan &amp; Keluh Kesah</h4>
-            <small class="text-muted">Data dikirim melalui formulir publik perusahaan (identitas default anonim; kontak hanya jika diisi pengirim).</small>
-        </div>
-        <div>
-            <a href="<?= esc(base_url('masukan-keluhan')) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-box-arrow-up-right me-1"></i>Buka halaman publik
-            </a>
+<?php
+    $stats = $stats ?? ['total' => 0, 'this_month' => 0, 'masukan' => 0, 'keluh_kesah' => 0];
+?>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= base_url('/dashboard') ?>"><?= lang('App.dashboard') ?></a></li>
+        <li class="breadcrumb-item active" aria-current="page"><?= esc(lang('Hr.feedback_page_title')) ?></li>
+    </ol>
+</nav>
+
+<!-- Stat cards (sama pola dengan modul daftar OPTIMA) -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-inboxes stat-icon text-primary"></i></div>
+                <div>
+                    <div class="stat-value"><?= number_format((int) ($stats['total'] ?? 0)) ?></div>
+                    <div class="text-muted"><?= esc(lang('Hr.feedback_stat_total')) ?></div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table id="companyFeedbackTable" class="table table-hover table-bordered align-middle w-100">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Jenis</th>
-                            <th>Cuplikan pesan</th>
-                            <th>Kontak</th>
-                            <th>Waktu</th>
-                            <th style="width: 88px;">Aksi</th>
-                        </tr>
-                    </thead>
-                </table>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-calendar-month stat-icon text-info"></i></div>
+                <div>
+                    <div class="stat-value"><?= number_format((int) ($stats['this_month'] ?? 0)) ?></div>
+                    <div class="text-muted"><?= esc(lang('Hr.feedback_stat_this_month')) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-chat-quote stat-icon text-success"></i></div>
+                <div>
+                    <div class="stat-value"><?= number_format((int) ($stats['masukan'] ?? 0)) ?></div>
+                    <div class="text-muted"><?= esc(lang('Hr.feedback_stat_masukan')) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3"><i class="bi bi-exclamation-triangle stat-icon text-warning"></i></div>
+                <div>
+                    <div class="stat-value"><?= number_format((int) ($stats['keluh_kesah'] ?? 0)) ?></div>
+                    <div class="text-muted"><?= esc(lang('Hr.feedback_stat_keluh')) ?></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="feedbackDetailModal" tabindex="-1" aria-hidden="true">
+<!-- Main table -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-megaphone me-2 text-primary"></i><?= esc(lang('Hr.feedback_page_title')) ?>
+            </h5>
+            <p class="text-muted small mb-0"><?= esc(lang('Hr.feedback_page_desc')) ?></p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="<?= esc(base_url('masukan-keluhan')) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right me-1"></i><?= esc(lang('Hr.feedback_open_public')) ?>
+            </a>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnRefreshCompanyFeedback" title="<?= esc(lang('Hr.feedback_refresh')) ?>">
+                <i class="fas fa-sync-alt me-1"></i><?= esc(lang('Hr.feedback_refresh')) ?>
+            </button>
+        </div>
+    </div>
+    <div class="card-body pt-0">
+        <div class="table-responsive">
+            <table id="companyFeedbackTable" class="table table-striped table-hover w-100 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th><?= esc(lang('Hr.feedback_table_type')) ?></th>
+                        <th><?= esc(lang('Hr.feedback_table_snippet')) ?></th>
+                        <th><?= esc(lang('Hr.feedback_table_contact')) ?></th>
+                        <th><?= esc(lang('Hr.feedback_table_time')) ?></th>
+                        <th style="width: 88px;"><?= esc(lang('Hr.feedback_table_action')) ?></th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="feedbackDetailModal" tabindex="-1" aria-labelledby="feedbackDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Isi pesan lengkap</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                <h5 class="modal-title" id="feedbackDetailModalLabel">
+                    <i class="bi bi-card-text me-2 text-primary"></i><?= esc(lang('Hr.feedback_modal_title')) ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= esc(lang('Common.close')) ?>"></button>
             </div>
             <div class="modal-body">
-                <pre id="feedbackDetailBody" class="mb-0" style="white-space: pre-wrap; font-family: inherit;"></pre>
+                <pre id="feedbackDetailBody" class="mb-0 rounded border bg-light p-3 small" style="white-space: pre-wrap; font-family: inherit;"></pre>
             </div>
         </div>
     </div>
@@ -52,7 +119,9 @@
 <script>
 (function () {
     var retries = 0;
-    var maxRetries = 40; // ~10 detik (40 x 250ms)
+    var maxRetries = 40;
+    var feedbackTable = null;
+    var btnLabelDetail = <?= json_encode('<i class="bi bi-eye me-1"></i>' . lang('Hr.feedback_view_detail')) ?>;
 
     function notifyInitError() {
         var msg = 'Komponen tabel belum siap. Silakan refresh halaman.';
@@ -66,7 +135,7 @@
     }
 
     function initFeedbackTable() {
-        var table = $('#companyFeedbackTable').DataTable({
+        feedbackTable = $('#companyFeedbackTable').DataTable({
             processing: true,
             serverSide: true,
             ajax: {
@@ -106,10 +175,9 @@
                     data: null,
                     orderable: false,
                     searchable: false,
-                    defaultContent: '<button type="button" class="btn btn-sm btn-outline-primary btn-feedback-detail">Lihat</button>'
+                    defaultContent: '<button type="button" class="btn btn-sm btn-primary btn-feedback-detail">' + btnLabelDetail + '</button>'
                 }
             ],
-            // Bahasa ID inline — hindari load JSON dari CDN (CORS / preflight di localhost).
             language: {
                 processing: 'Memproses...',
                 search: 'Cari:',
@@ -136,13 +204,20 @@
 
         $('#companyFeedbackTable tbody').on('click', '.btn-feedback-detail', function () {
             var tr = $(this).closest('tr');
-            var row = table.row(tr).data();
+            var row = feedbackTable.row(tr).data();
             if (!row || typeof row.message_plain === 'undefined') {
                 return;
             }
             document.getElementById('feedbackDetailBody').textContent = row.message_plain;
             var modal = new bootstrap.Modal(document.getElementById('feedbackDetailModal'));
             modal.show();
+        });
+
+        $('#btnRefreshCompanyFeedback').on('click', function () {
+            var btn = $(this).prop('disabled', true);
+            feedbackTable.ajax.reload(function () {
+                btn.prop('disabled', false);
+            }, false);
         });
     }
 

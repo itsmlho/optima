@@ -17,7 +17,8 @@ class MasukanKeluhanController extends BaseController
     public function index()
     {
         return view('hr/masukan_keluhan_index', [
-            'title' => 'Masukan & Keluh Kesah',
+            'title' => lang('Hr.feedback_page_title'),
+            'stats' => $this->feedbackModel->getListStats(),
         ]);
     }
 

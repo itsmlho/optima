@@ -39,4 +39,20 @@ class CompanyFeedbackModel extends Model
             'max_length' => 'Pesan terlalu panjang.',
         ],
     ];
+
+    /**
+     * Ringkasan untuk dashboard HR (kartu statistik).
+     */
+    public function getListStats(): array
+    {
+        $t = $this->table;
+        $monthStart = date('Y-m-01 00:00:00');
+
+        return [
+            'total'       => $this->countAllResults(),
+            'this_month'  => (int) $this->db->table($t)->where('created_at >=', $monthStart)->countAllResults(),
+            'masukan'     => (int) $this->db->table($t)->where('type', 'masukan')->countAllResults(),
+            'keluh_kesah' => (int) $this->db->table($t)->where('type', 'keluh_kesah')->countAllResults(),
+        ];
+    }
 }
