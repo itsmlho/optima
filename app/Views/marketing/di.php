@@ -1320,7 +1320,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 <i class="fas fa-link"></i> Link
               </button>`;
             } else if (hasContract) {
-              return uiBadge('linked', 'Linked', {icon: 'fas fa-check'});
+              return uiBadge('linked', 'Linked', {icon: 'fas fa-check'}) + `
+                <button class="btn btn-sm btn-outline-primary sync-di-contract ms-2"
+                  data-di-id="${row.id}"
+                  data-contract-id="${row.contract_id}"
+                  title="Sync units to contract">
+                  <i class="fas fa-sync"></i>
+                </button>`;
             }
             return '-';
           }
@@ -1337,6 +1343,48 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const diId = $(this).data('di-id');
           const diNumber = $(this).data('di-number');
           openLinkDIContractModal(diId, diNumber);
+        });
+
+        // Wire up Sync Units to Contract buttons
+        $('#diTable tbody').off('click', '.sync-di-contract').on('click', '.sync-di-contract', async function() {
+          const diId = $(this).data('di-id');
+          const contractId = $(this).data('contract-id');
+          const btn = this;
+          
+          if (!diId || !contractId) {
+            OptimaNotify.error('DI atau Contract tidak valid.');
+            return;
+          }
+
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-1"></i>Sync...';
+          OptimaPro.showLoading('Sync units to contract...');
+
+          try {
+            const fd = new FormData();
+            fd.append('di_id', diId);
+            fd.append('contract_id', contractId);
+
+            const response = await (window.csrfFetch || window.fetch)('<?= base_url('marketing/di/sync-units-to-contract') ?>', {
+              method: 'POST',
+              body: fd
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              OptimaNotify.success(result.message || 'Units synced successfully.');
+              loadDI();
+            } else {
+              throw new Error(result.message || 'Failed to sync units.');
+            }
+          } catch (error) {
+            console.error('Error syncing units:', error);
+            OptimaNotify.error(error.message || 'An error occurred while syncing units.');
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i>';
+            OptimaPro.hideLoading();
+          }
         });
       }
     });

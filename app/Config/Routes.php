@@ -365,6 +365,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
     $routes->post('di/update/(:num)', 'Marketing::diUpdate/$1');
     $routes->post('di/link-to-contract', 'Marketing::linkDIToContract');
+    $routes->post('di/sync-units-to-contract', 'Marketing::syncDIUnitsToContractEndpoint');
     $routes->get('di/linkable-contracts/(:num)', 'Marketing::getLinkableContractsForDI/$1');
     $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // SPPU - Surat Perintah Penarikan Unit
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');

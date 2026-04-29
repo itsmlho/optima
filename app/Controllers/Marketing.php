@@ -10022,10 +10022,12 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
-            if ($di['contract_id'] !== null) {
+            $existingDiContractId = $di['contract_id'] ?? null;
+            $diAlreadyLinkedSameContract = !empty($existingDiContractId) && (int)$existingDiContractId === (int)$contractId;
+            if (!empty($existingDiContractId) && !$diAlreadyLinkedSameContract) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'DI already linked to contract'
+                    'message' => 'DI already linked to a different contract'
                 ]);
             }
 
@@ -10040,14 +10042,21 @@ class Marketing extends BaseDataTableController
 
             // Update DI with contract linkage
             $poNumber = trim($this->request->getPost('po_number') ?? '');
+
+            // Preserve DI workflow if it has progressed further than "AWAITING_CONTRACT".
+            $currentStatusDi = (string)($di['status_di'] ?? '');
+            $shouldSetStatusSubmitted = empty($currentStatusDi) || $currentStatusDi === 'AWAITING_CONTRACT';
             $updateData = [
                 'contract_id'        => $contractId,
                 'pelanggan_id'       => $contract['customer_id'] ?? null,
                 'contract_linked_at' => date('Y-m-d H:i:s'),
                 'contract_linked_by' => $userId,
-                'status_di'          => 'SUBMITTED',
                 'diperbarui_pada'    => date('Y-m-d H:i:s'),
             ];
+
+            if ($shouldSetStatusSubmitted) {
+                $updateData['status_di'] = 'SUBMITTED';
+            }
 
             // If a specific PO Bulanan number is provided, save it
             if (!empty($poNumber)) {
@@ -10069,14 +10078,32 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
+            // CRITICAL: Sync DI units into kontrak_unit immediately after linking.
+            // This ensures "Units Location" is not empty and rental mapping is correct.
+            $syncResult = $this->syncDIUnitsToContract((int)$diId, (int)$contractId, (int)$userId);
+
+            // UX: if units are already RENTAL_ACTIVE, move contract to ACTIVE.
+            if (!empty($syncResult['activated'])) {
+                $kontrakModel->update((int)$contractId, [
+                    'status' => 'ACTIVE',
+                    'diperbarui_pada' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
             // Send notification to Finance team
             $this->sendDILinkingSuccessNotification($diId, $contractId);
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => "DI {$di['nomor_di']} linked to contract {$contract['no_kontrak']} successfully. Ready for invoice generation.",
+                'message' => ($diAlreadyLinkedSameContract
+                    ? "DI {$di['nomor_di']} already linked. "
+                    : "DI {$di['nomor_di']} linked to contract {$contract['no_kontrak']} successfully. ")
+                    . 'Units synced to contract successfully. Ready for invoice generation.',
                 'di_number' => $di['nomor_di'],
-                'contract_number' => $contract['no_kontrak']
+                'contract_number' => $contract['no_kontrak'],
+                'units_added' => (int)($syncResult['added'] ?? 0),
+                'units_updated' => (int)($syncResult['updated'] ?? 0),
+                'units_total_synced' => (int)($syncResult['synced'] ?? 0),
             ]);
 
         } catch (\Exception $e) {
@@ -10086,6 +10113,244 @@ class Marketing extends BaseDataTableController
                 'message' => 'Gagal memproses permintaan. Silakan coba lagi.'
             ]);
         }
+    }
+
+    /**
+     * Manual sync endpoint: re-sync DI units into kontrak_unit even if DI already linked.
+     * Useful for legacy/migrated data where contract_id exists but kontrak_unit is missing.
+     */
+    public function syncDIUnitsToContractEndpoint()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $diId = (int)$this->request->getPost('di_id');
+            $contractId = (int)($this->request->getPost('contract_id') ?? 0);
+            $userId = session()->get('user_id') ?? 1;
+
+            if ($diId <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI ID required',
+                ]);
+            }
+
+            $diModel = new \App\Models\DeliveryInstructionModel();
+            $di = $diModel->find($diId);
+            if (!$di) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Delivery Instruction not found',
+                ]);
+            }
+
+            if ($contractId <= 0) {
+                $contractId = (int)($di['contract_id'] ?? 0);
+            }
+
+            if ($contractId <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract ID required (either provided or already linked in DI)',
+                ]);
+            }
+
+            $syncResult = $this->syncDIUnitsToContract($diId, $contractId, (int)$userId);
+
+            if (!empty($syncResult['activated'])) {
+                // Sync helper already decided; update contract status to ACTIVE to match rental mapping.
+                $kontrakModel = new \App\Models\KontrakModel();
+                $kontrakModel->update((int)$contractId, [
+                    'status' => 'ACTIVE',
+                    'diperbarui_pada' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'DI units synced to contract successfully.',
+                'di_number' => $di['nomor_di'] ?? null,
+                'contract_id' => $contractId,
+                'units_added' => (int)($syncResult['added'] ?? 0),
+                'units_updated' => (int)($syncResult['updated'] ?? 0),
+                'units_total_synced' => (int)($syncResult['synced'] ?? 0),
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::syncDIUnitsToContractEndpoint - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memproses permintaan. Silakan coba lagi.',
+            ]);
+        }
+    }
+
+    /**
+     * Sync units in DI (delivery_items) into kontrak_unit for a chosen contract.
+     * - Inserts missing rows
+     * - Updates existing rows to ACTIVE
+     * - Fills customer_location_id (from primary customer location when available)
+     */
+    private function syncDIUnitsToContract(int $diId, int $contractId, int $userId): array
+    {
+        $db = \Config\Database::connect();
+
+        $contract = $db->table('kontrak')
+            ->select('id, status, customer_id, tanggal_mulai')
+            ->where('id', $contractId)
+            ->get()
+            ->getRowArray();
+
+        if (!$contract) {
+            return [
+                'synced' => 0,
+                'added' => 0,
+                'updated' => 0,
+                'activated' => false,
+            ];
+        }
+
+        $customerId = (int)($contract['customer_id'] ?? 0);
+        $contractTanggalMulai = $contract['tanggal_mulai'] ?: date('Y-m-d');
+
+        // Use customer's primary active location if available.
+        $customerLocationId = null;
+        $customerLocationName = null;
+        if ($customerId > 0) {
+            $customerLocation = $db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->where('is_active', 1)
+                ->orderBy('is_primary', 'DESC')
+                ->orderBy('id', 'ASC')
+                ->get()
+                ->getRowArray();
+
+            if ($customerLocation) {
+                $customerLocationId = $customerLocation['id'] ?? null;
+                $customerLocationName = $customerLocation['location_name'] ?? null;
+            }
+        }
+
+        $deliveryItems = $db->table('delivery_items')
+            ->where('di_id', $diId)
+            ->where('item_type', 'UNIT')
+            ->where('unit_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        if (empty($deliveryItems)) {
+            return [
+                'synced' => 0,
+                'added' => 0,
+                'updated' => 0,
+                'activated' => false,
+            ];
+        }
+
+        $unitIds = array_values(array_filter(array_map(function ($x) {
+            return isset($x['unit_id']) ? (int)$x['unit_id'] : 0;
+        }, $deliveryItems)));
+
+        // Activate contract only if at least one unit is already in RENTAL_ACTIVE bucket.
+        // This avoids premature status changes if DI was only linked.
+        $shouldActivate = false;
+        if (!empty($unitIds)) {
+            $rentalActiveCount = (int)$db->table('inventory_unit')
+                ->whereIn('id_inventory_unit', $unitIds)
+                ->where('status_unit_id', 7) // RENTAL_ACTIVE (see Operational.php stage 'sampai')
+                ->countAllResults();
+
+            $shouldActivate = $rentalActiveCount > 0 && ($contract['status'] ?? '') !== 'ACTIVE';
+        }
+
+        $added = 0;
+        $updated = 0;
+
+        $db->transStart();
+        try {
+            foreach ($deliveryItems as $item) {
+                $unitId = (int)($item['unit_id'] ?? 0);
+                if ($unitId <= 0) {
+                    continue;
+                }
+
+                $isSpare = (int)($item['is_spare'] ?? 0);
+                $hargaSewa = $item['harga_sewa'] ?? null;
+
+                if ($isSpare === 1) {
+                    $hargaSewa = 0;
+                }
+
+                // If there is any existing row, update it to ACTIVE to ensure unit/location is visible.
+                $existingKu = $db->table('kontrak_unit')
+                    ->where('kontrak_id', $contractId)
+                    ->where('unit_id', $unitId)
+                    ->orderBy('id', 'DESC')
+                    ->get()
+                    ->getRowArray();
+
+                $now = date('Y-m-d H:i:s');
+
+                if ($existingKu) {
+                    $db->table('kontrak_unit')
+                        ->where('id', (int)$existingKu['id'])
+                        ->update([
+                            'status' => 'ACTIVE',
+                            'is_temporary' => false,
+                            'customer_location_id' => $customerLocationId,
+                            'harga_sewa' => $hargaSewa,
+                            'is_spare' => $isSpare,
+                            'tanggal_mulai' => $contractTanggalMulai,
+                            'updated_by' => $userId,
+                            'updated_at' => $now,
+                        ]);
+                    $updated++;
+                } else {
+                    $db->table('kontrak_unit')->insert([
+                        'kontrak_id' => $contractId,
+                        'unit_id' => $unitId,
+                        'customer_location_id' => $customerLocationId,
+                        'tanggal_mulai' => $contractTanggalMulai,
+                        'status' => 'ACTIVE',
+                        'harga_sewa' => $hargaSewa,
+                        'is_spare' => $isSpare,
+                        'is_temporary' => false,
+                        'created_at' => $now,
+                        'created_by' => $userId,
+                    ]);
+                    $added++;
+                }
+
+                // Best-effort: set inventory_unit location string so UI fallback isn't empty.
+                if (!empty($customerLocationName)) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update([
+                            'lokasi_unit' => $customerLocationName,
+                            'updated_at' => $now,
+                        ]);
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'syncDIUnitsToContract Error: ' . $e->getMessage());
+            $db->transRollback();
+
+            return [
+                'synced' => 0,
+                'added' => 0,
+                'updated' => 0,
+                'activated' => false,
+            ];
+        }
+        $db->transComplete();
+
+        return [
+            'synced' => $added + $updated,
+            'added' => $added,
+            'updated' => $updated,
+            'activated' => $shouldActivate,
+        ];
     }
 
     /**

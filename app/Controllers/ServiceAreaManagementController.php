@@ -1726,12 +1726,94 @@ class ServiceAreaManagementController extends BaseController
         ];
         
         try {
-            // Insert assignment
-            $assignmentId = $this->assignmentModel->insert($data);
-            
+            // If the same assignment was previously deleted (soft delete),
+            // CI4 will keep the row with deleted_at. If DB has unique constraints
+            // that don't ignore deleted_at, inserting again can fail.
+            // So we restore an existing row first.
+            $db = \Config\Database::connect();
+
+            $areaId = (int) ($data['area_id'] ?? 0);
+            $employeeId = (int) ($data['employee_id'] ?? 0);
+            $assignmentType = (string) ($data['assignment_type'] ?? '');
+
+            if ($areaId <= 0 || $employeeId <= 0 || $assignmentType === '') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Data penugasan tidak valid'
+                ]);
+            }
+
+            // Block if there is already an active assignment with same type
+            $activeExists = $db->table('area_employee_assignments')
+                ->where('area_id', $areaId)
+                ->where('employee_id', $employeeId)
+                ->where('assignment_type', $assignmentType)
+                ->where('is_active', 1)
+                ->where('deleted_at', null)
+                ->get()->getRowArray();
+
+            if (!empty($activeExists)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Penugasan untuk karyawan ini sudah aktif'
+                ]);
+            }
+
+            // Optional: prevent duplicate PRIMARY (FOREMAN) in one area
+            if ($assignmentType === 'PRIMARY') {
+                $employeeRow = $this->employeeModel->find($employeeId);
+                if ($employeeRow && ($employeeRow['staff_role'] ?? '') === 'FOREMAN') {
+                    $activeForemanPrimary = $db->table('area_employee_assignments aea')
+                        ->join('employees e', 'e.id = aea.employee_id', 'inner')
+                        ->where('aea.area_id', $areaId)
+                        ->where('aea.assignment_type', 'PRIMARY')
+                        ->where('aea.is_active', 1)
+                        ->where('aea.deleted_at', null)
+                        ->where('e.staff_role', 'FOREMAN')
+                        ->get()->getRowArray();
+
+                    if (!empty($activeForemanPrimary)) {
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Area ini sudah memiliki Foreman utama (PRIMARY)'
+                        ]);
+                    }
+                }
+            }
+
+            // Find any existing (including soft-deleted) row to restore
+            $existing = $db->table('area_employee_assignments')
+                ->where('area_id', $areaId)
+                ->where('employee_id', $employeeId)
+                ->where('assignment_type', $assignmentType)
+                ->orderBy('id', 'DESC')
+                ->get()->getRowArray();
+
+            $assignmentId = null;
+
+            if (!empty($existing)) {
+                $restore = [
+                    'deleted_at' => null,
+                    'is_active' => 1,
+                    'start_date' => $data['start_date'],
+                    'end_date'   => $data['end_date'],
+                    'notes'      => $data['notes'],
+                    'department_scope' => $data['department_scope'],
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+
+                $db->table('area_employee_assignments')
+                    ->where('id', (int) $existing['id'])
+                    ->update($restore);
+
+                $assignmentId = (int) $existing['id'];
+            } else {
+                // Insert new assignment
+                $assignmentId = $this->assignmentModel->insert($data);
+            }
+
             if ($assignmentId) {
                 // Get details for notification
-                $db = \Config\Database::connect();
                 $assignment = $db->table('area_employee_assignments saa')
                     ->select('saa.*, a.area_name, e.staff_name as employee_name')
                     ->join('areas a', 'a.id = saa.area_id', 'left')
