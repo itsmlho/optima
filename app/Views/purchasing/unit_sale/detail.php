@@ -6,12 +6,14 @@
  *
  * Variables: $sale (array), $sale_type ('unit'|'component'), $bundled_components (array), $title (string)
  * BADGE: badge-soft-green (COMPLETED), badge-soft-red (CANCELLED)
- * PERMISSION: purchasing.unit_sale.delete (for cancel button)
+ * PERMISSION: purchasing.unit_sale.delete (cancel), purchasing.unit_sale.create (edit sale)
  */
 
 helper('global_permission');
-$can_delete = canPerformAction('purchasing', 'unit_sale', 'delete');
-$isUnit     = ($sale_type === 'unit');
+$can_delete   = canPerformAction('purchasing', 'unit_sale', 'delete');
+$can_edit_sale = ! empty($can_edit_sale);
+$update_sale_url = $update_sale_url ?? '';
+$isUnit       = ($sale_type === 'unit');
 $cancelUrl  = $isUnit
     ? base_url('purchasing/asset-disposal/cancel/unit/' . $sale['id'])
     : base_url('purchasing/asset-disposal/cancel/component/' . $sale['id']);
@@ -63,11 +65,16 @@ $typeBadgeMap = [
     </div>
     <div class="d-flex gap-2">
         <?php if ($sale['status'] === 'COMPLETED' && $can_delete): ?>
-        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
             <i class="fas fa-times-circle me-1"></i><?= lang('Purchasing.cancel_sale') ?>
         </button>
         <?php endif; ?>
-        <a href="<?= base_url('/purchasing/asset-disposal') ?>" class="btn btn-outline-secondary">
+        <?php if ($can_edit_sale && $update_sale_url !== ''): ?>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editSaleModal">
+            <i class="fas fa-edit me-1"></i><?= lang('Purchasing.edit_sale') ?>
+        </button>
+        <?php endif; ?>
+        <a href="<?= base_url('/purchasing/asset-disposal') ?>" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i><?= lang('Common.back') ?>
         </a>
     </div>
@@ -328,6 +335,96 @@ $typeBadgeMap = [
     <?php endif; ?>
 </div>
 
+<!-- ─── Edit Sale Modal ───────────────────────────────────── -->
+<?php if ($can_edit_sale && $update_sale_url !== ''): ?>
+<?php
+    $editTgl      = date('Y-m-d', strtotime($sale['tanggal_jual'] ?? 'now'));
+    $editHargaFmt = number_format((float) ($sale['harga_jual'] ?? 0), 0, ',', '.');
+    $metodeCur    = $sale['metode_pembayaran'] ?? 'TRANSFER';
+?>
+<div class="modal fade" id="editSaleModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="editSaleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSaleModalLabel">
+                    <i class="fas fa-edit me-2 text-primary"></i><?= esc(lang('Purchasing.edit_sale')) ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= esc(lang('Common.close')) ?>"></button>
+            </div>
+            <form id="editSaleForm" novalidate>
+            <div class="modal-body">
+                <p class="small text-muted"><?= esc(lang('Purchasing.edit_sale_help')) ?></p>
+                <div id="editSaleAlert" class="d-none mb-3"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><?= esc(lang('Purchasing.sale_document_no')) ?> <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control font-monospace" id="editSaleNoDokumen" maxlength="50"
+                               value="<?= esc($sale['no_dokumen'] ?? '') ?>" required autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><?= esc(lang('Purchasing.sale_date')) ?> <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="editSaleTanggal" value="<?= esc($editTgl) ?>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><?= esc(lang('Purchasing.buyer_name')) ?> <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editSaleNamaPembeli" maxlength="255"
+                               value="<?= esc($sale['nama_pembeli'] ?? '') ?>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><?= esc(lang('Purchasing.buyer_phone')) ?></label>
+                        <input type="text" class="form-control" id="editSaleTelepon" maxlength="50"
+                               value="<?= esc($sale['telepon_pembeli'] ?? '') ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label"><?= esc(lang('Purchasing.buyer_address')) ?></label>
+                        <textarea class="form-control" id="editSaleAlamat" rows="2" maxlength="1000"><?= esc($sale['alamat_pembeli'] ?? '') ?></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><?= esc(lang('Purchasing.sale_price')) ?> <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editSaleHarga" inputmode="numeric"
+                               value="<?= esc($editHargaFmt) ?>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><?= esc(lang('Purchasing.payment_method')) ?> <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editSaleMetode" required>
+                            <?php foreach (['CASH', 'TRANSFER', 'CEK', 'KREDIT'] as $m): ?>
+                                <option value="<?= esc($m) ?>" <?= $metodeCur === $m ? 'selected' : '' ?>><?= esc($m) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><?= esc(lang('Purchasing.receipt_no')) ?></label>
+                        <input type="text" class="form-control font-monospace" id="editSaleKwitansi" maxlength="100"
+                               value="<?= esc($sale['no_kwitansi'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><?= esc(lang('Purchasing.bast_no')) ?></label>
+                        <input type="text" class="form-control font-monospace" id="editSaleBast" maxlength="100"
+                               value="<?= esc($sale['no_bast'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><?= esc(lang('Purchasing.invoice_no')) ?></label>
+                        <input type="text" class="form-control font-monospace" id="editSaleInvoice" maxlength="100"
+                               value="<?= esc($sale['no_invoice'] ?? '') ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label"><?= esc(lang('Common.notes')) ?></label>
+                        <textarea class="form-control" id="editSaleKeterangan" rows="3" maxlength="5000"><?= esc($sale['keterangan'] ?? '') ?></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= esc(lang('Common.close')) ?></button>
+                <button type="button" class="btn btn-primary" id="btnSaveEditSale">
+                    <i class="fas fa-save me-1"></i><?= esc(lang('Purchasing.save_changes')) ?>
+                </button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ─── Cancel Modal ──────────────────────────────────────── -->
 <?php if ($sale['status'] === 'COMPLETED' && $can_delete): ?>
 <div class="modal fade" id="cancelModal" tabindex="-1" data-bs-backdrop="static" aria-labelledby="cancelModalLabel">
@@ -418,6 +515,147 @@ $typeBadgeMap = [
         $('#btnConfirmCancel').prop('disabled', false).html(_cancelLabel);
     });
 }());
+</script>
+<?php endif; ?>
+
+<?php if ($can_edit_sale && $update_sale_url !== ''): ?>
+<script>
+(function () {
+    'use strict';
+    var _updateSaleUrl = <?= json_encode($update_sale_url) ?>;
+    var _saveEditLabel = <?= json_encode('<i class="fas fa-save me-1"></i>' . lang('Purchasing.save_changes')) ?>;
+    var _i18n = {
+        saleUpdated: <?= json_encode(lang('Purchasing.sale_updated')) ?>,
+        fillRequired: <?= json_encode(lang('Purchasing.fill_required_fields')) ?>,
+        errorGeneric: <?= json_encode(lang('App.error_occurred')) ?>,
+        validationFailed: <?= json_encode(lang('Purchasing.sale_update_validation_failed')) ?>,
+        validationHint: <?= json_encode(lang('Purchasing.sale_update_validation_summary')) ?>
+    };
+    var _reloadAfterMs = 1300;
+
+    function formatCurrencyInputEdit(el) {
+        var raw = $(el).val().replace(/[^0-9]/g, '');
+        var n = parseInt(raw, 10);
+        $(el).val(isNaN(n) ? '' : n.toLocaleString('id-ID'));
+    }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function notifySuccessThenReload(message) {
+        message = message || _i18n.saleUpdated;
+        if (window.OptimaNotify && typeof OptimaNotify.success === 'function') {
+            OptimaNotify.success(message);
+            window.setTimeout(function () { window.location.reload(); }, _reloadAfterMs);
+            return;
+        }
+        if (typeof window.alertSwal === 'function') {
+            window.alertSwal('success', message, '');
+            window.setTimeout(function () { window.location.reload(); }, 2500);
+            return;
+        }
+        window.location.reload();
+    }
+
+    function notifyError(message) {
+        if (window.OptimaNotify && typeof OptimaNotify.error === 'function') {
+            OptimaNotify.error(message);
+        } else if (typeof window.alertSwal === 'function') {
+            window.alertSwal('error', message, '');
+        }
+    }
+
+    function notifyWarning(message) {
+        if (window.OptimaNotify && typeof OptimaNotify.warning === 'function') {
+            OptimaNotify.warning(message);
+        } else if (typeof window.alertSwal === 'function') {
+            window.alertSwal('warning', message, '');
+        }
+    }
+
+    $('#editSaleHarga').on('input', function () { formatCurrencyInputEdit(this); });
+
+    $('#btnSaveEditSale').on('click', function () {
+        var btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>');
+        $('#editSaleAlert').addClass('d-none').removeClass('alert alert-danger alert-warning').html('');
+
+        var hargaRaw = ($('#editSaleHarga').val() || '').replace(/\./g, '').replace(/,/g, '.');
+        var payload = {
+            [window.csrfTokenName]: window.csrfTokenValue,
+            no_dokumen: $('#editSaleNoDokumen').val().trim(),
+            tanggal_jual: $('#editSaleTanggal').val(),
+            nama_pembeli: $('#editSaleNamaPembeli').val().trim(),
+            telepon_pembeli: $('#editSaleTelepon').val().trim(),
+            alamat_pembeli: $('#editSaleAlamat').val().trim(),
+            harga_jual: hargaRaw,
+            metode_pembayaran: $('#editSaleMetode').val(),
+            no_kwitansi: $('#editSaleKwitansi').val().trim(),
+            no_bast: $('#editSaleBast').val().trim(),
+            no_invoice: $('#editSaleInvoice').val().trim(),
+            keterangan: $('#editSaleKeterangan').val().trim()
+        };
+
+        if (!payload.no_dokumen || !payload.tanggal_jual || !payload.nama_pembeli || !payload.harga_jual || !payload.metode_pembayaran) {
+            $('#editSaleAlert').removeClass('d-none').addClass('alert alert-warning')
+                .html('<i class="fas fa-exclamation-triangle me-1"></i>' + escapeHtml(_i18n.fillRequired));
+            notifyWarning(_i18n.fillRequired);
+            btn.prop('disabled', false).html(_saveEditLabel);
+            return;
+        }
+
+        $.ajax({
+            url: _updateSaleUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: payload,
+            success: function (res) {
+                if (!res) {
+                    notifyError(_i18n.errorGeneric);
+                    $('#editSaleAlert').removeClass('d-none').addClass('alert alert-danger').text(_i18n.errorGeneric);
+                    btn.prop('disabled', false).html(_saveEditLabel);
+                    return;
+                }
+                if (res.success) {
+                    notifySuccessThenReload(res.message);
+                    return;
+                }
+                var summary = res.message || _i18n.errorGeneric;
+                var detailHtml = '';
+                if (res.errors && typeof res.errors === 'object') {
+                    var parts = Object.values(res.errors).map(function (er) {
+                        return '<li>' + escapeHtml(er) + '</li>';
+                    }).join('');
+                    detailHtml = '<i class="fas fa-exclamation-triangle me-1"></i><strong>' + escapeHtml(summary) + '</strong>'
+                        + '<p class="small mb-1">' + escapeHtml(_i18n.validationHint) + '</p>'
+                        + '<ul class="mb-0 small">' + parts + '</ul>';
+                    $('#editSaleAlert').removeClass('d-none').removeClass('alert-warning').addClass('alert alert-danger').html(detailHtml);
+                    notifyWarning(summary);
+                } else {
+                    $('#editSaleAlert').removeClass('d-none').removeClass('alert-warning').addClass('alert alert-danger')
+                        .html('<i class="fas fa-times-circle me-1"></i>' + escapeHtml(summary));
+                    notifyError(summary);
+                }
+                btn.prop('disabled', false).html(_saveEditLabel);
+            },
+            error: function (xhr) {
+                var msg = _i18n.errorGeneric;
+                if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                notifyError(msg);
+                $('#editSaleAlert').removeClass('d-none').addClass('alert alert-danger')
+                    .html('<i class="fas fa-times-circle me-1"></i>' + escapeHtml(msg));
+                btn.prop('disabled', false).html(_saveEditLabel);
+            }
+        });
+    });
+})();
 </script>
 <?php endif; ?>
 

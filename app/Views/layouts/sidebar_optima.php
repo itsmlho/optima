@@ -258,6 +258,16 @@ helper('permission_helper');
                 </ul>
             </li>
 
+            <!-- ── Masukan & Keluh Kesah (HR) — di atas Administration ── -->
+            <?php if (hasPermission('hr.feedback.view')): ?>
+            <li class="nav-item">
+                <a href="<?= base_url('/hr/masukan-keluhan') ?>" class="nav-link">
+                    <span class="material-symbols-rounded">campaign</span>
+                    <span class="nav-label">Masukan &amp; Keluh Kesah</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
             <!-- ── Administration ─────────────────────────────────────── -->
             <?php if (hasModuleAccess('admin')): ?>
             <li class="nav-item dropdown-container">

@@ -44,6 +44,7 @@ class AuthFilter implements FilterInterface
             'auth/resend-otp',
             'unit-view',
             'surat-jalan',
+            'masukan-keluhan',
             'comingsoon',
             'health/ping', // Public lightweight JSON ping for client network / latency checks (login + app)
         ];

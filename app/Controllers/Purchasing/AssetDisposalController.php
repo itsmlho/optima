@@ -999,11 +999,15 @@ class AssetDisposalController extends BaseController
             // Get bundled components if any
             $bundledComponents = $this->compModel->getBundledComponents($id);
 
+            $canEdit = $this->hasPermission('purchasing.unit_sale.create') && ($sale['status'] ?? '') === 'COMPLETED';
+
             return view('purchasing/unit_sale/detail', [
                 'title'              => lang('Purchasing.asset_disposal_detail') . ' — ' . $sale['no_dokumen'],
                 'sale'               => $sale,
                 'sale_type'          => 'unit',
                 'bundled_components' => $bundledComponents,
+                'can_edit_sale'      => $canEdit,
+                'update_sale_url'    => base_url('purchasing/asset-disposal/update/unit/' . $id),
             ]);
         }
 
@@ -1013,15 +1017,206 @@ class AssetDisposalController extends BaseController
                 throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Data penjualan tidak ditemukan.');
             }
 
+            $canEdit = $this->hasPermission('purchasing.unit_sale.create') && ($sale['status'] ?? '') === 'COMPLETED';
+
             return view('purchasing/unit_sale/detail', [
                 'title'              => lang('Purchasing.asset_disposal_detail') . ' — ' . $sale['no_dokumen'],
                 'sale'               => $sale,
                 'sale_type'          => 'component',
                 'bundled_components' => [],
+                'can_edit_sale'      => $canEdit,
+                'update_sale_url'    => base_url('purchasing/asset-disposal/update/component/' . $id),
             ]);
         }
 
         throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+    }
+
+    /**
+     * POST — ubah data penjualan (hanya COMPLETED): pembeli, harga, tanggal, dokumen pendukung.
+     */
+    public function update(string $type, int $id)
+    {
+        if (! $this->hasPermission('purchasing.unit_sale.create')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Common.access_denied'),
+            ])->setStatusCode(403);
+        }
+
+        if ($type === 'unit') {
+            return $this->updateUnitSaleRecord($id);
+        }
+        if ($type === 'component') {
+            return $this->updateComponentSaleRecord($id);
+        }
+
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => lang('Purchasing.sale_update_invalid_type'),
+        ]);
+    }
+
+    private function updateUnitSaleRecord(int $id)
+    {
+        $sale = $this->saleModel->find($id);
+        if (! $sale) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Common.data_not_found'),
+            ]);
+        }
+        if ($sale['status'] !== 'COMPLETED') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_only_completed'),
+            ]);
+        }
+
+        $rules = [
+            'no_dokumen'         => 'required|max_length[50]',
+            'tanggal_jual'       => 'required|valid_date',
+            'nama_pembeli'       => 'required|max_length[255]',
+            'alamat_pembeli'     => 'permit_empty|max_length[1000]',
+            'telepon_pembeli'    => 'permit_empty|max_length[50]',
+            'harga_jual'         => 'required',
+            'metode_pembayaran'  => 'required|in_list[CASH,TRANSFER,CEK,KREDIT]',
+            'no_kwitansi'        => 'permit_empty|max_length[100]',
+            'no_bast'            => 'permit_empty|max_length[100]',
+            'no_invoice'         => 'permit_empty|max_length[100]',
+            'keterangan'         => 'permit_empty|max_length[5000]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_validation_failed'),
+                'errors'  => $this->validator->getErrors(),
+            ]);
+        }
+
+        $noDokumen = trim((string) $this->request->getPost('no_dokumen'));
+        if ($this->isDocNumberUsedExcept('unit', $id, $noDokumen)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_doc_in_use'),
+            ]);
+        }
+
+        $hargaRaw = preg_replace('/[^0-9.]/', '', (string) $this->request->getPost('harga_jual'));
+
+        $data = [
+            'no_dokumen'        => $noDokumen,
+            'tanggal_jual'      => $this->request->getPost('tanggal_jual'),
+            'nama_pembeli'      => $this->request->getPost('nama_pembeli'),
+            'alamat_pembeli'    => $this->request->getPost('alamat_pembeli') ?: null,
+            'telepon_pembeli'   => $this->request->getPost('telepon_pembeli') ?: null,
+            'harga_jual'        => (float) $hargaRaw,
+            'metode_pembayaran' => $this->request->getPost('metode_pembayaran'),
+            'no_kwitansi'       => $this->request->getPost('no_kwitansi') ?: null,
+            'no_bast'           => $this->request->getPost('no_bast') ?: null,
+            'no_invoice'        => $this->request->getPost('no_invoice') ?: null,
+            'keterangan'        => $this->request->getPost('keterangan') ?: null,
+        ];
+
+        try {
+            $this->saleModel->skipValidation(true)->update($id, $data);
+        } catch (\Throwable $e) {
+            log_message('error', '[AssetDisposal::updateUnitSaleRecord] ' . $e->getMessage());
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_save_failed'),
+            ]);
+        }
+
+        $this->logActivity('UPDATE', 'unit_sale_records', $id,
+            sprintf('Asset disposal unit diubah — Dok: %s, Pembeli: %s', $noDokumen, $data['nama_pembeli']),
+            ['business_impact' => 'MEDIUM']
+        );
+
+        return $this->response->setJSON(['success' => true, 'message' => lang('Purchasing.sale_updated')]);
+    }
+
+    private function updateComponentSaleRecord(int $id)
+    {
+        $sale = $this->compModel->find($id);
+        if (! $sale) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Common.data_not_found'),
+            ]);
+        }
+        if ($sale['status'] !== 'COMPLETED') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_only_completed'),
+            ]);
+        }
+
+        $rules = [
+            'no_dokumen'         => 'required|max_length[50]',
+            'tanggal_jual'       => 'required|valid_date',
+            'nama_pembeli'       => 'required|max_length[255]',
+            'alamat_pembeli'     => 'permit_empty|max_length[1000]',
+            'telepon_pembeli'    => 'permit_empty|max_length[50]',
+            'harga_jual'         => 'required',
+            'metode_pembayaran'  => 'required|in_list[CASH,TRANSFER,CEK,KREDIT]',
+            'no_kwitansi'        => 'permit_empty|max_length[100]',
+            'no_bast'            => 'permit_empty|max_length[100]',
+            'no_invoice'         => 'permit_empty|max_length[100]',
+            'keterangan'         => 'permit_empty|max_length[5000]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_validation_failed'),
+                'errors'  => $this->validator->getErrors(),
+            ]);
+        }
+
+        $noDokumen = trim((string) $this->request->getPost('no_dokumen'));
+        if ($this->isDocNumberUsedExcept('component', $id, $noDokumen)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_doc_in_use'),
+            ]);
+        }
+
+        $hargaRaw = preg_replace('/[^0-9.]/', '', (string) $this->request->getPost('harga_jual'));
+
+        $data = [
+            'no_dokumen'        => $noDokumen,
+            'tanggal_jual'      => $this->request->getPost('tanggal_jual'),
+            'nama_pembeli'      => $this->request->getPost('nama_pembeli'),
+            'alamat_pembeli'    => $this->request->getPost('alamat_pembeli') ?: null,
+            'telepon_pembeli'   => $this->request->getPost('telepon_pembeli') ?: null,
+            'harga_jual'        => (float) $hargaRaw,
+            'metode_pembayaran' => $this->request->getPost('metode_pembayaran'),
+            'no_kwitansi'       => $this->request->getPost('no_kwitansi') ?: null,
+            'no_bast'           => $this->request->getPost('no_bast') ?: null,
+            'no_invoice'        => $this->request->getPost('no_invoice') ?: null,
+            'keterangan'        => $this->request->getPost('keterangan') ?: null,
+        ];
+
+        try {
+            $this->compModel->skipValidation(true)->update($id, $data);
+        } catch (\Throwable $e) {
+            log_message('error', '[AssetDisposal::updateComponentSaleRecord] ' . $e->getMessage());
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => lang('Purchasing.sale_update_save_failed'),
+            ]);
+        }
+
+        $this->logActivity('UPDATE', 'component_sale_records', $id,
+            sprintf('Asset disposal komponen diubah — Dok: %s, Pembeli: %s', $noDokumen, $data['nama_pembeli']),
+            ['business_impact' => 'MEDIUM']
+        );
+
+        return $this->response->setJSON(['success' => true, 'message' => lang('Purchasing.sale_updated')]);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -1347,16 +1542,38 @@ class AssetDisposalController extends BaseController
     }
 
     /**
-     * Check if document number exists in either table
+     * Check if document number exists in either table (penambahan transaksi baru).
      */
     private function isDocNumberUsed(string $docNumber): bool
     {
+        return $this->isDocNumberUsedExcept(null, null, $docNumber);
+    }
+
+    /**
+     * @param 'unit'|'component'|null $excludeType Record yang sedang diedit (abaikan nomor sama pada baris ini).
+     * @param int|null                $excludeId   PK pada tabel terkait $excludeType.
+     */
+    private function isDocNumberUsedExcept(?string $excludeType, ?int $excludeId, string $docNumber): bool
+    {
+        $docNumber = trim($docNumber);
+
         $inUnit = $this->saleModel->where('no_dokumen', $docNumber)->first();
         if ($inUnit) {
-            return true;
+            $isSelf = $excludeType === 'unit' && $excludeId !== null && (int) $inUnit['id'] === $excludeId;
+            if (! $isSelf) {
+                return true;
+            }
         }
+
         $inComp = $this->compModel->where('no_dokumen', $docNumber)->first();
-        return (bool) $inComp;
+        if ($inComp) {
+            $isSelf = $excludeType === 'component' && $excludeId !== null && (int) $inComp['id'] === $excludeId;
+            if (! $isSelf) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

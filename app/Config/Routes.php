@@ -27,6 +27,16 @@ $routes->get('surat-jalan/print', 'Warehouse\UnitMovementPublicController::print
 $routes->get('surat-jalan/panduan-satpam', 'Warehouse\UnitMovementPublicController::guide');
 $routes->post('surat-jalan/submit-checkpoint', 'Warehouse\UnitMovementPublicController::submitCheckpoint');
 
+// Masukan & Keluh Kesah ke perusahaan (publik, tanpa login)
+$routes->get('masukan-keluhan', 'MasukanKeluhanPublicController::index');
+$routes->post('masukan-keluhan/kirim', 'MasukanKeluhanPublicController::kirim');
+
+// HR — daftar masukan / keluh kesah (login + permission)
+$routes->group('hr', static function ($routes) {
+    $routes->get('masukan-keluhan', 'Hr\\MasukanKeluhanController::index', ['filter' => 'permission:hr.feedback.view']);
+    $routes->post('masukan-keluhan/data', 'Hr\\MasukanKeluhanController::getData', ['filter' => 'permission:hr.feedback.view']);
+});
+
 // CSRF token refresh endpoint — returns fresh token for AJAX callers whose
 // session-based token has expired. Requires auth filter (no csrf filter needed
 // because this GET endpoint is used to OBTAIN a fresh token, not submit data).
@@ -1197,6 +1207,7 @@ $routes->group('purchasing', static function ($routes) {
         $routes->post('store',                     'Purchasing\AssetDisposalController::store');
         $routes->post('storeRetroactive',          'Purchasing\AssetDisposalController::storeRetroactive');
         $routes->get('detail/(:segment)/(:num)',   'Purchasing\AssetDisposalController::detail/$1/$2');
+        $routes->post('update/(:segment)/(:num)',  'Purchasing\AssetDisposalController::update/$1/$2');
         $routes->post('cancel/(:segment)/(:num)',  'Purchasing\AssetDisposalController::cancel/$1/$2');
     });
 
