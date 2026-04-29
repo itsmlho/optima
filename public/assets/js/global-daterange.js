@@ -43,17 +43,17 @@
             const defaultOptions = {
                 autoUpdateInput: false,
                 locale: {
-                    cancelLabel: 'Clear',
-                    applyLabel: 'Apply',
-                    format: 'MMM D, YYYY'
+                    cancelLabel: 'Bersihkan',
+                    applyLabel: 'Terapkan',
+                    format: 'DD/MM/YYYY',
                 },
                 ranges: {
-                    'Today': [moment(), moment()],
-                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                    'Last 7 Days': [moment().subtract(6, 'days'), moment()],
-                    'Last 30 Days': [moment().subtract(29, 'days'), moment()],
-                    'This Month': [moment().startOf('month'), moment().endOf('month')],
-                    'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                    'Hari Ini': [moment(), moment()],
+                    'Kemarin': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    '7 Hari Terakhir': [moment().subtract(6, 'days'), moment()],
+                    '30 Hari Terakhir': [moment().subtract(29, 'days'), moment()],
+                    'Bulan Ini': [moment().startOf('month'), moment().endOf('month')],
+                    'Bulan Lalu': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
                 },
                 alwaysShowCalendars: true,
                 showDropdowns: true
@@ -76,7 +76,7 @@
                     const endDate = picker.endDate;
                     
                     // Update input display
-                    $(this).val(startDate.format('MMM D, YYYY') + ' - ' + endDate.format('MMM D, YYYY'));
+                    $(this).val(startDate.format('DD/MM/YYYY') + ' - ' + endDate.format('DD/MM/YYYY'));
                     
                     // Trigger custom callback if defined
                     const rangeCallback = window[pickerId + 'OnRangeChange'];

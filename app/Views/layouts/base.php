@@ -1194,6 +1194,8 @@ $currentLang = service('request')->getLocale();
 
     <!-- Global Date Range Picker Script - deferred -->
     <script defer src="<?= base_url('assets/js/global-daterange.js') ?>?v=<?= time() ?>"></script>
+    <!-- Global native date input normalizer (DD/MM/YYYY display) -->
+    <script defer src="<?= base_url('assets/js/global-date-input-format.js') ?>?v=<?= time() ?>"></script>
     
     <!-- DataTable Date Filter Mixin (deferred) -->
     <script defer src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
