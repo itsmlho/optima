@@ -1066,6 +1066,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			// Use kontrak_spec as primary source for specification data if available
 			const ks = j.kontrak_spec || {};
+			const customReqRaw = (ks.notes || s.notes || '').toString();
+
+			function escHtml(v) {
+				return String(v ?? '')
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#39;');
+			}
+
+			function humanizeReqKey(key) {
+				return String(key || '')
+					.replace(/_/g, ' ')
+					.replace(/\b\w/g, c => c.toUpperCase());
+			}
+
+			function buildCustomReqHtml(raw) {
+				if (!raw) return '';
+				const cleaned = String(raw)
+					.replace(/\[\/?OPTIMA_SPEC_TECH\]/gi, '')
+					.replace(/\r/g, '');
+				const lines = cleaned
+					.split('\n')
+					.map(x => x.trim())
+					.filter(Boolean);
+				if (!lines.length) return '';
+
+				const items = lines.map(line => {
+					const idx = line.indexOf(':');
+					if (idx > 0) {
+						const key = humanizeReqKey(line.slice(0, idx).trim());
+						const val = line.slice(idx + 1).trim();
+						if (val !== '') return `<li><strong>${escHtml(key)}:</strong> ${escHtml(val)}</li>`;
+					}
+					return `<li>${escHtml(line)}</li>`;
+				});
+
+				return `
+					<div class="col-12" style="background-color:#fff3cd; padding:8px; margin-top:8px; border-radius:4px;">
+						<strong><i class="fas fa-sticky-note me-2"></i>Custom Requirements:</strong>
+						<ul style="margin:6px 0 0 18px; padding:0; font-size:12px;">
+							${items.join('')}
+						</ul>
+					</div>
+				`;
+			}
+			const customReqHtml = buildCustomReqHtml(customReqRaw);
 
 			body.innerHTML = `
 				<div class="row g-2">
@@ -1087,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="col-6"><strong>Mast:</strong> ${ks.mast_id_name || ks.mast_text || s.mast_id_name || s.mast_text || s.mast_model || '-'}</div>
 					<div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || ks.ban_text || s.ban_id_name || s.ban_text || '-'}</div>
 					<div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
-					${ks.notes ? `<div class="col-12" style="background-color: #fff3cd; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong><i class="fas fa-sticky-note me-2"></i>Custom Requirements:</strong><br><span style="white-space: pre-line; font-size: 12px;">${ks.notes}</span></div>` : ''}
+					${customReqHtml}
 					
 
 					${status === 'IN_PROGRESS' || status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED' ? `
