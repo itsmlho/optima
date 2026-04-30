@@ -4412,6 +4412,7 @@ class Marketing extends BaseDataTableController
                         $daysInfo = ' (' . $diff . 'd left)';
                     }
                 }
+                $labelShort = ($r['no_kontrak'] ?? '') . $statusTag . $daysInfo . ' (' . (int)$r['unit_count'] . ' units)';
                 return [
                     'id' => (int)$r['id'],
                     'no_kontrak' => $r['no_kontrak'] ?? '',
@@ -4422,7 +4423,8 @@ class Marketing extends BaseDataTableController
                     'lokasi' => $r['lokasi'] ?? '',
                     'unit_count' => (int)$r['unit_count'],
                     'tanggal_berakhir' => $r['tanggal_berakhir'] ?? '',
-                    'label' => ($r['no_kontrak'] ?? '') . ' - ' . ($r['pelanggan'] ?? '') . $statusTag . $daysInfo
+                    'label' => ($r['no_kontrak'] ?? '') . ' - ' . ($r['pelanggan'] ?? '') . $statusTag . $daysInfo,
+                    'label_short' => $labelShort,
                 ];
             }, $rows);
 
@@ -7036,6 +7038,26 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Tujuan Perintah Kerja harus dipilih']);
         }
 
+        $jenisPerintahKode = '';
+        if ($jenisPerintahKerjaId > 0) {
+            $jenisRow = $this->db->table('jenis_perintah_kerja')
+                ->select('kode')
+                ->where('id', $jenisPerintahKerjaId)
+                ->get()
+                ->getRowArray();
+            $jenisPerintahKode = $jenisRow['kode'] ?? '';
+        }
+
+        $tujuanPerintahKode = '';
+        if ($tujuanPerintahKerjaId > 0) {
+            $tujuanRow = $this->db->table('tujuan_perintah_kerja')
+                ->select('kode')
+                ->where('id', $tujuanPerintahKerjaId)
+                ->get()
+                ->getRowArray();
+            $tujuanPerintahKode = $tujuanRow['kode'] ?? '';
+        }
+
         // Resolve pelanggan_id for customer tracking
         $pelangganId = (int)($this->request->getPost('pelanggan_id') ?? 0) ?: null;
         if (!$pelangganId && $spkId > 0 && !empty($spk['kontrak_id'])) {
@@ -7075,6 +7097,31 @@ class Marketing extends BaseDataTableController
 
         $lokasi = $locationRow['location_name'] ?? $lokasi;
 
+        // RELOKASI must move units to a different location.
+        if ($jenisPerintahKode === 'RELOKASI' && !empty($unitIds) && !empty($customerLocationId)) {
+            foreach ($unitIds as $relokasiUnitId) {
+                $activeUnitLocation = $this->db->table('kontrak_unit')
+                    ->select('customer_location_id')
+                    ->where('unit_id', (int)$relokasiUnitId)
+                    ->where('status', 'ACTIVE')
+                    ->orderBy('id', 'DESC')
+                    ->get()
+                    ->getRowArray();
+
+                if (!$activeUnitLocation) {
+                    continue;
+                }
+
+                $oldLocationId = (int)($activeUnitLocation['customer_location_id'] ?? 0);
+                if ($oldLocationId > 0 && $oldLocationId === (int)$customerLocationId) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => 'Relokasi harus ke customer location yang berbeda dari lokasi unit saat ini.'
+                    ]);
+                }
+            }
+        }
+
         // Determine initial status based on SPK contract linkage
         // DIAJUKAN if SPK has no contract, DISETUJUI if SPK has contract
         $initialStatus = 'DIAJUKAN'; // Default for backward compatibility
@@ -7087,6 +7134,13 @@ class Marketing extends BaseDataTableController
 
         // TUKAR workflow: contract of old unit being pulled
         $tarikContractId = (int)($this->request->getPost('tarik_contract_id') ?? 0) ?: null;
+
+        // Link DI ke kontrak (penarikan dari halaman kontrak mem-post kontrak_id; SPK bisa membawa kontrak)
+        $postKontrakId = (int)($this->request->getPost('kontrak_id') ?? 0) ?: null;
+        $contractIdForDi = $postKontrakId;
+        if (!$contractIdForDi && $spkId > 0 && !empty($spk['kontrak_id'])) {
+            $contractIdForDi = (int)$spk['kontrak_id'];
+        }
 
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
@@ -7104,6 +7158,7 @@ class Marketing extends BaseDataTableController
             'dibuat_oleh' => session('user_id') ?: 1,
             'dibuat_pada' => date('Y-m-d H:i:s'),
             'tarik_contract_id' => $tarikContractId,
+            'contract_id' => $contractIdForDi ?: null,
         ];
         
         // Only add optional fields if they have values
@@ -7220,6 +7275,15 @@ class Marketing extends BaseDataTableController
                 'operator_daily_rate_snapshot' => $operatorDailySnapshot,
                 'operator_rate_source' => 'customer_location_master',
             ];
+
+            $deliveryItemColumns = [];
+            try {
+                $deliveryItemColumns = $this->db->getFieldNames('delivery_items');
+            } catch (\Throwable $e) {
+                $deliveryItemColumns = [];
+            }
+            $hasIsSpareColumn = in_array('is_spare', $deliveryItemColumns, true);
+            $isSparePurpose = in_array($tujuanPerintahKode, ['ANTAR_SPARE', 'TUKAR_SPARE'], true);
             
             if (!empty($unitIds)) {
                 foreach ($unitIds as $uid) {
@@ -7240,6 +7304,9 @@ class Marketing extends BaseDataTableController
                         'item_role' => 'KIRIM',
                         'unit_id' => (int)$uid,
                     ];
+                    if ($hasIsSpareColumn) {
+                        $unitPayload['is_spare'] = $isSparePurpose ? 1 : 0;
+                    }
                     $unitPayload = array_merge($unitPayload, $operatorSnapshotFields);
                     
                     // Only add optional fields if they have values
@@ -7401,11 +7468,15 @@ class Marketing extends BaseDataTableController
                 } else {
                     // Standard workflow for UNIT SPK
                     if (!empty($selected['unit_id'])) {
-                        $itemResult = $this->db->table('delivery_items')->insert([
+                        $unitPayload = [
                             'di_id' => $diId,
                             'item_type' => 'UNIT',
                             'unit_id' => (int)$selected['unit_id'],
-                        ] + $operatorSnapshotFields);
+                        ];
+                        if ($hasIsSpareColumn) {
+                            $unitPayload['is_spare'] = $isSparePurpose ? 1 : 0;
+                        }
+                        $itemResult = $this->db->table('delivery_items')->insert($unitPayload + $operatorSnapshotFields);
                         if (!$itemResult) {
                             $errors = $this->diItemModel->errors();
                             throw new \Exception('Failed to insert selected unit: ' . implode(', ', $errors));
@@ -10264,6 +10335,12 @@ class Marketing extends BaseDataTableController
     private function syncDIUnitsToContract(int $diId, int $contractId, int $userId): array
     {
         $db = \Config\Database::connect();
+        $di = $db->table('delivery_instructions di')
+            ->select('di.customer_location_id, di.tujuan_perintah_kerja_id, tpk.kode as tujuan_kode')
+            ->join('tujuan_perintah_kerja tpk', 'tpk.id = di.tujuan_perintah_kerja_id', 'left')
+            ->where('di.id', $diId)
+            ->get()
+            ->getRowArray();
 
         $contract = $db->table('kontrak')
             ->select('id, status, customer_id, tanggal_mulai')
@@ -10282,6 +10359,10 @@ class Marketing extends BaseDataTableController
 
         $customerId = (int)($contract['customer_id'] ?? 0);
         $contractTanggalMulai = $contract['tanggal_mulai'] ?: date('Y-m-d');
+        $tujuanKode = strtoupper(trim((string)($di['tujuan_kode'] ?? '')));
+        $isTrialPurpose = ($tujuanKode === 'ANTAR_TRIAL');
+        $isSpareByPurpose = in_array($tujuanKode, ['ANTAR_SPARE', 'TUKAR_SPARE'], true);
+        $isRelokasiPurpose = in_array($tujuanKode, ['RELOKASI_INTERNAL', 'RELOKASI_OPTIMASI', 'RELOKASI_EMERGENCY'], true);
 
         // Use customer's primary active location if available.
         $customerLocationId = null;
@@ -10300,10 +10381,26 @@ class Marketing extends BaseDataTableController
                 $customerLocationName = $customerLocation['location_name'] ?? null;
             }
         }
+        if (!empty($di['customer_location_id'])) {
+            $customerLocationId = (int)$di['customer_location_id'];
+            $selectedLocation = $db->table('customer_locations')
+                ->select('location_name')
+                ->where('id', $customerLocationId)
+                ->get()
+                ->getRowArray();
+            if ($selectedLocation) {
+                $customerLocationName = $selectedLocation['location_name'] ?? $customerLocationName;
+            }
+        }
 
         $deliveryItems = $db->table('delivery_items')
             ->where('di_id', $diId)
             ->where('item_type', 'UNIT')
+            ->groupStart()
+                ->where('item_role', 'KIRIM')
+                ->orWhere('item_role IS NULL', null, false)
+                ->orWhere('item_role', '')
+            ->groupEnd()
             ->where('unit_id IS NOT NULL', null, false)
             ->get()
             ->getResultArray();
@@ -10335,6 +10432,14 @@ class Marketing extends BaseDataTableController
 
         $added = 0;
         $updated = 0;
+        $kontrakUnitColumns = [];
+        try {
+            $kontrakUnitColumns = $db->getFieldNames('kontrak_unit');
+        } catch (\Throwable $e) {
+            $kontrakUnitColumns = [];
+        }
+        $hasRelokasiColumns = in_array('relocation_from_location_id', $kontrakUnitColumns, true) && in_array('relocation_to_location_id', $kontrakUnitColumns, true);
+        $hasIsSpareColumnInItems = !empty($deliveryItems) && array_key_exists('is_spare', $deliveryItems[0]);
 
         $db->transStart();
         try {
@@ -10344,7 +10449,10 @@ class Marketing extends BaseDataTableController
                     continue;
                 }
 
-                $isSpare = (int)($item['is_spare'] ?? 0);
+                $isSpare = $hasIsSpareColumnInItems ? (int)($item['is_spare'] ?? 0) : 0;
+                if ($isSpareByPurpose) {
+                    $isSpare = 1;
+                }
                 $hargaSewa = $item['harga_sewa'] ?? null;
 
                 if ($isSpare === 1) {
@@ -10360,23 +10468,29 @@ class Marketing extends BaseDataTableController
                     ->getRowArray();
 
                 $now = date('Y-m-d H:i:s');
+                $oldLocationId = (int)($existingKu['customer_location_id'] ?? 0);
+                $kuPayload = [
+                    'status' => 'ACTIVE',
+                    'is_temporary' => $isTrialPurpose ? true : false,
+                    'customer_location_id' => $customerLocationId,
+                    'harga_sewa' => $hargaSewa,
+                    'is_spare' => $isSpare,
+                    'tanggal_mulai' => $contractTanggalMulai,
+                    'updated_by' => $userId,
+                    'updated_at' => $now,
+                ];
+                if ($hasRelokasiColumns && $isRelokasiPurpose) {
+                    $kuPayload['relocation_from_location_id'] = $oldLocationId ?: null;
+                    $kuPayload['relocation_to_location_id'] = $customerLocationId ?: null;
+                }
 
                 if ($existingKu) {
                     $db->table('kontrak_unit')
                         ->where('id', (int)$existingKu['id'])
-                        ->update([
-                            'status' => 'ACTIVE',
-                            'is_temporary' => false,
-                            'customer_location_id' => $customerLocationId,
-                            'harga_sewa' => $hargaSewa,
-                            'is_spare' => $isSpare,
-                            'tanggal_mulai' => $contractTanggalMulai,
-                            'updated_by' => $userId,
-                            'updated_at' => $now,
-                        ]);
+                        ->update($kuPayload);
                     $updated++;
                 } else {
-                    $db->table('kontrak_unit')->insert([
+                    $insertPayload = [
                         'kontrak_id' => $contractId,
                         'unit_id' => $unitId,
                         'customer_location_id' => $customerLocationId,
@@ -10384,10 +10498,15 @@ class Marketing extends BaseDataTableController
                         'status' => 'ACTIVE',
                         'harga_sewa' => $hargaSewa,
                         'is_spare' => $isSpare,
-                        'is_temporary' => false,
+                        'is_temporary' => $isTrialPurpose ? true : false,
                         'created_at' => $now,
                         'created_by' => $userId,
-                    ]);
+                    ];
+                    if ($hasRelokasiColumns && $isRelokasiPurpose) {
+                        $insertPayload['relocation_from_location_id'] = null;
+                        $insertPayload['relocation_to_location_id'] = $customerLocationId ?: null;
+                    }
+                    $db->table('kontrak_unit')->insert($insertPayload);
                     $added++;
                 }
 

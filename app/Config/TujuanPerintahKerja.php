@@ -12,9 +12,13 @@ class TujuanPerintahKerja
     const ANTAR_BARU = 'ANTAR_BARU';
     const ANTAR_TAMBAHAN = 'ANTAR_TAMBAHAN';
     const ANTAR_PENGGANTI = 'ANTAR_PENGGANTI';
+    const ANTAR_SPARE = 'ANTAR_SPARE';
+    const ANTAR_TRIAL = 'ANTAR_TRIAL';
 
     // TARIK - Penarikan Unit
     const TARIK_HABIS_KONTRAK = 'TARIK_HABIS_KONTRAK';
+    const TARIK_SPARE = 'TARIK_SPARE';
+    const TARIK_TRIAL = 'TARIK_TRIAL';
     const TARIK_PINDAH_LOKASI = 'TARIK_PINDAH_LOKASI';
     const TARIK_MAINTENANCE = 'TARIK_MAINTENANCE';
     const TARIK_RUSAK = 'TARIK_RUSAK';
@@ -24,6 +28,7 @@ class TujuanPerintahKerja
     const TUKAR_DOWNGRADE = 'TUKAR_DOWNGRADE';
     const TUKAR_RUSAK = 'TUKAR_RUSAK';
     const TUKAR_MAINTENANCE = 'TUKAR_MAINTENANCE';
+    const TUKAR_SPARE = 'TUKAR_SPARE';
 
     // RELOKASI - Pemindahan Unit
     const RELOKASI_INTERNAL = 'RELOKASI_INTERNAL';
@@ -39,10 +44,14 @@ class TujuanPerintahKerja
             JenisPerintahKerja::ANTAR => [
                 self::ANTAR_BARU => 'Kontrak Baru',
                 self::ANTAR_TAMBAHAN => 'Unit Tambahan',
-                self::ANTAR_PENGGANTI => 'Unit Pengganti'
+                self::ANTAR_PENGGANTI => 'Unit Pengganti',
+                self::ANTAR_SPARE => 'Antar Spare',
+                self::ANTAR_TRIAL => 'Antar Trial',
             ],
             JenisPerintahKerja::TARIK => [
                 self::TARIK_HABIS_KONTRAK => 'Habis Kontrak',
+                self::TARIK_SPARE => 'Tarik Spare',
+                self::TARIK_TRIAL => 'Tarik Trial',
                 self::TARIK_PINDAH_LOKASI => 'Pindah Lokasi', 
                 self::TARIK_MAINTENANCE => 'Maintenance',
                 self::TARIK_RUSAK => 'Unit Rusak'
@@ -51,7 +60,8 @@ class TujuanPerintahKerja
                 self::TUKAR_UPGRADE => 'Upgrade Unit',
                 self::TUKAR_DOWNGRADE => 'Downgrade Unit',
                 self::TUKAR_RUSAK => 'Ganti Unit Rusak',
-                self::TUKAR_MAINTENANCE => 'Ganti Saat Maintenance'
+                self::TUKAR_MAINTENANCE => 'Ganti Saat Maintenance',
+                self::TUKAR_SPARE => 'Tukar Spare',
             ],
             JenisPerintahKerja::RELOKASI => [
                 self::RELOKASI_INTERNAL => 'Antar Lokasi Client',
@@ -73,9 +83,13 @@ class TujuanPerintahKerja
             self::ANTAR_BARU => 'Pengantaran unit untuk kontrak baru',
             self::ANTAR_TAMBAHAN => 'Pengantaran unit tambahan dari kontrak existing',
             self::ANTAR_PENGGANTI => 'Pengantaran unit pengganti untuk unit bermasalah',
+            self::ANTAR_SPARE => 'Pengantaran unit spare',
+            self::ANTAR_TRIAL => 'Pengantaran unit untuk trial',
             
             // TARIK
             self::TARIK_HABIS_KONTRAK => 'Penarikan unit karena kontrak berakhir',
+            self::TARIK_SPARE => 'Penarikan unit spare dari kontrak aktif',
+            self::TARIK_TRIAL => 'Penarikan unit trial setelah masa trial',
             self::TARIK_PINDAH_LOKASI => 'Penarikan unit untuk dipindah ke lokasi lain',
             self::TARIK_MAINTENANCE => 'Penarikan unit untuk perawatan/perbaikan',
             self::TARIK_RUSAK => 'Penarikan unit karena mengalami kerusakan',
@@ -85,6 +99,7 @@ class TujuanPerintahKerja
             self::TUKAR_DOWNGRADE => 'Penukaran dengan unit yang lebih rendah spesifikasinya',
             self::TUKAR_RUSAK => 'Penukaran unit yang mengalami kerusakan',
             self::TUKAR_MAINTENANCE => 'Penukaran sementara selama unit di maintenance',
+            self::TUKAR_SPARE => 'Penukaran unit aktif dengan unit spare',
             
             // RELOKASI
             self::RELOKASI_INTERNAL => 'Pemindahan unit antar lokasi dalam satu perusahaan',
@@ -104,11 +119,16 @@ class TujuanPerintahKerja
         $activeContractRequired = [
             self::ANTAR_TAMBAHAN,
             self::ANTAR_PENGGANTI,
+            self::ANTAR_SPARE,
+            self::ANTAR_TRIAL,
+            self::TARIK_SPARE,
+            self::TARIK_TRIAL,
             self::TARIK_PINDAH_LOKASI,
             self::TUKAR_UPGRADE,
             self::TUKAR_DOWNGRADE,
             self::TUKAR_RUSAK,
             self::TUKAR_MAINTENANCE,
+            self::TUKAR_SPARE,
             self::RELOKASI_INTERNAL,
             self::RELOKASI_OPTIMASI,
             self::RELOKASI_EMERGENCY
@@ -150,7 +170,8 @@ class TujuanPerintahKerja
             self::TUKAR_UPGRADE,
             self::TUKAR_DOWNGRADE,
             self::TUKAR_RUSAK,
-            self::TUKAR_MAINTENANCE
+            self::TUKAR_MAINTENANCE,
+            self::TUKAR_SPARE
         ];
 
         return in_array($kode, $replacementRequired);
@@ -166,7 +187,8 @@ class TujuanPerintahKerja
             self::TUKAR_UPGRADE,
             self::TUKAR_DOWNGRADE,
             self::TUKAR_RUSAK,
-            self::TUKAR_MAINTENANCE
+            self::TUKAR_MAINTENANCE,
+            self::TUKAR_SPARE
         ]);
     }
 

@@ -11,6 +11,7 @@ $noKontrak = $contract['no_kontrak'] ?? 'Contract #' . $id;
 $status    = $contract['status'] ?? '';
 $statusMap = ['ACTIVE' => 'badge-soft-green', 'EXPIRED' => 'badge-soft-red', 'PENDING' => 'badge-soft-yellow', 'CANCELLED' => 'badge-soft-gray'];
 $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
+$tarikRetrievalDi = $tarikRetrievalDi ?? null;
 ?>
 
 <?= $this->section('content') ?>
@@ -53,9 +54,19 @@ $canAmend  = ($status === 'ACTIVE');
         </button>
         <?php endif; ?>
         <?php if (in_array($status, ['ACTIVE', 'EXPIRED'])): ?>
-        <button type="button" class="btn btn-outline-danger btn-sm" id="btnCreateDITarik" onclick="openTarikModal()">
-            <i class="fas fa-truck-loading me-1" aria-hidden="true"></i><?= lang('Marketing.create_di_retrieval') ?>
-        </button>
+            <?php if (!empty($tarikRetrievalDi)): ?>
+            <span class="d-inline-flex align-items-center gap-2 flex-wrap">
+                <span class="badge badge-soft-green"><i class="fas fa-check me-1"></i><?= lang('Marketing.di_retrieval_already_created') ?></span>
+                <span class="text-muted small"><?= esc($tarikRetrievalDi['nomor_di'] ?? '') ?></span>
+                <a href="<?= base_url('marketing/di') ?>" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i><?= lang('Marketing.di_retrieval_view_open') ?>
+                </a>
+            </span>
+            <?php else: ?>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="btnCreateDITarik" onclick="openTarikModal()">
+                <i class="fas fa-truck-loading me-1" aria-hidden="true"></i><?= lang('Marketing.create_di_retrieval') ?>
+            </button>
+            <?php endif; ?>
         <?php endif; ?>
         <button type="button" class="btn btn-danger btn-sm" onclick="deleteContract(<?= $id ?>)">
             <i class="fas fa-trash me-1" aria-hidden="true"></i>Delete
@@ -64,14 +75,25 @@ $canAmend  = ($status === 'ACTIVE');
 </div>
 
 <?php if ($status === 'EXPIRED'): ?>
-<div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-    <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+<div class="alert <?= !empty($tarikRetrievalDi) ? 'alert-success' : 'alert-warning' ?> d-flex align-items-center flex-wrap gap-2 mb-3" role="alert">
+    <i class="fas <?= !empty($tarikRetrievalDi) ? 'fa-check-circle' : 'fa-exclamation-triangle' ?> me-2 fa-lg"></i>
     <div class="flex-grow-1">
-        <strong><?= lang('Marketing.contract_expired_no_di_alert') ?></strong>
+        <?php if (!empty($tarikRetrievalDi)): ?>
+            <strong><?= lang('Marketing.contract_expired_di_created') ?></strong>
+            <span class="text-muted ms-1"><?= esc($tarikRetrievalDi['nomor_di'] ?? '') ?></span>
+        <?php else: ?>
+            <strong><?= lang('Marketing.contract_expired_no_di_alert') ?></strong>
+        <?php endif; ?>
     </div>
-    <button type="button" class="btn btn-warning btn-sm" onclick="openTarikModal()">
-        <i class="fas fa-truck-loading me-1"></i><?= lang('Marketing.contract_expired_create_di') ?>
-    </button>
+    <?php if (!empty($tarikRetrievalDi)): ?>
+        <a href="<?= base_url('marketing/di') ?>" class="btn btn-success btn-sm">
+            <i class="fas fa-external-link-alt me-1"></i><?= lang('Marketing.di_retrieval_view_open') ?>
+        </a>
+    <?php else: ?>
+        <button type="button" class="btn btn-warning btn-sm" onclick="openTarikModal()">
+            <i class="fas fa-truck-loading me-1"></i><?= lang('Marketing.contract_expired_create_di') ?>
+        </button>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
@@ -380,7 +402,7 @@ $canAmend  = ($status === 'ACTIVE');
 <?= $this->include('components/asset_history') ?>
 <?= $this->include('components/add_unit_modal') ?>
 
-<?php if (in_array($status, ['ACTIVE', 'EXPIRED'])): ?>
+<?php if (in_array($status, ['ACTIVE', 'EXPIRED']) && empty($tarikRetrievalDi)): ?>
 <?php $diRetrievalLang = [
     'modal_title' => lang('Marketing.di_retrieval_modal_title'),
     'alert' => str_replace('{contract}', esc($noKontrak), lang('Marketing.di_retrieval_alert')),
@@ -405,9 +427,9 @@ $canAmend  = ($status === 'ACTIVE');
     'load_error' => lang('Marketing.di_retrieval_load_error'),
     'min_unit' => lang('Marketing.di_retrieval_min_unit'),
 ]; ?>
-<!-- DI Penarikan (TARIK) Modal -->
+<!-- DI Penarikan (TARIK) Modal — selaras Marketing > DI: jenis/tujuan + badge, deskripsi tujuan -->
 <div class="modal fade" id="tarikDIModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title"><i class="fas fa-truck-loading me-2"></i><?= $diRetrievalLang['modal_title'] ?></h5>
@@ -422,20 +444,43 @@ $canAmend  = ($status === 'ACTIVE');
                     <input type="hidden" name="kontrak_id" value="<?= $id ?>">
                     <input type="hidden" name="po_kontrak_nomor" value="<?= esc($contract['no_kontrak'] ?? $contract['customer_po_number'] ?? '') ?>">
                     <input type="hidden" name="pelanggan" id="tarikPelanggan" value="">
+                    <input type="hidden" name="pelanggan_id" id="tarikPelangganId" value="">
+                    <input type="hidden" name="jenis_perintah_kerja_id" id="tarikJenisId" value="">
 
-                    <div class="row mb-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold"><?= $diRetrievalLang['command_type'] ?></label>
-                            <input type="text" class="form-control" value="TARIK - Tarik Unit" disabled>
-                            <input type="hidden" name="jenis_perintah_kerja_id" id="tarikJenisId" value="">
+                            <div class="form-control d-flex align-items-center gap-2 flex-wrap" style="min-height:38px;">
+                                <span class="badge badge-soft-orange">TARIK</span>
+                                <span class="text-body">Tarik Unit</span>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold"><?= $diRetrievalLang['purpose'] ?></label>
+                            <label class="form-label fw-semibold"><?= $diRetrievalLang['purpose'] ?> <span class="text-danger">*</span></label>
                             <select class="form-select" name="tujuan_perintah_kerja_id" id="tarikTujuanSelect" required>
                                 <option value=""><?= $diRetrievalLang['select_purpose'] ?></option>
                             </select>
+                            <div id="tarikHelpTujuanPerintah" class="di-workflow-help form-text small border-start border-3 border-secondary ps-2 mt-1 text-muted"></div>
                         </div>
                     </div>
+
+                    <div class="card border-0 bg-light mb-3">
+                        <div class="card-body py-3 px-3">
+                            <div class="small text-uppercase text-muted fw-semibold mb-2"><?= lang('Marketing.contract_po') ?></div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-0 text-muted"><?= lang('Marketing.customer') ?></label>
+                                    <input type="text" class="form-control form-control-sm" id="tarikCustomerDisplay" readonly tabindex="-1" value="<?= esc($contract['customer_name'] ?? '') ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-0 text-muted"><?= lang('Marketing.contract_po') ?></label>
+                                    <input type="text" class="form-control form-control-sm" readonly tabindex="-1" value="<?= esc($contract['no_kontrak'] ?? $contract['customer_po_number'] ?? '') ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="customer_location_id" id="tarikCustomerLocationId" value="">
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -443,8 +488,9 @@ $canAmend  = ($status === 'ACTIVE');
                             <input type="date" class="form-control" name="tanggal_kirim" value="<?= date('Y-m-d') ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold"><?= $diRetrievalLang['location'] ?></label>
-                            <input type="text" class="form-control" name="lokasi" id="tarikLokasi" value="" readonly>
+                            <label class="form-label fw-semibold"><?= lang('App.customer_location') ?></label>
+                            <input type="text" class="form-control bg-light" name="lokasi" id="tarikLokasi" value="" readonly tabindex="-1">
+                            <small class="text-muted">Lokasi operasional dari kontrak ini; ID lokasi customer dipetakan otomatis untuk DI.</small>
                         </div>
                     </div>
 
@@ -478,6 +524,19 @@ $canAmend  = ($status === 'ACTIVE');
         </div>
     </div>
 </div>
+<style>
+  #tarikDIModal .select2-container--default .select2-results__option .di-workflow-opt {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding: 2px 0;
+  }
+  #tarikDIModal .select2-container--default .select2-selection--single { min-height: 38px; border-radius: 0.375rem; }
+  #tarikDIModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-top: 4px; padding-bottom: 4px; line-height: 1.35;
+  }
+  #tarikDIModal .select2-container--default .select2-selection--single .di-workflow-opt .badge {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+  }
+  #tarikDIModal .di-workflow-help { min-height: 0; white-space: pre-line; line-height: 1.4; }
+</style>
 <?php endif; ?>
 
 <?= $this->endSection() ?>
@@ -970,12 +1029,122 @@ $(document).ready(function() {
 
 let tarikJenisId = null;
 let tarikTujuanOptions = [];
+let lastTarikTujuanList = [];
+const TARIK_PH_TUJUAN = <?= json_encode('-- ' . lang('Marketing.select_command') . ' --') ?>;
+
+function tarikEscapeHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+}
+function tarikWorkflowBadgeClass(kode) {
+    const k = String(kode || '').toUpperCase();
+    if (k.startsWith('ANTAR')) return 'badge-soft-cyan';
+    if (k.startsWith('TARIK')) return 'badge-soft-orange';
+    if (k.startsWith('TUKAR')) return 'badge-soft-purple';
+    if (k.startsWith('RELOKASI')) return 'badge-soft-green';
+    return 'badge-soft-blue';
+}
+function tarikFormatTujuanSelection(data) {
+    if (typeof jQuery === 'undefined' || !data.id) return data.text;
+    const el = data.element;
+    if (!el) return data.text;
+    const kode = el.getAttribute('data-kode');
+    const nama = el.getAttribute('data-nama');
+    if (!kode) return data.text;
+    const bc = tarikWorkflowBadgeClass(kode);
+    const html = '<span class="di-workflow-opt d-flex align-items-center gap-2 flex-wrap">' +
+        '<span class="badge ' + bc + '">' + tarikEscapeHtml(kode) + '</span>' +
+        '<span class="text-body">' + tarikEscapeHtml(nama) + '</span></span>';
+    return jQuery(html);
+}
+function tarikFormatTujuanResult(data) {
+    if (typeof jQuery === 'undefined' || !data.id) return data.text;
+    const el = data.element;
+    if (!el) return data.text;
+    const kode = el.getAttribute('data-kode');
+    const nama = el.getAttribute('data-nama');
+    const desk = (el.getAttribute('data-deskripsi') || '').trim();
+    if (!kode) return data.text;
+    const bc = tarikWorkflowBadgeClass(kode);
+    let html = '<span class="di-workflow-opt di-workflow-opt--open">' +
+        '<span class="d-flex align-items-center gap-2 flex-wrap">' +
+        '<span class="badge ' + bc + '">' + tarikEscapeHtml(kode) + '</span>' +
+        '<span class="text-body fw-medium">' + tarikEscapeHtml(nama) + '</span></span>';
+    if (desk) {
+        html += '<span class="small text-muted d-block mt-1 ps-0" style="max-width:28rem;">' +
+            tarikEscapeHtml(desk).replace(/\n/g, '<br>') + '</span>';
+    }
+    html += '</span>';
+    return jQuery(html);
+}
+function destroyTarikTujuanSelect2() {
+    if (typeof jQuery === 'undefined') return;
+    const $t = jQuery('#tarikTujuanSelect');
+    if ($t.length && $t.hasClass('select2-hidden-accessible')) {
+        $t.off('select2:open.tarikDiZ');
+        $t.select2('destroy');
+    }
+}
+function initTarikTujuanSelect2() {
+    if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+        setTimeout(initTarikTujuanSelect2, 80);
+        return;
+    }
+    const $el = jQuery('#tarikTujuanSelect');
+    if (!$el.length) return;
+    if ($el.hasClass('select2-hidden-accessible')) {
+        $el.select2('destroy');
+    }
+    $el.select2({
+        width: '100%',
+        dropdownParent: jQuery('#tarikDIModal'),
+        placeholder: TARIK_PH_TUJUAN,
+        allowClear: false,
+        templateResult: tarikFormatTujuanResult,
+        templateSelection: tarikFormatTujuanSelection,
+        escapeMarkup: function (markup) { return markup; }
+    });
+    $el.off('select2:open.tarikDiZ').on('select2:open.tarikDiZ', function () {
+        jQuery('.select2-dropdown').last().css('z-index', 10060);
+    });
+}
+
+function resetTarikTujuanHelp() {
+    const el = document.getElementById('tarikHelpTujuanPerintah');
+    if (el) el.innerHTML = '<span class="text-muted">Pilih tujuan — penjelasan singkat dari master data.</span>';
+}
+function updateTarikTujuanPerintahHelp() {
+    const el = document.getElementById('tarikHelpTujuanPerintah');
+    const sel = document.getElementById('tarikTujuanSelect');
+    if (!el || !sel) return;
+    if (!sel.value) {
+        el.innerHTML = '<span class="text-muted">Pilih tujuan — penjelasan singkat dari master data.</span>';
+        return;
+    }
+    const row = lastTarikTujuanList.find(r => String(r.id) === String(sel.value));
+    const d = row && row.deskripsi ? String(row.deskripsi).trim() : '';
+    if (d) {
+        el.textContent = d;
+    } else {
+        el.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Deskripsi tujuan ini kosong di master data.</span>';
+    }
+}
 
 function openTarikModal() {
     const modal = new bootstrap.Modal(document.getElementById('tarikDIModal'));
     modal.show();
     loadTarikModalData();
 }
+
+document.getElementById('tarikDIModal').addEventListener('hidden.bs.modal', function () {
+    destroyTarikTujuanSelect2();
+    lastTarikTujuanList = [];
+    resetTarikTujuanHelp();
+    const hidLoc = document.getElementById('tarikCustomerLocationId');
+    if (hidLoc) hidLoc.value = '';
+});
 
 async function loadTarikModalData() {
     try {
@@ -990,22 +1159,39 @@ async function loadTarikModalData() {
                 tarikJenisId = tarikJenis.id;
                 document.getElementById('tarikJenisId').value = tarikJenisId;
 
-                // 2. Load tujuan options for TARIK
+                // 2. Load tujuan options for TARIK (badge Select2 + deskripsi — sama seperti Create DI)
                 const tujuanRes = await fetch(BASE_URL + 'marketing/get-tujuan-perintah-kerja?jenis_id=' + tarikJenisId, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const tujuanData = await tujuanRes.json();
                 if (tujuanData.success) {
                     tarikTujuanOptions = tujuanData.data;
+                    lastTarikTujuanList = tujuanData.data || [];
+                    destroyTarikTujuanSelect2();
                     const sel = document.getElementById('tarikTujuanSelect');
-                    sel.innerHTML = '<option value="">-- Pilih Tujuan Penarikan --</option>';
+                    sel.innerHTML = '';
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = TARIK_PH_TUJUAN;
+                    sel.appendChild(ph);
                     tujuanData.data.forEach(t => {
                         const opt = document.createElement('option');
                         opt.value = t.id;
-                        opt.textContent = t.nama || t.kode;
+                        opt.setAttribute('data-kode', t.kode || '');
+                        opt.setAttribute('data-nama', t.nama || '');
+                        opt.setAttribute('data-deskripsi', (t.deskripsi || '').trim());
+                        opt.textContent = (t.kode ? t.kode + ' - ' : '') + (t.nama || t.kode || '');
+                        opt.title = (t.deskripsi || '').trim() || t.nama || '';
                         if (t.kode === 'TARIK_HABIS_KONTRAK') opt.selected = true;
                         sel.appendChild(opt);
                     });
+                    initTarikTujuanSelect2();
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery('#tarikTujuanSelect').off('change.tarikHelp select2:select.tarikHelp').on('change.tarikHelp select2:select.tarikHelp', updateTarikTujuanPerintahHelp);
+                    } else {
+                        sel.onchange = updateTarikTujuanPerintahHelp;
+                    }
+                    updateTarikTujuanPerintahHelp();
                 }
             }
         }
@@ -1017,7 +1203,11 @@ async function loadTarikModalData() {
         const kontrakData = await kontrakRes.json();
         if (kontrakData.success && kontrakData.data) {
             document.getElementById('tarikPelanggan').value = kontrakData.data.customer_name || '';
+            document.getElementById('tarikPelangganId').value = kontrakData.data.customer_id || '';
             document.getElementById('tarikLokasi').value = kontrakData.data.lokasi || kontrakData.data.location_name || '';
+            const cd = document.getElementById('tarikCustomerDisplay');
+            if (cd) cd.value = kontrakData.data.customer_name || '';
+            await resolveTarikCustomerLocation(kontrakData.data.customer_id || null);
         }
 
         // 4. Load units from this contract
@@ -1030,6 +1220,57 @@ async function loadTarikModalData() {
     } catch (err) {
         console.error('Error loading tarik modal data:', err);
         if (window.OptimaNotify) OptimaNotify.error(LANG_TARIK.load_error || 'Gagal memuat data untuk DI penarikan');
+    }
+}
+
+/** Satukan Location + Customer Location: isi hidden customer_location_id dari master lokasi customer (padankan nama kontrak). */
+function tarikLocationLabel(loc) {
+    return (loc.location_name || 'Location') + (loc.city ? ' - ' + loc.city : '');
+}
+
+async function resolveTarikCustomerLocation(customerId) {
+    const hid = document.getElementById('tarikCustomerLocationId');
+    const locInput = document.getElementById('tarikLokasi');
+    if (hid) hid.value = '';
+    if (!customerId || !locInput) return;
+
+    try {
+        const res = await fetch(BASE_URL + 'marketing/kontrak/customer-locations/' + customerId, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
+            return;
+        }
+
+        const rows = data.data;
+        const needle = (locInput.value || '').trim().toLowerCase();
+
+        let chosen = null;
+        if (needle) {
+            chosen = rows.find(function (loc) {
+                return (loc.location_name || '').toLowerCase() === needle;
+            });
+            if (!chosen) {
+                chosen = rows.find(function (loc) {
+                    const ln = (loc.location_name || '').toLowerCase();
+                    return ln && (needle.includes(ln) || ln.includes(needle));
+                });
+            }
+        }
+        if (!chosen && rows.length === 1) {
+            chosen = rows[0];
+        }
+        if (!chosen && rows.length > 0) {
+            chosen = rows[0];
+        }
+
+        if (chosen && hid) {
+            hid.value = String(chosen.id);
+            locInput.value = tarikLocationLabel(chosen);
+        }
+    } catch (e) {
+        console.error('Error resolving customer location for retrieval DI:', e);
     }
 }
 
@@ -1090,6 +1331,18 @@ document.getElementById('btnSubmitTarikDI').addEventListener('click', async func
         if (window.OptimaNotify) OptimaNotify.warning(LANG_TARIK.min_unit || 'Pilih minimal satu unit untuk ditarik');
         return;
     }
+    const tujuanId = document.getElementById('tarikTujuanSelect')?.value || '';
+    if (!tujuanId) {
+        if (window.OptimaNotify) OptimaNotify.warning(LANG_TARIK.select_purpose || 'Pilih tujuan penarikan terlebih dahulu.');
+        return;
+    }
+    const customerLocationId = document.getElementById('tarikCustomerLocationId')?.value || '';
+    if (!customerLocationId) {
+        if (window.OptimaNotify) {
+            OptimaNotify.warning('Lokasi customer tidak dapat dipetakan otomatis. Periksa master lokasi customer atau hubungi admin.');
+        }
+        return;
+    }
 
     const btn = this;
     btn.disabled = true;
@@ -1106,6 +1359,7 @@ document.getElementById('btnSubmitTarikDI').addEventListener('click', async func
         if (result.success) {
             bootstrap.Modal.getInstance(document.getElementById('tarikDIModal')).hide();
             if (window.OptimaNotify) OptimaNotify.success((LANG_TARIK.success || 'DI Penarikan berhasil dibuat') + ': ' + (result.nomor || ''));
+            window.location.reload();
         } else {
             if (window.OptimaNotify) OptimaNotify.error(result.message || (LANG_TARIK.error || 'Gagal membuat DI'));
         }
@@ -1121,3 +1375,4 @@ document.getElementById('btnSubmitTarikDI').addEventListener('click', async func
 <?php endif; ?>
 </script>
 <?= $this->endSection() ?>
+

@@ -253,8 +253,26 @@ $can_export = $permissions['export'];
         </div>
         <form id="diCreateForm">
           <div class="modal-body">
-            <!-- SPK Selection -->
-            <div class="mb-3" id="spkSelectionSection">
+            <!-- Step 0: Command type & purpose first (drives which fields appear below) -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
+                <select class="form-select" name="jenis_perintah_kerja_id" id="jenisPerintahSelect" required>
+                  <option value="">-- <?= lang('Marketing.select_command_type') ?> --</option>
+                </select>
+                <div id="diHelpJenisPerintah" class="di-workflow-help form-text small border-start border-3 border-primary ps-2 mt-1 text-muted"></div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
+                <select class="form-select" name="tujuan_perintah_kerja_id" id="tujuanPerintahSelect" required disabled>
+                  <option value="">-- <?= lang('Marketing.select_command_type_first') ?> --</option>
+                </select>
+                <div id="diHelpTujuanPerintah" class="di-workflow-help form-text small border-start border-3 border-secondary ps-2 mt-1 text-muted"></div>
+              </div>
+            </div>
+
+            <!-- SPK Selection (only for ANTAR, ANTAR_TARIK, RELOKASI, TUKAR — not for TARIK) -->
+            <div class="mb-3" id="spkSelectionSection" style="display:none;">
               <label class="form-label"><?= lang('Marketing.select_spk_ready') ?></label>
               <input type="text" class="form-control" id="modalSpkSearch" placeholder="<?= lang('Marketing.search_spk_po_customer') ?>">
               <select class="form-select mt-2" id="spkPick" name="spk_id"></select>
@@ -284,31 +302,17 @@ $can_export = $permissions['export'];
               <div id="diUnitList" class="unit-list"><div class="text-muted small"><?= lang('Marketing.loading_items_from_spk') ?></div></div>
               <div class="form-text" id="itemSelectionHelp"><?= lang('Marketing.items_to_ship_in_di') ?></div>
             </div>
-            
-            <!-- Enhanced Workflow Section - Step 1: Jenis & Tujuan Perintah -->
-            <div class="row g-3 mb-3">
-              <div class="col-md-6">
-                <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
-                <select class="form-select" name="jenis_perintah_kerja_id" id="jenisPerintahSelect" required>
-                  <option value="">-- <?= lang('Marketing.select_command_type') ?> --</option>
-                </select> 
-                <div class="form-text"><?= lang('Marketing.specify_main_action') ?></div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
-                <select class="form-select" name="tujuan_perintah_kerja_id" id="tujuanPerintahSelect" required disabled>
-                  <option value="">-- <?= lang('Marketing.select_command_type_first') ?> --</option>
-                </select>
-                <div class="form-text">
-                  <?= lang('Marketing.reason_context_command') ?><br>
-                  <small>
-                    <?= lang('Marketing.permanent') ?> | <?= lang('Marketing.temporary_returns') ?> | <?= lang('Marketing.temp_replacement') ?> | <?= lang('Marketing.relocation') ?>
-                  </small>
-                </div>
-              </div>
+
+            <!-- TARIK / ANTAR+TARIK: choose customer, then contract -->
+            <div id="tarikCustomerSection" style="display:none;" class="mb-3">
+              <label class="form-label" for="tarikCustomerSelect">Customer <span class="text-danger">*</span></label>
+              <select class="form-select" id="tarikCustomerSelect" style="width:100%">
+                <option value=""></option>
+              </select>
+              <div class="form-text">Ketik untuk mencari; lalu pilih kontrak di bawah — daftar kontrak hanya untuk customer ini.</div>
             </div>
 
-            <!-- Step 2: Kontrak Selection (for TARIK and TUKAR workflows) -->
+            <!-- Kontrak Selection (for TARIK and TUKAR workflows) -->
             <div id="diKontrakSelection" style="display:none;" class="mb-3">
               <label class="form-label"><?= lang('Marketing.select_contract') ?> <span class="text-danger">*</span></label>
               <select class="form-select" name="kontrak_id" id="kontrakSelect">
@@ -422,6 +426,39 @@ $can_export = $permissions['export'];
   </div>
 </div>
 
+<style>
+  /* Command Type / Purpose Select2 — badge + label */
+  #diCreateModal .select2-container--default .select2-results__option .di-workflow-opt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 2px 0;
+  }
+  #diCreateModal .select2-container--default .select2-selection--single {
+    min-height: 38px;
+    border-radius: 0.375rem;
+  }
+  #diCreateModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    line-height: 1.35;
+  }
+  #diCreateModal .select2-container--default .select2-selection--single .di-workflow-opt .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  #diCreateModal .di-workflow-help {
+    min-height: 0;
+    white-space: pre-line;
+    line-height: 1.4;
+  }
+  #diCreateModal .select2-results__option .di-workflow-opt--open .text-muted {
+    line-height: 1.35;
+  }
+</style>
+
 <script>
 // UI Badge Helper - Generate consistent badge colors (Optima badge-soft-* system)
 function uiBadge(type, text, options = {}) {
@@ -438,6 +475,99 @@ function uiBadge(type, text, options = {}) {
     const icon = options.icon ? `<i class="${options.icon}"></i> ` : '';
     const title = options.title ? ` title="${options.title}"` : '';
     return `<span class="badge ${cls} ${extraClass}"${title}>${icon}${text}</span>`;
+}
+
+function escapeHtmlWorkflow(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Badge color by workflow kode prefix */
+function workflowBadgeSoftClass(kode) {
+  const k = String(kode || '').toUpperCase();
+  if (k.startsWith('ANTAR')) return 'badge-soft-cyan';
+  if (k.startsWith('TARIK')) return 'badge-soft-orange';
+  if (k.startsWith('TUKAR')) return 'badge-soft-purple';
+  if (k.startsWith('RELOKASI')) return 'badge-soft-green';
+  return 'badge-soft-blue';
+}
+
+/** Select2: ringkas saat tertutup (selected) */
+function formatWorkflowSelectOptionSelection(data) {
+  if (typeof jQuery === 'undefined') return data.text;
+  if (!data.id) return data.text;
+  const el = data.element;
+  if (!el) return data.text;
+  const kode = el.getAttribute('data-kode');
+  const nama = el.getAttribute('data-nama');
+  if (!kode) return data.text;
+  const bc = workflowBadgeSoftClass(kode);
+  const html = '<span class="di-workflow-opt d-flex align-items-center gap-2 flex-wrap">' +
+    '<span class="badge ' + bc + '">' + escapeHtmlWorkflow(kode) + '</span>' +
+    '<span class="text-body">' + escapeHtmlWorkflow(nama) + '</span></span>';
+  return jQuery(html);
+}
+
+/** Select2: daftar dropdown — badge + nama + deskripsi dari DB (data-deskripsi) */
+function formatWorkflowSelectOptionResult(data) {
+  if (typeof jQuery === 'undefined') return data.text;
+  if (!data.id) return data.text;
+  const el = data.element;
+  if (!el) return data.text;
+  const kode = el.getAttribute('data-kode');
+  const nama = el.getAttribute('data-nama');
+  const desk = (el.getAttribute('data-deskripsi') || '').trim();
+  if (!kode) return data.text;
+  const bc = workflowBadgeSoftClass(kode);
+  let html = '<span class="di-workflow-opt di-workflow-opt--open">' +
+    '<span class="d-flex align-items-center gap-2 flex-wrap">' +
+    '<span class="badge ' + bc + '">' + escapeHtmlWorkflow(kode) + '</span>' +
+    '<span class="text-body fw-medium">' + escapeHtmlWorkflow(nama) + '</span></span>';
+  if (desk) {
+    html += '<span class="small text-muted d-block mt-1 ps-0" style="max-width:28rem;">' +
+      escapeHtmlWorkflow(desk).replace(/\n/g, '<br>') + '</span>';
+  }
+  html += '</span>';
+  return jQuery(html);
+}
+
+function destroyDiWorkflowCommandSelect2() {
+  if (typeof jQuery === 'undefined') return;
+  ['#jenisPerintahSelect', '#tujuanPerintahSelect'].forEach(function (sel) {
+    const $el = jQuery(sel);
+    if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+      $el.off('select2:open.diWorkflowZ');
+      $el.select2('destroy');
+    }
+  });
+}
+
+function initDiWorkflowCommandSelect2(selectId, modalSelector) {
+  if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+    setTimeout(function () { initDiWorkflowCommandSelect2(selectId, modalSelector); }, 80);
+    return;
+  }
+  const $el = jQuery('#' + selectId);
+  if (!$el.length) return;
+  if ($el.hasClass('select2-hidden-accessible')) {
+    $el.select2('destroy');
+  }
+  const $modal = jQuery(modalSelector || '#diCreateModal');
+  const isTujuan = selectId.indexOf('tujuan') !== -1;
+  $el.select2({
+    width: '100%',
+    dropdownParent: $modal,
+    placeholder: isTujuan ? '-- Select Destination --' : '-- Select Work Order Type --',
+    allowClear: false,
+    templateResult: formatWorkflowSelectOptionResult,
+    templateSelection: formatWorkflowSelectOptionSelection,
+    escapeMarkup: function (markup) { return markup; }
+  });
+  $el.off('select2:open.diWorkflowZ').on('select2:open.diWorkflowZ', function () {
+    jQuery('.select2-dropdown').last().css('z-index', 10060);
+  });
 }
 
 // Global variables
@@ -464,7 +594,59 @@ document.addEventListener('DOMContentLoaded', ()=>{
   let currentEditKirimItems = []; // stores kirim_items from diDetail API
   let currentEditTarikItems = []; // stores tarik_items from diDetail API
   let workflowMapping = {};
-  
+  /** Baris tujuan perintah terakhir dari API (Create DI) — untuk teks bantuan */
+  let lastTujuanPerintahList = [];
+
+  function resetDiWorkflowHelpTexts() {
+    const hj = document.getElementById('diHelpJenisPerintah');
+    const ht = document.getElementById('diHelpTujuanPerintah');
+    if (hj) {
+      hj.innerHTML = '<span class="text-muted">Pilih jenis — penjelasan singkat dari master data.</span>';
+    }
+    if (ht) {
+      ht.innerHTML = '<span class="text-muted">Setelah jenis dipilih, pilih tujuan.</span>';
+    }
+  }
+
+  function updateDiJenisPerintahHelp() {
+    const el = document.getElementById('diHelpJenisPerintah');
+    if (!el) return;
+    const sel = document.getElementById('jenisPerintahSelect');
+    const id = sel && sel.value;
+    if (!id) {
+      el.innerHTML = '<span class="text-muted">Pilih jenis — penjelasan singkat dari master data.</span>';
+      return;
+    }
+    const opt = jenisPerintahOptions.find(o => String(o.id) === String(id));
+    const d = opt && opt.deskripsi ? String(opt.deskripsi).trim() : '';
+    if (d) {
+      el.textContent = d;
+    } else {
+      el.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Deskripsi jenis ini kosong di master data.</span>';
+    }
+  }
+
+  function updateDiTujuanPerintahHelp() {
+    const el = document.getElementById('diHelpTujuanPerintah');
+    const sel = document.getElementById('tujuanPerintahSelect');
+    if (!el || !sel) return;
+    if (sel.disabled) {
+      el.innerHTML = '<span class="text-muted">Pilih Command Type dulu.</span>';
+      return;
+    }
+    if (!sel.value) {
+      el.innerHTML = '<span class="text-muted">Pilih tujuan — penjelasan singkat dari master data.</span>';
+      return;
+    }
+    const row = lastTujuanPerintahList.find(r => String(r.id) === String(sel.value));
+    const d = row && row.deskripsi ? String(row.deskripsi).trim() : '';
+    if (d) {
+      el.textContent = d;
+    } else {
+      el.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Deskripsi tujuan ini kosong di master data.</span>';
+    }
+  }
+
   // Load jenis perintah from API
   async function loadJenisPerintahOptions() {
     try {
@@ -499,11 +681,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       jenisPerintahOptions.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
+        optionElement.setAttribute('data-kode', option.kode || '');
+        optionElement.setAttribute('data-nama', option.nama || '');
+        optionElement.setAttribute('data-deskripsi', (option.deskripsi || '').trim());
         optionElement.textContent = `${option.kode} - ${option.nama}`;
-        optionElement.title = option.deskripsi;
+        optionElement.title = (option.deskripsi || '').trim() || option.nama || '';
         jenisSelect.appendChild(optionElement);
       });
       console.log('Populated jenisPerintahSelect with', jenisPerintahOptions.length, 'options');
+      initDiWorkflowCommandSelect2('jenisPerintahSelect', '#diCreateModal');
+      updateDiJenisPerintahHelp();
+      updateDiTujuanPerintahHelp();
     }
     
     if (editJenisSelect) {
@@ -511,8 +699,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       jenisPerintahOptions.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
+        optionElement.setAttribute('data-kode', option.kode || '');
+        optionElement.setAttribute('data-nama', option.nama || '');
         optionElement.textContent = `${option.kode} - ${option.nama}`;
-        optionElement.title = option.deskripsi;
+        optionElement.title = option.deskripsi || '';
         editJenisSelect.appendChild(optionElement);
       });
     }
@@ -521,6 +711,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Load tujuan perintah based on jenis
   async function loadTujuanPerintahOptions(jenisId, targetSelectId) {
     try {
+      if (targetSelectId === 'tujuanPerintahSelect') {
+        const $t = typeof jQuery !== 'undefined' ? jQuery('#tujuanPerintahSelect') : null;
+        if ($t && $t.length && $t.hasClass('select2-hidden-accessible')) {
+          $t.off('select2:open.diWorkflowZ');
+          $t.select2('destroy');
+        }
+      }
+
       const response = await fetch(`<?= base_url('marketing/get-tujuan-perintah-kerja') ?>?jenis_id=${jenisId}`, {
         method: 'GET',
         headers: {
@@ -535,37 +733,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (tujuanSelect) {
           tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
           tujuanSelect.disabled = false;
-          
+          if (typeof jQuery !== 'undefined') {
+            jQuery('#tujuanPerintahSelect').prop('disabled', false);
+          }
+
           result.data.forEach(option => {
             const optionElement = document.createElement('option');
             optionElement.value = option.id;
-            
-            // Add visual indicators for workflow type
-            let displayText = `${option.kode} - ${option.nama}`;
-            let title = option.deskripsi;
-            
-            // Add workflow type indicators
-            if (option.kode === 'TARIK_HABIS_KONTRAK') {
-              displayText += ' 🔴';
-              title += ' | PERMANENT: Unit disconnected from customer';
-            } else if (option.kode === 'TARIK_MAINTENANCE' || option.kode === 'TARIK_RUSAK') {
-              displayText += ' 🔵';
-              title += ' | TEMPORARY: Unit returns to customer after service';
-            } else if (option.kode === 'TARIK_PINDAH_LOKASI') {
-              displayText += ' 🟢';
-              title += ' | RELOCATION: Same customer, different location';
-            } else if (option.kode === 'TUKAR_MAINTENANCE') {
-              displayText += ' 🟡';
-              title += ' | TEMPORARY REPLACEMENT: Original unit returns after maintenance';
-            } else if (option.kode === 'TUKAR_UPGRADE' || option.kode === 'TUKAR_DOWNGRADE' || option.kode === 'TUKAR_RUSAK') {
-              displayText += ' 🔴';
-              title += ' | PERMANENT: Old unit replaced, new unit takes over';
-            }
-            
-            optionElement.textContent = displayText;
-            optionElement.title = title;
+            optionElement.setAttribute('data-kode', option.kode || '');
+            optionElement.setAttribute('data-nama', option.nama || '');
+            const desk = (option.deskripsi || '').trim();
+            optionElement.setAttribute('data-deskripsi', desk);
+            optionElement.textContent = `${option.kode} - ${option.nama}`;
+            optionElement.title = desk || option.nama || '';
             tujuanSelect.appendChild(optionElement);
           });
+
+          if (targetSelectId === 'tujuanPerintahSelect') {
+            lastTujuanPerintahList = result.data || [];
+            initDiWorkflowCommandSelect2('tujuanPerintahSelect', '#diCreateModal');
+            updateDiTujuanPerintahHelp();
+          }
         }
       } else {
         console.error('Failed to load destination options:', result.message);
@@ -575,36 +763,88 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }
   
+  /** Select2 on Command Type often does not fire a reliable native `change` — use this for both change + select2:select */
+  function handleCreateDiJenisChange() {
+    const jenisSelect = document.getElementById('jenisPerintahSelect');
+    const tujuanSelect = document.getElementById('tujuanPerintahSelect');
+    if (!jenisSelect || !tujuanSelect) return;
+
+    const jenisValue = jenisSelect.value;
+
+    if (typeof jQuery !== 'undefined') {
+      const $t = jQuery('#tujuanPerintahSelect');
+      if ($t.length && $t.hasClass('select2-hidden-accessible')) {
+        $t.off('select2:open.diWorkflowZ');
+        $t.select2('destroy');
+      }
+    }
+
+    tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
+    tujuanSelect.disabled = true;
+    if (typeof jQuery !== 'undefined') {
+      jQuery('#tujuanPerintahSelect').prop('disabled', true);
+    }
+
+    if (!jenisValue) {
+      lastTujuanPerintahList = [];
+    }
+
+    if (jenisValue) {
+      loadTujuanPerintahOptions(jenisValue, 'tujuanPerintahSelect');
+    }
+
+    handleWorkflowJenisChange();
+    validateWorkflowForm();
+
+    updateDiJenisPerintahHelp();
+    updateDiTujuanPerintahHelp();
+  }
+
+  let _diJenisChangeRaf = null;
+  function scheduleCreateDiJenisChange() {
+    if (_diJenisChangeRaf !== null) cancelAnimationFrame(_diJenisChangeRaf);
+    _diJenisChangeRaf = requestAnimationFrame(function () {
+      _diJenisChangeRaf = null;
+      handleCreateDiJenisChange();
+    });
+  }
+
+  function handleCreateDiTujuanChange() {
+    handleWorkflowJenisChange();
+    validateWorkflowForm();
+    updateDiTujuanPerintahHelp();
+  }
+
+  let _diTujuanChangeRaf = null;
+  function scheduleCreateDiTujuanChange() {
+    if (_diTujuanChangeRaf !== null) cancelAnimationFrame(_diTujuanChangeRaf);
+    _diTujuanChangeRaf = requestAnimationFrame(function () {
+      _diTujuanChangeRaf = null;
+      handleCreateDiTujuanChange();
+    });
+  }
+
   // Setup dynamic dropdown for form create
   function setupWorkflowDropdowns() {
     const jenisSelect = document.getElementById('jenisPerintahSelect');
     const tujuanSelect = document.getElementById('tujuanPerintahSelect');
-    
+
     if (!jenisSelect || !tujuanSelect) return;
-    
-    jenisSelect.addEventListener('change', function() {
-      const jenisValue = this.value;
-      
-      // Reset tujuan dropdown
-      tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
-      tujuanSelect.disabled = true;
-      
-      if (jenisValue) {
-        // Load tujuan options from API
-        loadTujuanPerintahOptions(jenisValue, 'tujuanPerintahSelect');
-      }
-      
-      // Handle workflow type change with enhanced logic
-      handleWorkflowJenisChange();
-      
-      // Trigger validation
-      validateWorkflowForm();
-    });
-    
-    tujuanSelect.addEventListener('change', function() {
-      handleWorkflowJenisChange();
-      validateWorkflowForm();
-    });
+
+    jenisSelect.addEventListener('change', scheduleCreateDiJenisChange);
+    if (typeof jQuery !== 'undefined') {
+      jQuery('#jenisPerintahSelect')
+        .off('.diCreateJenis')
+        .on('select2:select.diCreateJenis', scheduleCreateDiJenisChange)
+        .on('select2:clear.diCreateJenis', scheduleCreateDiJenisChange);
+    }
+
+    tujuanSelect.addEventListener('change', scheduleCreateDiTujuanChange);
+    if (typeof jQuery !== 'undefined') {
+      jQuery('#tujuanPerintahSelect')
+        .off('.diCreateTujuan')
+        .on('change.diCreateTujuan select2:select.diCreateTujuan select2:clear.diCreateTujuan', scheduleCreateDiTujuanChange);
+    }
   }
 
   // Helper: get kode of selected jenis perintah
@@ -615,85 +855,220 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return opt ? opt.kode.toUpperCase() : '';
   }
 
+  /** Command types that require Select SPK (READY) — not TARIK */
+  const SPK_JENIS_CODES = new Set(['ANTAR', 'ANTAR_TARIK', 'RELOKASI', 'TUKAR']);
+  function needsSpkSelection() {
+    return SPK_JENIS_CODES.has(getSelectedJenisKode());
+  }
+
+  function contractOptionLabel(k, preferShort) {
+    const short = k.label_short || k.label || '';
+    if (preferShort && k.label_short) return `${k.label_short}`;
+    return `${k.label} (${k.unit_count} unit${k.unit_count === 1 ? '' : 's'})`;
+  }
+
+  function destroyTarikCustomerSelect2() {
+    if (typeof jQuery === 'undefined') return;
+    const $s = jQuery('#tarikCustomerSelect');
+    if ($s.length && $s.hasClass('select2-hidden-accessible')) {
+      $s.off('change.tarikDi select2:open.tarikDiZ');
+      $s.select2('destroy');
+    }
+  }
+
+  function ensureTarikCustomerSelect2() {
+    if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') {
+      setTimeout(ensureTarikCustomerSelect2, 100);
+      return;
+    }
+    const $s = jQuery('#tarikCustomerSelect');
+    const $modal = jQuery('#diCreateModal');
+    if (!$s.length) return;
+    if ($s.hasClass('select2-hidden-accessible')) return;
+
+    $s.select2({
+      placeholder: 'Cari / pilih customer...',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $modal,
+      ajax: {
+        url: '<?= base_url('marketing/rental/customers-dropdown') ?>',
+        type: 'GET',
+        dataType: 'json',
+        delay: 250,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: function (params) {
+          return { q: params.term || '' };
+        },
+        processResults: function (data) {
+          if (!data || !data.success || !data.data) return { results: [] };
+          return {
+            results: data.data.map(function (c) {
+              const name = c.customer_name || '';
+              const code = c.customer_code ? ' (' + c.customer_code + ')' : '';
+              return { id: c.id, text: name + code };
+            })
+          };
+        },
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+
+    $s.off('change.tarikDi').on('change.tarikDi', function () {
+      const v = jQuery(this).val();
+      const pid = document.getElementById('pelanggan_id');
+      if (pid) pid.value = v || '';
+      const ks = document.getElementById('kontrakSelect');
+      if (ks) ks.innerHTML = '<option value="">-- Memuat kontrak... --</option>';
+      loadKontrakOptionsForTarik(v);
+      const jk = getSelectedJenisKode();
+      if (jk === 'ANTAR_TARIK' || jk === 'TUKAR') {
+        const tarikList = document.getElementById('diTarikUnitList');
+        if (tarikList) tarikList.innerHTML = '<div class="text-muted small">Pilih kontrak...</div>';
+        const tarikCount = document.getElementById('tarikCount');
+        if (tarikCount) tarikCount.textContent = '0';
+      } else {
+        const tl = document.getElementById('diTarikOnlyList');
+        if (tl) tl.innerHTML = '<div class="text-muted small">Pilih kontrak...</div>';
+        const tc = document.getElementById('tarikOnlyCount');
+        if (tc) tc.textContent = '0';
+      }
+    });
+
+    $s.off('select2:open.tarikDiZ').on('select2:open.tarikDiZ', function () {
+      jQuery('.select2-dropdown').last().css('z-index', 10060);
+    });
+  }
+
   // Enhanced workflow change handler with TARIK, TUKAR, and ANTAR+TARIK support
   function handleWorkflowJenisChange() {
     const jenisSelect = document.getElementById('jenisPerintahSelect');
     const jenisText = jenisSelect.selectedOptions[0]?.textContent || '';
     const jenisKode = getSelectedJenisKode();
-    
-    // Use kode-based detection (more reliable than text)
+
     const isAntarTarikWorkflow = jenisKode === 'ANTAR_TARIK';
     const isTukarWorkflow = jenisKode === 'TUKAR';
-    const isTukarLikeWorkflow = isTukarWorkflow || isAntarTarikWorkflow; // both use same 2-panel UI
+    const isTukarLikeWorkflow = isTukarWorkflow || isAntarTarikWorkflow;
     const isTarikWorkflow = jenisKode === 'TARIK';
-    
-    console.log('Workflow changed:', { jenisText, jenisKode, isTukarLikeWorkflow, isTarikWorkflow });
-    
-    // Get all relevant sections
+    const showSpk = needsSpkSelection();
+
+    if (!isTarikWorkflow) {
+      destroyTarikCustomerSelect2();
+    }
+
+    console.log('Workflow changed:', { jenisText, jenisKode, isTukarLikeWorkflow, isTarikWorkflow, showSpk });
+
     const spkSection = document.getElementById('spkSelectionSection');
     const kontrakSelection = document.getElementById('diKontrakSelection');
     const tukarWorkflow = document.getElementById('diTukarWorkflow');
     const tarikOnlySection = document.getElementById('diTarikOnlySection');
+    const tarikCustomerSection = document.getElementById('tarikCustomerSection');
     const standardUnits = document.getElementById('diUnitsSection');
     const spkPick = document.getElementById('spkPick');
-    
-    // Update alert text based on mode
+
     const modeLabel = document.getElementById('diTukarWorkflowMode');
     if (modeLabel) {
       modeLabel.textContent = isAntarTarikWorkflow ? 'Mode ANTAR+TARIK:' : 'Mode TUKAR:';
     }
 
+    if (!jenisKode) {
+      spkSection.style.display = 'none';
+      spkPick.removeAttribute('required');
+      if (tarikCustomerSection) tarikCustomerSection.style.display = 'none';
+      kontrakSelection.style.display = 'none';
+      tukarWorkflow.style.display = 'none';
+      tarikOnlySection.style.display = 'none';
+      standardUnits.style.display = 'none';
+      return;
+    }
+
     if (isTarikWorkflow) {
-      // TARIK workflow: No SPK needed, only kontrak and units
       spkSection.style.display = 'none';
       spkPick.removeAttribute('required');
       spkPick.value = '';
-      
+
+      if (tarikCustomerSection) tarikCustomerSection.style.display = 'block';
       kontrakSelection.style.display = 'block';
       tarikOnlySection.style.display = 'block';
       tukarWorkflow.style.display = 'none';
       standardUnits.style.display = 'none';
-      
-      // Load kontrak options for TARIK
-      loadKontrakOptionsForTarik();
-      
+
+      ensureTarikCustomerSelect2();
+      const tc = document.getElementById('tarikCustomerSelect');
+      const cid = tc && tc.value ? tc.value : '';
+      loadKontrakOptionsForTarik(cid || 0);
+
     } else if (isTukarLikeWorkflow) {
-      // TUKAR / ANTAR+TARIK workflow: SPK → Kontrak → Unit TARIK + Unit KIRIM
-      spkSection.style.display = 'block';
-      spkPick.setAttribute('required', 'required');
-      
+      if (tarikCustomerSection) tarikCustomerSection.style.display = isAntarTarikWorkflow ? 'block' : 'none';
+      spkSection.style.display = showSpk ? 'block' : 'none';
+      if (showSpk) spkPick.setAttribute('required', 'required');
+      else {
+        spkPick.removeAttribute('required');
+        spkPick.value = '';
+      }
+
       kontrakSelection.style.display = 'block';
       tukarWorkflow.style.display = 'block';
       tarikOnlySection.style.display = 'none';
-      standardUnits.style.display = 'block'; // Tampilkan KIRIM units dari SPK
-      
-      // Load kontrak only if SPK already selected (has customer_id)
-      if (pelangganIdInput && pelangganIdInput.value) {
+      standardUnits.style.display = showSpk ? 'block' : 'none';
+
+      if (isAntarTarikWorkflow) {
+        ensureTarikCustomerSelect2();
+        const tc = document.getElementById('tarikCustomerSelect');
+        const cid = tc && tc.value ? tc.value : '';
+        if (cid) {
+          loadKontrakOptionsForTarik(cid);
+        } else if (pelangganIdInput && pelangganIdInput.value) {
+          loadKontrakOptionsForTarik(pelangganIdInput.value);
+        } else {
+          const kontrakSelect = document.getElementById('kontrakSelect');
+          if (kontrakSelect) kontrakSelect.innerHTML = '<option value="">-- Pilih customer terlebih dahulu --</option>';
+          const tarikList = document.getElementById('diTarikUnitList');
+          if (tarikList) tarikList.innerHTML = '<div class="text-muted small">Pilih customer, lalu kontrak.</div>';
+        }
+      } else if (pelangganIdInput && pelangganIdInput.value) {
         loadKontrakOptionsForTukar();
       } else {
-        // Prompt user to pick SPK first
         const kontrakSelect = document.getElementById('kontrakSelect');
         if (kontrakSelect) kontrakSelect.innerHTML = '<option value="">-- Pilih SPK terlebih dahulu --</option>';
         const tarikList = document.getElementById('diTarikUnitList');
         if (tarikList) tarikList.innerHTML = '<div class="text-muted small">Pilih SPK untuk memuat unit TARIK.</div>';
       }
-      
+
     } else {
-      // Standard workflow: SPK → Units
-      spkSection.style.display = 'block';
-      spkPick.setAttribute('required', 'required');
-      
+      if (tarikCustomerSection) tarikCustomerSection.style.display = 'none';
       kontrakSelection.style.display = 'none';
       tukarWorkflow.style.display = 'none';
       tarikOnlySection.style.display = 'none';
-      standardUnits.style.display = 'block';
+
+      if (showSpk) {
+        spkSection.style.display = 'block';
+        spkPick.setAttribute('required', 'required');
+        standardUnits.style.display = 'block';
+      } else {
+        spkSection.style.display = 'none';
+        spkPick.removeAttribute('required');
+        spkPick.value = '';
+        standardUnits.style.display = 'none';
+      }
     }
   }
 
-  // Load available contracts for TARIK workflow (includes EXPIRED)
-  async function loadKontrakOptionsForTarik() {
+  // Load available contracts for TARIK workflow (includes EXPIRED). Pass customerId to filter and use short labels.
+  async function loadKontrakOptionsForTarik(customerId) {
+    const kontrakSelect = document.getElementById('kontrakSelect');
+    if (!kontrakSelect) return;
+    const cid = parseInt(String(customerId), 10) || 0;
+    if (cid < 1) {
+      kontrakSelect.innerHTML = '<option value="">-- Pilih customer terlebih dahulu --</option>';
+      document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Pilih customer, lalu kontrak.</div>';
+      document.getElementById('tarikOnlyCount').textContent = '0';
+      return;
+    }
     try {
-      const response = await fetch('<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>', {
+      const url = '<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>' + '?customer_id=' + encodeURIComponent(String(cid));
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
@@ -701,27 +1076,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
       });
       const result = await response.json();
-      
+
       if (result.success) {
-        const kontrakSelect = document.getElementById('kontrakSelect');
-        
-        const optionsHtml = '<option value="">-- Select Contract --</option>' + 
-          result.data.map(k => `<option value="${k.id}">${k.label} (${k.unit_count} units)</option>`).join('');
-        
+        const useShort = true;
+        const optionsHtml = '<option value="">-- Pilih Kontrak --</option>' +
+          result.data.map(k => `<option value="${k.id}">${contractOptionLabel(k, useShort)}</option>`).join('');
+
         kontrakSelect.innerHTML = optionsHtml;
-        
-        // Setup kontrak change handler for TARIK
-        setupKontrakChangeForTarik();
-        
-        // Auto-select if kontrak_id is in URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        const preselectedKontrak = urlParams.get('kontrak_id');
-        if (preselectedKontrak) {
-          kontrakSelect.value = preselectedKontrak;
-          kontrakSelect.dispatchEvent(new Event('change'));
-        }
-        
-        console.log('Loaded', result.data.length, 'contract options for TARIK workflow');
+
+        console.log('Loaded', result.data.length, 'contract options for TARIK (customer', cid, ')');
       } else {
         console.error('Failed to load contract options:', result.message);
       }
@@ -747,15 +1110,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       if (result.success) {
         const kontrakSelect = document.getElementById('kontrakSelect');
-        
-        const optionsHtml = '<option value="">-- Pilih Kontrak Unit Lama --</option>' + 
-          result.data.map(k => `<option value="${k.id}">${k.label} (${k.unit_count} unit)</option>`).join('');
-        
+        const useShort = !!customerId;
+        const optionsHtml = '<option value="">-- Pilih Kontrak Unit Lama --</option>' +
+          result.data.map(k => `<option value="${k.id}">${contractOptionLabel(k, useShort)}</option>`).join('');
+
         kontrakSelect.innerHTML = optionsHtml;
-        
-        // Setup kontrak change handler for TUKAR
-        setupKontrakChangeHandler();
-        
+
         console.log('Loaded', result.data.length, 'contract options for TUKAR workflow (customer:', customerId, ')');
       } else {
         console.error('Failed to load contract options:', result.message);
@@ -765,48 +1125,68 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }
 
-  // Setup handler for kontrak selection change (TARIK workflow)
-  function setupKontrakChangeForTarik() {
+  function applyKontrakDetailToForm(kontrakId) {
+    const pid = document.getElementById('pelanggan_id');
+    return fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${kontrakId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(res => {
+        if (res && res.success === false) {
+          resetCustomerLocationSelection();
+          return;
+        }
+        const d = res.data || res;
+        document.getElementById('po_kontrak_nomor').value = d.no_kontrak || '';
+        document.getElementById('pelanggan').value = d.pelanggan || '';
+        const customerId = d.customer_id || '';
+        if (pid) pid.value = customerId;
+        loadCustomerLocationsByCustomer(customerId);
+      })
+      .catch(() => resetCustomerLocationSelection());
+  }
+
+  function onKontrakSelectChangeUnified() {
     const kontrakSelect = document.getElementById('kontrakSelect');
-    
-    kontrakSelect.addEventListener('change', function() {
-      if (this.value) {
-        // Get selected option text which contains "no_kontrak - pelanggan"
-        const selectedOption = this.selectedOptions[0];
-        const optionText = selectedOption.textContent;
-        
-        // Parse no_kontrak and pelanggan from option text
-        const parts = optionText.split(' - ');
-        const noKontrak = parts[0] || '';
-        const pelanggan = parts[1] || '';
-        
-        // Auto-populate hidden fields for backend validation
-        document.getElementById('po_kontrak_nomor').value = noKontrak;
-        document.getElementById('pelanggan').value = pelanggan;
-        fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${this.value}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(r => r.json())
-          .then(res => {
-            const customerId = res?.data?.customer_id || res?.customer_id || '';
-            pelangganIdInput.value = customerId;
-            loadCustomerLocationsByCustomer(customerId);
-          })
-          .catch(() => resetCustomerLocationSelection());
-        
-        console.log(`TARIK Kontrak selected: ${noKontrak} - ${pelanggan}`);
-        
-        // Load TARIK units only for TARIK workflow
-        loadTarikOnlyUnits(this.value);
-      } else {
-        // Reset hidden fields and list
-        document.getElementById('po_kontrak_nomor').value = '';
-        document.getElementById('pelanggan').value = '';
-        pelangganIdInput.value = '';
-        resetCustomerLocationSelection();
-        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
+    const id = kontrakSelect.value;
+    const jk = getSelectedJenisKode();
+    const pid = document.getElementById('pelanggan_id');
+    const createTarikEl = document.getElementById('createTarikContractId');
+
+    if (!id) {
+      document.getElementById('po_kontrak_nomor').value = '';
+      document.getElementById('pelanggan').value = '';
+      if (pid) pid.value = '';
+      if (createTarikEl) createTarikEl.value = '';
+      resetCustomerLocationSelection();
+      if (jk === 'TARIK') {
+        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Pilih kontrak...</div>';
         document.getElementById('tarikOnlyCount').textContent = '0';
+      } else if (jk === 'TUKAR' || jk === 'ANTAR_TARIK') {
+        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Pilih kontrak...</div>';
+        document.getElementById('tarikCount').textContent = '0';
+      }
+      return;
+    }
+
+    if (jk === 'TUKAR' || jk === 'ANTAR_TARIK') {
+      if (createTarikEl) createTarikEl.value = id;
+    }
+
+    applyKontrakDetailToForm(id).then(() => {
+      if (jk === 'TARIK') {
+        loadTarikOnlyUnits(id);
+      } else if (jk === 'TUKAR' || jk === 'ANTAR_TARIK') {
+        loadTukarUnits(id);
       }
     });
   }
+
+  function bindKontrakSelectUnifiedOnce() {
+    const ks = document.getElementById('kontrakSelect');
+    if (!ks || ks.dataset.diKontrakBound) return;
+    ks.dataset.diKontrakBound = '1';
+    ks.addEventListener('change', onKontrakSelectChangeUnified);
+  }
+  bindKontrakSelectUnifiedOnce();
 
   // Load units for TARIK-only workflow
   async function loadTarikOnlyUnits(kontrakId) {
@@ -840,52 +1220,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.error('Error loading TARIK units:', error);
       document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-danger small">Error loading units</div>';
     }
-  }
-
-  // Setup handler for kontrak selection change (TUKAR workflow)
-  function setupKontrakChangeHandler() {
-    const kontrakSelect = document.getElementById('kontrakSelect');
-    
-    kontrakSelect.addEventListener('change', async function() {
-      if (this.value) {
-        // Get selected option text which contains "no_kontrak - pelanggan"
-        const selectedOption = this.selectedOptions[0];
-        const optionText = selectedOption.textContent;
-        
-        // Parse no_kontrak and pelanggan from option text
-        const parts = optionText.split(' - ');
-        const noKontrak = parts[0] || '';
-        const pelanggan = parts[1] || '';
-        
-        // Auto-populate hidden fields for backend validation
-        document.getElementById('po_kontrak_nomor').value = noKontrak;
-        document.getElementById('pelanggan').value = pelanggan;
-        fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${this.value}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(r => r.json())
-          .then(res => {
-            const customerId = res?.data?.customer_id || res?.customer_id || '';
-            pelangganIdInput.value = customerId;
-            loadCustomerLocationsByCustomer(customerId);
-          })
-          .catch(() => resetCustomerLocationSelection());
-        
-        console.log(`Kontrak selected: ${noKontrak} - ${pelanggan}`);
-        
-        // Store tarik_contract_id for backend
-        document.getElementById('createTarikContractId').value = this.value;
-
-        // Load TARIK units (current units in kontrak) for TUKAR workflow
-        loadTukarUnits(this.value);
-      } else {
-        // Reset hidden fields and unit list
-        document.getElementById('po_kontrak_nomor').value = '';
-        document.getElementById('pelanggan').value = '';
-        pelangganIdInput.value = '';
-        resetCustomerLocationSelection();
-        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
-        document.getElementById('tarikCount').textContent = '0';
-      }
-    });
   }
 
   // Load units for TUKAR workflow: hanya units dari kontrak yang akan ditarik
@@ -1061,6 +1395,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('diCreateModal').addEventListener('hidden.bs.modal', function() {
     const form = document.getElementById('diCreateForm');
     if (form) {
+      destroyDiWorkflowCommandSelect2();
+      lastTujuanPerintahList = [];
+      resetDiWorkflowHelpTexts();
       form.reset();
       form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
         el.classList.remove('is-valid', 'is-invalid');
@@ -1076,6 +1413,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
         resetCustomerLocationSelection();
       }
       
+      const spkSec = document.getElementById('spkSelectionSection');
+      if (spkSec) spkSec.style.display = 'none';
+      const tarikCustSec = document.getElementById('tarikCustomerSection');
+      if (tarikCustSec) tarikCustSec.style.display = 'none';
+      destroyTarikCustomerSelect2();
+      const tarikCustSel = document.getElementById('tarikCustomerSelect');
+      if (tarikCustSel) tarikCustSel.innerHTML = '<option value=""></option>';
+      const ksReset = document.getElementById('kontrakSelect');
+      if (ksReset) ksReset.innerHTML = '<option value="">-- Pilih Kontrak --</option>';
+
       // Reset workflow sections with correct IDs
       document.getElementById('diKontrakSelection').style.display = 'none';
       document.getElementById('diTukarWorkflow').style.display = 'none';
@@ -1116,7 +1463,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
               jenisSelect.value = tarikOption.value;
               jenisSelect.dispatchEvent(new Event('change'));
               
-              // Wait for tujuan dropdown to populate
               await new Promise(r => setTimeout(r, 500));
               const tujuanSelect = document.getElementById('tujuanPerintahSelect');
               if (tujuanSelect) {
@@ -1124,6 +1470,43 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 if (habisOption) {
                   tujuanSelect.value = habisOption.value;
                   tujuanSelect.dispatchEvent(new Event('change'));
+                }
+              }
+
+              if (kontrakId) {
+                try {
+                  const kr = await fetch(`<?= base_url('marketing/rental/get-kontrak/') ?>${kontrakId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json());
+                  const d = kr.data || kr;
+                  const cid = d.customer_id;
+                  if (cid) {
+                    await new Promise(function (r) { setTimeout(r, 150); });
+                    ensureTarikCustomerSelect2();
+                    const $tcs = typeof jQuery !== 'undefined' ? jQuery('#tarikCustomerSelect') : null;
+                    const pid = document.getElementById('pelanggan_id');
+                    if ($tcs && $tcs.length) {
+                      const label = d.pelanggan || ('Customer #' + cid);
+                      if (!$tcs.find('option[value="' + String(cid) + '"]').length) {
+                        $tcs.append(new Option(label, String(cid), true, true));
+                      }
+                      $tcs.val(String(cid)).trigger('change');
+                    } else if (document.getElementById('tarikCustomerSelect')) {
+                      const tcs = document.getElementById('tarikCustomerSelect');
+                      if (!Array.from(tcs.options).some(function (o) { return o.value === String(cid); })) {
+                        tcs.appendChild(new Option(d.pelanggan || ('Customer #' + cid), String(cid), true, true));
+                      }
+                      tcs.value = String(cid);
+                      tcs.dispatchEvent(new Event('change'));
+                    }
+                    if (pid) pid.value = String(cid);
+                    await loadKontrakOptionsForTarik(cid);
+                    const ksel = document.getElementById('kontrakSelect');
+                    if (ksel && Array.from(ksel.options).some(o => o.value === kontrakId)) {
+                      ksel.value = kontrakId;
+                      ksel.dispatchEvent(new Event('change'));
+                    }
+                  }
+                } catch (e) {
+                  console.error('autoOpenTarikModal kontrak prefetch', e);
                 }
               }
             }
@@ -1727,7 +2110,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // If current workflow is TUKAR or ANTAR+TARIK, reload contracts filtered by this customer
       const _jenisKode = getSelectedJenisKode();
       if (_jenisKode === 'TUKAR' || _jenisKode === 'ANTAR_TARIK') {
-        loadKontrakOptionsForTukar();
+        if (_jenisKode === 'ANTAR_TARIK') {
+          const tarikCustomerSelect = document.getElementById('tarikCustomerSelect');
+          const selectedCustomerId = tarikCustomerSelect && tarikCustomerSelect.value
+            ? tarikCustomerSelect.value
+            : (selectedSpk.customer_id || '');
+          loadKontrakOptionsForTarik(selectedCustomerId);
+        } else {
+          loadKontrakOptionsForTukar();
+        }
         // Update label to clarify this is KIRIM section
         const lbl = document.getElementById('itemSelectionLabel');
         if (lbl) lbl.innerHTML = '&#128228; Unit yang Dikirim <span class="badge badge-soft-blue ms-1">KIRIM</span> <small class="text-muted fw-normal">(opsional)</small>';
@@ -1925,7 +2316,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     
     // Enhanced validation for different workflows
     if (isTarikWorkflow) {
-      // TARIK workflow: Only needs kontrak and units to tarik
+      const tarikCust = document.getElementById('tarikCustomerSelect');
+      if (!tarikCust || !tarikCust.value) {
+        OptimaNotify.warning('Pilih customer terlebih dahulu.');
+        return;
+      }
+      const kontrakEl = document.getElementById('kontrakSelect');
+      if (!kontrakEl || !kontrakEl.value) {
+        OptimaNotify.warning('Pilih kontrak.');
+        return;
+      }
       const tarikUnits = Array.from(document.querySelectorAll('input[name="tarik_units[]"]:checked'));
       
       if (!tarikUnits.length) {
@@ -1941,6 +2341,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } else if (isTukarLikeWorkflow) {
       // TUKAR / ANTAR+TARIK workflow: SPK (KIRIM) + kontrak + TARIK units
       // KIRIM bisa 0 unit (boleh kosong), TARIK wajib minimal 1
+      if (isAntarTarikWorkflow) {
+        const tarikCust = document.getElementById('tarikCustomerSelect');
+        if (!tarikCust || !tarikCust.value) {
+          OptimaNotify.warning('Pilih customer terlebih dahulu untuk ANTAR+TARIK.');
+          return;
+        }
+      }
       const tarikUnits = Array.from(document.querySelectorAll('.unit-check-tarik:checked'));
       
       if (!tarikUnits.length) {
@@ -1964,7 +2371,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.log((isAntarTarikWorkflow ? 'ANTAR+TARIK' : 'TUKAR') + ' Workflow - KIRIM:', kirimUnits.length, 'unit, TARIK:', tarikUnits.length, 'unit dari kontrak', kontrakId);
       
     } else {
-      // Standard workflow validation
+      if (!needsSpkSelection()) {
+        OptimaNotify.warning('Jenis perintah ini tidak memakai pemilihan SPK pada form ini. Gunakan ANTAR/RELOKASI/TUKAR atau alur TARIK sesuai kebutuhan.');
+        return;
+      }
+      const spkPickEl = document.getElementById('spkPick');
+      if (!spkPickEl || !spkPickEl.value) {
+        OptimaNotify.warning('Pilih SPK (READY).');
+        return;
+      }
       const list = document.getElementById('diUnitList');
       if (document.getElementById('diUnitsSection').style.display !== 'none'){
         const selected = list ? Array.from(list.querySelectorAll('.unit-check:checked')) : [];

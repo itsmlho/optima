@@ -1167,6 +1167,45 @@ class Kontrak extends BaseController
     }
 
     /**
+     * DI penarikan (jenis TARIK) yang terhubung ke kontrak ini — untuk menyembunyikan tombol "Buat DI Penarikan".
+     * Mengutamakan delivery_instructions.contract_id; fallback PO untuk data lama tanpa contract_id.
+     */
+    protected function findTarikRetrievalDiForContract(array $contract): ?array
+    {
+        $cid = (int)($contract['id'] ?? 0);
+        if ($cid <= 0) {
+            return null;
+        }
+
+        $noKontrak = trim((string)($contract['no_kontrak'] ?? ''));
+        $customerPo = trim((string)($contract['customer_po_number'] ?? ''));
+        $poCandidates = array_values(array_unique(array_filter([$noKontrak, $customerPo], static function ($v) {
+            return $v !== '';
+        })));
+
+        $builder = $this->db->table('delivery_instructions di')
+            ->select('di.id, di.nomor_di, di.status_di')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'inner')
+            ->where('UPPER(TRIM(jpk.kode))', 'TARIK');
+
+        $builder->groupStart()->where('di.contract_id', $cid);
+        if ($poCandidates !== []) {
+            $builder->orGroupStart()
+                ->groupStart()
+                    ->where('di.contract_id IS NULL', null, false)
+                    ->orWhere('di.contract_id', 0)
+                ->groupEnd()
+                ->whereIn('di.po_kontrak_nomor', $poCandidates)
+                ->groupEnd();
+        }
+        $builder->groupEnd();
+
+        $row = $builder->orderBy('di.id', 'DESC')->limit(1)->get()->getRowArray();
+
+        return $row ?: null;
+    }
+
+    /**
      * Contract detail page
      */
     public function detail($id)
@@ -1185,9 +1224,15 @@ class Kontrak extends BaseController
             return redirect()->to('marketing/kontrak')->with('error', 'Kontrak tidak ditemukan.');
         }
 
+        $tarikRetrievalDi = null;
+        if (in_array($contract['status'] ?? '', ['ACTIVE', 'EXPIRED'], true)) {
+            $tarikRetrievalDi = $this->findTarikRetrievalDiForContract($contract);
+        }
+
         return view('marketing/kontrak_detail', [
-            'title'    => 'Detail Kontrak — ' . ($contract['no_kontrak'] ?? '#' . $id),
-            'contract' => $contract,
+            'title'            => 'Detail Kontrak — ' . ($contract['no_kontrak'] ?? '#' . $id),
+            'contract'         => $contract,
+            'tarikRetrievalDi' => $tarikRetrievalDi,
         ]);
     }
 

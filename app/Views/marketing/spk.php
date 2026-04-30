@@ -416,7 +416,7 @@ $can_export = $permissions['export'];
         </div>
     </div>
 
-    <!-- Create DI Modal -->
+    <!-- Create DI Modal (aligned with Marketing > DI > Create DI: command type/purpose first, badge Select2, deskripsi bantuan) -->
     <div class="modal fade modal-wide" id="diModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content">
@@ -425,28 +425,48 @@ $can_export = $permissions['export'];
                     <div class="modal-body">
                         <input type="hidden" name="spk_id" id="diSpkId">
                         <input type="hidden" name="tarik_contract_id" id="spkTarikContractId">
-                        <div class="mb-2"><label class="form-label">SPK No.</label><input class="form-control" id="diNoSpk" readonly></div>
-                        <div class="mb-2"><label class="form-label">Contract/PO</label><input class="form-control" id="diPoNo" readonly></div>
-                        <div class="mb-2"><label class="form-label">Customer</label><input class="form-control" id="diPelanggan" readonly></div>
-                        <div class="mb-2"><label class="form-label">Location</label><input class="form-control" id="diLokasi" readonly></div>
-                        
-                        <!-- NEW WORKFLOW: SPK Type -->
-                        <div class="mb-2">
-                            <label class="form-label">SPK Type <span class="text-danger">*</span></label>
-                            <select class="form-select" name="jenis_perintah_kerja_id" id="spkJenisPerintah" required>
-                                <option value="">-- Select SPK Type --</option>
-                                <!-- Options will be loaded dynamically -->
-                            </select>
-                            <div class="form-text">Determine the main action to be performed by the operational team</div>
+
+                        <!-- Step 1: Jenis & tujuan (sama seperti di.php) -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
+                                <select class="form-select" name="jenis_perintah_kerja_id" id="spkJenisPerintah" required>
+                                    <option value="">-- <?= lang('Marketing.select_command_type') ?> --</option>
+                                </select>
+                                <div id="spkHelpJenisPerintah" class="di-workflow-help form-text small border-start border-3 border-primary ps-2 mt-1 text-muted"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
+                                <select class="form-select" name="tujuan_perintah_kerja_id" id="spkTujuanPerintah" required disabled>
+                                    <option value="">-- <?= lang('Marketing.select_command_type_first') ?> --</option>
+                                </select>
+                                <div id="spkHelpTujuanPerintah" class="di-workflow-help form-text small border-start border-3 border-secondary ps-2 mt-1 text-muted"></div>
+                            </div>
                         </div>
-                        
-                        <!-- NEW WORKFLOW: SPK Purpose -->
-                        <div class="mb-2">
-                            <label class="form-label">SPK Purpose <span class="text-danger">*</span></label>
-                            <select class="form-select" name="tujuan_perintah_kerja_id" id="spkTujuanPerintah" required disabled>
-                                <option value="">-- Select SPK Type first --</option>
-                            </select>
-                            <div class="form-text">Reason/context for this SPK</div>
+
+                        <!-- Ringkasan SPK / kontrak (Customer di atas Contract — alur pilih customer → kontrak) -->
+                        <div class="card border-0 bg-light mb-3">
+                            <div class="card-body py-3 px-3">
+                                <div class="small text-uppercase text-muted fw-semibold mb-2"><?= lang('Marketing.contract_po') ?> / SPK</div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0 text-muted"><?= lang('Marketing.customer') ?></label>
+                                        <input class="form-control form-control-sm" id="diPelanggan" readonly tabindex="-1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0 text-muted"><?= lang('Marketing.po_contract') ?? 'Contract/PO' ?></label>
+                                        <input class="form-control form-control-sm" id="diPoNo" readonly tabindex="-1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0 text-muted">SPK No.</label>
+                                        <input class="form-control form-control-sm" id="diNoSpk" readonly tabindex="-1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0 text-muted"><?= lang('Marketing.location') ?></label>
+                                        <input class="form-control form-control-sm" id="diLokasi" readonly tabindex="-1">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- EXCHANGE Workflow Section: PULL units from contract -->
@@ -454,6 +474,15 @@ $can_export = $permissions['export'];
                             <div class="alert alert-info">
                                 <i class="fas fa-exchange-alt"></i> 
                                 <strong>EXCHANGE Workflow:</strong> Pilih kontrak &amp; unit yang akan ditarik
+                            </div>
+
+                            <!-- ANTAR+TARIK: choose customer first, then contract -->
+                            <div class="mb-2 d-none" id="spkTarikCustomerSection">
+                                <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="spkTarikCustomerSelect">
+                                    <option value="">-- Pilih Customer --</option>
+                                </select>
+                                <small class="text-muted">Pilih customer terlebih dahulu, lalu pilih kontrak unit lama.</small>
                             </div>
                             
                             <!-- Pilih kontrak unit lama -->
@@ -509,13 +538,13 @@ $can_export = $permissions['export'];
                                 <div class="form-text" id="diPickHelp">Check the units you want to include in this DI.</div>
                             </div>
                         </div>
-                        <!-- Customer Location - Required for DI -->
+                        <!-- Customer Location - Required for DI (sama seperti di.php) -->
                         <div class="mb-2">
-                            <label class="form-label">Customer Location <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('App.customer_location') ?> <span class="text-danger">*</span></label>
                             <select class="form-select" name="customer_location_id" id="customerLocationSelect" required disabled>
-                                <option value="">-- Select Location --</option>
+                                <option value="">-- <?= lang('Marketing.select_location') ?> --</option>
                             </select>
-                            <small class="text-muted">Select delivery location for this DI</small>
+                            <small class="text-muted">Lokasi customer wajib dipilih pada tahap DI.</small>
                         </div>
 
                         <div class="row g-2">
@@ -532,6 +561,36 @@ $can_export = $permissions['export'];
             </div>
         </div>
     </div>
+
+    <style>
+      /* SPK Create DI modal — Command Type / Purpose Select2 (badge + deskripsi), konsisten dengan marketing/di */
+      #diModal .select2-container--default .select2-results__option .di-workflow-opt {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 2px 0;
+      }
+      #diModal .select2-container--default .select2-selection--single {
+        min-height: 38px;
+        border-radius: 0.375rem;
+      }
+      #diModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        line-height: 1.35;
+      }
+      #diModal .select2-container--default .select2-selection--single .di-workflow-opt .badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      #diModal .di-workflow-help {
+        min-height: 0;
+        white-space: pre-line;
+        line-height: 1.4;
+      }
+    </style>
 
     <!-- Link SPK to Contract Modal -->
     <div class="modal fade" id="linkContractModal" tabindex="-1">
@@ -597,6 +656,96 @@ $can_export = $permissions['export'];
         const extraClass = options.class || '';
         const icon = options.icon ? `<i class="${options.icon} me-1"></i>` : '';
         return `<span class="badge ${cls} ${extraClass}">${icon}${text}</span>`;
+    }
+
+    /* ── Create DI modal (SPK): Select2 badge + deskripsi — selaras marketing/di ── */
+    function escapeHtmlWorkflow(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+    function workflowBadgeSoftClass(kode) {
+        const k = String(kode || '').toUpperCase();
+        if (k.startsWith('ANTAR')) return 'badge-soft-cyan';
+        if (k.startsWith('TARIK')) return 'badge-soft-orange';
+        if (k.startsWith('TUKAR')) return 'badge-soft-purple';
+        if (k.startsWith('RELOKASI')) return 'badge-soft-green';
+        return 'badge-soft-blue';
+    }
+    function formatWorkflowSelectOptionSelection(data) {
+        if (typeof jQuery === 'undefined') return data.text;
+        if (!data.id) return data.text;
+        const el = data.element;
+        if (!el) return data.text;
+        const kode = el.getAttribute('data-kode');
+        const nama = el.getAttribute('data-nama');
+        if (!kode) return data.text;
+        const bc = workflowBadgeSoftClass(kode);
+        const html = '<span class="di-workflow-opt d-flex align-items-center gap-2 flex-wrap">' +
+            '<span class="badge ' + bc + '">' + escapeHtmlWorkflow(kode) + '</span>' +
+            '<span class="text-body">' + escapeHtmlWorkflow(nama) + '</span></span>';
+        return jQuery(html);
+    }
+    function formatWorkflowSelectOptionResult(data) {
+        if (typeof jQuery === 'undefined') return data.text;
+        if (!data.id) return data.text;
+        const el = data.element;
+        if (!el) return data.text;
+        const kode = el.getAttribute('data-kode');
+        const nama = el.getAttribute('data-nama');
+        const desk = (el.getAttribute('data-deskripsi') || '').trim();
+        if (!kode) return data.text;
+        const bc = workflowBadgeSoftClass(kode);
+        let html = '<span class="di-workflow-opt di-workflow-opt--open">' +
+            '<span class="d-flex align-items-center gap-2 flex-wrap">' +
+            '<span class="badge ' + bc + '">' + escapeHtmlWorkflow(kode) + '</span>' +
+            '<span class="text-body fw-medium">' + escapeHtmlWorkflow(nama) + '</span></span>';
+        if (desk) {
+            html += '<span class="small text-muted d-block mt-1 ps-0" style="max-width:28rem;">' +
+                escapeHtmlWorkflow(desk).replace(/\n/g, '<br>') + '</span>';
+        }
+        html += '</span>';
+        return jQuery(html);
+    }
+    function destroySpkDiWorkflowSelect2() {
+        if (typeof jQuery === 'undefined') return;
+        ['#spkJenisPerintah', '#spkTujuanPerintah'].forEach(function (sel) {
+            const $el = jQuery(sel);
+            if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+                $el.off('select2:open.spkDiWorkflowZ');
+                $el.select2('destroy');
+            }
+        });
+    }
+    function initSpkDiWorkflowCommandSelect2(selectId) {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+            setTimeout(function () { initSpkDiWorkflowCommandSelect2(selectId); }, 80);
+            return;
+        }
+        const $el = jQuery('#' + selectId);
+        if (!$el.length) return;
+        if ($el.hasClass('select2-hidden-accessible')) {
+            $el.select2('destroy');
+        }
+        const $modal = jQuery('#diModal');
+        const isTujuan = selectId.indexOf('tujuan') !== -1;
+        const phJenis = <?= json_encode('-- ' . lang('Marketing.select_command_type') . ' --') ?>;
+        const phTujuan = <?= json_encode('-- ' . lang('Marketing.select_command') . ' --') ?>;
+        const phTujuanLocked = <?= json_encode('-- ' . lang('Marketing.select_command_type_first') . ' --') ?>;
+        const disabled = $el.prop('disabled');
+        $el.select2({
+            width: '100%',
+            dropdownParent: $modal,
+            placeholder: isTujuan ? (disabled ? phTujuanLocked : phTujuan) : phJenis,
+            allowClear: false,
+            templateResult: formatWorkflowSelectOptionResult,
+            templateSelection: formatWorkflowSelectOptionSelection,
+            escapeMarkup: function (markup) { return markup; }
+        });
+        $el.off('select2:open.spkDiWorkflowZ').on('select2:open.spkDiWorkflowZ', function () {
+            jQuery('.select2-dropdown').last().css('z-index', 10060);
+        });
     }
 
     /** Optima global assistant: toast / Swal — avoid native alert() */
@@ -1138,6 +1287,11 @@ $can_export = $permissions['export'];
                         // Load customer locations if customer_id is available
                         if (j.customer_id) {
                             loadCustomerLocations(j.customer_id);
+                            const tarikCustomerSelect = document.getElementById('spkTarikCustomerSelect');
+                            if (tarikCustomerSelect) {
+                                const label = j.pelanggan || j.customer_name || spkData.pelanggan || ('Customer #' + j.customer_id);
+                                tarikCustomerSelect.innerHTML = `<option value="">-- Pilih Customer --</option><option value="${j.customer_id}" selected>${label}</option>`;
+                            }
                         } else {
                             const locSel = document.getElementById('customerLocationSelect');
                             if (locSel) {
@@ -1244,9 +1398,6 @@ $can_export = $permissions['export'];
         },
         debug: true
     });
-    
-    // Initialize SPK workflow dropdowns
-    setupSpkWorkflowDropdowns();
     
     // Add filter card click listeners
     document.querySelectorAll('.filter-card').forEach(card => {
@@ -2444,58 +2595,60 @@ $can_export = $permissions['export'];
                 });
         });
         
-        // Add real-time validation for DI form (updated for workflow)
-        function validateDiForm() {
+        /** Validasi submit Create DI — dipanggil ulang setelah Select2 / async tujuan */
+        let spkDiCheckValidity = function () {};
+
+        function bindSpkDiFormValidationOnce() {
+            const form = document.getElementById('diForm');
+            if (!form || form.dataset.diValidateBound === '1') return;
+            form.dataset.diValidateBound = '1';
             const jenisSelect = document.getElementById('spkJenisPerintah');
             const tujuanSelect = document.getElementById('spkTujuanPerintah');
-            const submitBtn = document.querySelector('#diForm [type="submit"]');
-            
+            const submitBtn = form.querySelector('[type="submit"]');
             if (!jenisSelect || !tujuanSelect || !submitBtn) return;
-            
+
             function checkValidity() {
                 const jenisValid = jenisSelect.value.trim() !== '';
-                const tujuanValid = tujuanSelect.value.trim() !== '';
+                const tujuanValid = !tujuanSelect.disabled && tujuanSelect.value.trim() !== '';
                 const isValid = jenisValid && tujuanValid;
-                
-                // Update visual feedback
                 jenisSelect.classList.toggle('is-invalid', !jenisValid && jenisSelect.value !== '');
                 jenisSelect.classList.toggle('is-valid', jenisValid);
-                
-                tujuanSelect.classList.toggle('is-invalid', !tujuanValid && tujuanSelect.value !== '');
+                tujuanSelect.classList.toggle('is-invalid', !tujuanValid && !tujuanSelect.disabled && tujuanSelect.value !== '');
                 tujuanSelect.classList.toggle('is-valid', tujuanValid);
-                
-                // Enable/disable submit button
                 submitBtn.disabled = !isValid;
             }
-            
+            spkDiCheckValidity = checkValidity;
+
             jenisSelect.addEventListener('change', checkValidity);
             tujuanSelect.addEventListener('change', checkValidity);
-            
-            // Initial check
+            if (typeof jQuery !== 'undefined') {
+                jQuery('#spkJenisPerintah').on('select2:select.spkDiVal select2:clear.spkDiVal', checkValidity);
+                jQuery('#spkTujuanPerintah').on('select2:select.spkDiVal select2:clear.spkDiVal', checkValidity);
+            }
             checkValidity();
         }
-        
-        // Initialize validation when modal is shown
-        document.getElementById('diModal').addEventListener('shown.bs.modal', validateDiForm);
-        
-        // Reset validation when modal is hidden
-        document.getElementById('diModal').addEventListener('hidden.bs.modal', function() {
+
+        document.getElementById('diModal').addEventListener('hidden.bs.modal', function () {
             const form = document.getElementById('diForm');
+            destroySpkDiWorkflowSelect2();
+            lastSpkTujuanPerintahList = [];
+            resetSpkWorkflowHelpTexts();
             if (form) {
                 form.reset();
                 form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
                     el.classList.remove('is-valid', 'is-invalid');
                 });
-                
-                // Reset submit button
                 const submitBtn = form.querySelector('[type="submit"]');
                 if (submitBtn) submitBtn.disabled = true;
-                
-                // Reset location select
                 const locSel = document.getElementById('customerLocationSelect');
                 if (locSel) {
-                    locSel.innerHTML = '<option value="">-- Select Location --</option>';
+                    locSel.innerHTML = '<option value="">-- <?= esc(lang('Marketing.select_location'), 'js') ?> --</option>';
                     locSel.disabled = true;
+                }
+                const tu = document.getElementById('spkTujuanPerintah');
+                if (tu) {
+                    tu.innerHTML = '<option value="">-- <?= esc(lang('Marketing.select_command_type_first'), 'js') ?> --</option>';
+                    tu.disabled = true;
                 }
             }
         });
@@ -2506,7 +2659,65 @@ $can_export = $permissions['export'];
         
         // Variables to store workflow data
         let spkJenisPerintahOptions = [];
-        
+        let lastSpkTujuanPerintahList = [];
+
+        function resetSpkWorkflowHelpTexts() {
+            const hj = document.getElementById('spkHelpJenisPerintah');
+            const ht = document.getElementById('spkHelpTujuanPerintah');
+            if (hj) {
+                hj.innerHTML = '<span class="text-muted">Pilih jenis — penjelasan singkat dari master data.</span>';
+            }
+            if (ht) {
+                ht.innerHTML = '<span class="text-muted">Setelah jenis dipilih, pilih tujuan.</span>';
+            }
+        }
+
+        function updateSpkJenisPerintahHelp() {
+            const el = document.getElementById('spkHelpJenisPerintah');
+            if (!el) return;
+            const sel = document.getElementById('spkJenisPerintah');
+            const id = sel && sel.value;
+            if (!id) {
+                el.innerHTML = '<span class="text-muted">Pilih jenis — penjelasan singkat dari master data.</span>';
+                return;
+            }
+            const opt = spkJenisPerintahOptions.find(o => String(o.id) === String(id));
+            const d = opt && opt.deskripsi ? String(opt.deskripsi).trim() : '';
+            if (d) {
+                el.textContent = d;
+            } else {
+                el.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Deskripsi jenis ini kosong di master data.</span>';
+            }
+        }
+
+        function updateSpkTujuanPerintahHelp() {
+            const el = document.getElementById('spkHelpTujuanPerintah');
+            const sel = document.getElementById('spkTujuanPerintah');
+            if (!el || !sel) return;
+            if (sel.disabled) {
+                el.innerHTML = '<span class="text-muted"><?= esc(lang('Marketing.select_command_type_first'), 'js') ?></span>';
+                return;
+            }
+            if (!sel.value) {
+                el.innerHTML = '<span class="text-muted">Pilih tujuan — penjelasan singkat dari master data.</span>';
+                return;
+            }
+            const row = lastSpkTujuanPerintahList.find(r => String(r.id) === String(sel.value));
+            const d = row && row.deskripsi ? String(row.deskripsi).trim() : '';
+            if (d) {
+                el.textContent = d;
+            } else {
+                el.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Deskripsi tujuan ini kosong di master data.</span>';
+            }
+        }
+
+        function getSpkSelectedJenisKode() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            const selectedId = parseInt(jenisSelect && jenisSelect.value, 10);
+            const opt = spkJenisPerintahOptions.find(o => parseInt(o.id, 10) === selectedId);
+            return opt ? String(opt.kode).toUpperCase() : '';
+        }
+
         // Load jenis perintah from API for SPK modal
         async function loadSpkJenisPerintahOptions() {
             try {
@@ -2530,25 +2741,38 @@ $can_export = $permissions['export'];
             }
         }
         
-        // Populate jenis perintah dropdown for SPK modal
+        // Populate jenis perintah dropdown for SPK modal (+ Select2 badge seperti marketing/di)
         function populateSpkJenisPerintahDropdown() {
             const jenisSelect = document.getElementById('spkJenisPerintah');
-            
-            if (jenisSelect) {
-                jenisSelect.innerHTML = '<option value="">-- Select Command Type --</option>';
-                spkJenisPerintahOptions.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.id;
-                    optionElement.textContent = `${option.kode} - ${option.nama}`;
-                    optionElement.title = option.deskripsi;
-                    jenisSelect.appendChild(optionElement);
-                });
-            }
+            if (!jenisSelect) return;
+
+            jenisSelect.innerHTML = '<option value="">-- <?= esc(lang('Marketing.select_command_type'), 'js') ?> --</option>';
+            spkJenisPerintahOptions.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option.id;
+                optionElement.setAttribute('data-kode', option.kode || '');
+                optionElement.setAttribute('data-nama', option.nama || '');
+                optionElement.setAttribute('data-deskripsi', (option.deskripsi || '').trim());
+                optionElement.textContent = `${option.kode} - ${option.nama}`;
+                optionElement.title = (option.deskripsi || '').trim() || option.nama || '';
+                jenisSelect.appendChild(optionElement);
+            });
+            initSpkDiWorkflowCommandSelect2('spkJenisPerintah');
+            updateSpkJenisPerintahHelp();
+            updateSpkTujuanPerintahHelp();
+            spkDiCheckValidity();
         }
-        
-        // Load tujuan perintah based on jenis for SPK modal
+
         async function loadSpkTujuanPerintahOptions(jenisId) {
             try {
+                if (typeof jQuery !== 'undefined') {
+                    const $t = jQuery('#spkTujuanPerintah');
+                    if ($t.length && $t.hasClass('select2-hidden-accessible')) {
+                        $t.off('select2:open.spkDiWorkflowZ');
+                        $t.select2('destroy');
+                    }
+                }
+
                 const response = await fetch(`<?= base_url('marketing/get-tujuan-perintah-kerja') ?>?jenis_id=${jenisId}`, {
                     method: 'GET',
                     headers: {
@@ -2557,21 +2781,33 @@ $can_export = $permissions['export'];
                     }
                 });
                 const result = await response.json();
-                
+
+                const tujuanSelect = document.getElementById('spkTujuanPerintah');
+                if (!tujuanSelect) return;
+
                 if (result.success) {
-                    const tujuanSelect = document.getElementById('spkTujuanPerintah');
-                    if (tujuanSelect) {
-                        tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
-                        tujuanSelect.disabled = false;
-                        
-                        result.data.forEach(option => {
-                            const optionElement = document.createElement('option');
-                            optionElement.value = option.id;
-                            optionElement.textContent = `${option.kode} - ${option.nama}`;
-                            optionElement.title = option.deskripsi;
-                            tujuanSelect.appendChild(optionElement);
-                        });
+                    lastSpkTujuanPerintahList = result.data || [];
+                    tujuanSelect.innerHTML = '<option value="">-- <?= esc(lang('Marketing.select_command'), 'js') ?> --</option>';
+                    tujuanSelect.disabled = false;
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery('#spkTujuanPerintah').prop('disabled', false);
                     }
+
+                    result.data.forEach(option => {
+                        const optionElement = document.createElement('option');
+                        optionElement.value = option.id;
+                        optionElement.setAttribute('data-kode', option.kode || '');
+                        optionElement.setAttribute('data-nama', option.nama || '');
+                        const desk = (option.deskripsi || '').trim();
+                        optionElement.setAttribute('data-deskripsi', desk);
+                        optionElement.textContent = `${option.kode} - ${option.nama}`;
+                        optionElement.title = desk || option.nama || '';
+                        tujuanSelect.appendChild(optionElement);
+                    });
+
+                    initSpkDiWorkflowCommandSelect2('spkTujuanPerintah');
+                    updateSpkTujuanPerintahHelp();
+                    spkDiCheckValidity();
                 } else {
                     console.error('Failed to load SPK tujuan perintah options:', result.message);
                 }
@@ -2579,38 +2815,73 @@ $can_export = $permissions['export'];
                 console.error('Error loading SPK tujuan perintah options:', error);
             }
         }
-        
-        // Setup SPK DI workflow dropdowns
+
+        let _spkJenisChangeRaf = null;
+        function scheduleSpkJenisChange() {
+            if (_spkJenisChangeRaf !== null) cancelAnimationFrame(_spkJenisChangeRaf);
+            _spkJenisChangeRaf = requestAnimationFrame(function () {
+                _spkJenisChangeRaf = null;
+                handleSpkJenisPerintahChange();
+            });
+        }
+
+        async function handleSpkJenisPerintahChange() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            const tujuanSelect = document.getElementById('spkTujuanPerintah');
+            if (!jenisSelect || !tujuanSelect) return;
+
+            const jenisId = jenisSelect.value;
+            if (typeof jQuery !== 'undefined') {
+                const $t = jQuery('#spkTujuanPerintah');
+                if ($t.length && $t.hasClass('select2-hidden-accessible')) {
+                    $t.off('select2:open.spkDiWorkflowZ');
+                    $t.select2('destroy');
+                }
+            }
+
+            tujuanSelect.innerHTML = '<option value="">-- <?= esc(lang('Marketing.select_command_type_first'), 'js') ?> --</option>';
+            tujuanSelect.disabled = true;
+            if (typeof jQuery !== 'undefined') {
+                jQuery('#spkTujuanPerintah').prop('disabled', true);
+            }
+            lastSpkTujuanPerintahList = [];
+            initSpkDiWorkflowCommandSelect2('spkTujuanPerintah');
+
+            const kode = getSpkSelectedJenisKode();
+            const isTukarWorkflow = kode === 'TUKAR' || kode === 'ANTAR_TARIK';
+            const isAntarTarikSpk = kode === 'ANTAR_TARIK';
+            handleSpkTukarWorkflowVisibility(isTukarWorkflow, isAntarTarikSpk);
+
+            if (jenisId) {
+                await loadSpkTujuanPerintahOptions(jenisId);
+            }
+
+            updateSpkJenisPerintahHelp();
+            updateSpkTujuanPerintahHelp();
+            spkDiCheckValidity();
+        }
+
         function setupSpkWorkflowDropdowns() {
             const jenisSelect = document.getElementById('spkJenisPerintah');
             const tujuanSelect = document.getElementById('spkTujuanPerintah');
-            
             if (!jenisSelect || !tujuanSelect) return;
-            
-            jenisSelect.addEventListener('change', function() {
-                const jenisId = this.value;
-                const jenisText = this.selectedOptions[0]?.textContent || '';
-                
-                // Reset tujuan dropdown
-                tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
-                tujuanSelect.disabled = true;
-                
-                // Check if this is TUKAR or ANTAR+TARIK workflow
-                const _spkJenisKode = jenisText.split(' - ')[0]?.trim().toUpperCase() || '';
-                const isTukarWorkflow = _spkJenisKode === 'TUKAR' || _spkJenisKode === 'ANTAR_TARIK';
-                const isAntarTarikSpk = _spkJenisKode === 'ANTAR_TARIK';
-                
-                // Show/hide TUKAR workflow section
-                handleSpkTukarWorkflowVisibility(isTukarWorkflow, isAntarTarikSpk);
-                
-                if (jenisId) {
-                    // Load tujuan options from API
-                    loadSpkTujuanPerintahOptions(jenisId);
-                }
-                
-                // Trigger validation from existing validateDiForm function
-                // No need to call separate validation here as the change event will be caught
+            if (jenisSelect.dataset.spkWorkflowBound === '1') return;
+            jenisSelect.dataset.spkWorkflowBound = '1';
+
+            jenisSelect.addEventListener('change', scheduleSpkJenisChange);
+            tujuanSelect.addEventListener('change', function () {
+                updateSpkTujuanPerintahHelp();
+                spkDiCheckValidity();
             });
+            if (typeof jQuery !== 'undefined') {
+                jQuery('#spkJenisPerintah')
+                    .on('select2:select.spkDiFlow select2:clear.spkDiFlow', scheduleSpkJenisChange);
+                jQuery('#spkTujuanPerintah')
+                    .on('select2:select.spkDiFlow select2:clear.spkDiFlow', function () {
+                        updateSpkTujuanPerintahHelp();
+                        spkDiCheckValidity();
+                    });
+            }
         }
         
         // Handle TUKAR / ANTAR+TARIK workflow visibility and setup
@@ -2618,6 +2889,7 @@ $can_export = $permissions['export'];
             const tukarWorkflow = document.getElementById('spkTukarWorkflow');
             const standardItems = document.getElementById('diUnitsPick'); // Standard item selection
             const itemSummary = document.getElementById('diSelectedSummary');
+            const tarikCustomerSection = document.getElementById('spkTarikCustomerSection');
             
             if (!tukarWorkflow) {
                 console.warn('SPK TUKAR workflow element not found');
@@ -2628,6 +2900,9 @@ $can_export = $permissions['export'];
                 // Show TUKAR / ANTAR+TARIK workflow components
                 tukarWorkflow.classList.remove('d-none');
                 tukarWorkflow.style.display = '';
+                if (tarikCustomerSection) {
+                    tarikCustomerSection.classList.toggle('d-none', !isAntarTarikSpk);
+                }
                 
                 // Keep standard item selection visible for TUKAR (items KIRIM from SPK)
                 const modeLabel = isAntarTarikSpk ? 'Mode ANTAR+TARIK' : 'Mode TUKAR';
@@ -2637,11 +2912,17 @@ $can_export = $permissions['export'];
                 
                 // Setup kontrak change handler dulu, lalu load kontrak + units
                 setupSpkKontrakChangeHandler();
-                loadSpkTarikUnitsFromSpkKontrak();
+                if (isAntarTarikSpk) {
+                    setupSpkTarikCustomerSelector();
+                    loadSpkTarikUnitsFromSpkKontrak(document.getElementById('spkTarikCustomerSelect')?.value || '');
+                } else {
+                    loadSpkTarikUnitsFromSpkKontrak();
+                }
             } else {
                 // Hide TUKAR workflow components
                 tukarWorkflow.classList.add('d-none');
                 tukarWorkflow.style.display = '';
+                if (tarikCustomerSection) tarikCustomerSection.classList.add('d-none');
                 
                 // Reset TUKAR form fields
                 resetSpkTukarWorkflowFields();
@@ -2652,9 +2933,21 @@ $can_export = $permissions['export'];
                 }
             }
         }
+
+        function setupSpkTarikCustomerSelector() {
+            const customerSelect = document.getElementById('spkTarikCustomerSelect');
+            if (!customerSelect) return;
+            if (customerSelect.dataset.bound === '1') return;
+            customerSelect.dataset.bound = '1';
+
+            customerSelect.addEventListener('change', function() {
+                const customerId = this.value || '';
+                loadSpkTarikUnitsFromSpkKontrak(customerId);
+            });
+        }
         
         // Load unit TARIK dari kontrak — load kontrak customer dulu, pre-select kontrak SPK
-        function loadSpkTarikUnitsFromSpkKontrak() {
+        function loadSpkTarikUnitsFromSpkKontrak(preferredCustomerId = '') {
             const spkId = document.getElementById('diSpkId').value;
             if (!spkId) {
                 console.error('SPK ID not found for TUKAR workflow');
@@ -2663,6 +2956,7 @@ $can_export = $permissions['export'];
 
             const kontrakSelect = document.getElementById('spkTarikKontrak');
             const unitList = document.getElementById('spkTarikUnitList');
+            const customerSelect = document.getElementById('spkTarikCustomerSelect');
             if (!kontrakSelect || !unitList) return;
 
             kontrakSelect.innerHTML = '<option value="">-- Memuat kontrak... --</option>';
@@ -2677,7 +2971,18 @@ $can_export = $permissions['export'];
                         return;
                     }
                     const spkKontrakId = j.data?.kontrak_id || '';
-                    const customerId   = j.data?.customer_id || j.customer_id || '';
+                    const spkCustomerId = j.data?.customer_id || j.customer_id || '';
+                    const customerId = preferredCustomerId || (customerSelect?.value || '') || spkCustomerId;
+
+                    if (customerSelect) {
+                        const spkCustomerLabel = j.data?.pelanggan || j.data?.customer_name || document.getElementById('diPelanggan')?.value || '';
+                        if (!customerSelect.value && spkCustomerId) {
+                            customerSelect.innerHTML = `<option value="">-- Pilih Customer --</option><option value="${spkCustomerId}" selected>${spkCustomerLabel || ('Customer #' + spkCustomerId)}</option>`;
+                        } else if (customerSelect.value && !customerSelect.querySelector(`option[value="${customerSelect.value}"]`)) {
+                            const selected = new Option(customerSelect.value, customerSelect.value, true, true);
+                            customerSelect.appendChild(selected);
+                        }
+                    }
 
                     // Load kontrak customer (filtered)
                     const tarikUrl = '<?= base_url('marketing/kontrak/get-contracts-for-tarik') ?>' +
@@ -2720,7 +3025,9 @@ $can_export = $permissions['export'];
         function setupSpkKontrakChangeHandler() {
             const kontrakSelect = document.getElementById('spkTarikKontrak');
             if (!kontrakSelect) return;
-            
+            if (kontrakSelect.dataset.changeBound === '1') return;
+            kontrakSelect.dataset.changeBound = '1';
+
             kontrakSelect.addEventListener('change', function() {
                 const contractId = this.value;
                 document.getElementById('spkTarikContractId').value = contractId || '';
@@ -2825,10 +3132,11 @@ $can_export = $permissions['export'];
             }
         }
         
-        // Initialize SPK workflow dropdowns when modal shown
-        document.getElementById('diModal').addEventListener('shown.bs.modal', function() {
+        document.getElementById('diModal').addEventListener('shown.bs.modal', function () {
+            bindSpkDiFormValidationOnce();
             setupSpkWorkflowDropdowns();
-            loadSpkJenisPerintahOptions(); // Load initial jenis perintah options
+            resetSpkWorkflowHelpTexts();
+            loadSpkJenisPerintahOptions();
         });
         
         // =====================================================

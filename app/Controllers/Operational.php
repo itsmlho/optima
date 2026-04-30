@@ -1019,6 +1019,15 @@ class Operational extends BaseController
         if (!$di) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
         }
+        $tujuanKode = '';
+        if (!empty($di['tujuan_perintah_kerja_id'])) {
+            $tujuanRow = $this->db->table('tujuan_perintah_kerja')
+                ->select('kode')
+                ->where('id', (int)$di['tujuan_perintah_kerja_id'])
+                ->get()
+                ->getRowArray();
+            $tujuanKode = strtoupper(trim((string)($tujuanRow['kode'] ?? '')));
+        }
         
         log_message('info', 'DI found: ' . $di['nomor_di']);
 
@@ -1074,15 +1083,37 @@ class Operational extends BaseController
                 $deliveryItems = $this->db->table('delivery_items')
                     ->where('di_id', $id)
                     ->where('item_type', 'UNIT')
+                    ->groupStart()
+                        ->where('item_role', 'KIRIM')
+                        ->orWhere('item_role IS NULL', null, false)
+                        ->orWhere('item_role', '')
+                    ->groupEnd()
                     ->where('unit_id IS NOT NULL')
                     ->get()->getResultArray();
                 
                 if (!empty($deliveryItems)) {
-                    // Get proper customer location from customer_locations table
-                    // Trace: DI -> SPK -> Quotation Spec -> Quotation -> Customer -> Primary Location
+                    // Prefer location selected in DI. Fallback to customer primary from SPK flow.
                     $customerLocation = null;
+                    $customerLocationId = !empty($di['customer_location_id']) ? (int)$di['customer_location_id'] : null;
+                    if (!empty($customerLocationId)) {
+                        $selectedLocation = $this->db->table('customer_locations')
+                            ->select('id, location_name, address, city')
+                            ->where('id', $customerLocationId)
+                            ->where('is_active', 1)
+                            ->get()
+                            ->getRowArray();
+                        if ($selectedLocation) {
+                            $customerLocation = $selectedLocation['location_name'];
+                            if (!empty($selectedLocation['address'])) {
+                                $customerLocation .= ' - ' . $selectedLocation['address'];
+                            }
+                            if (!empty($selectedLocation['city'])) {
+                                $customerLocation .= ', ' . $selectedLocation['city'];
+                            }
+                        }
+                    }
                     
-                    if (!empty($di['spk_id'])) {
+                    if (!$customerLocation && !empty($di['spk_id'])) {
                         $locationData = $this->db->query("
                             SELECT 
                                 cl.location_name,
@@ -1115,8 +1146,25 @@ class Operational extends BaseController
                     }
                     
                     $rentalStartDate = $tanggalApprove ?? date('Y-m-d');
+                    $isRelokasi = in_array($tujuanKode, ['RELOKASI_INTERNAL', 'RELOKASI_OPTIMASI', 'RELOKASI_EMERGENCY'], true);
+                    $kuColumns = [];
+                    try {
+                        $kuColumns = $this->db->getFieldNames('kontrak_unit');
+                    } catch (\Throwable $e) {
+                        $kuColumns = [];
+                    }
+                    $hasRelocationColumns = in_array('relocation_from_location_id', $kuColumns, true) && in_array('relocation_to_location_id', $kuColumns, true);
                     
                     foreach ($deliveryItems as $item) {
+                        $currentKu = $this->db->table('kontrak_unit')
+                            ->select('id, customer_location_id')
+                            ->where('unit_id', $item['unit_id'])
+                            ->where('status', 'ACTIVE')
+                            ->orderBy('id', 'DESC')
+                            ->get()
+                            ->getRowArray();
+                        $oldLocationId = (int)($currentKu['customer_location_id'] ?? 0);
+
                         $unitUpdateData = [
                             'status_unit_id' => 7,  // RENTAL_ACTIVE
                             'lokasi_unit' => $customerLocation
@@ -1125,6 +1173,22 @@ class Operational extends BaseController
                         $this->db->table('inventory_unit')
                             ->where('id_inventory_unit', $item['unit_id'])
                             ->update($unitUpdateData);
+
+                        // Relokasi must move active contract-unit link to selected location.
+                        if ($isRelokasi && !empty($customerLocationId) && !empty($currentKu['id'])) {
+                            $kuUpdate = [
+                                'customer_location_id' => $customerLocationId,
+                                'updated_at' => date('Y-m-d H:i:s'),
+                                'updated_by' => session('user_id') ?: null,
+                            ];
+                            if ($hasRelocationColumns) {
+                                $kuUpdate['relocation_from_location_id'] = $oldLocationId ?: null;
+                                $kuUpdate['relocation_to_location_id'] = $customerLocationId;
+                            }
+                            $this->db->table('kontrak_unit')
+                                ->where('id', (int)$currentKu['id'])
+                                ->update($kuUpdate);
+                        }
                         
                         log_message('info', "Updated unit {$item['unit_id']} to RENTAL_ACTIVE (id:7) at {$customerLocation}");
                     }
@@ -2348,10 +2412,15 @@ class Operational extends BaseController
     {
         $messages = [
             'TARIK_HABIS_KONTRAK' => 'Menampilkan SPK dengan kontrak yang sudah berakhir atau non-aktif',
+            'TARIK_SPARE' => 'Menampilkan SPK dengan kontrak aktif untuk penarikan unit spare',
+            'TARIK_TRIAL' => 'Menampilkan SPK dengan kontrak aktif untuk penarikan unit trial',
             'ANTAR_BARU' => 'Menampilkan SPK untuk kontrak baru atau tanpa kontrak',
+            'ANTAR_SPARE' => 'Menampilkan SPK untuk pengantaran unit spare',
+            'ANTAR_TRIAL' => 'Menampilkan SPK untuk pengantaran unit trial',
             'ANTAR_TAMBAHAN' => 'Menampilkan SPK dengan kontrak aktif untuk unit tambahan',
             'TUKAR_UPGRADE' => 'Menampilkan SPK dengan kontrak aktif untuk upgrade unit',
             'TUKAR_DOWNGRADE' => 'Menampilkan SPK dengan kontrak aktif untuk downgrade unit',
+            'TUKAR_SPARE' => 'Menampilkan SPK dengan kontrak aktif untuk tukar unit spare',
         ];
 
         return $messages[$tujuanKode] ?? 'Menampilkan SPK yang tersedia sesuai dengan jenis dan tujuan perintah';
@@ -2938,7 +3007,7 @@ class Operational extends BaseController
         
         // Get units from delivery_items
         $deliveryItems = $this->db->table('delivery_items')
-            ->where('delivery_instruction_id', $diId)
+            ->where('di_id', $diId)
             ->where('unit_id IS NOT NULL', null, false)
             ->get()
             ->getResultArray();

@@ -64,9 +64,9 @@ class DeliveryInstructionService
         $query->whereNotIn('iu.id_inventory_unit', function($subquery) {
             $subquery->select('unit_id')
                     ->from('delivery_items di')
-                    ->join('delivery_instructions dins', 'dins.id = di.delivery_instruction_id')
+                    ->join('delivery_instructions dins', 'dins.id = di.di_id')
                     ->where('unit_id IS NOT NULL')
-                    ->whereIn('dins.status', ['DIAJUKAN', 'DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN']);
+                    ->whereIn('dins.status_di', ['DIAJUKAN', 'DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN']);
         });
 
         $units = $query->get()->getResultArray();
@@ -160,6 +160,7 @@ class DeliveryInstructionService
             
             // Get tujuan_perintah_kerja_id from DI for conditional logic
             $tujuanId = $this->getTujuanPerintahKerjaId($diId);
+            $tujuanKode = $this->getTujuanPerintahKerjaKode($diId);
 
             foreach ($unitIds as $unitId) {
                 // Update unit status based on stage
@@ -169,7 +170,7 @@ class DeliveryInstructionService
 
                 // Disconnect from contract if needed (with tujuan-based logic)
                 if (isset($stageActions['disconnect_partial_contract']) || isset($stageActions['disconnect_contract_fully'])) {
-                    $this->disconnectUnitFromContract($unitId, $stage, $tujuanId);
+                    $this->disconnectUnitFromContract($unitId, $stage, $tujuanKode, $tujuanId);
                 }
 
                 // Log activity
@@ -198,6 +199,7 @@ class DeliveryInstructionService
             
             // Get tujuan_perintah_kerja_id for temp vs permanent logic
             $tujuanId = $this->getTujuanPerintahKerjaId($diId);
+            $tujuanKode = $this->getTujuanPerintahKerjaKode($diId);
 
             // Process old units
             foreach ($oldUnitIds as $unitId) {
@@ -221,7 +223,7 @@ class DeliveryInstructionService
 
                 if (isset($stageActions['transfer_contract_to_new_unit'])) {
                     // Pass tujuanId for temporary vs permanent logic
-                    $this->transferContractToNewUnit($oldUnitId, $newUnitId, $tujuanId);
+                    $this->transferContractToNewUnit($oldUnitId, $newUnitId, $tujuanKode, $tujuanId);
                 }
             }
 
@@ -263,10 +265,26 @@ class DeliveryInstructionService
     }
 
     /**
+     * Get tujuan_perintah_kerja kode from delivery instruction.
+     */
+    protected function getTujuanPerintahKerjaKode($diId): ?string
+    {
+        $di = $this->db->table('delivery_instructions di')
+            ->select('tpk.kode')
+            ->join('tujuan_perintah_kerja tpk', 'tpk.id = di.tujuan_perintah_kerja_id', 'left')
+            ->where('di.id', $diId)
+            ->get()
+            ->getRowArray();
+
+        $kode = $di['kode'] ?? null;
+        return $kode ? strtoupper(trim((string) $kode)) : null;
+    }
+
+    /**
      * Disconnect unit from contract with tujuan-based logic
      * Different tujuan types have different FK disconnection behaviors
      */
-    protected function disconnectUnitFromContract($unitId, $stage, $tujuanId = null)
+    protected function disconnectUnitFromContract($unitId, $stage, $tujuanKode = null, $tujuanId = null)
     {
         // Get contract info before disconnecting
         $contractUnit = $this->db->table('kontrak_unit')
@@ -276,15 +294,17 @@ class DeliveryInstructionService
             ->getRowArray();
 
         if ($contractUnit) {
-            // Determine disconnect behavior based on tujuan
-            // ID 4: TARIK_HABIS_KONTRAK - Full disconnect
-            // ID 6: TARIK_MAINTENANCE - Keep FKs (temporary)
-            // ID 5: TARIK_PINDAH_LOKASI - Keep FKs (relocation)
-            // ID 7: TARIK_RUSAK - Keep FKs (will return after repair)
-            
-            $shouldDisconnectFKs = in_array($tujuanId, [4]); // Only HABIS_KONTRAK disconnects
-            $isTemporary = in_array($tujuanId, [6, 7]); // MAINTENANCE, RUSAK are temporary
-            $isRelocation = ($tujuanId == 5); // PINDAH_LOKASI
+            // Determine disconnect behavior based on tujuan kode
+            $shouldDisconnectFKs = in_array($tujuanKode, [
+                TujuanPerintahKerja::TARIK_HABIS_KONTRAK,
+                TujuanPerintahKerja::TARIK_SPARE,
+                TujuanPerintahKerja::TARIK_TRIAL,
+            ], true);
+            $isTemporary = in_array($tujuanKode, [
+                TujuanPerintahKerja::TARIK_MAINTENANCE,
+                TujuanPerintahKerja::TARIK_RUSAK,
+            ], true);
+            $isRelocation = ($tujuanKode === TujuanPerintahKerja::TARIK_PINDAH_LOKASI);
             
             // Get customer/location info from kontrak_unit junction (Phase 1A refactored)
             $unitInfo = $this->db->table('kontrak_unit ku')
@@ -297,13 +317,14 @@ class DeliveryInstructionService
             
             if ($isTemporary) {
                 // TEMPORARY: Mark kontrak_unit as MAINTENANCE/UNDER_REPAIR but keep FKs
-                $newStatus = ($tujuanId == 6) ? 'MAINTENANCE' : 'UNDER_REPAIR';
+                $isMaintenance = ($tujuanKode === TujuanPerintahKerja::TARIK_MAINTENANCE);
+                $newStatus = $isMaintenance ? 'MAINTENANCE' : 'UNDER_REPAIR';
                 $this->db->table('kontrak_unit')
                     ->where('id', $contractUnit['id'])
                     ->update([
                         'status' => $newStatus,
                         'maintenance_start' => date('Y-m-d H:i:s'),
-                        'maintenance_reason' => ($tujuanId == 6) ? 'Scheduled maintenance' : 'Unit damaged - repair needed',
+                        'maintenance_reason' => $isMaintenance ? 'Scheduled maintenance' : 'Unit damaged - repair needed',
                         'stage_tarik' => $stage,
                         'updated_at' => date('Y-m-d H:i:s'),
                         'updated_by' => session('user_id')
@@ -313,7 +334,7 @@ class DeliveryInstructionService
                 $this->db->table('inventory_unit')
                     ->where('id_inventory_unit', $unitId)
                     ->update([
-                        'workflow_status' => ($tujuanId == 6) ? 'MAINTENANCE_IN_PROGRESS' : 'UNDER_REPAIR',
+                        'workflow_status' => $isMaintenance ? 'MAINTENANCE_IN_PROGRESS' : 'UNDER_REPAIR',
                         'status_unit_id' => 11, // MAINTENANCE (in-progress bucket)
                         'maintenance_location' => 'WORKSHOP',
                         'updated_at' => date('Y-m-d H:i:s')
@@ -369,7 +390,7 @@ class DeliveryInstructionService
      * Transfer contract from old unit to new unit (for TUKAR)
      * Handles both permanent and temporary replacements
      */
-    protected function transferContractToNewUnit($oldUnitId, $newUnitId, $tujuanId = null)
+    protected function transferContractToNewUnit($oldUnitId, $newUnitId, $tujuanKode = null, $tujuanId = null)
     {
         // Get old contract info
         $oldContractUnit = $this->db->table('kontrak_unit')
@@ -388,16 +409,14 @@ class DeliveryInstructionService
                 ->get()
                 ->getRowArray();
             
-            // ID 11: TUKAR_MAINTENANCE - Temporary replacement
-            // ID 8, 9, 10: TUKAR_UPGRADE, DOWNGRADE, RUSAK - Permanent replacement
-            $isTemporaryReplacement = ($tujuanId == 11); // TUKAR_MAINTENANCE
+            $isTemporaryReplacement = ($tujuanKode === TujuanPerintahKerja::TUKAR_MAINTENANCE);
             
             if ($isTemporaryReplacement) {
                 // TEMPORARY REPLACEMENT: Keep old unit linked, mark as temporarily replaced
                 $this->handleTemporaryReplacement($oldUnitId, $newUnitId, $oldContractUnit, $oldUnitInfo);
             } else {
                 // PERMANENT REPLACEMENT: Full transfer
-                $this->handlePermanentReplacement($oldUnitId, $newUnitId, $oldContractUnit, $oldUnitInfo);
+                $this->handlePermanentReplacement($oldUnitId, $newUnitId, $oldContractUnit, $oldUnitInfo, $tujuanKode);
             }
         }
     }
@@ -405,7 +424,7 @@ class DeliveryInstructionService
     /**
      * Handle permanent unit replacement (UPGRADE/DOWNGRADE/RUSAK)
      */
-    protected function handlePermanentReplacement($oldUnitId, $newUnitId, $oldContractUnit, $oldUnitInfo)
+    protected function handlePermanentReplacement($oldUnitId, $newUnitId, $oldContractUnit, $oldUnitInfo, $tujuanKode = null)
     {
         // Mark old unit as DITUKAR in kontrak_unit
         $this->db->table('kontrak_unit')
@@ -429,7 +448,7 @@ class DeliveryInstructionService
             ]);
 
         // Create new contract_unit for new unit
-        $this->db->table('kontrak_unit')->insert([
+        $insertPayload = [
             'kontrak_id' => $oldContractUnit['kontrak_id'],
             'unit_id' => $newUnitId,
             'tanggal_mulai' => date('Y-m-d'),
@@ -438,7 +457,12 @@ class DeliveryInstructionService
             'is_temporary' => false,
             'created_at' => date('Y-m-d H:i:s'),
             'created_by' => session('user_id')
-        ]);
+        ];
+        if ($tujuanKode === TujuanPerintahKerja::TUKAR_SPARE) {
+            $insertPayload['is_spare'] = 1;
+            $insertPayload['harga_sewa'] = 0;
+        }
+        $this->db->table('kontrak_unit')->insert($insertPayload);
 
         // Update new unit workflow status (contract link is via kontrak_unit)
         $this->db->table('inventory_unit')
@@ -534,9 +558,9 @@ class DeliveryInstructionService
 
         // Check if unit is not already in another active DI
         $activeDI = $this->db->table('delivery_items di')
-            ->join('delivery_instructions dins', 'dins.id = di.delivery_instruction_id')
+            ->join('delivery_instructions dins', 'dins.id = di.di_id')
             ->where('di.unit_id', $unitId)
-            ->whereIn('dins.status', ['DIAJUKAN', 'DISETUJUI', 'PERSIAPAN_UNIT', 'DALAM_PERJALANAN'])
+            ->whereIn('dins.status_di', ['DIAJUKAN', 'DISETUJUI', 'PERSIAPAN_UNIT', 'DALAM_PERJALANAN'])
             ->get()
             ->getRowArray();
 

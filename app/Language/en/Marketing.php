@@ -522,8 +522,11 @@ return [
     'di_retrieval_network_error' => 'Network error while creating DI',
     'di_retrieval_load_error' => 'Failed to load data for retrieval DI',
     'di_retrieval_min_unit' => 'Select at least one unit to retrieve',
+    'di_retrieval_already_created' => 'Retrieval DI already created',
+    'di_retrieval_view_open' => 'View DI',
     'contract_expired_no_di_alert' => 'Contract has expired. Create Retrieval DI to pull units.',
     'contract_expired_create_di' => 'Create Retrieval DI',
+    'contract_expired_di_created' => 'Retrieval DI has already been created for this contract.',
 
     'days_ago'                 => 'days ago',
     'days_left'                => 'days left',

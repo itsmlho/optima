@@ -524,8 +524,11 @@ return [
     'di_retrieval_network_error' => 'Network error saat membuat DI',
     'di_retrieval_load_error' => 'Gagal memuat data untuk DI penarikan',
     'di_retrieval_min_unit' => 'Pilih minimal satu unit untuk ditarik',
+    'di_retrieval_already_created' => 'DI Penarikan sudah dibuat',
+    'di_retrieval_view_open' => 'Lihat DI',
     'contract_expired_no_di_alert' => 'Kontrak telah berakhir. Buat DI Penarikan untuk menarik unit.',
     'contract_expired_create_di' => 'Buat DI Penarikan',
+    'contract_expired_di_created' => 'DI Penarikan untuk kontrak ini sudah dibuat.',
 
     'days_ago'                 => 'hari lalu',
     'days_left'                => 'hari lagi',
