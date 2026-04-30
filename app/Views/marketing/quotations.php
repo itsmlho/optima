@@ -1,4 +1,4 @@
-﻿<?= $this->extend('layouts/base') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
@@ -1205,8 +1205,17 @@ window.addEventListener('DOMContentLoaded', function() {
                         <hr class="my-4">
                         <h6 class="mb-3">Create New Contract</h6>
                         <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">Rental Classification</label>
+                                <select class="form-select" name="rental_type" id="contract_rental_type" style="background-color: #fff9c4; border-color: #fbc02d;">
+                                    <option value="CONTRACT" selected>Formal Contract</option>
+                                    <option value="PO_ONLY">PO-Based Only</option>
+                                    <option value="DAILY_SPOT">Daily/Spot Rental</option>
+                                </select>
+                                <small class="text-muted">How is this rental documented? This determines mandatory fields.</small>
+                            </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Contract Number <span class="text-danger">*</span></label>
+                                <label class="form-label">Contract Number <span class="text-danger" id="contract_number_asterisk">*</span></label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" name="contract_number" id="contract_number_input" required>
                                     <button class="btn btn-outline-secondary" type="button" id="generateContractNumberBtn" title="Generate Contract Number">
@@ -1215,18 +1224,9 @@ window.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Customer PO Number</label>
+                                <label class="form-label">Customer PO Number <span class="text-danger d-none" id="po_number_asterisk">*</span></label>
                                 <input type="text" class="form-control" name="po_number" id="po_number_input" placeholder="Customer's Purchase Order Number">
                                 <small class="text-muted">External PO from customer (if any)</small>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Rental Classification</label>
-                                <select class="form-select" name="rental_type" id="contract_rental_type">
-                                    <option value="CONTRACT" selected>Formal Contract</option>
-                                    <option value="PO_ONLY">PO-Based Only</option>
-                                    <option value="DAILY_SPOT">Daily/Spot Rental</option>
-                                </select>
-                                <small class="text-muted">How is this rental documented?</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Customer <span class="text-danger">*</span></label>
@@ -1793,6 +1793,9 @@ $(document).ready(function() {
             resetContractForm();
             contractFormSection.slideDown();
             
+            // Trigger requirement update for default selection (Formal Contract)
+            $('#contract_rental_type').trigger('change');
+            
             // Enable all fields for new entry
             $('#contract_number_input, #po_number_input').prop('disabled', false).prop('readonly', false).removeClass('bg-light');
             $('#contract_start_date, #contract_end_date, #contract_jenis_sewa').prop('disabled', false);
@@ -1815,6 +1818,9 @@ $(document).ready(function() {
                 populateContractForm(contractData);
                 contractFormSection.slideDown();
                 
+                // Update requirements based on loaded contract
+                $('#contract_rental_type').trigger('change');
+                
                 // Make ALL fields READ-ONLY for existing contract (Option 1: Pure Selection)
                 $('#contract_number_input, #po_number_input').prop('readonly', true).addClass('bg-light');
                 $('#customerNameDisplay, #locationNameDisplay').prop('readonly', true).addClass('bg-light');
@@ -1830,6 +1836,39 @@ $(document).ready(function() {
             // No selection - hide form
             contractFormSection.slideUp();
             resetContractForm();
+        }
+    });
+
+    // Dynamic Rental Classification Handler
+    $('#contract_rental_type').on('change', function() {
+        const rentalType = $(this).val();
+        const contractInput = $('#contract_number_input');
+        const poInput = $('#po_number_input');
+        const contractAsterisk = $('#contract_number_asterisk');
+        const poAsterisk = $('#po_number_asterisk');
+
+        if (rentalType === 'PO_ONLY' || rentalType === 'DAILY_SPOT') {
+            // PO or Daily: PO is mandatory, Contract is optional
+            contractInput.prop('required', false);
+            contractAsterisk.addClass('d-none');
+            
+            poInput.prop('required', true);
+            poAsterisk.removeClass('d-none');
+            
+            // Visual feedback
+            poInput.css('border-color', '#fbc02d');
+            contractInput.css('border-color', '');
+        } else {
+            // Formal Contract: Contract is mandatory, PO is optional
+            contractInput.prop('required', true);
+            contractAsterisk.removeClass('d-none');
+            
+            poInput.prop('required', false);
+            poAsterisk.addClass('d-none');
+            
+            // Visual feedback
+            contractInput.css('border-color', '#1976d2');
+            poInput.css('border-color', '');
         }
     });
     
@@ -1868,15 +1907,33 @@ $(document).ready(function() {
             const startDate = $('#contract_start_date').val();
             const endDate = $('#contract_end_date').val();
             
-            // Validate required fields for new contract
-            if (!contractNumber && !poNumber) {
-                OptimaUI.fire('Error', 'Please fill Contract Number OR Customer PO Number', 'error');
-                return false;
+            // Validate required fields based on rental type
+            const rentalType = $('#contract_rental_type').val();
+            
+            if (rentalType === 'CONTRACT') {
+                if (!contractNumber) {
+                    OptimaUI.fire('Error', 'Contract Number is required for Formal Contract', 'error');
+                    return false;
+                }
+            } else {
+                if (!poNumber) {
+                    OptimaUI.fire('Error', 'Customer PO Number is required for ' + (rentalType === 'PO_ONLY' ? 'PO-Based' : 'Daily/Spot') + ' rental', 'error');
+                    return false;
+                }
             }
             
             if (!locationId || !startDate || !endDate) {
-                OptimaUI.fire('Error', 'Please fill all required fields', 'error');
-                return false;
+                // For PO_ONLY, endDate might be null in backend, but form usually requires it for now
+                // Actually, PO_ONLY in controller says endDate = null, but let's see what the user wants.
+                // As per controller line 528, endDate is forced to null for PO_ONLY.
+                if (rentalType !== 'PO_ONLY' && (!locationId || !startDate || !endDate)) {
+                    OptimaUI.fire('Error', 'Please fill all required fields (Start Date, End Date, and Location)', 'error');
+                    return false;
+                }
+                if (rentalType === 'PO_ONLY' && (!locationId || !startDate)) {
+                    OptimaUI.fire('Error', 'Please fill all required fields (Start Date and Location)', 'error');
+                    return false;
+                }
             }
             
             // Prepare form data for new contract

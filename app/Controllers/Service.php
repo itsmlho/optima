@@ -1311,11 +1311,16 @@ class Service extends BaseController
         $enriched = $spec;
         $mapQueries = [
             'departemen_id' => ['table'=>'departemen','id'=>'id_departemen','name'=>'nama_departemen'],
+            'tipe_unit_id'  => ['table'=>'tipe_unit','id'=>'id_tipe_unit','name'=>'jenis'],
+            'brand_id'      => ['table'=>'model_unit','id'=>'id_model_unit','name'=>'merk_unit'],
             'kapasitas_id'  => ['table'=>'kapasitas','id'=>'id_kapasitas','name'=>'kapasitas_unit'],
             'mast_id'       => ['table'=>'tipe_mast','id'=>'id_mast','name'=>'tipe_mast'],
             'ban_id'        => ['table'=>'tipe_ban','id'=>'id_ban','name'=>'tipe_ban'],
             'valve_id'      => ['table'=>'valve','id'=>'id_valve','name'=>'jumlah_valve'],
             'roda_id'       => ['table'=>'jenis_roda','id'=>'id_roda','name'=>'tipe_roda'],
+            'attachment_id' => ['table'=>'attachment','id'=>'id_attachment','name'=>'tipe'],
+            'battery_id'    => ['table'=>'baterai','id'=>'id','name'=>'jenis_baterai'],
+            'charger_id'    => ['table'=>'charger','id'=>'id_charger','name'=>'tipe_charger'],
         ];
         foreach ($mapQueries as $key => $cfg) {
             if (!empty($spec[$key])) {

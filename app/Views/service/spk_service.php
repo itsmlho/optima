@@ -1080,12 +1080,12 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="col-12"><hr></div>
 					<div class="col-12"><strong>Customer Requirements (from Marketing):</strong></div>
 					<div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
-					<div class="col-6"><strong>Department:</strong> ${ks.departemen_id_name || s.departemen_id_name||'-'}</div>
-					<div class="col-6"><strong>Type & Brand:</strong> ${[ks.tipe_unit_id_name || s.tipe_jenis, ks.brand_id_name || ks.merk_unit || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
-					<div class="col-6"><strong>Capacity:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name||'-'}</div>
-					<div class="col-6"><strong>Attachment (Type):</strong> ${ks.attachment_id_name || ks.attachment_tipe || s.attachment_tipe||'-'}</div>
-					<div class="col-6"><strong>Mast:</strong> ${ks.mast_id_name || s.mast_id_name||'-'}</div>
-					<div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || s.ban_id_name||'-'}</div>
+					<div class="col-6"><strong>Department:</strong> ${ks.departemen_id_name || s.departemen_id_name || d.nama_departemen || '-'}</div>
+					<div class="col-6"><strong>Type & Brand:</strong> ${[ks.tipe_unit_id_name || s.tipe_unit_id_name || s.tipe_jenis, ks.brand_id_name || s.brand_id_name || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
+					<div class="col-6"><strong>Capacity:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name || '-'}</div>
+					<div class="col-6"><strong>Attachment (Type):</strong> ${ks.attachment_id_name || s.attachment_id_name || ks.attachment_tipe || s.attachment_tipe || '-'}</div>
+					<div class="col-6"><strong>Mast:</strong> ${ks.mast_id_name || s.mast_id_name || '-'}</div>
+					<div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || s.ban_id_name || '-'}</div>
 					<div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
 					${ks.notes ? `<div class="col-12" style="background-color: #fff3cd; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong><i class="fas fa-sticky-note me-2"></i>Custom Requirements:</strong><br><span style="white-space: pre-line; font-size: 12px;">${ks.notes}</span></div>` : ''}
 					

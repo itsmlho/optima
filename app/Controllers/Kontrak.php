@@ -523,6 +523,26 @@ class Kontrak extends BaseController
         $jenisSewa  = strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN');
 
         // --- Type-specific business rules ---
+        if ($rentalType === 'CONTRACT') {
+            if (empty(trim((string)$this->request->getPost('contract_number')))) {
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => 'Contract Number is required for Formal Contract.',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+        } else {
+            // PO_ONLY or DAILY_SPOT requires PO Number
+            if (empty(trim((string)$this->request->getPost('po_number')))) {
+                $typeName = $rentalType === 'PO_ONLY' ? 'PO-Based Only' : 'Daily/Spot Rental';
+                return $this->response->setJSON([
+                    'success'   => false,
+                    'message'   => "Customer PO Number is required for $typeName.",
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+        }
+
         if ($rentalType === 'PO_ONLY') {
             // PO Bulanan: open-ended — no fixed end date, force monthly billing
             $endDate   = null;
