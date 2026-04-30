@@ -2530,7 +2530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			escapeMarkup: function(markup) { return markup; }
 		});
 
-		// Add event listener for IN_USE battery detection
+		// IN_USE battery is not allowed for multi-use: must be removed from existing unit first
 		$batterySelect.off('select2:select.batteryPick').on('select2:select.batteryPick', function(e) {
 			const d = e.params.data || {};
 			const status = d.status || '';
@@ -2539,18 +2539,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log(`🔋 Battery selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 
 			if (status === 'IN_USE' && installedUnit) {
-				// Show confirmation modal for IN_USE battery
-				// Reconstruct a fake element for showUsedComponentAlert compatibility
-				const fakeEl = document.createElement('option');
-				fakeEl.setAttribute('data-status', status);
-				fakeEl.setAttribute('data-name', d.name || '');
-				fakeEl.setAttribute('data-item-number', d.item_number || '');
-				fakeEl.setAttribute('data-serial', d.serial_number || '');
-				fakeEl.setAttribute('data-installed-unit', installedUnit);
-				fakeEl.setAttribute('data-installed-sn', d.installed_unit_sn || '');
-				fakeEl.setAttribute('data-installed-merk', d.installed_unit_merk || '');
-				fakeEl.setAttribute('data-installed-model', d.installed_unit_model || '');
-				showUsedComponentAlert(fakeEl, 'battery', suffix);
+				$batterySelect.val(null).trigger('change');
+				notify(`Battery No Item ${d.item_number || '-'} masih terpasang di Unit ${installedUnit}. Remove dulu dari unit existing, lalu pilih lagi di SPK ini.`, 'warning');
 			}
 		});
 	}
@@ -2632,7 +2622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			escapeMarkup: function(markup) { return markup; }
 		});
 
-		// Add event listener for IN_USE charger detection
+		// IN_USE charger is not allowed for multi-use: must be removed from existing unit first
 		$chargerSelect.off('select2:select.chargerPick').on('select2:select.chargerPick', function(e) {
 			const d = e.params.data || {};
 			const status = d.status || '';
@@ -2641,16 +2631,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log(`🔌 Charger selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 
 			if (status === 'IN_USE' && installedUnit) {
-				const fakeEl = document.createElement('option');
-				fakeEl.setAttribute('data-status', status);
-				fakeEl.setAttribute('data-name', d.name || '');
-				fakeEl.setAttribute('data-item-number', d.item_number || '');
-				fakeEl.setAttribute('data-serial', d.serial_number || '');
-				fakeEl.setAttribute('data-installed-unit', installedUnit);
-				fakeEl.setAttribute('data-installed-sn', d.installed_unit_sn || '');
-				fakeEl.setAttribute('data-installed-merk', d.installed_unit_merk || '');
-				fakeEl.setAttribute('data-installed-model', d.installed_unit_model || '');
-				showUsedComponentAlert(fakeEl, 'charger', suffix);
+				$chargerSelect.val(null).trigger('change');
+				notify(`Charger No Item ${d.item_number || '-'} masih terpasang di Unit ${installedUnit}. Remove dulu dari unit existing, lalu pilih lagi di SPK ini.`, 'warning');
 			}
 		});
 	}
@@ -3057,9 +3039,26 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 				processResults: function (data) {
 					if (data.success && data.data) {
 						return {
+							// Flatten fields onto each result (same pattern as battery/charger Select2).
+							// Nested `data: item` is often dropped by Select2 on select; then IN_USE checks never run.
 							results: data.data.map(function(item) {
 								const idText = item.sn_fork ? item.sn_fork : '(No Item)';
-								return { id: item.id, text: `${idText} - ${item.label}`, data: item };
+								const st = item.status || item.attachment_status || '';
+								const installedNo = item.used_by_unit || (item.installed_unit && item.installed_unit.no_unit) || '';
+								const used = item.is_used === true || item.is_used === 1 || st === 'IN_USE';
+								return {
+									id: item.id,
+									text: `${idText} - ${item.label}`,
+									sn_fork: item.sn_fork,
+									item_number: item.sn_fork,
+									label: item.label,
+									status: st,
+									is_used: used,
+									installed_unit_no: installedNo,
+									qty_pairs: item.qty_pairs,
+									qty_available_pairs: item.qty_available_pairs,
+									installed_unit: item.installed_unit
+								};
 							})
 						};
 					}
@@ -3069,14 +3068,22 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 			}
 		});
 
-		$forkSelect.on('select2:select', function(e) {
-			const fork = e.params.data?.data;
-			if (!fork) return;
-			const qtyPairs = fork?.qty_pairs ?? null;
-			const qtyAvail = fork?.qty_available_pairs ?? null;
-			const isUsed   = fork?.is_used === true;
+		$forkSelect.off('select2:select.forkPick').on('select2:select.forkPick', function(e) {
+			const fork = e.params.data || {};
+			const qtyPairs = fork.qty_pairs ?? null;
+			const qtyAvail = fork.qty_available_pairs ?? null;
+			const st = fork.status || '';
+			const isUsed = fork.is_used === true || st === 'IN_USE';
+			const installedUnit = fork.installed_unit_no || fork.installed_unit?.no_unit || '';
 			$('#fabrikasiForkQtyHint').text('Qty pair: ' + (qtyPairs !== null ? qtyPairs : '-'));
-			if (!isUsed && qtyPairs !== null && qtyAvail !== null && parseInt(qtyPairs) > parseInt(qtyAvail)) {
+			if (isUsed) {
+				$forkSelect.val(null).trigger('change');
+				notify(`Fork ${fork.sn_fork || fork.item_number || ''} masih terpasang di ${installedUnit ? ('Unit ' + installedUnit) : 'unit lain'}. Remove dulu dari unit existing, lalu pilih lagi di SPK ini.`, 'warning');
+				window.spkForkStockCheck = { ok: false, reason: 'Fork masih IN_USE di unit lain.' };
+				$('#fabrikasiForkStockWarning').removeClass('d-none').text(window.spkForkStockCheck.reason);
+				return;
+			}
+			if (qtyPairs !== null && qtyAvail !== null && parseInt(qtyPairs, 10) > parseInt(qtyAvail, 10)) {
 				window.spkForkStockCheck = { ok: false, reason: `Stok fork tidak cukup (butuh ${qtyPairs} pair, tersedia ${qtyAvail} pair).` };
 				$('#fabrikasiForkStockWarning').removeClass('d-none').text(window.spkForkStockCheck.reason);
 			} else {
@@ -3349,7 +3356,7 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 						updateDropdownAvailability(select, 'attachment');
 					}, 100);
 					
-					// Add event listener for USED attachment detection
+					// IN_USE attachment is not allowed for multi-use
 					$attachmentSelect.on('select2:select', function(e) {
 						const selectedOption = e.params.data.element;
 						const status = selectedOption.getAttribute('data-status');
@@ -3358,8 +3365,9 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 						console.log(`🔧 Attachment selected - Status: ${status}, Installed Unit: ${installedUnit}`);
 						
 						if (status === 'IN_USE' && installedUnit) {
-							// Show confirmation modal for IN_USE attachment
-							showUsedAttachmentAlert(selectedOption);
+							$attachmentSelect.val(null).trigger('change');
+							const itemName = selectedOption.getAttribute('data-name') || 'Attachment';
+							notify(`${itemName} masih terpasang di Unit ${installedUnit}. Remove dulu dari unit existing, lalu pilih lagi di SPK ini.`, 'warning');
 						}
 					});
 				}
@@ -4080,6 +4088,16 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 					if (chargerId) fd.append('charger_inventory_attachment_id', chargerId);
 				}
 			}
+
+			// Select2: pastikan ID baterai/charger terkirim (sama pola dengan fork_id)
+			const $batPick = $('#batteryPick');
+			const $chgPick = $('#chargerPick');
+			if ($batPick.length && $batPick.val()) {
+				fd.set('battery_inventory_attachment_id', String($batPick.val()).trim());
+			}
+			if ($chgPick.length && $chgPick.val()) {
+				fd.set('charger_inventory_attachment_id', String($chgPick.val()).trim());
+			}
 			
 			// Handle pending no_unit update if exists
 			if (window.pendingNoUnitUpdate) {
@@ -4128,13 +4146,33 @@ const serialInfo = item.sn_attachment || item.serial_number || 'SN: -';
 					fd.append('attachment_inventory_attachment_id', newAttachmentId);
 					if (transferAttachment || transferFromInput) fd.append('transfer_attachment', 'true');
 				}
+				// Select2 + keep/replace: pastikan POST attachment_inventory_attachment_id ter-set
+				const $fabAtt = $('#fabrikasiAttPick');
+				const pickVal = ($fabAtt.length && $fabAtt.val()) ? String($fabAtt.val()).trim() : '';
+				const keepExistingId = document.getElementById('fabrikasi_attachment_existing_id')?.value?.trim() || '';
+				let attachInvId = '';
+				if (attachmentAction === 'keep_existing' && keepExistingId) {
+					attachInvId = keepExistingId;
+				} else if (pickVal) {
+					attachInvId = pickVal;
+				}
+				if (attachInvId) {
+					fd.set('attachment_inventory_attachment_id', attachInvId);
+				}
 			} else {
 				// --- Fork mode ---
 				if (window.spkForkStockCheck && window.spkForkStockCheck.ok === false) {
 					notify('Stok fork tidak mencukupi: ' + (window.spkForkStockCheck.reason || ''), 'error');
 					return;
 				}
-				// fork_id included automatically via select name="fork_id"
+				// Select2: nilai asli <select> sering tidak ikut ke FormData(this) — kirim eksplisit
+				const $fp = $('#fabrikasiForkPick');
+				const forkVal = ($fp.val && $fp.val()) ? String($fp.val()).trim() : '';
+				if (!forkVal) {
+					notify('Pilih fork dari inventori (Pasang Fork).', 'warning');
+					return;
+				}
+				fd.set('fork_id', forkVal);
 			}
 		}
 		
@@ -5151,16 +5189,22 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 			const battery = apiData.battery;
 			const batteryName = `${battery.merk_baterai || '-'} ${battery.tipe_baterai || ''} ${battery.jenis_baterai || ''}`.trim();
 			const batterySn = battery.serial_number || '-';
+			const batteryItemNo = battery.item_number || battery.no_item || '-';
 			
 			html += `
 				<!-- Hidden fields untuk data existing battery -->
 				<input type="hidden" id="existingBatteryModelId${suffix}" value="${battery.id || ''}">
 				<input type="hidden" id="existingBatterySn${suffix}" value="${batterySn}">
+				<input type="hidden" id="existingBatteryItemNo${suffix}" value="${batteryItemNo}">
 				<input type="hidden" id="batteryAction${suffix}" value="use_existing">
 				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
-						<small><strong>Battery Installed:</strong> ${batteryName} • SN: ${batterySn}</small>
+						<small>
+							<strong>Battery Installed:</strong>
+							<span class="badge badge-soft-blue me-1">No Item: ${batteryItemNo}</span>
+							${batteryName} • SN: ${batterySn}
+						</small>
 					</div>
 				</div>
 				<div class="row">
@@ -5217,16 +5261,22 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 			const charger = apiData.charger;
 			const chargerName = `${charger.merk_charger || '-'} ${charger.tipe_charger || ''}`.trim();
 			const chargerSn = charger.serial_number || '-';
+			const chargerItemNo = charger.item_number || charger.no_item || '-';
 			
 			html += `
 				<!-- Hidden fields untuk data existing charger -->
 				<input type="hidden" id="existingChargerModelId${suffix}" value="${charger.id || ''}">
 				<input type="hidden" id="existingChargerSn${suffix}" value="${chargerSn}">
+				<input type="hidden" id="existingChargerItemNo${suffix}" value="${chargerItemNo}">
 				<input type="hidden" id="chargerAction${suffix}" value="use_existing">
 				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
-						<small><strong>Charger Installed:</strong> ${chargerName} • SN: ${chargerSn}</small>
+						<small>
+							<strong>Charger Installed:</strong>
+							<span class="badge badge-soft-green me-1">No Item: ${chargerItemNo}</span>
+							${chargerName} • SN: ${chargerSn}
+						</small>
 					</div>
 				</div>
 				<div class="row">

@@ -1375,7 +1375,7 @@ class Operational extends BaseController
                 $this->db->table('kontrak')
                     ->groupStart()
                         ->where('no_kontrak', $di['po_kontrak_nomor'])
-                        ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
+                        ->orWhere('customer_po_number', $di['po_kontrak_nomor'])
                     ->groupEnd()
                     ->update(['status'=>'ACTIVE','diperbarui_pada'=>date('Y-m-d H:i:s')]);
                     
@@ -1395,7 +1395,7 @@ class Operational extends BaseController
                     $kontrak = $this->db->table('kontrak')
                         ->groupStart()
                             ->where('no_kontrak', $di['po_kontrak_nomor'])
-                            ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
+                            ->orWhere('customer_po_number', $di['po_kontrak_nomor'])
                         ->groupEnd()
                         ->get()->getRowArray();
                 }
@@ -1611,8 +1611,18 @@ class Operational extends BaseController
     public function diPrintMulti($id)
     {
         $id = (int)$id;
-        $di = $this->diModel->find($id);
-        if ($di && !is_array($di)) { $di = (array)$di; }
+        // Sama seperti diPrint(): join quotation & spk.kontrak_id agar referensi kontrak/QT konsisten
+        $di = $this->db->table('delivery_instructions')
+            ->select('delivery_instructions.*, spk.kontrak_id as spk_kontrak_id, q.quotation_number')
+            ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+            ->where('delivery_instructions.id', $id)
+            ->get()
+            ->getRowArray();
+        if ($di && !is_array($di)) {
+            $di = (array) $di;
+        }
         if (!$di) {
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
         }
@@ -1877,6 +1887,39 @@ class Operational extends BaseController
             ->orderBy('id', 'ASC')
             ->get()->getResultArray();
 
+        // Workflow (Print DI): Jenis & Tujuan perintah kerja
+        $workflow = [
+            'jenis_label' => '-',
+            'jenis_kode' => '',
+            'tujuan_label' => '-',
+            'tujuan_kode' => '',
+            'tujuan_deskripsi' => '',
+        ];
+        if (!empty($di['jenis_perintah_kerja_id'])) {
+            $jr = $this->db->table('jenis_perintah_kerja')->where('id', (int) $di['jenis_perintah_kerja_id'])->get()->getRowArray();
+            if ($jr) {
+                $workflow['jenis_label'] = $jr['nama'] ?? ($jr['kode'] ?? '-');
+                $workflow['jenis_kode'] = $jr['kode'] ?? '';
+            }
+        }
+        if (!empty($di['tujuan_perintah_kerja_id'])) {
+            $tr = $this->db->table('tujuan_perintah_kerja')->where('id', (int) $di['tujuan_perintah_kerja_id'])->get()->getRowArray();
+            if ($tr) {
+                $workflow['tujuan_label'] = $tr['nama'] ?? ($tr['kode'] ?? '-');
+                $workflow['tujuan_kode'] = $tr['kode'] ?? '';
+                $workflow['tujuan_deskripsi'] = $tr['deskripsi'] ?? '';
+            }
+        }
+
+        $detailUnitBlockHeading = $this->diPrintDetailSectionBase($workflow['jenis_kode']);
+
+        $diPrintSource = $this->buildDiPrintSourceRef($di, $spk ?: []);
+
+        $diUnitSnapshot = null;
+        if ($item && ($item['item_type'] ?? '') === 'UNIT' && !empty($item['unit_id'])) {
+            $diUnitSnapshot = $this->buildDiPrintUnitSnapshot((int) $item['unit_id']);
+        }
+
         // Generate view with data
         $data = [
             'di' => $di,
@@ -1887,10 +1930,243 @@ class Operational extends BaseController
             'current_unit' => $currentUnit,
             'total_units' => $totalUnits,
             'trips' => $trips,
+            'workflow' => $workflow,
+            'detail_unit_block_heading' => $detailUnitBlockHeading,
+            'di_print_source' => $diPrintSource,
+            'di_unit_snapshot' => $diUnitSnapshot,
         ];
 
         // Return HTML string instead of view response for multi-print
         return view('operational/print_di', $data, ['saveData' => false]);
+    }
+
+    /**
+     * Referensi bisnis untuk print DI: nomor kontrak, PO pelanggan/marketing, atau quotation.
+     */
+    private function buildDiPrintSourceRef(array $di, array $spk): array
+    {
+        $quotation = trim((string) ($di['quotation_number'] ?? ''));
+        if ($quotation === '' && !empty($spk['id'])) {
+            $qrow = $this->db->table('spk s')
+                ->select('q.quotation_number')
+                ->join('quotation_specifications qs', 'qs.id_specification = s.quotation_specification_id', 'left')
+                ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+                ->where('s.id', (int) $spk['id'])
+                ->get()
+                ->getRowArray();
+            if (!empty($qrow['quotation_number'])) {
+                $quotation = trim((string) $qrow['quotation_number']);
+            }
+        }
+
+        $out = [
+            'mode' => 'none',
+            'no_kontrak' => '',
+            'po_pelanggan' => '',
+            'po_marketing' => '',
+            'quotation_number' => $quotation,
+            'fallback_nomor' => trim((string) ($di['po_kontrak_nomor'] ?? '')),
+            'rental_type' => '',
+            'spot_rental_number' => '',
+        ];
+
+        $kontrakId = (int) ($di['contract_id'] ?? 0);
+        if ($kontrakId <= 0) {
+            $kontrakId = (int) ($spk['kontrak_id'] ?? 0);
+        }
+        if ($kontrakId <= 0 && !empty($di['spk_kontrak_id'])) {
+            $kontrakId = (int) $di['spk_kontrak_id'];
+        }
+
+        $row = null;
+        if ($kontrakId > 0) {
+            $row = $this->db->table('kontrak')->where('id', $kontrakId)->get()->getRowArray();
+        }
+        if (!$row && $out['fallback_nomor'] !== '') {
+            $p = $out['fallback_nomor'];
+            $row = $this->db->table('kontrak')
+                ->groupStart()
+                    ->where('no_kontrak', $p)
+                    ->orWhere('customer_po_number', $p)
+                ->groupEnd()
+                ->get()
+                ->getRowArray();
+        }
+
+        if ($row) {
+            $out['mode'] = 'kontrak';
+            $out['no_kontrak'] = trim((string) ($row['no_kontrak'] ?? ''));
+            $out['po_pelanggan'] = trim((string) ($row['customer_po_number'] ?? ''));
+            // Optional internal PO column (only if present in DB schema)
+            $out['po_marketing'] = trim((string) ($row['no_po_marketing'] ?? ''));
+            $rt = strtoupper(trim((string) ($row['rental_type'] ?? '')));
+            $out['rental_type'] = $rt !== '' ? $rt : 'CONTRACT';
+            $out['spot_rental_number'] = trim((string) ($row['spot_rental_number'] ?? ''));
+
+            return $out;
+        }
+
+        if ($quotation !== '') {
+            $out['mode'] = 'quotation';
+        }
+
+        return $out;
+    }
+
+    /**
+     * Judul singkat blok rincian unit (tanpa mengulang tujuan — sudah di header dokumen).
+     */
+    private function diPrintDetailSectionBase(string $jenisKode): string
+    {
+        $jenisKode = strtoupper(trim($jenisKode));
+        switch ($jenisKode) {
+            case 'TARIK':
+                return 'DETAIL UNIT YANG DITARIK';
+            case 'TUKAR':
+                return 'DETAIL UNIT — PENUKARAN / PERGANTIAN';
+            case 'RELOKASI':
+                return 'DETAIL UNIT — RELOKASI';
+            case 'ANTAR':
+            default:
+                return 'DETAIL UNIT YANG DIKIRIM';
+        }
+    }
+
+    /**
+     * Snapshot komponen & spesifikasi dari inventori (fallback jika prepared_units_detail dari SPK kosong).
+     */
+    private function buildDiPrintUnitSnapshot(int $unitId): ?array
+    {
+        if ($unitId <= 0) {
+            return null;
+        }
+
+        $unitDetails = $this->db->table('inventory_unit iu')
+            ->select('iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, tu.tipe as jenis_unit, tu.jenis as jenis_unit_type, k.kapasitas_unit as kapasitas_name, tm.tipe_mast as mast_name, jr.tipe_roda as roda_name, tb.tipe_ban as ban_name, v.jumlah_valve as valve_name, d.nama_departemen as departemen_name')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+            ->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left')
+            ->join('jenis_roda jr', 'jr.id_roda = iu.roda_id', 'left')
+            ->join('tipe_ban tb', 'tb.id_ban = iu.ban_id', 'left')
+            ->join('valve v', 'v.id_valve = iu.valve_id', 'left')
+            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+            ->where('iu.id_inventory_unit', $unitId)
+            ->get()
+            ->getRowArray();
+
+        if (empty($unitDetails)) {
+            return null;
+        }
+
+        $helper = new InventoryComponentHelper();
+
+        $batRow = $this->db->table('inventory_batteries')
+            ->where('inventory_unit_id', $unitId)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getRowArray();
+        $batteryDetails = $batRow ? $helper->getBatteryByInventoryId((int) $batRow['id']) : null;
+
+        $chRow = $this->db->table('inventory_chargers')
+            ->where('inventory_unit_id', $unitId)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getRowArray();
+        $chargerDetails = $chRow ? $helper->getChargerByInventoryId((int) $chRow['id']) : null;
+
+        $attRow = $this->db->table('inventory_attachments')
+            ->where('inventory_unit_id', $unitId)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getRowArray();
+        $attachmentDetails = $attRow ? $helper->getAttachmentByInventoryId((int) $attRow['id']) : null;
+
+        $forkRow = $this->db->table('inventory_forks')
+            ->where('inventory_unit_id', $unitId)
+            ->where('detached_at IS NULL', null, false)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getRowArray();
+        $forkDetails = $forkRow ? $helper->getForkByInventoryId((int) $forkRow['id']) : null;
+
+        $noUnitFormatted = '-';
+        if (!empty($unitDetails['no_unit'])) {
+            $noUnitFormatted = (string) $unitDetails['no_unit'];
+            if (!empty($unitDetails['serial_number'])) {
+                $noUnitFormatted .= ' (SN: ' . $unitDetails['serial_number'] . ')';
+            }
+        }
+
+        $jenisUnitFormatted = '-';
+        if (!empty($unitDetails['jenis_unit_type'])) {
+            $jenisUnitFormatted = $unitDetails['jenis_unit_type'];
+            if (!empty($unitDetails['merk_unit']) && !empty($unitDetails['model_unit'])) {
+                $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'] . ' (' . $unitDetails['model_unit'] . ')';
+            } elseif (!empty($unitDetails['merk_unit'])) {
+                $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'];
+            }
+        }
+
+        $chargerFormatted = '-';
+        if ($chargerDetails && !empty($chargerDetails['merk_charger']) && !empty($chargerDetails['tipe_charger'])) {
+            $prefix = !empty($chargerDetails['item_number']) ? ('No Item: ' . $chargerDetails['item_number'] . ' · ') : '';
+            $chargerFormatted = $prefix . $chargerDetails['merk_charger'] . ' ' . $chargerDetails['tipe_charger'];
+            if (!empty($chargerDetails['sn_charger'])) {
+                $chargerFormatted .= ' (SN: ' . $chargerDetails['sn_charger'] . ')';
+            }
+        }
+
+        $bateraiFormatted = '-';
+        if ($batteryDetails && !empty($batteryDetails['merk_baterai']) && !empty($batteryDetails['tipe_baterai'])) {
+            $prefix = !empty($batteryDetails['item_number']) ? ('No Item: ' . $batteryDetails['item_number'] . ' · ') : '';
+            $bateraiFormatted = $prefix . $batteryDetails['merk_baterai'] . ' ' . $batteryDetails['tipe_baterai'];
+            if (!empty($batteryDetails['jenis_baterai'])) {
+                $bateraiFormatted .= ' ' . $batteryDetails['jenis_baterai'];
+            }
+            if (!empty($batteryDetails['sn_baterai'])) {
+                $bateraiFormatted .= ' (SN: ' . $batteryDetails['sn_baterai'] . ')';
+            }
+        }
+
+        $attachmentFormatted = '-';
+        if ($attachmentDetails && !empty($attachmentDetails['merk']) && !empty($attachmentDetails['model'])) {
+            $prefix = !empty($attachmentDetails['item_number']) ? ('No Item: ' . $attachmentDetails['item_number'] . ' · ') : '';
+            $attachmentFormatted = $prefix . $attachmentDetails['merk'] . ' - ' . $attachmentDetails['model'];
+            if (!empty($attachmentDetails['tipe'])) {
+                $attachmentFormatted .= ' ' . $attachmentDetails['tipe'];
+            }
+            if (!empty($attachmentDetails['sn_attachment'])) {
+                $attachmentFormatted .= ' (SN: ' . $attachmentDetails['sn_attachment'] . ')';
+            }
+        }
+
+        $forkFormatted = '-';
+        if ($forkDetails) {
+            $prefix = !empty($forkDetails['sn_fork']) ? ('No Item: ' . $forkDetails['sn_fork'] . ' · ') : '';
+            $forkFormatted = $prefix . trim(($forkDetails['fork_name'] ?? '') . (!empty($forkDetails['fork_class']) ? ' [' . $forkDetails['fork_class'] . ']' : ''));
+            if ($forkFormatted === '' || $forkFormatted === ' · ') {
+                $forkFormatted = '-';
+            }
+        }
+
+        return [
+            'unit_id' => $unitId,
+            'no_unit' => $noUnitFormatted,
+            'jenis_unit' => $jenisUnitFormatted,
+            'departemen_name' => $unitDetails['departemen_name'] ?? '-',
+            'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '-',
+            'mast_name' => $unitDetails['mast_name'] ?? '-',
+            'roda_name' => $unitDetails['roda_name'] ?? '-',
+            'ban_name' => $unitDetails['ban_name'] ?? '-',
+            'valve_name' => $unitDetails['valve_name'] ?? '-',
+            'charger_sn' => $chargerFormatted,
+            'baterai_sn' => $bateraiFormatted,
+            'attachment_sn' => $attachmentFormatted,
+            'fork_sn' => $forkFormatted,
+            'aksesoris' => '',
+            'combined_notes' => '',
+        ];
     }
 
     public function trackingTest()
@@ -2502,10 +2778,10 @@ class Operational extends BaseController
         
         if (isset($stageStatus['unit_stages'])) {
             foreach ($stageStatus['unit_stages'] as $unitIndex => $unitStages) {
-                if (isset($unitStages['persiapan_unit']) && $unitStages['persiapan_unit']['completed']) {
-                    // Get unit details from persiapan_unit stage
-                    $unitData = $unitStages['persiapan_unit'] ?? [];
-                    $unitId = $unitData['unit_id'] ?? null;
+                // Cukup ada unit di tahap persiapan (tidak wajib tanggal_approve) — agar print DI tetap berisi spesifikasi
+                if (!empty($unitStages['persiapan_unit']['unit_id'])) {
+                    $persiapanData = $unitStages['persiapan_unit'] ?? [];
+                    $unitId = $persiapanData['unit_id'] ?? null;
                     
                     // Get unit details from inventory_unit with joins
                     $unitDetails = null;
@@ -2524,38 +2800,42 @@ class Operational extends BaseController
                             ->get()
                             ->getRowArray();
                     }
+                    if (empty($unitDetails)) {
+                        continue;
+                    }
                     
                     // Get battery and charger details from persiapan_unit stage
                     $batteryDetails = null;
                     $chargerDetails = null;
                     $attachmentDetails = null;
                     
-                    if (isset($unitStages['persiapan_unit'])) {
-                        $persiapanData = $unitStages['persiapan_unit'];
-                        $batteryId = $persiapanData['battery_inventory_attachment_id'] ?? null;
-                        $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
-                        
-                        $componentHelper = new InventoryComponentHelper();
-                        
-                        if ($batteryId) {
-                            $batteryDetails = $componentHelper->getBatteryByInventoryId($batteryId);
-                        }
-                        
-                        if ($chargerId) {
-                            $chargerDetails = $componentHelper->getChargerByInventoryId($chargerId);
-                        }
+                    $batteryId = $persiapanData['battery_inventory_attachment_id'] ?? null;
+                    $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
+                    $componentHelper = new InventoryComponentHelper();
+                    if ($batteryId) {
+                        $batteryDetails = $componentHelper->getBatteryByInventoryId($batteryId);
+                    }
+                    if ($chargerId) {
+                        $chargerDetails = $componentHelper->getChargerByInventoryId($chargerId);
                     }
                     
-                    // Get attachment from fabrikasi stage (same as SPK)
-                    if (isset($unitStages['fabrikasi'])) {
-                        $fabrikasiData = $unitStages['fabrikasi'];
-                        $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
-                        
-                        $componentHelper = new InventoryComponentHelper();
-                        
-                        if ($attachmentId) {
-                            $attachmentDetails = $componentHelper->getAttachmentByInventoryId($attachmentId);
-                        }
+                    // Attachment: stage Install (Dept) atau Fabrikasi — keduanya simpan di attachment_inventory_attachment_id
+                    $attachmentId = (($unitStages['install'] ?? [])['attachment_inventory_attachment_id'] ?? null)
+                        ?: (($unitStages['fabrikasi'] ?? [])['attachment_inventory_attachment_id'] ?? null);
+                    if ($attachmentId) {
+                        $attachmentDetails = $componentHelper->getAttachmentByInventoryId((int) $attachmentId);
+                    }
+
+                    // Fork terpasang di unit (inventori)
+                    $forkDetails = null;
+                    $forkRow = $this->db->table('inventory_forks')
+                        ->where('inventory_unit_id', (int) $unitId)
+                        ->where('detached_at IS NULL', null, false)
+                        ->orderBy('id', 'DESC')
+                        ->get()
+                        ->getRowArray();
+                    if ($forkRow) {
+                        $forkDetails = $componentHelper->getForkByInventoryId((int) $forkRow['id']);
                     }
                     
                     // Format No Unit: [no_unit] (SN: [serial_number]) - same as SPK
@@ -2582,50 +2862,55 @@ class Operational extends BaseController
                         $jenisUnitFormatted = 'REACH TRUCK';
                     }
                     
-                    // Format Charger: [merk] [tipe] (SN: [sn]) - same as SPK
-                    $chargerFormatted = '';
-                    if ($chargerDetails && $chargerDetails['merk_charger'] && $chargerDetails['tipe_charger']) {
-                        $chargerFormatted = $chargerDetails['merk_charger'] . ' ' . $chargerDetails['tipe_charger'];
-                        if ($chargerDetails['sn_charger']) {
+                    // Charger / Baterai / Attachment: sertakan No Item (item_number) untuk print DI
+                    $chargerFormatted = '-';
+                    if ($chargerDetails && !empty($chargerDetails['merk_charger']) && !empty($chargerDetails['tipe_charger'])) {
+                        $prefix = !empty($chargerDetails['item_number']) ? ('No Item: ' . $chargerDetails['item_number'] . ' · ') : '';
+                        $chargerFormatted = $prefix . $chargerDetails['merk_charger'] . ' ' . $chargerDetails['tipe_charger'];
+                        if (!empty($chargerDetails['sn_charger'])) {
                             $chargerFormatted .= ' (SN: ' . $chargerDetails['sn_charger'] . ')';
                         }
-                    } else {
-                        $chargerFormatted = '-';
                     }
-                    
-                    // Format Baterai: [merk] [tipe] [jenis] (SN: [sn]) - same as SPK
-                    $bateraiFormatted = '';
-                    if ($batteryDetails && $batteryDetails['merk_baterai'] && $batteryDetails['tipe_baterai']) {
-                        $bateraiFormatted = $batteryDetails['merk_baterai'] . ' ' . $batteryDetails['tipe_baterai'];
-                        if ($batteryDetails['jenis_baterai']) {
+
+                    $bateraiFormatted = '-';
+                    if ($batteryDetails && !empty($batteryDetails['merk_baterai']) && !empty($batteryDetails['tipe_baterai'])) {
+                        $prefix = !empty($batteryDetails['item_number']) ? ('No Item: ' . $batteryDetails['item_number'] . ' · ') : '';
+                        $bateraiFormatted = $prefix . $batteryDetails['merk_baterai'] . ' ' . $batteryDetails['tipe_baterai'];
+                        if (!empty($batteryDetails['jenis_baterai'])) {
                             $bateraiFormatted .= ' ' . $batteryDetails['jenis_baterai'];
                         }
-                        if ($batteryDetails['sn_baterai']) {
+                        if (!empty($batteryDetails['sn_baterai'])) {
                             $bateraiFormatted .= ' (SN: ' . $batteryDetails['sn_baterai'] . ')';
                         }
-                    } else {
-                        $bateraiFormatted = '-';
                     }
-                    
-                    // Format Attachment: [merk] - [model] [tipe] (SN: [sn]) - same as SPK
-                    $attachmentFormatted = '';
-                    if ($attachmentDetails && $attachmentDetails['merk'] && $attachmentDetails['model']) {
-                        $attachmentFormatted = $attachmentDetails['merk'] . ' - ' . $attachmentDetails['model'];
-                        if ($attachmentDetails['tipe']) {
+
+                    $attachmentFormatted = '-';
+                    if ($attachmentDetails && !empty($attachmentDetails['merk']) && !empty($attachmentDetails['model'])) {
+                        $prefix = !empty($attachmentDetails['item_number']) ? ('No Item: ' . $attachmentDetails['item_number'] . ' · ') : '';
+                        $attachmentFormatted = $prefix . $attachmentDetails['merk'] . ' - ' . $attachmentDetails['model'];
+                        if (!empty($attachmentDetails['tipe'])) {
                             $attachmentFormatted .= ' ' . $attachmentDetails['tipe'];
                         }
-                        if ($attachmentDetails['sn_attachment']) {
+                        if (!empty($attachmentDetails['sn_attachment'])) {
                             $attachmentFormatted .= ' (SN: ' . $attachmentDetails['sn_attachment'] . ')';
                         }
-                    } else {
-                        $attachmentFormatted = 'ATT-' . $unitId;
+                    }
+
+                    $forkFormatted = '-';
+                    if ($forkDetails) {
+                        $prefix = !empty($forkDetails['sn_fork']) ? ('No Item: ' . $forkDetails['sn_fork'] . ' · ') : '';
+                        $forkFormatted = $prefix . trim(($forkDetails['fork_name'] ?? '') . (!empty($forkDetails['fork_class']) ? ' [' . $forkDetails['fork_class'] . ']' : ''));
+                        if ($forkFormatted === '' || $forkFormatted === ' · ') {
+                            $forkFormatted = '-';
+                        }
                     }
                     
                     // Combine notes from all stages (same as SPK)
                     $combinedNotes = [];
                     $stageNames = [
                         'persiapan_unit' => 'Persiapan Unit',
-                        'fabrikasi' => 'Fabrikasi', 
+                        'install' => 'Install (Dept)',
+                        'fabrikasi' => 'Fabrikasi',
                         'painting' => 'Painting',
                         'pdi' => 'PDI'
                     ];
@@ -2654,15 +2939,16 @@ class Operational extends BaseController
                         'unit_id' => $unitId,
                         'no_unit' => $noUnitFormatted,
                         'jenis_unit' => $jenisUnitFormatted,
-                        'departemen_name' => $unitDetails['departemen_name'] ?? 'ELECTRIC',
-                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '15 Ton',
-                        'mast_name' => $unitDetails['mast_name'] ?? 'Triplex (3-stage FFL) - ZSM450',
-                        'roda_name' => $unitDetails['roda_name'] ?? '3-Wheel',
-                        'ban_name' => $unitDetails['ban_name'] ?? 'Cushion (Ban Bantal)',
-                        'valve_name' => $unitDetails['valve_name'] ?? '3 Valve',
+                        'departemen_name' => $unitDetails['departemen_name'] ?? '-',
+                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '-',
+                        'mast_name' => $unitDetails['mast_name'] ?? '-',
+                        'roda_name' => $unitDetails['roda_name'] ?? '-',
+                        'ban_name' => $unitDetails['ban_name'] ?? '-',
+                        'valve_name' => $unitDetails['valve_name'] ?? '-',
                         'charger_sn' => $chargerFormatted,
                         'baterai_sn' => $bateraiFormatted,
                         'attachment_sn' => $attachmentFormatted,
+                        'fork_sn' => $forkFormatted,
                         'aksesoris' => $persiapanData['aksesoris_tersedia'] ?? '',
                         'combined_notes' => implode(' | ', $combinedNotes)
                     ];

@@ -6,6 +6,100 @@ $items = $items ?? [];
 $unit_items = $unit_items ?? []; // Array of units for multiple DI pages
 $k = $k ?? []; // Kontrak spesifikasi data - added to prevent undefined variable errors
 $trips = $trips ?? []; // Delivery trips
+$workflow = $workflow ?? [];
+$detail_unit_block_heading = $detail_unit_block_heading ?? 'DETAIL UNIT YANG DIKIRIM';
+$di_unit_snapshot = $di_unit_snapshot ?? null;
+$di_print_source = $di_print_source ?? [
+    'mode' => 'none',
+    'no_kontrak' => '',
+    'po_pelanggan' => '',
+    'po_marketing' => '',
+    'quotation_number' => '',
+    'fallback_nomor' => '',
+    'rental_type' => '',
+    'spot_rental_number' => '',
+];
+
+$psMode = (string) ($di_print_source['mode'] ?? 'none');
+$psNk = trim((string) ($di_print_source['no_kontrak'] ?? ''));
+$psPoP = trim((string) ($di_print_source['po_pelanggan'] ?? ''));
+$psPoM = trim((string) ($di_print_source['po_marketing'] ?? ''));
+$psQ = trim((string) ($di_print_source['quotation_number'] ?? ''));
+$psFb = trim((string) ($di_print_source['fallback_nomor'] ?? ($di['po_kontrak_nomor'] ?? '')));
+$psRt = strtoupper(trim((string) ($di_print_source['rental_type'] ?? '')));
+if ($psRt === '') {
+    $psRt = 'CONTRACT';
+}
+$psSpot = trim((string) ($di_print_source['spot_rental_number'] ?? ''));
+
+$di_ref_lines = [];
+if ($psMode === 'kontrak') {
+    // Dinamis murni: CONTRACT => kontrak, PO_ONLY => PO pelanggan, DAILY_SPOT => sewa spot.
+    if ($psRt === 'PO_ONLY') {
+        if ($psPoP !== '') {
+            $di_ref_lines[] = ['label' => 'No. PO Pelanggan:', 'value' => $psPoP];
+        } elseif ($psNk !== '') {
+            $di_ref_lines[] = ['label' => 'No. Kontrak:', 'value' => $psNk];
+        }
+    } elseif ($psRt === 'DAILY_SPOT') {
+        if ($psSpot !== '') {
+            $di_ref_lines[] = ['label' => 'No. Sewa Spot:', 'value' => $psSpot];
+        } elseif ($psNk !== '') {
+            $di_ref_lines[] = ['label' => 'No. Kontrak:', 'value' => $psNk];
+        } elseif ($psPoP !== '') {
+            $di_ref_lines[] = ['label' => 'No. PO Pelanggan:', 'value' => $psPoP];
+        }
+    } else {
+        if ($psNk !== '') {
+            $di_ref_lines[] = ['label' => 'No. Kontrak:', 'value' => $psNk];
+        } elseif ($psPoP !== '') {
+            $di_ref_lines[] = ['label' => 'No. PO Pelanggan:', 'value' => $psPoP];
+        }
+    }
+    if ($psRt !== 'CONTRACT' && $psPoM !== '' && $psPoM !== $psPoP && $psPoM !== $psNk) {
+        $di_ref_lines[] = ['label' => 'No. PO Marketing:', 'value' => $psPoM];
+    }
+    if ($di_ref_lines === [] && $psQ !== '') {
+        $di_ref_lines[] = ['label' => 'No. Quotation:', 'value' => $psQ];
+    }
+    if ($di_ref_lines === [] && $psFb !== '') {
+        $di_ref_lines[] = ['label' => 'Ref. Kontrak/PO:', 'value' => $psFb];
+    }
+    if ($di_ref_lines === []) {
+        $di_ref_lines[] = ['label' => 'Ref. Kontrak/QT:', 'value' => '-'];
+    }
+    if ($psQ !== '' && $di_ref_lines !== []) {
+        $hasQt = false;
+        foreach ($di_ref_lines as $r) {
+            if (($r['label'] ?? '') === 'No. Quotation:') {
+                $hasQt = true;
+                break;
+            }
+        }
+        if (!$hasQt) {
+            $di_ref_lines[] = ['label' => 'No. Quotation:', 'value' => $psQ];
+        }
+    }
+} elseif ($psMode === 'quotation' && $psQ !== '') {
+    $di_ref_lines[] = ['label' => 'No. Quotation:', 'value' => $psQ];
+} elseif ($psQ !== '') {
+    $di_ref_lines[] = ['label' => 'No. Quotation:', 'value' => $psQ];
+} elseif ($psFb !== '') {
+    $di_ref_lines[] = ['label' => 'Ref. Kontrak/PO:', 'value' => $psFb];
+} else {
+    $di_ref_lines[] = ['label' => 'Ref. Kontrak/QT:', 'value' => '-'];
+}
+
+$jl = trim((string) ($workflow['jenis_label'] ?? ''));
+$tl = trim((string) ($workflow['tujuan_label'] ?? ''));
+$di_command_line = '';
+if ($jl !== '' && $jl !== '-' && $tl !== '' && $tl !== '-') {
+    $di_command_line = $jl . ' — ' . $tl;
+} elseif ($jl !== '' && $jl !== '-') {
+    $di_command_line = $jl;
+} elseif ($tl !== '' && $tl !== '-') {
+    $di_command_line = $tl;
+}
 $status = strtoupper((string)($di['status'] ?? ''));
 $placeholder = ($status === 'SUBMITTED' || $status === 'DIAJUKAN');
 
@@ -169,6 +263,15 @@ if (empty($unit_items)) {
             font-size: 16px;
             margin: 5px 0 0 0;
             color: #000;
+        }
+
+        .di-command-line {
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin: 6px 0 0 0;
+            letter-spacing: 0.02em;
+            line-height: 1.3;
         }
         
         .document-meta {
@@ -397,6 +500,9 @@ if (empty($unit_items)) {
             <div class="document-title">
                 <h1>PT. SARANA MITRA LUAS</h1>
                 <h2>DELIVERY INSTRUCTION</h2>
+                <?php if ($di_command_line !== ''): ?>
+                    <p class="di-command-line"><?= esc($di_command_line) ?></p>
+                <?php endif; ?>
             </div>
             <div class="document-meta">
                 <div class="doc-number"><strong>No: <?= esc($di['nomor_di'] ?? '-') ?></strong></div>
@@ -410,23 +516,12 @@ if (empty($unit_items)) {
             <div class="section-title">INFORMASI DOKUMEN & PELANGGAN</div>
             <div class="info-grid">
                 <div>
+                    <?php foreach ($di_ref_lines as $refRow): ?>
                     <div class="info-item">
-                        <?php 
-                            // Show quotation number or contract indicator
-                            $hasContract = !empty($di['contract_id']) || !empty($spk['kontrak_id']) || !empty($di['spk_kontrak_id']);
-                            if ($hasContract) {
-                                $infoLabel = 'Source:';
-                                $infoValue = 'Contract-based';
-                            } else {
-                                // Show actual quotation number
-                                $quotationNumber = $di['quotation_number'] ?? $spk['quotation_number'] ?? '-';
-                                $infoLabel = 'No Quotation:';
-                                $infoValue = $quotationNumber;
-                            }
-                        ?>
-                        <span class="info-label"><?= $infoLabel ?></span>
-                        <span class="info-value"><?= $infoValue ?></span>
+                        <span class="info-label"><?= esc($refRow['label']) ?></span>
+                        <span class="info-value"><?= esc($refRow['value']) ?></span>
                     </div>
+                    <?php endforeach; ?>
                     <div class="info-item">
                         <span class="info-label">Nama Perusahaan:</span>
                         <span class="info-value"><?= esc($di['pelanggan'] ?? $spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span>
@@ -522,9 +617,9 @@ if (empty($unit_items)) {
         <!-- Unit Details -->
         <div class="unit-section">
             <div class="unit-header">
-                DETAIL UNIT YANG DIKIRIM
+                <?= esc($detail_unit_block_heading) ?>
                 <?php if ($current_unit): ?>
-                    - <?= esc($current_unit['no_unit'] ?? 'Unit') ?> (<?= esc($current_unit['merk_unit'] ?? '') ?> <?= esc($current_unit['model_unit'] ?? '') ?>)
+                    — <?= esc($current_unit['no_unit'] ?? 'Unit') ?><?php if (!empty($current_unit['merk_unit']) || !empty($current_unit['model_unit'])): ?> (<?= esc(trim(($current_unit['merk_unit'] ?? '') . ' ' . ($current_unit['model_unit'] ?? ''))) ?>)<?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -550,25 +645,30 @@ if (empty($unit_items)) {
                 if (!$rowPrepared) {
                     $rowPrepared = $preparedList[$unit_index] ?? ($preparedList[0] ?? null);
                 }
+
+                // Snapshot inventori mengisi celah jika tahap SPK belum lengkap di prepared_units_detail
+                $displayUnit = array_merge($di_unit_snapshot ?? [], is_array($rowPrepared) ? $rowPrepared : []);
                 
-                // Build left/right summaries exactly like SPK
+                // Build left/right summaries exactly like SPK + Fork + No Item di string komponen
                 $summaryLeft = [
-                    ['No Unit', $rowPrepared['no_unit'] ?? ''],
-                    ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ''],
-                    ['Departemen', $rowPrepared['departemen_name'] ?? ''],
-                    ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ''],
-                    ['Mast', $rowPrepared['mast_name'] ?? ''],
+                    ['No Unit', $displayUnit['no_unit'] ?? ''],
+                    ['Jenis Unit', $displayUnit['jenis_unit'] ?? ''],
+                    ['Departemen', $displayUnit['departemen_name'] ?? ''],
+                    ['Kapasitas', $displayUnit['kapasitas_name'] ?? ''],
+                    ['Mast', $displayUnit['mast_name'] ?? ''],
+                    ['', ''],
                 ];
                 $summaryRight = [
-                    ['Charger', $rowPrepared['charger_sn'] ?? ''],
-                    ['Baterai', $rowPrepared['baterai_sn'] ?? ''],
-                    ['Attachment', $rowPrepared['attachment_sn'] ?? ''],
+                    ['Charger', $displayUnit['charger_sn'] ?? ''],
+                    ['Baterai', $displayUnit['baterai_sn'] ?? ''],
+                    ['Attachment', $displayUnit['attachment_sn'] ?? ''],
+                    ['Fork', $displayUnit['fork_sn'] ?? '-'],
                     ['Roda & Ban', trim(
-                        ($rowPrepared['roda_name'] ?? '') .
-                        ((!empty($rowPrepared['roda_name']) && !empty($rowPrepared['ban_name'])) ? ' & ' : '') .
-                        ($rowPrepared['ban_name'] ?? '')
+                        ($displayUnit['roda_name'] ?? '') .
+                        ((!empty($displayUnit['roda_name']) && !empty($displayUnit['ban_name'])) ? ' & ' : '') .
+                        ($displayUnit['ban_name'] ?? '')
                     )],
-                    ['Valve', $rowPrepared['valve_name'] ?? ''],
+                    ['Valve', $displayUnit['valve_name'] ?? ''],
                 ];
             ?>
             <table class="table grid-2">
@@ -592,7 +692,7 @@ if (empty($unit_items)) {
                             <?php
                                 // Prefer per-row accessories if provided; fallback to global SPK/spec (same as SPK)
                                 $aksText = '';
-                                $aksRaw = $rowPrepared['aksesoris'] ?? '';
+                                $aksRaw = $displayUnit['aksesoris'] ?? '';
                                 if (!empty($aksRaw)) {
                                     if (is_array($aksRaw)) {
                                         $aksList = $aksRaw;
@@ -622,7 +722,7 @@ if (empty($unit_items)) {
                     <tr>
                         <td class="label" style="background-color: #f8f9fa;">Catatan</td>
                         <td class="val" colspan="3" style="background-color: #f8f9fa;">
-                            <?= esc($rowPrepared['combined_notes'] ?? '') ?>
+                            <?= esc($displayUnit['combined_notes'] ?? '') ?>
                         </td>
                     </tr>
                 </tbody>

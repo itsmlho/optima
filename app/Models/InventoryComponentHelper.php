@@ -149,7 +149,8 @@ class InventoryComponentHelper extends Model
     public function getBatteryByInventoryId($inventoryAttachmentId)
     {
         return $this->db->table('inventory_batteries ib')
-            ->select('ib.id as id_inventory_attachment, ib.battery_type_id as baterai_id, ib.serial_number as sn_baterai, 
+            ->select('ib.id as id_inventory_attachment, ib.battery_type_id as baterai_id, ib.item_number,
+                      ib.serial_number as sn_baterai, 
                       ib.storage_location as lokasi_penyimpanan, ib.inventory_unit_id as id_inventory_unit,
                       ib.status as attachment_status, ib.physical_condition as kondisi_fisik,
                       ib.received_at as tanggal_masuk, ib.created_at,
@@ -165,7 +166,8 @@ class InventoryComponentHelper extends Model
     public function getChargerByInventoryId($inventoryAttachmentId)
     {
         return $this->db->table('inventory_chargers ic')
-            ->select('ic.id as id_inventory_attachment, ic.charger_type_id as charger_id, ic.serial_number as sn_charger,
+            ->select('ic.id as id_inventory_attachment, ic.charger_type_id as charger_id, ic.item_number,
+                      ic.serial_number as sn_charger,
                       ic.storage_location as lokasi_penyimpanan, ic.inventory_unit_id as id_inventory_unit,
                       ic.status as attachment_status, ic.physical_condition as kondisi_fisik,
                       ic.received_at as tanggal_masuk, ic.created_at,
@@ -181,7 +183,8 @@ class InventoryComponentHelper extends Model
     public function getAttachmentByInventoryId($inventoryAttachmentId)
     {
         return $this->db->table('inventory_attachments ia')
-            ->select('ia.id as id_inventory_attachment, ia.attachment_type_id as attachment_id, ia.serial_number as sn_attachment,
+            ->select('ia.id as id_inventory_attachment, ia.attachment_type_id as attachment_id, ia.item_number,
+                      ia.serial_number as sn_attachment,
                       ia.storage_location as lokasi_penyimpanan, ia.inventory_unit_id as id_inventory_unit,
                       ia.status as attachment_status, ia.physical_condition as kondisi_fisik,
                       ia.received_at as tanggal_masuk, ia.created_at,

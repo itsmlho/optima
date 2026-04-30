@@ -2477,6 +2477,29 @@ class Service extends BaseController
             
             // Attach new component
             if (!empty($componentData['new_inventory_attachment_id'])) {
+                $newId = (int)$componentData['new_inventory_attachment_id'];
+                $newComponent = $this->db->table($tableName)
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', $newId)
+                    ->get()
+                    ->getRowArray();
+
+                if (!$newComponent) {
+                    throw new \Exception(ucfirst($type) . ' tidak ditemukan');
+                }
+
+                $newStatus = strtoupper((string)($newComponent['status'] ?? ''));
+                $newOwnerUnit = (int)($newComponent['inventory_unit_id'] ?? 0);
+                if ($newStatus === 'IN_USE' && $newOwnerUnit > 0 && $newOwnerUnit !== (int)$unit_id) {
+                    $owner = $this->db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $newOwnerUnit)
+                        ->get()
+                        ->getRowArray();
+                    $ownerNo = $owner['no_unit'] ?? ('ID ' . $newOwnerUnit);
+                    throw new \Exception(ucfirst($type) . ' masih digunakan oleh Unit ' . $ownerNo . '. Remove dulu dari unit existing sebelum dipasang ke unit ini.');
+                }
+
                 // Defensive: Explicitly set only allowed fields
                 $updateData = [
                     'inventory_unit_id' => $unit_id,
@@ -2533,6 +2556,26 @@ class Service extends BaseController
             
             // Update battery attachment
             if ($battery_id) {
+                $batteryRow = $this->db->table('inventory_batteries')
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', (int)$battery_id)
+                    ->get()
+                    ->getRowArray();
+                if (!$batteryRow) {
+                    throw new \Exception('Baterai tidak ditemukan');
+                }
+                $batteryOwner = (int)($batteryRow['inventory_unit_id'] ?? 0);
+                $batteryStatus = strtoupper((string)($batteryRow['status'] ?? ''));
+                if ($batteryStatus === 'IN_USE' && $batteryOwner > 0 && $batteryOwner !== (int)$unit_id) {
+                    $owner = $this->db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $batteryOwner)
+                        ->get()
+                        ->getRowArray();
+                    $ownerNo = $owner['no_unit'] ?? ('ID ' . $batteryOwner);
+                    throw new \Exception('Baterai masih digunakan oleh Unit ' . $ownerNo . '. Remove dulu dari unit existing sebelum dipasang ke unit ini.');
+                }
+
                 $updateData = [
                     'inventory_unit_id' => $unit_id, 
                     'status' => 'IN_USE', 
@@ -2554,6 +2597,26 @@ class Service extends BaseController
             
             // Update charger attachment
             if ($charger_id) {
+                $chargerRow = $this->db->table('inventory_chargers')
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', (int)$charger_id)
+                    ->get()
+                    ->getRowArray();
+                if (!$chargerRow) {
+                    throw new \Exception('Charger tidak ditemukan');
+                }
+                $chargerOwner = (int)($chargerRow['inventory_unit_id'] ?? 0);
+                $chargerStatus = strtoupper((string)($chargerRow['status'] ?? ''));
+                if ($chargerStatus === 'IN_USE' && $chargerOwner > 0 && $chargerOwner !== (int)$unit_id) {
+                    $owner = $this->db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $chargerOwner)
+                        ->get()
+                        ->getRowArray();
+                    $ownerNo = $owner['no_unit'] ?? ('ID ' . $chargerOwner);
+                    throw new \Exception('Charger masih digunakan oleh Unit ' . $ownerNo . '. Remove dulu dari unit existing sebelum dipasang ke unit ini.');
+                }
+
                 $updateData = [
                     'inventory_unit_id' => $unit_id, 
                     'status' => 'IN_USE', 
@@ -2656,21 +2719,26 @@ class Service extends BaseController
             if (!empty($approvalData['mechanics_data'])) {
                 $this->saveMechanicAssignments($stageData, $approvalData);
             }
+
+            // Fork attach must succeed inside the same transaction as stage save (avoid "approved" tanpa IN_USE di inventory)
+            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && !empty($approvalData['fork_id'])) {
+                $this->handleFabrikasiFork($stageData, $approvalData);
+            }
+
+            // Attachment (inventory_attachments) — sama seperti fork: dalam satu transaksi dengan approval stage
+            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && !empty($approvalData['attachment_id'])) {
+                $this->handleFabrikasiAttachment($stageData, $approvalData);
+            }
             
             $this->db->transComplete();
 
             if ($this->db->transStatus() === false) {
-                throw new \Exception('Transaction failed: ' . ($this->db->error()['message'] ?? 'unknown DB error'));
-            }
-            
-            // Handle attachment updates for install/fabrikasi stage
-            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && $approvalData['attachment_id']) {
-                $this->handleFabrikasiAttachment($stageData, $approvalData);
-            }
-
-            // Handle fork updates for install/fabrikasi stage
-            if (in_array($approvalData['stage'], ['install', 'fabrikasi']) && !empty($approvalData['fork_id'])) {
-                $this->handleFabrikasiFork($stageData, $approvalData);
+                $dbErr = $this->db->error();
+                $detail = is_array($dbErr) ? trim((string) ($dbErr['message'] ?? '')) : '';
+                if ($detail === '') {
+                    $detail = 'Database menolak salah satu query (cek writable/logs untuk mysqli_sql_exception).';
+                }
+                throw new \Exception('Transaction failed: ' . $detail);
             }
             
             // Send notification: Attachment Uploaded on Stage
@@ -2807,8 +2875,10 @@ class Service extends BaseController
 
     /**
      * Validate fabrikasi attachment
+     *
+     * @param array $stageData By reference — sets attachment_inventory_attachment_id for save.
      */
-    private function validateFabrikasiAttachment($stageData, $approvalData)
+    private function validateFabrikasiAttachment(&$stageData, $approvalData)
     {
         // Skip attachment validation when user chose to install fork instead
         if (($approvalData['install_type'] ?? 'attachment') === 'fork') {
@@ -2816,6 +2886,22 @@ class Service extends BaseController
         }
 
         log_message('info', 'Fabrikasi stage data: attachment_id=' . $approvalData['attachment_id'] . ', transfer_attachment=' . ($approvalData['transfer_attachment'] ? 'true' : 'false'));
+
+        $targetUnitId = (int)($stageData['unit_id'] ?? 0);
+        $hasAttachmentOnUnit = false;
+        if ($targetUnitId > 0) {
+            $hasAttachmentOnUnit = $this->db->table('inventory_attachments')
+                ->where('inventory_unit_id', $targetUnitId)
+                ->countAllResults() > 0;
+        }
+
+        $currentStageName = $approvalData['stage'] ?? 'fabrikasi';
+        $existingStage = $this->db->table('spk_unit_stages')
+            ->where('spk_id', $stageData['spk_id'])
+            ->where('unit_index', $stageData['unit_index'])
+            ->where('stage_name', $currentStageName)
+            ->get()
+            ->getRowArray();
         
         // Debug: Check if attachment exists and is valid
         if ($approvalData['attachment_id']) {
@@ -2828,23 +2914,31 @@ class Service extends BaseController
             }
             
             log_message('info', 'Attachment found: ' . json_encode($attachmentCheck));
+
+            // Tidak boleh multi-use: jika masih IN_USE di unit lain, wajib remove dulu.
+            $ownerUnitId = (int)($attachmentCheck['inventory_unit_id'] ?? 0);
+            $status = strtoupper((string)($attachmentCheck['status'] ?? ''));
+            if ($targetUnitId > 0 && $status === 'IN_USE' && $ownerUnitId > 0 && $ownerUnitId !== $targetUnitId) {
+                $owner = $this->db->table('inventory_unit')
+                    ->select('no_unit')
+                    ->where('id_inventory_unit', $ownerUnitId)
+                    ->get()
+                    ->getRowArray();
+                $ownerNo = $owner['no_unit'] ?? ('ID ' . $ownerUnitId);
+                throw new \Exception('Attachment masih digunakan oleh Unit ' . $ownerNo . '. Remove dulu dari unit existing sebelum dipasang ke unit ini.');
+            }
         }
-        
-        // Check if attachment is required (only if not editing existing stage)
-        $existingStage = $this->db->table('spk_unit_stages')
-            ->where('spk_id', $stageData['spk_id'])
-            ->where('unit_index', $stageData['unit_index'])
-            ->where('stage_name', 'fabrikasi')
-            ->get()
-            ->getRowArray();
-        
-        if (!$existingStage && !$approvalData['attachment_id']) {
-            throw new \Exception('Attachment harus dipilih');
+
+        // Pasang Attachment: wajib ada inventory attachment ID kecuali edit ulang stage atau unit sudah punya attachment di inventori.
+        if (!$approvalData['attachment_id']) {
+            if ($existingStage || $hasAttachmentOnUnit) {
+                return;
+            }
+            throw new \Exception('Attachment harus dipilih untuk instalasi Pasang Attachment.');
+
         }
-        
-        if ($approvalData['attachment_id']) {
-            $stageData['attachment_inventory_attachment_id'] = $approvalData['attachment_id'];
-        }
+
+        $stageData['attachment_inventory_attachment_id'] = $approvalData['attachment_id'];
     }
 
     /**
@@ -2907,15 +3001,6 @@ class Service extends BaseController
         }
 
         $forkId = (int)($approvalData['fork_id'] ?? 0);
-        $spkId = (int)($stageData['spk_id'] ?? 0);
-
-        $aksesoris = $this->getKontrakSpecAksesorisForSpk($spkId);
-        $aksLower = array_values(array_filter(array_map(function($v) {
-            return strtolower(trim((string)$v));
-        }, $aksesoris)));
-
-        // Marketing uses: "forks", "laser_fork", "fork_extension"
-        $forkRequired = in_array('forks', $aksLower, true) || in_array('laser_fork', $aksLower, true) || in_array('fork_extension', $aksLower, true);
 
         // Determine target unit (from persiapan stage), then check if unit already has a fork.
         $targetUnitStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
@@ -2928,18 +3013,12 @@ class Service extends BaseController
                 ->countAllResults() > 0;
         }
 
-        // If spec requires a fork, but user didn't select one:
-        // - allow if unit already has an attached fork
-        // - otherwise block approval
-        if ($forkRequired && !$forkId) {
-            if (!$hasForkAttached) {
-                throw new \Exception('Fork harus dipilih');
-            }
-            return;
-        }
-
+        // Pasang Fork wajib kirim fork_id kecuali unit sudah punya fork aktif (tidak perlu pilih lagi).
         if (!$forkId) {
-            return;
+            if ($hasForkAttached) {
+                return;
+            }
+            throw new \Exception('Fork harus dipilih untuk instalasi Pasang Fork. Pastikan dropdown fork terisi lalu simpan lagi.');
         }
 
         // Validate fork existence + (best-effort) stock availability.
@@ -2955,11 +3034,19 @@ class Service extends BaseController
         $stockId = $forkRow['fork_stock_id'] ?? null;
         $qty = (int)($forkRow['qty_pairs'] ?? 1);
 
-        // If fork is currently attached to another unit, we will transfer it during handling,
-        // so stock availability should be validated after releasing from its current unit.
-
         $ownerUnitId = $forkRow['inventory_unit_id'] ?? null;
         $ownerUnitIdInt = $ownerUnitId !== null ? (int)$ownerUnitId : null;
+
+        // Tidak boleh multi-use: jika masih menempel di unit lain, wajib remove dulu.
+        if ($ownerUnitIdInt !== null && $ownerUnitIdInt > 0 && $ownerUnitIdInt !== $targetUnitId) {
+            $owner = $this->db->table('inventory_unit')
+                ->select('no_unit')
+                ->where('id_inventory_unit', $ownerUnitIdInt)
+                ->get()
+                ->getRowArray();
+            $ownerNo = $owner['no_unit'] ?? ('ID ' . $ownerUnitIdInt);
+            throw new \Exception('Fork masih digunakan oleh Unit ' . $ownerNo . '. Remove dulu dari unit existing sebelum dipasang ke unit ini.');
+        }
 
         // If stockId missing, we can't reliably attach.
         if (empty($stockId)) {
@@ -2983,33 +3070,28 @@ class Service extends BaseController
      */
     private function handleFabrikasiAttachment($stageData, $approvalData)
     {
-        // Get unit_id from persiapan stage for immediate attachment update
-        $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
-        
-        if ($persiapanStage && $persiapanStage['unit_id']) {
-            try {
-                log_message('info', "=== BACKGROUND ATTACHMENT UPDATE ===");
-                log_message('info', "Attachment ID: {$approvalData['attachment_id']}");
-                log_message('info', "Target Unit ID: {$persiapanStage['unit_id']}");
-                log_message('info', "Transfer Mode: " . ($approvalData['transfer_attachment'] ? 'KANIBAL' : 'NORMAL'));
-                log_message('info', "SPK ID: {$stageData['spk_id']}");
-                log_message('info', "Stage Name: {$approvalData['stage']}");
-                
-                // Create and execute background attachment update with audit info
-                $this->executeBackgroundAttachmentUpdate(
-                    $approvalData['attachment_id'], 
-                    $persiapanStage['unit_id'], 
-                    $approvalData['transfer_attachment'],
-                    $stageData['spk_id'],
-                    $approvalData['stage'],
-                    $approvalData['keterangan_instalasi'] ?? ''
-                );
-                
-            } catch (\Throwable $e) {
-                log_message('error', 'Attachment update failed [' . get_class($e) . ']: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-                // Don't throw exception as main approval already succeeded
-            }
+        $unitId = (int)($stageData['unit_id'] ?? 0);
+        if ($unitId <= 0) {
+            $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+            $unitId = (int)($persiapanStage['unit_id'] ?? 0);
         }
+        if ($unitId <= 0) {
+            throw new \Exception('Target unit tidak ditemukan untuk pemasangan attachment.');
+        }
+
+        log_message('info', "=== FABRIKASI ATTACHMENT UPDATE ===");
+        log_message('info', "Attachment ID: {$approvalData['attachment_id']}");
+        log_message('info', "Target Unit ID: {$unitId}");
+        log_message('info', "Transfer Mode: " . ($approvalData['transfer_attachment'] ? 'KANIBAL' : 'NORMAL'));
+
+        $this->executeBackgroundAttachmentUpdate(
+            $approvalData['attachment_id'],
+            $unitId,
+            $approvalData['transfer_attachment'],
+            $stageData['spk_id'],
+            $approvalData['stage'],
+            $approvalData['keterangan_instalasi'] ?? ''
+        );
     }
 
     /**
@@ -3027,7 +3109,7 @@ class Service extends BaseController
 
         $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
         if (!$persiapanStage || empty($persiapanStage['unit_id'])) {
-            return;
+            throw new \Exception('Data persiapan unit tidak ditemukan — fork tidak bisa dipasang.');
         }
 
         $unitId = (int)$persiapanStage['unit_id'];
@@ -3035,7 +3117,6 @@ class Service extends BaseController
 
         $auditService = new \App\Services\ComponentAuditService($this->db);
 
-        $this->db->transStart();
         try {
             // Release all forks currently attached to target unit
             $oldForks = $this->db->table('inventory_forks')
@@ -3172,12 +3253,8 @@ class Service extends BaseController
             ]);
         } catch (\Throwable $e) {
             log_message('error', 'Fork fabrikasi update failed: ' . $e->getMessage());
-            // Keep stage approval status stable; validation should prevent common failures.
-            $this->db->transRollback();
-            return;
+            throw $e;
         }
-
-        $this->db->transComplete();
     }
 
     /**
@@ -3958,7 +4035,9 @@ EOF;
         
         $rows = $qb->get()->getResultArray();
         $data = array_map(function($r) use ($type){
-            $isUsed = !empty($r['inventory_unit_id']);
+            // Fork/battery/charger/attachment: terpasang = ada unit ATAU status eksplisit IN_USE
+            $statusVal = $r['status'] ?? '';
+            $isUsed = !empty($r['inventory_unit_id']) || $statusVal === 'IN_USE';
             $label = '';
             $serialNumber = '';
             
@@ -3993,6 +4072,7 @@ EOF;
                 'qty_available_pairs' => isset($r['qty_available_pairs']) ? (int) $r['qty_available_pairs'] : null,
                 'tipe_item' => $type,
                 'lokasi_penyimpanan' => $r['lokasi_penyimpanan'],
+                'status' => $statusVal,
                 'attachment_status' => $r['status'], // Map status to old field name
                 'is_used' => $isUsed,
                 'used_by_unit' => $isUsed ? $r['no_unit'] : null,
