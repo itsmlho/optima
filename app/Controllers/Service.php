@@ -1346,6 +1346,18 @@ class Service extends BaseController
         if (empty($enriched['departemen_id_name']) && !empty($spec['departemen'])) {
             $enriched['departemen_id_name'] = trim((string) $spec['departemen']);
         }
+        // Free-text fallback for requirement fields saved as *_text (quotation-driven specs).
+        $specTextFallbackMap = [
+            'departemen_id_name' => 'departemen_text',
+            'tipe_unit_id_name'  => 'tipe_unit_text',
+            'brand_id_name'      => 'merk_unit_text',
+            'kapasitas_id_name'  => 'kapasitas_text',
+        ];
+        foreach ($specTextFallbackMap as $targetKey => $textKey) {
+            if (empty($enriched[$targetKey]) && !empty($spec[$textKey])) {
+                $enriched[$targetKey] = trim((string) $spec[$textKey]);
+            }
+        }
         // Enrich selected items (unit & attachment) with full details
         // First, check if data comes from approval workflow
         if (!empty($row['persiapan_unit_id'])) {
@@ -1651,6 +1663,18 @@ class Service extends BaseController
                         if ($rec && isset($rec['name'])) {
                             $kontrak_spec[$key.'_name'] = $rec['name'];
                         }
+                    }
+                }
+                // Free-text fallback from quotation specification rows.
+                $kontrakTextFallbackMap = [
+                    'departemen_id_name' => 'departemen_text',
+                    'tipe_unit_id_name'  => 'tipe_unit_text',
+                    'brand_id_name'      => 'merk_unit_text',
+                    'kapasitas_id_name'  => 'kapasitas_text',
+                ];
+                foreach ($kontrakTextFallbackMap as $targetKey => $textKey) {
+                    if (empty($kontrak_spec[$targetKey]) && !empty($kontrak_spec[$textKey])) {
+                        $kontrak_spec[$targetKey] = trim((string) $kontrak_spec[$textKey]);
                     }
                 }
             }
