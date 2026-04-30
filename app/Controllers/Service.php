@@ -1290,6 +1290,17 @@ class Service extends BaseController
         if (!$row) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
         }
+        // Ensure detail payload always has readable department name from SPK row as fallback.
+        if (!empty($row['departemen_id']) && empty($row['nama_departemen'])) {
+            $dept = $this->db->table('departemen')
+                ->select('nama_departemen')
+                ->where('id_departemen', (int) $row['departemen_id'])
+                ->get()
+                ->getRowArray();
+            if ($dept && !empty($dept['nama_departemen'])) {
+                $row['nama_departemen'] = $dept['nama_departemen'];
+            }
+        }
         
         // Note: Service mengakses kontrak_spesifikasi di bawah (line 733-749)
         // Ini adalah cross-division access yang sudah di-handle oleh permission check di atas
@@ -1330,6 +1341,10 @@ class Service extends BaseController
                     $enriched[$key.'_name'] = $rec['name'];
                 }
             }
+        }
+        // Legacy/free-text fallback: some old SPK spesifikasi store "departemen" text instead of departemen_id.
+        if (empty($enriched['departemen_id_name']) && !empty($spec['departemen'])) {
+            $enriched['departemen_id_name'] = trim((string) $spec['departemen']);
         }
         // Enrich selected items (unit & attachment) with full details
         // First, check if data comes from approval workflow
