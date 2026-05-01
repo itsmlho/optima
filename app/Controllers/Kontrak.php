@@ -2291,23 +2291,22 @@ class Kontrak extends BaseController
             // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
             // Using customer_id instead; location tracking is in kontrak_unit table
             $renewalData = [
-                'no_kontrak' => $contractNumber,
-                'customer_id' => $customerId,  // Use customer_id instead of customer_location_id
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'nilai_kontrak' => $totalValue,
-                'jenis_sewa' => 'BULANAN',
-                'status' => 'DRAFT_RENEWAL',
-                'rental_type' => $rentalType,
-                'po_number' => $poNumber,
-                'catatan' => $notes,
-                'billing_method' => $billingMethod,
-                'parent_contract_id' => $parentContractId,
-                'is_renewal' => 1,
-                'renewal_generation' => $renewalGeneration,
+                'no_kontrak'           => $contractNumber,
+                'customer_id'          => $customerId,
+                'tanggal_mulai'        => $startDate,
+                'tanggal_berakhir'     => $endDate,
+                'total_units'          => count($units),
+                'jenis_sewa'           => 'BULANAN',
+                'status'               => 'ACTIVE',
+                'rental_type'          => $rentalType,
+                'customer_po_number'   => $poNumber,
+                'billing_method'       => $billingMethod,
+                'parent_contract_id'   => $parentContractId,
+                'is_renewal'           => 1,
+                'renewal_generation'   => $renewalGeneration,
                 'renewal_initiated_at' => date('Y-m-d H:i:s'),
                 'renewal_initiated_by' => session()->get('user_id') ?? 1,
-                'created_by' => session()->get('user_id') ?? 1
+                'dibuat_oleh'          => session()->get('user_id') ?? 1,
             ];
             
             if (!$this->kontrakModel->insert($renewalData)) {
@@ -2316,15 +2315,16 @@ class Kontrak extends BaseController
             
             $renewalContractId = $this->kontrakModel->getInsertID();
             
-            // Add units to new contract
-            $contractUnitsBuilder = $this->db->table('contract_units');
+            // Add units to new renewal contract (table: kontrak_unit)
+            $kontrakUnitBuilder = $this->db->table('kontrak_unit');
             foreach ($units as $unit) {
-                $contractUnitsBuilder->insert([
-                    'contract_id' => $renewalContractId,
-                    'unit_id' => $unit['unit_id'],
-                    'monthly_rate' => $unit['monthly_rate'],
-                    'on_hire_date' => $startDate,
-                    'created_at' => date('Y-m-d H:i:s')
+                $kontrakUnitBuilder->insert([
+                    'kontrak_id'    => $renewalContractId,
+                    'unit_id'       => $unit['unit_id'],
+                    'harga_sewa'    => $unit['monthly_rate'],
+                    'tanggal_mulai' => $startDate,
+                    'status'        => 'ACTIVE',
+                    'created_at'    => date('Y-m-d H:i:s'),
                 ]);
             }
             
@@ -2371,6 +2371,9 @@ class Kontrak extends BaseController
             if ($this->db->transStatus() === false) {
                 throw new \Exception('Transaction failed');
             }
+            
+            // Update parent contract status to EXPIRED after successful renewal
+            $this->kontrakModel->update($parentContractId, ['status' => 'EXPIRED']);
             
             return $this->response->setJSON([
                 'success' => true,

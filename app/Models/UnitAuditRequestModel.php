@@ -253,6 +253,10 @@ class UnitAuditRequestModel extends Model
                     break;
 
                 case 'MARK_SPARE':
+                    if (!$kontrakId) {
+                        $db->transRollback();
+                        return ['success' => false, 'message' => 'Kontrak tidak ditemukan untuk request MARK_SPARE.'];
+                    }
                     if ($unitId && $kontrakId) {
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
@@ -260,8 +264,6 @@ class UnitAuditRequestModel extends Model
                            ->where('status', 'ACTIVE')
                            ->update(['is_spare' => 1]);
 
-                        // Option 2: sync inventory_unit status to SPARE (id=15)
-                        // so the inventory list reflects the unit is a backup/spare unit.
                         $db->table('inventory_unit')
                            ->where('id_inventory_unit', $unitId)
                            ->update(['status_unit_id' => 15]);
@@ -285,62 +287,116 @@ class UnitAuditRequestModel extends Model
                             }
                         }
 
-                        $db->table('kontrak_unit')->insert([
-                            'kontrak_id'           => $kontrakId,
-                            'unit_id'              => $proposed['unit_id'],
-                            'status'               => 'ACTIVE',
-                            'is_spare'             => $isSpare,
-                            'harga_sewa'           => $hargaSewa ?: null,
-                            'tanggal_mulai'        => date('Y-m-d'),
-                            'customer_location_id' => $proposed['customer_location_id'] ?? null,
-                            'created_by'           => $reviewerId,
-                            'created_at'           => date('Y-m-d H:i:s'),
-                        ]);
+                        $proposedUnitId = (int) $proposed['unit_id'];
 
-                        // Option 2: sync inventory_unit status when unit enters a contract as spare
+                        // Validate that the unit exists in inventory
+                        $unitExists = $db->table('inventory_unit')
+                            ->where('id_inventory_unit', $proposedUnitId)
+                            ->countAllResults() > 0;
+                        if (!$unitExists) {
+                            $db->transRollback();
+                            return ['success' => false, 'message' => 'Unit tidak ditemukan di inventory (ID: ' . $proposedUnitId . ').'];
+                        }
+
+                        // Validate customer_location_id FK before using it — set null if not found
+                        $locationId = !empty($proposed['customer_location_id'])
+                            ? (int) $proposed['customer_location_id']
+                            : null;
+                        if ($locationId) {
+                            $locExists = $db->table('customer_locations')
+                                ->where('id', $locationId)
+                                ->countAllResults() > 0;
+                            if (!$locExists) {
+                                log_message('warning', 'approveAndApply[ADD_UNIT]: customer_location_id=' . $locationId . ' not found, setting null');
+                                $locationId = null;
+                            }
+                        }
+
+                        // Guard against unique_active_kontrak_unit constraint violation
+                        // (idempotent: if already added, skip insert and still approve)
+                        $alreadyExists = $db->table('kontrak_unit')
+                            ->where('kontrak_id', (int) $kontrakId)
+                            ->where('unit_id', $proposedUnitId)
+                            ->where('status', 'ACTIVE')
+                            ->countAllResults() > 0;
+
+                        if (!$alreadyExists) {
+                            $db->table('kontrak_unit')->insert([
+                                'kontrak_id'           => (int) $kontrakId,
+                                'unit_id'              => $proposedUnitId,
+                                'status'               => 'ACTIVE',
+                                'is_spare'             => $isSpare,
+                                'harga_sewa'           => $hargaSewa ?: null,
+                                'tanggal_mulai'        => date('Y-m-d'),
+                                'customer_location_id' => $locationId,
+                                'created_by'           => $reviewerId,
+                                'created_at'           => date('Y-m-d H:i:s'),
+                            ]);
+                        } else {
+                            log_message('info', 'approveAndApply[ADD_UNIT]: unit ' . $proposedUnitId . ' already ACTIVE in kontrak ' . $kontrakId . ', skipping insert');
+                        }
+
+                        // Sync inventory_unit status when unit enters a contract
                         $db->table('inventory_unit')
-                           ->where('id_inventory_unit', $proposed['unit_id'])
-                           ->update(['status_unit_id' => $isSpare ? 15 : 7]); // 15=SPARE, 7=RENTAL_ACTIVE
+                           ->where('id_inventory_unit', $proposedUnitId)
+                           ->update([
+                               'status_unit_id'  => $isSpare ? 15 : 7, // 15=SPARE, 7=RENTAL_ACTIVE
+                               'workflow_status' => 'DISEWA',
+                           ]);
                     }
                     break;
 
                 case 'UNIT_SWAP':
                     if ($unitId && !empty($proposed['new_unit_id']) && $kontrakId) {
-                        // Fetch old kontrak_unit to inherit is_spare
+                        $newUnitId = (int) $proposed['new_unit_id'];
+
+                        // Fetch old kontrak_unit to inherit is_spare and location
                         $oldKu = $db->table('kontrak_unit')
                             ->where('unit_id', $unitId)
                             ->where('kontrak_id', $kontrakId)
                             ->where('status', 'ACTIVE')
                             ->get()->getRowArray();
                         $inheritSpare = $oldKu ? (int) $oldKu['is_spare'] : 0;
+                        $inheritLocation = $oldKu['customer_location_id'] ?? null;
 
-                        // Pull old unit
+                        // Pull old unit — set tanggal_selesai to today
                         $db->table('kontrak_unit')
                            ->where('unit_id', $unitId)
                            ->where('kontrak_id', $kontrakId)
                            ->where('status', 'ACTIVE')
-                           ->update(['status' => 'PULLED']);
+                           ->update(['status' => 'PULLED', 'tanggal_selesai' => date('Y-m-d')]);
 
-                        // Insert new unit (inherit spare status and location from old unit)
-                        $db->table('kontrak_unit')->insert([
-                            'kontrak_id'           => $kontrakId,
-                            'unit_id'              => $proposed['new_unit_id'],
-                            'status'               => 'ACTIVE',
-                            'is_spare'             => $inheritSpare,
-                            'harga_sewa'           => $hargaSewa ?: null,
-                            'tanggal_mulai'        => date('Y-m-d'),
-                            'customer_location_id' => $oldKu['customer_location_id'] ?? null,
-                            'created_by'           => $reviewerId,
-                            'created_at'           => date('Y-m-d H:i:s'),
-                        ]);
+                        // Guard against unique_active_kontrak_unit if new unit already active
+                        $newAlreadyExists = $db->table('kontrak_unit')
+                            ->where('kontrak_id', (int) $kontrakId)
+                            ->where('unit_id', $newUnitId)
+                            ->where('status', 'ACTIVE')
+                            ->countAllResults() > 0;
 
-                        // Option 2: sync inventory status
+                        if (!$newAlreadyExists) {
+                            // Insert new unit — inherit spare status and location from old unit
+                            $db->table('kontrak_unit')->insert([
+                                'kontrak_id'           => (int) $kontrakId,
+                                'unit_id'              => $newUnitId,
+                                'status'               => 'ACTIVE',
+                                'is_spare'             => $inheritSpare,
+                                'harga_sewa'           => $hargaSewa ?: null,
+                                'tanggal_mulai'        => date('Y-m-d'),
+                                'customer_location_id' => $inheritLocation,
+                                'created_by'           => $reviewerId,
+                                'created_at'           => date('Y-m-d H:i:s'),
+                            ]);
+                        } else {
+                            log_message('info', 'approveAndApply[UNIT_SWAP]: new unit ' . $newUnitId . ' already ACTIVE in kontrak ' . $kontrakId . ', skipping insert');
+                        }
+
+                        // Sync inventory: old unit → RETURNED, new unit → RENTAL_ACTIVE (or SPARE)
                         $db->table('inventory_unit')
                            ->where('id_inventory_unit', $unitId)
-                           ->update(['status_unit_id' => 12]); // 12=RETURNED
+                           ->update(['status_unit_id' => 12, 'workflow_status' => 'TERSEDIA']); // 12=RETURNED
                         $db->table('inventory_unit')
-                           ->where('id_inventory_unit', $proposed['new_unit_id'])
-                           ->update(['status_unit_id' => 7]); // 7=RENTAL_ACTIVE
+                           ->where('id_inventory_unit', $newUnitId)
+                           ->update(['status_unit_id' => $inheritSpare ? 15 : 7, 'workflow_status' => 'DISEWA']); // 15=SPARE,7=RENTAL_ACTIVE
                     }
                     break;
 
@@ -358,11 +414,10 @@ class UnitAuditRequestModel extends Model
                                ->where('unit_id', $unitId)
                                ->where('kontrak_id', $kontrakId)
                                ->where('status', 'ACTIVE')
-                               ->update(['status' => 'PULLED']);
+                               ->update(['status' => 'PULLED', 'tanggal_selesai' => date('Y-m-d')]);
                         }
 
-                        // Option 2: after pulling, check if unit is still spare in another active contract.
-                        // If not, revert inventory status to RETURNED (12).
+                        // Determine new inventory status based on remaining active contracts
                         $stillSpare = $db->table('kontrak_unit')
                             ->where('unit_id', $unitId)
                             ->where('is_spare', 1)
@@ -374,9 +429,15 @@ class UnitAuditRequestModel extends Model
                                 ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
                                 ->countAllResults();
                             $revertStatus = $stillActive ? 7 : 12; // 7=RENTAL_ACTIVE, 12=RETURNED
+
+                            // Non-transfer pulls: unit is physically missing → mark HILANG
+                            $isTransfer = !empty($proposed['is_transfer']);
                             $db->table('inventory_unit')
                                ->where('id_inventory_unit', $unitId)
-                               ->update(['status_unit_id' => $revertStatus]);
+                               ->update([
+                                   'status_unit_id'  => $revertStatus,
+                                   'workflow_status' => $isTransfer ? 'TERSEDIA' : 'HILANG',
+                               ]);
                         }
                     }
                     // 'record' → no DB change, already marked APPROVED above

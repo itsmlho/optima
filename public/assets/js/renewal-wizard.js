@@ -361,7 +361,9 @@ class RenewalWizard {
         }
         if (newValue !== this.contractData.contract_value) {
             const diff = newValue - this.contractData.contract_value;
-            changes.push(`<li><i class="fas fa-dollar-sign text-info me-2"></i>Contract value: ${this.formatCurrency(diff > 0 ? '+' + diff : diff)}</li>`);
+            const sign = diff > 0 ? '+' : '';
+            const diffLabel = sign + this.formatCurrency(Math.abs(diff));
+            changes.push(`<li><i class="fas fa-dollar-sign text-info me-2"></i>Contract value: ${diffLabel}</li>`);
         }
         
         if (changes.length === 0) {
@@ -412,6 +414,10 @@ class RenewalWizard {
         formData.append('units', JSON.stringify(unitsData));
         
         try {
+            // Add CSRF token
+            if (window.csrfTokenName && window.csrfTokenValue) {
+                formData.append(window.csrfTokenName, window.csrfTokenValue);
+            }
             const response = await fetch(`${BASE_URL}marketing/rental/createRenewal`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -452,10 +458,13 @@ class RenewalWizard {
         this.selectedUnits.forEach((unit, index) => {
             if (!$(`.unit-checkbox[data-index="${index}"]`).is(':checked')) return;
 
-            const oldRate = parseFloat(unit.harga_efektif) || 0;
+            // Use current rateAdjustment if already set, otherwise original harga_efektif
+            const baseRate = (this.rateAdjustments[unit.id] !== undefined)
+                ? parseFloat(this.rateAdjustments[unit.id])
+                : (parseFloat(unit.harga_efektif) || 0);
             const newRate = type === 'percentage'
-                ? oldRate * (1 + value / 100)
-                : oldRate + value;
+                ? baseRate * (1 + value / 100)
+                : baseRate + value;
 
             this.rateAdjustments[unit.id] = Math.round(newRate);
             appliedCount++;
@@ -495,7 +504,9 @@ class RenewalWizard {
         $('.unit-checkbox:checked').each((i, checkbox) => {
             const index = $(checkbox).data('index');
             const unit = this.selectedUnits[index];
-            const rate = this.rateAdjustments[unit.id] || unit.harga_efektif || 0;
+            const rate = (this.rateAdjustments[unit.id] !== undefined)
+                ? this.rateAdjustments[unit.id]
+                : (parseFloat(unit.harga_efektif) || 0);
             total += parseFloat(rate);
         });
         return total;
