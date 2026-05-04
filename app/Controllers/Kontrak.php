@@ -2356,8 +2356,8 @@ class Kontrak extends BaseController
             // Log activity
             $this->logActivity(
                 'contract_renewal',
-                $renewalContractId,
-                'create',
+                'kontrak',
+                (int) $renewalContractId,
                 "Renewal contract {$contractNumber} created from {$parentContract['no_kontrak']}",
                 [
                     'parent_contract' => $parentContract['no_kontrak'],
