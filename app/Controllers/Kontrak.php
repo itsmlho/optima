@@ -2784,8 +2784,8 @@ class Kontrak extends BaseController
             // Log activity
             $this->logActivity(
                 'contract_amendment',
-                $amendmentId,
-                'create',
+                'amendment_unit_rates',
+                (int) $amendmentId,
                 "Prorate amendment created for contract {$contract['no_kontrak']} effective {$effectiveDate}",
                 [
                     'contract_number' => $contract['no_kontrak'],
