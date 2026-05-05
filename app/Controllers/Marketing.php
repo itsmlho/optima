@@ -10179,8 +10179,10 @@ class Marketing extends BaseDataTableController
             $poNumber = trim($this->request->getPost('po_number') ?? '');
 
             // Preserve DI workflow if it has progressed further than "AWAITING_CONTRACT".
+            // Valid ENUM: DIAJUKAN, DISETUJUI, PERSIAPAN_UNIT, SIAP_KIRIM, DALAM_PERJALANAN, SAMPAI_LOKASI, SELESAI, DIBATALKAN
             $currentStatusDi = (string)($di['status_di'] ?? '');
-            $shouldSetStatusSubmitted = empty($currentStatusDi) || $currentStatusDi === 'AWAITING_CONTRACT';
+            $progressedStatuses = ['PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN', 'SAMPAI_LOKASI', 'SELESAI', 'DIBATALKAN'];
+            $shouldSetDisetujui = empty($currentStatusDi) || in_array($currentStatusDi, ['DIAJUKAN', 'AWAITING_CONTRACT']);
             $updateData = [
                 'contract_id'        => $contractId,
                 'pelanggan_id'       => $contract['customer_id'] ?? null,
@@ -10189,8 +10191,8 @@ class Marketing extends BaseDataTableController
                 'diperbarui_pada'    => date('Y-m-d H:i:s'),
             ];
 
-            if ($shouldSetStatusSubmitted) {
-                $updateData['status_di'] = 'SUBMITTED';
+            if ($shouldSetDisetujui) {
+                $updateData['status_di'] = 'DISETUJUI';
             }
 
             // If a specific PO Bulanan number is provided, save it
