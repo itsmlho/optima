@@ -213,31 +213,68 @@ $statusClass = $statusMap[$status] ?? 'badge-soft-gray';
 <?= $this->section('javascript') ?>
 <script>
 const CONTRACT_ID = <?= (int)$contract['id'] ?>;
-const CUSTOMERS_URL   = '<?= base_url('marketing/kontrak/customers') ?>';
+const CUSTOMERS_DROPDOWN_URL = '<?= base_url('marketing/rental/customers-dropdown') ?>';
 const UPDATE_URL      = '<?= base_url('marketing/kontrak/update') ?>/' + CONTRACT_ID;
 const DETAIL_URL      = '<?= base_url('marketing/kontrak/detail') ?>/' + CONTRACT_ID;
 const UNITS_URL       = '<?= base_url('marketing/kontrak/units') ?>/' + CONTRACT_ID;
 
-// ── Load customers dropdown ──────────────────────────────────────────────────
+// ── Load customers dropdown (Select2 AJAX — supports all customers, not limited to 50) ─
 function loadCustomers() {
-    $.getJSON(CUSTOMERS_URL, function(res) {
-        const $sel = $('#editCustomerSelect').empty().append('<option value="">-- Select Customer --</option>');
-        if (res.success && res.data) {
-            res.data.forEach(c => {
-                $sel.append(new Option(c.customer_name, c.id));
-            });
-        }
-        // Select the current customer
-        const contractCustomerId = <?= json_encode($contract['customer_id'] ?? null) ?>;
+    const hasCustomer = <?= $hasCustomer ? 'true' : 'false' ?>;
+    const contractCustomerId = <?= json_encode($contract['customer_id'] ?? null) ?>;
+    const contractCustomerName = <?= json_encode($contract['customer_name'] ?? '') ?>;
+
+    if (hasCustomer) {
+        // Customer already set and disabled — pre-populate display only
         if (contractCustomerId) {
-            $('#editCustomerSelect').val(contractCustomerId);
+            const $sel = $('#editCustomerSelect');
+            $sel.empty().append(new Option(contractCustomerName || 'Customer #' + contractCustomerId, contractCustomerId, true, true));
         }
-        // Sync hidden input when user changes customer
-        $('#editCustomerSelect').on('change', function() {
-            $('#hiddenCustomerId').val($(this).val());
-        });
-    }).fail(function() {
-        $('#editCustomerSelect').html('<option value="">Error loading customers</option>');
+        return;
+    }
+
+    // Use Select2 AJAX for searchable dropdown (all active customers)
+    if (!window.jQuery || !$.fn.select2) { return; }
+    const $sel = $('#editCustomerSelect');
+    if ($sel.hasClass('select2-hidden-accessible')) { return; }
+
+    $sel.select2({
+        placeholder: 'Cari / pilih customer...',
+        allowClear: true,
+        width: '100%',
+        ajax: {
+            url: CUSTOMERS_DROPDOWN_URL,
+            type: 'GET',
+            dataType: 'json',
+            delay: 250,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: function (params) { return { q: params.term || '' }; },
+            processResults: function (data) {
+                if (!data || !data.success || !data.data) { return { results: [] }; }
+                return {
+                    results: data.data.map(function (c) {
+                        const code = c.customer_code ? ' (' + c.customer_code + ')' : '';
+                        return { id: c.id, text: (c.customer_name || '') + code };
+                    })
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 0
+    });
+
+    // Pre-select current customer if exists
+    if (contractCustomerId) {
+        const option = new Option(contractCustomerName || 'Customer #' + contractCustomerId, contractCustomerId, true, true);
+        $sel.append(option).trigger('change');
+    }
+
+    // Sync hidden input when user changes customer
+    $sel.on('select2:select select2:unselect', function () {
+        $('#hiddenCustomerId').val($(this).val() || '');
+    });
+    $sel.on('change', function () {
+        $('#hiddenCustomerId').val($(this).val() || '');
     });
 }
 

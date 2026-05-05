@@ -4410,20 +4410,37 @@ $can_export = $permissions['export'];
     }
 
     // ── customers ─────────────────────────────────────────────────
+    // Use Select2 AJAX so all customers are searchable (not limited to first 50)
     function loadCustomers() {
-        apiGet(CUST).then(function (j) {
-            const sel = document.getElementById('dspkCustomerId');
-            if (!sel) { return; }
-            sel.innerHTML = '<option value="">-- Pilih Customer --</option>';
-            (j.data || []).forEach(function (c) {
-                const o = document.createElement('option');
-                o.value = c.id;
-                o.textContent = c.customer_name;
-                sel.appendChild(o);
-            });
-            if (window.jQuery && $.fn.select2) {
-                $('#dspkCustomerId').select2({ dropdownParent: $('#directSpkModal'), placeholder: '-- Pilih Customer --', allowClear: true, width: '100%' });
-            }
+        if (!window.jQuery || !$.fn.select2) { return; }
+        const $sel = $('#dspkCustomerId');
+        if ($sel.hasClass('select2-hidden-accessible')) { return; }
+        $sel.select2({
+            dropdownParent: $('#directSpkModal'),
+            placeholder: 'Cari / pilih customer...',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: CUST,
+                type: 'GET',
+                dataType: 'json',
+                delay: 250,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                data: function (params) {
+                    return { q: params.term || '' };
+                },
+                processResults: function (data) {
+                    if (!data || !data.success || !data.data) { return { results: [] }; }
+                    return {
+                        results: data.data.map(function (c) {
+                            const code = c.customer_code ? ' (' + c.customer_code + ')' : '';
+                            return { id: c.id, text: (c.customer_name || '') + code };
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 0
         });
     }
 
