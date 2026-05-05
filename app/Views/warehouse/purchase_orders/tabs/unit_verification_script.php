@@ -272,6 +272,32 @@
             checkAllUnitVerifiedInline();
         });
 
+        // Helper: init atau refresh Select2 pada satu dropdown setelah opsi terisi
+        function initSelect2OnDropdown($dropdown) {
+            if (!$.fn.select2) return;
+            // Ambil modal terdekat sebagai dropdownParent agar z-index aman
+            const $modal = $dropdown.closest('.modal');
+            const s2opts = {
+                width: '100%',
+                allowClear: true,
+                placeholder: $dropdown.find('option:first').text() || 'Pilih...',
+                language: { noResults: function() { return 'Tidak ada pilihan'; } }
+            };
+            if ($modal.length) s2opts.dropdownParent = $modal;
+
+            if ($dropdown.hasClass('select2-hidden-accessible')) {
+                $dropdown.select2('destroy');
+            }
+            $dropdown.select2(s2opts);
+
+            // Select2 meng-trigger 'change' standar — semua handler existing tetap jalan
+            // Tapi kita perlu bridge agar input/change handler di form juga terpanggil
+            $dropdown.off('select2:select.whVerify select2:unselect.whVerify')
+                .on('select2:select.whVerify select2:unselect.whVerify', function() {
+                    $(this).trigger('change');
+                });
+        }
+
         // Load dropdown options for all dropdown fields
         function loadDropdownOptions() {
             console.log('🔄 Loading dropdown options...');
@@ -287,16 +313,11 @@
                     currentValue = '';
                 }
                 
-                console.log('Dropdown:', {
-                    dropdownType: dropdownType,
-                    currentValue: currentValue,
-                    cascadingParent: cascadingParent,
-                    parentValue: parentValue,
-                    isLoaded: $dropdown.data('loaded')
-                });
-                
                 if (!dropdownType || $dropdown.data('loaded')) {
-                    console.log('⏭️ Skipping dropdown (no type or already loaded)');
+                    // Dropdown sudah punya opsi — pastikan Select2 sudah init
+                    if (!$dropdown.hasClass('select2-hidden-accessible')) {
+                        initSelect2OnDropdown($dropdown);
+                    }
                     return;
                 }
                 
@@ -307,14 +328,10 @@
                 if (cascadingParent && parentValue && parentValue !== '-') {
                     if (dropdownType === 'model_unit' && cascadingParent === 'merk') {
                         requestData.merk_unit = parentValue;
-                        console.log('🔗 Cascading: Model filtered by Brand =', parentValue);
                     } else if (dropdownType === 'model_mesin' && cascadingParent === 'engine_type') {
                         requestData.merk_mesin = parentValue;
-                        console.log('🔗 Cascading: Model Mesin filtered by Engine Type =', parentValue);
                     }
                 }
-                
-                console.log('📤 AJAX Request:', baseUrl + '/warehouse/purchase-orders/get-unit-verification-options', requestData);
                 
                 $.ajax({
                     url: baseUrl + '/warehouse/purchase-orders/get-unit-verification-options',
@@ -322,13 +339,9 @@
                     data: requestData,
                     dataType: 'json',
                     success: function(response) {
-                        console.log('📥 AJAX Response:', response);
-                        
                         if (response.success && response.data) {
                             // Clear existing options except the first one
                             $dropdown.find('option:not(:first)').remove();
-                            
-                            console.log(`✅ Loading ${response.data.length} options for ${dropdownType}`);
                             
                             // Add options from API
                             response.data.forEach(function(option) {
@@ -345,37 +358,42 @@
                                 );
                             });
                             
-                            // Jika value terpilih bukan ID (mis. teks fork referensi PO), jangan buat opsi palsu — fork_master hanya terima angka
+                            // Jika value terpilih bukan ID (mis. teks model dari PO) → coba cocokkan berdasarkan teks
                             const isNumericId = /^-?\d+$/.test(String(currentValue).trim());
                             const allowOrphanOption = dropdownType !== 'fork_master' || isNumericId;
                             const hasMatchingOption = $dropdown.find('option').filter(function() {
                                 return String($(this).val()) === String(currentValue);
                             }).length > 0;
+
                             if (allowOrphanOption && currentValue && currentValue !== '' && currentValue !== '-' && !hasMatchingOption) {
-                                $dropdown.prepend(
-                                    $('<option>', {
-                                        value: currentValue,
-                                        text: currentValue,
-                                        selected: true
-                                    })
-                                );
-                                console.log('ℹ️ Current value not in list, added:', currentValue);
+                                if (!isNumericId) {
+                                    // coba cocokkan berdasarkan teks (terjadi ketika PO tidak punya model_unit_id)
+                                    const textMatch = $dropdown.find('option').filter(function() {
+                                        return $(this).text().trim().toLowerCase() === String(currentValue).trim().toLowerCase();
+                                    });
+                                    if (textMatch.length > 0) {
+                                        textMatch.prop('selected', true);
+                                        console.log('✅ Text-matched dropdown:', currentValue, '→ ID:', textMatch.val());
+                                    } else {
+                                        $dropdown.prepend($('<option>', { value: '', text: currentValue + ' (pilih ulang)', selected: true }));
+                                        console.warn('⚠️ No text match for:', currentValue, '— user must re-select');
+                                    }
+                                } else {
+                                    $dropdown.prepend($('<option>', { value: currentValue, text: currentValue, selected: true }));
+                                }
                             }
                             
                             $dropdown.data('loaded', true);
-                            console.log('✅ Dropdown loaded successfully with', $dropdown.find('option').length - 1, 'options');
+
+                            // Init Select2 setelah opsi terisi
+                            initSelect2OnDropdown($dropdown);
+                            console.log('✅ Select2 init for', dropdownType, 'with', $dropdown.find('option').length - 1, 'options');
                         } else {
                             console.error('❌ Invalid response:', response);
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('❌ Error loading dropdown options:', {
-                            status: status,
-                            error: error,
-                            responseText: xhr.responseText,
-                            statusCode: xhr.status,
-                            url: baseUrl + '/warehouse/purchase-orders/get-unit-verification-options'
-                        });
+                        console.error('❌ Error loading dropdown options:', error, xhr.responseText);
                     }
                 });
             });

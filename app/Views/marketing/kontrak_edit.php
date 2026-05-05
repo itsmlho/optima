@@ -4,6 +4,8 @@
 /**
  * Contract Edit (Kontrak Edit) - Marketing
  * BADGE/CARD: Optima badge-soft-* for status; card-header bg-light.
+ *
+ * @var array $contract  Contract data passed from Kontrak controller
  */
 helper('simple_rbac');
 $can_edit = (

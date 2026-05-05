@@ -65,6 +65,22 @@ foreach ($deliveryGroups as $dg) {
         overflow: auto;
         font-size: 0.8rem;
     }
+    /* Select2 di dalam tabel verifikasi */
+    #unitVerificationFormInline .select2-container { min-width: 100%; }
+    #unitVerificationFormInline .select2-container--default .select2-selection--single {
+        height: 31px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+    #unitVerificationFormInline .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 29px;
+        padding-left: 8px;
+        padding-right: 24px;
+    }
+    #unitVerificationFormInline .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 29px;
+    }
 </style>
 <?= $this->endSection() ?>
 
