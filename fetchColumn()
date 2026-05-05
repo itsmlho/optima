@@ -1,1 +1,0 @@
-'charger: ' . \$db- COUNT(*) FROM charger')- . PHP_EOL;

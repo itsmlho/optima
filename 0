@@ -1,1 +1,0 @@
-'units table exists: ' . ($r- ? 'YES' : 'NO') . PHP_EOL;

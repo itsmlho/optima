@@ -656,6 +656,9 @@ class UnitInventoryController extends BaseController
         }
 
         $data['updated_at'] = date('Y-m-d H:i:s');
+        // Inject primary key so is_unique validation can properly substitute {id_inventory_unit}
+        // The cleanUpdateData callback will remove it before the actual DB query
+        $data['id_inventory_unit'] = $unitId;
 
         try {
             if ($model->update($unitId, $data)) {

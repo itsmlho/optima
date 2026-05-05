@@ -3873,14 +3873,15 @@ EOF;
             }
         }
         
-        $qb = $this->serviceBaseQuery($allowed)
+        // includeNullDept=true agar unit NON_ASSET_STOCK yang tidak punya departemen ikut muncul
+        $qb = $this->serviceBaseQuery($allowed, true)
             ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
             ->select('d.nama_departemen, iu.departemen_id, tu.tipe')
             ->select('su.status_unit as status_unit_name, iu.lokasi_unit as location_name')
             /**
              * HANYA status yang layak untuk persiapan unit:
              * - AVAILABLE_STOCK      : unit stok siap dipakai
-             * - NON_ASSET_STOCK     : unit non asset di gudang
+             * - NON_ASSET_STOCK     : unit non asset di gudang (departemen_id bisa NULL)
              * - BOOKED              : sudah dibooking untuk kontrak ini
              * - PREPARATION         : sedang proses persiapan
              * - READY_TO_DELIVER    : siap kirim ke pelanggan
@@ -4202,7 +4203,7 @@ EOF;
         }
     }
 
-    private function serviceBaseQuery(array $allowed = [1,2,3]): \CodeIgniter\Database\BaseBuilder
+    private function serviceBaseQuery(array $allowed = [1,2,3], bool $includeNullDept = false): \CodeIgniter\Database\BaseBuilder
     {
         // Limit to departemen ELECTRIC (2) and DIESEL & GASOLINE (1,3)
         $qb = $this->db->table('inventory_unit iu')
@@ -4216,8 +4217,18 @@ EOF;
             ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
             ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
             ->join('kapasitas kap','kap.id_kapasitas = iu.kapasitas_unit_id','left')
-            ->join('departemen d','d.id_departemen = iu.departemen_id','left')
-            ->whereIn('iu.departemen_id',$allowed);
+            ->join('departemen d','d.id_departemen = iu.departemen_id','left');
+
+        if ($includeNullDept) {
+            // Include units with no department (e.g. NON_ASSET_STOCK) alongside the allowed departments
+            $qb->groupStart()
+                ->whereIn('iu.departemen_id', $allowed)
+                ->orWhere('iu.departemen_id IS NULL')
+            ->groupEnd();
+        } else {
+            $qb->whereIn('iu.departemen_id', $allowed);
+        }
+
         return $qb;
     }
 
