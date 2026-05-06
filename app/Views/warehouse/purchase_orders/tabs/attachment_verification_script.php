@@ -589,6 +589,11 @@
         $form.find('.btn-submit-attachment-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
     }
 
+    // Legacy callers still reference this helper.
+    function checkAllAttachmentVerified() {
+        checkAllAttachmentVerifiedInline($('.attachment-inline-verify-form').first());
+    }
+
     function submitAttachmentVerificationInline(e) {
         if (window._verifyingAttachment) return;
 

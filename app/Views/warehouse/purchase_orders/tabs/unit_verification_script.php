@@ -33,7 +33,10 @@
             const unitData = $(this).data('unit');
             $('#unit-detail-view-container').html(createUnitDetailCard(unitData, {}));
             // Load dropdown options after card is created
-            setTimeout(() => loadDropdownOptions(), 100);
+            setTimeout(() => {
+                loadDropdownOptions();
+                checkAllUnitVerifiedInline();
+            }, 100);
         });
 
         // Event listener untuk submit verifikasi inline (tanpa modal)
@@ -813,7 +816,6 @@
     function checkAllUnitVerifiedInline() {
         // Check all rows have either "Sesuai" or "Tidak Sesuai" checked
         let allVerified = true;
-        let allRowsVerified = true;
         
         $('#unitVerificationFormInline tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(function() {
             const $r = $(this);
@@ -823,21 +825,25 @@
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             const verifyField = row.find('.verify-field');
-            const isRequired = row.find('td:first').html().includes('<span class="text-danger">*</span>');
+            
+            // Defensive: jika row tidak punya pair checkbox verifikasi, lewati.
+            if (!sesuaiCheckbox.length || !tidakSesuaiCheckbox.length) {
+                return;
+            }
             
             // Setiap baris harus punya salah satu checkbox yang dicentang
             const isSesuaiChecked = sesuaiCheckbox.is(':checked');
             const isTidakSesuaiChecked = tidakSesuaiCheckbox.is(':checked');
             
             if (!isSesuaiChecked && !isTidakSesuaiChecked) {
-                allRowsVerified = false;
                 allVerified = false;
                 return false; // break loop
             }
             
             // Jika "Tidak Sesuai" dicentang, field "Real Lapangan" wajib diisi
             if (isTidakSesuaiChecked) {
-                if (!verifyField.val() || verifyField.val().trim() === '') {
+                const realVal = String(verifyField.val() || '').trim();
+                if (!realVal || realVal === '-') {
                     allVerified = false;
                     return false; // break loop
                 }
@@ -845,7 +851,8 @@
             
             // Jika "Sesuai" dicentang, Real Lapangan harus terisi (dari salinan PO atau dari pelengkapan gudang)
             if (isSesuaiChecked) {
-                if (!verifyField.val() || verifyField.val().trim() === '') {
+                const realVal = String(verifyField.val() || '').trim();
+                if (!realVal || realVal === '-') {
                     allVerified = false;
                     return false; // break loop
                 }
@@ -860,6 +867,11 @@
         // 3. Jika "Sesuai", field "Real Lapangan" terisi (termasuk setelah melengkapi PO kosong)
         // 4. Lokasi Unit terpilih
         $('#btn-submit-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
+    }
+
+    // Legacy callers still call this symbol in older card variants.
+    function checkAllUnitVerified() {
+        checkAllUnitVerifiedInline();
     }
 
     function submitUnitVerificationInline() {
@@ -1509,7 +1521,7 @@
         const whDel = options.whDeliveryId != null && options.whDeliveryId !== '' ? String(options.whDeliveryId) : '';
         const vendorSpecPresent = !!(data.vendor_spec_text && String(data.vendor_spec_text).trim());
 
-        return `
+        const html = `
             <form id="unitVerificationFormInline" data-unit-id="${data.id_po_unit}" data-po-id="${data.po_id}" data-wh-delivery-id="${whDel}" data-vendor-spec-present="${vendorSpecPresent ? '1' : '0'}">
                 <div class="card table-card animate__animated animate__fadeIn">
                     <div class="card-header p-3" style="background-color: #f5f5f5; border-bottom: 1px solid #ccc;">
@@ -1586,6 +1598,9 @@
                     </div>
                 </div>
             </form>`;
+        // Ensure button state reflects prefilled values immediately after render.
+        setTimeout(function () { checkAllUnitVerifiedInline(); }, 0);
+        return html;
     }
 
     function updateUnitStatusVerifikasi(idUnit, poId, status, snData = {}, catatan = '', lokasiUnit = '', discrepancies = [], poUnitFields = {}) {
