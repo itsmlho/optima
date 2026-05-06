@@ -639,6 +639,7 @@ class UnitInventoryController extends BaseController
             'ban_id', 'roda_id', 'valve_id',
             'kapasitas_unit_id',
             'fuel_type',
+            'ownership_status',
             'hour_meter',
             'keterangan',
         ];
@@ -649,6 +650,21 @@ class UnitInventoryController extends BaseController
             if ($val !== null) {
                 $data[$field] = $val === '' ? null : $val;
             }
+        }
+
+        // Normalize incoming values to match DB types and avoid SQL/validation edge cases.
+        $intFields = [
+            'model_unit_id', 'tipe_unit_id', 'departemen_id', 'tahun_unit',
+            'model_mast_id', 'model_mesin_id', 'ban_id', 'roda_id',
+            'valve_id', 'kapasitas_unit_id'
+        ];
+        foreach ($intFields as $f) {
+            if (array_key_exists($f, $data)) {
+                $data[$f] = ($data[$f] === null || $data[$f] === '') ? null : (int) $data[$f];
+            }
+        }
+        if (array_key_exists('hour_meter', $data)) {
+            $data['hour_meter'] = ($data['hour_meter'] === null || $data['hour_meter'] === '') ? null : (float) $data['hour_meter'];
         }
 
         if (empty($data)) {
@@ -668,10 +684,22 @@ class UnitInventoryController extends BaseController
                     'csrf_hash'  => csrf_hash(),
                 ]);
             }
-            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan perubahan.', 'csrf_hash' => csrf_hash()]);
+            $errors = $model->errors();
+            $msg = !empty($errors) ? implode(' | ', array_values($errors)) : 'Gagal menyimpan perubahan.';
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $msg,
+                'errors' => $errors,
+                'csrf_hash' => csrf_hash()
+            ]);
         } catch (\Throwable $e) {
-            log_message('error', 'inlineUpdate unit #' . $unitId . '. Silakan coba lagi.');
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan pada server. Silakan coba lagi.', 'csrf_hash' => csrf_hash()]);
+            log_message('error', 'inlineUpdate unit #' . $unitId . ' failed: ' . $e->getMessage());
+            log_message('error', 'inlineUpdate stack: ' . $e->getTraceAsString());
+            $msg = 'Terjadi kesalahan pada server. Silakan coba lagi.';
+            if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+                $msg .= ' [' . $e->getMessage() . ']';
+            }
+            return $this->response->setJSON(['success' => false, 'message' => $msg, 'csrf_hash' => csrf_hash()]);
         }
     }
 
@@ -1798,6 +1826,7 @@ class UnitInventoryController extends BaseController
     public function requestAsset(int $id)
     {
         try {
+            $db = Database::connect();
             $unit = $this->inventoryUnitModel->find($id);
             if (!$unit) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
@@ -1823,23 +1852,59 @@ class UnitInventoryController extends BaseController
 
             $userId = session()->get('user_id') ?? null;
 
+            // Wrap check+insert in transaction to reduce race-condition duplicate submissions.
+            $db->transStart();
+
+            $pendingExists = $db->table('unit_asset_requests')
+                ->where('id_inventory_unit', $id)
+                ->where('status', 'PENDING')
+                ->where('request_type', 'NEW')
+                ->countAllResults();
+
+            if ((int)$pendingExists > 0) {
+                $db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Permintaan nomor aset sudah diajukan dan sedang menunggu persetujuan.'
+                ]);
+            }
+
             // Create request record — STOCK number already exists in no_unit_na
-            $assetRequestModel->insert([
+            $insertOk = $assetRequestModel->insert([
                 'id_inventory_unit' => $id,
                 'stock_number'      => $stockNumber,
+                'request_type'      => 'NEW',
                 'status'            => 'PENDING',
                 'requested_by'      => $userId,
                 'requested_at'      => date('Y-m-d H:i:s'),
             ]);
 
+            if (!$insertOk) {
+                $db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal mengajukan permintaan nomor aset.',
+                    'errors'  => $assetRequestModel->errors(),
+                ]);
+            }
+
+            $db->transComplete();
+            if (!$db->transStatus()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal mengajukan permintaan nomor aset. Silakan coba lagi.',
+                ]);
+            }
+
             return $this->response->setJSON([
                 'success'      => true,
                 'message'      => 'Permintaan nomor aset untuk ' . $stockNumber . ' berhasil diajukan ke Purchasing.',
                 'stock_number' => $stockNumber,
+                'csrf_hash'    => csrf_hash(),
             ]);
         } catch (\Throwable $e) {
             log_message('error', '[UnitInventoryController::requestAsset] ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Terjadi kesalahan sistem.', 'csrf_hash' => csrf_hash()]);
         }
     }
 

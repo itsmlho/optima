@@ -1718,6 +1718,7 @@ if ($aksesorisRaw) {
         $.ajax({
             url: (window._baseUnitUrl || '') + (window._unitId || '') + '/inline-update',
             type: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             data: data,
             success: function(res) {
                 $('#btnSaveSpecs').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
@@ -1766,9 +1767,10 @@ if ($aksesorisRaw) {
                     OptimaNotify.error(res.message);
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 $('#btnSaveSpecs').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
-                OptimaNotify.error('Failed to connect to server.');
+                const msg = xhr.responseJSON?.message || 'Gagal terhubung ke server.';
+                OptimaNotify.error(msg);
             }
         });
     }
@@ -1802,6 +1804,7 @@ if ($aksesorisRaw) {
         $.ajax({
             url: (window._baseUnitUrl || '') + (window._unitId || '') + '/inline-update',
             type: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             data: data,
             success: function(res) {
                 $('#btnSaveCatatan').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
@@ -1819,9 +1822,10 @@ if ($aksesorisRaw) {
                     OptimaNotify.error(res.message);
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 $('#btnSaveCatatan').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
-                OptimaNotify.error('Failed to connect to server.');
+                const msg = xhr.responseJSON?.message || 'Gagal terhubung ke server.';
+                OptimaNotify.error(msg);
             }
         });
     }
@@ -2234,9 +2238,11 @@ if ($aksesorisRaw) {
                 $.ajax({
                     url: <?= json_encode(base_url('warehouse/inventory/unit/' . ($unit['id_inventory_unit'] ?? 0) . '/request-asset')) ?>,
                     type: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     data: { [window.csrfTokenName]: window.csrfTokenValue },
                     dataType: 'json',
                     success: function(res) {
+                        if (res.csrf_hash) window.csrfTokenValue = res.csrf_hash;
                         if (res.success) {
                             if (window.OptimaNotify) OptimaNotify.success(res.message);
                             setTimeout(function() { location.reload(); }, 1500);
