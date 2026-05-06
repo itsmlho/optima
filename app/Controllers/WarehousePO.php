@@ -1168,10 +1168,6 @@ class WarehousePO extends BaseController
             }
             $dataToUpdate[$k] = $decoded[$k];
         }
-        if (!empty($dataToUpdate['tipe_unit_id'])) {
-            $dataToUpdate['jenis_unit'] = (int) $dataToUpdate['tipe_unit_id'];
-        }
-
         return $dataToUpdate;
     }
 
@@ -1250,11 +1246,7 @@ class WarehousePO extends BaseController
             'tipe_unit_id' => 'Jenis / tipe unit',
             'model_unit_id' => 'Model unit',
             'kapasitas_id' => 'Kapasitas',
-            'mast_id' => 'Mast',
-            'mesin_id' => 'Mesin',
             'ban_id' => 'Ban',
-            'roda_id' => 'Roda',
-            'valve_id' => 'Valve',
         ];
         foreach ($needInt as $col => $label) {
             $v = (int) ($effective[$col] ?? 0);
@@ -1280,19 +1272,21 @@ class WarehousePO extends BaseController
             $flags = $flagsRaw;
         }
 
+        // Data lama bisa tidak punya package_flags; jangan memaksa paket lengkap.
+        // Fallback: anggap wajib hanya komponen yang memang terpasang (id > 0).
         if ($flags === []) {
-            $namaDept = '';
-            $tid = (int) ($effective['tipe_unit_id'] ?? 0);
-            if ($tid > 0) {
-                $db = \Config\Database::connect();
-                $r = $db->table('tipe_unit tu')
-                    ->select('d.nama_departemen')
-                    ->join('departemen d', 'd.id_departemen = tu.id_departemen', 'left')
-                    ->where('tu.id_tipe_unit', $tid)
-                    ->get()->getRowArray();
-                $namaDept = trim((string) ($r['nama_departemen'] ?? ''));
+            if ((int) ($effective['baterai_id'] ?? 0) > 0) {
+                $flags[] = 'battery';
             }
-            $flags = $this->defaultVerificationPackageFlagsByDepartemen($namaDept);
+            if ((int) ($effective['charger_id'] ?? 0) > 0) {
+                $flags[] = 'charger';
+            }
+            if ((int) ($effective['attachment_id'] ?? 0) > 0) {
+                $flags[] = 'attachment';
+            }
+            if ((int) ($effective['fork_id'] ?? 0) > 0) {
+                $flags[] = 'fork_standard';
+            }
         }
 
         if (in_array('battery', $flags, true)) {
@@ -1461,24 +1455,31 @@ class WarehousePO extends BaseController
             }
 
             $dataToUpdate = [
-                'status_verifikasi'  => $status,
+                'status_verifikasi' => $status,
             ];
-            $dataToUpdate = $this->mergePoUnitFieldsFromRequest($dataToUpdate);
             
-            // Hanya tambahkan catatan_verifikasi jika ada (untuk "Tidak Sesuai")
-            // Potong jika terlalu panjang (max 500 karakter sesuai validation rule)
-            if (!empty($catatan)) {
-                $catatanTrimmed = mb_substr($catatan, 0, 500);
-                if (strlen($catatan) > 500) {
-                    log_message('warning', '[WarehousePO] Catatan verifikasi dipotong dari ' . strlen($catatan) . ' menjadi 500 karakter');
+            // Aturan bisnis:
+            // - "Sesuai" boleh menyinkronkan data PO hasil cek gudang.
+            // - "Tidak Sesuai" hanya update status + catatan (master PO tidak dioverride).
+            if ($status === 'Sesuai') {
+                $dataToUpdate = $this->mergePoUnitFieldsFromRequest($dataToUpdate);
+                foreach ($snData as $key => $value) {
+                    if ($value !== null && $value !== '') {
+                        $dataToUpdate[$key] = $value;
+                    }
                 }
-                $dataToUpdate['catatan_verifikasi'] = $catatanTrimmed;
-            }
-            
-            // Tambahkan SN data yang tidak kosong
-            foreach ($snData as $key => $value) {
-                if ($value !== null && $value !== '') {
-                    $dataToUpdate[$key] = $value;
+                // Saat sudah sesuai, catatan reject lama harus dibersihkan.
+                $dataToUpdate['catatan_verifikasi'] = null;
+            } else {
+                // Potong jika terlalu panjang (max 500 karakter sesuai validation rule)
+                if (!empty($catatan)) {
+                    $catatanTrimmed = mb_substr($catatan, 0, 500);
+                    if (strlen($catatan) > 500) {
+                        log_message('warning', '[WarehousePO] Catatan verifikasi dipotong dari ' . strlen($catatan) . ' menjadi 500 karakter');
+                    }
+                    $dataToUpdate['catatan_verifikasi'] = $catatanTrimmed;
+                } else {
+                    $dataToUpdate['catatan_verifikasi'] = null;
                 }
             }
 

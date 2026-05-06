@@ -110,6 +110,9 @@ foreach ($deliveryGroups as $dg) {
             <div class="modal-body" id="wh-verify-modal-body">
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="btn-submit-unit-verification">
+                    <i class="fas fa-check-circle me-2"></i>Submit Verifikasi
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
@@ -265,6 +268,7 @@ echo view('warehouse/purchase_orders/tabs/unit_verification_script');
         let raw = $tr.attr('data-payload');
         $('#verifyWhPoModalLabel').text(title);
         $('#wh-verify-modal-body').empty();
+        $('#btn-submit-unit-verification').prop('disabled', false).text('Submit Verifikasi');
         let payload;
         try {
             payload = JSON.parse(raw);
@@ -295,6 +299,7 @@ echo view('warehouse/purchase_orders/tabs/unit_verification_script');
     if (modalEl) {
         modalEl.addEventListener('hidden.bs.modal', function () {
             $('#wh-verify-modal-body').empty();
+            $('#btn-submit-unit-verification').prop('disabled', false).text('Submit Verifikasi');
         });
     }
 

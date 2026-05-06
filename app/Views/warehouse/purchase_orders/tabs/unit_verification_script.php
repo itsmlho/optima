@@ -41,9 +41,28 @@
 
         // Event listener untuk submit verifikasi inline (tanpa modal)
         $(document).on('click', '#btn-submit-verification-inline', submitUnitVerificationInline);
+        // Tombol submit di footer modal utama.
+        $(document).on('click', '#btn-submit-unit-verification', function() {
+            submitUnitVerificationInline();
+        });
         
         // Event listener untuk dropdown lokasi
         $(document).on('change', '#lokasi_unit_inline', checkAllUnitVerifiedInline);
+
+        function setVerifyFieldLocked($field, locked) {
+            if ($field.is('select')) {
+                $field.prop('disabled', !!locked);
+                // Sync Select2 visual state with underlying disabled property.
+                if ($field.hasClass('select2-hidden-accessible')) {
+                    $field.trigger('change.select2');
+                    const $s2 = $field.next('.select2-container');
+                    $s2.css('pointer-events', locked ? 'none' : '');
+                    $s2.css('opacity', locked ? '0.85' : '');
+                }
+            } else {
+                $field.prop('readonly', !!locked);
+            }
+        }
         
         // Event listener untuk checkbox "Sesuai"
         $(document).on('change', '#unitVerificationFormInline .verify-checkbox-sesuai', function() {
@@ -58,26 +77,10 @@
                 // Uncheck "Tidak Sesuai" jika "Sesuai" dicentang (mutually exclusive)
                 tidakSesuaiCheckbox.prop('checked', false);
                 
-                // Referensi PO terstruktur kosong: jangan salin kosong / jangan kunci sebelum user mengisi (melengkapi data gudang)
+                // Referensi PO terstruktur kosong: tetap boleh "Sesuai" walau kosong.
+                // Namun jika sudah dipilih Sesuai, field tetap dikunci agar status baris konsisten.
                 if (poRefEmpty) {
-                    let filled = false;
-                    if (verifyField.is('select')) {
-                        const v = verifyField.val();
-                        filled = v !== '' && v !== null && v !== undefined;
-                    } else {
-                        const t = String(verifyField.val() || '').trim();
-                        filled = t !== '' && t !== '-';
-                    }
-                    if (!filled) {
-                        $(this).prop('checked', false);
-                        unitToast('warning', 'Isi kolom Real Lapangan dulu (acuan Spesifikasi vendor + cek fisik), lalu centang Sesuai untuk mengunci baris ini.', 'Lengkapi data');
-                        return;
-                    }
-                    if (verifyField.is('select')) {
-                        verifyField.prop('disabled', true);
-                    } else {
-                        verifyField.prop('readonly', true);
-                    }
+                    setVerifyFieldLocked(verifyField, true);
                     verifyField.css({
                         'background-color': '#f0fdf4',
                         'border-color': '#10b981'
@@ -98,12 +101,23 @@
                         if ($opt.length) {
                             verifyField.val($opt.val());
                         } else {
-                            verifyField.val(dbValue);
+                            // Jangan set value ke string yang bukan option ID (bisa bikin value kosong lalu "Sesuai" lepas lagi).
+                            // Jika tidak ada text match, pertahankan pilihan saat ini.
+                            const cur = verifyField.val();
+                            if (cur === '' || cur === null || cur === undefined) {
+                                // fallback terakhir: coba pilih option non-placeholder pertama
+                                const $firstValid = verifyField.find('option').filter(function() {
+                                    const t = String($(this).text() || '').trim().toLowerCase();
+                                    return $(this).val() !== '' && t !== '' && !t.startsWith('pilih ');
+                                }).first();
+                                if ($firstValid.length) verifyField.val($firstValid.val());
+                            }
                         }
                     }
-                    verifyField.prop('disabled', true);
+                    setVerifyFieldLocked(verifyField, true);
                 } else {
-                    verifyField.val(dbValue).prop('readonly', true);
+                    verifyField.val(dbValue);
+                    setVerifyFieldLocked(verifyField, true);
                 }
                 verifyField.css({
                     'background-color': '#f0fdf4',
@@ -111,10 +125,7 @@
                 });
                 row.css('background-color', '#f0fdf4');
             } else {
-                verifyField.prop('readonly', false);
-                if (verifyField.is('select')) {
-                    verifyField.prop('disabled', false);
-                }
+                setVerifyFieldLocked(verifyField, false);
                 verifyField.css({
                     'background-color': '#fff',
                     'border-color': '#333'
@@ -136,11 +147,7 @@
                 sesuaiCheckbox.prop('checked', false);
                 
                 // Field harus bisa diedit dan wajib diisi (dropdown atau text input)
-                if (verifyField.is('select')) {
-                    verifyField.prop('disabled', false);
-                } else {
-                    verifyField.prop('readonly', false);
-                }
+                setVerifyFieldLocked(verifyField, false);
                 verifyField.css({
                     'background-color': '#fef2f2',
                     'border-color': '#ef4444'
@@ -164,7 +171,8 @@
                 $('#alasan-reject-container').slideDown(300);
                 $('#alasan_reject_inline').prop('required', true);
             } else {
-                verifyField.prop('readonly', false).css({
+                setVerifyFieldLocked(verifyField, false);
+                verifyField.css({
                     'background-color': '#fff',
                     'border-color': '#333'
                 }).removeAttr('required');
@@ -197,13 +205,21 @@
             const dbIdRow = row.attr('data-db-id');
 
             if (poRefEmpty) {
-                sesuaiCheckbox.prop('checked', false);
-                if (!tidakSesuaiCheckbox.is(':checked')) {
-                    if (verifyField.is('select')) {
-                        verifyField.prop('disabled', false);
-                    } else {
-                        verifyField.prop('readonly', false);
-                    }
+                // IMPORTANT:
+                // Untuk referensi PO kosong, jangan reset paksa checkbox "Sesuai".
+                // Sebelumnya baris ini selalu mematikan "Sesuai" setiap ada perubahan input,
+                // sehingga user harus centang ulang terus dan tombol submit tetap disabled.
+                if (sesuaiCheckbox.is(':checked')) {
+                    // Jika sudah dipilih Sesuai, pertahankan lock state.
+                    setVerifyFieldLocked(verifyField, true);
+                    verifyField.css({
+                        'background-color': '#f0fdf4',
+                        'border-color': '#10b981'
+                    }).removeAttr('required');
+                    row.css('background-color', '#f0fdf4');
+                } else if (!tidakSesuaiCheckbox.is(':checked')) {
+                    // Belum memilih status apa pun → tetap editable.
+                    setVerifyFieldLocked(verifyField, false);
                     verifyField.css({
                         'background-color': '#fff',
                         'border-color': '#333'
@@ -231,26 +247,29 @@
             }
             
             if (differs) {
-                // Uncheck "Sesuai" jika ada
+                // Jangan auto-ubah ke "Tidak Sesuai".
+                // Status harus tetap keputusan eksplisit user.
                 sesuaiCheckbox.prop('checked', false);
-                // Check "Tidak Sesuai"
-                tidakSesuaiCheckbox.prop('checked', true);
                 
-                // Update styling untuk "Tidak Sesuai" (dropdown atau text input)
                 if (verifyField.is('select')) {
                     verifyField.prop('disabled', false);
                 } else {
                     verifyField.prop('readonly', false);
                 }
                 verifyField.css({
-                    'background-color': '#fef2f2',
-                    'border-color': '#ef4444'
-                }).attr('required', true);
-                row.css('background-color', '#fef2f2');
+                    'background-color': '#fff7ed',
+                    'border-color': '#f59e0b'
+                });
+                row.css('background-color', '#fff7ed');
                 
-                // Tampilkan field alasan reject
-                $('#alasan-reject-container').slideDown(300);
-                $('#alasan_reject_inline').prop('required', true);
+                // Alasan reject hanya wajib jika user benar-benar pilih "Tidak Sesuai".
+                if (tidakSesuaiCheckbox.is(':checked')) {
+                    verifyField.attr('required', true);
+                    $('#alasan-reject-container').slideDown(300);
+                    $('#alasan_reject_inline').prop('required', true);
+                } else {
+                    verifyField.removeAttr('required');
+                }
             } else {
                 tidakSesuaiCheckbox.prop('checked', false);
                 if (!sesuaiCheckbox.is(':checked')) {
@@ -378,8 +397,17 @@
                                         textMatch.prop('selected', true);
                                         console.log('✅ Text-matched dropdown:', currentValue, '→ ID:', textMatch.val());
                                     } else {
-                                        $dropdown.prepend($('<option>', { value: '', text: currentValue + ' (pilih ulang)', selected: true }));
-                                        console.warn('⚠️ No text match for:', currentValue, '— user must re-select');
+                                        // Fallback: jika hasil API hanya 1 opsi valid, auto-pilih agar tidak mengunci submit.
+                                        if (response.data.length === 1) {
+                                            const onlyOptionValue = (response.data[0].id !== undefined && response.data[0].id !== null)
+                                                ? String(response.data[0].id)
+                                                : String(response.data[0].text || response.data[0].label || response.data[0].name || '');
+                                            $dropdown.val(onlyOptionValue);
+                                            console.warn('⚠️ No text match for:', currentValue, '— auto-selected single available option:', onlyOptionValue);
+                                        } else {
+                                            $dropdown.prepend($('<option>', { value: '', text: currentValue + ' (pilih ulang)', selected: true }));
+                                            console.warn('⚠️ No text match for:', currentValue, '— user must re-select');
+                                        }
                                     }
                                 } else {
                                     $dropdown.prepend($('<option>', { value: currentValue, text: currentValue, selected: true }));
@@ -477,18 +505,22 @@
             }
             
             if (!matchesDb) {
+                // Jangan auto-check "Tidak Sesuai"; user pilih sendiri.
                 sesuaiCheckbox.prop('checked', false);
-                tidakSesuaiCheckbox.prop('checked', true);
                 
                 verifyField.prop('disabled', false).css({
-                    'background-color': '#fef2f2',
-                    'border-color': '#ef4444'
+                    'background-color': '#fff7ed',
+                    'border-color': '#f59e0b'
                 });
-                row.css('background-color', '#fef2f2');
+                row.css('background-color', '#fff7ed');
                 
-                // Show alasan reject field
-                $('#alasan-reject-container').slideDown(300);
-                $('#alasan_reject_inline').prop('required', true);
+                if (tidakSesuaiCheckbox.is(':checked')) {
+                    $('#alasan-reject-container').slideDown(300);
+                    $('#alasan_reject_inline').prop('required', true);
+                    verifyField.attr('required', true);
+                } else {
+                    verifyField.removeAttr('required');
+                }
             } else {
                 tidakSesuaiCheckbox.prop('checked', false);
                 if (!sesuaiCheckbox.is(':checked')) {
@@ -816,6 +848,7 @@
     function checkAllUnitVerifiedInline() {
         // Check all rows have either "Sesuai" or "Tidak Sesuai" checked
         let allVerified = true;
+        const blockingRows = [];
         
         $('#unitVerificationFormInline tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(function() {
             const $r = $(this);
@@ -825,6 +858,7 @@
             const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
             const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
             const verifyField = row.find('.verify-field');
+            const rowLabel = row.find('td:first').text().replace(/\s*\*/g, '').trim() || (row.data('field') || 'unknown');
             
             // Defensive: jika row tidak punya pair checkbox verifikasi, lewati.
             if (!sesuaiCheckbox.length || !tidakSesuaiCheckbox.length) {
@@ -837,24 +871,51 @@
             
             if (!isSesuaiChecked && !isTidakSesuaiChecked) {
                 allVerified = false;
-                return false; // break loop
+                blockingRows.push(`${rowLabel}: pilih Sesuai/Tidak Sesuai`);
+                return; // lanjut agar semua penyebab bisa terlihat
             }
             
+            const fieldName = String(row.data('field') || '').trim();
+            const isOptionalNoteField = fieldName === 'keterangan';
+            const poRefEmpty = row.attr('data-po-reference-empty') === '1';
+            const realValRaw = String(verifyField.val() || '').trim();
+            let hasRealValue = realValRaw !== '' && realValRaw !== '-';
+            if (!hasRealValue && verifyField.is('select')) {
+                const selectedText = String(verifyField.find('option:selected').text() || '').trim();
+                // Fallback untuk kasus value kosong tetapi user terlihat sudah pilih item valid.
+                hasRealValue = !!selectedText
+                    && !/^pilih\b/i.test(selectedText)
+                    && !/pilih ulang/i.test(selectedText)
+                    && selectedText !== '-';
+            }
+
             // Jika "Tidak Sesuai" dicentang, field "Real Lapangan" wajib diisi
+            // kecuali field catatan PO (opsional).
             if (isTidakSesuaiChecked) {
-                const realVal = String(verifyField.val() || '').trim();
-                if (!realVal || realVal === '-') {
+                if (!isOptionalNoteField && !hasRealValue) {
                     allVerified = false;
-                    return false; // break loop
+                    blockingRows.push(`${rowLabel}: Real Lapangan wajib diisi untuk Tidak Sesuai`);
+                    return; // lanjut agar semua penyebab bisa terlihat
                 }
             }
             
-            // Jika "Sesuai" dicentang, Real Lapangan harus terisi (dari salinan PO atau dari pelengkapan gudang)
+            // Jika "Sesuai" dicentang:
+            // - untuk referensi kosong, boleh tetap Sesuai walau Real kosong.
+            // - untuk catatan opsional, juga boleh kosong.
+            // - untuk referensi terisi, tetap dianjurkan isi, tapi tidak mengunci tombol submit.
             if (isSesuaiChecked) {
-                const realVal = String(verifyField.val() || '').trim();
-                if (!realVal || realVal === '-') {
+                const mandatoryFieldsForSesuai = new Set([
+                    'jenis_unit', 'merk', 'model', 'tahun', 'kapasitas', 'tire_type'
+                ]);
+                if (mandatoryFieldsForSesuai.has(fieldName) && !hasRealValue) {
                     allVerified = false;
-                    return false; // break loop
+                    blockingRows.push(`${rowLabel}: field ini wajib diisi`);
+                    return;
+                }
+                if (!isOptionalNoteField && !poRefEmpty && !hasRealValue) {
+                    // Tidak lagi hard-block submit untuk "Sesuai" yang kosong.
+                    // Cukup beri hint di console supaya user tetap aware.
+                    blockingRows.push(`${rowLabel}: Real Lapangan kosong (diizinkan karena dipilih Sesuai)`);
                 }
             }
         });
@@ -866,7 +927,20 @@
         // 2. Jika "Tidak Sesuai", field "Real Lapangan" terisi
         // 3. Jika "Sesuai", field "Real Lapangan" terisi (termasuk setelah melengkapi PO kosong)
         // 4. Lokasi Unit terpilih
-        $('#btn-submit-verification-inline').prop('disabled', !allVerified || !lokasiSelected);
+        const blocked = !allVerified || !lokasiSelected;
+        const blockMsg = [
+            !lokasiSelected ? 'Lokasi Unit belum dipilih' : null,
+            ...blockingRows
+        ].filter(Boolean).join(' | ');
+
+        $('#btn-submit-verification-inline, #btn-submit-unit-verification')
+            // Tombol tetap aktif; validasi final dijalankan saat tombol diklik.
+            .prop('disabled', false)
+            .attr('title', blocked ? blockMsg : '');
+
+        if (blocked && blockMsg && window.whVerifyDebug === true) {
+            console.warn('[WH Verify] Pending validation items:', blockMsg);
+        }
     }
 
     // Legacy callers still call this symbol in older card variants.
@@ -874,19 +948,96 @@
         checkAllUnitVerifiedInline();
     }
 
+    function collectInlineValidationIssues() {
+        const issues = [];
+        const mandatoryFieldsForSesuai = new Set([
+            'jenis_unit', 'merk', 'model', 'tahun', 'kapasitas', 'tire_type'
+        ]);
+        const form = $('#unitVerificationFormInline');
+
+        const lokasiUnit = $('#lokasi_unit_inline').val();
+        if (!lokasiUnit) {
+            issues.push('Lokasi Unit wajib dipilih.');
+        }
+
+        form.find('tbody tr.verification-data-row:not(.wh-no-verify-check)').filter(':visible').each(function() {
+            const row = $(this);
+            const fieldName = String(row.data('field') || '').trim();
+            const rowLabel = row.find('td:first').text().replace(/\s*\*/g, '').trim() || fieldName;
+            const sesuaiCheckbox = row.find('.verify-checkbox-sesuai');
+            const tidakSesuaiCheckbox = row.find('.verify-checkbox-tidak-sesuai');
+            const verifyField = row.find('.verify-field');
+            const isOptionalNoteField = fieldName === 'keterangan';
+            const poRefEmpty = row.attr('data-po-reference-empty') === '1';
+
+            const isSesuaiChecked = sesuaiCheckbox.is(':checked');
+            const isTidakSesuaiChecked = tidakSesuaiCheckbox.is(':checked');
+            if (!isSesuaiChecked && !isTidakSesuaiChecked) {
+                issues.push(`${rowLabel}: pilih Sesuai atau Tidak Sesuai.`);
+                return;
+            }
+
+            const realValRaw = String(verifyField.val() || '').trim();
+            let hasRealValue = realValRaw !== '' && realValRaw !== '-';
+            let selectedText = '';
+            if (verifyField.is('select')) {
+                selectedText = String(verifyField.find('option:selected').text() || '').trim();
+                if (!hasRealValue) {
+                    hasRealValue = !!selectedText
+                        && !/^pilih\b/i.test(selectedText)
+                        && !/pilih ulang/i.test(selectedText)
+                        && selectedText !== '-';
+                }
+            }
+
+            if (isTidakSesuaiChecked && !isOptionalNoteField && !hasRealValue) {
+                issues.push(`${rowLabel}: Real Lapangan wajib diisi untuk status Tidak Sesuai.`);
+                return;
+            }
+
+            if (isSesuaiChecked && mandatoryFieldsForSesuai.has(fieldName)) {
+                if (!hasRealValue) {
+                    issues.push(`${rowLabel}: field wajib ini belum diisi.`);
+                    return;
+                }
+                if (verifyField.is('select') && /pilih ulang/i.test(selectedText)) {
+                    issues.push(`${rowLabel}: masih "pilih ulang", pilih opsi master yang valid.`);
+                    return;
+                }
+            }
+
+            // Untuk field non-wajib dan PO reference kosong, kosong tetap diperbolehkan.
+            if (isSesuaiChecked && !mandatoryFieldsForSesuai.has(fieldName) && poRefEmpty) {
+                return;
+            }
+        });
+
+        const hasTidakSesuai = form.find('tbody tr.verification-data-row:not(.wh-no-verify-check) .verify-checkbox-tidak-sesuai:checked').length > 0;
+        if (hasTidakSesuai) {
+            const alasanReject = String($('#alasan_reject_inline').val() || '').trim();
+            if (!alasanReject) {
+                issues.push('Alasan Reject wajib diisi jika ada item Tidak Sesuai.');
+            }
+        }
+
+        return issues;
+    }
+
     function submitUnitVerificationInline() {
         if (window._verifyingUnit) return;
+
+        const issues = collectInlineValidationIssues();
+        if (issues.length > 0) {
+            const preview = issues.slice(0, 6).map((x, i) => `${i + 1}. ${x}`).join('<br>');
+            const more = issues.length > 6 ? `<br>... dan ${issues.length - 6} item lainnya.` : '';
+            OptimaNotify.warning(`Lengkapi data berikut terlebih dahulu:<br>${preview}${more}`, 'Validasi Verifikasi');
+            return;
+        }
         
         const form = $('#unitVerificationFormInline');
         const idUnit = form.data('unit-id');
         const poId = form.data('po-id');
         const lokasiUnit = $('#lokasi_unit_inline').val();
-        
-        // Validasi lokasi unit
-        if (!lokasiUnit) {
-            OptimaNotify.warning('Pilih lokasi unit terlebih dahulu.', 'Lokasi Wajib');
-            return;
-        }
         
         let finalStatus = 'Sesuai';
         let fullNotes = [];
@@ -1193,19 +1344,18 @@
         if (data.nama_departemen) {
             specMain.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen', mergeKey: '', dbId: data.id_departemen, selectValue: data.id_departemen});
         }
-        specMain.push({label: 'Jenis Unit', value: h(data.jenis) || '-', fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit', mergeKey: 'tipe_unit_id', dbId: data.tipe_unit_id, selectValue: data.tipe_unit_id});
-        specMain.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null, mergeKey: 'merk_unit', dbId: '', selectValue: ''});
-        specMain.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue), mergeKey: 'model_unit_id', dbId: data.model_unit_id, selectValue: data.model_unit_id});
-        specMain.push({label: 'Tahun', value: h(data.tahun_po) || '-', fieldName: 'tahun', required: false, dropdownType: null, mergeKey: 'tahun_po', dbId: '', selectValue: data.tahun_po});
-        specMain.push({label: 'Kapasitas', value: h(data.kapasitas_unit) || '-', fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas', mergeKey: 'kapasitas_id', dbId: data.kapasitas_id, selectValue: data.kapasitas_id});
+        specMain.push({label: 'Jenis Unit', value: h(data.jenis) || '-', fieldName: 'jenis_unit', required: true, dropdownType: 'tipe_unit', mergeKey: 'tipe_unit_id', dbId: data.tipe_unit_id, selectValue: data.tipe_unit_id});
+        specMain.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: true, dropdownType: 'merk_unit', cascadingParent: null, mergeKey: 'merk_unit', dbId: '', selectValue: ''});
+        specMain.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: true, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue), mergeKey: 'model_unit_id', dbId: data.model_unit_id, selectValue: data.model_unit_id});
+        specMain.push({label: 'Tahun', value: h(data.tahun_po) || '-', fieldName: 'tahun', required: true, dropdownType: null, mergeKey: 'tahun_po', dbId: '', selectValue: data.tahun_po});
+        specMain.push({label: 'Kapasitas', value: h(data.kapasitas_unit) || '-', fieldName: 'kapasitas', required: true, dropdownType: 'kapasitas', mergeKey: 'kapasitas_id', dbId: data.kapasitas_id, selectValue: data.kapasitas_id});
         const mastLabel = data.tipe_mast ? (h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : '')) : '-';
         specMain.push({label: 'Mast Type', value: mastLabel, fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast', mergeKey: 'mast_id', dbId: data.mast_id, selectValue: data.mast_id});
         specMain.push({label: 'Engine Type', value: h(data.merk_mesin) || '-', fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null, mergeKey: '', dbId: '', selectValue: ''});
         specMain.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin) || '-', mergeKey: 'mesin_id', dbId: data.mesin_id, selectValue: data.mesin_id});
-        specMain.push({label: 'Tire Type', value: h(data.tipe_ban) || '-', fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban', mergeKey: 'ban_id', dbId: data.ban_id, selectValue: data.ban_id});
+        specMain.push({label: 'Tire Type', value: h(data.tipe_ban) || '-', fieldName: 'tire_type', required: true, dropdownType: 'tipe_ban', mergeKey: 'ban_id', dbId: data.ban_id, selectValue: data.ban_id});
         specMain.push({label: 'Wheel Type', value: h(data.tipe_roda) || '-', fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda', mergeKey: 'roda_id', dbId: data.roda_id, selectValue: data.roda_id});
         specMain.push({label: 'Valve', value: h(data.jumlah_valve) || '-', fieldName: 'valve', required: false, dropdownType: 'valve', mergeKey: 'valve_id', dbId: data.valve_id, selectValue: data.valve_id});
-        specMain.push({label: 'Keterangan / catatan PO', value: h(data.keterangan) || '-', fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null, mergeKey: 'keterangan', dbId: '', selectValue: ''});
         
         const embed = options.embedAccessoryRows || {};
         const embedBat = !!embed.battery;
@@ -1219,6 +1369,8 @@
         specMain.push({label: 'Serial Number Unit', value: h(data.serial_number_po) || 'Belum ada SN', fieldName: 'sn_unit', required: true});
         specMain.push({label: 'SN Mast', value: h(data.sn_mast_po) || 'Belum ada SN', fieldName: 'sn_mast', required: true});
         specMain.push({label: 'SN Mesin', value: h(data.sn_mesin_po) || 'Belum ada SN', fieldName: 'sn_mesin', required: true});
+        // Catatan PO diletakkan setelah blok SN dan bersifat opsional.
+        specMain.push({label: 'Keterangan / catatan PO', value: h(data.keterangan) || '-', fieldName: 'keterangan', required: false, isTextarea: true, dropdownType: null, mergeKey: 'keterangan', dbId: '', selectValue: ''});
 
         /** Urutan selaras Service → unit_verification: attachment (+SN), baterai (+SN), charger (+SN), fork. */
         const specKomponen = [];
@@ -1591,11 +1743,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-footer text-center">
-                        <button type="button" class="btn btn-success" id="btn-submit-verification-inline" disabled>
-                            <i class="fas fa-check-circle me-2"></i>Submit Verifikasi
-                        </button>
-                    </div>
+                    <div class="card-footer d-none"></div>
                 </div>
             </form>`;
         // Ensure button state reflects prefilled values immediately after render.
