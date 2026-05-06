@@ -1876,44 +1876,14 @@ $(document).ready(function() {
         });
     });
 
+    let pendingEditSubcategoryId = null;
+
     // Category change handler for subcategory
     $('#category_id').on('change', function() {
         let categoryId = $(this).val();
-        let subcategorySelect = $('#subcategory_id');
-        
-        // Clear and reset subcategory dropdown
-        subcategorySelect.empty().append('<option value="">-- Select Subcategory (if any) --</option>');
-        
-        if (categoryId) {
-            $.ajax({
-                url: '<?= base_url('service/work-orders/get-subcategories') ?>',
-                type: 'POST',
-                data: { category_id: categoryId },
-                success: function(response) {
-                    if (response.success && response.data) {
-                        $.each(response.data, function(index, subcategory) {
-                            subcategorySelect.append(`<option value="${subcategory.id}">${subcategory.subcategory_name}</option>`);
-                        });
-                        // console.log('✅ Subcategories loaded:', response.data.length, 'items');
-                        
-                        // Trigger Select2 update
-                        if (subcategorySelect.hasClass('select2-hidden-accessible')) {
-                            subcategorySelect.trigger('change');
-                        }
-                    } else {
-                        // console.log('ℹ️ No subcategories found for category:', categoryId);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('❌ Error loading subcategories:', error);
-                }
-            });
-        } else {
-            // Trigger Select2 update for empty state
-            if (subcategorySelect.hasClass('select2-hidden-accessible')) {
-                subcategorySelect.trigger('change');
-            }
-        }
+        const selectedSubcategoryId = pendingEditSubcategoryId;
+        pendingEditSubcategoryId = null;
+        loadSubcategories(categoryId, selectedSubcategoryId);
     });
 
     // Helper functions
@@ -1923,6 +1893,29 @@ $(document).ready(function() {
         try {
             // Extract work order data from nested structure
             let workOrder = data.workOrder || data;
+            const staffByRole = data.staff || {};
+
+            function findStaffNameByRole(role, staffId) {
+                if (!role || !staffId || !Array.isArray(staffByRole[role])) {
+                    return null;
+                }
+                const found = staffByRole[role].find(function(s) {
+                    return String(s.id) === String(staffId);
+                });
+                return found ? (found.staff_name || found.name || null) : null;
+            }
+
+            function setSelectValueWithFallback($select, value, fallbackText) {
+                if (!value) return;
+                const stringValue = String(value);
+                const exists = $select.find(`option[value="${stringValue}"]`).length > 0;
+                if (!exists) {
+                    $select.append(`<option value="${stringValue}" selected>${fallbackText || `ID ${stringValue}`}</option>`);
+                } else {
+                    $select.val(stringValue);
+                }
+                $select.trigger('change');
+            }
             // console.log('📋 Work Order data:', workOrder);
             
             // Basic form fields
@@ -1970,24 +1963,8 @@ $(document).ready(function() {
             // Handle Category and Subcategory with Select2
             if (workOrder.category_id) {
                 // console.log('📂 Setting category ID:', workOrder.category_id);
+                pendingEditSubcategoryId = workOrder.subcategory_id || null;
                 $('#category_id').val(workOrder.category_id).trigger('change');
-                
-                // Load subcategories if category is selected
-                if (workOrder.subcategory_id && data.subcategories) {
-                    setTimeout(function() {
-                        let subcategorySelect = $('#subcategory_id');
-                        subcategorySelect.empty().append('<option value="">-- Select Subcategory (if any) --</option>');
-                        
-                        if (data.subcategories && data.subcategories.length > 0) {
-                            data.subcategories.forEach(function(subcategory) {
-                                let selected = subcategory.id == workOrder.subcategory_id ? 'selected' : '';
-                                subcategorySelect.append(`<option value="${subcategory.id}" ${selected}>${subcategory.subcategory_name}</option>`);
-                            });
-                            subcategorySelect.trigger('change');
-                            // console.log('✅ Subcategories populated, selected:', workOrder.subcategory_id);
-                        }
-                    }, 500); // Allow time for category change to trigger subcategory load
-                }
             }
             
             // Handle Mechanic selections with Select2
@@ -2008,6 +1985,10 @@ $(document).ready(function() {
                 } else if (mechanicExists) {
                     mechanicSelect.val(mechanicId);
                 }
+                if (!mechanicExists && !data.mechanics) {
+                    const mechanicName = findStaffNameByRole('MECHANIC', mechanicId);
+                    setSelectValueWithFallback(mechanicSelect, mechanicId, mechanicName || `Mechanic ${mechanicId}`);
+                }
                 mechanicSelect.trigger('change');
             }
             
@@ -2026,6 +2007,10 @@ $(document).ready(function() {
                     }
                 } else if (mechanicExists) {
                     mechanicSelect.val(workOrder.mechanic_2);
+                }
+                if (!mechanicExists && !data.mechanics) {
+                    const mechanicName = findStaffNameByRole('MECHANIC', workOrder.mechanic_2);
+                    setSelectValueWithFallback(mechanicSelect, workOrder.mechanic_2, mechanicName || `Mechanic ${workOrder.mechanic_2}`);
                 }
                 mechanicSelect.trigger('change');
             }
@@ -2048,6 +2033,10 @@ $(document).ready(function() {
                 } else if (helperExists) {
                     helperSelect.val(helperId);
                 }
+                if (!helperExists && !data.helpers) {
+                    const helperName = findStaffNameByRole('HELPER', helperId);
+                    setSelectValueWithFallback(helperSelect, helperId, helperName || `Helper ${helperId}`);
+                }
                 helperSelect.trigger('change');
             }
             
@@ -2067,6 +2056,10 @@ $(document).ready(function() {
                 } else if (helperExists) {
                     helperSelect.val(workOrder.helper_2);
                 }
+                if (!helperExists && !data.helpers) {
+                    const helperName = findStaffNameByRole('HELPER', workOrder.helper_2);
+                    setSelectValueWithFallback(helperSelect, workOrder.helper_2, helperName || `Helper ${workOrder.helper_2}`);
+                }
                 helperSelect.trigger('change');
             }
             
@@ -2078,18 +2071,13 @@ $(document).ready(function() {
             
             // Handle Admin and Foreman
             if (workOrder.admin_id) {
-                // console.log('👔 Setting admin ID:', workOrder.admin_id);
-                // Wait for dropdown to be loaded first
-                setTimeout(function() {
-                    $('#admin_id').val(workOrder.admin_id).trigger('change');
-                }, 1500);
+                const adminName = findStaffNameByRole('ADMIN', workOrder.admin_id);
+                setSelectValueWithFallback($('#admin_id'), workOrder.admin_id, adminName || `Admin ${workOrder.admin_id}`);
             }
             
             if (workOrder.foreman_id) {
-                // console.log('👷 Setting foreman ID:', workOrder.foreman_id);
-                setTimeout(function() {
-                    $('#foreman_id').val(workOrder.foreman_id).trigger('change');
-                }, 1500);
+                const foremanName = findStaffNameByRole('FOREMAN', workOrder.foreman_id);
+                setSelectValueWithFallback($('#foreman_id'), workOrder.foreman_id, foremanName || `Foreman ${workOrder.foreman_id}`);
             }
             
             // Handle PIC
@@ -2320,19 +2308,31 @@ $(document).ready(function() {
     }
 
     function loadSubcategories(categoryId, selectedSubcategoryId = null) {
-        $.ajax({
+        const subcategorySelect = $('#subcategory_id');
+        subcategorySelect.empty().append('<option value="">Select Subcategory</option>');
+
+        if (!categoryId) {
+            subcategorySelect.val('').trigger('change');
+            return $.Deferred().resolve().promise();
+        }
+
+        return $.ajax({
             url: '<?= base_url('service/work-orders/get-subcategories') ?>',
             type: 'POST',
             data: { category_id: categoryId },
             success: function(response) {
                 if (response.success) {
-                    let subcategorySelect = $('#subcategory_id');
-                    subcategorySelect.empty().append('<option value="">Select Subcategory</option>');
-                    
                     $.each(response.data, function(index, subcategory) {
-                        let selected = selectedSubcategoryId == subcategory.id ? 'selected' : '';
-                        subcategorySelect.append(`<option value="${subcategory.id}" ${selected}>${subcategory.subcategory_name}</option>`);
+                        subcategorySelect.append(`<option value="${subcategory.id}">${subcategory.subcategory_name}</option>`);
                     });
+
+                    if (selectedSubcategoryId) {
+                        const exists = subcategorySelect.find(`option[value="${selectedSubcategoryId}"]`).length > 0;
+                        if (exists) {
+                            subcategorySelect.val(String(selectedSubcategoryId));
+                        }
+                    }
+                    subcategorySelect.trigger('change');
                 }
             }
         });
@@ -2644,7 +2644,9 @@ $(document).ready(function() {
         let defaultPriority = selectedOption.data('priority');
         
         // Load subcategories
-        loadSubcategories(categoryId);
+        const selectedSubcategoryId = pendingEditSubcategoryId;
+        pendingEditSubcategoryId = null;
+        loadSubcategories(categoryId, selectedSubcategoryId);
         
         // Set auto priority based on category
         if (defaultPriority) {
