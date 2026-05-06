@@ -229,7 +229,8 @@ class WorkOrderController extends Controller
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
         $builder->join('customers c', 'c.id = k.customer_id', 'left');
-        $builder->join('areas a', 'c.area_id = a.id', 'left');
+        // Source of truth area is inventory_unit.area_id (customer.area_id may not exist on newer schema)
+        $builder->join('areas a', 'iu.area_id = a.id', 'left');
         $builder->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
@@ -1850,94 +1851,127 @@ class WorkOrderController extends Controller
             ]);
         }
 
-        $rules = [
-            'unit_id' => 'required|integer',
-            'order_type' => 'required',
-            'priority_id' => 'required|integer',
-            'category_id' => 'required|integer',
-            'complaint_description' => 'required|min_length[5]',
-            'status_id' => 'required|integer'
-        ];
-        
-        if (!$this->validate($rules)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
-                'errors' => $this->validator->getErrors()
-            ]);
-        }
-        
-        // Dapatkan status sebelumnya
-        $prevData = $this->workOrderModel->find($id);
-        $oldStatusId = $prevData['status_id'];
-        $newStatusId = $this->request->getPost('status_id');
-        
-        $data = [
-            'unit_id' => $this->request->getPost('unit_id'),
-            'order_type' => $this->request->getPost('order_type'),
-            'priority_id' => $this->request->getPost('priority_id'),
-            'requested_repair_time' => $this->request->getPost('requested_repair_time'),
-            'category_id' => $this->request->getPost('category_id'),
-            'subcategory_id' => $this->request->getPost('subcategory_id'),
-            'complaint_description' => $this->request->getPost('complaint_description'),
-            'status_id' => $newStatusId,
-            'admin_id' => $this->request->getPost('admin_id'),
-            'foreman_id' => $this->request->getPost('foreman_id'),
-            'mechanic_id' => $this->request->getPost('mechanic_id'),
-            'helper_id' => $this->request->getPost('helper_id'),
-            'repair_description' => $this->request->getPost('repair_description'),
-            'notes' => $this->request->getPost('notes'),
-            'sparepart_used' => $this->request->getPost('sparepart_used'),
-            'time_to_repair' => $this->request->getPost('time_to_repair'),
-            'area' => $this->request->getPost('area')
-        ];
-        
-        // Jika status berubah menjadi completed, validasi sparepart dulu
-        if ($oldStatusId != $newStatusId && $newStatusId == 6) {
-            $db = \Config\Database::connect();
-            $sparepartCount = $db->table('work_order_spareparts')
-                ->where('work_order_id', $id)
-                ->countAllResults();
-            if ($sparepartCount > 0) {
-                $woData = $db->table('work_orders')
-                    ->select('sparepart_validated')
-                    ->where('id', $id)
-                    ->get()
-                    ->getRowArray();
-                if (!($woData['sparepart_validated'] ?? 0)) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
-                    ]);
+        try {
+            $rules = [
+                'unit_id' => 'required|integer',
+                'order_type' => 'required',
+                'priority_id' => 'required|integer',
+                'category_id' => 'required|integer',
+                'complaint_description' => 'required|min_length[5]',
+                'status_id' => 'required|integer'
+            ];
+            
+            if (!$this->validate($rules)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Validasi gagal. Periksa kembali data yang diisi.',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
+
+            $prevData = $this->workOrderModel->find($id);
+            if (!$prevData) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+            
+            $oldStatusId = (int) ($prevData['status_id'] ?? 0);
+            $newStatusId = (int) ($this->request->getPost('status_id') ?? 0);
+            $oldStatusCode = '';
+            $newStatusCode = '';
+
+            if ($oldStatusId > 0) {
+                $oldStatus = $this->workOrderModel->getStatuses();
+                foreach ($oldStatus as $s) {
+                    if ((int)($s['id'] ?? 0) === $oldStatusId) {
+                        $oldStatusCode = (string)($s['status_code'] ?? '');
+                        break;
+                    }
                 }
             }
-            $data['completion_date'] = date('Y-m-d H:i:s');
-        }
-        
-        $result = $this->workOrderModel->update($id, $data);
-        
-        // Jika status berubah, tambahkan riwayat perubahan status
-        if ($oldStatusId != $newStatusId) {
-            $this->workOrderModel->addStatusHistory($id, $newStatusId, 'Status updated');
-        }
-        
-        if ($result) {
-            // Log to system_activity_log
-            $this->logUpdate('work_orders', $id, $prevData, $data, [
-                'module_name' => 'service',
-                'description' => "Work Order #{$id} updated",
-                'business_impact' => 'MEDIUM',
-            ]);
+            if ($newStatusId > 0) {
+                $dbLocal = \Config\Database::connect();
+                $newStatus = $dbLocal->table('work_order_statuses')
+                    ->select('status_code')
+                    ->where('id', $newStatusId)
+                    ->get()->getRowArray();
+                $newStatusCode = (string)($newStatus['status_code'] ?? '');
+            }
             
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Work Order berhasil diupdate'
-            ]);
-        } else {
+            $data = [
+                'unit_id' => $this->request->getPost('unit_id'),
+                'order_type' => $this->request->getPost('order_type'),
+                'priority_id' => $this->request->getPost('priority_id'),
+                'requested_repair_time' => $this->request->getPost('requested_repair_time'),
+                'category_id' => $this->request->getPost('category_id'),
+                'subcategory_id' => $this->request->getPost('subcategory_id'),
+                'complaint_description' => $this->request->getPost('complaint_description'),
+                'status_id' => $newStatusId,
+                'admin_id' => $this->request->getPost('admin_id'),
+                'foreman_id' => $this->request->getPost('foreman_id'),
+                'mechanic_id' => $this->request->getPost('mechanic_id'),
+                'helper_id' => $this->request->getPost('helper_id'),
+                'repair_description' => $this->request->getPost('repair_description'),
+                'notes' => $this->request->getPost('notes'),
+                'sparepart_used' => $this->request->getPost('sparepart_used'),
+                'time_to_repair' => $this->request->getPost('time_to_repair'),
+                'area' => $this->request->getPost('area')
+            ];
+            
+            // Jika status berubah menjadi COMPLETED, validasi sparepart dulu
+            if ($oldStatusId !== $newStatusId && strtoupper($newStatusCode) === 'COMPLETED') {
+                $db = \Config\Database::connect();
+                $sparepartCount = $db->table('work_order_spareparts')
+                    ->where('work_order_id', $id)
+                    ->countAllResults();
+                if ($sparepartCount > 0) {
+                    $woData = $db->table('work_orders')
+                        ->select('sparepart_validated')
+                        ->where('id', $id)
+                        ->get()
+                        ->getRowArray();
+                    if (!($woData['sparepart_validated'] ?? 0)) {
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Work order ini memiliki sparepart yang belum divalidasi. Harap selesaikan validasi sparepart terlebih dahulu.'
+                        ]);
+                    }
+                }
+                $data['completion_date'] = date('Y-m-d H:i:s');
+            }
+            
+            $result = $this->workOrderModel->update($id, $data);
+            
+            if ($oldStatusId !== $newStatusId) {
+                $this->workOrderModel->addStatusHistory($id, $newStatusId, 'Status updated');
+            }
+            
+            if ($result) {
+                $this->logUpdate('work_orders', $id, $prevData, $data, [
+                    'module_name' => 'service',
+                    'description' => "Work Order #{$id} updated",
+                    'business_impact' => 'MEDIUM',
+                ]);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Work Order berhasil diupdate'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal mengupdate Work Order',
+                    'errors' => $this->workOrderModel->errors()
+                ]);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Error in WorkOrderController::update - [' . get_class($e) . '] ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal mengupdate Work Order',
-                'errors' => $this->workOrderModel->errors()
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi administrator.'
             ]);
         }
     }

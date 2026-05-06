@@ -1049,6 +1049,13 @@ class Operational extends BaseController
             $nopolKendaraan = $this->request->getPost('no_polisi_kendaraan');
             $catatanPerencanaan = $this->request->getPost('catatan_perencanaan');
 
+            if (empty($tanggalKirim) || empty($estimasiSampai)) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Tanggal Kirim (Rencana) dan Estimasi Sampai wajib diisi.'
+                ]);
+            }
+
             if ($tanggalKirim) $updateData['tanggal_kirim'] = $tanggalKirim;
             if ($estimasiSampai) $updateData['estimasi_sampai'] = $estimasiSampai;
             if ($namaSupir) $updateData['nama_supir'] = $namaSupir;
@@ -3427,16 +3434,21 @@ class Operational extends BaseController
             return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
         }
 
-        $di = $this->diModel->find((int)$diId);
+        $di = $this->db->table('delivery_instructions di')
+            ->select('di.*, jpk.kode as jenis_perintah_kode, jpk.nama as jenis_perintah')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'left')
+            ->where('di.id', (int)$diId)
+            ->get()->getRowArray();
         if (!$di) {
             return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'DI tidak ditemukan']);
         }
 
         // All KIRIM & TARIK unit items for this DI (trip handles both deliver + pickup)
         $allItems = $this->db->table('delivery_items di')
-            ->select('di.id, di.unit_id, di.trip_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit')
+            ->select('di.id, di.unit_id, di.trip_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit, k.kapasitas_unit')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
             ->where('di.di_id', (int)$diId)
             ->where('di.item_type', 'UNIT')
             ->get()->getResultArray();
@@ -3451,9 +3463,10 @@ class Operational extends BaseController
 
         foreach ($trips as &$trip) {
             $trip['items'] = $this->db->table('delivery_items di')
-                ->select('di.id, di.unit_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit')
+                ->select('di.id, di.unit_id, di.item_role, iu.no_unit, mu.merk_unit, mu.model_unit, k.kapasitas_unit')
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = di.unit_id', 'left')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
                 ->where('di.trip_id', (int)$trip['id'])
                 ->get()->getResultArray();
         }
@@ -3461,7 +3474,18 @@ class Operational extends BaseController
 
         return $this->response->setJSON([
             'success'    => true,
-            'di'         => ['id' => $di['id'], 'nomor_di' => $di['nomor_di'], 'pelanggan' => $di['pelanggan']],
+            'di'         => [
+                'id' => $di['id'],
+                'nomor_di' => $di['nomor_di'],
+                'pelanggan' => $di['pelanggan'],
+                'jenis_perintah_kode' => $di['jenis_perintah_kode'] ?? null,
+                'jenis_perintah' => $di['jenis_perintah'] ?? null,
+                'status_di' => $di['status_di'] ?? null,
+                'tanggal_kirim' => $di['tanggal_kirim'] ?? null,
+                'estimasi_sampai' => $di['estimasi_sampai'] ?? null,
+                'catatan_perencanaan' => $di['catatan'] ?? null,
+                'perencanaan_tanggal_approve' => $di['perencanaan_tanggal_approve'] ?? null,
+            ],
             'trips'      => $trips,
             'unassigned' => $unassigned,
         ]);
@@ -3522,13 +3546,17 @@ class Operational extends BaseController
         $this->db->table('delivery_trips')->insert($tripPayload);
         $tripId = $this->db->insertID();
 
-        // Assign unit items to this trip (verify they belong to this DI and are KIRIM)
+        // Assign selected unit items to this trip (kirim / tarik / legacy null role).
         foreach ($unitItemIds as $itemId) {
-            $this->db->table('delivery_items')
+            $assignBuilder = $this->db->table('delivery_items')
                 ->where('id', $itemId)
                 ->where('di_id', (int)$diId)
-                ->where('item_role', 'KIRIM')
                 ->where('item_type', 'UNIT')
+                ->groupStart()
+                    ->whereIn('item_role', ['KIRIM', 'TARIK'])
+                    ->orWhere('item_role IS NULL', null, false)
+                    ->orWhere('item_role', '')
+                ->groupEnd()
                 ->update(['trip_id' => $tripId]);
         }
 

@@ -211,23 +211,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       let buttons = [];
 
-      // If trips exist, show the Trip Management button (replaces Depart/Arrive)
-      if (tripCount > 0) {
-        buttons.push(`<button class="btn btn-sm btn-info" onclick="openTripModal(${row.id})"><i class="fas fa-route"></i> Trips (${tripCount})</button>`);
+      // Unified shipping flow: one entry-point for planning + trip(s)
+      if (!berangkatDone && !sampaiDone) {
+        buttons.push(`<button class="btn btn-sm btn-primary" onclick="openTripModal(${row.id})" title="Atur Rencana & Trip Pengiriman"><i class="fas fa-route me-1"></i>Atur Pengiriman${tripCount > 0 ? ` (${tripCount})` : ''}</button>`);
+      } else if (!sampaiDone) {
+        buttons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${row.id})">Arrive</button>`);
       } else {
-        // No trips yet — show Plan (optional) + Add Trip button
-        if (!berangkatDone && !sampaiDone) {
-          // Plan button (optional — for recording dates)
-          buttons.push(`<button class="btn btn-sm btn-outline-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})" title="Isi rencana tanggal kirim">Plan</button>`);
-          // Add Trip button — always available at SIAP_KIRIM
-          buttons.push(`<button class="btn btn-sm btn-primary" onclick="openTripModal(${row.id})" title="Buat Trip Pengiriman"><i class="fas fa-plus me-1"></i>Trip</button>`);
-        } else if (!berangkatDone) {
-          buttons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${row.id})">Depart</button>`);
-        } else if (!sampaiDone) {
-          buttons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${row.id})">Arrive</button>`);
-        } else {
-          buttons.push('<span class="text-success small">Completed</span>');
-        }
+        buttons.push('<span class="text-success small">Completed</span>');
       }
       
       const badges = [];
@@ -235,15 +225,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (berangkatDone) badges.push('<span class="badge badge-soft-green" title="Departed">B✓</span>');
       if (sampaiDone) badges.push('<span class="badge badge-soft-green" title="Arrived">S✓</span>');
       
-      let html = `<div class="stage-buttons d-flex flex-wrap gap-1">${buttons.join('')}</div>`;
+      let html = `<div class="stage-buttons d-flex justify-content-end flex-wrap gap-1 w-100">${buttons.join('')}</div>`;
       if (badges.length > 0) {
-        html += `<div class="stage-badges mt-1">${badges.join('')}</div>`;
+        html += `<div class="stage-badges mt-1 text-end">${badges.join('')}</div>`;
       }
       return html;
     }
     
     if (['SAMPAI_LOKASI', 'SELESAI'].includes(statusUpper)) {
-      return '<span class="text-success">Completed</span>';
+      return '<div class="text-end"><span class="text-success">Completed</span></div>';
     }
     
     return '<span class="text-muted">-</span>';
@@ -316,6 +306,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         { 
           data: null,
           responsivePriority: 5,
+          className: 'text-end',
           render: formatActions,
           orderable: false
         }
@@ -963,9 +954,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         // Add buttons for incomplete stages - MUST pass id parameter!
         if (!perencanaanDone) {
-          approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('perencanaan', 'Perencanaan Pengiriman', ${id})">Plan</button>`);
+          approvalButtons.push(`<button class="btn btn-primary btn-sm" onclick="openTripModal(${id})"><i class="fas fa-route me-1"></i>Atur Pengiriman</button>`);
         } else if (!berangkatDone) {
-          approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('berangkat', 'Berangkat', ${id})">Depart</button>`);
+          approvalButtons.push(`<button class="btn btn-primary btn-sm" onclick="openTripModal(${id})"><i class="fas fa-route me-1"></i>Atur Pengiriman</button>`);
         } else if (!sampaiDone) {
           approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('sampai', 'Sampai', ${id})">Arrive</button>`);
         }
@@ -1168,6 +1159,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   function renderTripModal(data) {
     const { trips, unassigned } = data;
+    const di = data.di || {};
+    const diJenisKode = String(di.jenis_perintah_kode || '').toUpperCase();
+    const diJenisNama = String(di.jenis_perintah || '').toUpperCase();
+    const isTarikFlow = diJenisKode.includes('TARIK') || diJenisNama.includes('TARIK');
+    const inferRole = (item) => {
+      if (isTarikFlow) return 'TARIK';
+      const raw = String(item.item_role || '').toUpperCase();
+      if (raw === 'TARIK' || raw === 'KIRIM') return raw;
+      return 'KIRIM';
+    };
+    const roleBadge = (role) => role === 'TARIK'
+      ? '<span class="badge badge-soft-orange small">Ditarik</span>'
+      : '<span class="badge badge-soft-blue small">Dikirim</span>';
+    const unitCaption = (u) => {
+      const noUnit = u.no_unit || '(no unit)';
+      const model = `${u.merk_unit || ''} ${u.model_unit || ''}`.trim() || '-';
+      const kapasitas = String(u.kapasitas_unit || '').trim();
+      return kapasitas ? `${noUnit} — ${model} • ${kapasitas}` : `${noUnit} — ${model}`;
+    };
 
     // ---- Existing trips ----
     let tripsHtml = '';
@@ -1177,8 +1187,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       trips.forEach(t => {
         const st = TRIP_STATUS_MAP[t.status] || { text: t.status, cls: 'badge-soft-gray' };
         const unitRows = (t.items || []).map(u => {
-          const roleLabel = u.item_role === 'TARIK' ? ' <span class="badge badge-soft-orange small">Diambil</span>' : '';
-          return `<li class="list-group-item py-1 px-2 small">${u.no_unit || '-'} — ${u.merk_unit || ''} ${u.model_unit || ''}${roleLabel}</li>`;
+          const role = inferRole(u);
+          return `<li class="list-group-item py-1 px-2 small">${unitCaption(u)} ${roleBadge(role)}</li>`;
         }).join('');
         const berangkatBtn = t.status === 'PERSIAPAN'        ? `<button class="btn btn-xs btn-primary ms-1"   onclick="tripAction(${t.id},'berangkat')"><i class="fas fa-truck"></i> Berangkat</button>` : '';
         const sampaiBtn    = t.status === 'DALAM_PERJALANAN' ? `<button class="btn btn-xs btn-success ms-1"  onclick="tripAction(${t.id},'sampai')"><i class="fas fa-map-marker-alt"></i> Sampai</button>` : '';
@@ -1205,30 +1215,54 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const unassignedChecks = unassigned.length === 0
       ? '<p class="text-success small mb-0"><i class="fas fa-check-circle"></i> Semua unit sudah diassign ke trip.</p>'
       : (() => {
-          const kirimUnits = unassigned.filter(u => u.item_role !== 'TARIK');
-          const tarikUnits = unassigned.filter(u => u.item_role === 'TARIK');
+          const kirimUnits = unassigned.filter(u => inferRole(u) !== 'TARIK');
+          const tarikUnits = unassigned.filter(u => inferRole(u) === 'TARIK');
           let html = '';
           // KIRIM units — checkboxes
           if (kirimUnits.length > 0) {
             html += kirimUnits.map(u => `
               <div class="form-check">
                 <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}">
-                <label class="form-check-label small" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''} <span class="badge badge-soft-blue small">Dikirim</span></label>
+                <label class="form-check-label small" for="tcu${u.id}">${unitCaption(u)} ${roleBadge('KIRIM')}</label>
               </div>`).join('');
           }
-          // TARIK units — auto-included, shown as info
+          // TARIK units — selectable too, to support single/multi dynamic trip allocation.
           if (tarikUnits.length > 0) {
-            html += '<div class="mt-2 mb-1"><small class="text-muted">Unit diambil (otomatis ikut trip):</small></div>';
+            html += '<div class="mt-2 mb-1"><small class="text-muted">Unit tarik:</small></div>';
             html += tarikUnits.map(u => `
-              <div class="d-flex align-items-center gap-2 ps-1 mb-1">
-                <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}" checked style="pointer-events:none; opacity:0.6;">
-                <label class="form-check-label small text-muted" for="tcu${u.id}">${u.no_unit || '(no unit)'} — ${u.merk_unit || ''} ${u.model_unit || ''} <span class="badge badge-soft-orange small">Diambil</span></label>
+              <div class="form-check">
+                <input class="form-check-input trip-unit-cb" type="checkbox" value="${u.id}" id="tcu${u.id}">
+                <label class="form-check-label small" for="tcu${u.id}">${unitCaption(u)} ${roleBadge('TARIK')}</label>
               </div>`).join('');
           }
           return html;
         })()
 
     document.getElementById('tripModalBody').innerHTML = `
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-3">
+          <h6 class="text-primary mb-2"><i class="fas fa-calendar-check me-1"></i>Jadwal Utama DI</h6>
+          <p class="text-muted small mb-2">Isi jadwal utama untuk DI ini sekali, lalu lanjut bagi unit ke satu atau beberapa trip.</p>
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label small mb-1">Tanggal Kirim (Rencana)</label>
+              <input type="date" class="form-control form-control-sm" id="plan_tanggal_kirim" value="${di.tanggal_kirim || ''}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-1">Estimasi Sampai</label>
+              <input type="date" class="form-control form-control-sm" id="plan_estimasi_sampai" value="${di.estimasi_sampai || ''}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end justify-content-end">
+              <button class="btn btn-outline-primary btn-sm" onclick="submitDeliveryPlan()"><i class="fas fa-save me-1"></i>Simpan Jadwal Utama DI</button>
+            </div>
+            <div class="col-12">
+              <label class="form-label small mb-1">Catatan Jadwal</label>
+              <textarea class="form-control form-control-sm" id="plan_catatan" rows="2">${di.catatan_perencanaan || ''}</textarea>
+              <div class="form-text">Menyimpan jadwal utama DI (tanggal kirim + estimasi) sebelum pembagian unit ke tiap trip.</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <h6 class="text-primary mb-2"><i class="fas fa-list-ul me-1"></i>Trip yang Sudah Dibuat</h6>
       ${tripsHtml}
       <hr>
@@ -1316,6 +1350,43 @@ document.addEventListener('DOMContentLoaded', ()=>{
           if (mb) mb.scrollTop = 0;
         } else notify(j.message || 'Gagal membuat trip', 'error');
       });
+  };
+
+  window.submitDeliveryPlan = function() {
+    if (!_tripDiId) return;
+    const tanggalKirim = document.getElementById('plan_tanggal_kirim')?.value || '';
+    const estimasiSampai = document.getElementById('plan_estimasi_sampai')?.value || '';
+    const catatan = document.getElementById('plan_catatan')?.value || '';
+
+    if (!tanggalKirim || !estimasiSampai) {
+      notify('Tanggal Kirim (Rencana) dan Estimasi Sampai untuk Jadwal Utama DI wajib diisi.', 'error');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append(window.csrfTokenName, window.csrfTokenValue);
+    fd.append('stage', 'perencanaan');
+    fd.append('tanggal_kirim', tanggalKirim);
+    fd.append('estimasi_sampai', estimasiSampai);
+    fd.append('catatan_perencanaan', catatan);
+
+    fetch(`<?= base_url('operational/delivery/approve-stage/') ?>${_tripDiId}`, {
+      method: 'POST',
+      headers: {'X-Requested-With': 'XMLHttpRequest'},
+      body: fd
+    })
+      .then(r => r.json())
+      .then(j => {
+        if (j && j.success) {
+          notify(j.message || 'Jadwal utama DI berhasil disimpan', 'success');
+          loadTrips(_tripDiId);
+          if (diTable) diTable.ajax.reload(null, false);
+          if (typeof loadStatistics === 'function') loadStatistics();
+        } else {
+          notify((j && j.message) ? j.message : 'Gagal menyimpan jadwal utama DI', 'error');
+        }
+      })
+      .catch(() => notify('Gagal menyimpan jadwal utama DI', 'error'));
   };
 
   window.tripAction = function(tripId, action) {
@@ -1412,7 +1483,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="fas fa-route me-2"></i>Atur Trip Pengiriman — <span id="tripModalDiNumber"></span></h6>
+        <h6 class="modal-title"><i class="fas fa-route me-2"></i>Atur Pengiriman (Rencana & Trip) — <span id="tripModalDiNumber"></span></h6>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="tripModalBody">

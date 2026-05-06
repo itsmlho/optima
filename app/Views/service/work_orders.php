@@ -1688,7 +1688,7 @@ $(document).ready(function() {
                     setTimeout(function() {
                         // Setup modal for editing
                         $('#workOrderFormTitle').html('<i class="fas fa-edit me-2"></i>Edit Work Order');
-                        $('#workOrderForm').attr('action', '<?= base_url('work-orders/update') ?>/' + id);
+                        $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/update') ?>/' + id);
                         $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Update Work Order');
                         $('#work_order_id').val(id);
                         
@@ -1743,7 +1743,7 @@ $(document).ready(function() {
         
         // Load work order data for editing directly (no view modal to close)
         $.ajax({
-            url: '<?= base_url('work-orders/edit') ?>/' + id,
+            url: '<?= base_url('service/work-orders/edit') ?>/' + id,
             type: 'GET',
             beforeSend: function() {
             },
@@ -1752,7 +1752,7 @@ $(document).ready(function() {
                 if (response.success) {
                     // Setup modal for editing
                     $('#workOrderFormTitle').html('<i class="fas fa-edit me-2"></i>Edit Work Order');
-                    $('#workOrderForm').attr('action', '<?= base_url('work-orders/update') ?>/' + id);
+                    $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/update') ?>/' + id);
                     $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Update Work Order');
                     $('#work_order_id').val(id);
                     
