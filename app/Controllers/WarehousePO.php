@@ -1337,6 +1337,7 @@ class WarehousePO extends BaseController
 
     private function createLinkedInventoryComponents(int $inventoryUnitId, int $poId, array $pu, string $lokasi, array $snData): void
     {
+        $db = \Config\Database::connect();
         $now = date('Y-m-d H:i:s');
         $common = [
             'inventory_unit_id'  => $inventoryUnitId,
@@ -1352,46 +1353,68 @@ class WarehousePO extends BaseController
         if (!empty($pu['baterai_id'])) {
             $sn = trim((string) ($snData['sn_baterai_po'] ?? $pu['sn_baterai_po'] ?? ''));
             if ($sn !== '') {
-                $this->inventoryBatteryModel->skipValidation(true);
-                $this->inventoryBatteryModel->insert(array_merge($common, [
-                    'item_number'     => $this->allocateInventoryItemNumber(
-                        'inventory_batteries',
-                        $this->inventoryBatteryItemNumberPrefix((int) $pu['baterai_id'])
-                    ),
-                    'battery_type_id' => (int) $pu['baterai_id'],
-                    'serial_number'   => $sn,
-                ]));
-                $this->inventoryBatteryModel->skipValidation(false);
+                $exists = $db->table('inventory_batteries')->where('serial_number', $sn)->countAllResults();
+                if ($exists > 0) {
+                    log_message('warning', '[WarehousePO] Idempotent guard: inventory_batteries SN exists, skip insert. SN=' . $sn);
+                } else {
+                    $this->inventoryBatteryModel->skipValidation(true);
+                    $this->inventoryBatteryModel->insert(array_merge($common, [
+                        'item_number'     => $this->allocateInventoryItemNumber(
+                            'inventory_batteries',
+                            $this->inventoryBatteryItemNumberPrefix((int) $pu['baterai_id'])
+                        ),
+                        'battery_type_id' => (int) $pu['baterai_id'],
+                        'serial_number'   => $sn,
+                    ]));
+                    $this->inventoryBatteryModel->skipValidation(false);
+                }
             }
         }
         if (!empty($pu['charger_id'])) {
             $sn = trim((string) ($this->request->getPost('sn_charger') ?? $pu['sn_charger_po'] ?? ''));
             if ($sn !== '') {
-                $this->inventoryChargerModel->skipValidation(true);
-                $this->inventoryChargerModel->insert(array_merge($common, [
-                    'item_number'     => $this->allocateInventoryItemNumber('inventory_chargers', 'C'),
-                    'charger_type_id' => (int) $pu['charger_id'],
-                    'serial_number'   => $sn,
-                ]));
-                $this->inventoryChargerModel->skipValidation(false);
+                $exists = $db->table('inventory_chargers')->where('serial_number', $sn)->countAllResults();
+                if ($exists > 0) {
+                    log_message('warning', '[WarehousePO] Idempotent guard: inventory_chargers SN exists, skip insert. SN=' . $sn);
+                } else {
+                    $this->inventoryChargerModel->skipValidation(true);
+                    $this->inventoryChargerModel->insert(array_merge($common, [
+                        'item_number'     => $this->allocateInventoryItemNumber('inventory_chargers', 'C'),
+                        'charger_type_id' => (int) $pu['charger_id'],
+                        'serial_number'   => $sn,
+                    ]));
+                    $this->inventoryChargerModel->skipValidation(false);
+                }
             }
         }
         if (!empty($pu['attachment_id'])) {
             $sn = trim((string) ($pu['sn_attachment_po'] ?? ''));
             if ($sn !== '') {
-                $this->inventoryAttachmentModel->skipValidation(true);
-                $this->inventoryAttachmentModel->insert(array_merge($common, [
-                    'item_number'        => $this->allocateInventoryItemNumber('inventory_attachments', 'ATT'),
-                    'attachment_type_id' => (int) $pu['attachment_id'],
-                    'serial_number'      => $sn,
-                ]));
-                $this->inventoryAttachmentModel->skipValidation(false);
+                $exists = $db->table('inventory_attachments')->where('serial_number', $sn)->countAllResults();
+                if ($exists > 0) {
+                    log_message('warning', '[WarehousePO] Idempotent guard: inventory_attachments SN exists, skip insert. SN=' . $sn);
+                } else {
+                    $this->inventoryAttachmentModel->skipValidation(true);
+                    $this->inventoryAttachmentModel->insert(array_merge($common, [
+                        'item_number'        => $this->allocateInventoryItemNumber('inventory_attachments', 'ATT'),
+                        'attachment_type_id' => (int) $pu['attachment_id'],
+                        'serial_number'      => $sn,
+                    ]));
+                    $this->inventoryAttachmentModel->skipValidation(false);
+                }
             }
         }
-        $db = \Config\Database::connect();
         if (!empty($pu['fork_id']) && $db->tableExists('inventory_forks')) {
             $sn = trim((string) ($snData['sn_fork_po'] ?? $pu['sn_fork_po'] ?? ''));
             if ($sn !== '') {
+                $exists = $db->table('inventory_forks')
+                    ->where('item_number', $sn)
+                    ->where('fork_id', (int) $pu['fork_id'])
+                    ->countAllResults();
+                if ($exists > 0) {
+                    log_message('warning', '[WarehousePO] Idempotent guard: inventory_forks item exists, skip insert. SN=' . $sn);
+                    return;
+                }
                 $this->inventoryForkModel->skipValidation(true);
                 $this->inventoryForkModel->insert([
                     'item_number'         => $sn,
@@ -1552,19 +1575,33 @@ class WarehousePO extends BaseController
                             $inventoryData['no_unit_na'] = $this->generateStockNumber();
 
                             log_message('debug', '[WarehousePO] Attempting to insert to inventory_unit: ' . json_encode($inventoryData));
-                            
-                            $this->inventoryUnitModel->skipValidation(true);
-                            $invOk = $this->inventoryUnitModel->insert($inventoryData);
-                            $this->inventoryUnitModel->skipValidation(false);
-                            if (!$invOk) {
-                                $errors = $this->inventoryUnitModel->errors();
-                                log_message('error', '[WarehousePO] Failed to insert to inventory_unit: ' . json_encode($errors));
-                                log_message('error', '[WarehousePO] Attempted data: ' . json_encode($inventoryData));
-                                $db->transRollback();
-                                return $this->response->setJSON(['statusCode' => 500, 'message' => 'Gagal memasukkan data ke inventory: ' . implode(', ', $errors)]);
+
+                            $existingInv = null;
+                            $snKey = trim((string) ($inventoryData['serial_number'] ?? ''));
+                            if ($snKey !== '') {
+                                $existingInv = $this->inventoryUnitModel
+                                    ->select('id_inventory_unit')
+                                    ->where('serial_number', $snKey)
+                                    ->first();
                             }
-                            $newInvId = (int) $this->inventoryUnitModel->getInsertID();
-                            log_message('info', '[WarehousePO] Successfully inserted unit ' . $id_unit . ' to inventory_unit id=' . $newInvId);
+
+                            if ($existingInv) {
+                                $newInvId = (int) ($existingInv['id_inventory_unit'] ?? 0);
+                                log_message('warning', '[WarehousePO] Idempotent guard: inventory_unit already exists for SN ' . $snKey . ', using id=' . $newInvId);
+                            } else {
+                                $this->inventoryUnitModel->skipValidation(true);
+                                $invOk = $this->inventoryUnitModel->insert($inventoryData);
+                                $this->inventoryUnitModel->skipValidation(false);
+                                if (!$invOk) {
+                                    $errors = $this->inventoryUnitModel->errors();
+                                    log_message('error', '[WarehousePO] Failed to insert to inventory_unit: ' . json_encode($errors));
+                                    log_message('error', '[WarehousePO] Attempted data: ' . json_encode($inventoryData));
+                                    $db->transRollback();
+                                    return $this->response->setJSON(['statusCode' => 500, 'message' => 'Gagal memasukkan data ke inventory: ' . implode(', ', $errors)]);
+                                }
+                                $newInvId = (int) $this->inventoryUnitModel->getInsertID();
+                                log_message('info', '[WarehousePO] Successfully inserted unit ' . $id_unit . ' to inventory_unit id=' . $newInvId);
+                            }
                             try {
                                 $this->createLinkedInventoryComponents(
                                     $newInvId,
