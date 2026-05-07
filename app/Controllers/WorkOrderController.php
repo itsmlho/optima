@@ -1467,55 +1467,38 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-            // If not provided, try auto-assignment from area
-            if (!$adminId || !$foremanId || empty($mechanicIds) || empty($helperIds)) {
+            // Wajib: Admin + Foreman (pilihan user atau auto dari area). Mekanik & helper boleh kosong.
+            if (!$adminId || !$foremanId) {
                 $areaStaffInfo = $this->getAreaStaffInfo($input['unit_id']);
-                log_message('debug', 'Area Staff Info for auto-assignment: ' . print_r($areaStaffInfo, true));
-                
-                $missingRoles = [];
-                
+                log_message('debug', 'Area Staff Info for auto-assignment (admin/foreman): ' . print_r($areaStaffInfo, true));
+
                 if ($areaStaffInfo && is_array($areaStaffInfo)) {
                     foreach ($areaStaffInfo as $staff) {
-                        if (!$adminId && $staff['staff_role'] === 'ADMIN') {
+                        if (!$adminId && ($staff['staff_role'] ?? '') === 'ADMIN') {
                             $adminId = $staff['id'];
                         }
-                        if (!$foremanId && $staff['staff_role'] === 'FOREMAN') {
+                        if (!$foremanId && ($staff['staff_role'] ?? '') === 'FOREMAN') {
                             $foremanId = $staff['id'];
                         }
                     }
                 }
-                
-                // HYBRID VALIDATION: Only fail if REQUIRED staff (Mechanic/Helper) are missing
-                // Admin and Foreman can be empty if user doesn't manually select them
-                
-                // Check required staff only (Mechanic & Helper)
-                if (empty($mechanicIds)) {
-                    $missingRoles[] = 'Mechanic (minimal 1)';
-                }
-                if (empty($helperIds)) {
-                    $missingRoles[] = 'Helper (minimal 1)';
-                }
-                
-                // Only fail if mechanic or helper is missing
-                if (!empty($missingRoles)) {
-                    $areaName = $unitAreaInfo['area_name'] ?? 'Unknown';
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Staff tidak lengkap. Staff yang harus diisi: ' . implode(', ', $missingRoles) . '. Harap pilih minimal 1 mechanic dan 1 helper.',
-                        'missing_roles' => $missingRoles,
-                        'area_name' => $areaName
-                    ]);
-                }
-                
-                // WARN: If admin/foreman still empty after auto-assignment, log warning but allow creation
-                if (!$adminId) {
-                    $unitIdLog = is_array($input['unit_id']) ? json_encode($input['unit_id']) : $input['unit_id'];
-                    log_message('warning', 'Work Order created without Admin for unit_id: ' . $unitIdLog . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
-                }
-                if (!$foremanId) {
-                    $unitIdLog = is_array($input['unit_id']) ? json_encode($input['unit_id']) : $input['unit_id'];
-                    log_message('warning', 'Work Order created without Foreman for unit_id: ' . $unitIdLog . ' (Area: ' . ($unitAreaInfo['area_name'] ?? 'Unknown') . ')');
-                }
+            }
+
+            $missingRoles = [];
+            if (!$adminId) {
+                $missingRoles[] = 'Admin';
+            }
+            if (!$foremanId) {
+                $missingRoles[] = 'Foreman';
+            }
+            if ($missingRoles !== []) {
+                $areaName = $unitAreaInfo['area_name'] ?? 'Unknown';
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Admin dan Foreman wajib diisi (atau tersedia dari penugasan area). Yang belum lengkap: ' . implode(', ', $missingRoles) . '.',
+                    'missing_roles' => $missingRoles,
+                    'area_name' => $areaName,
+                ]);
             }
             
             // Safe logging: Handle if admin/foreman are arrays (defensive coding)
@@ -2203,9 +2186,22 @@ class WorkOrderController extends Controller
                 ->get()
                 ->getResultArray();
             
+            // Compact unit payload for edit form Select2 (AJAX dropdown starts empty)
+            $unitPayload = null;
+            if (!empty($workOrder['unit_id'])) {
+                $unitPayload = [
+                    'id'        => (int) $workOrder['unit_id'],
+                    'no_unit'   => $workOrder['unit_number'] ?? null,
+                    'pelanggan' => $workOrder['unit_customer'] ?? null,
+                    'merk_unit' => $workOrder['unit_brand'] ?? null,
+                    'model_unit'=> $workOrder['model_unit'] ?? null,
+                ];
+            }
+
             // Get form data for editing
             $data = [
                 'workOrder' => $workOrder,
+                'unit'      => $unitPayload,
                 'spareparts' => $spareparts, // Work order specific spareparts
                 'statuses' => $this->workOrderModel->getStatuses(),
                 'priorities' => $this->workOrderModel->getPriorities(),

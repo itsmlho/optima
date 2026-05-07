@@ -437,16 +437,16 @@ $categories  = $categories  ?? [];
                             <!-- Admin & Foreman - Dropdown -->
                             <div class="row mb-3">
                                 <div class="col-md-6 mb-3">
-                                    <label for="admin_id" class="form-label">Admin <small class="text-muted">(Optional)</small></label>
+                                    <label for="admin_id" class="form-label">Admin <span class="text-danger">*</span></label>
                                     <select class="form-select" id="admin_id" name="admin_id">
-                                        <option value="" selected>-- <?= lang('Common.choose') ?> <?= lang('App.admin') ?> --</option>
+                                        <option value="" selected disabled>-- <?= lang('Common.choose') ?> <?= lang('App.admin') ?> --</option>
                                     </select>
                                     <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="foreman_id" class="form-label">Foreman <small class="text-muted">(Optional)</small></label>
+                                    <label for="foreman_id" class="form-label">Foreman <span class="text-danger">*</span></label>
                                     <select class="form-select" id="foreman_id" name="foreman_id">
-                                        <option value="" selected>-- <?= lang('Common.choose') ?> <?= lang('App.foreman') ?> --</option>
+                                        <option value="" selected disabled>-- <?= lang('Common.choose') ?> <?= lang('App.foreman') ?> --</option>
                                     </select>
                                     <small class="form-text text-muted">Auto-selected if area assigned</small>
                                 </div>
@@ -455,12 +455,12 @@ $categories  = $categories  ?? [];
                             <!-- Mekanik - Pilihan 1-2 orang -->
                             <div class="row mb-3">
                                 <div class="col-md-12 mb-3">
-                                    <label class="form-label">Mechanic <span class="text-danger">*</span> <small class="text-muted">(Min 1, Max 2)</small></label>
+                                    <label class="form-label">Mechanic <small class="text-muted">(<?= lang('Common.optional') ?>)</small></label>
                                     <div id="mechanic-container">
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="mechanic_1" name="mechanic_id[]">
-                                                    <option value="" selected disabled>-- <?= lang('Service.mechanic') ?> 1 --</option>
+                                                    <option value="" selected>-- <?= lang('Service.mechanic') ?> 1 (<?= lang('Common.optional') ?>) --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
@@ -1288,9 +1288,26 @@ $(document).ready(function() {
             return false;
         }
         $('#complaint_description').removeClass('is-invalid');
+
+        let url = $(this).attr('action');
+        const isCreateWo = /work-orders\/store/i.test(url || '');
+        if (isCreateWo) {
+            const adminId = $('#admin_id').val();
+            const foremanId = $('#foreman_id').val();
+            $('#admin_id, #foreman_id').removeClass('is-invalid');
+            if (!adminId || !foremanId) {
+                OptimaNotify.error('Admin dan Foreman wajib dipilih sebelum menyimpan Work Order.');
+                if (!adminId) {
+                    $('#admin_id').addClass('is-invalid');
+                }
+                if (!foremanId) {
+                    $('#foreman_id').addClass('is-invalid');
+                }
+                return false;
+            }
+        }
         
         let formData = new FormData(this);
-        let url = $(this).attr('action');
         
         // CRITICAL: Ensure CSRF token is included (FormData should get it from form automatically via csrf_field())
         // Double-check and add if missing
@@ -1916,13 +1933,53 @@ $(document).ready(function() {
                 }
                 $select.trigger('change');
             }
+
+            /** Label for pre-selected unit when Select2 uses AJAX (options start empty). */
+            function buildEditWorkOrderUnitLabel(wo, payload) {
+                const u = payload && payload.unit ? payload.unit : null;
+                if (u) {
+                    let t = u.no_unit || ('Unit ' + (u.id || wo.unit_id || ''));
+                    if (u.pelanggan) {
+                        t += ' - ' + u.pelanggan;
+                    }
+                    const brandModel = [u.merk_unit, u.model_unit].filter(Boolean).join(' ').trim();
+                    if (brandModel) {
+                        t += ' (' + brandModel + ')';
+                    }
+                    return t;
+                }
+                let t = (wo.unit_number && wo.unit_number !== '-') ? String(wo.unit_number) : ('Unit ' + (wo.unit_id || ''));
+                if (wo.unit_customer && wo.unit_customer !== 'Belum Ada Kontrak') {
+                    t += ' - ' + wo.unit_customer;
+                }
+                const brandModel = [wo.unit_brand, wo.model_unit].filter(Boolean).join(' ').trim();
+                if (brandModel) {
+                    t += ' (' + brandModel + ')';
+                }
+                return t;
+            }
+
+            function applyPreselectedUnitToSelect2(unitId, labelText) {
+                if (!unitId) {
+                    return;
+                }
+                const $sel = $('#unit_id');
+                const idStr = String(unitId);
+                const hasOpt = $sel.find('option').filter(function() {
+                    return String($(this).val()) === idStr;
+                }).length > 0;
+                if (!hasOpt) {
+                    $sel.append(new Option(labelText || ('Unit ' + idStr), idStr, true, true));
+                }
+                $sel.val(idStr).trigger('change');
+            }
             // console.log('📋 Work Order data:', workOrder);
             
             // Basic form fields
             if (workOrder.id) $('#work_order_id').val(workOrder.id);
             if (workOrder.work_order_number) $('#work_order_number').val(workOrder.work_order_number);
             if (workOrder.order_type) $('#order_type').val(workOrder.order_type).trigger('change');
-            if (workOrder.category_id) $('#category_id').val(workOrder.category_id).trigger('change');
+            // category_id + subcategory: single trigger below (with pendingEditSubcategoryId) to avoid double-load / wrong priority side effects
             if (workOrder.area) $('#area').val(workOrder.area);
             if (workOrder.complaint_description) $('#complaint_description').val(workOrder.complaint_description);
             
@@ -1933,31 +1990,10 @@ $(document).ready(function() {
             
             // console.log('✅ Basic fields populated');
             
-            // Handle Unit selection with Select2
+            // Handle Unit selection with Select2 (AJAX mode — must inject option + value)
             if (workOrder.unit_id) {
-                // console.log('🏢 Setting unit ID:', workOrder.unit_id);
-                
-                // For Select2, we need to add the option first if it doesn't exist
-                let unitSelect = $('#unit_id');
-                let unitExists = unitSelect.find(`option[value="${workOrder.unit_id}"]`).length > 0;
-                
-                if (!unitExists && data.unit) {
-                    // Add the unit option from the response data
-                    let unitText = data.unit.no_unit || `Unit ${workOrder.unit_id}`;
-                    if (data.unit.pelanggan) unitText += ` - ${data.unit.pelanggan}`;
-                    if (data.unit.merk_unit || data.unit.model_unit) {
-                        unitText += ` (${data.unit.merk_unit || ''} ${data.unit.model_unit || ''}`.trim() + ')';
-                    }
-                    
-                    unitSelect.append(`<option value="${workOrder.unit_id}" selected>${unitText}</option>`);
-                    // console.log('✅ Unit option added:', unitText);
-                } else if (unitExists) {
-                    unitSelect.val(workOrder.unit_id);
-                    // console.log('✅ Unit selected from existing options');
-                }
-                
-                // Trigger Select2 update
-                unitSelect.trigger('change');
+                const unitLabel = buildEditWorkOrderUnitLabel(workOrder, data);
+                applyPreselectedUnitToSelect2(workOrder.unit_id, unitLabel);
             }
             
             // Handle Category and Subcategory with Select2
@@ -2063,10 +2099,9 @@ $(document).ready(function() {
                 helperSelect.trigger('change');
             }
             
-            // Handle Priority
-            if (workOrder.priority_id) {
-                // console.log('⚠️ Setting priority ID:', workOrder.priority_id);
-                $('#priority_id').val(workOrder.priority_id);
+            // Handle Priority (hidden + display label; same as rest of form)
+            if (workOrder.priority_id && typeof setPriority === 'function') {
+                setPriority(workOrder.priority_id);
             }
             
             // Handle Admin and Foreman
@@ -2080,10 +2115,11 @@ $(document).ready(function() {
                 setSelectValueWithFallback($('#foreman_id'), workOrder.foreman_id, foremanName || `Foreman ${workOrder.foreman_id}`);
             }
             
-            // Handle PIC
+            // Handle PIC (form field is #pic_name / name pic_name — not #pic)
             if (workOrder.pic) {
-                // console.log('👤 Setting PIC:', workOrder.pic);
-                $('#pic').val(workOrder.pic);
+                $('#pic_name').val(workOrder.pic);
+            } else if (workOrder.area_pic) {
+                $('#pic_name').val(workOrder.area_pic);
             }
             
             // Handle spareparts if they exist
@@ -2977,7 +3013,7 @@ $(document).ready(function() {
             { id: '#category_id', placeholder: '-- Select Category --' },
             { id: '#subcategory_id', placeholder: '-- Select Subcategory --' },
             { id: '#order_type', placeholder: '-- Select Order Type --' },
-            { id: '#mechanic_1', placeholder: '-- Select Mechanic 1 --' },
+            { id: '#mechanic_1', placeholder: '-- Mechanic 1 (optional) --' },
             { id: '#mechanic_2', placeholder: '-- Select Mechanic 2 (Optional) --' },
             { id: '#helper_1', placeholder: '-- Select Helper 1 --' },
             { id: '#helper_2', placeholder: '-- Select Helper 2 (Optional) --' }
@@ -3318,10 +3354,10 @@ $(document).ready(function() {
                     
                     // Clear existing options and add placeholder
                     let placeholderText = staffRole === 'MECHANIC' ? 
-                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
-                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
+                        (targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --') :
+                        (targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --');
                     
-                    staffSelect.empty().append(`<option value="" selected ${targetId.endsWith('_2') ? '' : 'disabled'}>${placeholderText}</option>`);
+                    staffSelect.empty().append(`<option value="" selected>${placeholderText}</option>`);
                     
                     // Add staff options
                     response.data.forEach(function(staff) {
@@ -3372,8 +3408,8 @@ $(document).ready(function() {
                     
                     // Clear existing options and add placeholder
                     let placeholderText = staffRole === 'MECHANIC' ? 
-                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
-                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
+                        (targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --') :
+                        (targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --');
                     
                     staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
                     
@@ -3418,8 +3454,8 @@ $(document).ready(function() {
                     // Still add placeholder even if no data
                     const staffSelect = $('#' + targetId);
                     let placeholderText = staffRole === 'MECHANIC' ? 
-                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
-                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
+                        (targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --') :
+                        (targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --');
                     
                     staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
                 }
@@ -3432,8 +3468,8 @@ $(document).ready(function() {
                 // Add placeholder even on error
                 const staffSelect = $('#' + targetId);
                 let placeholderText = staffRole === 'MECHANIC' ? 
-                    (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
-                    (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
+                    (targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --') :
+                    (targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --');
                 
                 staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
             },
@@ -3747,9 +3783,9 @@ $(document).ready(function() {
                     } else if (staffRole === 'FOREMAN') {
                         placeholderText = '-- Select Foreman --';
                     } else if (staffRole === 'MECHANIC') {
-                        placeholderText = targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --';
+                        placeholderText = targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --';
                     } else if (staffRole === 'HELPER') {
-                        placeholderText = targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --';
+                        placeholderText = targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --';
                     } else {
                         placeholderText = `-- Select ${staffRole} --`;
                     }
@@ -3839,9 +3875,9 @@ $(document).ready(function() {
                     } else if (staffRole === 'FOREMAN') {
                         placeholderText = '-- Select Foreman --';
                     } else if (staffRole === 'MECHANIC') {
-                        placeholderText = targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --';
+                        placeholderText = targetId === 'mechanic_1' ? '-- Mechanic 1 (optional) --' : '-- Mechanic 2 (optional) --';
                     } else if (staffRole === 'HELPER') {
-                        placeholderText = targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --';
+                        placeholderText = targetId === 'helper_1' ? '-- Helper 1 (optional) --' : '-- Helper 2 (optional) --';
                     } else {
                         placeholderText = `-- Select ${staffRole} --`;
                     }
@@ -3984,21 +4020,8 @@ $(document).ready(function() {
 
     // Add validation for staff selection
     function validateStaffSelection() {
-        const mechanic1 = $('#mechanic_1').val();
-        const mechanic2 = $('#mechanic_2').val();
-        const helper1 = $('#helper_1').val();
-        const helper2 = $('#helper_2').val();
-        
-        // Check if at least one mechanic is selected
-        if (!mechanic1 && !mechanic2) {
-            $('#mechanic_1').addClass('is-invalid');
-            $('#mechanic_2').addClass('is-invalid');
-                } else {
-            $('#mechanic_1, #mechanic_2').removeClass('is-invalid');
-        }
-        
-        // Helper is optional - always clear any invalid state
-        $('#helper_1, #helper_2').removeClass('is-invalid');
+        // Mekanik & helper opsional; tidak ada is-invalid untuk kosong
+        $('#mechanic_1, #mechanic_2, #helper_1, #helper_2').removeClass('is-invalid');
     }
 
     // Add event listeners for staff validation
