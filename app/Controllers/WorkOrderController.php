@@ -1835,13 +1835,21 @@ class WorkOrderController extends Controller
         }
 
         try {
+            $prevData = $this->workOrderModel->find($id);
+            if (!$prevData) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+
             $rules = [
                 'unit_id' => 'required|integer',
                 'order_type' => 'required',
                 'priority_id' => 'required|integer',
                 'category_id' => 'required|integer',
-                'complaint_description' => 'required|min_length[5]',
-                'status_id' => 'required|integer'
+                'complaint_description' => 'required|min_length[3]',
+                'status_id' => 'permit_empty|integer'
             ];
             
             if (!$this->validate($rules)) {
@@ -1852,16 +1860,11 @@ class WorkOrderController extends Controller
                 ]);
             }
 
-            $prevData = $this->workOrderModel->find($id);
-            if (!$prevData) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Work Order tidak ditemukan'
-                ]);
-            }
-            
             $oldStatusId = (int) ($prevData['status_id'] ?? 0);
-            $newStatusId = (int) ($this->request->getPost('status_id') ?? 0);
+            $postedStatusId = $this->request->getPost('status_id');
+            $newStatusId = ($postedStatusId === null || $postedStatusId === '')
+                ? $oldStatusId
+                : (int) $postedStatusId;
             $oldStatusCode = '';
             $newStatusCode = '';
 
