@@ -91,8 +91,9 @@ class InventoryUnitModel extends Model
     protected $deletedField  = '';
 
     protected $validationRules = [
-        'serial_number'  => 'permit_empty|max_length[255]|is_unique[inventory_unit.serial_number,id_inventory_unit,{id_inventory_unit}]',
-        'status_unit_id' => 'required|integer',
+        'id_inventory_unit' => 'permit_empty|is_natural_no_zero',
+        'serial_number'     => 'permit_empty|max_length[255]|is_unique[inventory_unit.serial_number,id_inventory_unit,{id_inventory_unit}]',
+        'status_unit_id'    => 'required|integer',
     ];
     protected $validationMessages = [
         'serial_number' => [
