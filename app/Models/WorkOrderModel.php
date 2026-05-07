@@ -47,12 +47,12 @@ class WorkOrderModel extends Model
     // Validation rules
     protected $validationRules = [
         'unit_id' => 'required|integer',
-        'order_type' => 'required|in_list[COMPLAINT,PMPS,FABRIKASI]',
+        'order_type' => 'required|in_list[COMPLAINT,PMPS,REKONDISI,FABRIKASI]',
         'priority_id' => 'required|integer',
         'category_id' => 'required|integer',
-        'complaint_description' => 'required|min_length[5]',
+        'complaint_description' => 'required|min_length[3]',
         'status_id' => 'required|integer',
-        'created_by' => 'required|integer'
+        'created_by' => 'permit_empty|integer'
     ];
 
     protected $validationMessages = [
@@ -74,14 +74,13 @@ class WorkOrderModel extends Model
         ],
         'complaint_description' => [
             'required' => 'Deskripsi keluhan harus diisi',
-            'min_length' => 'Deskripsi keluhan minimal 5 karakter'
+            'min_length' => 'Deskripsi keluhan minimal 3 karakter'
         ],
         'status_id' => [
             'required' => 'Status harus dipilih',
             'integer' => 'Status tidak valid'
         ],
         'created_by' => [
-            'required' => 'User yang membuat harus ada',
             'integer' => 'User tidak valid'
         ]
     ];

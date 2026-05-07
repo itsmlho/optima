@@ -1885,6 +1885,14 @@ class WorkOrderController extends Controller
                     ->get()->getRowArray();
                 $newStatusCode = (string)($newStatus['status_code'] ?? '');
             }
+
+            $firstSelectedId = static function ($value): ?int {
+                if (is_array($value)) {
+                    $value = array_values(array_filter($value, static fn ($v) => $v !== null && $v !== ''))[0] ?? null;
+                }
+
+                return ($value === null || $value === '') ? null : (int) $value;
+            };
             
             $data = [
                 'unit_id' => $this->request->getPost('unit_id'),
@@ -1897,8 +1905,8 @@ class WorkOrderController extends Controller
                 'status_id' => $newStatusId,
                 'admin_id' => $this->request->getPost('admin_id'),
                 'foreman_id' => $this->request->getPost('foreman_id'),
-                'mechanic_id' => $this->request->getPost('mechanic_id'),
-                'helper_id' => $this->request->getPost('helper_id'),
+                'mechanic_id' => $firstSelectedId($this->request->getPost('mechanic_id')),
+                'helper_id' => $firstSelectedId($this->request->getPost('helper_id')),
                 'repair_description' => $this->request->getPost('repair_description'),
                 'notes' => $this->request->getPost('notes'),
                 'sparepart_used' => $this->request->getPost('sparepart_used'),
@@ -1946,10 +1954,13 @@ class WorkOrderController extends Controller
                     'message' => 'Work Order berhasil diupdate'
                 ]);
             } else {
+                $modelErrors = $this->workOrderModel->errors();
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal mengupdate Work Order',
-                    'errors' => $this->workOrderModel->errors()
+                    'message' => !empty($modelErrors)
+                        ? 'Gagal mengupdate Work Order: ' . implode(' | ', array_values($modelErrors))
+                        : 'Gagal mengupdate Work Order',
+                    'errors' => $modelErrors
                 ]);
             }
         } catch (\Throwable $e) {
