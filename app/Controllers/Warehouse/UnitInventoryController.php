@@ -667,6 +667,81 @@ class UnitInventoryController extends BaseController
             $data['hour_meter'] = ($data['hour_meter'] === null || $data['hour_meter'] === '') ? null : (float) $data['hour_meter'];
         }
 
+        // Optional FKs: 0 / "0" → null (avoids invalid FK / constraint errors)
+        $optionalIntFk = [
+            'model_mast_id', 'model_mesin_id', 'ban_id', 'roda_id', 'valve_id',
+            'kapasitas_unit_id', 'departemen_id',
+        ];
+        foreach ($optionalIntFk as $f) {
+            if (array_key_exists($f, $data) && ($data[$f] === 0 || $data[$f] === '0')) {
+                $data[$f] = null;
+            }
+        }
+
+        // Core links must be real IDs if present (0 breaks FK)
+        foreach (['model_unit_id', 'tipe_unit_id'] as $f) {
+            if (array_key_exists($f, $data) && (int) ($data[$f] ?? 0) <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Model unit dan tipe unit wajib dipilih.',
+                    'csrf_hash' => csrf_hash(),
+                ]);
+            }
+        }
+
+        // fuel_type: utama dari departemen (nama_departemen). Fallback: nilai POST yang valid.
+        $fuelAllowed = ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'];
+        if (array_key_exists('departemen_id', $data) && $data['departemen_id'] !== null && (int) $data['departemen_id'] > 0) {
+            $syncFuel = $this->fuelTypeFromDepartemenId((int) $data['departemen_id']);
+            if ($syncFuel !== null) {
+                $data['fuel_type'] = $syncFuel;
+            }
+        }
+        if (array_key_exists('fuel_type', $data)) {
+            $ft = $data['fuel_type'];
+            if ($ft === null || $ft === '') {
+                unset($data['fuel_type']);
+            } else {
+                $ft = strtoupper((string) $ft);
+                if (in_array($ft, $fuelAllowed, true)) {
+                    $data['fuel_type'] = $ft;
+                } else {
+                    unset($data['fuel_type']);
+                }
+            }
+        }
+
+        // Kepemilikan: default OWNED (selaras permintaan bisnis untuk unit ini)
+        $ownAllowed = ['OWNED', 'LEASED', 'CONSIGNMENT'];
+        if (! array_key_exists('ownership_status', $data) || $data['ownership_status'] === null || $data['ownership_status'] === '') {
+            $data['ownership_status'] = 'OWNED';
+        } else {
+            $os = strtoupper((string) $data['ownership_status']);
+            $data['ownership_status'] = in_array($os, $ownAllowed, true) ? $os : 'OWNED';
+        }
+
+        // Mast height: numeric only; empty → omit (avoid writing invalid strings)
+        if (array_key_exists('tinggi_mast', $data)) {
+            $tm = $data['tinggi_mast'];
+            if ($tm === null || $tm === '') {
+                unset($data['tinggi_mast']);
+            } elseif (is_numeric($tm)) {
+                $data['tinggi_mast'] = (float) $tm;
+            } else {
+                unset($data['tinggi_mast']);
+            }
+        }
+
+        // Year: omit if empty / invalid so we do not store 0
+        if (array_key_exists('tahun_unit', $data)) {
+            $y = (int) ($data['tahun_unit'] ?? 0);
+            if ($y < 1990 || $y > 2050) {
+                unset($data['tahun_unit']);
+            } else {
+                $data['tahun_unit'] = $y;
+            }
+        }
+
         if (empty($data)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada data untuk disimpan.']);
         }
@@ -1359,6 +1434,70 @@ class UnitInventoryController extends BaseController
             log_message('warning', 'getDepartemenOptions: ' . $e->getMessage());
         }
         return [];
+    }
+
+    /**
+     * Map departemen.nama_departemen → inventory_unit.fuel_type (ENUM).
+     * Diselaraskan dengan bisnis: fuel mengikuti department unit.
+     */
+    private function mapNamaDepartemenToFuelType(string $nama): ?string
+    {
+        $n = strtoupper(trim($nama));
+        if ($n === '') {
+            return null;
+        }
+
+        $allowed = ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'];
+        $map     = [
+            'ELECTRIC'  => 'ELECTRIC',
+            'ELEKTRIK'  => 'ELECTRIC',
+            'BATTERY'   => 'ELECTRIC',
+            'BATERE'    => 'ELECTRIC',
+            'DIESEL'    => 'DIESEL',
+            'LPG'       => 'LPG',
+            'GASOLINE'  => 'GASOLINE',
+            'BENSIN'    => 'GASOLINE',
+            'BENZIN'    => 'GASOLINE',
+        ];
+
+        if (isset($map[$n]) && in_array($map[$n], $allowed, true)) {
+            return $map[$n];
+        }
+
+        foreach ($map as $needle => $fuel) {
+            if ($needle !== '' && str_contains($n, $needle) && in_array($fuel, $allowed, true)) {
+                return $fuel;
+            }
+        }
+
+        return null;
+    }
+
+    private function fuelTypeFromDepartemenId(?int $departemenId): ?string
+    {
+        if ($departemenId === null || $departemenId <= 0) {
+            return null;
+        }
+
+        try {
+            $db = Database::connect();
+            if (! $db->tableExists('departemen')) {
+                return null;
+            }
+            $row = $db->table('departemen')
+                ->select('nama_departemen')
+                ->where('id_departemen', $departemenId)
+                ->get()->getRowArray();
+            if (! $row) {
+                return null;
+            }
+
+            return $this->mapNamaDepartemenToFuelType((string) ($row['nama_departemen'] ?? ''));
+        } catch (\Throwable $e) {
+            log_message('warning', 'fuelTypeFromDepartemenId: ' . $e->getMessage());
+
+            return null;
+        }
     }
 
     private function getLookupData(): array

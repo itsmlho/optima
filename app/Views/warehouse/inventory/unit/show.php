@@ -68,6 +68,30 @@ if ($aksesorisRaw) {
         $aksesorisItems = array_map(static fn ($item) => format_accessory_label($item), $rawItems);
     }
 }
+
+/** Map nama departemen → fuel_type ENUM (sama logika dengan UnitInventoryController). */
+$mapDepartemenNamaToFuelType = static function (?string $nama): string {
+    $n = strtoupper(trim((string) $nama));
+    if ($n === '') {
+        return '';
+    }
+    $allowed = ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'];
+    $map     = [
+        'ELECTRIC' => 'ELECTRIC', 'ELEKTRIK' => 'ELECTRIC', 'BATTERY' => 'ELECTRIC', 'BATERE' => 'ELECTRIC',
+        'DIESEL' => 'DIESEL', 'LPG' => 'LPG',
+        'GASOLINE' => 'GASOLINE', 'BENSIN' => 'GASOLINE', 'BENZIN' => 'GASOLINE',
+    ];
+    if (isset($map[$n]) && in_array($map[$n], $allowed, true)) {
+        return $map[$n];
+    }
+    foreach ($map as $needle => $fuel) {
+        if ($needle !== '' && str_contains($n, $needle) && in_array($fuel, $allowed, true)) {
+            return $fuel;
+        }
+    }
+
+    return '';
+};
 ?>
 
 <?= $this->section('content') ?>
@@ -669,31 +693,39 @@ if ($aksesorisRaw) {
                                                             </select>
                                                         </div>
                                                     </li>
-                                                    <!-- Fuel Type — from iu.fuel_type, fallback to engine's department -->
+                                                    <!-- Fuel Type — mengikuti Department (disinkronkan di server + UI) -->
                                                     <?php
-                                                    // fuel_type: direct ENUM → engine's dept → unit's own departemen
-                                                    $fuelRaw = $unit['fuel_type'] ?? $unit['fuel_type_dept'] ?? $unit['unit_departemen'] ?? '';
+                                                    $fuelFromDept = $mapDepartemenNamaToFuelType($unit['unit_departemen'] ?? '');
+                                                    $ftDb = strtoupper(trim((string) ($unit['fuel_type'] ?? '')));
+                                                    $fuelDisplay = '';
+                                                    if (in_array($ftDb, ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'], true)) {
+                                                        $fuelDisplay = $ftDb;
+                                                    } elseif ($fuelFromDept !== '') {
+                                                        $fuelDisplay = $fuelFromDept;
+                                                    } else {
+                                                        $fd = strtoupper(trim((string) ($unit['fuel_type_dept'] ?? '')));
+                                                        $fuelDisplay = in_array($fd, ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'], true) ? $fd : '';
+                                                    }
+                                                    $fuelRaw = $fuelDisplay;
                                                     $fuelBadge = ['DIESEL'=>'warning','LPG'=>'info','ELECTRIC'=>'primary','GASOLINE'=>'secondary'];
-                                                    $fuelCls   = $fuelBadge[strtoupper($fuelRaw)] ?? 'light';
+                                                    $fuelCls   = $fuelBadge[$fuelRaw] ?? 'light';
+                                                    $fuelEditValue = $fuelFromDept !== '' ? $fuelFromDept : (in_array($ftDb, ['DIESEL', 'LPG', 'ELECTRIC', 'GASOLINE'], true) ? $ftDb : '');
                                                     ?>
                                                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        <span class="text-muted">Fuel Type</span>
+                                                        <span class="text-muted">Fuel Type <small class="text-muted fw-normal">(dari Department)</small></span>
                                                         <!-- VIEW -->
                                                         <span class="spec-view" id="view-fuel">
-                                                            <?php if($fuelRaw): ?>
-                                                            <span class="badge bg-<?= $fuelCls ?> text-<?= $fuelCls==='light'?'dark':'white' ?>"><?= esc(strtoupper($fuelRaw)) ?></span>
+                                                            <?php if ($fuelRaw !== ''): ?>
+                                                            <span class="badge bg-<?= $fuelCls ?> text-<?= $fuelCls === 'light' ? 'dark' : 'white' ?>"><?= esc($fuelRaw) ?></span>
                                                             <?php else: ?>
                                                             <span class="text-muted">-</span>
                                                             <?php endif; ?>
                                                         </span>
-                                                        <!-- EDIT -->
-                                                        <div class="spec-edit d-none" style="min-width:130px;">
-                                                            <select name="fuel_type" class="form-select form-select-sm">
-                                                                <option value="">-- Select --</option>
-                                                                <?php foreach(['DIESEL','LPG','ELECTRIC','GASOLINE'] as $ft): ?>
-                                                                <option value="<?= $ft ?>" <?= strtoupper($unit['fuel_type'] ?? '') === $ft ? 'selected' : '' ?>><?= $ft ?></option>
-                                                                <?php endforeach; ?>
-                                                            </select>
+                                                        <!-- EDIT: readonly — nilai mengikuti dropdown Department -->
+                                                        <div class="spec-edit d-none text-end" style="min-width:160px;">
+                                                            <input type="hidden" name="fuel_type" id="input-fuel-type-sync" value="<?= esc($fuelEditValue) ?>">
+                                                            <span class="badge bg-<?= $fuelEditValue !== '' ? ($fuelBadge[$fuelEditValue] ?? 'secondary') : 'secondary' ?> <?= $fuelEditValue === '' ? 'text-dark' : '' ?>" id="fuel-type-sync-label"><?= $fuelEditValue !== '' ? esc($fuelEditValue) : '—' ?></span>
+                                                            <small class="text-muted d-block mt-1">Otomatis dari Department</small>
                                                         </div>
                                                     </li>
                                                     <!-- Asset Tag (read-only) -->
@@ -1673,6 +1705,38 @@ if ($aksesorisRaw) {
     }
 
     // ── INLINE EDIT SPECIFICATIONS ─────────────────────────────────────
+
+    function departemenNamaToFuelType(nama) {
+        var n = (nama || '').toUpperCase().trim();
+        if (!n) return '';
+        var map = {
+            ELECTRIC: 'ELECTRIC', ELEKTRIK: 'ELECTRIC', BATTERY: 'ELECTRIC', BATERE: 'ELECTRIC',
+            DIESEL: 'DIESEL', LPG: 'LPG', GASOLINE: 'GASOLINE', BENSIN: 'GASOLINE', BENZIN: 'GASOLINE'
+        };
+        if (map[n]) return map[n];
+        for (var k in map) {
+            if (Object.prototype.hasOwnProperty.call(map, k) && n.indexOf(k) !== -1) return map[k];
+        }
+        return '';
+    }
+
+    function syncFuelTypeFromDept() {
+        var $dep = $('#card-specs select[name="departemen_id"]');
+        if (!$dep.length) return;
+        var txt = $dep.find('option:selected').text().trim();
+        var fuel = departemenNamaToFuelType(txt);
+        var $hid = $('#input-fuel-type-sync');
+        var $lbl = $('#fuel-type-sync-label');
+        if (!$hid.length || !$lbl.length) return;
+        $hid.val(fuel);
+        var cls = { DIESEL: 'warning', LPG: 'info', ELECTRIC: 'primary', GASOLINE: 'secondary' };
+        $lbl.removeClass('bg-warning bg-info bg-primary bg-secondary text-dark text-white');
+        if (fuel && cls[fuel]) {
+            $lbl.addClass('badge bg-' + cls[fuel] + (cls[fuel] === 'secondary' ? ' text-dark' : ' text-white')).text(fuel);
+        } else {
+            $lbl.addClass('badge bg-secondary text-dark').text('—');
+        }
+    }
     
     function toggleSpecEdit(showEdit) {
         if (showEdit) {
@@ -1680,6 +1744,7 @@ if ($aksesorisRaw) {
             $('#card-specs .spec-edit').removeClass('d-none');
             $('#btnEditSpecs').addClass('d-none');
             $('#btnSaveSpecs, #btnCancelSpecs').removeClass('d-none');
+            syncFuelTypeFromDept();
         } else {
             $('#card-specs .spec-view').removeClass('d-none');
             $('#card-specs .spec-edit').addClass('d-none');
@@ -1688,11 +1753,24 @@ if ($aksesorisRaw) {
         }
     }
 
+    $(document).on('change', '#card-specs select[name="departemen_id"]', function() {
+        syncFuelTypeFromDept();
+    });
+
     function saveSpecsInline() {
         $('#btnSaveSpecs').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>').addClass('disabled');
+        syncFuelTypeFromDept();
 
-        let data = {
-            <?= json_encode(csrf_token()) ?>: $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content'),
+        var csrfN = (typeof window.csrfTokenName !== 'undefined' && window.csrfTokenName) ? window.csrfTokenName : <?= json_encode(csrf_token()) ?>;
+        var csrfV = (typeof window.csrfTokenValue !== 'undefined' && window.csrfTokenValue) ? window.csrfTokenValue : '';
+        if (!csrfV) {
+            var m = document.querySelector('meta[name="csrf-token"]');
+            csrfV = m ? m.getAttribute('content') : '';
+        }
+
+        let data = {};
+        data[csrfN] = csrfV;
+        Object.assign(data, {
             serial_number    : $('input[name="serial_number"]').val(),
             model_unit_id    : $('select[name="model_unit_id"]').val(),
             tipe_unit_id     : $('select[name="tipe_unit_id"]').val(),
@@ -1704,12 +1782,11 @@ if ($aksesorisRaw) {
             model_mast_id    : $('select[name="model_mast_id"]').val(),
             sn_mast          : $('input[name="sn_mast"]').val(),
             tinggi_mast      : $('input[name="tinggi_mast"]').val(),
-            fuel_type        : $('select[name="fuel_type"]').val(),
-            ownership_status : $('select[name="ownership_status"]').val(),
+            fuel_type        : ($('#input-fuel-type-sync').val() || ''),
             roda_id          : $('select[name="roda_id"]').val(),
             valve_id         : $('select[name="valve_id"]').val(),
             hour_meter       : $('input[name="hour_meter"]').val(),
-        };
+        });
 
         // Handle ban_id (select or text input)
         let banInput = $('select[name="ban_id"]').length ? $('select[name="ban_id"]') : $('input[name="ban_id"]');
@@ -1723,7 +1800,11 @@ if ($aksesorisRaw) {
             success: function(res) {
                 $('#btnSaveSpecs').prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save').removeClass('disabled');
 
-                if (res.csrf_hash) $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content', res.csrf_hash);
+                if (res.csrf_hash) {
+                    var mCsrfSpecs = document.querySelector('meta[name="csrf-token"]');
+                    if (mCsrfSpecs) mCsrfSpecs.setAttribute('content', res.csrf_hash);
+                    if (typeof window.csrfTokenValue !== 'undefined') window.csrfTokenValue = res.csrf_hash;
+                }
 
                 if (res.success) {
                     OptimaNotify.success(res.message, 'Saved');
@@ -1745,8 +1826,14 @@ if ($aksesorisRaw) {
                     let mh = $('input[name="tinggi_mast"]').val();
                     $('#view-mast-height').text(mh ? mh + ' mm' : '-');
 
-                    let ft = $('select[name="fuel_type"] option:selected').val();
-                    $('#view-fuel').html(ft ? '<span class="badge bg-warning text-white">' + ft + '</span>' : '<span class="text-muted">-</span>');
+                    var ft = ($('#input-fuel-type-sync').val() || '').trim();
+                    var fbc = { DIESEL: 'warning', LPG: 'info', ELECTRIC: 'primary', GASOLINE: 'secondary' };
+                    if (ft && fbc[ft]) {
+                        var tx = fbc[ft] === 'secondary' ? 'dark' : 'white';
+                        $('#view-fuel').html('<span class="badge bg-' + fbc[ft] + ' text-' + tx + '">' + ft + '</span>');
+                    } else {
+                        $('#view-fuel').html('<span class="text-muted">-</span>');
+                    }
 
                     let rd = $('select[name="roda_id"] option:selected').text().trim();
                     $('#view-roda').text(rd || '-');
@@ -1796,10 +1883,13 @@ if ($aksesorisRaw) {
 
         let catatan = $('#inputCatatan').val();
 
-        let data = {
-            <?= json_encode(csrf_token()) ?>: $(document.querySelector('meta[name=' + <?= json_encode(csrf_token()) ?> + ']')).attr('content'),
-            keterangan: catatan
-        };
+        var csrfN = (typeof window.csrfTokenName !== 'undefined' && window.csrfTokenName) ? window.csrfTokenName : <?= json_encode(csrf_token()) ?>;
+        var csrfV = (typeof window.csrfTokenValue !== 'undefined' && window.csrfTokenValue) ? window.csrfTokenValue : '';
+        if (!csrfV) {
+            var m = document.querySelector('meta[name="csrf-token"]');
+            csrfV = m ? m.getAttribute('content') : '';
+        }
+        let data = { [csrfN]: csrfV, keterangan: catatan };
 
         $.ajax({
             url: (window._baseUnitUrl || '') + (window._unitId || '') + '/inline-update',
