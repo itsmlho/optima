@@ -1556,21 +1556,398 @@ class Operational extends BaseController
         ]);
     }
 
+    public function diPrintBast($id)
+    {
+        $payload = $this->buildOperationalDeliveryPrintPayload((int) $id);
+        if ($payload === null) {
+            return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
+        }
+        if (!$this->isOperationalDeliveryCommand($payload['workflow']['jenis_kode'] ?? '')) {
+            return $this->response->setStatusCode(400)->setBody('BAST hanya untuk DI pengiriman unit (ANTAR/KIRIM).');
+        }
+
+        return view('operational/print_bast', $payload);
+    }
+
+    public function diPrintSuratJalan($id)
+    {
+        $basePayload = $this->buildOperationalDeliveryPrintPayload((int) $id);
+        if ($basePayload === null) {
+            return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
+        }
+
+        $jenisKode = $basePayload['workflow']['jenis_kode'] ?? '';
+        if (!$this->isOperationalSuratJalanCommand($jenisKode)) {
+            return $this->response->setStatusCode(400)->setBody('Surat Jalan hanya untuk ANTAR/KIRIM, TARIK/AMBIL, TUKAR, atau RELOKASI.');
+        }
+
+        $mode = $this->resolveOperationalSuratJalanMode($jenisKode, $this->request->getGet('mode'));
+        if ($mode === null) {
+            $message = strtoupper(trim((string) $jenisKode)) === 'TUKAR'
+                ? 'Surat Jalan TUKAR harus memilih mode kirim atau tarik.'
+                : 'Mode Surat Jalan tidak sesuai dengan jenis perintah DI.';
+            return $this->response->setStatusCode(400)->setBody($message);
+        }
+
+        $payload = $this->buildOperationalDeliveryPrintPayload((int) $id, $mode);
+        if ($payload === null) {
+            return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
+        }
+        if (empty($payload['items'])) {
+            return $this->response->setStatusCode(404)->setBody('Tidak ada item untuk Surat Jalan mode ' . strtoupper($mode) . '.');
+        }
+
+        return view('operational/print_surat_jalan', $payload);
+    }
+
+    private function isOperationalDeliveryCommand(string $jenisKode): bool
+    {
+        return in_array(strtoupper(trim($jenisKode)), ['ANTAR', 'KIRIM'], true);
+    }
+
+    private function isOperationalSuratJalanCommand(string $jenisKode): bool
+    {
+        return in_array(strtoupper(trim($jenisKode)), ['ANTAR', 'KIRIM', 'TARIK', 'AMBIL', 'TUKAR', 'RELOKASI'], true);
+    }
+
+    private function resolveOperationalSuratJalanMode(string $jenisKode, $requestedMode = null): ?string
+    {
+        $jenisKode = strtoupper(trim($jenisKode));
+        $requestedMode = strtolower(trim((string) ($requestedMode ?? '')));
+
+        if (in_array($requestedMode, ['kirim', 'tarik', 'relokasi'], true)) {
+            if ($jenisKode === 'TUKAR') {
+                return in_array($requestedMode, ['kirim', 'tarik'], true) ? $requestedMode : null;
+            }
+            if (in_array($jenisKode, ['ANTAR', 'KIRIM'], true)) {
+                return $requestedMode === 'kirim' ? 'kirim' : null;
+            }
+            if (in_array($jenisKode, ['TARIK', 'AMBIL'], true)) {
+                return $requestedMode === 'tarik' ? 'tarik' : null;
+            }
+            if ($jenisKode === 'RELOKASI') {
+                return $requestedMode === 'relokasi' ? 'relokasi' : null;
+            }
+        }
+
+        if (in_array($jenisKode, ['ANTAR', 'KIRIM'], true)) {
+            return 'kirim';
+        }
+        if (in_array($jenisKode, ['TARIK', 'AMBIL'], true)) {
+            return 'tarik';
+        }
+        if ($jenisKode === 'RELOKASI') {
+            return 'relokasi';
+        }
+
+        return null;
+    }
+
+    private function buildOperationalSuratJalanContext(string $jenisKode, ?string $mode): array
+    {
+        $jenisKode = strtoupper(trim($jenisKode));
+        $mode = strtolower(trim((string) ($mode ?? '')));
+
+        if ($jenisKode === 'TUKAR' && $mode === 'kirim') {
+            return [
+                'mode' => 'kirim',
+                'title' => 'SURAT JALAN - KIRIM UNIT PENGGANTI',
+                'purpose' => 'DOKUMEN PERJALANAN BARANG - PENGIRIMAN UNIT PENGGANTI - 3 RANGKAP',
+                'role_label' => 'KIRIM',
+            ];
+        }
+        if ($jenisKode === 'TUKAR' && $mode === 'tarik') {
+            return [
+                'mode' => 'tarik',
+                'title' => 'SURAT JALAN - TARIK UNIT LAMA',
+                'purpose' => 'DOKUMEN PERJALANAN BARANG - PENARIKAN UNIT LAMA - 3 RANGKAP',
+                'role_label' => 'TARIK',
+            ];
+        }
+        if ($mode === 'tarik') {
+            return [
+                'mode' => 'tarik',
+                'title' => 'SURAT JALAN - TARIK UNIT',
+                'purpose' => 'DOKUMEN PERJALANAN BARANG - PENARIKAN UNIT - 3 RANGKAP',
+                'role_label' => 'TARIK',
+            ];
+        }
+        if ($mode === 'relokasi') {
+            return [
+                'mode' => 'relokasi',
+                'title' => 'SURAT JALAN - RELOKASI UNIT',
+                'purpose' => 'DOKUMEN PERJALANAN BARANG - RELOKASI UNIT - 3 RANGKAP',
+                'role_label' => 'RELOKASI',
+            ];
+        }
+
+        return [
+            'mode' => 'kirim',
+            'title' => $jenisKode === 'ANTAR' ? 'SURAT JALAN - ANTAR UNIT' : 'SURAT JALAN - KIRIM UNIT',
+            'purpose' => $jenisKode === 'ANTAR'
+                ? 'DOKUMEN PERJALANAN BARANG - PENGANTARAN UNIT - 3 RANGKAP'
+                : 'DOKUMEN PERJALANAN BARANG - PENGIRIMAN UNIT - 3 RANGKAP',
+            'role_label' => $jenisKode === 'ANTAR' ? 'ANTAR' : 'KIRIM',
+        ];
+    }
+
+    private function buildOperationalDeliveryPrintPayload(int $id, ?string $suratJalanMode = null): ?array
+    {
+        $di = $this->db->table('delivery_instructions di')
+            ->select('di.*, spk.kontrak_id as spk_kontrak_id, spk.nomor_spk, q.quotation_number')
+            ->select('jpk.kode as jenis_perintah_kode, jpk.nama as jenis_perintah_label')
+            ->select('tpk.kode as tujuan_perintah_kode, tpk.nama as tujuan_perintah_label, tpk.deskripsi as tujuan_perintah_deskripsi')
+            ->join('spk', 'spk.id = di.spk_id', 'left')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'left')
+            ->join('tujuan_perintah_kerja tpk', 'tpk.id = di.tujuan_perintah_kerja_id', 'left')
+            ->where('di.id', $id)
+            ->get()
+            ->getRowArray();
+
+        if (!$di) {
+            return null;
+        }
+
+        $spk = [];
+        $spesifikasi = [];
+        if (!empty($di['spk_id'])) {
+            $spk = $this->db->table('spk s')
+                ->select('s.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as created_by_name')
+                ->select('COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as marketing_name', false)
+                ->join('users u', 'u.id = s.dibuat_oleh', 'left')
+                ->where('s.id', (int) $di['spk_id'])
+                ->get()
+                ->getRowArray() ?: [];
+
+            if (!empty($spk['spesifikasi'])) {
+                $decoded = json_decode((string) $spk['spesifikasi'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $spesifikasi = $decoded;
+                }
+            }
+        }
+
+        $items = $this->db->table('delivery_items dii')
+            ->select('dii.*')
+            ->select('iu.no_unit, iu.no_unit_na, iu.serial_number, iu.tahun_unit, iu.sn_mesin, iu.sn_mast, iu.hour_meter')
+            ->select('mu.merk_unit, mu.model_unit')
+            ->select('tu.tipe as unit_tipe, tu.jenis as unit_jenis')
+            ->select('d.nama_departemen as departemen_nama, k.kapasitas_unit as kapasitas_unit_nama')
+            ->select('tm.tipe_mast as mast_model, m.model_mesin as mesin_model')
+            ->select('a.tipe as att_tipe, a.merk as att_merk, a.model as att_model')
+            ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai, ib.serial_number as sn_baterai')
+            ->select('chr.merk_charger, chr.tipe_charger, ic.serial_number as sn_charger')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = dii.unit_id', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+            ->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left')
+            ->join('mesin m', 'm.id = iu.model_mesin_id', 'left')
+            ->join('attachment a', 'a.id_attachment = dii.attachment_id', 'left')
+            ->join('inventory_batteries ib', 'ib.inventory_unit_id = iu.id_inventory_unit', 'left')
+            ->join('baterai bat', 'bat.id = ib.battery_type_id', 'left')
+            ->join('inventory_chargers ic', 'ic.inventory_unit_id = iu.id_inventory_unit', 'left')
+            ->join('charger chr', 'chr.id_charger = ic.charger_type_id', 'left')
+            ->where('dii.di_id', $id)
+            ->orderBy('dii.id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $jenisKodeForItems = strtoupper(trim((string) ($di['jenis_perintah_kode'] ?? '')));
+        foreach ($items as $idx => &$item) {
+            $item['print_qty'] = (int) ($item['quantity'] ?? $item['qty'] ?? 1);
+            if ($item['print_qty'] <= 0) {
+                $item['print_qty'] = 1;
+            }
+            $rawRole = strtoupper(trim((string) ($item['item_role'] ?? '')));
+            if (in_array($jenisKodeForItems, ['TARIK', 'AMBIL'], true)) {
+                $item['print_role'] = 'TARIK';
+            } elseif ($jenisKodeForItems === 'RELOKASI') {
+                $item['print_role'] = 'RELOKASI';
+            } else {
+                $item['print_role'] = in_array($rawRole, ['KIRIM', 'TARIK'], true) ? $rawRole : 'KIRIM';
+            }
+            $item['print_name'] = $this->formatOperationalPrintItemName($item);
+            $item['print_specs'] = $this->formatOperationalPrintItemSpecs($item);
+            $item['print_no'] = trim((string) ($item['no_unit'] ?? $item['no_unit_na'] ?? ''));
+            $item['print_sn'] = trim((string) ($item['serial_number'] ?? ''));
+            $item['print_index'] = $idx + 1;
+        }
+        unset($item);
+
+        if ($items === []) {
+            $fallbackName = trim((string) ($spesifikasi['nama_unit'] ?? $spesifikasi['unit_type'] ?? $spesifikasi['jenis_unit'] ?? 'Unit / Barang'));
+            $items[] = [
+                'item_type' => 'UNIT',
+                'print_qty' => max(1, (int) ($di['jumlah_unit'] ?? 1)),
+                'print_role' => in_array($jenisKodeForItems, ['TARIK', 'AMBIL'], true)
+                    ? 'TARIK'
+                    : ($jenisKodeForItems === 'RELOKASI' ? 'RELOKASI' : 'KIRIM'),
+                'print_name' => $fallbackName,
+                'print_specs' => trim((string) ($spesifikasi['kapasitas_unit'] ?? $spesifikasi['kapasitas_id_name'] ?? '')),
+                'print_no' => '',
+                'print_sn' => '',
+                'print_index' => 1,
+            ];
+        }
+
+        $trips = $this->db->table('delivery_trips')
+            ->where('di_id', $id)
+            ->whereNotIn('status', ['DIBATALKAN'])
+            ->orderBy('id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $primaryTrip = $trips[0] ?? [];
+        $vehicle = [
+            'type' => trim((string) ($primaryTrip['tipe_kendaraan'] ?? $di['kendaraan'] ?? '')),
+            'name' => trim((string) ($primaryTrip['kendaraan'] ?? $di['kendaraan'] ?? '')),
+            'plate' => trim((string) ($primaryTrip['no_polisi'] ?? $di['no_polisi_kendaraan'] ?? '')),
+            'driver' => trim((string) ($primaryTrip['nama_supir'] ?? $di['nama_supir'] ?? '')),
+            'driver_phone' => trim((string) ($primaryTrip['no_hp_supir'] ?? $di['no_hp_supir'] ?? '')),
+            'date' => trim((string) ($primaryTrip['tanggal_kirim'] ?? $di['tanggal_kirim'] ?? $di['requested_delivery_date'] ?? '')),
+        ];
+
+        $workflow = [
+            'jenis_kode' => strtoupper(trim((string) ($di['jenis_perintah_kode'] ?? ''))),
+            'jenis_label' => trim((string) ($di['jenis_perintah_label'] ?? '')),
+            'tujuan_kode' => strtoupper(trim((string) ($di['tujuan_perintah_kode'] ?? ''))),
+            'tujuan_label' => trim((string) ($di['tujuan_perintah_label'] ?? '')),
+            'tujuan_deskripsi' => trim((string) ($di['tujuan_perintah_deskripsi'] ?? '')),
+        ];
+        $commandParts = array_filter([$workflow['jenis_label'], $workflow['tujuan_label']], static fn ($v) => trim((string) $v) !== '');
+        $commandLabel = implode(' - ', $commandParts);
+        if ($commandLabel === '') {
+            $commandLabel = $workflow['jenis_kode'] ?: 'KIRIM';
+        }
+
+        $diNumber = trim((string) ($di['nomor_di'] ?? ('DI-' . $id)));
+        $safeNumber = str_replace(['/', '\\'], '-', $diNumber);
+        $bastNumber = preg_replace('/^DI([\/-])?/i', 'BAST$1', $diNumber);
+        if (!is_string($bastNumber) || trim($bastNumber) === '') {
+            $bastNumber = 'BAST/' . $diNumber;
+        }
+        $suratJalanNumber = preg_replace('/^DI([\/-])?/i', 'SJ$1', $diNumber);
+        if (!is_string($suratJalanNumber) || trim($suratJalanNumber) === '') {
+            $suratJalanNumber = 'SJ/' . $diNumber;
+        }
+        $suratJalanContext = $this->buildOperationalSuratJalanContext($workflow['jenis_kode'], $suratJalanMode);
+        if ($workflow['jenis_kode'] === 'TUKAR' && in_array($suratJalanContext['mode'], ['kirim', 'tarik'], true)) {
+            $suratJalanNumber .= '/' . strtoupper($suratJalanContext['mode']);
+        }
+
+        $printItems = $items;
+        if ($suratJalanMode !== null) {
+            $printItems = array_values(array_filter($items, static function (array $item) use ($suratJalanContext) {
+                $role = strtoupper(trim((string) ($item['print_role'] ?? 'KIRIM')));
+                if ($suratJalanContext['mode'] === 'tarik') {
+                    return $role === 'TARIK';
+                }
+                if ($suratJalanContext['mode'] === 'relokasi') {
+                    return $role === 'RELOKASI' || $role === 'KIRIM';
+                }
+
+                return $role === 'KIRIM' || $role === '';
+            }));
+        }
+
+        foreach ($printItems as $idx => &$printItem) {
+            $printItem['print_index'] = $idx + 1;
+        }
+        unset($printItem);
+
+        $customer = [
+            'name' => trim((string) ($di['pelanggan'] ?? $spk['pelanggan'] ?? $spk['customer_name'] ?? '')),
+            'location' => trim((string) ($di['lokasi'] ?? $spk['lokasi'] ?? '')),
+            'pic' => trim((string) ($di['pic'] ?? $spk['pic'] ?? '')),
+            'phone' => trim((string) ($di['kontak'] ?? $spk['kontak'] ?? '')),
+        ];
+
+        return [
+            'di' => $di,
+            'spk' => $spk,
+            'spesifikasi' => $spesifikasi,
+            'items' => $printItems,
+            'trips' => $trips,
+            'vehicle' => $vehicle,
+            'workflow' => $workflow,
+            'command_label' => $commandLabel,
+            'customer' => $customer,
+            'bast_number' => $bastNumber,
+            'surat_jalan_number' => $suratJalanNumber,
+            'surat_jalan_context' => $suratJalanContext,
+            'company_name' => 'PT Sarana Mitra Luas Tbk',
+            'company_address' => 'Jl. Raya Cikarang - Cibarusah No. 150, Cikarang Selatan, Bekasi',
+        ];
+    }
+
+    private function formatOperationalPrintItemName(array $item): string
+    {
+        if (($item['item_type'] ?? '') === 'ATTACHMENT') {
+            return trim(implode(' ', array_filter([
+                $item['att_tipe'] ?? '',
+                $item['att_merk'] ?? '',
+                $item['att_model'] ?? '',
+            ]))) ?: 'Attachment';
+        }
+
+        $unitType = trim(implode(' ', array_filter([
+            $item['unit_tipe'] ?? '',
+            $item['unit_jenis'] ?? '',
+        ])));
+
+        return trim(implode(' ', array_filter([
+            $unitType ?: 'Forklift',
+            $item['departemen_nama'] ?? '',
+            $item['merk_unit'] ?? '',
+            $item['model_unit'] ?? '',
+            !empty($item['kapasitas_unit_nama']) ? 'Kap. ' . $item['kapasitas_unit_nama'] : '',
+        ]))) ?: 'Unit';
+    }
+
+    private function formatOperationalPrintItemSpecs(array $item): string
+    {
+        $parts = [];
+        foreach ([
+            'SN Unit' => $item['serial_number'] ?? '',
+            'SN Mesin' => $item['sn_mesin'] ?? '',
+            'SN Mast' => $item['sn_mast'] ?? '',
+            'Battery' => $item['sn_baterai'] ?? '',
+            'Charger' => $item['sn_charger'] ?? '',
+            'Attachment' => trim(implode(' ', array_filter([$item['att_tipe'] ?? '', $item['att_model'] ?? '']))),
+        ] as $label => $value) {
+            $value = trim((string) $value);
+            if ($value !== '') {
+                $parts[] = $label . ': ' . $value;
+            }
+        }
+
+        return implode(' | ', $parts);
+    }
+
     public function diPrint($id)
     {
         $id = (int)$id;
         // Get DI with quotation_number via join
         $di = $this->db->table('delivery_instructions')
             ->select('delivery_instructions.*, spk.kontrak_id as spk_kontrak_id, q.quotation_number')
+            ->select('jpk.kode as jenis_perintah_kode')
             ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
             ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
             ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
             ->where('delivery_instructions.id', $id)
             ->get()
             ->getRowArray();
         
         if (!$di) {
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
+        }
+        if (!$this->isOperationalDeliveryCommand($di['jenis_perintah_kode'] ?? '')) {
+            return $this->response->setStatusCode(400)->setBody('DI Internal hanya untuk DI pengiriman unit (ANTAR/KIRIM). Gunakan Surat Jalan sesuai tipe perintah.');
         }
 
         // Get items untuk DI ini - try delivery_items first
@@ -1621,9 +1998,11 @@ class Operational extends BaseController
         // Sama seperti diPrint(): join quotation & spk.kontrak_id agar referensi kontrak/QT konsisten
         $di = $this->db->table('delivery_instructions')
             ->select('delivery_instructions.*, spk.kontrak_id as spk_kontrak_id, q.quotation_number')
+            ->select('jpk.kode as jenis_perintah_kode')
             ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
             ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
             ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
             ->where('delivery_instructions.id', $id)
             ->get()
             ->getRowArray();
@@ -1632,6 +2011,9 @@ class Operational extends BaseController
         }
         if (!$di) {
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
+        }
+        if (!$this->isOperationalDeliveryCommand($di['jenis_perintah_kode'] ?? '')) {
+            return $this->response->setStatusCode(400)->setBody('DI Internal hanya untuk DI pengiriman unit (ANTAR/KIRIM). Gunakan Surat Jalan sesuai tipe perintah.');
         }
 
         // Get items untuk DI ini - try delivery_items first

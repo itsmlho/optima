@@ -1430,8 +1430,23 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-            // Generate work order number
-            $woNumber = $this->generateWorkOrderNumber();
+            // Generate work order number (default) but allow manual override from form
+            $woNumber = trim((string)($input['work_order_number'] ?? ''));
+            if ($woNumber === '') {
+                $woNumber = $this->generateWorkOrderNumber();
+            }
+
+            // Ensure WO number is unique
+            $existingWoNumber = $db->table('work_orders')
+                ->where('work_order_number', $woNumber)
+                ->where('deleted_at', null)
+                ->countAllResults();
+            if ($existingWoNumber > 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Nomor Work Order sudah digunakan. Gunakan nomor lain.'
+                ]);
+            }
             
             // Get unit area info for area-based assignment
             $unitAreaInfo = $this->getUnitAreaInfo($input['unit_id']);
@@ -1913,6 +1928,24 @@ class WorkOrderController extends Controller
                 'time_to_repair' => $this->request->getPost('time_to_repair'),
                 'area' => $this->request->getPost('area')
             ];
+
+            // Allow manual WO number correction in edit (e.g., fill offline numbering gaps)
+            $postedWoNumber = trim((string)$this->request->getPost('work_order_number'));
+            if ($postedWoNumber !== '') {
+                $dbWo = \Config\Database::connect();
+                $duplicate = $dbWo->table('work_orders')
+                    ->where('work_order_number', $postedWoNumber)
+                    ->where('id !=', (int)$id)
+                    ->where('deleted_at', null)
+                    ->countAllResults();
+                if ($duplicate > 0) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Nomor Work Order sudah digunakan. Gunakan nomor lain.'
+                    ]);
+                }
+                $data['work_order_number'] = $postedWoNumber;
+            }
             
             // Jika status berubah menjadi COMPLETED, validasi sparepart dulu
             if ($oldStatusId !== $newStatusId && strtoupper($newStatusCode) === 'COMPLETED') {
@@ -1943,6 +1976,87 @@ class WorkOrderController extends Controller
             }
             
             if ($result) {
+                // Sync spareparts on edit (replace previous rows with submitted rows)
+                $sparepartModel = new \App\Models\WorkOrderSparepartModel();
+                $sparepartNamesRaw = $this->request->getPost('sparepart_name');
+                $sparepartNames = $sparepartNamesRaw ?? [];
+                $sparepartQtys = $this->request->getPost('sparepart_quantity') ?? [];
+                $sparepartUnits = $this->request->getPost('sparepart_unit') ?? [];
+                $sparepartNotes = $this->request->getPost('sparepart_notes') ?? [];
+                $itemTypes = $this->request->getPost('item_type') ?? [];
+                $sourceTypes = $this->request->getPost('source_type') ?? [];
+                $sourceUnitIds = $this->request->getPost('source_unit_id') ?? [];
+                $sourceNotes = $this->request->getPost('source_notes') ?? [];
+
+                $sparepartRows = [];
+                if (is_array($sparepartNames)) {
+                    for ($i = 0; $i < count($sparepartNames); $i++) {
+                        $currentName = $sparepartNames[$i];
+                        if (is_array($currentName)) {
+                            $currentName = reset($currentName) ?: '';
+                        }
+                        $currentName = trim((string)$currentName);
+                        if ($currentName === '') {
+                            continue;
+                        }
+
+                        $sparepartCode = null;
+                        $sparepartName = $currentName;
+                        if (strpos($currentName, ' - ') !== false) {
+                            $parts = explode(' - ', $currentName, 2);
+                            $sparepartCode = trim((string)($parts[0] ?? '')) ?: null;
+                            $sparepartName = trim((string)($parts[1] ?? '')) ?: $currentName;
+                        }
+
+                        $qty = (int)($sparepartQtys[$i] ?? 1);
+                        if ($qty <= 0) {
+                            $qty = 1;
+                        }
+                        $satuan = strtoupper(trim((string)($sparepartUnits[$i] ?? 'PCS')));
+                        $notes = $sparepartNotes[$i] ?? null;
+
+                        $itemType = $itemTypes[$i] ?? 'sparepart';
+                        if (is_array($itemType)) {
+                            $itemType = reset($itemType) ?: 'sparepart';
+                        }
+                        $itemType = strtolower(trim((string)$itemType));
+                        if (!in_array($itemType, ['sparepart', 'tool'], true)) {
+                            $itemType = 'sparepart';
+                        }
+
+                        $sourceType = strtoupper(trim((string)($sourceTypes[$i] ?? 'WAREHOUSE')));
+                        if (!in_array($sourceType, ['WAREHOUSE', 'BEKAS', 'KANIBAL'], true)) {
+                            $sourceType = 'WAREHOUSE';
+                        }
+                        $sourceUnitId = !empty($sourceUnitIds[$i]) ? (int)$sourceUnitIds[$i] : null;
+                        $sourceNote = $sourceNotes[$i] ?? null;
+                        $isFromWarehouse = ($sourceType === 'WAREHOUSE') ? 1 : 0;
+
+                        $sparepartRows[] = [
+                            'sparepart_code' => $sparepartCode,
+                            'sparepart_name' => $sparepartName,
+                            'item_type' => $itemType,
+                            'quantity_brought' => $qty,
+                            'satuan' => $satuan,
+                            'notes' => $notes,
+                            'source_type' => $sourceType,
+                            'source_unit_id' => $sourceUnitId,
+                            'source_notes' => $sourceNote,
+                            'is_from_warehouse' => $isFromWarehouse,
+                        ];
+                    }
+                }
+
+                // Only sync when sparepart fields are explicitly posted by form.
+                if ($sparepartNamesRaw !== null) {
+                    if ($sparepartModel->addSpareparts($id, $sparepartRows) === false) {
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Work Order tersimpan, tetapi gagal sinkron sparepart. Silakan coba lagi.'
+                        ]);
+                    }
+                }
+
                 $this->logUpdate('work_orders', $id, $prevData, $data, [
                     'module_name' => 'service',
                     'description' => "Work Order #{$id} updated",
@@ -1973,6 +2087,244 @@ class WorkOrderController extends Controller
         }
     }
     
+    // Append additional spareparts without editing full WO form
+    public function addSpareparts($id)
+    {
+        $canEditWo = (function_exists('hasPermission') && hasPermission('service.work_order.edit'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.edit'))
+            || can_edit('service');
+        if (!$canEditWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
+        try {
+            $workOrder = $this->workOrderModel->find($id);
+            if (!$workOrder) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+
+            $sparepartNames = $this->request->getPost('sparepart_name') ?? [];
+            $sparepartQtys = $this->request->getPost('sparepart_quantity') ?? [];
+            $sparepartUnits = $this->request->getPost('sparepart_unit') ?? [];
+            $sparepartNotes = $this->request->getPost('sparepart_notes') ?? [];
+            $itemTypes = $this->request->getPost('item_type') ?? [];
+            $sourceTypes = $this->request->getPost('source_type') ?? [];
+
+            if (!is_array($sparepartNames) || empty($sparepartNames)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Item sparepart harus diisi minimal 1 baris'
+                ]);
+            }
+
+            $rows = [];
+            for ($i = 0; $i < count($sparepartNames); $i++) {
+                $currentName = $sparepartNames[$i];
+                if (is_array($currentName)) {
+                    $currentName = reset($currentName) ?: '';
+                }
+                $currentName = trim((string) $currentName);
+                if ($currentName === '') {
+                    continue;
+                }
+
+                $sparepartCode = null;
+                $sparepartName = $currentName;
+                if (strpos($currentName, ' - ') !== false) {
+                    $parts = explode(' - ', $currentName, 2);
+                    $sparepartCode = trim((string)($parts[0] ?? '')) ?: null;
+                    $sparepartName = trim((string)($parts[1] ?? '')) ?: $currentName;
+                }
+
+                $qty = (int)($sparepartQtys[$i] ?? 1);
+                if ($qty <= 0) {
+                    $qty = 1;
+                }
+                $satuan = strtoupper(trim((string)($sparepartUnits[$i] ?? 'PCS')));
+                $itemType = strtolower(trim((string)($itemTypes[$i] ?? 'sparepart')));
+                if (!in_array($itemType, ['sparepart', 'tool'], true)) {
+                    $itemType = 'sparepart';
+                }
+                $sourceType = strtoupper(trim((string)($sourceTypes[$i] ?? 'WAREHOUSE')));
+                if (!in_array($sourceType, ['WAREHOUSE', 'BEKAS', 'KANIBAL'], true)) {
+                    $sourceType = 'WAREHOUSE';
+                }
+                $isFromWarehouse = $sourceType === 'WAREHOUSE' ? 1 : 0;
+
+                $rows[] = [
+                    'work_order_id' => (int) $id,
+                    'sparepart_code' => $sparepartCode,
+                    'sparepart_name' => $sparepartName,
+                    'item_type' => $itemType,
+                    'quantity_brought' => $qty,
+                    'satuan' => $satuan,
+                    'notes' => $sparepartNotes[$i] ?? null,
+                    'source_type' => $sourceType,
+                    'is_from_warehouse' => $isFromWarehouse,
+                    'is_additional' => 1,
+                    'sparepart_validated' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+            }
+
+            if (empty($rows)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tidak ada sparepart valid untuk ditambahkan'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $db->table('work_order_spareparts')->insertBatch($rows);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => count($rows) . ' sparepart berhasil ditambahkan'
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Error in WorkOrderController::addSpareparts - [' . get_class($e) . '] ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menambahkan sparepart'
+            ]);
+        }
+    }
+
+    // Delete single sparepart row from work order (flexible correction)
+    public function deleteSparepart($workOrderId, $sparepartId)
+    {
+        $canEditWo = (function_exists('hasPermission') && hasPermission('service.work_order.edit'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.edit'))
+            || can_edit('service');
+        if (!$canEditWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $wo = $db->table('work_orders')->select('id, status_id')->where('id', (int)$workOrderId)->get()->getRowArray();
+            if (!$wo) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+
+            $statusCode = '';
+            if (!empty($wo['status_id'])) {
+                $statusRow = $db->table('work_order_statuses')->select('status_code')->where('id', (int)$wo['status_id'])->get()->getRowArray();
+                $statusCode = strtoupper((string)($statusRow['status_code'] ?? ''));
+            }
+            if (in_array($statusCode, ['CLOSED', 'CANCELLED'], true)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Sparepart tidak bisa dihapus untuk Work Order yang sudah closed/cancelled'
+                ]);
+            }
+
+            $deleted = $db->table('work_order_spareparts')
+                ->where('id', (int)$sparepartId)
+                ->where('work_order_id', (int)$workOrderId)
+                ->delete();
+
+            if (!$deleted) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal menghapus sparepart'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Sparepart berhasil dihapus'
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Error in WorkOrderController::deleteSparepart - [' . get_class($e) . '] ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus sparepart'
+            ]);
+        }
+    }
+    
+    // Toggle sparepart picked status from Add Sparepart modal
+    public function toggleSparepartTaken($workOrderId, $sparepartId)
+    {
+        $canEditWo = (function_exists('hasPermission') && hasPermission('service.work_order.edit'))
+            || (function_exists('hasPermission') && hasPermission('service.workorder.edit'))
+            || can_edit('service');
+        if (!$canEditWo) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Akses ditolak'
+            ]);
+        }
+
+        try {
+            $isTaken = (int)($this->request->getPost('is_taken') ?? 0) === 1;
+            $db = \Config\Database::connect();
+            $sparepart = $db->table('work_order_spareparts')
+                ->select('id, work_order_id, quantity_brought')
+                ->where('id', (int)$sparepartId)
+                ->where('work_order_id', (int)$workOrderId)
+                ->get()->getRowArray();
+
+            if (!$sparepart) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Data sparepart tidak ditemukan'
+                ]);
+            }
+
+            $qtyBrought = (int)($sparepart['quantity_brought'] ?? 0);
+            $status = strtoupper(trim((string)$this->request->getPost('status')));
+            if (!in_array($status, ['BELUM_DIAMBIL', 'SUDAH_DIAMBIL', 'KOSONG'], true)) {
+                // Backward compatibility with old toggle payload
+                $status = $isTaken ? 'SUDAH_DIAMBIL' : 'KOSONG';
+            }
+
+            // 3-state mapping:
+            // BELUM_DIAMBIL => quantity_used NULL (default/initial state)
+            // SUDAH_DIAMBIL => quantity_used = quantity_brought
+            // KOSONG        => quantity_used = 0
+            $qtyUsed = null;
+            if ($status === 'SUDAH_DIAMBIL') {
+                $qtyUsed = max(1, $qtyBrought);
+            } elseif ($status === 'KOSONG') {
+                $qtyUsed = 0;
+            }
+
+            $db->table('work_order_spareparts')
+                ->where('id', (int)$sparepartId)
+                ->where('work_order_id', (int)$workOrderId)
+                ->update([
+                    'quantity_used' => $qtyUsed,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Status sparepart diperbarui'
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Error in WorkOrderController::toggleSparepartTaken - [' . get_class($e) . '] ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengubah status sparepart'
+            ]);
+        }
+    }
+
     // Menghapus data work order
     public function delete($id)
     {
@@ -2172,6 +2524,27 @@ class WorkOrderController extends Controller
             ? $this->getLatestUnitVerificationStatus($unitId, (int)$id)
             : ['has_history' => false, 'is_valid_1y' => false];
 
+        // Ensure print uses latest sparepart state (taken status + additional marker)
+        $db = \Config\Database::connect();
+        $printSpareparts = $db->table('work_order_spareparts wos')
+            ->select('
+                wos.id,
+                wos.item_type,
+                wos.sparepart_name as name,
+                wos.sparepart_code as code,
+                wos.quantity_brought as qty,
+                wos.satuan,
+                wos.notes,
+                wos.is_from_warehouse,
+                wos.is_additional,
+                wos.quantity_used
+            ')
+            ->where('wos.work_order_id', (int)$id)
+            ->orderBy('wos.id', 'ASC')
+            ->get()
+            ->getResultArray();
+        $workOrder['spareparts'] = $printSpareparts;
+
         return view('service/print_work_order', [
             'workOrder' => $workOrder,
             'verificationValidity' => $verificationValidity,
@@ -2195,7 +2568,18 @@ class WorkOrderController extends Controller
             // Get spareparts for this work order
             $db = \Config\Database::connect();
             $spareparts = $db->table('work_order_spareparts wos')
-                ->select('wos.sparepart_name, wos.quantity_brought as quantity, wos.satuan as unit, wos.sparepart_code')
+                ->select('
+                    wos.sparepart_name,
+                    wos.sparepart_code,
+                    wos.item_type,
+                    wos.quantity_brought as quantity,
+                    wos.satuan as unit,
+                    wos.notes,
+                    wos.source_type,
+                    wos.source_unit_id,
+                    wos.source_notes,
+                    wos.is_from_warehouse
+                ')
                 ->where('wos.work_order_id', $id)
                 ->get()
                 ->getResultArray();
@@ -2738,8 +3122,14 @@ class WorkOrderController extends Controller
                 }
             }
             
-            // Exclude SOLD (13), UNDER_REPAIR (10), MAINTENANCE (11) units
-            $sql .= " AND iu.status_unit_id NOT IN (10, 11, 13)";
+            $orderType = strtoupper((string)($this->request->getGet('order_type') ?? ''));
+            if ($orderType === 'REKONDISI') {
+                // Rekondisi WO should only show breakdown units.
+                $sql .= " AND (iu.status_unit_id = 10 OR UPPER(COALESCE(su.status_unit, '')) = 'BREAKDOWN')";
+            } else {
+                // Exclude SOLD (13), BREAKDOWN (10), MAINTENANCE (11) units for non-rekondisi WO.
+                $sql .= " AND iu.status_unit_id NOT IN (10, 11, 13)";
+            }
             
             // In kanibal mode (sparepart source selection), skip the active-WO exclusion
             // so technicians can select any unit as a donor.
@@ -2977,7 +3367,32 @@ class WorkOrderController extends Controller
     public function getWorkOrderSpareparts($workOrderId)
     {
         try {
-            $spareparts = $this->sparepartModel->getSparePartsWithUsage($workOrderId);
+            $db = \Config\Database::connect();
+            $spareparts = $db->table('work_order_spareparts wos')
+                ->select('
+                    wos.id,
+                    wos.work_order_id,
+                    wos.sparepart_code as code,
+                    wos.sparepart_name as name,
+                    wos.item_type,
+                    wos.quantity_brought as qty,
+                    wos.satuan,
+                    wos.notes,
+                    wos.is_from_warehouse,
+                    wos.source_type,
+                    wos.source_unit_id,
+                    wos.source_notes,
+                    wos.is_additional,
+                    wos.sparepart_validated,
+                    wos.quantity_used,
+                    iu.no_unit as source_unit_number,
+                    iu.no_unit_na as source_unit_number_alt
+                ')
+                ->join('inventory_unit iu', 'wos.source_unit_id = iu.id_inventory_unit', 'left')
+                ->where('wos.work_order_id', (int)$workOrderId)
+                ->orderBy('wos.id', 'ASC')
+                ->get()
+                ->getResultArray();
             
             return $this->response->setJSON([
                 'success' => true,

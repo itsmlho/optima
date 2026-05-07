@@ -1794,25 +1794,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   // OLD MANUAL RENDERING CODE REMOVED - Migrated to OptimaDataTable server-side pagination
   
-  let currentDiJenis = ''; // Store jenis_perintah for SPPU
-  
   window.openDiDetail = (id) => {
     currentDiId = id; // Store current DI ID
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
     const body = document.getElementById('diDetailBody');
-    const btnSppu = document.getElementById('btnPrintSppu');
     body.innerHTML = '<p class="text-muted">Loading...</p>';
-    btnSppu.style.display = 'none'; // Hide SPPU button by default
     
     fetch('<?= base_url('marketing/di/detail/') ?>'+id).then(r=>r.json()).then(j=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Failed to load details</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
-      
-      // Store jenis_perintah and show SPPU button for TARIK/TUKAR/ANTAR+TARIK
-      currentDiJenis = (d.jenis_perintah || '').toUpperCase();
-      if (currentDiJenis === 'TARIK' || currentDiJenis === 'TUKAR' || currentDiJenis === 'ANTAR+TARIK' || currentDiJenis === 'ANTAR_TARIK') {
-        btnSppu.style.display = 'inline-block';
-      }
       
       // Parse spesifikasi JSON if exists
       let spesifikasi = {};
@@ -2725,19 +2715,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const printUrl = `<?= base_url('operational/delivery/print/') ?>${currentDiId}`;
     window.open(printUrl, '_blank');
   };
-  
-  // Print Withdrawal Letter (SPPU) from detail modal
-  window.printWithdrawalLetter = function() {
-    if (!currentDiId) {
-      OptimaNotify.error('DI ID tidak ditemukan');
-      return;
-    }
-    
-    // Open print SPPU in new tab
-    const sppu = `<?= base_url('marketing/di/print-withdrawal/') ?>${currentDiId}`;
-    window.open(sppu, '_blank');
-  };
-  
+
   // ============================================================
   // LINK DI TO CONTRACT FUNCTIONS
   // ============================================================
@@ -2896,13 +2874,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <div class="modal-header"><h6 class="modal-title"><?= lang('App.detail') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
-        <?= ui_button('print', 'Print SPPU', [
-            'id' => 'btnPrintSppu',
-            'onclick' => 'printWithdrawalLetter()',
-            'style' => 'display:none;',
-            'color' => 'success',
-            'icon' => 'fas fa-file-contract'
-        ]) ?>
         <?= ui_button('print', 'Print DI', ['id' => 'btnPrintDi', 'onclick' => 'printDiFromDetail()']) ?>
         <?= ui_button('edit', 'Edit', ['id' => 'btnEditDi', 'onclick' => 'editDiFromDetail()']) ?>
         <?= ui_button('delete', 'Delete', ['id' => 'btnDeleteDi', 'onclick' => 'deleteDiFromDetail()']) ?>

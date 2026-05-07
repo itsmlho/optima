@@ -126,6 +126,17 @@ $formattedKirimDate = $tanggalKirim !== '-' ? date('d F Y', strtotime($tanggalKi
             margin: 5px 0 0 0;
             color: #000;
         }
+
+        .doc-purpose {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 2px 8px;
+            border: 1px solid #555;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: #333;
+        }
         
         .document-meta {
             text-align: right;
@@ -392,6 +403,7 @@ $formattedKirimDate = $tanggalKirim !== '-' ? date('d F Y', strtotime($tanggalKi
             <div class="document-title">
                 <h1>PT. SARANA MITRA LUAS</h1>
                 <h2><?= strtoupper($letterTitle) ?></h2>
+                <div class="doc-purpose">DOKUMEN EKSTERNAL - PERINTAH PENARIKAN</div>
             </div>
             <div class="document-meta">
                 <div class="doc-number"><strong>No: <?= esc($diNumber) ?></strong></div>
@@ -437,14 +449,14 @@ $formattedKirimDate = $tanggalKirim !== '-' ? date('d F Y', strtotime($tanggalKi
 
         <!-- Withdrawal Reason -->
         <div class="reason-box">
-            <strong>⚠️ TUJUAN PENARIKAN:</strong><br>
+            <strong>TUJUAN PENARIKAN:</strong><br>
             <?= esc($tujuanDisplay) ?>
         </div>
 
         <?php if (!empty($catatanPenting)): ?>
         <!-- Dynamic Important Note -->
         <div class="instructions-box">
-            <h4>📌 CATATAN PENTING</h4>
+            <h4>CATATAN PENTING</h4>
             <p style="margin: 0; font-size: 11px;"><?= esc($catatanPenting) ?></p>
         </div>
         <?php endif; ?>

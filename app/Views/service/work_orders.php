@@ -39,6 +39,35 @@ $categories  = $categories  ?? [];
 
 <?= $this->section('content') ?>
 
+<style>
+#addSparepartModal .modal-dialog {
+    max-width: 1200px;
+}
+#addSparepartModal .table-responsive {
+    overflow-x: auto;
+}
+#addSparepartInputTable {
+    table-layout: fixed;
+    width: 100%;
+}
+#addSparepartInputTable th,
+#addSparepartInputTable td {
+    vertical-align: middle;
+}
+#addSparepartInputTable .form-control,
+#addSparepartInputTable .form-select,
+#addSparepartInputTable .select2-container {
+    width: 100% !important;
+    min-width: 0;
+}
+#addSparepartInputTable .select2-selection__rendered {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
+
 <!-- Alert Container -->
 <div id="alertContainer" class="mb-3"></div>
 
@@ -364,7 +393,7 @@ $categories  = $categories  ?? [];
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="work_order_number" class="form-label"><?= lang('Service.wo_number') ?></label>
-                                    <input type="text" class="form-control" id="work_order_number" name="work_order_number" readonly>
+                                    <input type="text" class="form-control" id="work_order_number" name="work_order_number">
                                     <small class="form-text text-muted"><?= lang('Service.wo_number_auto') ?></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -496,7 +525,7 @@ $categories  = $categories  ?? [];
                     </div>
                             
                     <!-- Items Brought (Spareparts & Tools) -->
-                    <div class="card shadow-sm mb-4">
+                    <div class="card shadow-sm mb-4" id="workOrderSparepartSection">
                         <div class="card-header">
                             <h6 class="mb-0"><i class="fas fa-toolbox me-2"></i>Items Brought (Spareparts & Tools)</h6>
                             </div>
@@ -788,6 +817,9 @@ $categories  = $categories  ?? [];
                 <button type="button" class="btn btn-success btn-print-from-view" data-id="" id="btnPrintFromView">
                     <i class="fas fa-print me-1"></i>Print Work Order
                 </button>
+                <button type="button" class="btn btn-warning btn-add-sparepart-from-view" data-id="" id="btnAddSparepartFromView">
+                    <i class="fas fa-plus-circle me-1"></i>Tambah Sparepart
+                </button>
                 <button type="button" class="btn btn-primary btn-edit-from-view" data-id="" id="btnEditFromView">
                     <i class="fas fa-edit me-1"></i><?= lang('Common.edit') ?> <?= lang('Service.work_order') ?>
                 </button>
@@ -796,6 +828,83 @@ $categories  = $categories  ?? [];
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Add Sparepart (Append to WO) -->
+<div class="modal fade" id="addSparepartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-warning"></i>Tambah Sparepart WO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addSparepartForm" method="post">
+                <div class="modal-body">
+                    <input type="hidden" id="addSparepartWorkOrderId" value="">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="mb-0">Sparepart Existing (Riwayat)</h6>
+                            <small class="text-muted">Label: Initial / Additional</small>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 30px;">#</th>
+                                        <th>Item</th>
+                                        <th style="width: 90px;">Qty</th>
+                                        <th style="width: 80px;">Unit</th>
+                                        <th style="width: 110px;">Type</th>
+                                        <th style="width: 100px;">Source</th>
+                                        <th style="width: 160px;">Status Ambil</th>
+                                        <th style="width: 90px;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="existingSparepartTableBody">
+                                    <tr><td colspan="8" class="text-center text-muted">Belum ada sparepart</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle" id="addSparepartInputTable">
+                            <colgroup>
+                                <col style="width: 80px;">
+                                <col style="width: 34%;">
+                                <col style="width: 70px;">
+                                <col style="width: 90px;">
+                                <col style="width: 110px;">
+                                <col style="width: auto;">
+                                <col style="width: 70px;">
+                            </colgroup>
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 90px;">Type</th>
+                                    <th style="width: 260px;">Item Name</th>
+                                    <th style="width: 90px;">Qty</th>
+                                    <th style="width: 90px;">Unit</th>
+                                    <th style="width: 110px;">Source</th>
+                                    <th>Notes</th>
+                                    <th style="width: 60px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="addSparepartTableBody"></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm" id="btnAddSparepartRowModal">
+                        <i class="fas fa-plus me-1"></i>Tambah Baris
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning" id="btnSubmitAddSparepart">
+                        <i class="fas fa-save me-1"></i>Simpan Sparepart
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -826,6 +935,21 @@ if (typeof window.lang !== 'function') {
 }
 
 $(document).ready(function() {
+    let isEditMode = false;
+    let addSparepartRowCount = 0;
+
+    function toggleWorkOrderSparepartSection(editMode) {
+        const section = $('#workOrderSparepartSection');
+        const fields = section.find('input, select, textarea, button');
+        if (editMode) {
+            section.hide();
+            fields.prop('disabled', true);
+        } else {
+            section.show();
+            fields.prop('disabled', false);
+        }
+    }
+
     // Hide global page loading overlay as soon as this page JS is ready
     try {
         if (window.OptimaPro && typeof window.OptimaPro.hideLoading === 'function') {
@@ -1221,6 +1345,8 @@ $(document).ready(function() {
         
         // Clear hidden work order ID
         $('#work_order_id').val('');
+        isEditMode = false;
+        toggleWorkOrderSparepartSection(false);
     });
     
     // Function to reset custom dropdowns
@@ -1679,6 +1805,263 @@ $(document).ready(function() {
         }
     });
 
+    function appendAddSparepartRow() {
+        addSparepartRowCount++;
+        const rowId = addSparepartRowCount;
+        const row = `
+            <tr data-row-id="${rowId}">
+                <td>
+                    <select class="form-select form-select-sm" name="item_type[]" required>
+                        <option value="sparepart" selected>Sparepart</option>
+                        <option value="tool">Tool</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm add-sparepart-name" name="sparepart_name[]" id="add_sparepart_name_${rowId}" required>
+                        <option value="">-- Ketik untuk cari sparepart --</option>
+                    </select>
+                </td>
+                <td><input type="number" class="form-control form-control-sm" name="sparepart_quantity[]" value="1" min="1" required></td>
+                <td>
+                    <select class="form-select form-select-sm" name="sparepart_unit[]" required>
+                        <option value="PCS" selected>PCS</option>
+                        <option value="UNIT">UNIT</option>
+                        <option value="SET">SET</option>
+                        <option value="KG">KG</option>
+                        <option value="LITER">LITER</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" name="source_type[]" required>
+                        <option value="WAREHOUSE" selected>Warehouse</option>
+                        <option value="BEKAS">Bekas</option>
+                        <option value="KANIBAL">Kanibal</option>
+                    </select>
+                </td>
+                <td><input type="text" class="form-control form-control-sm" name="sparepart_notes[]" maxlength="255" placeholder="Catatan"></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger btn-remove-add-sp-row"><i class="fas fa-times"></i></button>
+                </td>
+            </tr>
+        `;
+        $('#addSparepartTableBody').append(row);
+
+        const $select = $(`#add_sparepart_name_${rowId}`);
+        $select.select2({
+            placeholder: '-- Ketik untuk cari sparepart --',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#addSparepartModal'),
+            minimumInputLength: 2,
+            ajax: {
+                url: '<?= base_url('service/work-orders/search-spareparts') ?>',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return { q: params.term, page: params.page || 1 };
+                },
+                processResults: function(data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results || [],
+                        pagination: { more: data.pagination ? data.pagination.more : false }
+                    };
+                }
+            }
+        });
+    }
+
+    function renderExistingSpareparts(rows) {
+        const $tbody = $('#existingSparepartTableBody');
+        $tbody.empty();
+        if (!Array.isArray(rows) || rows.length === 0) {
+            $tbody.html('<tr><td colspan="8" class="text-center text-muted">Belum ada sparepart</td></tr>');
+            return;
+        }
+
+        rows.forEach(function(sp, idx) {
+            const qty = sp.qty || sp.quantity_brought || 0;
+            const unit = sp.satuan || '-';
+            const itemName = sp.name || sp.sparepart_name || '-';
+            const label = String(sp.is_additional || 0) === '1'
+                ? '<span class="badge badge-soft-warning">Additional</span>'
+                : '<span class="badge badge-soft-primary">Initial</span>';
+            const source = (sp.source_type || (sp.is_from_warehouse == 1 ? 'WAREHOUSE' : 'NON-WH') || '-');
+            const qtyUsedRaw = sp.quantity_used;
+            let pickupStatus = 'BELUM_DIAMBIL';
+            if (qtyUsedRaw === 0 || String(qtyUsedRaw) === '0') {
+                pickupStatus = 'KOSONG';
+            } else if (qtyUsedRaw !== null && qtyUsedRaw !== undefined && Number(qtyUsedRaw) > 0) {
+                pickupStatus = 'SUDAH_DIAMBIL';
+            }
+            const canDelete = true;
+            const deleteBtn = canDelete
+                ? `<button type="button" class="btn btn-sm btn-danger btn-delete-existing-sp" data-id="${sp.id}"><i class="fas fa-trash"></i></button>`
+                : '<button type="button" class="btn btn-sm btn-secondary" disabled><i class="fas fa-lock"></i></button>';
+            const statusPicker = `
+                <select class="form-select form-select-sm pickup-status-select" data-id="${sp.id}" data-prev="${pickupStatus}">
+                    <option value="BELUM_DIAMBIL" ${pickupStatus === 'BELUM_DIAMBIL' ? 'selected' : ''}>Belum diambil</option>
+                    <option value="SUDAH_DIAMBIL" ${pickupStatus === 'SUDAH_DIAMBIL' ? 'selected' : ''}>Sudah diambil</option>
+                    <option value="KOSONG" ${pickupStatus === 'KOSONG' ? 'selected' : ''}>Kosong</option>
+                </select>
+            `;
+
+            $tbody.append(`
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>
+                        <div class="fw-semibold">${itemName}</div>
+                        <small class="text-muted">${sp.code || sp.sparepart_code || '-'}</small>
+                    </td>
+                    <td>${qty}</td>
+                    <td>${unit}</td>
+                    <td>${label}</td>
+                    <td><span class="badge badge-soft-cyan">${source}</span></td>
+                    <td>${statusPicker}</td>
+                    <td>${deleteBtn}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function loadExistingSparepartsForModal(woId) {
+        $.ajax({
+            url: '<?= base_url('service/work-orders/spareparts') ?>/' + woId,
+            type: 'GET',
+            success: function(response) {
+                if (response && response.success) {
+                    renderExistingSpareparts(response.data || []);
+                } else {
+                    renderExistingSpareparts([]);
+                }
+            },
+            error: function() {
+                renderExistingSpareparts([]);
+            }
+        });
+    }
+
+    $(document).on('click', '.btn-add-sparepart-from-view', function() {
+        const woId = $(this).data('id');
+        if (!woId) {
+            OptimaNotify.error('Work Order tidak ditemukan');
+            return;
+        }
+        $('#addSparepartWorkOrderId').val(woId);
+        $('#addSparepartTableBody').empty();
+        $('#existingSparepartTableBody').empty();
+        addSparepartRowCount = 0;
+        appendAddSparepartRow();
+        loadExistingSparepartsForModal(woId);
+        $('#addSparepartModal').modal('show');
+    });
+
+    $('#btnAddSparepartRowModal').on('click', function() {
+        appendAddSparepartRow();
+    });
+
+    $(document).on('click', '.btn-remove-add-sp-row', function() {
+        $(this).closest('tr').remove();
+    });
+
+    $('#addSparepartForm').on('submit', function(e) {
+        e.preventDefault();
+        const woId = $('#addSparepartWorkOrderId').val();
+        if (!woId) {
+            OptimaNotify.error('Work Order tidak valid');
+            return;
+        }
+
+        const csrfData = window.getCsrfTokenData();
+        const payload = $(this).serializeArray();
+        payload.push({ name: csrfData.tokenName, value: csrfData.tokenValue });
+
+        $.ajax({
+            url: '<?= base_url('service/work-orders/add-spareparts') ?>/' + woId,
+            type: 'POST',
+            data: $.param(payload),
+            beforeSend: function() {
+                $('#btnSubmitAddSparepart').prop('disabled', true);
+            },
+            success: function(response) {
+                if (response && response.success) {
+                    OptimaNotify.success(response.message || 'Sparepart berhasil ditambahkan');
+                    $('#addSparepartTableBody').empty();
+                    addSparepartRowCount = 0;
+                    appendAddSparepartRow();
+                    loadExistingSparepartsForModal(woId);
+                    showWorkOrderDetail(woId);
+                } else {
+                    OptimaNotify.error((response && response.message) ? response.message : 'Gagal menambah sparepart');
+                }
+            },
+            error: function() {
+                OptimaNotify.error('Gagal menambah sparepart');
+            },
+            complete: function() {
+                $('#btnSubmitAddSparepart').prop('disabled', false);
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-delete-existing-sp', function() {
+        const woId = $('#addSparepartWorkOrderId').val();
+        const sparepartId = $(this).data('id');
+        if (!woId || !sparepartId) return;
+
+        const csrfData = window.getCsrfTokenData();
+        $.ajax({
+            url: '<?= base_url('service/work-orders/delete-sparepart') ?>/' + woId + '/' + sparepartId,
+            type: 'POST',
+            data: { [csrfData.tokenName]: csrfData.tokenValue },
+            success: function(response) {
+                if (response && response.success) {
+                    OptimaNotify.success(response.message || 'Sparepart dihapus');
+                    loadExistingSparepartsForModal(woId);
+                    showWorkOrderDetail(woId);
+                } else {
+                    OptimaNotify.error((response && response.message) ? response.message : 'Gagal menghapus sparepart');
+                }
+            },
+            error: function() {
+                OptimaNotify.error('Gagal menghapus sparepart');
+            }
+        });
+    });
+
+    $(document).on('change', '.pickup-status-select', function() {
+        const woId = $('#addSparepartWorkOrderId').val();
+        const sparepartId = $(this).data('id');
+        const statusValue = $(this).val();
+        const csrfData = window.getCsrfTokenData();
+        const $picker = $(this);
+        const previousValue = $picker.data('prev') || 'BELUM_DIAMBIL';
+
+        $.ajax({
+            url: '<?= base_url('service/work-orders/toggle-sparepart-taken') ?>/' + woId + '/' + sparepartId,
+            type: 'POST',
+            data: {
+                [csrfData.tokenName]: csrfData.tokenValue,
+                status: statusValue
+            },
+            success: function(response) {
+                if (response && response.success) {
+                    OptimaNotify.success(response.message || 'Status sparepart diperbarui');
+                    $picker.data('prev', statusValue);
+                    loadExistingSparepartsForModal(woId);
+                    showWorkOrderDetail(woId);
+                } else {
+                    OptimaNotify.error((response && response.message) ? response.message : 'Gagal update status');
+                    $picker.val(previousValue);
+                }
+            },
+            error: function() {
+                OptimaNotify.error('Gagal update status sparepart');
+                $picker.val(previousValue);
+            }
+        });
+    });
+
     // Edit from view modal
     $(document).on('click', '.btn-edit-from-view', function() {
         let id = $(this).data('id');
@@ -1708,6 +2091,8 @@ $(document).ready(function() {
                         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/update') ?>/' + id);
                         $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Update Work Order');
                         $('#work_order_id').val(id);
+                        isEditMode = true;
+                        toggleWorkOrderSparepartSection(true);
                         
                         // Open modal first to trigger dropdown loading
                         $('#workOrderModal').modal('show');
@@ -1772,6 +2157,8 @@ $(document).ready(function() {
                     $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/update') ?>/' + id);
                     $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Update Work Order');
                     $('#work_order_id').val(id);
+                    isEditMode = true;
+                    toggleWorkOrderSparepartSection(true);
                     
                     // Open modal first to trigger dropdown loading
                     $('#workOrderModal').modal('show');
@@ -2124,7 +2511,7 @@ $(document).ready(function() {
             
             // Handle spareparts if they exist
             // console.log('🔧 Checking spareparts data:', data.spareparts);
-            if (data.spareparts && data.spareparts.length > 0) {
+            if (!isEditMode && data.spareparts && data.spareparts.length > 0) {
                 // console.log('🔧 Populating spareparts:', data.spareparts);
                 // Clear existing sparepart rows
                 $('#sparepartTableBody').empty();
@@ -2139,7 +2526,7 @@ $(document).ready(function() {
                     
                     // console.log('✅ All sparepart rows added, total:', data.spareparts.length);
                 }, 200);
-            } else {
+            } else if (!isEditMode) {
                 // console.log('📝 No spareparts data, adding empty row');
                 // Clear existing sparepart rows
                 $('#sparepartTableBody').empty();
@@ -2248,7 +2635,11 @@ $(document).ready(function() {
         
         // Set data attributes for buttons
         $('.btn-print-from-view').data('id', data.id);
+        $('.btn-add-sparepart-from-view').data('id', data.id);
         $('.btn-edit-from-view').data('id', data.id);
+        const statusCode = String(data.status_code || '').toUpperCase();
+        const canAddSparepart = !['CLOSED', 'CANCELLED'].includes(statusCode);
+        $('#btnAddSparepartFromView').toggle(canAddSparepart);
         $('.btn-delete-from-view').data('id', data.id).data('wo-number', data.work_order_number);
     }
 
@@ -2637,6 +3028,8 @@ $(document).ready(function() {
         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/store') ?>');
         $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> ' + saveText);
         $('#work_order_id').val('');
+        isEditMode = false;
+        toggleWorkOrderSparepartSection(false);
         
         // Initialize Select2 immediately before showing modal
         setTimeout(function() {
@@ -2856,7 +3249,7 @@ $(document).ready(function() {
         // Add initial sparepart row if not exists - with proper timing
         // Wait for sparepartsData to be available and ensure it's loaded
         setTimeout(function() {
-            if ($('#sparepartTableBody tr').length === 0) {
+            if (!isEditMode && $('#sparepartTableBody tr').length === 0) {
                 // console.log('🔧 Adding initial sparepart row');
                 // console.log('📦 SparepartsData available:', window.sparepartsData ? window.sparepartsData.length : 0, 'items');
                 
@@ -3245,7 +3638,10 @@ $(document).ready(function() {
                 dataType: 'json',
                 delay: 350,
                 data: function(params) {
-                    return { search: params.term };
+                    return {
+                        search: params.term,
+                        order_type: $('#order_type').val() || ''
+                    };
                 },
                 processResults: function(data) {
                     if (!data.success || !data.data) return { results: [] };
@@ -3282,6 +3678,14 @@ $(document).ready(function() {
 
         unitSelect.select2(s2cfg);
     }
+    
+    // Reload available units when order type changes (e.g. Rekondisi => Breakdown only)
+    $(document).on('change', '#order_type', function() {
+        const unitSelect = $('#unit_id');
+        unitSelect.val(null).trigger('change');
+        loadUnitsDropdown();
+    });
+
     function displayUnits(units) {
         let unitList = $('#unitDropdownList');
         unitList.empty();

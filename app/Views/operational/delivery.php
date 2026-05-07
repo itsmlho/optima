@@ -984,16 +984,31 @@ document.addEventListener('DOMContentLoaded', ()=>{
         actionButtons = actionButtons ? `${actionButtons} ${printSPKButton}` : printSPKButton;
       }
       
-      // Add Print DI button right after PDF SPK button - open in new tab like PDF SPK
-      const printDIButton = `<a class="btn btn-outline-primary btn-sm" href="<?= base_url('operational/delivery/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-print"></i> Print DI</a>`;
-      actionButtons = actionButtons ? `${actionButtons} ${printDIButton}` : printDIButton;
-      
-      // Add Print SPPU button for TARIK, TUKAR, and RELOKASI command types (use kode, not nama)
-      const jenisPerintahKode = d.jenis_perintah_kode || '';
-      if (jenisPerintahKode === 'TARIK' || jenisPerintahKode === 'TUKAR' || jenisPerintahKode === 'RELOKASI') {
-        const printSPPUButton = `<a class="btn btn-outline-success btn-sm" href="<?= base_url('marketing/di/print-withdrawal/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Print SPPU</a>`;
-        actionButtons = actionButtons ? `${actionButtons} ${printSPPUButton}` : printSPPUButton;
-        // console.log('✅ Added Print SPPU button for command type:', jenisPerintahKode);
+      // Operational documents are standardized to DI, BAST, and Surat Jalan only.
+      const jenisPerintahKode = String(d.jenis_perintah_kode || '').toUpperCase();
+      const isAntarKirim = jenisPerintahKode === 'ANTAR' || jenisPerintahKode === 'KIRIM';
+      const isTarikAmbil = jenisPerintahKode === 'TARIK' || jenisPerintahKode === 'AMBIL';
+      const isTukar = jenisPerintahKode === 'TUKAR';
+      const isRelokasi = jenisPerintahKode === 'RELOKASI';
+      const appendActionButton = (buttonHtml) => {
+        actionButtons = actionButtons ? `${actionButtons} ${buttonHtml}` : buttonHtml;
+      };
+
+      if (isAntarKirim) {
+        appendActionButton('<span class="badge badge-soft-cyan me-1">Dokumen Pengiriman</span>');
+        appendActionButton(`<a class="btn btn-outline-primary btn-sm" href="<?= base_url('operational/delivery/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-clipboard-list"></i> DI Internal</a>`);
+        appendActionButton(`<a class="btn btn-outline-dark btn-sm" href="<?= base_url('operational/delivery/print-bast/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-signature"></i> BAST / Tanda Terima</a>`);
+        appendActionButton(`<a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/delivery/print-surat-jalan/') ?>${id}?mode=kirim" target="_blank" rel="noopener"><i class="fas fa-truck"></i> SJ Kirim (3 Rangkap)</a>`);
+      } else if (isTarikAmbil) {
+        appendActionButton('<span class="badge badge-soft-orange me-1">Dokumen Penarikan</span>');
+        appendActionButton(`<a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/delivery/print-surat-jalan/') ?>${id}?mode=tarik" target="_blank" rel="noopener"><i class="fas fa-truck-loading"></i> SJ Tarik (3 Rangkap)</a>`);
+      } else if (isTukar) {
+        appendActionButton('<span class="badge badge-soft-purple me-1">Dokumen Tukar Unit</span>');
+        appendActionButton(`<a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/delivery/print-surat-jalan/') ?>${id}?mode=kirim" target="_blank" rel="noopener"><i class="fas fa-truck"></i> SJ Kirim Unit Pengganti</a>`);
+        appendActionButton(`<a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/delivery/print-surat-jalan/') ?>${id}?mode=tarik" target="_blank" rel="noopener"><i class="fas fa-truck-loading"></i> SJ Tarik Unit Lama</a>`);
+      } else if (isRelokasi) {
+        appendActionButton('<span class="badge badge-soft-green me-1">Dokumen Relokasi</span>');
+        appendActionButton(`<a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/delivery/print-surat-jalan/') ?>${id}?mode=relokasi" target="_blank" rel="noopener"><i class="fas fa-route"></i> SJ Relokasi (3 Rangkap)</a>`);
       }
       
       body.innerHTML = `

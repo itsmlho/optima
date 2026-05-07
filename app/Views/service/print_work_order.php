@@ -317,10 +317,11 @@
                             <tr>
                                 <th style="width: 5%;">No</th>
                                 <th style="width: 10%;">Type</th>
-                                <th style="width: 30%;">Item Name</th>
-                                <th style="width: 15%;">Code</th>
+                                <th style="width: 25%;">Item Name</th>
+                                <th style="width: 12%;">Code</th>
                                 <th style="width: 10%;">QTY</th>
-                                <th style="width: 30%;">Notes</th>
+                                <th style="width: 10%;">Status</th>
+                                <th style="width: 28%;">Notes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -346,21 +347,38 @@
                                     if ($isFromWarehouse == 0) {
                                         $itemName .= ' <span style="background-color: #ffc107; color: #000; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold; margin-left: 5px;">♻ NON-WH</span>';
                                     }
+
+                                    // Additional marker (added after initial WO)
+                                    $isAdditional = isset($part['is_additional']) ? (int)$part['is_additional'] : 0;
+                                    $additionalBadge = $isAdditional === 1
+                                        ? '<div style="margin-top:2px;"><span style="display:inline-block;background-color:#fd7e14;color:#fff;padding:1px 5px;font-size:6.5pt;border-radius:3px;font-weight:bold;">+ ADDITIONAL</span></div>'
+                                        : '';
+
+                                    // 3-state taken status based on quantity_used
+                                    $qtyUsedRaw = $part['quantity_used'] ?? null;
+                                    if ($qtyUsedRaw === null || $qtyUsedRaw === '') {
+                                        $statusBadge = '<span style="background-color: #0d6efd; color: #fff; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold;">BELUM DIAMBIL</span>';
+                                    } elseif ((int)$qtyUsedRaw > 0) {
+                                        $statusBadge = '<span style="background-color: #198754; color: #fff; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold;">SUDAH DIAMBIL</span>';
+                                    } else {
+                                        $statusBadge = '<span style="background-color: #6c757d; color: #fff; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold;">KOSONG</span>';
+                                    }
                                     
                                     $itemNotes = htmlspecialchars($part['notes'] ?? '-');
                                     
                                     echo '<tr>
                                             <td style="text-align: center;">'.$rowCount.'</td>
                                             <td style="text-align: center;">'.$typeBadge.'</td>
-                                            <td>'.$itemName.'</td>
+                                            <td>'.$itemName.$additionalBadge.'</td>
                                             <td>'.htmlspecialchars($part['code']??'-').'</td>
                                             <td style="text-align: center;">'.$qtyWithUnit.'</td>
+                                            <td style="text-align: center;">'.$statusBadge.'</td>
                                             <td><small>'.$itemNotes.'</small></td>
                                           </tr>';
                                 }
                             }
                             for ($i = $rowCount + 1; $i <= $minimumRows; $i++) {
-                                echo '<tr><td style="text-align: center;">'.$i.'</td><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>';
+                                echo '<tr><td style="text-align: center;">'.$i.'</td><td></td><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>';
                             } ?>
                         </tbody>
                     </table>

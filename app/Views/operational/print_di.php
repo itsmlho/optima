@@ -273,6 +273,16 @@ if (empty($unit_items)) {
             letter-spacing: 0.02em;
             line-height: 1.3;
         }
+        .doc-purpose {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 2px 8px;
+            border: 1px solid #555;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: #333;
+        }
         
         .document-meta {
             text-align: right;
@@ -500,6 +510,7 @@ if (empty($unit_items)) {
             <div class="document-title">
                 <h1>PT. SARANA MITRA LUAS</h1>
                 <h2>DELIVERY INSTRUCTION</h2>
+                <div class="doc-purpose">INTERNAL OPERATIONAL INSTRUCTION</div>
                 <?php if ($di_command_line !== ''): ?>
                     <p class="di-command-line"><?= esc($di_command_line) ?></p>
                 <?php endif; ?>

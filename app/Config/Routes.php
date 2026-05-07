@@ -367,7 +367,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('di/link-to-contract', 'Marketing::linkDIToContract');
     $routes->post('di/sync-units-to-contract', 'Marketing::syncDIUnitsToContractEndpoint');
     $routes->get('di/linkable-contracts/(:num)', 'Marketing::getLinkableContractsForDI/$1');
-    $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // SPPU - Surat Perintah Penarikan Unit
+    $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // Deprecated: SPPU disabled, use Surat Jalan
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
     $routes->post('spk/link-to-contract', 'Marketing::linkSPKToContract');
     $routes->get('spk/contracts-for-linking/(:num)', 'Marketing::getContractsForSPKLinking/$1');
@@ -587,6 +587,9 @@ $routes->group('service', static function ($routes) {
     $routes->get('work-orders/edit/(:num)', 'WorkOrderController::edit/$1');
     $routes->get('work-orders/print/(:num)', 'WorkOrderController::print/$1');
     $routes->post('work-orders/update/(:num)', 'WorkOrderController::update/$1');
+    $routes->post('work-orders/add-spareparts/(:num)', 'WorkOrderController::addSpareparts/$1');
+    $routes->post('work-orders/delete-sparepart/(:num)/(:num)', 'WorkOrderController::deleteSparepart/$1/$2');
+    $routes->post('work-orders/toggle-sparepart-taken/(:num)/(:num)', 'WorkOrderController::toggleSparepartTaken/$1/$2');
     $routes->delete('work-orders/delete/(:num)', 'WorkOrderController::delete/$1');
     // Work Order assignment routes
     $routes->post('work-orders/assign-employees', 'WorkOrderController::assignEmployees');
@@ -829,6 +832,8 @@ $routes->group('operational', static function ($routes) {
     $routes->get('delivery/detail/(:num)', 'Operational::diDetail/$1');
     $routes->get('delivery/print/(:num)', 'Operational::diPrint/$1');
     $routes->get('delivery/print-multi/(:num)', 'Operational::diPrintMulti/$1');
+    $routes->get('delivery/print-bast/(:num)', 'Operational::diPrintBast/$1');
+    $routes->get('delivery/print-surat-jalan/(:num)', 'Operational::diPrintSuratJalan/$1');
     $routes->post('delivery/update-status/(:num)', 'Operational::diUpdateStatus/$1');
     $routes->post('delivery/approve-stage/(:num)', 'Operational::diApproveStage/$1');
     // Delivery Trips (multi-truck per DI)

@@ -4895,6 +4895,10 @@ class Marketing extends BaseDataTableController
     public function printWithdrawalLetter($id)
     {
         $id = (int)$id;
+
+        return $this->response
+            ->setStatusCode(410)
+            ->setBody('SPPU sudah tidak digunakan dalam standar dokumen operational saat ini. Gunakan Surat Jalan sesuai tipe perintah.');
         
         // Get DI with jenis_perintah_kerja kode
         $di = $this->db->table('delivery_instructions di')
